@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "36793882908b6cbdd344b5a4840231db",
+    "content-hash": "c7aec22ace2b6493a5533b116db95f08",
     "packages": [
         {
             "name": "brick/math",
@@ -3303,6 +3303,40 @@
                 "source": "https://github.com/ramsey/uuid/tree/4.9.3"
             },
             "time": "2026-06-18T03:57:49+00:00"
+        },
+        {
+            "name": "retireforecast/finance-engine",
+            "version": "0.1.0",
+            "dist": {
+                "type": "path",
+                "url": "packages/finance-engine",
+                "reference": "709e372e4559149d5267fbf8d9169ccb41576924"
+            },
+            "require": {
+                "php": "^8.3"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^12.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "RetireForecast\\FinanceEngine\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "RetireForecast\\FinanceEngine\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Framework-free UK retirement finance calculation engine. No Laravel, no I/O, no clock. Pure deterministic functions over value objects.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         },
         {
             "name": "symfony/clock",

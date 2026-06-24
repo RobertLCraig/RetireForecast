@@ -1,0 +1,24 @@
+{
+    "name": "retireforecast/finance-engine",
+    "description": "Framework-free UK retirement finance calculation engine. No Laravel, no I/O, no clock. Pure deterministic functions over value objects.",
+    "type": "library",
+    "license": "proprietary",
+    "version": "0.1.0",
+    "require": {
+        "php": "^8.3"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "RetireForecast\\FinanceEngine\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "RetireForecast\\FinanceEngine\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable"
+}
