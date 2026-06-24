@@ -13,6 +13,16 @@ but less precise at extreme ages) and over period tables (simpler but understate
 Larger data ingest, but a one-off, and it carries a clear ONS source.
 **Status:** active
 
+## 2026-06-24 — Assumption figures signed off (adopted as proposed)
+**Decision:** Rob signed off the researched figures in [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md)
+as proposed. Set A (FCA real returns + DMS vols) is the engine default; Sets B (DMS
+historical) and C (OBR/BoE) ship as compare overlays. Includes the flagged judgement calls:
+cash real vol overridden to 2% (inflation modelled separately), Eq–Cash/Bond–Cash
+correlations as reasoned estimates, house growth +1% real. Figures stay runtime-overridable
+and are re-verified at build time.
+**Why:** Unblocks the forecast year-stepper and Monte Carlo with defensible, cited defaults.
+**Status:** active
+
 ## 2026-06-24 — Default assumptions: FCA expected returns + DMS volatilities
 **Decision:** The default AssumptionSet uses FCA-derived expected returns combined with
 Barclays Equity Gilt Study / Dimson-Marsh-Staunton (DMS) historical volatilities and

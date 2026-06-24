@@ -1,11 +1,10 @@
-# Economic assumptions — PROPOSED, pending Rob's sign-off
+# Economic assumptions — SIGNED OFF 2026-06-24
 
 _Last updated: 2026-06-24_
 
-> **Status: PROPOSED. No forecast is shown as "real" until Rob signs these off** (see
-> [DECISIONS.md](../DECISIONS.md) — "Default assumptions: FCA expected returns + DMS
-> volatilities"). These are researched, cited figures for review, not yet wired into the
-> engine as defaults.
+> **Status: SIGNED OFF by Rob (2026-06-24), adopted as proposed.** Set A (FCA default) is the
+> engine default; Sets B and C ship as runtime compare overlays. Figures remain overridable
+> at runtime and must be re-verified against source at build time. See [DECISIONS.md](../DECISIONS.md).
 
 All return and volatility figures are **REAL (above-inflation), annual**. Three asset
 classes: global equities, gilts/bonds, cash. The engine reads whichever `AssumptionSet`
