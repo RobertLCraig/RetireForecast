@@ -3,6 +3,27 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-24 — Mortality model: embed ONS cohort life tables
+**Decision:** Drive stochastic joint-life mortality from embedded ONS cohort life tables
+(by single year of age and sex), sampling each partner's age of death per path and running
+the household to the last survivor.
+**Why:** Cohort tables account for future mortality improvements, so lifespans (and the
+"will the money last" answer) are realistic. Rob chose this over a parametric fit (compact
+but less precise at extreme ages) and over period tables (simpler but understate longevity).
+Larger data ingest, but a one-off, and it carries a clear ONS source.
+**Status:** active
+
+## 2026-06-24 — Default assumptions: FCA expected returns + DMS volatilities
+**Decision:** The default AssumptionSet uses FCA-derived expected returns combined with
+Barclays Equity Gilt Study / Dimson-Marsh-Staunton (DMS) historical volatilities and
+correlations. DMS and OBR/BoE-inflation sets ship as compare overlays. Claude researches and
+proposes the actual cited figures; **Rob signs off before any forecast is shown as real.**
+**Why:** FCA projection rates are the familiar, defensible default but publish only nominal
+growth brackets, not the volatility/correlation a Monte Carlo needs; DMS supplies those from
+a coherent historical source. Pairing them gives a defensible default that the stochastic
+engine can actually run. [[2026-06-24 — Modelling depth and scope (from approved plan)]]
+**Status:** active
+
 ## 2026-06-24 — Savings + dividends computed in one combined income-tax pass
 **Decision:** The plan listed separate `SavingsTax` and `DividendTax` calculators. Instead,
 savings and dividend tax are computed inside `IncomeTaxCalculator::compute(TaxableIncome)`,
