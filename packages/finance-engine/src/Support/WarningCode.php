@@ -24,4 +24,7 @@ final class WarningCode
 
     /** Assessable capital has crossed the £16,000 Housing Benefit / Council Tax Support cut-off. */
     public const CAPITAL_CLIFF_HB_CTS = 'capital_cliff_hb_cts';
+
+    /** Unused pension pots have been included in the estate for Inheritance Tax (April 2027 rule). */
+    public const IHT_PENSIONS_IN_ESTATE = 'iht_pensions_in_estate';
 }

@@ -82,6 +82,8 @@ final class TaxYearRegistry
             sdlt: self::sdltParameters(),
             cgt: self::cgtParameters(),
             benefits: self::benefitsParameters(),
+            iht: self::ihtParameters(),
+            care: self::careParameters(),
             sources: [
                 'income_tax' => 'https://www.gov.uk/income-tax-rates',
                 'dividends' => 'https://www.gov.uk/tax-on-dividends',
@@ -92,6 +94,8 @@ final class TaxYearRegistry
                 'sdlt' => 'https://www.gov.uk/stamp-duty-land-tax/residential-property-rates',
                 'cgt' => 'https://www.gov.uk/capital-gains-tax/rates',
                 'benefits' => 'https://www.gov.uk/pension-credit/eligibility',
+                'iht' => 'https://www.gov.uk/inheritance-tax',
+                'care' => 'https://www.gov.uk/help-with-care-costs/financial-assessment',
             ],
             verifiedOn: '2026-06-24',
         );
@@ -147,6 +151,8 @@ final class TaxYearRegistry
             sdlt: self::sdltParameters(),
             cgt: self::cgtParameters(),
             benefits: self::benefitsParameters(),
+            iht: self::ihtParameters(),
+            care: self::careParameters(),
             sources: [
                 'income_tax' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
                 'dividends' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
@@ -157,6 +163,8 @@ final class TaxYearRegistry
                 'sdlt' => 'https://www.gov.uk/stamp-duty-land-tax/residential-property-rates',
                 'cgt' => 'https://www.gov.uk/capital-gains-tax/rates',
                 'benefits' => 'https://www.gov.uk/pension-credit/eligibility',
+                'iht' => 'https://www.gov.uk/inheritance-tax',
+                'care' => 'https://www.gov.uk/help-with-care-costs/financial-assessment',
             ],
             verifiedOn: '2026-06-24',
         );
@@ -230,6 +238,36 @@ final class TaxYearRegistry
             tariffStep: Money::fromPounds(500),
             tariffIncomePerStepWeekly: Money::fromPounds(1),
             housingSupportUpperCapitalLimit: Money::fromPounds(16_000),
+        );
+    }
+
+    /**
+     * Inheritance Tax thresholds and rate. Frozen, so shared across both tax years.
+     * ⚠️ Confirm against gov.uk, and re-verify the April 2027 pensions-in-estate
+     * change before relying on the toggle.
+     */
+    private static function ihtParameters(): IhtParameters
+    {
+        return new IhtParameters(
+            nilRateBand: Money::fromPounds(325_000),
+            residenceNilRateBand: Money::fromPounds(175_000),
+            residenceNilRateBandTaperThreshold: Money::fromPounds(2_000_000),
+            taperRate: Percent::fromPercent(50),
+            rate: Percent::fromPercent(40),
+        );
+    }
+
+    /**
+     * Adult social care means-test capital thresholds (England). ⚠️ Confirm against
+     * gov.uk; the £86,000 care cap is deliberately not modelled.
+     */
+    private static function careParameters(): CareParameters
+    {
+        return new CareParameters(
+            upperCapitalLimit: Money::fromPounds(23_250),
+            lowerCapitalLimit: Money::fromPounds(14_250),
+            tariffStep: Money::fromPounds(250),
+            tariffIncomePerStepWeekly: Money::fromPounds(1),
         );
     }
 }

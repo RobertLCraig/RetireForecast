@@ -29,6 +29,8 @@ final class TaxYearConfig
         public readonly SdltParameters $sdlt,
         public readonly CgtParameters $cgt,
         public readonly BenefitsParameters $benefits,
+        public readonly IhtParameters $iht,
+        public readonly CareParameters $care,
         public readonly array $sources,
         public readonly string $verifiedOn,
     ) {}
