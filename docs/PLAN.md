@@ -151,6 +151,7 @@ Both variants run the **same engine on the same seeds**; only the housing leg an
 - Generic guidance only, user-driven inputs, illustrative consequences. Never "you should".
 - **Disclaimers:** persistent global footer; a first-run modal the user acknowledges (timestamp stored for logged-in users); a per-result disclaimer block on every Result render and every export; a reusable **signposting component** (Pension Wise, MoneyHelper, "find an FCA-regulated adviser") beside every pension-withdrawal or benefits output.
 - **Wording guard:** an `OutputPhrasing` lint with banned recommendation patterns ("you should", "we recommend", "the best option", "is better for you"); all user-facing result strings pass through a neutral formatter ("Under these assumptions...", "This illustrates...", "One consequence is..."). **An automated test fails the build if any Result/warning template contains a banned phrase.** Comparisons present both options neutrally.
+- **Interpretation toggle (added 2026-06-25, see DECISIONS):** an optional, admin-granted, per-user capability renders directive "what this suggests" readouts from the computed numbers — off by default, the public default staying neutral. The directive text lives in a single walled-off `Interpretation` service, never in the result templates, so the build test above becomes a **partition check** (banned phrasing allowed *only* inside that layer, clean everywhere else). A "not financial advice" banner is **necessary but not sufficient**: it does not move the regulatory line (classification is by substance, not by label/disclaimer), so public users always get the neutral view and the toggle is self/family only on a live deployment.
 - **Audit trail:** every saved run stores the assumption snapshot + tax-year config version + engine version, so any output is demonstrably input-driven, not advice. The deprivation/care/IHT outputs (highest-risk for sounding like advice) stay strictly "here is the rule and how your numbers interact with it" plus a hard signpost.
 
 ---
@@ -163,6 +164,73 @@ Both variants run the **same engine on the same seeds**; only the housing leg an
 4. **UI / charts.** Livewire scenario builder; preview (sync) vs full (queued + `wire:poll` progress + cancel); ApexCharts fan + buy-vs-rent + compare-assumptions, each with the mandatory accessible table; headline numbers as text.
 5. **Demo preset** (the anonymised couple, data supplied by Rob, fields listed below).
 6. **Polish:** compliance hardening, PDF export with disclaimers, a11y audit (axe/Pa11y in CI), 10k-path perf tuning, Scotland config pack if in scope.
+
+### Refinements found in code review (2026-06-25) — fold into the phases above
+A review of the in-progress app layer (engine + Phase-2 steps 1–3 done) surfaced concrete
+items to pick up as the phases proceed. None break the current green suite; each is tagged to
+the phase it belongs in so the normal build absorbs it rather than treating it as a separate track.
+
+- **Compliance — the immediate next step (step 4 / §Regulatory).** The banned-phrasing build
+  test and disclaimer layer are *designed but not yet built*: nothing currently fails the build on
+  "you should", and exports (incl. the fan-chart CSV) carry no disclaimer. Build the `OutputPhrasing`
+  lint + the test over all result/warning templates, the first-run acknowledgement (timestamp stored
+  for logged-in users), and a per-result/per-export disclaimer block. This closes a stated success
+  criterion, so it ranks first.
+- **Surface the headline outputs still missing from the results page (step 4).** (a) The
+  **lump-sum tax-shock panel** — headline output #1, already computed by
+  `ScenarioForecaster::deterministic()`'s first-year tax, just not rendered yet; (b) the
+  **compare-assumptions overlay** — a run per assumption set feeding a third chart + accessible table
+  (`ScenarioForecaster` already takes the set, so it is a loop over sets).
+- **"No silent failure" hardening (steps 3–4).**
+  - *GDPR export is incomplete:* `GdprService::export()` omits the user's `simulation_runs` and
+    `results` (their forecast history) — add them. Erase already cascades correctly (user_id FK on
+    households/scenarios/simulation_runs, results via simulation_run_id); add a test covering
+    runs+results in **both** export and erase.
+  - *A dead worker leaves a run stuck `Running`:* `SimulationRunner::execute()` records engine
+    exceptions as `Failed`, but `RunScenarioSimulation` has no `failed()` handler and there is no
+    watchdog, so a timeout / OOM / killed worker never reaches a terminal status while the page keeps
+    polling. Add a job `failed()` that marks the run `Failed` with the reason.
+  - *Run fetch is not owner-scoped:* `ScenarioResults::currentRun()` finds by the tamperable public
+    `$runId` with no `user_id` guard (mount checks the scenario, not the run). Scope the query to the
+    owner — matters before any public release.
+- **Accessibility + form UX, against the mandatory WCAG 2.1 AA bar (step 4 / step 6 a11y audit).**
+  The scenario builder's field errors are not programmatically associated (`aria-describedby` /
+  `aria-invalid` missing on invalid inputs), the top-of-form error list has no focus-to-first-error,
+  Save has no double-submit guard / loading state (a fast double-click creates two forecasts), and
+  there is no `endAge ≥ startAge` cross-field check or draft-save on the long form. Do a focused a11y
+  pass and wire axe/Pa11y in CI per step 6.
+
+### External review triage (2026-06-25) — post-v1 enhancement backlog
+A second-opinion review (MS Copilot, from the doc set) was triaged. Much of it re-surfaced our own
+deferred "v1 modelling refinements" (GIA/cash CGT-on-disposal, stochastic house/salary growth,
+post-2031 reindexing, per-scheme DB escalation — already logged) or things already built (login
+rate-limiting is in `FortifyServiceProvider`; the first-run acknowledgement + banned-phrase lint are
+the planned compliance step). The genuinely new, aligned items, kept as a post-v1 backlog:
+
+- **Outputs that exploit engine results we already compute (cheap, high adviser-value):** a
+  **cashflow timeline table** (income-by-source / spend / net / balance straight from `YearResult`);
+  a **longevity distribution** visual (median / p10 / p90 last-survivor age, P(live past 95) from the
+  joint-life sampler); a **stress-test panel** feeding historical sequences (1973–74, dot-com, GFC,
+  1970s inflation) through the deterministic engine; **what-if sliders** (±retirement age, ±spend,
+  year-1 market shock, longevity shock).
+- **Modelling depth (v2 scope):** an **annuitisation option** (partial/level/escalating, joint-vs-single
+  — priced off the mortality tables we already have) and **care-cost stochasticity** (uncertain entry
+  age / duration / weekly cost) for a more realistic tail.
+- **Neutral diagnostics — adopt ONLY behind the `OutputPhrasing` lint:** implied per-year withdrawal
+  rate (as a fact, **not** "compare to a safe 3–4% range" — that reads as a target), critical yield,
+  replacement rate, a neutral narrative-report generator, a capacity-for-loss *definitions* panel.
+  These edge toward the advice line, so in the public/neutral view they stay strictly "here is the
+  number / the definition"; their directive form (e.g. withdrawal-rate-vs-range) is available only via
+  the admin-granted interpretation toggle (§Regulatory/compliance, DECISIONS 2026-06-25).
+- **Hardening + process (cheap):** a **Content-Security-Policy** header (charts are embedded; none set
+  today); an optional tamper-evident SHA-256 over each run's assumption snapshot + seed + input DTO
+  (reproducibility/audit); a build-time **source-freshness** check (fail/warn if any `verified_on` is
+  older than N months) extending the gov.uk verification pass; an **annual ONS mortality refresh**
+  ingest script + diff; caching deterministic forecasts by input hash (pure function).
+
+**Declined (over-engineering or misaligned for a local-first single-user tool) — see DECISIONS 2026-06-25:**
+per-row/envelope encryption, a native (Rust/WASM/SIMD) Monte Carlo accelerator, and automated gov.uk
+scraping.
 
 ### Data Rob supplies for the demo couple (agree the shape now, needed at step 5)
 Per person: DOB, employment status, (working partner) gross salary + planned retirement age + NI category, State Pension weekly forecast (or qualifying years) + deferral, sex (for life table). Per pension: type, and DC → value, contributions, access age, withdrawal plan; DB → accrued annual pension, NRA, revaluation + in-payment escalation, commutation option + factor, spouse fraction; State → weekly forecast/qualifying years + triple-lock assumption. Property: value, ownership, mortgage left, ever-let, running costs. Accounts: each ISA/GIA/cash balance + owner (+ GIA unrealised gain). Expenses: target annual spend split essential/discretionary + inflation basis + one-offs + survivor spend factor. Housing: assumed sale price, candidate purchase price, assumed rent + rent inflation. Region. Default assumption set. All anonymised.

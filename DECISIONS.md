@@ -3,6 +3,46 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-25 — Optional per-user "interpretation" (advice-style) output, admin-granted, off by default
+**Decision:** Add an optional capability ("interpretation mode" / "what this suggests") that, when
+enabled for a specific user, renders directive plain-language readouts ("under these assumptions,
+buying lasts longer; renting runs out in N% of paths") alongside the neutral figures. It is **off by
+default, the public default stays neutral guidance**, and it is **granted only by an admin** (a per-user
+boolean on `users` behind a Gate ability, set from Filament) — never self-serve. The directive
+sentences are produced by a single walled-off `Interpretation` service **from the computed numbers,
+not hard-coded into the result Blade templates**. The banned-phrasing build test is therefore reframed
+from "no banned phrasing anywhere" to a **partition check**: the neutral result/warning templates,
+default formatter and exports must stay clean, and directive phrasing may exist **only** inside the
+gated interpretation layer. Every output/export is labelled with the mode that produced it.
+**Why:** For Rob's own and family use the directive framing is genuinely clearer, and giving it
+privately is outside the FCA perimeter (not by way of business). Walling it off + admin-gating +
+neutral-by-default keeps a live public deployment on the guidance side of the line, so the planned
+public release survives the feature rather than being blocked by it. The toggle must **not** be
+grantable to arbitrary public users on a live deployment (self/family only); doing so would be a
+deliberate, separate regulated-perimeter decision. Refines, does not supersede,
+[[2026-06-24 — Regulatory posture: guidance only]]; raises the priority of tightening
+`User::canAccessPanel()` and the run-ownership scoping before public release.
+**Status:** active
+
+## 2026-06-25 — External-review triage: what we adopt, and three declines
+**Decision:** A second-opinion review (MS Copilot, from the doc set) was triaged into the post-v1
+backlog in [docs/PLAN.md](docs/PLAN.md) ("External review triage"). We **decline** three of its
+suggestions as over-engineering or misaligned for a local-first single-user tool: (1) **per-row /
+envelope encryption** — the blast-radius case assumes a multi-tenant server, but the whole SQLite DB
+*and* the Laravel app key live on one personal machine, so app-key `encrypted:array` is right-sized;
+revisit only on a public multi-user release; (2) a **native Monte Carlo accelerator** (Rust/WASM/SIMD)
+— premature, and it breaks the framework-free pure-PHP ethos that makes the golden-master trustworthy;
+10k PHP paths are already responsive; (3) **automated gov.uk scraping** of tax tables — fragile, and the
+figure set is small, so manual sourcing with a `verified_on` date is *more* trustworthy, not less.
+We also flag that the review's adviser-style metrics (implied withdrawal rate, critical yield,
+replacement rate, narrative report, capacity-for-loss) may only be adopted **behind the
+`OutputPhrasing` banned-phrase lint** and stated as neutral facts/definitions — never as targets or
+benchmarks (e.g. no "safe 3–4% withdrawal range"), to stay on the guidance side of the line.
+**Why:** Keeps the security/perf posture proportionate to an on-machine personal tool, protects the
+engine's isolation, and holds the education-only constraint that is a hard project rule.
+[[2026-06-24 — Regulatory posture: guidance only]] [[2026-06-24 — Engine is framework-free, in a path package]]
+**Status:** active
+
 ## 2026-06-24 — UI: hand-rolled Livewire + a separate assembler, charts as enhancement
 **Decision:** The scenario builder and result views are hand-rolled Livewire 4 components (Filament
 stays admin-only). Form input becomes engine DTOs in a standalone `HouseholdAssembler` (not inside
