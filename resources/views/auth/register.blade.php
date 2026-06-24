@@ -1,0 +1,54 @@
+<x-layouts.app title="Register">
+    <div class="mx-auto max-w-md">
+        <h1 class="text-2xl font-semibold text-gray-900">Create an account</h1>
+        <p class="mt-1 text-sm text-gray-600">An account lets you save and revisit forecasts. You can use the tool without one; nothing is stored if you do not register.</p>
+
+        <form method="POST" action="{{ route('register') }}" class="mt-6 space-y-4">
+            @csrf
+
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700">Name</label>
+                <input id="name" name="name" type="text" value="{{ old('name') }}" required autofocus autocomplete="name"
+                    @error('name') aria-invalid="true" aria-describedby="name-error" @enderror
+                    class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500">
+                @error('name')
+                    <p id="name-error" class="mt-1 text-sm text-red-700">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                <input id="email" name="email" type="email" value="{{ old('email') }}" required autocomplete="username"
+                    @error('email') aria-invalid="true" aria-describedby="email-error" @enderror
+                    class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500">
+                @error('email')
+                    <p id="email-error" class="mt-1 text-sm text-red-700">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                <input id="password" name="password" type="password" required autocomplete="new-password"
+                    @error('password') aria-invalid="true" aria-describedby="password-error" @enderror
+                    class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500">
+                @error('password')
+                    <p id="password-error" class="mt-1 text-sm text-red-700">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div>
+                <label for="password_confirmation" class="block text-sm font-medium text-gray-700">Confirm password</label>
+                <input id="password_confirmation" name="password_confirmation" type="password" required autocomplete="new-password"
+                    class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <button type="submit" class="w-full rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Register
+            </button>
+        </form>
+
+        <p class="mt-6 text-sm text-gray-600">
+            Already have an account? <a href="{{ route('login') }}" class="text-blue-700 underline">Log in</a>
+        </p>
+    </div>
+</x-layouts.app>

@@ -130,9 +130,9 @@ return [
     |
     */
 
-    // Headless for now: the auth POST endpoints are live, but the login/register
-    // Blade views are not registered until the Livewire UI phase builds them.
-    'views' => false,
+    // The UI phase builds the login/register/reset screens, so Fortify's view routes
+    // are live and the FortifyServiceProvider points each at its Blade view.
+    'views' => true,
 
     /*
     |--------------------------------------------------------------------------
