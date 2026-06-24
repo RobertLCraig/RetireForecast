@@ -81,6 +81,7 @@ final class TaxYearRegistry
             ),
             sdlt: self::sdltParameters(),
             cgt: self::cgtParameters(),
+            benefits: self::benefitsParameters(),
             sources: [
                 'income_tax' => 'https://www.gov.uk/income-tax-rates',
                 'dividends' => 'https://www.gov.uk/tax-on-dividends',
@@ -90,6 +91,7 @@ final class TaxYearRegistry
                 'state_pension' => 'https://www.gov.uk/new-state-pension/what-youll-get',
                 'sdlt' => 'https://www.gov.uk/stamp-duty-land-tax/residential-property-rates',
                 'cgt' => 'https://www.gov.uk/capital-gains-tax/rates',
+                'benefits' => 'https://www.gov.uk/pension-credit/eligibility',
             ],
             verifiedOn: '2026-06-24',
         );
@@ -144,6 +146,7 @@ final class TaxYearRegistry
             ),
             sdlt: self::sdltParameters(),
             cgt: self::cgtParameters(),
+            benefits: self::benefitsParameters(),
             sources: [
                 'income_tax' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
                 'dividends' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
@@ -153,6 +156,7 @@ final class TaxYearRegistry
                 'state_pension' => 'https://www.gov.uk/new-state-pension/what-youll-get',
                 'sdlt' => 'https://www.gov.uk/stamp-duty-land-tax/residential-property-rates',
                 'cgt' => 'https://www.gov.uk/capital-gains-tax/rates',
+                'benefits' => 'https://www.gov.uk/pension-credit/eligibility',
             ],
             verifiedOn: '2026-06-24',
         );
@@ -211,6 +215,21 @@ final class TaxYearRegistry
             residentialBasicRate: Percent::fromPercent(18),
             residentialHigherRate: Percent::fromPercent(24),
             privateResidenceFinalExemptionMonths: 9,
+        );
+    }
+
+    /**
+     * Pension-age means-tested benefit capital rules. These figures have been static
+     * for years; the same object serves both tax years modelled here. ⚠️ Confirm
+     * against gov.uk before being shown as real.
+     */
+    private static function benefitsParameters(): BenefitsParameters
+    {
+        return new BenefitsParameters(
+            capitalDisregard: Money::fromPounds(10_000),
+            tariffStep: Money::fromPounds(500),
+            tariffIncomePerStepWeekly: Money::fromPounds(1),
+            housingSupportUpperCapitalLimit: Money::fromPounds(16_000),
         );
     }
 }
