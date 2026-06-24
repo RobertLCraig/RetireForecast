@@ -164,6 +164,8 @@ final class PathProjector
             'dbFactor' => 1.0,
             'spFactor' => 1.0,
             'spendFactor' => 1.0,
+            'rentFactor' => 1.0,
+            'rentInflationReal' => $settings->rentInflationReal?->asFraction() ?? 0.0,
         ];
     }
 
@@ -236,6 +238,21 @@ final class PathProjector
         $spendNominal = (int) round($household->expenseProfile->targetAnnualSpend()->pence * $state['spendFactor'] * $survivor)
             + $this->oneOffCostsNominal($household, $ages, $cumInflation);
         $essentialNominal = (int) round($household->expenseProfile->essentialAnnualSpend->pence * $state['spendFactor'] * $survivor);
+
+        // Rent (the "sell and rent" leg) is an essential cost with its own inflation.
+        if ($settings->annualRent !== null) {
+            $rentNominal = (int) round($settings->annualRent->pence * $state['rentFactor']);
+            $spendNominal += $rentNominal;
+            $essentialNominal += $rentNominal;
+        }
+
+        // Property running costs (maintenance, insurance, council tax) for owners are
+        // essential too — the counterpart to a renter's rent.
+        if ($household->primaryResidence?->runningCosts !== null) {
+            $runningNominal = (int) round($household->primaryResidence->runningCosts->pence * $state['spendFactor']);
+            $spendNominal += $runningNominal;
+            $essentialNominal += $runningNominal;
+        }
 
         // Fund any shortfall from assets per the drawdown strategy.
         $shortfall = $spendNominal - $netCashNominal;
@@ -574,10 +591,13 @@ final class PathProjector
 
         $state['property'] = (int) round($state['property'] * (1.0 + $houseNominal));
 
+        $rentNominal = (1.0 + $state['rentInflationReal']) * (1.0 + $infl) - 1.0;
+
         $state['salaryFactor'] *= (1.0 + $salaryNominal);
         $state['dbFactor'] *= (1.0 + $this->dbEscalation($infl));
         $state['spFactor'] *= (1.0 + max($infl, 0.025)); // triple-lock proxy
         $state['spendFactor'] *= (1.0 + $infl);
+        $state['rentFactor'] *= (1.0 + $rentNominal);
     }
 
     private function dbEscalation(float $inflation): float

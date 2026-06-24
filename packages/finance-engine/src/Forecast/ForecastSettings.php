@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Forecast;
 
+use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\Percent;
+
 /**
  * Settings that shape a forecast run but are not part of the household or the
  * economic assumptions: the start year, how invested pots are allocated, the
@@ -13,6 +16,10 @@ namespace RetireForecast\FinanceEngine\Forecast;
  * assumed to rise with inflation again (currently April 2031); before then, frozen
  * nominal thresholds against inflating incomes produce real fiscal drag, which the
  * projector models.
+ *
+ * $annualRent (with $rentInflationReal) models the rent leg of a "sell and rent"
+ * scenario: an essential expense on top of the household's spend that grows at its
+ * own real rate rather than CPI. Null means the household is not renting.
  */
 final class ForecastSettings
 {
@@ -22,6 +29,8 @@ final class ForecastSettings
         public readonly DrawdownStrategy $drawdownStrategy = DrawdownStrategy::TaxEfficient,
         public readonly ?PortfolioAllocation $allocation = null,
         public readonly int $freezeEndYear = 2031,
+        public readonly ?Money $annualRent = null,
+        public readonly ?Percent $rentInflationReal = null,
     ) {}
 
     public function allocation(): PortfolioAllocation
