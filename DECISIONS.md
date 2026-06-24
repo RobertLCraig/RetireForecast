@@ -13,6 +13,19 @@ but less precise at extreme ages) and over period tables (simpler but understate
 Larger data ingest, but a one-off, and it carries a clear ONS source.
 **Status:** active
 
+## 2026-06-24 — Forecast mechanics: dual drawdown strategy + cautious default allocation
+**Decision:** (1) Ship TWO drawdown strategies and compare them side by side rather than
+picking one: "tax-efficient" (cash → GIA → ISA → DC pension last) and "pension-aware" (draw
+DC pension income earlier, up to a sensible band, to reduce the post-April-2027 IHT estate).
+Default display = tax-efficient. (2) Default invested-pot allocation (DC, ISA, GIA) =
+cautious **40% equities / 60% bonds**, no cash within pots; cash accounts use the cash
+assumption. Both are runtime-configurable per scenario.
+**Why:** The drawdown order trades off income tax now vs sheltered growth and IHT later;
+showing both keeps the tool neutral (illustrate consequences, not recommend) and surfaces the
+April-2027 tension. A cautious 40/60 suits a retired household relying on the pot for income
+(lower sequence-of-returns risk). [[2026-06-24 — Forecast mechanics: ... ]]
+**Status:** active
+
 ## 2026-06-24 — Assumption figures signed off (adopted as proposed)
 **Decision:** Rob signed off the researched figures in [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md)
 as proposed. Set A (FCA real returns + DMS vols) is the engine default; Sets B (DMS

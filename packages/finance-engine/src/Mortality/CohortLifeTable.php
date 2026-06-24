@@ -72,6 +72,39 @@ final class CohortLifeTable
     }
 
     /**
+     * The age by which cumulative survival first falls below 50% — the median age at
+     * death, used as the single representative lifespan for a deterministic forecast.
+     */
+    public function medianDeathAge(Sex $sex, int $currentAge, int $baseYear): int
+    {
+        $survival = 1.0;
+        foreach ($this->cohortCurve($sex, $currentAge, $baseYear) as $age => $qx) {
+            $survival *= (1.0 - $qx);
+            if ($survival < 0.5) {
+                return $age;
+            }
+        }
+
+        return self::MAX_AGE;
+    }
+
+    /**
+     * Curtate life expectancy (expected remaining whole years of life) at the given
+     * age, for sanity checks and the expected-lifespan death age.
+     */
+    public function lifeExpectancy(Sex $sex, int $currentAge, int $baseYear): float
+    {
+        $survival = 1.0;
+        $expectancy = 0.0;
+        foreach ($this->cohortCurve($sex, $currentAge, $baseYear) as $qx) {
+            $survival *= (1.0 - $qx);
+            $expectancy += $survival;
+        }
+
+        return $expectancy;
+    }
+
+    /**
      * Geometric extrapolation above the published age 100, using the local gradient
      * q(100)/q(99) (bounded), capped just below certainty. Not ONS data.
      */
