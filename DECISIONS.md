@@ -1,0 +1,64 @@
+# Decisions: RetireForecast
+
+Append-only log of decisions and their rationale, newest first. Do not rewrite history;
+supersede an old entry with a new one that links back to it.
+
+## 2026-06-24 — Scaffold the standard doc set
+**Decision:** Added PRD.md, DATA-MODEL.md, DECISIONS.md and the root CLAUDE.md orient
+tripwire, porting goal / data model / decisions out of docs/PLAN.md so they have a standard
+home. docs/PLAN.md remains the exhaustive scope source of truth.
+**Why:** The project adopted the documentation standard; the orient hook flagged these as
+missing. Keeps a fresh session from re-reading the whole plan to find the shape.
+**Status:** active
+
+## 2026-06-24 — Local-first, personal use, no hardcoded client data
+**Decision:** Build a local single-user site. Rob enters the couple via the UI himself; any
+first-run sample must be obviously fictional. Possible free public release later, so do not
+design accounts out — just defer them.
+**Why:** The immediate need is Rob's own decision support for a known real couple. Hardcoding
+their data would leak PII into the repo and bake in one scenario.
+**Status:** active
+
+## 2026-06-24 — Money is hand-rolled integer pence (brick/money dropped)
+**Decision:** Use a hand-rolled `Money` value object over integer pence. Do not re-add
+brick/money without re-checking the clash.
+**Why:** `brick/money` could not resolve against `brick/math` 0.18 in the Laravel 13 lock.
+The plan already listed integer pence as the primary option; zero dependencies strengthens
+the engine's framework isolation.
+**Status:** active
+
+## 2026-06-24 — Engine is framework-free, in a path package
+**Decision:** The calculation engine lives in `packages/finance-engine`
+(`retireforecast/finance-engine`, path repo, required `"*"`), with zero Laravel
+dependencies, no I/O and no clock. Tests run as pure PHPUnit, no Laravel bootstrap.
+**Why:** Isolation is what makes the HMRC worked-example tests and the Monte Carlo
+golden-master trustworthy. The Laravel app is a shell around the product.
+**Status:** active
+
+## 2026-06-24 — Tax figures versioned per tax year, sourced and dated
+**Decision:** Every tax figure lives in a per-tax-year config carrying a `source` URL and a
+`verified_on` date. Two stale-brief corrections baked in: income-tax threshold freeze runs
+to **April 2031** (not 2028); **dividend rates rise in 2026/27** (ordinary 8.75→10.75,
+upper 33.75→35.75).
+**Why:** No magic numbers; figures must be defensible against gov.uk. 2025/26 and 2026/27
+genuinely differ, so they are distinct config years.
+**Status:** active
+
+## 2026-06-24 — Modelling depth and scope (from approved plan)
+**Decision:** HMRC-accurate deterministic engine PLUS Monte Carlo with stochastic joint-life
+mortality. Pensions: DC, DB, State Pension. Housing: buy-cheaper-outright vs rent on
+identical seeds. IHT/legacy in as a toggle (incl. pensions entering the estate from Apr
+2027). Assumptions are a runtime/display choice across several sourced sets (FCA default),
+not baked in. England/Wales/NI first; Scotland income tax + LBTT/LTT out of v1 (region
+resolver throws rather than guessing).
+**Why:** Matches the decision-support goal: the consequences only become visible if tax,
+longevity and sequence risk are all modelled properly. Captured here from docs/PLAN.md.
+**Status:** active
+
+## 2026-06-24 — Regulatory posture: guidance only
+**Decision:** Education/guidance only, never a personal recommendation. A build-time test
+fails if any result template contains banned recommendation phrasing. Signpost Pension Wise
+/ MoneyHelper / FCA-regulated advisers.
+**Why:** Personal recommendations on pensions/drawdown are FCA-regulated activity. Staying on
+the guidance side of the line is a hard design constraint, not a wording afterthought.
+**Status:** active
