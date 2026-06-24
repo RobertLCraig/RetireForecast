@@ -3,6 +3,17 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-24 — Savings + dividends computed in one combined income-tax pass
+**Decision:** The plan listed separate `SavingsTax` and `DividendTax` calculators. Instead,
+savings and dividend tax are computed inside `IncomeTaxCalculator::compute(TaxableIncome)`,
+a single combined pass over the rate bands, rather than as three independent calculators.
+`onNonSavingsIncome` is retained for the simple case (and the existing tests).
+**Why:** UK income tax stacks the three categories in a fixed order (non-savings, savings,
+dividends), and the savings starting-rate band, Personal Savings Allowance and dividend
+allowance all consume rate-band space even though charged at 0%. Computing them separately
+cannot get the band interactions right; a shared band cursor is the only faithful model.
+**Status:** active
+
 ## 2026-06-24 — Scaffold the standard doc set
 **Decision:** Added PRD.md, DATA-MODEL.md, DECISIONS.md and the root CLAUDE.md orient
 tripwire, porting goal / data model / decisions out of docs/PLAN.md so they have a standard

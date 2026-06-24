@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Tax;
 
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Money\RoundingMode;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
 
@@ -76,6 +77,187 @@ final class IncomeTaxCalculator
                 ['rate' => $params->additionalRate, 'amount' => $additionalAmount, 'tax' => $additionalTax],
             ],
         );
+    }
+
+    /**
+     * Full income-tax calculation across all three categories, stacked in the
+     * statutory order: non-savings, then savings, then dividends.
+     *
+     * Handles the parts {@see onNonSavingsIncome} omits: the savings starting-rate
+     * band, the Personal Savings Allowance, and the dividend allowance and dividend
+     * rates. Each 0% allowance still consumes rate-band space (it pushes the income
+     * above it into higher bands), which is why the bands are filled with a single
+     * shared cursor rather than three independent slicings.
+     */
+    public function compute(TaxableIncome $income): ComprehensiveIncomeTaxResult
+    {
+        $params = $this->config->incomeTax;
+        $savings = $this->config->savings;
+        $dividends = $this->config->dividends;
+
+        $total = $income->total();
+        $allowance = $this->personalAllowance($total);
+
+        // Personal allowance is set against income in the statutory order.
+        [$nsTaxable, $allowanceLeft] = $this->afterAllowance($income->nonSavings, $allowance);
+        [$savingsTaxable, $allowanceLeft] = $this->afterAllowance($income->savings, $allowanceLeft);
+        [$dividendsTaxable] = $this->afterAllowance($income->dividends, $allowanceLeft);
+
+        // Rate-band capacities in taxable space (income above the personal allowance).
+        // The basic band has a fixed width; the higher band runs up to the fixed
+        // additional-rate threshold; the additional band is unbounded.
+        $higherCap = $params->additionalRateThreshold
+            ->minus($allowance)
+            ->minus($params->basicRateBand)
+            ->minZero();
+
+        $bands = [
+            ['name' => 'basic', 'remaining' => $params->basicRateBand->pence],
+            ['name' => 'higher', 'remaining' => $higherCap->pence],
+            ['name' => 'additional', 'remaining' => PHP_INT_MAX],
+        ];
+
+        // Fill bands from the bottom; returns the slices a given amount occupies.
+        $consume = function (int $pence) use (&$bands): array {
+            $parts = [];
+            foreach ($bands as &$band) {
+                if ($pence <= 0) {
+                    break;
+                }
+                if ($band['remaining'] <= 0) {
+                    continue;
+                }
+                $take = min($pence, $band['remaining']);
+                $band['remaining'] -= $take;
+                $pence -= $take;
+                $parts[] = ['name' => $band['name'], 'pence' => $take];
+            }
+
+            return $parts;
+        };
+
+        // Which marginal band the whole liability reaches, for the PSA size.
+        $totalTaxablePence = $nsTaxable->pence + $savingsTaxable->pence + $dividendsTaxable->pence;
+        $basicCeiling = $params->basicRateBand->pence;
+        $higherCeiling = $basicCeiling + $higherCap->pence;
+        $psa = match (true) {
+            $totalTaxablePence > $higherCeiling => $savings->psaAdditionalRate,
+            $totalTaxablePence > $basicCeiling => $savings->psaHigherRate,
+            default => $savings->psaBasicRate,
+        };
+
+        $lines = [];
+
+        // Non-savings: each band slice taxed at the corresponding main rate.
+        $nonSavingsRate = fn (string $band): Percent => match ($band) {
+            'basic' => $params->basicRate,
+            'higher' => $params->higherRate,
+            'additional' => $params->additionalRate,
+        };
+        $nonSavingsTax = $this->taxParts(
+            $consume($nsTaxable->pence),
+            'non_savings',
+            $nonSavingsRate,
+            0,
+            $lines,
+        );
+
+        // Savings: the starting-rate band (reduced £1-for-£1 by non-savings taxable
+        // income) plus the PSA are charged at 0% on the lowest savings first.
+        $startingRateRoom = $savings->startingRateBand->pence - $nsTaxable->pence;
+        $savingsZeroBudget = max(0, $startingRateRoom) + $psa->pence;
+        $savingsTax = $this->taxParts(
+            $consume($savingsTaxable->pence),
+            'savings',
+            $nonSavingsRate,
+            $savingsZeroBudget,
+            $lines,
+        );
+
+        // Dividends: the dividend allowance is charged at 0% on the lowest dividends
+        // first; the rest at the dividend rate for its band.
+        $dividendRate = fn (string $band): Percent => match ($band) {
+            'basic' => $dividends->ordinaryRate,
+            'higher' => $dividends->upperRate,
+            'additional' => $dividends->additionalRate,
+        };
+        $dividendsTax = $this->taxParts(
+            $consume($dividendsTaxable->pence),
+            'dividends',
+            $dividendRate,
+            $dividends->allowance->pence,
+            $lines,
+        );
+
+        return new ComprehensiveIncomeTaxResult(
+            total: $nonSavingsTax->plus($savingsTax)->plus($dividendsTax),
+            personalAllowance: $allowance,
+            nonSavingsTax: $nonSavingsTax,
+            savingsTax: $savingsTax,
+            dividendsTax: $dividendsTax,
+            lines: $lines,
+        );
+    }
+
+    /**
+     * Tax a list of band slices for one income type, charging the first
+     * $zeroBudget pence at 0% (a 0% allowance that still consumed band space) and
+     * the remainder at the rate the band maps to. Appends to $lines by reference
+     * and returns the total tax for this income type.
+     *
+     * @param list<array{name: string, pence: int}> $parts
+     * @param callable(string): Percent              $rateFor
+     * @param list<array{type: string, band: string, rate: Percent, amount: Money, tax: Money}> $lines
+     */
+    private function taxParts(array $parts, string $type, callable $rateFor, int $zeroBudget, array &$lines): Money
+    {
+        $tax = Money::zero();
+
+        foreach ($parts as $part) {
+            $amount = $part['pence'];
+
+            $zeroHere = min($zeroBudget, $amount);
+            $zeroBudget -= $zeroHere;
+            $taxedHere = $amount - $zeroHere;
+
+            if ($zeroHere > 0) {
+                $lines[] = [
+                    'type' => $type,
+                    'band' => $type === 'savings' ? 'allowance' : ($type === 'dividends' ? 'allowance' : $part['name']),
+                    'rate' => Percent::zero(),
+                    'amount' => Money::fromPence($zeroHere),
+                    'tax' => Money::zero(),
+                ];
+            }
+
+            if ($taxedHere > 0) {
+                $rate = $rateFor($part['name']);
+                $sliceTax = Money::fromPence($taxedHere)->applyRate($rate);
+                $tax = $tax->plus($sliceTax);
+                $lines[] = [
+                    'type' => $type,
+                    'band' => $part['name'],
+                    'rate' => $rate,
+                    'amount' => Money::fromPence($taxedHere),
+                    'tax' => $sliceTax,
+                ];
+            }
+        }
+
+        return $tax;
+    }
+
+    /**
+     * Split $amount into the part covered by $allowance (tax-free) and the
+     * remainder, returning [taxable remainder, allowance left over].
+     *
+     * @return array{0: Money, 1: Money}
+     */
+    private function afterAllowance(Money $amount, Money $allowance): array
+    {
+        $used = Money::min($amount, $allowance);
+
+        return [$amount->minus($used), $allowance->minus($used)];
     }
 
     /**
