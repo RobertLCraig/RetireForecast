@@ -18,6 +18,26 @@ use RetireForecast\FinanceEngine\Dto\AssumptionSet;
  */
 final class AssumptionSetMapper
 {
+    /**
+     * The whole set as a self-contained array (figures plus name/source/default),
+     * for the frozen snapshot stored on a simulation run so results survive later
+     * edits to the live set.
+     */
+    public static function toArray(AssumptionSet $set): array
+    {
+        return [
+            'name' => $set->name,
+            'sourceNote' => $set->sourceNote,
+            'isDefault' => $set->isDefault,
+            ...self::payload($set),
+        ];
+    }
+
+    public static function fromArray(array $data): AssumptionSet
+    {
+        return self::hydrate($data['name'], $data['sourceNote'], $data['isDefault'], $data);
+    }
+
     /** The economic figures (everything except the clear name/source/default columns). */
     public static function payload(AssumptionSet $set): array
     {
