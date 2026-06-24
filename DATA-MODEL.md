@@ -135,10 +135,18 @@ ISO `Y-m-d`, backed enums by value, the unbacked `WithdrawalKind` by case name.
   (asset classes, correlation matrix, inflation/growth rates) — not personal data, so not
   encrypted. Seeded from the engine's `AssumptionSetLibrary`; at most one default. Maps
   to/from the `AssumptionSet` DTO.
+- **simulation_runs** — clear: `scenario_id`, `user_id?`, `mode` (`preview|full`), `n_paths`,
+  `seed` (always recorded), `status` (`queued|running|done|failed|cancelled`), `progress_pct`,
+  `engine_version`, `taxyear_config_version`, `started_at?`, `finished_at?`, `error?`. Encrypted
+  `assumption_snapshot`: a frozen copy of the `AssumptionSet` DTO used, so a stored result stays
+  reproducible after the live set is edited.
+- **results** — clear: `simulation_run_id`, `variant` (unique per run). Encrypted `payload`: the
+  engine's `SimulationResult` (success probabilities, terminal-wealth percentiles, fan-chart
+  bands). A buy-vs-rent run produces three (stay_put, buy_outright, rent) on identical seeds.
 
-`ScenarioVariant` and `ScenarioStatus` are app-level enums (the engine takes a Household +
-HousingAction and does not name the variants). Withdrawals live on the DC pension inside the
-household payload, not separately on the scenario.
+`ScenarioVariant`, `ScenarioStatus`, `SimulationMode` and `SimulationStatus` are app-level enums
+(the engine takes a Household + HousingAction and does not name the variants). Withdrawals live
+on the DC pension inside the household payload, not separately on the scenario.
 
 ## Materialised today (concrete shape in code)
 - `Money/{Money, Percent, IntMath, RoundingMode}` — integer-pence money + basis-point rates.
@@ -147,12 +155,18 @@ household payload, not separately on the scenario.
 - The domain DTOs under `src/Dto/` (Household, Person, DcPension, DbPension,
   StatePensionEntitlement, Property, Account, IncomeStream, ExpenseProfile, HousingAction,
   AssumptionSet + enums).
-- **App persistence:** Eloquent `Household`, `Scenario`, `AssumptionSet` with the to/from-DTO
-  bridges and `encrypted:array` payload casts; the `app/Finance/Mapping/` mappers + `Codec`.
+- **App persistence:** Eloquent `Household`, `Scenario`, `AssumptionSet`, `SimulationRun`,
+  `Result` with the to/from-DTO bridges and `encrypted:array` payload casts; the
+  `app/Finance/Mapping/` mappers + `Codec`.
+- **App forecast services:** `app/Forecast/` — `ScenarioForecaster` (assembles engine inputs from
+  a persisted scenario; deterministic / single-variant / buy-vs-rent), `SimulationRunner`
+  (create → run → persist, with progress + cancel), `RunScenarioSimulation` job.
 
 ## Known divergences (to close)
-- **SimulationRun / Result not yet built** — deferred to the forecast-services step; they will
-  map to the engine's forecast/Monte-Carlo result objects when results exist to persist.
 - The DTO carries withdrawals on the DC pension; the original Scenario sketch listed
   `withdrawal_decisions` separately. Resolved in favour of the DTO (one source of truth); the
   scenario does not duplicate them.
+- The `Result` shape stores the Monte Carlo `SimulationResult` per variant. The data-model
+  sketch also listed a deterministic `first_year_tax_breakdown` (the lump-sum shock) on Result;
+  that deterministic detail is computed on demand by `ScenarioForecaster::deterministic()` and is
+  not yet persisted — fold it in when the UI needs it stored.

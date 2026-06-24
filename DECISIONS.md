@@ -3,6 +3,43 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-24 — Forecast services: run = 3-variant comparison, deterministic on demand
+**Decision:** A `SimulationRun` executes the engine's `HousingComparison` for the scenario's
+household + housing action, producing **three `Result` rows** (stay_put, buy_outright, rent) on
+one seed — the buy-vs-rent headline. The central deterministic "best estimate" forecast is
+computed on demand by `ScenarioForecaster::deterministic()` and not (yet) persisted. The app
+assembles all engine inputs in `ScenarioForecaster`; the base year is derived from the
+scenario's tax year so runs stay clock-free.
+**Why:** Buy-vs-rent is the point of the tool, and the engine already runs the three variants on
+identical seeds, so one run → three comparable results is the natural unit. Keeping deterministic
+output unpersisted avoids storing a figure the UI can recompute instantly. [[2026-06-24 — Persistence: one encrypted payload per row, mappers in the app]]
+**Status:** active
+
+## 2026-06-24 — Engine gains an optional progress hook (non-breaking)
+**Decision:** Add an optional `?callable $onProgress` to `Simulator::run` and
+`HousingComparison::compare` (default null = unchanged behaviour). The hook carries no I/O, so
+the engine stays clock- and I/O-free; the app updates `progress_pct` from it and **cancels a run
+by throwing from the hook** (`RunCancelled`), which the engine lets propagate. Progress is
+per-path within a variant, with each variant weighted into a third of the overall bar. Chosen
+over the plan's "chunk 10×1000 with incremental aggregation", which would need the engine to
+expose mergeable partial percentiles (a bigger change for little gain at these run times).
+**Why:** "Nothing long-running may run silently" needs a live progress signal, but the engine
+must stay framework-free. An optional callback is the minimal faithful touch; throwing for
+cancellation keeps cancellation entirely an app concern the engine need not know about.
+**Status:** active
+
+## 2026-06-24 — Runs: preview synchronous, full queued; queue driver deferred
+**Decision:** Preview runs (~1,000 paths) execute synchronously for responsiveness; the full run
+(10,000 paths) is queued via the standard Laravel queue abstraction (`RunScenarioSimulation`
+job, holding only the run id). The concrete queue driver is left to infra — database/sync
+locally, Redis + Horizon if/when needed — since the mechanism (job + status + progress + cancel)
+is driver-agnostic. The seed is generated and recorded when not supplied; the assumption set is
+snapshotted (frozen) on the run so results survive later edits to the live set.
+**Why:** Matches the plan's preview-vs-full split without committing the local-first app to a
+Redis dependency it does not need yet. Recorded seed + frozen snapshot make every stored run
+reproducible and auditable. [[2026-06-24 — Engine gains an optional progress hook (non-breaking)]]
+**Status:** active
+
 ## 2026-06-24 — Persistence: one encrypted payload per row, mappers in the app
 **Decision:** Store each Household and Scenario as clear structural columns (name, region,
 variant, base tax year, status, owner, timestamps) plus **one `encrypted:array` payload**

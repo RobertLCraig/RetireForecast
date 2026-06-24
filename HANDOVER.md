@@ -3,8 +3,8 @@
 > A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue building the calculation engine and then the app around it. Read `docs/PLAN.md` first: it is the full approved plan and the source of truth for scope.
 
 **Stage:** active
-**Status:** Engine complete (Phase 1) **and the app-layer persistence foundation is in** (Phase 2, step 1 of the PLAN). Built this session: encrypted DTO persistence (households, scenarios, assumption sets — clear structural columns + one `encrypted:array` payload per row), Fortify auth (headless for now), GDPR export + hard delete, and the Filament admin (assumption-set resource + read-only tax-year config audit). **Full suite: 119 tests / 374 assertions passing (101 engine + 18 app).** Next is Phase 2 step 2: the forecast/scenario **services** that hand the engine a Household + ForecastSettings + AssumptionSet and run the deterministic forecaster, Monte Carlo and buy-vs-rent (queued, with progress), then the Livewire UI + ApexCharts (step 3), compliance layer (step 4), demo + polish (steps 5–6).
-_Last updated: 2026-06-24 (app layer phase 2 step 1: persistence + auth + GDPR + Filament admin)_
+**Status:** Engine complete (Phase 1); **Phase 2 steps 1 AND 2 of the app layer are in.** Step 1: encrypted DTO persistence (households, scenarios, assumption sets), Fortify auth (headless), GDPR export + hard delete, Filament admin. Step 2 (this session): the forecast/scenario **services** — `ScenarioForecaster` assembles engine inputs from a saved scenario and runs deterministic / Monte Carlo / buy-vs-rent; `SimulationRun` + `Result` persistence (encrypted, with a frozen assumption snapshot); `SimulationRunner` + a queued job run it with live progress + cancel (preview sync, full queued); a small non-breaking progress hook was added to the engine `Simulator`/`HousingComparison`. **Full suite: 133 tests / 619 assertions passing (104 engine + 29 app).** Next is Phase 2 step 3: the **Livewire UI + ApexCharts** (scenario builder, preview vs queued full with `wire:poll` progress + cancel, fan chart + buy-vs-rent + compare-assumptions, each with the mandatory accessible table), then compliance layer (step 4), demo + polish (5–6).
+_Last updated: 2026-06-24 (app layer phase 2 step 2: forecast services + run persistence + queued runs)_
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -71,10 +71,13 @@ Engine namespace: `RetireForecast\FinanceEngine\...`. Tests namespace: `RetireFo
 App layer added this session (`App\...`):
 ```
 app/
-├─ Enums/{ScenarioVariant, ScenarioStatus}.php        # app-level scenario enums
-├─ Finance/Mapping/{Codec, HouseholdMapper,           # DTO <-> storage-array, the one
-│                   HousingActionMapper, AssumptionSetMapper}.php   #   place serialization lives
-├─ Models/{Household, Scenario, AssumptionSet}.php     # Eloquent + to/from-DTO bridges
+├─ Enums/{ScenarioVariant, ScenarioStatus, SimulationMode, SimulationStatus}.php
+├─ Finance/Mapping/{Codec, HouseholdMapper, HousingActionMapper,   # DTO <-> storage-array, the
+│                   AssumptionSetMapper, SimulationResultMapper}.php  #  one place serialization lives
+├─ Models/{Household, Scenario, AssumptionSet, SimulationRun, Result}.php  # Eloquent + DTO bridges
+├─ Forecast/{ScenarioForecaster,                      # assemble engine inputs from a scenario
+│            SimulationRunner, RunCancelled}.php       #  create -> run -> persist, progress+cancel
+├─ Jobs/RunScenarioSimulation.php                      # queued full run (holds run id only)
 ├─ Gdpr/GdprService.php                                # export() + erase()
 ├─ Http/Controllers/AccountController.php              # /account/export, DELETE /account
 ├─ Providers/{FortifyServiceProvider, Filament/AdminPanelProvider}.php
@@ -82,12 +85,18 @@ app/
 └─ Filament/
    ├─ Resources/AssumptionSets/{AssumptionSetResource, Schemas/*, Tables/*, Pages/*}.php
    └─ Pages/TaxYearAudit.php                           # read-only registry audit
-database/migrations/2026_06_24_1000xx_create_{assumption_sets,households,scenarios}_table.php
+database/migrations/2026_06_24_*_create_{assumption_sets,households,scenarios,
+                    simulation_runs,results}_table.php
 database/seeders/AssumptionSetSeeder.php               # mirrors the engine library
-tests/{Unit/Finance/MappingRoundTripTest, Feature/Persistence/ScenarioPersistenceTest,
-       Feature/Gdpr/GdprTest, Feature/Admin/FilamentAdminTest}.php
+tests/{Unit/Finance/{MappingRoundTripTest, SimulationResultMappingTest},
+       Feature/Persistence/{ScenarioPersistenceTest, SimulationRunPersistenceTest},
+       Feature/Gdpr/GdprTest, Feature/Admin/FilamentAdminTest,
+       Feature/Forecast/{ScenarioForecasterTest, SimulationRunnerTest}}.php
 tests/Support/HouseholdFixture.php                     # rich DTO covering every mapper branch
 ```
+Engine gained (this session, non-breaking): an optional progress callback on
+`MonteCarlo/Simulator::run` and `Housing/HousingComparison::compare` (default null), covered by
+`tests/MonteCarlo/SimulatorProgressTest.php`.
 
 ## Decisions locked
 See [DECISIONS.md](DECISIONS.md) for the full log. Highlights:
@@ -102,13 +111,14 @@ See [DECISIONS.md](DECISIONS.md) for the full log. Highlights:
 - **Done:** Laravel 13 app scaffolded (SQLite migrated). finance-engine path package wired in. Standard doc set scaffolded. **The entire deterministic engine is built and tested:** money layer; full per-year `TaxYearConfig`/`TaxYearRegistry` (2025-26 + 2026-27, England/Wales/NI; Scotland throws); income tax (incl. combined savings/dividend stacking) + NI; pension lump-sum suite (PCLS/UFPLS/drawdown, Month-1 emergency tax + P55/P50Z/P53Z, MPAA, annual allowance + taper) — **worked examples A & B**; State Pension (SPA-from-DOB transition, deferral, triple lock); SDLT (+surcharge) and CGT (PRR); benefits capital tariff + £16k cliff — **worked example C**; IHT (pensions-in-estate toggle) and care means-test. **79 tests / 188 assertions passing.**
 - **Also done:** canonical DTOs (`src/Dto/`, incl. `HousingAction`); `Assumptions/AssumptionSetLibrary` (3 signed-off sets); `Mortality/` (embedded ONS period q(x), `CohortLifeTable`, seeded `JointLifeSampler`); `Forecast/` (`PathProjector` year-stepper + `DeterministicForecaster`, `DrawdownStrategy`, `PortfolioAllocation` cautious-40/60 default, `ForecastSettings`, `PathDraws`/`DeterministicPathDraws`, `YearResult`/`ForecastResult`); `MonteCarlo/` (`Cholesky`, `ReturnModel`, `SampledPathDraws`, `Simulator`, `SimulationResult`); `Housing/HousingComparison` (buy-vs-rent on identical seeds). **101 tests / 313 assertions.**
 - **App layer (this session — Phase 2 step 1):** encrypted DTO persistence — `app/Finance/Mapping/` (`Codec` + Household/HousingAction/AssumptionSet mappers), Eloquent `Household`/`Scenario`/`AssumptionSet` with `encrypted:array` payloads and to/from-DTO bridges, three migrations, `AssumptionSetSeeder` (from the engine library, one default). **Fortify** auth installed headless; `User` owns households/scenarios. **GDPR** export + hard delete (`GdprService`, `AccountController`, auth-gated routes). **Filament 5** admin at `/admin`: assumption-set resource (curate name/source/default, at-most-one-default guarantee) + read-only tax-year config audit page. Tests: lossless DTO round-trip, decrypts-to-identical-DTO, encrypted at rest, GDPR export/erase, anonymous-writes-nothing, admin smoke. **+18 app tests → 119 total / 374 assertions.**
-- **In progress:** nothing mid-edit; tree committed and clean. Phase 2 step 1 done; step 2 (forecast/scenario services) not started.
+- **App layer (this session — Phase 2 step 2):** forecast/scenario services. `app/Forecast/ScenarioForecaster` assembles engine inputs from a saved scenario (household, assumption set, housing action, tax-year config, settings; base year derived from the tax year) and runs `deterministic()` / `simulate()` / `compareHousing()`. `SimulationRun` + `Result` Eloquent models + migrations: a run records mode/n_paths/seed/status/progress + a frozen encrypted assumption snapshot; a `Result` per variant holds the encrypted `SimulationResult` (`SimulationResultMapper`). `SimulationRunner` orchestrates create → run → persist with live progress + cancel (preview sync, full queued via `RunScenarioSimulation`). Engine got a small non-breaking progress callback (`Simulator`/`HousingComparison`). Tests: forecaster runs + reproducible; result/snapshot round-trip + encrypted at rest; preview persists 3 results + completes, full run queued, job completes, cancel writes nothing, same-seed reproducible; engine progress hook. **+14 app/engine tests → 133 total / 619 assertions.**
+- **In progress:** nothing mid-edit; tree committed and clean. Phase 2 steps 1–2 done; step 3 (Livewire UI + ApexCharts) not started.
 - **Known bugs / broken:** none known. Documented v1 scope limits (all flagged in code): income tax is England/Wales/NI only (Scotland throws); emergency tax models the over-deduction magnitude, not PAYE-table pennies; mortality grid ages 50–100 / years 2025–2074 with clamping + a non-ONS tail above 100 (cap 110); forecast taxes non-savings income only (GIA/cash income tax + CGT-on-disposal deferred; ISA tax-free; pots grow at total return); tax thresholds held frozen for the whole projection; DB escalation + triple lock as smooth growth factors; buy-vs-rent takes main-home CGT as £0 (PRR) and no SDLT surcharge; house/salary growth deterministic inside the Monte Carlo.
 
 ## What's next (the application layer — docs/PLAN.md phases 2-6)
 1. ✅ **Persistence + auth + encryption + GDPR + Filament admin.** Done this session (Phase 2 step 1). See Current state.
-2. **Forecast/scenario services in the app** (the immediate next step) that hand the engine a `Household` + `ForecastSettings` + `AssumptionSet` and run `DeterministicForecaster`, `Simulator`, and `HousingComparison`. Queue (Horizon) the full 10k-path runs with live progress (`wire:poll`) and a cancel; sync ~1k-path preview. Nothing long-running may run silently. **This is where `SimulationRun` + `Result` persistence get built** (deferred from step 1), mapping to the engine's forecast/Monte-Carlo result objects.
-3. **Livewire scenario builder + result views; ApexCharts** fan chart + buy-vs-rent + compare-assumptions overlay, each with the mandatory accessible `<table>` and headline numbers as text first (WCAG 2.1 AA). **Build the real login/register screens here and flip `config/fortify.php` views back on** (Fortify is currently headless).
+2. ✅ **Forecast/scenario services + SimulationRun/Result persistence + queued runs.** Done this session (Phase 2 step 2). See Current state. (Queue mechanism is driver-agnostic; runs sync in tests, database/Redis+Horizon is an infra choice deferred.) Progress is per-path within each variant; a finer cross-chunk merge was deliberately not done — see DECISIONS.
+3. **Livewire scenario builder + result views; ApexCharts** (the immediate next step) — fan chart + buy-vs-rent + compare-assumptions overlay, each with the mandatory accessible `<table>` and headline numbers as text first (WCAG 2.1 AA). Wire the UI to `SimulationRunner` (`preview()` sync, `dispatch()` queued + `wire:poll` on `progress_pct` + a cancel button calling `SimulationRunner::cancel`). **Build the real login/register screens here and flip `config/fortify.php` views back on** (Fortify is currently headless).
 4. **Compliance/disclaimer layer + the banned-phrasing build test** (fail the build if any result template contains a personal recommendation); Pension Wise / MoneyHelper signposting beside pension/benefits outputs.
 5. **Demo preset** (Rob's anonymised couple, entered via the UI, not hardcoded), a11y CI (axe/Pa11y), 10k-path perf tuning, PDF export.
 
@@ -123,8 +133,8 @@ See [DECISIONS.md](DECISIONS.md) for the full log. Highlights:
 Run from the **project root** (the test runner shells out to a relative phpunit path, so it fails from `C:\Users\r`):
 ```powershell
 Set-Location "C:\Dev\RetireForecast"
-php artisan test                            # everything: expect 119 passed (374 assertions)
-php artisan test --testsuite=Engine        # engine only: expect 101 passed (313 assertions)
+php artisan test                            # everything: expect 133 passed (619 assertions)
+php artisan test --testsuite=Engine        # engine only: expect 104 passed (518 assertions)
 vendor/bin/pint --dirty                      # house style on changed files
 ```
 If `vendor/` is missing: `composer install`. If engine classes are not found, re-register the path package: `composer update retireforecast/finance-engine`. The admin panel is at `/admin` (any authenticated user); migrate + `php artisan db:seed --class=AssumptionSetSeeder` to populate assumption sets locally.
@@ -140,9 +150,10 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 | C:\Users\r\.claude\plans\quiet-sleeping-gosling.md | Original plan-mode copy of docs/PLAN.md (same content). |
 
 ## Branch status
-On `master`, local repo only (no remote, no PR). Personal local-first project; commit directly to `master`. Built across a series of small committed milestones — engine (docs scaffold, NI+savings/dividends, pension suite, State Pension, SDLT+CGT, benefits, IHT+care, forecast+MonteCarlo+housing); app layer this session (persistence; Fortify+GDPR; Filament admin).
+On `master`, local repo only (no remote, no PR). Personal local-first project; commit directly to `master`. Built across a series of small committed milestones — engine (docs scaffold, NI+savings/dividends, pension suite, State Pension, SDLT+CGT, benefits, IHT+care, forecast+MonteCarlo+housing); app layer (persistence; Fortify+GDPR; Filament admin; forecast services; run persistence; queued runs + engine progress hook).
 
 ## Session log
+_2026-06-24 (app layer phase 2 step 2 — forecast services + run persistence + queued runs)_ — Continued straight from step 1 (same session). Built the forecast/scenario services in three committed milestones: (A) `ScenarioForecaster` assembles engine inputs from a persisted scenario and runs deterministic / Monte Carlo / buy-vs-rent, reproducibly; (B) `SimulationRun` + `Result` persistence (encrypted `SimulationResult` per variant + frozen assumption snapshot, `SimulationResultMapper`); (C) `SimulationRunner` + `RunScenarioSimulation` job orchestrate create → run → persist with live progress + cancel (preview sync, full queued), enabled by a small non-breaking progress callback added to the engine `Simulator`/`HousingComparison`. 119 → **133 tests / 619 assertions** (engine 101 → 104). Decisions logged: run = 3-variant comparison → 3 Results (deterministic on demand), engine progress hook + throw-to-cancel, preview-sync/full-queued with driver-agnostic queue. Next: Phase 2 step 3, the Livewire UI + ApexCharts, wired to `SimulationRunner`.
 _2026-06-24 (app layer phase 2 step 1 — persistence + auth + GDPR + Filament)_ — Resumed from the handover, sanity-checked the engine green (101), then built the whole of Phase 2 step 1 on top, in three committed milestones. (1) Encrypted DTO persistence: `app/Finance/Mapping/` mappers (the one place serialization lives, keeping the engine agnostic), Eloquent Household/Scenario/AssumptionSet with `encrypted:array` payloads + clear structural columns + to/from-DTO bridges, three migrations, the assumption-set seeder; tests prove a saved row decrypts to an identical DTO and the payload is a ciphertext envelope at rest. (2) Fortify (headless) + GDPR export/erase behind auth; anonymous use writes nothing. (3) Filament 5 admin (it pulled Livewire 4) — assumption-set resource + read-only tax-year audit page. 101 → **119 tests / 374 assertions**. Decisions logged: one-payload persistence + app-side mappers, withdrawals on the pension, SimulationRun/Result deferred, Fortify-headless, Filament-5/Livewire-4, assumption-set figures stay sourced. Next: Phase 2 step 2, the forecast/scenario services (where SimulationRun + Result persistence land).
 _2026-06-24 (forecast + Monte Carlo + buy-vs-rent — engine complete)_ — Made the forecast-mechanics decisions (dual drawdown strategy; cautious-40/60 default). Built the deterministic `PathProjector` year-stepper (income assembly, per-person tax + NI, drawdown strategies with pension grossing-up, fiscal drag via nominal-internal/real-output, depletion detection), the seeded Monte Carlo (`Cholesky`/`ReturnModel`/`Simulator`, reproducible golden-master, success probability + fan chart + depletion rate), and the `HousingComparison` buy-vs-rent on identical seeds (rent + property running costs added to the projector). 89 → **101 engine tests**. The calculation engine is now feature-complete; next session starts the Laravel app layer (persistence, UI, charts, compliance, demo).
 _2026-06-24 (assumptions + mortality)_ — Made the two gating decisions: embed ONS 2024-based cohort mortality (via period diagonal), and default assumptions = FCA real returns + DMS vols (researched, cited, Rob signed off). Built canonical domain DTOs, `AssumptionSetLibrary` (3 sets), the ONS mortality model (embedded period grid + `CohortLifeTable` + seeded `JointLifeSampler`), and docs ASSUMPTIONS.md/MORTALITY.md. 82 → 89 engine tests. Stopped before the forecast year-stepper to get Rob's call on forecast mechanics (drawdown order + default allocation). Sources for assumptions/mortality still need the build-time verification pass.
