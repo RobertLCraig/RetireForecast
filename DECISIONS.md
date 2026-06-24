@@ -3,6 +3,32 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-24 — UI: hand-rolled Livewire + a separate assembler, charts as enhancement
+**Decision:** The scenario builder and result views are hand-rolled Livewire 4 components (Filament
+stays admin-only). Form input becomes engine DTOs in a standalone `HouseholdAssembler` (not inside
+the Livewire component), so the string→DTO conversion is unit-testable and reusable (the demo preset
+later). Money the user types is parsed to exact integer pence by a string parser (split on `.`, pad
+to 2dp), never `(float) * 100`, keeping "no float in money" true at the UI boundary. Every figure a
+chart plots is also rendered as headline text and inside an accessible `<table>` (in a `<details>`)
+with a CSV download; the ApexCharts canvas (bundled via npm, mounted by a small reduced-motion-aware
+Alpine `chart` wrapper) is a progressive enhancement, never the source of truth.
+**Why:** The plan mandates a hand-rolled Livewire builder and WCAG 2.1 AA charts where headline
+numbers are text first. Separating the assembler keeps the lossless shape conversion provable in
+isolation (it rebuilds the rich `HouseholdFixture` exactly). [[2026-06-24 — Persistence: one encrypted payload per row, mappers in the app]]
+**Status:** active
+
+## 2026-06-24 — Full-page Livewire uses the Blade layout component, not `layouts::app`
+**Decision:** Full-page Livewire components render into the app's Blade layout component
+(`components.layouts.app`) via `#[Layout(...)]`, not Livewire 4's default `layouts::app`. The base
+`TestCase` calls `withoutVite()` so view tests do not depend on the gitignored `public/build`. Region
+selection is guarded by actually asking `TaxYearRegistry::for()` to build the config, so Scotland is
+refused with a clear error until its band pack lands (and auto-enables when it does), mirroring the
+engine's own refusal rather than duplicating the rule.
+**Why:** Livewire 4 registers `layouts` only as a component namespace, not a view namespace, so its
+default page layout has no hint path here; reusing the one Blade layout the auth/marketing pages use
+keeps a single source of truth. Tying the region guard to the engine avoids a second place to update.
+**Status:** active
+
 ## 2026-06-24 — Forecast services: run = 3-variant comparison, deterministic on demand
 **Decision:** A `SimulationRun` executes the engine's `HousingComparison` for the scenario's
 household + housing action, producing **three `Result` rows** (stay_put, buy_outright, rent) on

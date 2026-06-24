@@ -8,12 +8,15 @@ conforms to this. The canonical representation **is** the engine's readonly DTOs
 those DTOs (one shape, three consumers). Full prose field lists also live in docs/PLAN.md
 ("Data model (canonical shape)").
 
-**Status: the DTOs are built, and the persistence layer maps to/from them.** Household,
-Person, the three Pension subtypes, Property, Account, IncomeStream, ExpenseProfile,
-HousingAction, AssumptionSet and their enums all exist under `src/Dto/`. The app persists them
-as **clear structural columns + one encrypted payload per row** (see "Storage shape" and
-"Materialised today" below). SimulationRun and Result are still not built (deferred to the
-forecast-services step).
+**Status: the DTOs are built, and all three consumers (engine, storage, UI) now map to/from
+them.** Household, Person, the three Pension subtypes, Property, Account, IncomeStream,
+ExpenseProfile, HousingAction, AssumptionSet and their enums all exist under `src/Dto/`. The app
+persists them as **clear structural columns + one encrypted payload per row** (see "Storage shape"
+and "Materialised today"). **SimulationRun and Result are built** (the forecast-services step): a
+run records mode/n_paths/seed/status/progress + a frozen encrypted assumption snapshot, with one
+encrypted `Result` per housing variant. The **UI consumer** is now real too: the Livewire scenario
+builder collects strings and `app/Forecast/HouseholdAssembler` rebuilds the DTOs losslessly (money
+parsed to exact pence), so a value entered, stored and re-read is identical.
 
 ## Conventions (honoured by all existing code)
 - **Money = integer pence** (`Money` value object, GBP only). Never a PHP float in tax or
