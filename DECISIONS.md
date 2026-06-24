@@ -3,6 +3,53 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-24 — Persistence: one encrypted payload per row, mappers in the app
+**Decision:** Store each Household and Scenario as clear structural columns (name, region,
+variant, base tax year, status, owner, timestamps) plus **one `encrypted:array` payload**
+holding all the sensitive detail, rather than ~30 encrypted columns. The DTO↔array mapping
+lives in the **app** (`app/Finance/Mapping/`), not the engine, so the engine stays
+framework- and serialization-agnostic; the readonly DTOs under `packages/finance-engine/src/Dto`
+remain the single source of truth and Eloquent maps to/from them.
+**Why:** Encrypted columns are unindexable anyway, so a single payload is simpler and keeps
+listing/filtering on the clear columns. Keeping the mapper app-side preserves the engine's
+isolation. A round-trip test asserts a saved row decrypts to an identical DTO. Follows the
+plan's persistence section. [[2026-06-24 — Engine is framework-free, in a path package]]
+**Status:** active
+
+## 2026-06-24 — Withdrawals on the pension; SimulationRun/Result deferred
+**Decision:** Planned pension withdrawals live on the DC pension inside the household payload
+(faithful to `DcPension::$withdrawalPlan`), **not** duplicated as a scenario-level field, so
+there is one source of truth for them. The `SimulationRun` and `Result` tables are deferred
+to the forecast-services step (there are no results to persist until the engine is wired into
+the app).
+**Why:** The data-model sketch listed withdrawal_decisions on Scenario, but the canonical DTO
+already carries them on the pension; honouring the DTO avoids a second, divergent home for the
+same data. Deferring run/result storage keeps phase-2 step-1 focused on input persistence.
+**Status:** active
+
+## 2026-06-24 — Auth: Fortify headless, web-route guests redirect to login
+**Decision:** Install Laravel Fortify but run it **headless** (`config/fortify.php` views
+disabled) until the Livewire UI phase builds the login/register screens. GDPR/account routes
+sit behind the `auth` middleware; an unauthenticated visitor is **redirected to login** (302),
+which is the correct behaviour for a web app (not a 401 API response). A placeholder named
+`login` route exists so the redirect target resolves until the real screen ships.
+**Why:** The auth backend is needed now (ownership scoping, GDPR), but the screens belong with
+the rest of the UI. Anonymous use writes nothing because every write path is auth-gated.
+**Status:** active
+
+## 2026-06-24 — Admin: Filament 5 (Livewire 4); assumption-set figures stay sourced
+**Decision:** Use Filament 5 for the admin panel at `/admin` (it pulls **Livewire 4**, a bump
+from the plan's stated Livewire 3). The AssumptionSet resource curates metadata (name, source
+note, default) and a model hook keeps at most one default; the **sourced numeric figures are
+seeded from the engine's signed-off `AssumptionSetLibrary` and are not casually editable in
+the admin** (numeric editing is a deliberate, flagged follow-up). The tax-year audit page is
+read-only over the registry. `User::canAccessPanel()` returns true for this local single-user
+app (tighten before any public release).
+**Why:** The figures are sourced and signed off; editing one means re-sourcing it with a new
+verified-on date, which should be a deliberate act, not a stray form save. Keeps the
+"no magic numbers, every figure sourced" posture intact. [[2026-06-24 — Tax figures versioned per tax year, sourced and dated]]
+**Status:** active
+
 ## 2026-06-24 — Mortality model: embed ONS cohort life tables
 **Decision:** Drive stochastic joint-life mortality from embedded ONS cohort life tables
 (by single year of age and sex), sampling each partner's age of death per path and running

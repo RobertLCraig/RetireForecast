@@ -3,14 +3,17 @@
 _Last updated: 2026-06-24_
 
 The single source of truth for this project's data shape. Every layer (engine, storage, UI)
-conforms to this. The canonical representation **will be** the engine's readonly DTOs under
+conforms to this. The canonical representation **is** the engine's readonly DTOs under
 `packages/finance-engine/src/Dto/`; Eloquent models and Livewire form objects map to/from
 those DTOs (one shape, three consumers). Full prose field lists also live in docs/PLAN.md
 ("Data model (canonical shape)").
 
-**Status: the DTOs are NOT built yet.** They are the next data-shape deliverable, required
-before persistence or UI. What is materialised in code today is only the tax-year config and
-money layer (see "Materialised today" below).
+**Status: the DTOs are built, and the persistence layer maps to/from them.** Household,
+Person, the three Pension subtypes, Property, Account, IncomeStream, ExpenseProfile,
+HousingAction, AssumptionSet and their enums all exist under `src/Dto/`. The app persists them
+as **clear structural columns + one encrypted payload per row** (see "Storage shape" and
+"Materialised today" below). SimulationRun and Result are still not built (deferred to the
+forecast-services step).
 
 ## Conventions (honoured by all existing code)
 - **Money = integer pence** (`Money` value object, GBP only). Never a PHP float in tax or
@@ -116,19 +119,40 @@ yearly_percentile_bands[] (fan chart), first_year_tax_breakdown 🔒 (the lump-s
 estate_value / iht_due (Money?, if toggle on), warnings[] (cliff-edge hits, MPAA triggered,
 emergency tax, capital crossed £16k).
 
-## Materialised today (concrete shape in code)
-- `Money/{Money, Percent, IntMath, RoundingMode}` — integer-pence money + basis-point rates
-  with explicit per-call rounding.
-- `TaxYear/{TaxYearConfig, TaxYearRegistry, RegionProfile, IncomeTaxParameters,
-  DividendParameters, SavingsParameters, NationalInsuranceParameters}` — 2025-26 and 2026-27,
-  England/Wales/NI; Scotland throws rather than faking rUK bands.
-- `Tax/{IncomeTaxCalculator, IncomeTaxResult}` — non-savings income only so far.
+## Storage shape (how the app persists the DTOs)
+Per the persistence decision, every persisted row is **clear structural columns + one encrypted
+payload**. The DTO is the shape; the mapper (`app/Finance/Mapping/`) turns it into the payload
+array and back. Money is stored as integer pence, Percent as integer basis points, dates as
+ISO `Y-m-d`, backed enums by value, the unbacked `WithdrawalKind` by case name.
 
-## Canonical representation
-The readonly DTOs (to be created under `packages/finance-engine/src/Dto/`) are the one shape
-every layer maps to. Until they exist, the tax-year config objects above are the only shared
-shape. Enums and their allowed values are listed per-entity above.
+- **households** — clear: `user_id?`, `name`, `region`. Encrypted `payload`: persons, pensions
+  (dc/db/state, each carrying its own withdrawal plan), accounts, income streams, expense
+  profile, primary residence. Maps to/from the `Household` DTO.
+- **scenarios** — clear: `household_id`, `user_id?`, `assumption_set_id?`, `name`, `variant`
+  (`buy_outright|rent|stay_put`), `base_tax_year`, `iht_modelled`, `status` (`draft|ready`).
+  Encrypted `payload`: the `HousingAction` (sale/buy/rent figures).
+- **assumption_sets** — clear: `name`, `source_note`, `is_default`. Plain JSON `payload`
+  (asset classes, correlation matrix, inflation/growth rates) — not personal data, so not
+  encrypted. Seeded from the engine's `AssumptionSetLibrary`; at most one default. Maps
+  to/from the `AssumptionSet` DTO.
+
+`ScenarioVariant` and `ScenarioStatus` are app-level enums (the engine takes a Household +
+HousingAction and does not name the variants). Withdrawals live on the DC pension inside the
+household payload, not separately on the scenario.
+
+## Materialised today (concrete shape in code)
+- `Money/{Money, Percent, IntMath, RoundingMode}` — integer-pence money + basis-point rates.
+- The full `TaxYear/` config spine (2025-26, 2026-27; England/Wales/NI; Scotland throws) and
+  all per-calculator result objects.
+- The domain DTOs under `src/Dto/` (Household, Person, DcPension, DbPension,
+  StatePensionEntitlement, Property, Account, IncomeStream, ExpenseProfile, HousingAction,
+  AssumptionSet + enums).
+- **App persistence:** Eloquent `Household`, `Scenario`, `AssumptionSet` with the to/from-DTO
+  bridges and `encrypted:array` payload casts; the `app/Finance/Mapping/` mappers + `Codec`.
 
 ## Known divergences (to close)
-- None yet — no persistence or UI layer exists to diverge. The first divergence risk appears
-  when Eloquent models are added; they must map to the DTOs, not redefine the shape.
+- **SimulationRun / Result not yet built** — deferred to the forecast-services step; they will
+  map to the engine's forecast/Monte-Carlo result objects when results exist to persist.
+- The DTO carries withdrawals on the DC pension; the original Scenario sketch listed
+  `withdrawal_decisions` separately. Resolved in favour of the DTO (one source of truth); the
+  scenario does not duplicate them.
