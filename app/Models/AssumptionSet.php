@@ -30,6 +30,18 @@ class AssumptionSet extends Model
         ];
     }
 
+    /** Keep at most one default: marking one default clears the flag on the rest. */
+    protected static function booted(): void
+    {
+        static::saved(function (self $set): void {
+            if ($set->is_default) {
+                static::where('id', '!=', $set->id)
+                    ->where('is_default', true)
+                    ->update(['is_default' => false]);
+            }
+        });
+    }
+
     public function toDto(): AssumptionSetDto
     {
         return AssumptionSetMapper::hydrate(
