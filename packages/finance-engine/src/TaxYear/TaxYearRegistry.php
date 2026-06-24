@@ -79,6 +79,8 @@ final class TaxYearRegistry
                 deferralWeeksPerUpliftStep: 9,
                 deferralUpliftPerStep: Percent::fromPercent(1),
             ),
+            sdlt: self::sdltParameters(),
+            cgt: self::cgtParameters(),
             sources: [
                 'income_tax' => 'https://www.gov.uk/income-tax-rates',
                 'dividends' => 'https://www.gov.uk/tax-on-dividends',
@@ -86,6 +88,8 @@ final class TaxYearRegistry
                 'national_insurance' => 'https://www.gov.uk/national-insurance-rates-letters',
                 'pension' => 'https://www.gov.uk/tax-on-your-private-pension/annual-allowance',
                 'state_pension' => 'https://www.gov.uk/new-state-pension/what-youll-get',
+                'sdlt' => 'https://www.gov.uk/stamp-duty-land-tax/residential-property-rates',
+                'cgt' => 'https://www.gov.uk/capital-gains-tax/rates',
             ],
             verifiedOn: '2026-06-24',
         );
@@ -138,6 +142,8 @@ final class TaxYearRegistry
                 deferralWeeksPerUpliftStep: 9,
                 deferralUpliftPerStep: Percent::fromPercent(1),
             ),
+            sdlt: self::sdltParameters(),
+            cgt: self::cgtParameters(),
             sources: [
                 'income_tax' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
                 'dividends' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
@@ -145,6 +151,8 @@ final class TaxYearRegistry
                 'national_insurance' => 'https://www.gov.uk/national-insurance-rates-letters',
                 'pension' => 'https://www.gov.uk/tax-on-your-private-pension/annual-allowance',
                 'state_pension' => 'https://www.gov.uk/new-state-pension/what-youll-get',
+                'sdlt' => 'https://www.gov.uk/stamp-duty-land-tax/residential-property-rates',
+                'cgt' => 'https://www.gov.uk/capital-gains-tax/rates',
             ],
             verifiedOn: '2026-06-24',
         );
@@ -169,6 +177,40 @@ final class TaxYearRegistry
             taperRate: Percent::fromPercent(50),
             pclsRate: Percent::fromPercent(25),
             normalMinimumPensionAge: 55,
+        );
+    }
+
+    /**
+     * Residential SDLT bands for England and Northern Ireland, in force from 1 April
+     * 2025, with the 5% additional-property surcharge (from 31 October 2024). The
+     * same bands serve both tax years modelled here.
+     */
+    private static function sdltParameters(): SdltParameters
+    {
+        return new SdltParameters(
+            bands: [
+                new SdltBand(Money::fromPounds(0), Percent::zero()),
+                new SdltBand(Money::fromPounds(125_000), Percent::fromPercent(2)),
+                new SdltBand(Money::fromPounds(250_000), Percent::fromPercent(5)),
+                new SdltBand(Money::fromPounds(925_000), Percent::fromPercent(10)),
+                new SdltBand(Money::fromPounds(1_500_000), Percent::fromPercent(12)),
+            ],
+            additionalPropertySurchargeRate: Percent::fromPercent(5),
+        );
+    }
+
+    /**
+     * Residential CGT parameters. ⚠️ The 18%/24% residential rates, the £3,000
+     * annual exempt amount and the 9-month final-period exemption all need a
+     * confirmatory gov.uk citation before being shown as real.
+     */
+    private static function cgtParameters(): CgtParameters
+    {
+        return new CgtParameters(
+            annualExemptAmount: Money::fromPounds(3_000),
+            residentialBasicRate: Percent::fromPercent(18),
+            residentialHigherRate: Percent::fromPercent(24),
+            privateResidenceFinalExemptionMonths: 9,
         );
     }
 }

@@ -26,6 +26,8 @@ final class TaxYearConfig
         public readonly NationalInsuranceParameters $nationalInsurance,
         public readonly PensionParameters $pension,
         public readonly StatePensionParameters $statePension,
+        public readonly SdltParameters $sdlt,
+        public readonly CgtParameters $cgt,
         public readonly array $sources,
         public readonly string $verifiedOn,
     ) {}
