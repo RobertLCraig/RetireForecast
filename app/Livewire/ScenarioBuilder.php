@@ -279,9 +279,9 @@ class ScenarioBuilder extends Component
         $scenario->setHousingAction($assembled['housingAction']);
         $scenario->save();
 
-        session()->flash('status', 'Forecast saved.');
+        session()->flash('status', 'Forecast saved. Run it to see the results.');
 
-        return redirect()->route('dashboard');
+        return redirect()->route('scenarios.results', $scenario);
     }
 
     public function render(): View

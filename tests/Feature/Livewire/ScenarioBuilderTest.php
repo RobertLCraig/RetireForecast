@@ -26,11 +26,9 @@ class ScenarioBuilderTest extends TestCase
         $this->actingAs(User::factory()->create());
     }
 
-    public function test_a_valid_minimal_forecast_saves_and_redirects(): void
+    public function test_a_valid_minimal_forecast_saves_and_redirects_to_its_results(): void
     {
-        $this->fill(BuilderStateFixture::minimalValid())
-            ->call('save')
-            ->assertRedirect(route('dashboard'));
+        $this->fill(BuilderStateFixture::minimalValid())->call('save');
 
         $this->assertSame(1, Household::count());
         $this->assertSame(1, Scenario::count());
@@ -44,7 +42,8 @@ class ScenarioBuilderTest extends TestCase
         $state['variant'] = 'rent';
         $state['baseTaxYear'] = '2026-27';
 
-        $this->fill($state)->call('save')->assertRedirect(route('dashboard'));
+        $this->fill($state)->call('save')
+            ->assertRedirect(route('scenarios.results', Scenario::firstOrFail()));
 
         $scenario = Scenario::firstOrFail();
         $this->assertEquals(HouseholdFixture::household(), $scenario->household->toDto());

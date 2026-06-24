@@ -9,6 +9,7 @@ use App\Enums\ScenarioVariant;
 use App\Finance\Mapping\HousingActionMapper;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 
 /**
@@ -57,6 +58,11 @@ class Scenario extends Model
     public function assumptionSet(): BelongsTo
     {
         return $this->belongsTo(AssumptionSet::class);
+    }
+
+    public function simulationRuns(): HasMany
+    {
+        return $this->hasMany(SimulationRun::class);
     }
 
     public function housingAction(): HousingAction

@@ -17,16 +17,18 @@
     @else
         <ul class="mt-6 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
             @foreach ($scenarios as $scenario)
-                <li class="flex items-center justify-between px-4 py-3">
-                    <div>
-                        <p class="font-medium text-gray-900">{{ $scenario->name }}</p>
-                        <p class="text-sm text-gray-500">
-                            {{ $scenario->household->name }} · base tax year {{ $scenario->base_tax_year }}
-                        </p>
-                    </div>
-                    <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-                        {{ ucfirst($scenario->status->value) }}
-                    </span>
+                <li>
+                    <a href="{{ route('scenarios.results', $scenario) }}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+                        <div>
+                            <p class="font-medium text-gray-900">{{ $scenario->name }}</p>
+                            <p class="text-sm text-gray-500">
+                                {{ $scenario->household->name }} · base tax year {{ $scenario->base_tax_year }}
+                            </p>
+                        </div>
+                        <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+                            {{ ucfirst($scenario->status->value) }}
+                        </span>
+                    </a>
                 </li>
             @endforeach
         </ul>
