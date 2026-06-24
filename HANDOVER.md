@@ -3,8 +3,8 @@
 > A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue building the calculation engine and then the app around it. Read `docs/PLAN.md` first: it is the full approved plan and the source of truth for scope.
 
 **Stage:** active
-**Status:** Phase 1 of 6 (engine, test-driven) — **deterministic engine COMPLETE.** All UK tax/pension/benefits/property/IHT/care calculators built and tested; HMRC worked examples A, B and C all pass. **79 engine tests / 188 assertions passing.** Doc set scaffolded (PRD/DATA-MODEL/DECISIONS/CLAUDE.md). Next is the forecast year-stepper, which needs two decisions from Rob (mortality data approach + default assumption figures) before it can produce real numbers. Still no domain DTOs, multi-year projection, Monte Carlo, persistence or UI.
-_Last updated: 2026-06-24 (deterministic engine complete; awaiting Rob's mortality + assumptions decisions)_
+**Status:** Phase 1 of 6 (engine, test-driven). Deterministic engine, domain DTOs, signed-off assumption presets, and the ONS cohort mortality model all COMPLETE. HMRC worked examples A, B, C pass; mortality sanity-checked against ONS life expectancy. **89 engine tests / 263 assertions passing.** Mortality + assumptions decisions made and assumptions signed off (Set A FCA default). Next is the forecast year-stepper + Monte Carlo, pending Rob's call on forecast mechanics (drawdown order, default allocation). Still no persistence or UI.
+_Last updated: 2026-06-24 (assumptions signed off; mortality + presets built; awaiting forecast-mechanics decisions)_
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -67,27 +67,29 @@ See [DECISIONS.md](DECISIONS.md) for the full log. Highlights:
 
 ## Current state
 - **Done:** Laravel 13 app scaffolded (SQLite migrated). finance-engine path package wired in. Standard doc set scaffolded. **The entire deterministic engine is built and tested:** money layer; full per-year `TaxYearConfig`/`TaxYearRegistry` (2025-26 + 2026-27, England/Wales/NI; Scotland throws); income tax (incl. combined savings/dividend stacking) + NI; pension lump-sum suite (PCLS/UFPLS/drawdown, Month-1 emergency tax + P55/P50Z/P53Z, MPAA, annual allowance + taper) — **worked examples A & B**; State Pension (SPA-from-DOB transition, deferral, triple lock); SDLT (+surcharge) and CGT (PRR); benefits capital tariff + £16k cliff — **worked example C**; IHT (pensions-in-estate toggle) and care means-test. **79 tests / 188 assertions passing.**
-- **In progress:** nothing mid-edit; tree committed and clean. Forecast year-stepper deliberately NOT started — gated on the two decisions below.
-- **Known bugs / broken:** none known. Scope notes: income tax is England/Wales/NI only (Scotland throws by design); emergency tax models the over-deduction magnitude, not HMRC's PAYE-table rounding to the penny (documented in `EmergencyTaxCalculator`).
+- **Also done since:** canonical domain DTOs (`src/Dto/`); `Assumptions/AssumptionSetLibrary` (3 signed-off sets); `Mortality/` — embedded ONS period q(x) (`OnsPeriodMortalityData`, generated from `resources/mortality/ons-2024-period-qx.json`), `CohortLifeTable` (period-diagonal cohort curve + tail), `JointLifeSampler` (seeded). **89 tests / 263 assertions.**
+- **In progress:** nothing mid-edit; tree committed and clean. Forecast year-stepper NOT started — pending the forecast-mechanics decision.
+- **Known bugs / broken:** none known. Scope notes: income tax is England/Wales/NI only (Scotland throws by design); emergency tax models the over-deduction magnitude, not HMRC's PAYE-table rounding to the penny; mortality grid is ages 50–100 / years 2025–2074 with documented clamping + a non-ONS tail above 100 (cap 110).
 
 ## What's next (in order)
-1. **DECISIONS NEEDED FROM ROB (gate the forecast layer):** (a) mortality data approach for stochastic joint-life; (b) the default assumption-set figures and how to derive volatility/correlation for the FCA-default set. See Blockers.
-2. **Canonical domain DTOs** under `src/Dto/` (Household, Person, Pension subtypes, Property, Account, IncomeStream, ExpenseProfile, Scenario, AssumptionSet) per DATA-MODEL.md — next data-shape deliverable; unblocks persistence + UI.
-3. **Deterministic forecast year-stepper + cashflow projector:** per-year orchestration of the existing calculators (individual income tax, household-level capital), then the multi-year loop driven by an AssumptionSet.
-4. **Mortality (joint-life last-survivor) + Monte Carlo** (seeded, reproducible, golden-master).
+1. **DECISION PENDING — forecast mechanics:** (a) drawdown order across cash/GIA/ISA/DC pensions (strategically loaded by the April-2027 pensions-in-IHT change); (b) default investment allocation/glidepath for invested pots. These shape the headline "will the money last" and buy-vs-rent results.
+2. **Deterministic forecast year-stepper + cashflow projector:** per-year orchestration of the calculators, working nominal internally (captures fiscal drag) and deflating to today's money, driven by an AssumptionSet. Structured so the Monte Carlo can drive it with sampled returns + death ages.
+3. **Monte Carlo** (ReturnModel/PathGenerator/Simulator): correlated real returns via Cholesky, joint-life death ages, seeded + reproducible golden-master, percentile fan + success probability + depletion distribution.
+4. **Buy-vs-rent** comparison on identical seeds.
 5. Then: persistence/auth + encryption + GDPR, Filament admin, Livewire UI + ApexCharts (accessible tables), compliance/disclaimer layer + banned-phrasing test, demo preset, polish. Full order in docs/PLAN.md phases 2-6.
 
 ## Blockers / open questions
-- [ ] **DECISION — mortality data approach.** Stochastic joint-life needs a mortality model: embed ONS cohort life tables (most accurate, larger data ingest); a parametric fit (e.g. Gompertz-Makeham, compact, smooth); or ONS period tables (simpler, more conservative on lifespan). Plan said cohort.
-- [ ] **DECISION — default assumption-set figures.** Rob chose FCA as default baseline with DMS/EGS and OBR/BoE as compare sets. Still needed: the cited return/volatility/inflation numbers, AND how to derive volatility/correlation for the FCA set (FCA publishes nominal growth brackets, not vols). No real forecast is shown until set.
-- [ ] **Build-time gov.uk verification pass** on every figure marked with a warning sign in the `TaxYearRegistry` helpers and parameter docblocks: Scottish bands, NI 26/27, tapered-AA thresholds, LSDBA, access-age-57 date, CGT rates + £3,000 AEA, LBTT/LTT, PC/HB weekly rates, IHT bands + the April-2027 pensions-in-estate change, care thresholds, SDLT bands, SPA boundary dates. Do before go-live.
+- [ ] **DECISION — forecast mechanics (drawdown order + default allocation):** see What's next #1. Being put to Rob now.
+- [x] **DECISION — mortality data approach.** DONE: embed ONS 2024-based cohort tables (via period diagonal). See docs/MORTALITY.md.
+- [x] **DECISION — default assumption figures.** DONE: signed off 2026-06-24, Set A (FCA returns + DMS vols) default. See docs/ASSUMPTIONS.md.
+- [ ] **Build-time gov.uk verification pass** on every figure marked with a warning sign in the `TaxYearRegistry` helpers and parameter docblocks (income/NI bands, pension allowances, CGT/SDLT, PC/HB rates, IHT bands + April-2027 pensions-in-estate, care thresholds, SPA boundary dates) plus the ONS mortality and assumption sources. Do before go-live.
 - [ ] **Demo data:** Rob supplies the anonymised couple's figures later, entered via the UI, not hardcoded (field list in docs/PLAN.md "Data Rob supplies").
 
 ## How to pick up
 Run from the **project root** (the test runner shells out to a relative phpunit path, so it fails from `C:\Users\r`):
 ```powershell
 Set-Location "C:\Dev\RetireForecast"
-php artisan test --testsuite=Engine        # expect: 79 passed (188 assertions)
+php artisan test --testsuite=Engine        # expect: 89 passed (263 assertions)
 vendor/bin/pint packages/finance-engine     # house style after adding files
 ```
 If `vendor/` is missing: `composer install`. If engine classes are not found, re-register the path package: `composer update retireforecast/finance-engine`.
@@ -107,5 +109,6 @@ To run everything (engine + Laravel's default suites): `php artisan test`.
 On `master`, local repo only (no remote, no PR). Personal local-first project; commit directly to `master`. Engine built across a series of small committed milestones (docs scaffold, NI+savings/dividends, pension suite, State Pension, SDLT+CGT, benefits, IHT+care).
 
 ## Session log
+_2026-06-24 (assumptions + mortality)_ — Made the two gating decisions: embed ONS 2024-based cohort mortality (via period diagonal), and default assumptions = FCA real returns + DMS vols (researched, cited, Rob signed off). Built canonical domain DTOs, `AssumptionSetLibrary` (3 sets), the ONS mortality model (embedded period grid + `CohortLifeTable` + seeded `JointLifeSampler`), and docs ASSUMPTIONS.md/MORTALITY.md. 82 → 89 engine tests. Stopped before the forecast year-stepper to get Rob's call on forecast mechanics (drawdown order + default allocation). Sources for assumptions/mortality still need the build-time verification pass.
 _2026-06-24 (deterministic engine complete)_ — Resumed from the engine foundation. Scaffolded the standard doc set. Built the rest of the deterministic engine, each as a tested, committed milestone: NI + combined savings/dividend income-tax stacking; the pension lump-sum suite (PCLS/UFPLS/drawdown, Month-1 emergency tax + reclaim forms, MPAA, annual allowance + taper) encoding worked examples A & B; State Pension with SPA-from-DOB; SDLT + CGT (PRR); benefits capital tariff + £16k cliff (worked example C); IHT (pensions-in-estate toggle) + care means-test. Went from 27 to **79 engine tests**, all green; worked examples A, B, C all pass. Stopped at the forecast year-stepper, which needs Rob's two decisions (mortality data approach + default assumption figures). Next: make those decisions, then build the domain DTOs and the forecast layer.
 _2026-06-24 (engine foundation)_ — Planned the project end-to-end (plan approved, docs/PLAN.md). Scaffolded Laravel 13 + the framework-free finance-engine path package. Built the money layer, the 2025-26 / 2026-27 tax-year config, and the non-savings income-tax calculator. 27 engine tests green. Scope refined to local-first / personal / no-hardcoded-data.
