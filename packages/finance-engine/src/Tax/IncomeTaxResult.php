@@ -15,12 +15,11 @@ use RetireForecast\FinanceEngine\Money\Percent;
 final class IncomeTaxResult
 {
     /**
-     * @param list<array{rate: Percent, amount: Money, tax: Money}> $bands
+     * @param  list<array{rate: Percent, amount: Money, tax: Money}>  $bands
      */
     public function __construct(
         public readonly Money $total,
         public readonly Money $personalAllowance,
         public readonly array $bands,
-    ) {
-    }
+    ) {}
 }

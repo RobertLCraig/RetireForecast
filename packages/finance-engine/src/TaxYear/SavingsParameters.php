@@ -19,6 +19,5 @@ final class SavingsParameters
         public readonly Money $psaAdditionalRate,
         public readonly Money $startingRateBand,
         public readonly Percent $startingRate,
-    ) {
-    }
+    ) {}
 }

@@ -19,8 +19,7 @@ final class Money implements Stringable
     private function __construct(
         public readonly int $pence,
         public readonly string $currency = 'GBP',
-    ) {
-    }
+    ) {}
 
     public static function fromPence(int $pence, string $currency = 'GBP'): self
     {
@@ -66,6 +65,15 @@ final class Money implements Stringable
     public function times(int $factor): self
     {
         return new self($this->pence * $factor, $this->currency);
+    }
+
+    /**
+     * Divide this amount by an integer, rounding the pence result. Used for things
+     * like the 1/12 monthly thresholds in the PAYE emergency-tax basis.
+     */
+    public function dividedBy(int $divisor, RoundingMode $mode = RoundingMode::HalfUp): self
+    {
+        return new self(IntMath::divRound($this->pence, $divisor, $mode), $this->currency);
     }
 
     /** Apply a rate to this amount (e.g. tax due on income), rounding the pence result. */
@@ -156,7 +164,7 @@ final class Money implements Stringable
         $sign = $this->pence < 0 ? '-' : '';
         $abs = abs($this->pence);
 
-        return $sign . intdiv($abs, 100) . '.' . str_pad((string) ($abs % 100), 2, '0', STR_PAD_LEFT);
+        return $sign.intdiv($abs, 100).'.'.str_pad((string) ($abs % 100), 2, '0', STR_PAD_LEFT);
     }
 
     /** Human-friendly, e.g. "£1,234.56". */
@@ -165,7 +173,7 @@ final class Money implements Stringable
         $sign = $this->pence < 0 ? '-' : '';
         $abs = abs($this->pence);
 
-        return $sign . '£' . number_format(intdiv($abs, 100)) . '.' . str_pad((string) ($abs % 100), 2, '0', STR_PAD_LEFT);
+        return $sign.'£'.number_format(intdiv($abs, 100)).'.'.str_pad((string) ($abs % 100), 2, '0', STR_PAD_LEFT);
     }
 
     public function __toString(): string

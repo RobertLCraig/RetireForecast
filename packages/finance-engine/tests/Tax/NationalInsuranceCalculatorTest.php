@@ -16,7 +16,7 @@ final class NationalInsuranceCalculatorTest extends TestCase
         return new NationalInsuranceCalculator(TaxYearRegistry::for($taxYear));
     }
 
-    public function testMainRateOnly(): void
+    public function test_main_rate_only(): void
     {
         // £50,000: (£50,000 - £12,570) = £37,430 @ 8% = £2,994.40. None above the UEL.
         $result = $this->calculator()->onEmploymentEarnings(Money::fromPounds(50_000));
@@ -24,7 +24,7 @@ final class NationalInsuranceCalculatorTest extends TestCase
         $this->assertSame(299_440, $result->total->pence);
     }
 
-    public function testMainAndUpperRate(): void
+    public function test_main_and_upper_rate(): void
     {
         // £60,000: £37,700 @ 8% (£3,016.00) + £9,730 @ 2% (£194.60) = £3,210.60.
         $result = $this->calculator()->onEmploymentEarnings(Money::fromPounds(60_000));
@@ -32,14 +32,14 @@ final class NationalInsuranceCalculatorTest extends TestCase
         $this->assertSame(321_060, $result->total->pence);
     }
 
-    public function testNoNiBelowPrimaryThreshold(): void
+    public function test_no_ni_below_primary_threshold(): void
     {
         $result = $this->calculator()->onEmploymentEarnings(Money::fromPounds(10_000));
 
         $this->assertSame(0, $result->total->pence);
     }
 
-    public function testNoNiOnceStatePensionAgeReached(): void
+    public function test_no_ni_once_state_pension_age_reached(): void
     {
         // The same £60,000 of earnings, but the earner is over State Pension age:
         // NI ends at SPA, so nothing is due even though there are earnings.

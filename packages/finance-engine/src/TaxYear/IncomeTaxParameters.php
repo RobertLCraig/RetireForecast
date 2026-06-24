@@ -27,6 +27,5 @@ final class IncomeTaxParameters
         public readonly Percent $basicRate,
         public readonly Percent $higherRate,
         public readonly Percent $additionalRate,
-    ) {
-    }
+    ) {}
 }

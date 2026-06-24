@@ -12,7 +12,7 @@ use RetireForecast\FinanceEngine\Money\RoundingMode;
 
 final class MoneyTest extends TestCase
 {
-    public function testConstructionHelpers(): void
+    public function test_construction_helpers(): void
     {
         $this->assertSame(1_257_000, Money::fromPounds(12_570)->pence);
         $this->assertSame(12_345, Money::fromPence(12_345)->pence);
@@ -21,13 +21,13 @@ final class MoneyTest extends TestCase
         $this->assertSame(0, Money::zero()->pence);
     }
 
-    public function testOfRejectsOutOfRangePence(): void
+    public function test_of_rejects_out_of_range_pence(): void
     {
         $this->expectException(InvalidArgumentException::class);
         Money::of(5, 100);
     }
 
-    public function testAddingAndSubtracting(): void
+    public function test_adding_and_subtracting(): void
     {
         $a = Money::fromPounds(100);
         $b = Money::of(0, 50);
@@ -37,7 +37,7 @@ final class MoneyTest extends TestCase
         $this->assertSame(30_000, $a->times(3)->pence);
     }
 
-    public function testApplyRateRoundsToPence(): void
+    public function test_apply_rate_rounds_to_pence(): void
     {
         // £1.01 at 50% = 50.5p -> 51p half-up, 50p floored.
         $amount = Money::fromPence(101);
@@ -48,13 +48,13 @@ final class MoneyTest extends TestCase
         $this->assertSame(1_800_000, Money::fromPounds(45_000)->applyRate(Percent::fromPercent(40))->pence);
     }
 
-    public function testMinZeroClampsNegatives(): void
+    public function test_min_zero_clamps_negatives(): void
     {
         $this->assertSame(0, Money::fromPounds(-5)->minZero()->pence);
         $this->assertSame(500, Money::fromPounds(5)->minZero()->pence);
     }
 
-    public function testComparisonAndMinMax(): void
+    public function test_comparison_and_min_max(): void
     {
         $a = Money::fromPounds(10);
         $b = Money::fromPounds(20);
@@ -67,13 +67,13 @@ final class MoneyTest extends TestCase
         $this->assertSame($b->pence, Money::max($a, $b)->pence);
     }
 
-    public function testCurrencyMismatchThrows(): void
+    public function test_currency_mismatch_throws(): void
     {
         $this->expectException(InvalidArgumentException::class);
         Money::fromPounds(1, 'GBP')->plus(Money::fromPounds(1, 'EUR'));
     }
 
-    public function testFormatting(): void
+    public function test_formatting(): void
     {
         $this->assertSame('£1,234.56', Money::fromPence(123_456)->format());
         $this->assertSame('-£5.00', Money::fromPounds(-5)->format());

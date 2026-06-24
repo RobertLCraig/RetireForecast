@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Tax;
 
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\Percent;
 
 /**
  * The outcome of a full income-tax calculation across non-savings, savings and
@@ -21,7 +22,7 @@ use RetireForecast\FinanceEngine\Money\Money;
 final class ComprehensiveIncomeTaxResult
 {
     /**
-     * @param list<array{type: string, band: string, rate: \RetireForecast\FinanceEngine\Money\Percent, amount: Money, tax: Money}> $lines
+     * @param  list<array{type: string, band: string, rate: Percent, amount: Money, tax: Money}>  $lines
      */
     public function __construct(
         public readonly Money $total,
@@ -30,6 +31,5 @@ final class ComprehensiveIncomeTaxResult
         public readonly Money $savingsTax,
         public readonly Money $dividendsTax,
         public readonly array $lines,
-    ) {
-    }
+    ) {}
 }

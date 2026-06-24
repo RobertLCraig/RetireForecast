@@ -24,7 +24,7 @@ final class TaxYearRegistry
         if ($region === RegionProfile::Scotland) {
             throw new RuntimeException(
                 'Scottish income-tax bands are not loaded yet. Refusing to fall back to '
-                . 'rest-of-UK bands, which would silently produce wrong tax.'
+                .'rest-of-UK bands, which would silently produce wrong tax.'
             );
         }
 
@@ -69,11 +69,13 @@ final class TaxYearRegistry
                 mainRate: Percent::fromPercent(8),
                 upperRate: Percent::fromPercent(2),
             ),
+            pension: self::pensionParameters(),
             sources: [
                 'income_tax' => 'https://www.gov.uk/income-tax-rates',
                 'dividends' => 'https://www.gov.uk/tax-on-dividends',
                 'savings' => 'https://www.gov.uk/apply-tax-free-interest-on-savings',
                 'national_insurance' => 'https://www.gov.uk/national-insurance-rates-letters',
+                'pension' => 'https://www.gov.uk/tax-on-your-private-pension/annual-allowance',
             ],
             verifiedOn: '2026-06-24',
         );
@@ -115,13 +117,37 @@ final class TaxYearRegistry
                 mainRate: Percent::fromPercent(8),
                 upperRate: Percent::fromPercent(2),
             ),
+            pension: self::pensionParameters(),
             sources: [
                 'income_tax' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
                 'dividends' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
                 'savings' => 'https://www.gov.uk/apply-tax-free-interest-on-savings',
                 'national_insurance' => 'https://www.gov.uk/national-insurance-rates-letters',
+                'pension' => 'https://www.gov.uk/tax-on-your-private-pension/annual-allowance',
             ],
             verifiedOn: '2026-06-24',
+        );
+    }
+
+    /**
+     * Pension allowances and limits. Frozen since 6 April 2024, so the same object
+     * serves both tax years. ⚠️ The tapered-AA thresholds, the Lump Sum & Death
+     * Benefit Allowance and the 6 April 2028 rise of the minimum pension age to 57
+     * still need a confirmatory gov.uk citation before any figure is shown as real.
+     */
+    private static function pensionParameters(): PensionParameters
+    {
+        return new PensionParameters(
+            lumpSumAllowance: Money::fromPounds(268_275),
+            lumpSumAndDeathBenefitAllowance: Money::fromPounds(1_073_100),
+            annualAllowance: Money::fromPounds(60_000),
+            moneyPurchaseAnnualAllowance: Money::fromPounds(10_000),
+            taperedAaAdjustedIncomeThreshold: Money::fromPounds(260_000),
+            taperedAaThresholdIncomeLimit: Money::fromPounds(200_000),
+            taperedAaMinimum: Money::fromPounds(10_000),
+            taperRate: Percent::fromPercent(50),
+            pclsRate: Percent::fromPercent(25),
+            normalMinimumPensionAge: 55,
         );
     }
 }

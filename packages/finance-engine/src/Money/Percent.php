@@ -14,9 +14,7 @@ namespace RetireForecast\FinanceEngine\Money;
  */
 final class Percent
 {
-    private function __construct(public readonly int $basisPoints)
-    {
-    }
+    private function __construct(public readonly int $basisPoints) {}
 
     public static function fromPercent(int|float $percent): self
     {

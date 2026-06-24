@@ -15,7 +15,7 @@ namespace RetireForecast\FinanceEngine\TaxYear;
 final class TaxYearConfig
 {
     /**
-     * @param array<string, string> $sources figure group => gov.uk (or official) source URL
+     * @param  array<string, string>  $sources  figure group => gov.uk (or official) source URL
      */
     public function __construct(
         public readonly string $taxYear,
@@ -24,8 +24,8 @@ final class TaxYearConfig
         public readonly DividendParameters $dividends,
         public readonly SavingsParameters $savings,
         public readonly NationalInsuranceParameters $nationalInsurance,
+        public readonly PensionParameters $pension,
         public readonly array $sources,
         public readonly string $verifiedOn,
-    ) {
-    }
+    ) {}
 }

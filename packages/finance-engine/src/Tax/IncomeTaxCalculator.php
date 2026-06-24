@@ -20,9 +20,7 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  */
 final class IncomeTaxCalculator
 {
-    public function __construct(private readonly TaxYearConfig $config)
-    {
-    }
+    public function __construct(private readonly TaxYearConfig $config) {}
 
     /**
      * The personal allowance after the £1-per-£2 taper above the taper threshold.
@@ -42,10 +40,10 @@ final class IncomeTaxCalculator
     /**
      * Tax due on non-savings income.
      *
-     * @param Money      $income             the non-savings income to tax
-     * @param Money|null $totalIncomeForTaper total adjusted income for the allowance
-     *                                        taper; defaults to $income when there is
-     *                                        no other income on top
+     * @param  Money  $income  the non-savings income to tax
+     * @param  Money|null  $totalIncomeForTaper  total adjusted income for the allowance
+     *                                           taper; defaults to $income when there is
+     *                                           no other income on top
      */
     public function onNonSavingsIncome(Money $income, ?Money $totalIncomeForTaper = null): IncomeTaxResult
     {
@@ -205,9 +203,9 @@ final class IncomeTaxCalculator
      * the remainder at the rate the band maps to. Appends to $lines by reference
      * and returns the total tax for this income type.
      *
-     * @param list<array{name: string, pence: int}> $parts
-     * @param callable(string): Percent              $rateFor
-     * @param list<array{type: string, band: string, rate: Percent, amount: Money, tax: Money}> $lines
+     * @param  list<array{name: string, pence: int}>  $parts
+     * @param  callable(string): Percent  $rateFor
+     * @param  list<array{type: string, band: string, rate: Percent, amount: Money, tax: Money}>  $lines
      */
     private function taxParts(array $parts, string $type, callable $rateFor, int $zeroBudget, array &$lines): Money
     {

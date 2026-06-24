@@ -22,7 +22,7 @@ final class IncomeTaxCompositeTest extends TestCase
         return new IncomeTaxCalculator(TaxYearRegistry::for($taxYear));
     }
 
-    public function testNonSavingsOnlyMatchesTheSimpleCalculator(): void
+    public function test_non_savings_only_matches_the_simple_calculator(): void
     {
         // £20,000 non-savings: (£20,000 - £12,570) @ 20% = £1,486 — same as onNonSavingsIncome.
         $result = $this->calculator()->compute(
@@ -33,7 +33,7 @@ final class IncomeTaxCompositeTest extends TestCase
         $this->assertSame(148_600, $result->nonSavingsTax->pence);
     }
 
-    public function testSaverWithMaximumTaxFreeSavings(): void
+    public function test_saver_with_maximum_tax_free_savings(): void
     {
         // The classic "£18,570 of income, all tax-free for a saver":
         // £12,570 pension (covered by PA) + £6,000 interest, covered by the
@@ -47,7 +47,7 @@ final class IncomeTaxCompositeTest extends TestCase
         $this->assertSame(0, $result->total->pence);
     }
 
-    public function testSavingsBeyondStartingRateAndPsa(): void
+    public function test_savings_beyond_starting_rate_and_psa(): void
     {
         // £12,570 pension (uses PA) + £10,000 interest.
         // £5,000 starting rate @ 0% + £1,000 PSA @ 0% + £4,000 @ 20% = £800.
@@ -61,7 +61,7 @@ final class IncomeTaxCompositeTest extends TestCase
         $this->assertSame(80_000, $result->total->pence);
     }
 
-    public function testBasicRateDividends(): void
+    public function test_basic_rate_dividends(): void
     {
         // £12,570 pension (uses PA) + £5,000 dividends.
         // £500 dividend allowance @ 0% + £4,500 @ 8.75% ordinary = £393.75.
@@ -74,7 +74,7 @@ final class IncomeTaxCompositeTest extends TestCase
         $this->assertSame(39_375, $result->dividendsTax->pence);
     }
 
-    public function testDividendRatesRiseIn2026_27(): void
+    public function test_dividend_rates_rise_in2026_27(): void
     {
         $income = new TaxableIncome(
             nonSavings: Money::fromPounds(12_570),
@@ -87,7 +87,7 @@ final class IncomeTaxCompositeTest extends TestCase
         $this->assertSame(48_375, $this->calculator('2026-27')->compute($income)->dividendsTax->pence);
     }
 
-    public function testHigherRateMixOfAllThreeCategories(): void
+    public function test_higher_rate_mix_of_all_three_categories(): void
     {
         // £50,000 salary + £2,000 interest + £3,000 dividends (a higher-rate taxpayer).
         $result = $this->calculator()->compute(new TaxableIncome(
@@ -109,7 +109,7 @@ final class IncomeTaxCompositeTest extends TestCase
         $this->assertSame(892_975, $result->total->pence);
     }
 
-    public function testAdditionalRateTaxpayerGetsNoPsa(): void
+    public function test_additional_rate_taxpayer_gets_no_psa(): void
     {
         // £200,000 salary leaves the PA fully tapered and pushes savings into the
         // additional rate, where the PSA is £0.

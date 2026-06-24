@@ -20,6 +20,5 @@ final class DividendParameters
         public readonly Percent $ordinaryRate,
         public readonly Percent $upperRate,
         public readonly Percent $additionalRate,
-    ) {
-    }
+    ) {}
 }

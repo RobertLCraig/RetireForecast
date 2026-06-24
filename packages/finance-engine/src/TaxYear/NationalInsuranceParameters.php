@@ -20,6 +20,5 @@ final class NationalInsuranceParameters
         public readonly Money $upperEarningsLimit,
         public readonly Percent $mainRate,
         public readonly Percent $upperRate,
-    ) {
-    }
+    ) {}
 }

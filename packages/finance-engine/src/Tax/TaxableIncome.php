@@ -23,8 +23,7 @@ final class TaxableIncome
         public readonly Money $nonSavings,
         public readonly Money $savings,
         public readonly Money $dividends,
-    ) {
-    }
+    ) {}
 
     public static function ofNonSavings(Money $nonSavings): self
     {

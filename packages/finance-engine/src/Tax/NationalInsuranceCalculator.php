@@ -23,13 +23,11 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  */
 final class NationalInsuranceCalculator
 {
-    public function __construct(private readonly TaxYearConfig $config)
-    {
-    }
+    public function __construct(private readonly TaxYearConfig $config) {}
 
     /**
-     * @param bool $hasReachedStatePensionAge when true, no NI is due regardless of
-     *                                         earnings (NI ends at State Pension age)
+     * @param  bool  $hasReachedStatePensionAge  when true, no NI is due regardless of
+     *                                           earnings (NI ends at State Pension age)
      */
     public function onEmploymentEarnings(Money $earnings, bool $hasReachedStatePensionAge = false): NationalInsuranceResult
     {
