@@ -50,6 +50,9 @@ final class HousingComparison
     ) {}
 
     /**
+     * @param  (callable(float $fraction): void)|null  $onProgress
+     *                                                              Optional progress hook called with the overall fraction complete (0..1)
+     *                                                              across the three variants. Throwing from it aborts the comparison.
      * @return array{stay_put: SimulationResult, buy_outright: SimulationResult, rent: SimulationResult}
      */
     public function compare(
@@ -59,11 +62,17 @@ final class HousingComparison
         HousingAction $action,
         int $nPaths,
         int $seed,
+        ?callable $onProgress = null,
     ): array {
         $simulator = new Simulator($this->config);
         $netProceeds = $this->netSaleProceeds($household, $action);
 
-        $stayPut = $simulator->run($household, $settings, $assumptions, $this->lifeTable, $nPaths, $seed);
+        // Each variant fills one third of the overall progress bar.
+        $variantProgress = static fn (int $i): ?callable => $onProgress === null
+            ? null
+            : static fn (int $completed, int $total): mixed => $onProgress(($i + $completed / $total) / 3);
+
+        $stayPut = $simulator->run($household, $settings, $assumptions, $this->lifeTable, $nPaths, $seed, $variantProgress(0));
 
         $buyResult = $simulator->run(
             $this->buyVariant($household, $action, $netProceeds),
@@ -72,6 +81,7 @@ final class HousingComparison
             $this->lifeTable,
             $nPaths,
             $seed,
+            $variantProgress(1),
         );
 
         $rentResult = $simulator->run(
@@ -81,6 +91,7 @@ final class HousingComparison
             $this->lifeTable,
             $nPaths,
             $seed,
+            $variantProgress(2),
         );
 
         return ['stay_put' => $stayPut, 'buy_outright' => $buyResult, 'rent' => $rentResult];

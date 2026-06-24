@@ -59,9 +59,10 @@ final class ScenarioForecaster
      * The buy-vs-rent headline: stay-put, buy-cheaper-outright and sell-and-rent run
      * on identical seeds, so any difference is the housing choice alone.
      *
+     * @param  (callable(float $fraction): void)|null  $onProgress  overall 0..1; throwing aborts the run
      * @return array{stay_put: SimulationResult, buy_outright: SimulationResult, rent: SimulationResult}
      */
-    public function compareHousing(Scenario $scenario, int $nPaths, int $seed): array
+    public function compareHousing(Scenario $scenario, int $nPaths, int $seed, ?callable $onProgress = null): array
     {
         return (new HousingComparison($this->config($scenario), new CohortLifeTable))->compare(
             $this->household($scenario),
@@ -70,6 +71,7 @@ final class ScenarioForecaster
             $this->housingAction($scenario),
             $nPaths,
             $seed,
+            $onProgress,
         );
     }
 

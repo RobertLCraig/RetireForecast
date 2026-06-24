@@ -28,6 +28,12 @@ final class Simulator
 {
     public function __construct(private readonly TaxYearConfig $config) {}
 
+    /**
+     * @param  (callable(int $completedPaths, int $totalPaths): void)|null  $onProgress
+     *                                                                                   Optional progress hook, called periodically as paths complete. It carries no
+     *                                                                                   I/O itself (the engine stays clock- and I/O-free); a caller may use it to
+     *                                                                                   report progress or, by throwing, to abort the run early.
+     */
     public function run(
         Household $household,
         ForecastSettings $settings,
@@ -35,7 +41,9 @@ final class Simulator
         CohortLifeTable $lifeTable,
         int $nPaths,
         int $seed,
+        ?callable $onProgress = null,
     ): SimulationResult {
+        $progressStep = max(1, intdiv($nPaths, 100));
         $rng = new Randomizer(new Mt19937($seed));
         $returnModel = new ReturnModel($assumptions, $settings->allocation());
         $jointLife = new JointLifeSampler($lifeTable);
@@ -74,6 +82,13 @@ final class Simulator
 
             foreach ($result->years as $year) {
                 $wealthByYearIndex[$year->yearIndex][] = $year->totalWealth->pence;
+            }
+
+            if ($onProgress !== null) {
+                $completed = $p + 1;
+                if ($completed === $nPaths || $completed % $progressStep === 0) {
+                    $onProgress($completed, $nPaths);
+                }
             }
         }
 
