@@ -70,12 +70,22 @@ final class TaxYearRegistry
                 upperRate: Percent::fromPercent(2),
             ),
             pension: self::pensionParameters(),
+            statePension: new StatePensionParameters(
+                newStatePensionWeekly: Money::of(230, 25),
+                basicStatePensionWeekly: Money::of(176, 45),
+                fullQualifyingYears: 35,
+                minimumQualifyingYears: 10,
+                weeksPerYear: 52,
+                deferralWeeksPerUpliftStep: 9,
+                deferralUpliftPerStep: Percent::fromPercent(1),
+            ),
             sources: [
                 'income_tax' => 'https://www.gov.uk/income-tax-rates',
                 'dividends' => 'https://www.gov.uk/tax-on-dividends',
                 'savings' => 'https://www.gov.uk/apply-tax-free-interest-on-savings',
                 'national_insurance' => 'https://www.gov.uk/national-insurance-rates-letters',
                 'pension' => 'https://www.gov.uk/tax-on-your-private-pension/annual-allowance',
+                'state_pension' => 'https://www.gov.uk/new-state-pension/what-youll-get',
             ],
             verifiedOn: '2026-06-24',
         );
@@ -118,12 +128,23 @@ final class TaxYearRegistry
                 upperRate: Percent::fromPercent(2),
             ),
             pension: self::pensionParameters(),
+            statePension: new StatePensionParameters(
+                // Triple lock uprating of +4.8% applied to the 2025/26 weekly rates.
+                newStatePensionWeekly: Money::of(241, 30),
+                basicStatePensionWeekly: Money::of(184, 90),
+                fullQualifyingYears: 35,
+                minimumQualifyingYears: 10,
+                weeksPerYear: 52,
+                deferralWeeksPerUpliftStep: 9,
+                deferralUpliftPerStep: Percent::fromPercent(1),
+            ),
             sources: [
                 'income_tax' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
                 'dividends' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
                 'savings' => 'https://www.gov.uk/apply-tax-free-interest-on-savings',
                 'national_insurance' => 'https://www.gov.uk/national-insurance-rates-letters',
                 'pension' => 'https://www.gov.uk/tax-on-your-private-pension/annual-allowance',
+                'state_pension' => 'https://www.gov.uk/new-state-pension/what-youll-get',
             ],
             verifiedOn: '2026-06-24',
         );
