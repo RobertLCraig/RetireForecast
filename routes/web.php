@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Livewire\Dashboard;
+use App\Livewire\ScenarioBuilder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +15,7 @@ Route::get('/', function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', Dashboard::class)->name('dashboard');
+    Route::get('/scenarios/create', ScenarioBuilder::class)->name('scenarios.create');
 
     // GDPR data-subject controls for the signed-in user. Anonymous callers cannot
     // reach these; anonymous use of the app writes nothing server-side.

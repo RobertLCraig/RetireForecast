@@ -1,0 +1,485 @@
+@php
+    $field = 'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500';
+    $label = 'block text-sm font-medium text-gray-700';
+    $section = 'rounded-lg border border-gray-200 bg-white p-5';
+    $legend = 'text-lg font-semibold text-gray-900';
+    $ownerOptions = collect($people)->map(fn ($p, $i) => ['id' => $p['id'], 'label' => 'Person '.($i + 1)])->all();
+@endphp
+
+<div class="space-y-6">
+    <div>
+        <h1 class="text-2xl font-semibold text-gray-900">New forecast</h1>
+        <p class="mt-1 text-sm text-gray-600">
+            Enter the household and the housing decision to compare. Figures are stored encrypted and private to your
+            account. This tool illustrates consequences; it does not recommend a course of action.
+        </p>
+    </div>
+
+    @if ($errors->any())
+        <div role="alert" class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <p class="font-medium">Please fix the following before saving:</p>
+            <ul class="mt-1 list-disc pl-5">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <form wire:submit="save" class="space-y-6">
+        {{-- Scenario meta -------------------------------------------------------- --}}
+        <fieldset class="{{ $section }}">
+            <legend class="{{ $legend }}">This forecast</legend>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label for="name" class="{{ $label }}">Forecast name</label>
+                    <input id="name" type="text" wire:model="name" class="{{ $field }}">
+                    @error('name') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="householdName" class="{{ $label }}">Household name</label>
+                    <input id="householdName" type="text" wire:model="householdName" class="{{ $field }}">
+                    @error('householdName') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="region" class="{{ $label }}">Tax region</label>
+                    <select id="region" wire:model="region" class="{{ $field }}">
+                        <option value="england_wales_ni">England, Wales &amp; Northern Ireland</option>
+                        <option value="scotland">Scotland</option>
+                    </select>
+                    @error('region') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="baseTaxYear" class="{{ $label }}">Base tax year</label>
+                    <select id="baseTaxYear" wire:model="baseTaxYear" class="{{ $field }}">
+                        <option value="2025-26">2025-26</option>
+                        <option value="2026-27">2026-27</option>
+                    </select>
+                    @error('baseTaxYear') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="variant" class="{{ $label }}">Primary option</label>
+                    <select id="variant" wire:model="variant" class="{{ $field }}">
+                        <option value="stay_put">Stay put</option>
+                        <option value="buy_outright">Sell &amp; buy cheaper outright</option>
+                        <option value="rent">Sell &amp; rent</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">All three are run and compared; this is just the headline.</p>
+                </div>
+                <div>
+                    <label for="assumptionSetId" class="{{ $label }}">Assumption set</label>
+                    <select id="assumptionSetId" wire:model="assumptionSetId" class="{{ $field }}">
+                        <option value="">Engine default</option>
+                        @foreach ($assumptionSets as $set)
+                            <option value="{{ $set->id }}">{{ $set->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="flex items-center gap-2 text-sm text-gray-700">
+                        <input type="checkbox" wire:model="ihtModelled" class="rounded border-gray-300">
+                        Model inheritance tax (estate &amp; legacy)
+                    </label>
+                </div>
+            </div>
+        </fieldset>
+
+        {{-- People --------------------------------------------------------------- --}}
+        <fieldset class="{{ $section }}">
+            <legend class="{{ $legend }}">People</legend>
+            @foreach ($people as $i => $person)
+                <div wire:key="person-{{ $i }}" class="mt-4 rounded-md border border-gray-100 bg-gray-50 p-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-medium text-gray-800">Person {{ $i + 1 }}</h3>
+                        @if (count($people) > 1)
+                            <button type="button" wire:click="removePerson({{ $i }})" class="text-sm text-red-700 underline">Remove</button>
+                        @endif
+                    </div>
+                    <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <div>
+                            <label for="people-{{ $i }}-dob" class="{{ $label }}">Date of birth</label>
+                            <input id="people-{{ $i }}-dob" type="date" wire:model="people.{{ $i }}.dob" class="{{ $field }}">
+                            @error('people.'.$i.'.dob') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label for="people-{{ $i }}-sex" class="{{ $label }}">Sex (for mortality table)</label>
+                            <select id="people-{{ $i }}-sex" wire:model="people.{{ $i }}.sex" class="{{ $field }}">
+                                <option value="female">Female</option>
+                                <option value="male">Male</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="people-{{ $i }}-employmentStatus" class="{{ $label }}">Employment</label>
+                            <select id="people-{{ $i }}-employmentStatus" wire:model="people.{{ $i }}.employmentStatus" class="{{ $field }}">
+                                <option value="employed">Employed</option>
+                                <option value="self_employed">Self-employed</option>
+                                <option value="retired">Retired</option>
+                                <option value="not_working">Not working</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="people-{{ $i }}-grossSalary" class="{{ $label }}">Gross salary (£/yr)</label>
+                            <input id="people-{{ $i }}-grossSalary" type="text" inputmode="decimal" wire:model="people.{{ $i }}.grossSalary" class="{{ $field }}">
+                            @error('people.'.$i.'.grossSalary') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label for="people-{{ $i }}-salaryGrowth" class="{{ $label }}">Salary growth (%/yr)</label>
+                            <input id="people-{{ $i }}-salaryGrowth" type="text" inputmode="decimal" wire:model="people.{{ $i }}.salaryGrowth" class="{{ $field }}">
+                        </div>
+                        <div>
+                            <label for="people-{{ $i }}-plannedRetirementAge" class="{{ $label }}">Planned retirement age</label>
+                            <input id="people-{{ $i }}-plannedRetirementAge" type="number" wire:model="people.{{ $i }}.plannedRetirementAge" class="{{ $field }}">
+                            @error('people.'.$i.'.plannedRetirementAge') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+            @if (count($people) < 2)
+                <button type="button" wire:click="addPerson" class="mt-4 rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100">+ Add a second person</button>
+            @endif
+        </fieldset>
+
+        {{-- Pensions ------------------------------------------------------------- --}}
+        <fieldset class="{{ $section }}">
+            <legend class="{{ $legend }}">Pensions</legend>
+            @forelse ($pensions as $i => $pension)
+                <div wire:key="pension-{{ $i }}" class="mt-4 rounded-md border border-gray-100 bg-gray-50 p-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-medium text-gray-800">
+                            {{ ['dc' => 'Defined contribution', 'db' => 'Defined benefit', 'state' => 'State pension'][$pension['subtype']] }}
+                        </h3>
+                        <button type="button" wire:click="removePension({{ $i }})" class="text-sm text-red-700 underline">Remove</button>
+                    </div>
+                    <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <div>
+                            <label for="pensions-{{ $i }}-ownerId" class="{{ $label }}">Owner</label>
+                            <select id="pensions-{{ $i }}-ownerId" wire:model="pensions.{{ $i }}.ownerId" class="{{ $field }}">
+                                @foreach ($ownerOptions as $o)
+                                    <option value="{{ $o['id'] }}">{{ $o['label'] }}</option>
+                                @endforeach
+                            </select>
+                            @error('pensions.'.$i.'.ownerId') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                        </div>
+
+                        @if ($pension['subtype'] === 'dc')
+                            <div>
+                                <label for="pensions-{{ $i }}-currentValue" class="{{ $label }}">Current pot value (£)</label>
+                                <input id="pensions-{{ $i }}-currentValue" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.currentValue" class="{{ $field }}">
+                                @error('pensions.'.$i.'.currentValue') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="pensions-{{ $i }}-earliestAccessAge" class="{{ $label }}">Earliest access age</label>
+                                <input id="pensions-{{ $i }}-earliestAccessAge" type="number" wire:model="pensions.{{ $i }}.earliestAccessAge" class="{{ $field }}">
+                                @error('pensions.'.$i.'.earliestAccessAge') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="pensions-{{ $i }}-ongoingContribution" class="{{ $label }}">Your contribution (£/yr)</label>
+                                <input id="pensions-{{ $i }}-ongoingContribution" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.ongoingContribution" class="{{ $field }}">
+                            </div>
+                            <div>
+                                <label for="pensions-{{ $i }}-employerContribution" class="{{ $label }}">Employer contribution (£/yr)</label>
+                                <input id="pensions-{{ $i }}-employerContribution" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.employerContribution" class="{{ $field }}">
+                            </div>
+                            <div>
+                                <label for="pensions-{{ $i }}-growthAssumptionOverride" class="{{ $label }}">Growth override (%/yr, optional)</label>
+                                <input id="pensions-{{ $i }}-growthAssumptionOverride" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.growthAssumptionOverride" class="{{ $field }}">
+                            </div>
+                            <div>
+                                <label for="pensions-{{ $i }}-pclsTakenToDate" class="{{ $label }}">Tax-free cash already taken (£)</label>
+                                <input id="pensions-{{ $i }}-pclsTakenToDate" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.pclsTakenToDate" class="{{ $field }}">
+                            </div>
+                            <div class="sm:col-span-2 lg:col-span-3">
+                                <p class="{{ $label }} mb-2">Planned withdrawals</p>
+                                @foreach ($pension['withdrawals'] as $wi => $w)
+                                    <div wire:key="pension-{{ $i }}-wd-{{ $wi }}" class="mb-2 grid items-end gap-2 sm:grid-cols-4">
+                                        <div>
+                                            <label for="pensions-{{ $i }}-wd-{{ $wi }}-kind" class="text-xs text-gray-600">Kind</label>
+                                            <select id="pensions-{{ $i }}-wd-{{ $wi }}-kind" wire:model="pensions.{{ $i }}.withdrawals.{{ $wi }}.kind" class="{{ $field }}">
+                                                <option value="pcls">Tax-free lump (PCLS)</option>
+                                                <option value="ufpls">UFPLS</option>
+                                                <option value="drawdown">Drawdown income</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label for="pensions-{{ $i }}-wd-{{ $wi }}-amount" class="text-xs text-gray-600">Amount (£)</label>
+                                            <input id="pensions-{{ $i }}-wd-{{ $wi }}-amount" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.withdrawals.{{ $wi }}.amount" class="{{ $field }}">
+                                            @error('pensions.'.$i.'.withdrawals.'.$wi.'.amount') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div>
+                                            <label for="pensions-{{ $i }}-wd-{{ $wi }}-atAge" class="text-xs text-gray-600">At age</label>
+                                            <input id="pensions-{{ $i }}-wd-{{ $wi }}-atAge" type="number" wire:model="pensions.{{ $i }}.withdrawals.{{ $wi }}.atAge" class="{{ $field }}">
+                                            @error('pensions.'.$i.'.withdrawals.'.$wi.'.atAge') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                                        </div>
+                                        <button type="button" wire:click="removeWithdrawal({{ $i }}, {{ $wi }})" class="mb-2 text-sm text-red-700 underline">Remove</button>
+                                    </div>
+                                @endforeach
+                                <button type="button" wire:click="addWithdrawal({{ $i }})" class="mt-1 rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100">+ Add withdrawal</button>
+                            </div>
+                        @elseif ($pension['subtype'] === 'db')
+                            <div>
+                                <label for="pensions-{{ $i }}-accruedAnnualPension" class="{{ $label }}">Annual pension (£/yr)</label>
+                                <input id="pensions-{{ $i }}-accruedAnnualPension" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.accruedAnnualPension" class="{{ $field }}">
+                                @error('pensions.'.$i.'.accruedAnnualPension') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="pensions-{{ $i }}-normalRetirementAge" class="{{ $label }}">Normal retirement age</label>
+                                <input id="pensions-{{ $i }}-normalRetirementAge" type="number" wire:model="pensions.{{ $i }}.normalRetirementAge" class="{{ $field }}">
+                                @error('pensions.'.$i.'.normalRetirementAge') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="pensions-{{ $i }}-revaluationBasis" class="{{ $label }}">Revaluation (pre-payment)</label>
+                                <select id="pensions-{{ $i }}-revaluationBasis" wire:model="pensions.{{ $i }}.revaluationBasis" class="{{ $field }}">
+                                    <option value="none">None</option>
+                                    <option value="cpi">CPI</option>
+                                    <option value="rpi">RPI</option>
+                                    <option value="cpi_capped_5">CPI capped at 5%</option>
+                                    <option value="fixed">Fixed</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="pensions-{{ $i }}-escalationInPayment" class="{{ $label }}">Escalation (in payment)</label>
+                                <select id="pensions-{{ $i }}-escalationInPayment" wire:model="pensions.{{ $i }}.escalationInPayment" class="{{ $field }}">
+                                    <option value="none">None</option>
+                                    <option value="cpi">CPI</option>
+                                    <option value="rpi">RPI</option>
+                                    <option value="cpi_capped_5">CPI capped at 5%</option>
+                                    <option value="fixed">Fixed</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="pensions-{{ $i }}-spousePensionFraction" class="{{ $label }}">Survivor fraction (%)</label>
+                                <input id="pensions-{{ $i }}-spousePensionFraction" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.spousePensionFraction" class="{{ $field }}">
+                            </div>
+                            <div>
+                                <label for="pensions-{{ $i }}-commutationLumpSum" class="{{ $label }}">Commutation lump sum (£, optional)</label>
+                                <input id="pensions-{{ $i }}-commutationLumpSum" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.commutationLumpSum" class="{{ $field }}">
+                            </div>
+                        @else
+                            <div>
+                                <label for="pensions-{{ $i }}-weeklyForecast" class="{{ $label }}">Weekly forecast (£, from statement)</label>
+                                <input id="pensions-{{ $i }}-weeklyForecast" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.weeklyForecast" class="{{ $field }}">
+                                @error('pensions.'.$i.'.weeklyForecast') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="pensions-{{ $i }}-qualifyingYears" class="{{ $label }}">…or qualifying years</label>
+                                <input id="pensions-{{ $i }}-qualifyingYears" type="number" wire:model="pensions.{{ $i }}.qualifyingYears" class="{{ $field }}">
+                            </div>
+                            <div>
+                                <label for="pensions-{{ $i }}-deferralWeeks" class="{{ $label }}">Deferral (weeks)</label>
+                                <input id="pensions-{{ $i }}-deferralWeeks" type="number" wire:model="pensions.{{ $i }}.deferralWeeks" class="{{ $field }}">
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @empty
+                <p class="mt-3 text-sm text-gray-500">No pensions added.</p>
+            @endforelse
+            <div class="mt-4 flex flex-wrap gap-2">
+                <button type="button" wire:click="addPension('dc')" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100">+ DC pension</button>
+                <button type="button" wire:click="addPension('db')" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100">+ DB pension</button>
+                <button type="button" wire:click="addPension('state')" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100">+ State pension</button>
+            </div>
+        </fieldset>
+
+        {{-- Accounts ------------------------------------------------------------- --}}
+        <fieldset class="{{ $section }}">
+            <legend class="{{ $legend }}">Savings &amp; investments</legend>
+            @foreach ($accounts as $i => $account)
+                <div wire:key="account-{{ $i }}" class="mt-4 grid items-end gap-3 sm:grid-cols-5">
+                    <div>
+                        <label for="accounts-{{ $i }}-ownerId" class="text-xs text-gray-600">Owner</label>
+                        <select id="accounts-{{ $i }}-ownerId" wire:model="accounts.{{ $i }}.ownerId" class="{{ $field }}">
+                            @foreach ($ownerOptions as $o)<option value="{{ $o['id'] }}">{{ $o['label'] }}</option>@endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="accounts-{{ $i }}-type" class="text-xs text-gray-600">Type</label>
+                        <select id="accounts-{{ $i }}-type" wire:model="accounts.{{ $i }}.type" class="{{ $field }}">
+                            <option value="isa">ISA</option>
+                            <option value="gia">General (GIA)</option>
+                            <option value="cash">Cash</option>
+                            <option value="premium_bonds">Premium bonds</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="accounts-{{ $i }}-balance" class="text-xs text-gray-600">Balance (£)</label>
+                        <input id="accounts-{{ $i }}-balance" type="text" inputmode="decimal" wire:model="accounts.{{ $i }}.balance" class="{{ $field }}">
+                        @error('accounts.'.$i.'.balance') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="accounts-{{ $i }}-yield" class="text-xs text-gray-600">Yield (%/yr)</label>
+                        <input id="accounts-{{ $i }}-yield" type="text" inputmode="decimal" wire:model="accounts.{{ $i }}.yield" class="{{ $field }}">
+                    </div>
+                    <button type="button" wire:click="removeAccount({{ $i }})" class="mb-2 text-sm text-red-700 underline">Remove</button>
+                </div>
+            @endforeach
+            <button type="button" wire:click="addAccount" class="mt-4 rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100">+ Add account</button>
+        </fieldset>
+
+        {{-- Income streams ------------------------------------------------------- --}}
+        <fieldset class="{{ $section }}">
+            <legend class="{{ $legend }}">Other income</legend>
+            @foreach ($incomeStreams as $i => $stream)
+                <div wire:key="income-{{ $i }}" class="mt-4 grid items-end gap-3 sm:grid-cols-6">
+                    <div>
+                        <label for="incomeStreams-{{ $i }}-ownerId" class="text-xs text-gray-600">Owner</label>
+                        <select id="incomeStreams-{{ $i }}-ownerId" wire:model="incomeStreams.{{ $i }}.ownerId" class="{{ $field }}">
+                            @foreach ($ownerOptions as $o)<option value="{{ $o['id'] }}">{{ $o['label'] }}</option>@endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="incomeStreams-{{ $i }}-type" class="text-xs text-gray-600">Type</label>
+                        <select id="incomeStreams-{{ $i }}-type" wire:model="incomeStreams.{{ $i }}.type" class="{{ $field }}">
+                            <option value="rental">Rental</option>
+                            <option value="annuity">Annuity</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="incomeStreams-{{ $i }}-grossAnnual" class="text-xs text-gray-600">Gross (£/yr)</label>
+                        <input id="incomeStreams-{{ $i }}-grossAnnual" type="text" inputmode="decimal" wire:model="incomeStreams.{{ $i }}.grossAnnual" class="{{ $field }}">
+                        @error('incomeStreams.'.$i.'.grossAnnual') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="incomeStreams-{{ $i }}-startAge" class="text-xs text-gray-600">Start age</label>
+                        <input id="incomeStreams-{{ $i }}-startAge" type="number" wire:model="incomeStreams.{{ $i }}.startAge" class="{{ $field }}">
+                        @error('incomeStreams.'.$i.'.startAge') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="incomeStreams-{{ $i }}-endAge" class="text-xs text-gray-600">End age (optional)</label>
+                        <input id="incomeStreams-{{ $i }}-endAge" type="number" wire:model="incomeStreams.{{ $i }}.endAge" class="{{ $field }}">
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <label class="flex items-center gap-1 text-xs text-gray-600"><input type="checkbox" wire:model="incomeStreams.{{ $i }}.taxable" class="rounded border-gray-300"> Taxable</label>
+                        <button type="button" wire:click="removeIncome({{ $i }})" class="text-sm text-red-700 underline">Remove</button>
+                    </div>
+                </div>
+            @endforeach
+            <button type="button" wire:click="addIncome" class="mt-4 rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100">+ Add income</button>
+        </fieldset>
+
+        {{-- Spending -------------------------------------------------------------- --}}
+        <fieldset class="{{ $section }}">
+            <legend class="{{ $legend }}">Spending</legend>
+            <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                <div>
+                    <label for="expense-essential" class="{{ $label }}">Essential spend (£/yr)</label>
+                    <input id="expense-essential" type="text" inputmode="decimal" wire:model="expense.essential" class="{{ $field }}">
+                    <p class="mt-1 text-xs text-gray-500">The floor used for the "essentials always met" measure.</p>
+                    @error('expense.essential') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="expense-discretionary" class="{{ $label }}">Discretionary spend (£/yr)</label>
+                    <input id="expense-discretionary" type="text" inputmode="decimal" wire:model="expense.discretionary" class="{{ $field }}">
+                </div>
+                <div>
+                    <label for="expense-survivorFactor" class="{{ $label }}">Survivor spend (% of couple's)</label>
+                    <input id="expense-survivorFactor" type="text" inputmode="decimal" wire:model="expense.survivorFactor" class="{{ $field }}">
+                </div>
+            </div>
+
+            <p class="{{ $label }} mt-5 mb-2">One-off costs</p>
+            @foreach ($oneOffCosts as $i => $cost)
+                <div wire:key="oneoff-{{ $i }}" class="mb-2 grid items-end gap-2 sm:grid-cols-4">
+                    <div>
+                        <label for="oneOffCosts-{{ $i }}-atAge" class="text-xs text-gray-600">At age</label>
+                        <input id="oneOffCosts-{{ $i }}-atAge" type="number" wire:model="oneOffCosts.{{ $i }}.atAge" class="{{ $field }}">
+                        @error('oneOffCosts.'.$i.'.atAge') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="oneOffCosts-{{ $i }}-amount" class="text-xs text-gray-600">Amount (£)</label>
+                        <input id="oneOffCosts-{{ $i }}-amount" type="text" inputmode="decimal" wire:model="oneOffCosts.{{ $i }}.amount" class="{{ $field }}">
+                        @error('oneOffCosts.'.$i.'.amount') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="oneOffCosts-{{ $i }}-label" class="text-xs text-gray-600">Label</label>
+                        <input id="oneOffCosts-{{ $i }}-label" type="text" wire:model="oneOffCosts.{{ $i }}.label" class="{{ $field }}">
+                    </div>
+                    <button type="button" wire:click="removeOneOff({{ $i }})" class="mb-2 text-sm text-red-700 underline">Remove</button>
+                </div>
+            @endforeach
+            <button type="button" wire:click="addOneOff" class="mt-1 rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100">+ Add one-off cost</button>
+        </fieldset>
+
+        {{-- Property -------------------------------------------------------------- --}}
+        <fieldset class="{{ $section }}">
+            <legend class="{{ $legend }}">Current home</legend>
+            <label class="mt-3 flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" wire:model.live="hasProperty" class="rounded border-gray-300"> The household owns its home
+            </label>
+            @if ($hasProperty)
+                <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                    <div>
+                        <label for="property-currentValue" class="{{ $label }}">Current value (£)</label>
+                        <input id="property-currentValue" type="text" inputmode="decimal" wire:model="property.currentValue" class="{{ $field }}">
+                        @error('property.currentValue') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="property-ownership" class="{{ $label }}">Ownership</label>
+                        <select id="property-ownership" wire:model="property.ownership" class="{{ $field }}">
+                            <option value="outright">Owned outright</option>
+                            <option value="mortgaged">Mortgaged</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="property-outstandingMortgage" class="{{ $label }}">Outstanding mortgage (£)</label>
+                        <input id="property-outstandingMortgage" type="text" inputmode="decimal" wire:model="property.outstandingMortgage" class="{{ $field }}">
+                    </div>
+                    <div>
+                        <label for="property-runningCosts" class="{{ $label }}">Running costs (£/yr)</label>
+                        <input id="property-runningCosts" type="text" inputmode="decimal" wire:model="property.runningCosts" class="{{ $field }}">
+                    </div>
+                    <div>
+                        <label for="property-growthAssumptionOverride" class="{{ $label }}">Growth override (%/yr)</label>
+                        <input id="property-growthAssumptionOverride" type="text" inputmode="decimal" wire:model="property.growthAssumptionOverride" class="{{ $field }}">
+                    </div>
+                    <div>
+                        <label class="mt-7 flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" wire:model="property.everLet" class="rounded border-gray-300"> Ever let (restricts PRR)
+                        </label>
+                    </div>
+                </div>
+            @endif
+        </fieldset>
+
+        {{-- Housing decision ----------------------------------------------------- --}}
+        <fieldset class="{{ $section }}">
+            <legend class="{{ $legend }}">The housing decision to compare</legend>
+            <p class="mt-1 text-sm text-gray-600">Stay put, buy somewhere cheaper outright, or sell and rent are run on identical seeds.</p>
+            <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                <div>
+                    <label for="housing-salePrice" class="{{ $label }}">Assumed sale price (£)</label>
+                    <input id="housing-salePrice" type="text" inputmode="decimal" wire:model="housing.salePrice" class="{{ $field }}">
+                    @error('housing.salePrice') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="housing-buyPrice" class="{{ $label }}">Cheaper home price (£)</label>
+                    <input id="housing-buyPrice" type="text" inputmode="decimal" wire:model="housing.buyPrice" class="{{ $field }}">
+                </div>
+                <div>
+                    <label for="housing-annualRent" class="{{ $label }}">Annual rent if renting (£)</label>
+                    <input id="housing-annualRent" type="text" inputmode="decimal" wire:model="housing.annualRent" class="{{ $field }}">
+                </div>
+                <div>
+                    <label for="housing-rentInflationReal" class="{{ $label }}">Rent inflation (real %/yr)</label>
+                    <input id="housing-rentInflationReal" type="text" inputmode="decimal" wire:model="housing.rentInflationReal" class="{{ $field }}">
+                </div>
+                <div>
+                    <label for="housing-movingCosts" class="{{ $label }}">Moving costs (£)</label>
+                    <input id="housing-movingCosts" type="text" inputmode="decimal" wire:model="housing.movingCosts" class="{{ $field }}">
+                </div>
+                <div>
+                    <label for="housing-sellingCostRate" class="{{ $label }}">Selling cost (% of sale)</label>
+                    <input id="housing-sellingCostRate" type="text" inputmode="decimal" wire:model="housing.sellingCostRate" class="{{ $field }}">
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="flex items-center justify-end gap-3">
+            <a href="{{ route('dashboard') }}" class="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100">Cancel</a>
+            <button type="submit" class="rounded-md bg-blue-600 px-5 py-2 font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Save forecast
+            </button>
+        </div>
+    </form>
+</div>

@@ -24,6 +24,7 @@
                 <ul class="flex items-center gap-4 text-sm">
                     @auth
                         <li><a href="{{ route('dashboard') }}" class="rounded px-3 py-1.5 hover:bg-gray-100">Dashboard</a></li>
+                        <li><a href="{{ route('scenarios.create') }}" class="rounded px-3 py-1.5 hover:bg-gray-100">New forecast</a></li>
                         <li>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
