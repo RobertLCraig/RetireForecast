@@ -22,10 +22,15 @@ class PayAndExpendituresTest extends TestCase
                 ['Person Yearly Salary', '30000', '2500'],   // column B is the yearly figure
                 ['Total Pay', '41772', '3481'],
                 [],
-                ['', 'Deduction Amount', '% of Total Pay'],  // deductions header — NOT the expenditure one
+                // Decoy deductions header: reuses "Expenditure Item" / "Deduction Amount"
+                // but has only "% of Total Pay" — must NOT be picked as the expenditure block.
+                ['Expenditure Item', 'Deduction Amount', '% of Total Pay', '', 'Item', 'Cost'],
                 ['P.A.Y.E', '250'],
+                ['Mum Take home', '900'],            // decoy: label contains "take home"
+                ['Combined Take home Pay', '1500'],  // decoy: label contains "take home"
                 [],
-                ['', 'Deduction Amount', '% of Total Pay', '% of Take Home Pay', 'Notes'], // expenditure header
+                // The real expenditure header — the only one with "% of Take Home Pay".
+                ['Expenditure Item', 'Deduction Amount', '% of Total Pay', '% of Take Home Pay', 'Notes'],
                 ['Mortgage', '1000'],
                 ['Council Tax', '167'],
                 ['Netflix', '15'],

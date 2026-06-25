@@ -90,10 +90,8 @@ final class PayAndExpenditures implements ImportProfile
         foreach ($sheet->sheetNames() as $name) {
             $rows = $sheet->rows($name);
             foreach ($rows as $cells) {
-                foreach ($cells as $cell) {
-                    if (str_contains(strtolower($cell), 'take home')) {
-                        return [$name, $rows];
-                    }
+                if ($this->isExpenditureHeader($cells)) {
+                    return [$name, $rows];
                 }
             }
         }
@@ -105,14 +103,32 @@ final class PayAndExpenditures implements ImportProfile
     private function expenditureHeaderRow(array $rows): int
     {
         foreach ($rows as $i => $cells) {
-            foreach ($cells as $cell) {
-                if (str_contains(strtolower($cell), 'take home')) {
-                    return $i;
-                }
+            if ($this->isExpenditureHeader($cells)) {
+                return $i;
             }
         }
 
         return 0;
+    }
+
+    /**
+     * The expenditure header row, identified ONLY by "% of Take Home Pay" in a cell.
+     * That phrase is unique to it: the bare "take home" also appears in deduction row
+     * labels ("Mum Take home", "Combined Take home Pay") just above, and "Expenditure
+     * Item" / "Deduction Amount" are reused by the deductions header higher up — only the
+     * real expenditure header carries the take-home-pay percentage column.
+     *
+     * @param  list<string>  $cells
+     */
+    private function isExpenditureHeader(array $cells): bool
+    {
+        foreach ($cells as $cell) {
+            if (str_contains(strtolower((string) $cell), '% of take home')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
