@@ -6,6 +6,9 @@ namespace App\Livewire;
 
 use App\Enums\ScenarioStatus;
 use App\Forecast\HouseholdAssembler;
+use App\Import\ImportException;
+use App\Import\ImportRegistry;
+use App\Import\ImportResult;
 use App\Models\AssumptionSet;
 use App\Models\Household;
 use App\Models\Scenario;
@@ -14,6 +17,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
@@ -30,6 +34,8 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 #[Layout('components.layouts.app')]
 class ScenarioBuilder extends Component
 {
+    use WithFileUploads;
+
     /** The wizard guides through these steps; the user may also jump between them freely. */
     public const STEPS = [
         1 => 'About & people',
@@ -90,6 +96,14 @@ class ScenarioBuilder extends Component
 
     /** @var array<string, mixed> */
     public array $housing = [];
+
+    /** Optional spreadsheet upload used to pre-fill spending and salary. */
+    public $importFile = null;
+
+    public string $importProfile = 'retireforecast';
+
+    /** @var array<string, list<string>> what an import filled / still needs / noted */
+    public array $importSummary = [];
 
     public function mount(): void
     {
@@ -225,6 +239,60 @@ class ScenarioBuilder extends Component
         }
     }
 
+    /**
+     * Pre-fill the form from an uploaded budget spreadsheet, then land the user on the
+     * spending step to review. The file is read once and never stored; an unreadable or
+     * unrecognised file is reported, not swallowed.
+     */
+    public function import(): void
+    {
+        $this->validate(
+            ['importFile' => ['required', 'file', 'max:2048']],
+            [],
+            ['importFile' => 'spreadsheet'],
+        );
+
+        $profile = (new ImportRegistry)->find($this->importProfile);
+
+        if ($profile === null || ! $profile->isAvailable()) {
+            $this->addError('importFile', 'That spreadsheet type cannot be imported yet. Choose the RetireForecast template, or enter the figures by hand.');
+
+            return;
+        }
+
+        try {
+            $result = $profile->parse((string) $this->importFile->get());
+        } catch (ImportException $e) {
+            $this->addError('importFile', $e->getMessage());
+
+            return;
+        }
+
+        $this->applyImport($result);
+        $this->reset('importFile');
+    }
+
+    private function applyImport(ImportResult $result): void
+    {
+        if ($result->expense !== []) {
+            $this->expense = array_merge($this->expense, $result->expense);
+        }
+
+        if ($result->salaryAnnual !== null && isset($this->people[0])) {
+            $this->people[0]['grossSalary'] = $result->salaryAnnual;
+            $this->people[0]['employmentStatus'] = 'employed';
+        }
+
+        $this->importSummary = [
+            'filled' => $result->filled,
+            'missing' => $result->missing,
+            'notes' => $result->notes,
+        ];
+
+        // Most of what was imported is spending, so land there to review it.
+        $this->goToStep(4);
+    }
+
     /** Free navigation between steps; clamped to the valid range. */
     public function goToStep(int $step): void
     {
@@ -351,6 +419,12 @@ class ScenarioBuilder extends Component
         return view('livewire.scenario-builder', [
             'assumptionSets' => AssumptionSet::orderByDesc('is_default')->orderBy('name')->get(['id', 'name']),
             'steps' => self::STEPS,
+            'importProfiles' => array_map(static fn ($p): array => [
+                'key' => $p->key(),
+                'label' => $p->label(),
+                'description' => $p->description(),
+                'available' => $p->isAvailable(),
+            ], (new ImportRegistry)->all()),
         ])->title('New forecast');
     }
 

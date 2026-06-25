@@ -19,6 +19,55 @@
         </p>
     </div>
 
+    {{-- Optional: pre-fill from a budget spreadsheet. Sits outside the form so the file
+         input never triggers a save; the file is read once and not stored. --}}
+    <details class="rounded-lg border border-gray-200 bg-white p-5">
+        <summary class="cursor-pointer text-lg font-semibold text-gray-900">Import from a spreadsheet (optional)</summary>
+        <div class="mt-4 space-y-3">
+            <p class="text-sm text-gray-600">Pre-fill your spending and salary from a budget spreadsheet, then review and complete the rest by hand. The file is read once and not stored.</p>
+            <div class="grid gap-3 sm:grid-cols-2">
+                <div>
+                    <label for="importProfile" class="{{ $label }}">Spreadsheet type</label>
+                    <select id="importProfile" wire:model="importProfile" class="{{ $field }}">
+                        @foreach ($importProfiles as $p)
+                            <option value="{{ $p['key'] }}" @if (! $p['available']) disabled @endif>
+                                {{ $p['label'] }}{{ $p['available'] ? '' : ' — coming soon' }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">{{ collect($importProfiles)->firstWhere('key', $importProfile)['description'] ?? '' }}</p>
+                </div>
+                <div>
+                    <label for="importFile" class="{{ $label }}">File</label>
+                    <input id="importFile" type="file" accept=".csv,text/csv" wire:model="importFile" class="mt-1 block w-full text-sm" @error('importFile') aria-invalid="true" aria-describedby="importFile-error" @enderror>
+                    @error('importFile') <p id="importFile-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                </div>
+            </div>
+            <button type="button" wire:click="import" wire:loading.attr="disabled" wire:target="import,importFile"
+                class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50">
+                <span wire:loading.remove wire:target="import">Import</span>
+                <span wire:loading wire:target="import">Reading…</span>
+            </button>
+
+            @if ($importSummary)
+                <div role="status" class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+                    <p class="font-medium">Imported. Review the figures below and complete the rest of the wizard.</p>
+                    @if (! empty($importSummary['filled']))
+                        <p class="mt-2 font-medium">Filled in for you:</p>
+                        <ul class="list-disc pl-5">@foreach ($importSummary['filled'] as $f)<li>{{ $f }}</li>@endforeach</ul>
+                    @endif
+                    @if (! empty($importSummary['missing']))
+                        <p class="mt-2 font-medium">Still needs your input:</p>
+                        <ul class="list-disc pl-5">@foreach ($importSummary['missing'] as $m)<li>{{ $m }}</li>@endforeach</ul>
+                    @endif
+                    @if (! empty($importSummary['notes']))
+                        <ul class="mt-2 list-disc pl-5 text-xs text-green-800">@foreach ($importSummary['notes'] as $n)<li>{{ $n }}</li>@endforeach</ul>
+                    @endif
+                </div>
+            @endif
+        </div>
+    </details>
+
     {{-- Step navigation. Jump to any step freely, or move with Back / Next below. --}}
     <nav aria-label="Forecast steps">
         <ol class="flex flex-wrap gap-2 text-sm">
