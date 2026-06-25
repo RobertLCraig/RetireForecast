@@ -6,6 +6,7 @@ namespace App\Livewire;
 
 use App\Compliance\Interpretation;
 use App\Enums\SimulationStatus;
+use App\Forecast\AssumptionComparison;
 use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ResultPresenter;
 use App\Forecast\SimulationRunner;
@@ -123,6 +124,8 @@ class ScenarioResults extends Component
             'interpretation' => $interpretation,
             // Headline output #1: deterministic, independent of any Monte Carlo run.
             'shock' => app(LumpSumTaxShock::class)->assess($this->scenario),
+            // Compare-assumptions overlay: also deterministic, so it shows immediately.
+            'sensitivity' => app(AssumptionComparison::class)->compare($this->scenario),
         ])->title('Forecast results');
     }
 

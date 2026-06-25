@@ -124,6 +124,43 @@
         </section>
     @endif
 
+    {{-- Compare-assumptions overlay. Deterministic central projection under each sourced
+         assumption set, so it shows immediately and illustrates sensitivity, not a ranking. --}}
+    @if ($sensitivity)
+        <section aria-labelledby="sensitivity-heading" class="{{ $card }}">
+            <h2 id="sensitivity-heading" class="text-xl font-semibold text-gray-900">How sensitive is this to the assumptions?</h2>
+            <p class="mt-1 text-sm text-gray-600">
+                The central best-estimate projection run under each sourced assumption set. The spread shows how much the answer depends on the assumptions. These are consequences under different assumptions, not a recommendation.
+            </p>
+            <div class="mt-4 overflow-x-auto">
+                <table class="w-full text-sm">
+                    <caption class="sr-only">Best-estimate outcome under each shipped assumption set</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col" class="{{ $th }}">Assumption set</th>
+                            <th scope="col" class="{{ $th }}">Essentials always met</th>
+                            <th scope="col" class="{{ $th }}">Full spend always met</th>
+                            <th scope="col" class="{{ $th }}">Money runs out</th>
+                            <th scope="col" class="{{ $th }}">Wealth left by {{ $sensitivity[0]['finalYear'] }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($sensitivity as $row)
+                            <tr>
+                                <th scope="row" class="{{ $td }} font-medium">{{ $row['name'] }}</th>
+                                <td class="{{ $td }}">{{ $row['essentialsMet'] ? 'Yes' : 'No' }}</td>
+                                <td class="{{ $td }}">{{ $row['fullSpendMet'] ? 'Yes' : 'No' }}</td>
+                                <td class="{{ $td }}">{{ $row['depletionYear'] ?? '—' }}</td>
+                                <td class="{{ $td }}">{{ $row['terminalWealth'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <x-signpost class="mt-4" />
+        </section>
+    @endif
+
     @if (! $presented)
         <div class="{{ $card }} text-sm text-gray-600">
             <p>No completed run yet. Run a preview to see headline figures, then the full forecast for the precise picture.</p>

@@ -36,10 +36,17 @@ final class ScenarioForecaster
     /** The central best-estimate forecast: median death ages, expected returns, no sampling. */
     public function deterministic(Scenario $scenario): ForecastResult
     {
-        $config = $this->config($scenario);
+        return $this->deterministicWith($scenario, $this->assumptions($scenario));
+    }
 
-        return (new DeterministicForecaster($config, new CohortLifeTable))
-            ->forecast($this->household($scenario), $this->assumptions($scenario), $this->settings($scenario));
+    /**
+     * The central best-estimate forecast under an explicit assumption set — the basis of
+     * the compare-assumptions overlay, which runs this once per shipped set.
+     */
+    public function deterministicWith(Scenario $scenario, AssumptionSet $assumptions): ForecastResult
+    {
+        return (new DeterministicForecaster($this->config($scenario), new CohortLifeTable))
+            ->forecast($this->household($scenario), $assumptions, $this->settings($scenario));
     }
 
     /** One variant's Monte Carlo run (the scenario's household as it stands). */

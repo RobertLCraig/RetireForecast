@@ -101,6 +101,15 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('emergency (Month-1) basis');
     }
 
+    public function test_the_results_page_shows_the_assumption_sensitivity_overlay(): void
+    {
+        // Also deterministic: the compare-assumptions table shows before any run.
+        $this->get(route('scenarios.results', $this->scenario()))
+            ->assertOk()
+            ->assertSee('How sensitive is this to the assumptions?')
+            ->assertSee('DMS historical');
+    }
+
     public function test_a_user_cannot_view_another_users_results(): void
     {
         $scenario = $this->scenario();

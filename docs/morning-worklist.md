@@ -49,8 +49,10 @@ php artisan serve        # then visit http://retireforecast.test or http://127.0
       It fills spending + salary, lands you on the Spending step, and lists what still needs entering.
 - [ ] Run a forecast and check the new **lump-sum tax-shock panel** at the top of the results page.
 
+- [ ] Check the new **compare-assumptions overlay** on the results page — a sensitivity table showing
+      the best-estimate outcome under each sourced set (FCA / DMS / OBR).
+
 ## 4. Still owed (I can pick these up next, not blocked on you)
-- The **compare-assumptions overlay** on the results page (a loop over assumption sets → a third
-  chart + accessible table).
 - A full per-field accessibility sweep + axe/Pa11y in CI.
 - Once samples arrive: calibrate the IWT + Nischa profiles and add XLSX parsing.
+- Phase 2 step 5: the demo preset (your anonymised couple, entered via the UI), perf tuning, PDF export.
