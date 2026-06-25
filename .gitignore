@@ -25,3 +25,7 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Real financial sample/template spreadsheets — contain personal data, never commit.
+/docs/*.xlsx
+/storage/app/import-samples/
