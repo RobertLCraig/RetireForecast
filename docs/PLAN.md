@@ -241,27 +241,37 @@ Research into how the cashflow-modelling sector solves these (Voyant/Timeline/Ca
 is captured in **[docs/RESEARCH-cashflow-modelling.md](RESEARCH-cashflow-modelling.md)**. These are
 solved problems — we follow the proven shape and customise. Agreed build order:
 
-**0. Checkpoint** the current green-but-uncommitted pile first (scenario drafts, person names, State
-Pension "full" shortcut, import `.xlsx`/Cancel fixes) — clean baseline before a data-model change.
+**0. Checkpoint** ✅ done (commit `2b5abc8`). **Rebuild authorised (2026-06-26):** the scenario +
+expenditure data-shape rebuild is sanctioned even though it reworks yesterday's prototype builder (drafts,
+names, State Pension shortcut) — that work got Rob a usable app for feedback; the UI wins carry over, the
+draft mechanism folds into `builder_state`.
 
 **1. Edit → designed for clone + compare (the base-plan / what-if pattern — CONFIRMED in scope).**
 - Persist the builder **form-state** on the scenario (encrypted `builder_state`); the engine DTO
   stays a *derived* artifact regenerated on save (avoids a fragile reverse-mapper — single source).
 - Edit route `/scenarios/{scenario}/edit`, **owner-scoped**; `save()` becomes update-or-create.
-- **Child what-if** = a named scenario that **overrides only 1–2 parameters** of the base — stored
-  as a **delta**, not a full copy (single-source, no fork; see research §1 + DECISIONS 2026-06-26).
-  Effective inputs = base `builder_state` ⊕ child overrides, via **one merge function** (+ round-trip
-  test). **Compare** reuses the existing variant side-by-side rendering. On edit-save,
-  **invalidate the scenario's stale runs/results**.
+- **Child what-if** = a named scenario from a **"Create child" button** that **overrides anything** the
+  user changes (often 1–2 fields; curated levers are presets, not a limit) — stored as a **delta** of the
+  changed fields, not a full copy (single-source, no fork; research §1 + DECISIONS 2026-06-26). The child
+  editor is the **full builder pre-filled from the base**; effective = base `builder_state` ⊕ overrides
+  via **one merge function** (+ round-trip test). **List items (expense lines, pensions, accounts) gain
+  stable IDs** so overrides target the right row. **Compare** reuses the variant side-by-side rendering.
+  On edit-save, **invalidate stale runs/results**.
 
 **2. Budget line items + the two cheap sector payoffs.**
-- Line items `{label, amount(annual), category}` become the **source of truth**; essential /
-  discretionary **totals are the sum of the lines** (reconciliation discipline). Importers populate
-  the lines (today they discard them into a total). Builder shows an editable list; results show the
-  breakdown. New reconciliation invariants + extend the import golden fixtures.
+- Line items `{id, label, amount(annual), category, savedAsAsset}` become the **source of truth**,
+  category ∈ **essential / discretionary / self-investment**; essential/discretionary **totals = the sum
+  of the lines** (reconciliation discipline). **Self-investment** carries `savedAsAsset`: *spent*
+  (courses/books) → expenditure, *saved* (savings/investments) → a **contribution to net worth** (needs
+  **ongoing contributions on accounts**); one home per pound. Importers populate the lines (today
+  discarded into a total). Builder shows an editable list; results show the **3-tier** breakdown framed as
+  the **goal, not a %**. New reconciliation invariants + extend the import golden fixtures.
 - **Income-floor readout** (essential vs guaranteed income = State Pension + DB + annuity) and
   **PLSA benchmark** ("your essentials ≈ Moderate") — both cheap, both reuse existing data. Defer
-  the spending "smile"/phased spend (an engine expense-model change) and any third (wishes) tier.
+  the spending "smile"/phased spend (an engine expense-model change).
+- **Engine additions (small, each golden-master tested):** a per-person **longevity/health adjustment**
+  feeding `JointLifeSampler` (fixed assumed age / ±years / mortality multiplier — for the lifespan
+  what-if); **ongoing contributions on accounts** (so *saved* self-investment grows).
 
 **3. Projection drill-down.**
 - **Deterministic cashflow ladder** from `YearResult[]` (per year: income-by-source → tax → net →
@@ -283,11 +293,16 @@ Pension "full" shortcut, import `.xlsx`/Cancel fixes) — clean baseline before 
 | K | Flat spend vs the spending **smile** | defer phased spend; flag as next engine piece |
 | L | Income-floor needs income classified **guaranteed vs flexible** | derive from types (SP/DB/annuity = guaranteed; drawdown/GIA = flexible) |
 | M | Success-rate read as pass/fail | present as a **probability under assumptions** (also satisfies the lint) |
-| N | Delta-child **override resolution** bugs / orphaned overrides when the base shape changes | one merge function `effective = base ⊕ overrides` + round-trip test; validate override keys against the base (full-copy was rejected — it forks, see DECISIONS 2026-06-26) |
+| N | Delta-child **override resolution** / orphaned overrides when the base changes | one merge fn `effective = base ⊕ overrides` + round-trip test; **stable IDs** on list items so overrides target the right row; validate keys vs the base (full-copy rejected — it forks) |
+| O | **Saved self-investment double-counted** (a savings line that also grows as an account) | one home per pound — a *saved* line **is** the contribution, never also an account balance; reconciliation invariant |
+| P | **Asset wealth vs usable cash conflated** (live-use bug 2026-06-26: a card shows 100% chance of running out yet the *highest* "median wealth left", because the illiquid home is counted as wealth) | results must separate **usable/liquid** from **total incl. property**; verify what "wealth left" includes; the per-scenario cashflow graph makes it legible |
 
-**Open decisions (recommendations in DECISIONS 2026-06-26):** line-items on the engine DTO (totals
-derived) — recommend yes; PLSA benchmark + income-floor in the line-items phase vs fast-follow;
-phased spend deferred; annuity-equivalent deferred.
+**Decisions now settled (DECISIONS 2026-06-26):** anything-overridable delta children + "Create child" +
+stable IDs; 3-tier line items (essential/discretionary/self-investment) with spent/saved, totals derived;
+per-person longevity adjustment; income-floor readout in-phase, PLSA benchmark a fast-follow; phased spend
++ annuity-equivalent deferred. **Drill-down must also split usable cash vs total wealth and graph cashflow
+per scenario** (live-use finding, gotcha P). Planning closed — ready to build, starting with the scenario
+data-shape + edit/clone.
 
 ### Data Rob supplies for the demo couple (agree the shape now, needed at step 5)
 Per person: DOB, employment status, (working partner) gross salary + planned retirement age + NI category, State Pension weekly forecast (or qualifying years) + deferral, sex (for life table). Per pension: type, and DC → value, contributions, access age, withdrawal plan; DB → accrued annual pension, NRA, revaluation + in-payment escalation, commutation option + factor, spouse fraction; State → weekly forecast/qualifying years + triple-lock assumption. Property: value, ownership, mortgage left, ever-let, running costs. Accounts: each ISA/GIA/cash balance + owner (+ GIA unrealised gain). Expenses: target annual spend split essential/discretionary + inflation basis + one-offs + survivor spend factor. Housing: assumed sale price, candidate purchase price, assumed rent + rent inflation. Region. Default assumption set. All anonymised.

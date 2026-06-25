@@ -173,13 +173,23 @@ For the research-backed plan (docs/PLAN.md "Sector-informed build plan"; DECISIO
 Recorded here so the rebuild does not fork the model:
 - **`scenarios.builder_state`** (encrypted): the raw builder form-state — the **editable record**. The
   engine `Household` DTO becomes a **derived** artifact regenerated from it on save (one source of input).
-- **Base plan + delta child what-ifs:** a child scenario references a base and stores only a **delta** of
-  overridden parameters; effective inputs = base ⊕ overrides via one merge function. **Not a full copy**
-  (full-copy forks). Compare runs base + child side by side.
-- **Expenditure → 3-tier line items:** `{label, amount(annual), category}`, category ∈ essential /
-  discretionary / **self-investment** (savings + contributions). Line items are the **source**; the
-  essential/discretionary totals are the **sum of the lines** (derived). The budget view emphasises the
-  prioritisation goal (keep / can-drop / invest), not a fixed percentage. Deferred: phased ("smile") spend.
+- **Base plan + delta child what-ifs:** a child scenario references a base (`parent_scenario_id`) and
+  stores only a **delta** of overridden form-state paths; effective inputs = base ⊕ overrides via one
+  merge function. **Not a full copy** (full-copy forks). **List items (expense lines, pensions, accounts)
+  gain stable IDs** so an override targets the right row across base edits (people already have ids).
+  Compare runs base + child side by side.
+- **Expenditure → 3-tier line items:** `{id, label, amount(annual), category, savedAsAsset}`, category ∈
+  essential / discretionary / **self-investment**. Line items are the **source**; essential/discretionary
+  totals are the **sum of the lines** (derived). `savedAsAsset` (self-investment only): *spent* → expense,
+  *saved* → a **contribution to net worth**. The budget view shows the 3-tier split as the prioritisation
+  **goal**, not a fixed percentage. Deferred: phased ("smile") spend.
+- **`Account` gains ongoing contributions** (like DC pensions) so *saved* self-investment accumulates.
+- **`Person` gains a longevity/health adjustment** (fixed assumed age / ±years / mortality multiplier)
+  feeding the joint-life sampler — for the lifespan what-if.
+- **Results split usable vs total wealth.** The engine already computes `liquidWealth` / `propertyWealth`
+  / `totalWealth` per `YearResult`; the Monte-Carlo aggregates only terminal **total** today. Add terminal
+  **liquid** aggregation + present **usable/liquid** alongside **total (incl. home)**, so the asset-rich /
+  cash-poor case (100% run out yet high "wealth left") reads correctly. (Live-use finding 2026-06-26.)
 
 ## Known divergences (to close)
 - The DTO carries withdrawals on the DC pension; the original Scenario sketch listed

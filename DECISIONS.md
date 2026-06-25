@@ -5,13 +5,17 @@ supersede an old entry with a new one that links back to it.
 
 ## 2026-06-26 — Scenario model: base plan + delta what-if children + compare
 **Decision:** Adopt the cashflow-modelling sector's standard shape (Voyant): a **base plan** that spawns
-**named "what-if" child scenarios**, each **overriding just 1–2 parameters** of the base (retire later,
-spend less, a market shock, sell-vs-stay, buy-vs-rent), with a **side-by-side Compare**. A child is
+**named "what-if" child scenarios** created from a plain **"Create child" button**, each **overriding
+anything the user changes** (often just 1–2 — rent, council tax, a healthcare savings amount, a person's
+expected lifespan; sell-vs-stay, buy-vs-rent), with a **side-by-side Compare**. A child is
 stored as a **delta — only its overridden parameters — on top of the base**; the effective inputs are
 the base's persisted form-state (`builder_state`) **overlaid with the child's overrides**, resolved by
-**one merge function** (with a round-trip test). It is **not** a full copy of the base. Editing a saved
-scenario, spawning a child, and comparing all build on the persisted form-state: edit reloads it, a child
-stores overrides against it, compare runs base + child.
+**one merge function** (with a round-trip test). It is **not** a full copy of the base. The child editor
+is the **full builder pre-filled from the base** — whatever the user changes becomes an override (curated
+levers like "retire 2 years later" are just shortcuts, **not** a limit), and **list items (expense lines,
+pensions, accounts) gain stable IDs** so an override targets the right row across base edits (people
+already have ids). Editing a saved scenario, spawning a child, and comparing all build on the persisted
+form-state: edit reloads it, a child stores overrides against it, compare runs base + child.
 **Why:** Confirmed with Rob — lightweight "tweak 1–2 parameters" children are exactly the what-if UX he
 wants, and it is the market-leader pattern (Voyant's copy-on-write — "changing an item breaks the link
 for that item only"; see [docs/RESEARCH-cashflow-modelling.md](docs/RESEARCH-cashflow-modelling.md) §1).
@@ -23,9 +27,44 @@ taken earlier the same day, recorded here so the plan does not fork — per Rob'
 ourselves".)_ The new bite to guard is **override resolution** (`effective = base ⊕ overrides`) and
 **orphaned overrides** if the base shape changes — both covered by the merge function + tests. The
 engine DTO stays a **derived** artifact regenerated from the resolved inputs, so inputs keep one source
-of truth. The data-shape change this needs is **authorised** (rebuild the scenario shape properly).
+of truth. The data-shape change this needs is **authorised** — Rob confirmed the clean rebuild even
+though it reworks yesterday's prototype builder, which served to get a usable app for feedback; the UI
+wins (person names, the State Pension shortcut) carry over and the draft mechanism folds into
+`builder_state`.
 Generalises [[2026-06-24 — Forecast services: run = 3-variant comparison, deterministic on demand]]; full
 build order in docs/PLAN.md "Sector-informed build plan (2026-06-26)". [[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
+**Status:** active
+
+## 2026-06-26 — Expenditure: 3-tier line items (essential / discretionary / self-investment) + spent-vs-saved
+**Decision:** Replace the flat essential/discretionary totals with **line items as the source of truth**:
+`{id, label, amount(annual), category, savedAsAsset}`, category ∈ **essential** (needs, the floor) /
+**discretionary** (wants, can-drop) / **self-investment**. Essential/discretionary **totals become the sum
+of the lines** (derived — reconciliation discipline). Self-investment is a **first-class tier** (learning,
+tuition, books, savings plans, personal investments) — **not** derivable from contributions. Each
+self-investment line carries a **`savedAsAsset` flag** (default false = *spent*): *spent* lines
+(courses, books) are expenditure; *saved* lines (savings/investments) are a **contribution that builds net
+worth**, which needs a small addition — **ongoing contributions on savings accounts** (as DC pensions
+already have). **One home per pound:** a saved line **is** the contribution, never also entered as an
+account balance.
+**Why:** A budget that forces prioritisation (keep essentials / drop discretionary / invest in the future)
+is the sector-standard income-&-expenditure model and feeds the income-floor ("essentials covered by
+guaranteed income"). Self-investment can't be derived (Rob: it spans learning/tuition/books that never
+touch an account), so it is a tagged tier; the spent/saved flag keeps the **forecast correct** (spent
+reduces wealth, saved is retained + grows) and **double-count-safe**. The split is framed as **the goal,
+not a fixed percentage** (50/30/20 vs 60/20/20 vary everywhere, and a prescribed target reads as advice →
+trips the lint). Importers populate the lines (the IWT profile already routes Fixed→essential,
+Guilt-Free→discretionary, Investments+Savings→saved). [[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
+**Status:** active
+
+## 2026-06-26 — Per-person longevity / health adjustment (new engine input)
+**Decision:** Add a **per-person longevity adjustment** so a what-if can model someone not expected to
+reach peer-average age (e.g. known health conditions). It feeds the cohort-table `JointLifeSampler` as one
+of: a **fixed assumed death age**, a **±years offset** to life expectancy, or a **mortality multiplier /
+rated age** (insurer-style). Exact mechanism chosen at build; ships with a golden-master test.
+**Why:** Rob wants to tweak expected lifespan in a child what-if; mortality is currently derived only from
+DOB + sex with no health lever. This is a genuine **engine** feature (not a form-state override of an
+existing field), so it is planned as its own small piece, keeping the engine framework-free + tested.
+[[2026-06-24 — Mortality model: embed ONS cohort life tables]]
 **Status:** active
 
 ## 2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures

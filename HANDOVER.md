@@ -241,8 +241,13 @@ expenditure, drill-down — captured in **docs/RESEARCH-cashflow-modelling.md** 
 plan in **docs/PLAN.md**. Decision: scenario model = **base plan + delta what-if children + Compare**
 (corrected from an initial full-copy lean to **delta/override** — single-source, "tweak 1–2 params", no
 fork; DECISIONS 2026-06-26). Expenditure to go **3-tier** (essential / discretionary / self-investment),
-framed as the goal not a %. **Next:** flesh out the 3-tier expenditure + the scenario data-shape rebuild,
-then build edit → clone/compare.
+framed as the goal not a %. Planning then **closed** (DECISIONS 2026-06-26 ×3 + docs/PLAN.md "Sector-informed
+build plan"): anything-overridable **delta** children + "Create child" + stable IDs; 3-tier expenditure with
+spent/saved; a per-person **longevity** adjustment. Live use also surfaced that the results cards **conflate
+total wealth (incl. the home) with usable cash** (stay-put: 100% run out yet the highest "wealth left") —
+**verified not a bug** (the engine separates `liquidWealth`/`propertyWealth`/`totalWealth`; success/depletion
+is liquid-based, "wealth left" is total incl. home); fix is to **split usable vs total** + graph cashflow per
+scenario (gotcha P). **Next:** build the rebuild, starting with the scenario data-shape + edit/clone.
 _2026-06-25 (data-layer integrity guardrails — golden fixtures + reconciliation invariants)_ — Reviewed
 the project against the docs (suite verified green at 212; no drift beyond one stale "step 4 not
 committed" branch line, fixed). Captured a gap analysis (tiered readiness) and Rob's standing rule
