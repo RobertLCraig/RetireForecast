@@ -35,6 +35,39 @@ class ScenarioBuilderTest extends TestCase
         $this->assertSame(ScenarioStatus::Ready, Scenario::firstOrFail()->status);
     }
 
+    public function test_adding_a_state_pension_defaults_to_the_full_rate_and_renders_the_level_picker(): void
+    {
+        Livewire::test(ScenarioBuilder::class)
+            ->call('addPension', 'state')
+            ->assertSet('pensions.0.level', 'full')
+            ->assertSet('pensions.0.weeklyForecast', '241.30') // full new State Pension, 2026-27
+            ->set('step', 2)
+            ->assertSee('Full new State Pension')
+            ->assertSee('gov.uk/check-state-pension');
+    }
+
+    public function test_choosing_the_qualifying_years_level_clears_the_weekly_amount(): void
+    {
+        Livewire::test(ScenarioBuilder::class)
+            ->call('addPension', 'state')
+            ->set('pensions.0.level', 'years')
+            ->assertSet('pensions.0.weeklyForecast', '');
+    }
+
+    public function test_a_person_name_is_persisted_to_the_saved_household(): void
+    {
+        $state = BuilderStateFixture::minimalValid();
+        $state['people'][0]['name'] = 'Alex';
+
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach ($state as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component->call('save');
+
+        $this->assertSame('Alex', Household::firstOrFail()->toDto()->persons[0]->name);
+    }
+
     public function test_a_saved_scenario_decrypts_to_the_identical_dto(): void
     {
         $state = BuilderStateFixture::full();

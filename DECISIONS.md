@@ -3,6 +3,31 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-26 — Scenario model: base plan + delta what-if children + compare
+**Decision:** Adopt the cashflow-modelling sector's standard shape (Voyant): a **base plan** that spawns
+**named "what-if" child scenarios**, each **overriding just 1–2 parameters** of the base (retire later,
+spend less, a market shock, sell-vs-stay, buy-vs-rent), with a **side-by-side Compare**. A child is
+stored as a **delta — only its overridden parameters — on top of the base**; the effective inputs are
+the base's persisted form-state (`builder_state`) **overlaid with the child's overrides**, resolved by
+**one merge function** (with a round-trip test). It is **not** a full copy of the base. Editing a saved
+scenario, spawning a child, and comparing all build on the persisted form-state: edit reloads it, a child
+stores overrides against it, compare runs base + child.
+**Why:** Confirmed with Rob — lightweight "tweak 1–2 parameters" children are exactly the what-if UX he
+wants, and it is the market-leader pattern (Voyant's copy-on-write — "changing an item breaks the link
+for that item only"; see [docs/RESEARCH-cashflow-modelling.md](docs/RESEARCH-cashflow-modelling.md) §1).
+**Delta over full-copy specifically to avoid forking:** a full copy duplicates the whole base into every
+child, so a later base fix leaves children stale — they **fork** — the exact "same quantity in two places
+that drifts" the data-layer guardrails exist to prevent. A delta keeps the base as the single source; a
+child holds only its tweaks and otherwise tracks the base. _(This **corrects an initial full-copy lean**
+taken earlier the same day, recorded here so the plan does not fork — per Rob's "don't accidentally fork
+ourselves".)_ The new bite to guard is **override resolution** (`effective = base ⊕ overrides`) and
+**orphaned overrides** if the base shape changes — both covered by the merge function + tests. The
+engine DTO stays a **derived** artifact regenerated from the resolved inputs, so inputs keep one source
+of truth. The data-shape change this needs is **authorised** (rebuild the scenario shape properly).
+Generalises [[2026-06-24 — Forecast services: run = 3-variant comparison, deterministic on demand]]; full
+build order in docs/PLAN.md "Sector-informed build plan (2026-06-26)". [[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
+**Status:** active
+
 ## 2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures
 **Decision:** Treat data-layer consistency as a hard, **tested** requirement, not a hope.
 Concretely: (1) **one definition, one home** for every quantity — totals are **derived from their

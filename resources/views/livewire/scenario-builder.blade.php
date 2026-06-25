@@ -3,7 +3,8 @@
     $label = 'block text-sm font-medium text-gray-700';
     $section = 'rounded-lg border border-gray-200 bg-white p-5';
     $legend = 'text-lg font-semibold text-gray-900';
-    $ownerOptions = collect($people)->map(fn ($p, $i) => ['id' => $p['id'], 'label' => 'Person '.($i + 1)])->all();
+    $personName = fn ($p, $i) => trim((string) ($p['name'] ?? '')) !== '' ? $p['name'] : 'Person '.($i + 1);
+    $ownerOptions = collect($people)->map(fn ($p, $i) => ['id' => $p['id'], 'label' => $personName($p, $i)])->all();
     $lastStep = count($steps);
 @endphp
 
@@ -21,8 +22,8 @@
 
     {{-- Optional: pre-fill from a budget spreadsheet. Sits outside the form so the file
          input never triggers a save; the file is read once and not stored. --}}
-    <details class="rounded-lg border border-gray-200 bg-white p-5">
-        <summary class="cursor-pointer text-lg font-semibold text-gray-900">Import from a spreadsheet (optional)</summary>
+    <details open class="rounded-lg border-2 border-blue-200 bg-blue-50 p-5">
+        <summary class="cursor-pointer text-lg font-semibold text-blue-900">⬆ Import from a spreadsheet (optional) — start here if you have one</summary>
         <div class="mt-4 space-y-3">
             <p class="text-sm text-gray-600">Pre-fill your spending and salary from a budget spreadsheet, then review and complete the rest by hand. The file is read once and not stored.</p>
             <div class="grid gap-3 sm:grid-cols-2">
@@ -38,8 +39,8 @@
                     <p class="mt-1 text-xs text-gray-500">{{ collect($importProfiles)->firstWhere('key', $importProfile)['description'] ?? '' }}</p>
                 </div>
                 <div>
-                    <label for="importFile" class="{{ $label }}">File</label>
-                    <input id="importFile" type="file" accept=".csv,text/csv" wire:model="importFile" class="mt-1 block w-full text-sm" @error('importFile') aria-invalid="true" aria-describedby="importFile-error" @enderror>
+                    <label for="importFile" class="{{ $label }}">File (.xlsx or .csv)</label>
+                    <input id="importFile" type="file" accept=".csv,.xlsx,.xls" wire:model="importFile" class="mt-1 block w-full text-sm" @error('importFile') aria-invalid="true" aria-describedby="importFile-error" @enderror>
                     @error('importFile') <p id="importFile-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                 </div>
             </div>
@@ -177,12 +178,17 @@
                 @foreach ($people as $i => $person)
                     <div wire:key="person-{{ $i }}" class="mt-4 rounded-md border border-gray-100 bg-gray-50 p-4">
                         <div class="flex items-center justify-between">
-                            <h3 class="font-medium text-gray-800">Person {{ $i + 1 }}</h3>
+                            <h3 class="font-medium text-gray-800">{{ $personName($person, $i) }}</h3>
                             @if (count($people) > 1)
                                 <button type="button" wire:click="removePerson({{ $i }})" class="text-sm text-red-700 underline">Remove</button>
                             @endif
                         </div>
                         <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            <div>
+                                <label for="people-{{ $i }}-name" class="{{ $label }}">Name</label>
+                                <input id="people-{{ $i }}-name" type="text" wire:model.blur="people.{{ $i }}.name" placeholder="Person {{ $i + 1 }}" class="{{ $field }}">
+                                <p class="mt-1 text-xs text-gray-500">Used to label this person through the rest of the form.</p>
+                            </div>
                             <div>
                                 <label for="people-{{ $i }}-dob" class="{{ $label }}">Date of birth</label>
                                 <input id="people-{{ $i }}-dob" type="date" wire:model="people.{{ $i }}.dob" class="{{ $field }}" @error('people.'.$i.'.dob') aria-invalid="true" aria-describedby="people-{{ $i }}-dob-error" @enderror>
@@ -344,17 +350,36 @@
                                     <input id="pensions-{{ $i }}-commutationLumpSum" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.commutationLumpSum" class="{{ $field }}">
                                 </div>
                             @else
-                                <div>
-                                    <label for="pensions-{{ $i }}-weeklyForecast" class="{{ $label }}">Weekly forecast (£, from statement)</label>
-                                    <input id="pensions-{{ $i }}-weeklyForecast" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.weeklyForecast" class="{{ $field }}">
-                                    @error('pensions.'.$i.'.weeklyForecast') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                @php($spLevel = $pension['level'] ?? 'amount')
+                                <div class="sm:col-span-2 lg:col-span-3">
+                                    <label for="pensions-{{ $i }}-level" class="{{ $label }}">How much State Pension?</label>
+                                    <select id="pensions-{{ $i }}-level" wire:model.live="pensions.{{ $i }}.level" class="{{ $field }} sm:max-w-md">
+                                        <option value="full">Full new State Pension (£{{ $this->fullStatePensionWeekly() }}/wk)</option>
+                                        <option value="amount">A specific weekly amount</option>
+                                        <option value="years">Work it out from my qualifying years</option>
+                                    </select>
+                                    <p class="mt-1 text-xs text-gray-500">Not sure? <a href="https://www.gov.uk/check-state-pension" target="_blank" rel="noopener noreferrer" class="text-blue-700 underline">Check your State Pension forecast on gov.uk</a> and copy the weekly figure.</p>
                                 </div>
+                                @if ($spLevel === 'full')
+                                    <div>
+                                        <span class="{{ $label }}">Weekly amount</span>
+                                        <p class="mt-1 rounded-md bg-gray-100 px-3 py-2 text-sm text-gray-800">£{{ $this->fullStatePensionWeekly() }}/wk — full new State Pension ({{ $baseTaxYear }})</p>
+                                    </div>
+                                @elseif ($spLevel === 'years')
+                                    <div>
+                                        <label for="pensions-{{ $i }}-qualifyingYears" class="{{ $label }}">Qualifying years (out of 35)</label>
+                                        <input id="pensions-{{ $i }}-qualifyingYears" type="number" min="0" max="50" wire:model="pensions.{{ $i }}.qualifyingYears" class="{{ $field }}">
+                                        <p class="mt-1 text-xs text-gray-500">We work the weekly amount out from this.</p>
+                                    </div>
+                                @else
+                                    <div>
+                                        <label for="pensions-{{ $i }}-weeklyForecast" class="{{ $label }}">Weekly amount (£, from your statement)</label>
+                                        <input id="pensions-{{ $i }}-weeklyForecast" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.weeklyForecast" class="{{ $field }}">
+                                        @error('pensions.'.$i.'.weeklyForecast') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                    </div>
+                                @endif
                                 <div>
-                                    <label for="pensions-{{ $i }}-qualifyingYears" class="{{ $label }}">…or qualifying years</label>
-                                    <input id="pensions-{{ $i }}-qualifyingYears" type="number" wire:model="pensions.{{ $i }}.qualifyingYears" class="{{ $field }}">
-                                </div>
-                                <div>
-                                    <label for="pensions-{{ $i }}-deferralWeeks" class="{{ $label }}">Deferral (weeks)</label>
+                                    <label for="pensions-{{ $i }}-deferralWeeks" class="{{ $label }}">Deferral (weeks, optional)</label>
                                     <input id="pensions-{{ $i }}-deferralWeeks" type="number" wire:model="pensions.{{ $i }}.deferralWeeks" class="{{ $field }}">
                                 </div>
                             @endif
@@ -576,23 +601,27 @@
         </div>
 
         {{-- Wizard controls -------------------------------------------------------- --}}
-        <div class="flex items-center justify-between gap-3">
-            <div>
-                @if ($step > 1)
-                    <button type="button" wire:click="prevStep" class="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100">Back</button>
-                @endif
-            </div>
-            <div class="flex items-center gap-3">
-                <a href="{{ route('dashboard') }}" class="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100">Cancel</a>
-                @if ($step < $lastStep)
-                    <button type="button" wire:click="nextStep" class="rounded-md bg-blue-600 px-5 py-2 font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Next</button>
-                @else
-                    <button type="submit" wire:loading.attr="disabled" wire:target="save"
-                        class="rounded-md bg-blue-600 px-5 py-2 font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50">
-                        <span wire:loading.remove wire:target="save">Save forecast</span>
-                        <span wire:loading wire:target="save">Saving…</span>
-                    </button>
-                @endif
+        <div class="space-y-3">
+            <p class="text-xs text-gray-500">Your progress is saved automatically each time you move between steps — you can safely leave and come back.</p>
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    @if ($step > 1)
+                        <button type="button" wire:click="prevStep" class="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100">Back</button>
+                    @endif
+                    <button type="button" wire:click="leave" class="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Save draft &amp; exit</button>
+                    <button type="button" wire:click="discardDraft" wire:confirm="Discard this forecast and delete the draft? Anything you have entered will be lost." class="text-sm text-gray-400 underline hover:text-red-700">Discard</button>
+                </div>
+                <div class="flex items-center gap-3">
+                    @if ($step < $lastStep)
+                        <button type="button" wire:click="nextStep" class="rounded-md bg-blue-600 px-5 py-2 font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Next</button>
+                    @else
+                        <button type="submit" wire:loading.attr="disabled" wire:target="save"
+                            class="rounded-md bg-blue-600 px-5 py-2 font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50">
+                            <span wire:loading.remove wire:target="save">Save forecast</span>
+                            <span wire:loading wire:target="save">Saving…</span>
+                        </button>
+                    @endif
+                </div>
             </div>
         </div>
     </form>

@@ -71,6 +71,7 @@ final class HouseholdMapper
     {
         return [
             'id' => $person->id,
+            'name' => $person->name,
             'dob' => Codec::dateString($person->dob),
             'sex' => $person->sex->value,
             'employmentStatus' => $person->employmentStatus->value,
@@ -92,6 +93,7 @@ final class HouseholdMapper
             salaryGrowth: Codec::percentOrNull($data['salaryGrowth']),
             plannedRetirementAge: $data['plannedRetirementAge'],
             niCategory: $data['niCategory'],
+            name: $data['name'] ?? null, // ?? for households stored before names existed
         );
     }
 

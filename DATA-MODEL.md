@@ -164,6 +164,22 @@ on the DC pension inside the household payload, not separately on the scenario.
 - **App forecast services:** `app/Forecast/` — `ScenarioForecaster` (assembles engine inputs from
   a persisted scenario; deterministic / single-variant / buy-vs-rent), `SimulationRunner`
   (create → run → persist, with progress + cancel), `RunScenarioSimulation` job.
+- **Builder + drafts (2026-06-26):** `Person` gained an optional display-only `$name` (persisted via
+  the mapper/assembler; never used in any calculation). A new **`scenario_drafts`** table (one per
+  user, encrypted form-state) auto-saves the in-progress builder so work survives leaving the page.
+
+## Planned shape changes (2026-06-26) — authorised, not yet built
+For the research-backed plan (docs/PLAN.md "Sector-informed build plan"; DECISIONS 2026-06-26).
+Recorded here so the rebuild does not fork the model:
+- **`scenarios.builder_state`** (encrypted): the raw builder form-state — the **editable record**. The
+  engine `Household` DTO becomes a **derived** artifact regenerated from it on save (one source of input).
+- **Base plan + delta child what-ifs:** a child scenario references a base and stores only a **delta** of
+  overridden parameters; effective inputs = base ⊕ overrides via one merge function. **Not a full copy**
+  (full-copy forks). Compare runs base + child side by side.
+- **Expenditure → 3-tier line items:** `{label, amount(annual), category}`, category ∈ essential /
+  discretionary / **self-investment** (savings + contributions). Line items are the **source**; the
+  essential/discretionary totals are the **sum of the lines** (derived). The budget view emphasises the
+  prioritisation goal (keep / can-drop / invest), not a fixed percentage. Deferred: phased ("smile") spend.
 
 ## Known divergences (to close)
 - The DTO carries withdrawals on the DC pension; the original Scenario sketch listed

@@ -13,6 +13,7 @@ use App\Import\SpreadsheetReader;
 use App\Models\AssumptionSet;
 use App\Models\Household;
 use App\Models\Scenario;
+use App\Models\ScenarioDraft;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -117,6 +118,9 @@ class ScenarioBuilder extends Component
         $this->property = $this->blankProperty();
         $this->housing = $this->blankHousing();
         $this->assumptionSetId = AssumptionSet::where('is_default', true)->value('id');
+
+        // Resume an in-progress forecast if one was left unsaved.
+        $this->loadDraft();
     }
 
     protected function rules(): array
@@ -336,11 +340,86 @@ class ScenarioBuilder extends Component
         $this->goToStep(4);
     }
 
-    /** Free navigation between steps; clamped to the valid range. */
+    /** Free navigation between steps; clamped to the valid range. The draft is saved on each move. */
     public function goToStep(int $step): void
     {
         $this->step = max(1, min(count(self::STEPS), $step));
+        $this->saveDraft();
         $this->dispatch('step-changed');
+    }
+
+    /** Persist the in-progress form state (raw strings, encrypted) so leaving never loses work. */
+    public function saveDraft(): void
+    {
+        if (auth()->id() === null) {
+            return;
+        }
+
+        ScenarioDraft::updateOrCreate(
+            ['user_id' => auth()->id()],
+            ['payload' => $this->draftState()],
+        );
+    }
+
+    /** Save the draft and return to the dashboard — leaving never loses work. */
+    public function leave()
+    {
+        $this->saveDraft();
+
+        return redirect()->route('dashboard');
+    }
+
+    /** Throw the in-progress forecast away entirely (the only path that deletes a draft on purpose). */
+    public function discardDraft()
+    {
+        if (auth()->id() !== null) {
+            ScenarioDraft::where('user_id', auth()->id())->delete();
+        }
+
+        return redirect()->route('dashboard');
+    }
+
+    /** Restore the user's last in-progress forecast, if one exists. */
+    private function loadDraft(): void
+    {
+        if (auth()->id() === null) {
+            return;
+        }
+
+        $draft = ScenarioDraft::where('user_id', auth()->id())->first();
+        if ($draft === null) {
+            return;
+        }
+
+        foreach ($draft->payload as $key => $value) {
+            if (property_exists($this, $key)) {
+                $this->{$key} = $value;
+            }
+        }
+    }
+
+    /** Everything needed to restore the builder exactly, including which step the user was on. */
+    private function draftState(): array
+    {
+        return [
+            'step' => $this->step,
+            'name' => $this->name,
+            'householdName' => $this->householdName,
+            'region' => $this->region,
+            'baseTaxYear' => $this->baseTaxYear,
+            'variant' => $this->variant,
+            'ihtModelled' => $this->ihtModelled,
+            'assumptionSetId' => $this->assumptionSetId,
+            'people' => $this->people,
+            'expense' => $this->expense,
+            'oneOffCosts' => $this->oneOffCosts,
+            'pensions' => $this->pensions,
+            'accounts' => $this->accounts,
+            'incomeStreams' => $this->incomeStreams,
+            'hasProperty' => $this->hasProperty,
+            'property' => $this->property,
+            'housing' => $this->housing,
+        ];
     }
 
     public function nextStep(): void
@@ -369,7 +448,41 @@ class ScenarioBuilder extends Component
 
     public function addPension(string $subtype): void
     {
-        $this->pensions[] = $this->blankPension($subtype);
+        $pension = $this->blankPension($subtype);
+
+        // A State pension defaults to the full new flat rate, pre-filled from the tax year —
+        // most people get the full amount, so this is zero-effort; they can switch to a
+        // specific figure or qualifying years if theirs differs.
+        if ($subtype === 'state') {
+            $pension['level'] = 'full';
+            $pension['weeklyForecast'] = $this->fullStatePensionWeekly();
+        }
+
+        $this->pensions[] = $pension;
+    }
+
+    /** The full new State Pension weekly rate for the chosen base year, as a pounds string. */
+    public function fullStatePensionWeekly(): string
+    {
+        return TaxYearRegistry::for($this->baseTaxYear, RegionProfile::EnglandWalesNi)
+            ->statePension->newStatePensionWeekly->toDecimal();
+    }
+
+    /** When a State pension's "level" changes, derive (or clear) its weekly figure so the user need not. */
+    public function updatedPensions(mixed $value, ?string $key): void
+    {
+        if ($key === null || ! str_ends_with($key, '.level')) {
+            return;
+        }
+
+        $i = (int) explode('.', $key)[0];
+        if ($value === 'full') {
+            $this->pensions[$i]['weeklyForecast'] = $this->fullStatePensionWeekly();
+            $this->pensions[$i]['qualifyingYears'] = '';
+        } elseif ($value === 'years') {
+            $this->pensions[$i]['weeklyForecast'] = '';
+        }
+        // 'amount' leaves whatever the user typed.
     }
 
     public function removePension(int $i): void
@@ -452,6 +565,9 @@ class ScenarioBuilder extends Component
         $scenario->setHousingAction($assembled['housingAction']);
         $scenario->save();
 
+        // The forecast is now a real saved scenario; the working draft is no longer needed.
+        ScenarioDraft::where('user_id', auth()->id())->delete();
+
         session()->flash('status', 'Forecast saved. Run it to see the results.');
 
         return redirect()->route('scenarios.results', $scenario);
@@ -532,7 +648,7 @@ class ScenarioBuilder extends Component
     private function blankPerson(string $id): array
     {
         return [
-            'id' => $id, 'dob' => '', 'sex' => 'female', 'employmentStatus' => 'retired',
+            'id' => $id, 'name' => '', 'dob' => '', 'sex' => 'female', 'employmentStatus' => 'retired',
             'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => '',
         ];
     }
@@ -540,7 +656,7 @@ class ScenarioBuilder extends Component
     private function blankPension(string $subtype): array
     {
         return [
-            'ownerId' => $this->firstPersonId(), 'subtype' => $subtype,
+            'ownerId' => $this->firstPersonId(), 'subtype' => $subtype, 'level' => 'amount',
             'currentValue' => '', 'ongoingContribution' => '', 'employerContribution' => '',
             'earliestAccessAge' => '57', 'pclsTakenToDate' => '', 'growthAssumptionOverride' => '', 'withdrawals' => [],
             'accruedAnnualPension' => '', 'normalRetirementAge' => '65', 'revaluationBasis' => 'cpi',

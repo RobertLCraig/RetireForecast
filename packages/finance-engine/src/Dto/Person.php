@@ -27,5 +27,7 @@ final class Person
         public readonly ?Percent $salaryGrowth = null,
         public readonly ?int $plannedRetirementAge = null,
         public readonly ?string $niCategory = null,
+        /** Display label only (e.g. "Alex"); never used in any calculation. */
+        public readonly ?string $name = null,
     ) {}
 }

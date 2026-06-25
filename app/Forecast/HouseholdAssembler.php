@@ -90,6 +90,7 @@ final class HouseholdAssembler
             salaryGrowth: $this->percent($p['salaryGrowth'] ?? null),
             plannedRetirementAge: $this->intOrNull($p['plannedRetirementAge'] ?? null),
             niCategory: $this->stringOrNull($p['niCategory'] ?? null),
+            name: $this->stringOrNull($p['name'] ?? null),
         );
     }
 

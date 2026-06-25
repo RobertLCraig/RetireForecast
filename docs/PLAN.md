@@ -236,6 +236,59 @@ the planned compliance step). The genuinely new, aligned items, kept as a post-v
 per-row/envelope encryption, a native (Rust/WASM/SIMD) Monte Carlo accelerator, and automated gov.uk
 scraping.
 
+### Sector-informed build plan (2026-06-26) — edit/clone/compare, line-item expenditure, drill-down
+Research into how the cashflow-modelling sector solves these (Voyant/Timeline/CashCalc + PLSA/SMPI)
+is captured in **[docs/RESEARCH-cashflow-modelling.md](RESEARCH-cashflow-modelling.md)**. These are
+solved problems — we follow the proven shape and customise. Agreed build order:
+
+**0. Checkpoint** the current green-but-uncommitted pile first (scenario drafts, person names, State
+Pension "full" shortcut, import `.xlsx`/Cancel fixes) — clean baseline before a data-model change.
+
+**1. Edit → designed for clone + compare (the base-plan / what-if pattern — CONFIRMED in scope).**
+- Persist the builder **form-state** on the scenario (encrypted `builder_state`); the engine DTO
+  stays a *derived* artifact regenerated on save (avoids a fragile reverse-mapper — single source).
+- Edit route `/scenarios/{scenario}/edit`, **owner-scoped**; `save()` becomes update-or-create.
+- **Child what-if** = a named scenario that **overrides only 1–2 parameters** of the base — stored
+  as a **delta**, not a full copy (single-source, no fork; see research §1 + DECISIONS 2026-06-26).
+  Effective inputs = base `builder_state` ⊕ child overrides, via **one merge function** (+ round-trip
+  test). **Compare** reuses the existing variant side-by-side rendering. On edit-save,
+  **invalidate the scenario's stale runs/results**.
+
+**2. Budget line items + the two cheap sector payoffs.**
+- Line items `{label, amount(annual), category}` become the **source of truth**; essential /
+  discretionary **totals are the sum of the lines** (reconciliation discipline). Importers populate
+  the lines (today they discard them into a total). Builder shows an editable list; results show the
+  breakdown. New reconciliation invariants + extend the import golden fixtures.
+- **Income-floor readout** (essential vs guaranteed income = State Pension + DB + annuity) and
+  **PLSA benchmark** ("your essentials ≈ Moderate") — both cheap, both reuse existing data. Defer
+  the spending "smile"/phased spend (an engine expense-model change) and any third (wishes) tier.
+
+**3. Projection drill-down.**
+- **Deterministic cashflow ladder** from `YearResult[]` (per year: income-by-source → tax → net →
+  spend → surplus/deficit → asset balances), accessible table + CSV; MC success-rate as the risk
+  lens, framed as a probability (not pass/fail). **Per-pension** current → projected pot → indicative
+  income. Defer the annuity-equivalent (new mortality-pricing math).
+
+**Gotchas — what could bite (the important part, refined with the research):**
+| # | Bite | Mitigation |
+|---|------|------------|
+| A | Line-items double-count / unit slip (monthly vs annual) | totals = `sum(lines)`, never stored apart; reconciliation invariant + golden fixtures |
+| B | Edit leaves **stale results** (old forecast from old inputs) | invalidate runs/results on edit-save, prompt re-run |
+| C | Edit/clone **owner-scoping** (forged scenario id) | explicit `user_id` check in `mount()` |
+| D | Draft vs edit/clone **context clobber** | gate on `editingScenarioId`; editing skips the create-draft, doesn't delete it |
+| E | No single Monte-Carlo year-by-year path | ladder is **deterministic**; MC stays for bands/probability |
+| F | Per-pension series / annuity may need engine work | **verify `YearResult` shape first**; defer annuity-equivalent |
+| G | Backward-compat: old households (no line items), old scenarios (no `builder_state`) | lines authoritative-when-present else fall back to the stored total; old scenarios: "re-create to edit" |
+| J | **PLSA assumes outright ownership, excludes housing/care** | add the housing leg before benchmarking (our buy-vs-rent is exactly the excluded bit) |
+| K | Flat spend vs the spending **smile** | defer phased spend; flag as next engine piece |
+| L | Income-floor needs income classified **guaranteed vs flexible** | derive from types (SP/DB/annuity = guaranteed; drawdown/GIA = flexible) |
+| M | Success-rate read as pass/fail | present as a **probability under assumptions** (also satisfies the lint) |
+| N | Delta-child **override resolution** bugs / orphaned overrides when the base shape changes | one merge function `effective = base ⊕ overrides` + round-trip test; validate override keys against the base (full-copy was rejected — it forks, see DECISIONS 2026-06-26) |
+
+**Open decisions (recommendations in DECISIONS 2026-06-26):** line-items on the engine DTO (totals
+derived) — recommend yes; PLSA benchmark + income-floor in the line-items phase vs fast-follow;
+phased spend deferred; annuity-equivalent deferred.
+
 ### Data Rob supplies for the demo couple (agree the shape now, needed at step 5)
 Per person: DOB, employment status, (working partner) gross salary + planned retirement age + NI category, State Pension weekly forecast (or qualifying years) + deferral, sex (for life table). Per pension: type, and DC → value, contributions, access age, withdrawal plan; DB → accrued annual pension, NRA, revaluation + in-payment escalation, commutation option + factor, spouse fraction; State → weekly forecast/qualifying years + triple-lock assumption. Property: value, ownership, mortgage left, ever-let, running costs. Accounts: each ISA/GIA/cash balance + owner (+ GIA unrealised gain). Expenses: target annual spend split essential/discretionary + inflation basis + one-offs + survivor spend factor. Housing: assumed sale price, candidate purchase price, assumed rent + rent inflation. Region. Default assumption set. All anonymised.
 
