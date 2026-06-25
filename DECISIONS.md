@@ -3,6 +3,45 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-26 — Rebuild: keep the engine, rebuild storage to the new world; ratify LW4+SQLite; defer GIA/CGT
+**Decision:** Rob authorised a clean rebuild treating the existing code as a prototype, with a key
+liberation: **no existing user data, DB layout or data shape must be preserved** — build storage to match
+the new world directly. Concretely: (1) **Keep the framework-free engine** (penny-accurate, now 113 tests)
+and the sound app code; **rebuild the data/storage layer freely** (no migration, no backward-compat — this
+removes gotcha G). (2) **Ratify the real stack** — Livewire 4 + Filament 5 + SQLite + db/sync queue — over
+the plan's stale Livewire 3 + Redis/Horizon (reverting LW4→3 would fight Filament 5 for no gain). (3)
+**Interleave trust fixes with features** rather than sequencing (Rob: "not too worried about first focus…
+build to a natural slightly beyond MVP"). (4) **Defer the GIA/cash income-tax + CGT-on-disposal modelling
+(A5) to the trust pass (Phase D):** the projector grows GIA/cash at the assumption set's *total* real
+return, so taxing a yield on top would **double-count returns** — it must be done by decomposing total
+return into a taxed income yield + deferred capital growth (CGT on disposal with AEA + rates), alongside the
+gov.uk figure verification. Shipping it hastily would itself be a trust bug.
+**Why:** The engine is the trustworthy, costly-to-recreate asset; the prototype builder/storage was always
+disposable (it existed to get a usable app for feedback). Freeing the rebuild from data migration lets the
+new shape (builder_state source of truth, delta children, line items, account contributions, longevity) be
+built cleanly instead of bolted on. The prototype is preserved at tag **`prototype-v1`** (commit a8f1f68)
+for recovery (no remote). [[2026-06-26 — Scenario model: base plan + delta what-if children + compare]]
+**Status:** active
+
+## 2026-06-26 — Engine enrichments for the new world (contributions, longevity, usable wealth, income-by-source)
+**Decision:** Built the engine capabilities the sector-informed rebuild needs (Phase A), each golden-master /
+reconciliation tested, all additive and backward-compatible: (1) **ongoing contributions** on `Account` (new
+field) and DC pensions (the DTO already carried `ongoingContribution`/`employerContribution` but the projector
+ignored them) — funded from surplus only, so saving stops once the household is in net drawdown; (2) a
+per-person **`LongevityAdjustment`** (peer / fixed age / ±years / mortality multiplier) feeding both the
+deterministic representative death age and the Monte Carlo sampler (q(x) multiplier on the cohort table); (3)
+**terminal usable wealth** (excl. home) reported alongside total on `ForecastResult`/`SimulationResult` (fixes
+the asset-rich / cash-poor "wealth left" paradox, gotcha P) at the engine boundary; (4)
+**`YearResult::incomeBySource`** — every year's inflows split across the canonical sources (salary, DB, State
+Pension, annuity/other, tax-free, pension lump sum, pension drawdown, savings drawn), powering the cashflow
+ladder and the per-source completeness guard (gotcha Q).
+**Why:** These are the prerequisites the new-world features (line items, drill-down, lifespan/contribution
+what-ifs, honest wealth reporting) consume; building them first keeps the engine the single source of truth
+and lets the app layer be rebuilt against a stable, tested surface. v1 simplification flagged: pension
+contributions are funded from net surplus with no tax relief modelled (slightly understates the pre-retirement
+pot), to revisit in the trust pass. [[2026-06-26 — Expenditure: 3-tier line items (essential / discretionary / self-investment) + spent-vs-saved]] [[2026-06-26 — Per-person longevity / health adjustment (new engine input)]]
+**Status:** active
+
 ## 2026-06-26 — Forecast income completeness: count every source, no silent drop
 **Decision:** The forecast must count **every** income source that should reach a household's spendable
 cash, and a regression test guards each one. Found via live use: `PathProjector::incomeStreamsNominal`

@@ -183,13 +183,19 @@ Recorded here so the rebuild does not fork the model:
   totals are the **sum of the lines** (derived). `savedAsAsset` (self-investment only): *spent* → expense,
   *saved* → a **contribution to net worth**. The budget view shows the 3-tier split as the prioritisation
   **goal**, not a fixed percentage. Deferred: phased ("smile") spend.
-- **`Account` gains ongoing contributions** (like DC pensions) so *saved* self-investment accumulates.
-- **`Person` gains a longevity/health adjustment** (fixed assumed age / ±years / mortality multiplier)
-  feeding the joint-life sampler — for the lifespan what-if.
-- **Results split usable vs total wealth.** The engine already computes `liquidWealth` / `propertyWealth`
-  / `totalWealth` per `YearResult`; the Monte-Carlo aggregates only terminal **total** today. Add terminal
-  **liquid** aggregation + present **usable/liquid** alongside **total (incl. home)**, so the asset-rich /
-  cash-poor case (100% run out yet high "wealth left") reads correctly. (Live-use finding 2026-06-26.)
+- ✅ **BUILT (2026-06-26 rebuild, Phase A).** **`Account` gained `ongoingContributions`** and the projector
+  now applies it (and DC `ongoingContribution`/`employerContribution`, previously ignored), funded from
+  surplus so *saved* self-investment accumulates.
+- ✅ **BUILT (2026-06-26 rebuild, Phase A).** **`Person` gained `LongevityAdjustment`** (`LongevityMode`:
+  peer / fixed age / ±years / mortality multiplier) feeding both the deterministic representative death age
+  and the Monte-Carlo `JointLifeSampler` (via an optional q(x) multiplier on `CohortLifeTable`).
+- ✅ **BUILT (2026-06-26 rebuild, Phases A + C3).** **Results split usable vs total wealth.** The engine now
+  reports terminal **usable** wealth (excl. home) on `ForecastResult`/`SimulationResult`
+  (`usableWealthPercentiles`) alongside total; the results page shows both, so the asset-rich / cash-poor case
+  (100% run out yet high "wealth left") reads correctly. Also added **`YearResult::incomeBySource`** (the
+  canonical 8 sources) powering the deterministic cashflow ladder + the per-source completeness guard.
+  **Still app-side (not yet built):** `scenarios.builder_state` as source of truth + derived `Household`,
+  delta-child what-ifs, 3-tier line items.
 
 ## Known divergences (to close)
 - The DTO carries withdrawals on the DC pension; the original Scenario sketch listed
