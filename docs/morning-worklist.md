@@ -4,19 +4,19 @@ _Written 2026-06-25 by the overnight build session. Tick these off; they unblock
 import and a couple of data-model calls. None of this blocks the app running — the wizard and the
 RetireForecast CSV import already work end to end (196 tests green)._
 
-## 1. Provide template samples (unblocks IWT / Nischa import)
-The import infrastructure is built. The two popular profiles are wired in but **refuse to parse until
-I can see their exact layout**. To calibrate them I need a real export of each:
-
-- [ ] **IWT Conscious Spending Plan** — export a copy (filled or blank) as **CSV** (File → Download →
-      CSV from the Google Sheet), or the `.xlsx`.
-- [ ] **Nischa Intentional Spending Tracker** — same (it's email-gated, so I can't fetch it myself).
+## 1. Template imports
+- [x] **IWT Conscious Spending Plan** — **now live.** Calibrated to the published structure (Fixed
+      Costs → essential, Guilt-Free → discretionary, Investments + Savings → contributions; amounts
+      normalised by their Frequency to annual). Because CSP is **net-of-tax**, it does **not** set
+      gross salary — that's flagged as still-to-do. **Please test it with your real export** (export
+      the sheet as CSV, pick "IWT Conscious Spending Plan" in the import panel): the review screen
+      shows the imported totals, so check them. If they're off, send me the CSV (or just its header +
+      2–3 rows) and I'll tighten the reader — CSP ships in a few versions.
+- [ ] **Nischa Intentional Spending Tracker** — still **needs a sample**; it's email-gated so I can't
+      fetch it. Export a copy (CSV or `.xlsx`, blank or redacted) and drop it in
+      `storage/app/import-samples/` (gitignored), or paste its column headers / section layout into
+      chat. I only need the structure, not your real numbers. **Do not commit real figures to the repo.**
 - [ ] _(Optional)_ Your own **Pay and Expenditures.xlsx** if you want a bespoke profile for it.
-
-**Where to put them:** drop them in `storage/app/import-samples/` (create it — it's gitignored, so
-real figures never get committed), or just paste the **column headers / sheet layout** into chat. I
-only need the structure (which row/column holds which bucket), not your real numbers — a blank export
-or a redacted one is ideal. **Do not commit real financial figures to the repo.**
 
 ## 2. Decisions I need from you
 - [ ] **Line-item expense categories.** You chose line-item categories earlier; I deferred the

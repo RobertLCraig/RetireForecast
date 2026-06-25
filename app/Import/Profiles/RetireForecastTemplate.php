@@ -58,7 +58,7 @@ final class RetireForecastTemplate implements ImportProfile
                 continue;
             }
 
-            $cols = str_getcsv($line);
+            $cols = str_getcsv($line, ',', '"', '');
             $section = strtolower(trim($cols[0] ?? ''));
             $amount = trim($cols[2] ?? '');
 

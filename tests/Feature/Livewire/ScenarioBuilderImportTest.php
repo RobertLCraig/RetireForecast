@@ -42,10 +42,24 @@ class ScenarioBuilderImportTest extends TestCase
         $csv = "section,label,monthly_amount\nessential,Rent,1000\n";
 
         Livewire::test(ScenarioBuilder::class)
+            ->set('importProfile', 'nischa-ist') // still pending a sample export
+            ->set('importFile', UploadedFile::fake()->createWithContent('ist.csv', $csv))
+            ->call('import')
+            ->assertHasErrors('importFile');
+    }
+
+    public function test_importing_a_conscious_spending_plan_fills_spending(): void
+    {
+        $csv = "Fixed Costs,,\nRent,\$1500,Monthly\nGuilt-Free Spending,,\nDining,\$400,Monthly\n";
+
+        Livewire::test(ScenarioBuilder::class)
             ->set('importProfile', 'iwt-csp')
             ->set('importFile', UploadedFile::fake()->createWithContent('csp.csv', $csv))
             ->call('import')
-            ->assertHasErrors('importFile');
+            ->assertHasNoErrors()
+            ->assertSet('expense.essential', '18000.00')      // 1500 * 12
+            ->assertSet('expense.discretionary', '4800.00')   // 400 * 12
+            ->assertSet('step', 4);
     }
 
     public function test_a_file_that_does_not_match_the_template_reports_a_reason(): void

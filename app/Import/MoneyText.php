@@ -52,6 +52,7 @@ final class MoneyText
 
     private static function clean(string $value): string
     {
-        return str_replace([',', '£', ' ', "\t"], '', trim($value));
+        // Strip currency symbols and grouping so a $/£/€-formatted cell parses as a number.
+        return str_replace([',', '£', '$', '€', ' ', "\t"], '', trim($value));
     }
 }

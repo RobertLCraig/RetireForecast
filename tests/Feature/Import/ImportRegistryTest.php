@@ -11,30 +11,26 @@ use Tests\TestCase;
 
 class ImportRegistryTest extends TestCase
 {
-    public function test_it_lists_all_profiles_but_only_the_calibrated_one_is_available(): void
+    public function test_it_lists_all_profiles_and_the_calibrated_ones_are_available(): void
     {
         $registry = new ImportRegistry;
 
         $this->assertCount(3, $registry->all());
-        $this->assertCount(1, $registry->available());
+        $this->assertCount(2, $registry->available()); // RetireForecast template + IWT CSP
         $this->assertInstanceOf(RetireForecastTemplate::class, $registry->available()[0]);
     }
 
-    public function test_uncalibrated_profiles_refuse_to_parse_with_a_reason(): void
+    public function test_the_uncalibrated_profile_refuses_to_parse_with_a_reason(): void
     {
-        $registry = new ImportRegistry;
+        $profile = (new ImportRegistry)->find('nischa-ist'); // still pending a sample export
+        $this->assertNotNull($profile);
+        $this->assertFalse($profile->isAvailable());
 
-        foreach (['iwt-csp', 'nischa-ist'] as $key) {
-            $profile = $registry->find($key);
-            $this->assertNotNull($profile);
-            $this->assertFalse($profile->isAvailable());
-
-            try {
-                $profile->parse('anything');
-                $this->fail("Expected {$key} to refuse parsing.");
-            } catch (ImportException $e) {
-                $this->assertStringContainsString('not calibrated', $e->getMessage());
-            }
+        try {
+            $profile->parse('anything');
+            $this->fail('Expected nischa-ist to refuse parsing.');
+        } catch (ImportException $e) {
+            $this->assertStringContainsString('not calibrated', $e->getMessage());
         }
     }
 
