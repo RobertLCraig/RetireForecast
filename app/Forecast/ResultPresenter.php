@@ -156,7 +156,7 @@ final class ResultPresenter
             'chart' => ['type' => 'bar', 'height' => 320, 'toolbar' => ['show' => false]],
             'colors' => ['#3b82f6'],
             'plotOptions' => ['bar' => ['borderRadius' => 4, 'columnWidth' => '45%']],
-            'series' => [['name' => 'Median terminal wealth (real £)', 'data' => $medianWealth]],
+            'series' => [['name' => 'Total wealth left, incl. home (real £)', 'data' => $medianWealth]],
             'xaxis' => ['categories' => $categories],
             'yaxis' => ['title' => ['text' => 'Real £']],
             'dataLabels' => ['enabled' => false],

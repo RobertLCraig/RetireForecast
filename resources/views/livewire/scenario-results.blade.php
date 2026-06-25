@@ -141,7 +141,7 @@
                             <th scope="col" class="{{ $th }}">Essentials always met</th>
                             <th scope="col" class="{{ $th }}">Full spend always met</th>
                             <th scope="col" class="{{ $th }}">Money runs out</th>
-                            <th scope="col" class="{{ $th }}">Wealth left by {{ $sensitivity[0]['finalYear'] }}</th>
+                            <th scope="col" class="{{ $th }}">Total wealth by {{ $sensitivity[0]['finalYear'] }} (incl. home)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -193,11 +193,12 @@
                             <div class="flex justify-between"><dt class="text-gray-600">Full spending met</dt><dd class="font-medium">{{ $v['successFullSpend'] }}</dd></div>
                             <div class="flex justify-between"><dt class="text-gray-600">Chance of running out</dt><dd class="font-medium">{{ $v['depletionRate'] }}</dd></div>
                             <div class="flex justify-between"><dt class="text-gray-600">If so, typically by</dt><dd class="font-medium">{{ $v['medianDepletionYear'] ?? '—' }}</dd></div>
-                            <div class="flex justify-between"><dt class="text-gray-600">Median wealth left</dt><dd class="font-medium">{{ $v['terminalP50'] }}</dd></div>
+                            <div class="flex justify-between"><dt class="text-gray-600">Total wealth left (incl. home)</dt><dd class="font-medium">{{ $v['terminalP50'] }}</dd></div>
                         </dl>
                     </div>
                 @endforeach
             </div>
+            <p class="mt-3 text-xs text-gray-500">"Total wealth left" includes any home you would still own, so it can stay high even when the usable cash to meet day-to-day spending has run out — which is why an option can show a large figure here yet still have a high chance of running out.</p>
         </section>
 
         {{-- Fan chart ------------------------------------------------------------- --}}
@@ -254,19 +255,19 @@
 
             <div class="mt-4" wire:ignore>
                 <div x-data="chart(@js($comparison['options']))" role="img"
-                    aria-label="Bar chart of median terminal wealth by housing option. The full figures are in the data table below."></div>
+                    aria-label="Bar chart of total wealth left, including any home still owned, by housing option. The full figures are in the data table below."></div>
             </div>
 
             <div class="mt-4 overflow-x-auto">
                 <table class="w-full text-sm">
-                    <caption class="sr-only">Success probabilities, chance of running out and median terminal wealth by housing option</caption>
+                    <caption class="sr-only">Success probabilities, chance of running out and total wealth left (incl. home) by housing option</caption>
                     <thead>
                         <tr>
                             <th scope="col" class="{{ $th }}">Option</th>
                             <th scope="col" class="{{ $th }}">Essentials met</th>
                             <th scope="col" class="{{ $th }}">Full spend met</th>
                             <th scope="col" class="{{ $th }}">Runs out</th>
-                            <th scope="col" class="{{ $th }}">Median wealth left</th>
+                            <th scope="col" class="{{ $th }}">Total wealth left (incl. home)</th>
                         </tr>
                     </thead>
                     <tbody>
