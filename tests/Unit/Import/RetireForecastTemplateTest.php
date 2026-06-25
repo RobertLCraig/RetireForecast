@@ -7,6 +7,7 @@ namespace Tests\Unit\Import;
 use App\Import\ImportException;
 use App\Import\MoneyText;
 use App\Import\Profiles\RetireForecastTemplate;
+use App\Import\Spreadsheet;
 use Tests\TestCase;
 
 class RetireForecastTemplateTest extends TestCase
@@ -33,7 +34,7 @@ class RetireForecastTemplateTest extends TestCase
         savings,Pension contribution,100.00
         CSV;
 
-        $result = (new RetireForecastTemplate)->parse($csv);
+        $result = (new RetireForecastTemplate)->parse(Spreadsheet::fromCsv($csv));
 
         // (1500.58 + 167.00) * 12 = 18174.96; 15.00 * 12 = 180.00; 2500.00 * 12 = 30000.00
         $this->assertSame('18174.96', $result->expense['essential']);
@@ -48,7 +49,7 @@ class RetireForecastTemplateTest extends TestCase
         $csv = "section,label,monthly_amount\nessential,Mortgage,not-a-number\n";
 
         $this->expectException(ImportException::class);
-        (new RetireForecastTemplate)->parse($csv);
+        (new RetireForecastTemplate)->parse(Spreadsheet::fromCsv($csv));
     }
 
     public function test_it_rejects_a_file_with_no_recognised_rows(): void
@@ -56,6 +57,6 @@ class RetireForecastTemplateTest extends TestCase
         $csv = "section,label,monthly_amount\nsavings,Pension,100\nunknown,Thing,50\n";
 
         $this->expectException(ImportException::class);
-        (new RetireForecastTemplate)->parse($csv);
+        (new RetireForecastTemplate)->parse(Spreadsheet::fromCsv($csv));
     }
 }

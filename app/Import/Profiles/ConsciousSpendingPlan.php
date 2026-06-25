@@ -8,6 +8,7 @@ use App\Import\ImportException;
 use App\Import\ImportProfile;
 use App\Import\ImportResult;
 use App\Import\MoneyText;
+use App\Import\Spreadsheet;
 
 /**
  * Ramit Sethi / "I Will Teach You To Be Rich" Conscious Spending Plan, exported as CSV.
@@ -55,10 +56,10 @@ final class ConsciousSpendingPlan implements ImportProfile
         return true;
     }
 
-    public function parse(string $contents): ImportResult
+    public function parse(Spreadsheet $sheet): ImportResult
     {
-        $lines = preg_split('/\r\n|\r|\n/', trim($contents)) ?: [];
-        if ($lines === []) {
+        $rows = $sheet->rows();
+        if ($rows === []) {
             throw new ImportException('The file is empty.');
         }
 
@@ -66,12 +67,11 @@ final class ConsciousSpendingPlan implements ImportProfile
         $seen = [];
         $currentBucket = null;
 
-        foreach ($lines as $line) {
-            if (trim($line) === '') {
+        foreach ($rows as $cells) {
+            if ($cells === []) {
                 continue;
             }
 
-            $cells = str_getcsv($line, ',', '"', '');
             $rowBucket = $this->bucketIn($cells);
             $amount = $this->amountIn($cells);
 

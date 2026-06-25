@@ -6,6 +6,7 @@ namespace Tests\Unit\Import;
 
 use App\Import\ImportException;
 use App\Import\Profiles\ConsciousSpendingPlan;
+use App\Import\Spreadsheet;
 use Tests\TestCase;
 
 class ConsciousSpendingPlanTest extends TestCase
@@ -34,7 +35,7 @@ class ConsciousSpendingPlanTest extends TestCase
         Hobbies,$100,Monthly
         CSV;
 
-        $result = (new ConsciousSpendingPlan)->parse($csv);
+        $result = (new ConsciousSpendingPlan)->parse(Spreadsheet::fromCsv($csv));
 
         // Fixed: 1500*12 + 200*12 + 200*26 (bi-weekly) = 18000 + 2400 + 5200 = 25600
         $this->assertSame('25600.00', $result->expense['essential']);
@@ -54,7 +55,7 @@ class ConsciousSpendingPlanTest extends TestCase
         Guilt-Free Spending,Dining,400,Monthly
         CSV;
 
-        $result = (new ConsciousSpendingPlan)->parse($csv);
+        $result = (new ConsciousSpendingPlan)->parse(Spreadsheet::fromCsv($csv));
 
         $this->assertSame('18000.00', $result->expense['essential']);     // 1500 * 12
         $this->assertSame('4800.00', $result->expense['discretionary']);  // 400 * 12
@@ -65,6 +66,6 @@ class ConsciousSpendingPlanTest extends TestCase
         $csv = "Category,Amount\nGroceries,100\nFuel,50\n";
 
         $this->expectException(ImportException::class);
-        (new ConsciousSpendingPlan)->parse($csv);
+        (new ConsciousSpendingPlan)->parse(Spreadsheet::fromCsv($csv));
     }
 }

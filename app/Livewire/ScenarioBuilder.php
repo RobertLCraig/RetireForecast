@@ -9,6 +9,7 @@ use App\Forecast\HouseholdAssembler;
 use App\Import\ImportException;
 use App\Import\ImportRegistry;
 use App\Import\ImportResult;
+use App\Import\SpreadsheetReader;
 use App\Models\AssumptionSet;
 use App\Models\Household;
 use App\Models\Scenario;
@@ -261,7 +262,11 @@ class ScenarioBuilder extends Component
         }
 
         try {
-            $result = $profile->parse((string) $this->importFile->get());
+            $sheet = (new SpreadsheetReader)->read(
+                (string) $this->importFile->getRealPath(),
+                (string) $this->importFile->getClientOriginalName(),
+            );
+            $result = $profile->parse($sheet);
         } catch (ImportException $e) {
             $this->addError('importFile', $e->getMessage());
 

@@ -7,6 +7,7 @@ namespace Tests\Feature\Import;
 use App\Import\ImportException;
 use App\Import\ImportRegistry;
 use App\Import\Profiles\RetireForecastTemplate;
+use App\Import\Spreadsheet;
 use Tests\TestCase;
 
 class ImportRegistryTest extends TestCase
@@ -27,7 +28,7 @@ class ImportRegistryTest extends TestCase
         $this->assertFalse($profile->isAvailable());
 
         try {
-            $profile->parse('anything');
+            $profile->parse(Spreadsheet::fromCsv('anything'));
             $this->fail('Expected nischa-ist to refuse parsing.');
         } catch (ImportException $e) {
             $this->assertStringContainsString('not calibrated', $e->getMessage());

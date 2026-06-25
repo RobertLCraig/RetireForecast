@@ -7,6 +7,7 @@ namespace App\Import\Profiles;
 use App\Import\ImportException;
 use App\Import\ImportProfile;
 use App\Import\ImportResult;
+use App\Import\Spreadsheet;
 
 /**
  * A profile that is recognised and listed but not yet wired to a real layout, because
@@ -21,7 +22,7 @@ abstract class UncalibratedProfile implements ImportProfile
         return false;
     }
 
-    public function parse(string $contents): ImportResult
+    public function parse(Spreadsheet $sheet): ImportResult
     {
         throw new ImportException(sprintf(
             'The %s reader is not calibrated yet — it needs a sample export to map its layout. For now, enter the figures by hand or use the RetireForecast template.',

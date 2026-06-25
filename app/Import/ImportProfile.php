@@ -28,9 +28,9 @@ interface ImportProfile
     public function isAvailable(): bool;
 
     /**
-     * Read the uploaded file's contents into a partial form state.
+     * Read the uploaded spreadsheet into a partial form state.
      *
-     * @throws ImportException when the contents do not match this layout, or the profile is unavailable
+     * @throws ImportException when the sheet does not match this layout, or the profile is unavailable
      */
-    public function parse(string $contents): ImportResult;
+    public function parse(Spreadsheet $sheet): ImportResult;
 }

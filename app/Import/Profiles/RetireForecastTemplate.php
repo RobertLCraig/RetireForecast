@@ -8,6 +8,7 @@ use App\Import\ImportException;
 use App\Import\ImportProfile;
 use App\Import\ImportResult;
 use App\Import\MoneyText;
+use App\Import\Spreadsheet;
 
 /**
  * The project's own CSV template — the one profile available without a third-party
@@ -43,22 +44,17 @@ final class RetireForecastTemplate implements ImportProfile
         return true;
     }
 
-    public function parse(string $contents): ImportResult
+    public function parse(Spreadsheet $sheet): ImportResult
     {
-        $lines = preg_split('/\r\n|\r|\n/', trim($contents)) ?: [];
-        if (count($lines) < 2) {
+        $rows = $sheet->rows();
+        if (count($rows) < 2) {
             throw new ImportException('The file has no data rows below the header.');
         }
 
         $totals = ['essential' => 0, 'discretionary' => 0, 'salary' => 0];
         $seen = [];
 
-        foreach (array_slice($lines, 1) as $line) {
-            if (trim($line) === '') {
-                continue;
-            }
-
-            $cols = str_getcsv($line, ',', '"', '');
+        foreach (array_slice($rows, 1) as $cols) {
             $section = strtolower(trim($cols[0] ?? ''));
             $amount = trim($cols[2] ?? '');
 
@@ -66,7 +62,7 @@ final class RetireForecastTemplate implements ImportProfile
                 continue;
             }
             if (! MoneyText::looksNumeric($amount)) {
-                throw new ImportException(sprintf('Row "%s" has an amount that is not a number.', trim($line)));
+                throw new ImportException(sprintf('Row "%s" has an amount that is not a number.', implode(',', $cols)));
             }
 
             $totals[$section] += MoneyText::toPence($amount);
