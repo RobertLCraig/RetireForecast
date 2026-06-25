@@ -47,6 +47,12 @@ final class Spreadsheet
         return $this->sheets[$sheet] ?? [];
     }
 
+    /** A copy holding only the named sheet (or this, unchanged, if it has no such sheet). */
+    public function select(string $name): self
+    {
+        return isset($this->sheets[$name]) ? new self([$name => $this->sheets[$name]]) : $this;
+    }
+
     /** The first sheet name for which the predicate holds, or null. */
     public function firstSheetMatching(callable $predicate): ?string
     {

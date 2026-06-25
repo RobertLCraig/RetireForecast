@@ -43,6 +43,18 @@
                     @error('importFile') <p id="importFile-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                 </div>
             </div>
+            @if (count($importSheets) > 1)
+                <div>
+                    <label for="importSheet" class="{{ $label }}">Tab to import</label>
+                    <select id="importSheet" wire:model="importSheet" class="{{ $field }} sm:max-w-sm">
+                        @foreach ($importSheets as $name)
+                            <option value="{{ $name }}">{{ $name === '' ? 'Sheet 1' : $name }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">This workbook has several tabs — choose the scenario to read.</p>
+                </div>
+            @endif
+
             <button type="button" wire:click="import" wire:loading.attr="disabled" wire:target="import,importFile"
                 class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50">
                 <span wire:loading.remove wire:target="import">Import</span>

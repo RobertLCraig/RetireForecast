@@ -103,6 +103,11 @@ class ScenarioBuilder extends Component
 
     public string $importProfile = 'retireforecast';
 
+    /** Sheet/tab names in the uploaded file, and the chosen one (for multi-tab workbooks). */
+    public array $importSheets = [];
+
+    public ?string $importSheet = null;
+
     /** @var array<string, list<string>> what an import filled / still needs / noted */
     public array $importSummary = [];
 
@@ -245,6 +250,28 @@ class ScenarioBuilder extends Component
      * spending step to review. The file is read once and never stored; an unreadable or
      * unrecognised file is reported, not swallowed.
      */
+    /** When a file is chosen, list its tabs so a multi-tab workbook can be narrowed to one. */
+    public function updatedImportFile(): void
+    {
+        $this->importSheets = [];
+        $this->importSheet = null;
+
+        if (! $this->importFile) {
+            return;
+        }
+
+        try {
+            $sheet = (new SpreadsheetReader)->read(
+                (string) $this->importFile->getRealPath(),
+                (string) $this->importFile->getClientOriginalName(),
+            );
+            $this->importSheets = $sheet->sheetNames();
+            $this->importSheet = $this->importSheets[0] ?? null;
+        } catch (\Throwable) {
+            // A bad file is reported when the user presses Import, not here.
+        }
+    }
+
     public function import(): void
     {
         $this->validate(
@@ -266,6 +293,9 @@ class ScenarioBuilder extends Component
                 (string) $this->importFile->getRealPath(),
                 (string) $this->importFile->getClientOriginalName(),
             );
+            if ($this->importSheet !== null && $this->importSheet !== '') {
+                $sheet = $sheet->select($this->importSheet);
+            }
             $result = $profile->parse($sheet);
         } catch (ImportException $e) {
             $this->addError('importFile', $e->getMessage());
@@ -274,7 +304,7 @@ class ScenarioBuilder extends Component
         }
 
         $this->applyImport($result);
-        $this->reset('importFile');
+        $this->reset(['importFile', 'importSheets', 'importSheet']);
     }
 
     private function applyImport(ImportResult $result): void

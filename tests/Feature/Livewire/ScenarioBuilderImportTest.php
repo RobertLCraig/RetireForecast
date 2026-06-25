@@ -9,6 +9,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
+use PhpOffice\PhpSpreadsheet\Spreadsheet as PhpSpreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
 use Tests\TestCase;
 
 class ScenarioBuilderImportTest extends TestCase
@@ -60,6 +62,31 @@ class ScenarioBuilderImportTest extends TestCase
             ->assertSet('expense.essential', '18000.00')      // 1500 * 12
             ->assertSet('expense.discretionary', '4800.00')   // 400 * 12
             ->assertSet('step', 4);
+    }
+
+    public function test_a_multi_tab_workbook_lets_you_choose_the_tab(): void
+    {
+        $book = new PhpSpreadsheet;
+        $book->getActiveSheet()->setTitle('Junk')->fromArray([['nothing here']]);
+        $book->createSheet()->setTitle('Demo Buy')->fromArray([
+            ['Expenditure Item', 'Deduction Amount', '% of Total Pay', '% of Take Home Pay', 'Notes'],
+            ['Mortgage', 1000],
+            ['Total', 1000],
+        ]);
+
+        $path = tempnam(sys_get_temp_dir(), 'wb').'.xlsx';
+        (new XlsxWriter($book))->save($path);
+        $file = UploadedFile::fake()->createWithContent('workbook.xlsx', (string) file_get_contents($path));
+        @unlink($path);
+
+        Livewire::test(ScenarioBuilder::class)
+            ->set('importFile', $file)                       // updatedImportFile lists the tabs
+            ->assertSet('importSheets', ['Junk', 'Demo Buy'])
+            ->set('importProfile', 'pay-and-expenditures')
+            ->set('importSheet', 'Demo Buy')
+            ->call('import')
+            ->assertHasNoErrors()
+            ->assertSet('expense.essential', '12000.00');    // 1000/mo * 12, from the chosen tab
     }
 
     public function test_a_file_that_does_not_match_the_template_reports_a_reason(): void
