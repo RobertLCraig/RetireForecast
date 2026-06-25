@@ -11,6 +11,7 @@ use App\Models\Household;
 use App\Models\Scenario;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
@@ -29,6 +30,27 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 #[Layout('components.layouts.app')]
 class ScenarioBuilder extends Component
 {
+    /** The wizard guides through these steps; the user may also jump between them freely. */
+    public const STEPS = [
+        1 => 'About & people',
+        2 => 'Pensions & income',
+        3 => 'Your net worth',
+        4 => 'Spending',
+        5 => 'The decision',
+    ];
+
+    /** Which top-level form section lives on which step — drives the jump-to-first-error on save. */
+    private const STEP_OF_FIELD = [
+        'name' => 1, 'householdName' => 1, 'region' => 1, 'baseTaxYear' => 1,
+        'variant' => 1, 'assumptionSetId' => 1, 'ihtModelled' => 1, 'people' => 1,
+        'pensions' => 2, 'incomeStreams' => 2,
+        'accounts' => 3, 'property' => 3, 'hasProperty' => 3,
+        'expense' => 4, 'oneOffCosts' => 4,
+        'housing' => 5,
+    ];
+
+    public int $step = 1;
+
     public string $name = '';
 
     public string $householdName = '';
@@ -141,7 +163,7 @@ class ScenarioBuilder extends Component
             'incomeStreams.*.type' => ['required', Rule::in(['rental', 'annuity', 'other'])],
             'incomeStreams.*.grossAnnual' => $moneyReq,
             'incomeStreams.*.startAge' => ['required', 'integer', 'min:0', 'max:110'],
-            'incomeStreams.*.endAge' => ['nullable', 'integer', 'min:0', 'max:110'],
+            'incomeStreams.*.endAge' => ['nullable', 'integer', 'min:0', 'max:110', $this->endAfterStart(...)],
 
             'housing.salePrice' => $moneyReq,
             'housing.buyPrice' => $money,
@@ -174,6 +196,21 @@ class ScenarioBuilder extends Component
         ];
     }
 
+    /** An income stream's end age, if given, must not precede its start age. */
+    public function endAfterStart(string $attribute, mixed $value, callable $fail): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        $i = explode('.', $attribute)[1] ?? null;
+        $start = $i !== null ? ($this->incomeStreams[$i]['startAge'] ?? '') : '';
+
+        if ($start !== '' && (int) $value < (int) $start) {
+            $fail('The end age must be the same as or after the start age.');
+        }
+    }
+
     /** Region is allowed only if the engine can actually build its tax config (Scotland cannot yet). */
     public function regionSupported(string $attribute, mixed $value, callable $fail): void
     {
@@ -186,6 +223,23 @@ class ScenarioBuilder extends Component
         } catch (\Throwable) {
             $fail('Scottish tax bands are not available yet. Choose England, Wales & Northern Ireland.');
         }
+    }
+
+    /** Free navigation between steps; clamped to the valid range. */
+    public function goToStep(int $step): void
+    {
+        $this->step = max(1, min(count(self::STEPS), $step));
+        $this->dispatch('step-changed');
+    }
+
+    public function nextStep(): void
+    {
+        $this->goToStep($this->step + 1);
+    }
+
+    public function prevStep(): void
+    {
+        $this->goToStep($this->step - 1);
     }
 
     public function addPerson(): void
@@ -259,7 +313,15 @@ class ScenarioBuilder extends Component
 
     public function save()
     {
-        $this->validate();
+        try {
+            $this->validate();
+        } catch (ValidationException $e) {
+            // Land the user on the first step that has a problem, and announce it.
+            $this->step = $this->firstStepWithError(array_keys($e->errors()));
+            $this->dispatch('validation-failed');
+
+            throw $e;
+        }
 
         $assembled = (new HouseholdAssembler)->assemble($this->formState());
 
@@ -288,7 +350,25 @@ class ScenarioBuilder extends Component
     {
         return view('livewire.scenario-builder', [
             'assumptionSets' => AssumptionSet::orderByDesc('is_default')->orderBy('name')->get(['id', 'name']),
+            'steps' => self::STEPS,
         ])->title('New forecast');
+    }
+
+    /**
+     * The earliest step that owns any of the errored fields, so a failed save lands the
+     * user where the first problem is.
+     *
+     * @param  list<string>  $erroredFields  dotted paths like "people.0.dob", "housing.salePrice"
+     */
+    private function firstStepWithError(array $erroredFields): int
+    {
+        $steps = [];
+        foreach ($erroredFields as $field) {
+            $top = explode('.', $field)[0];
+            $steps[] = self::STEP_OF_FIELD[$top] ?? 1;
+        }
+
+        return $steps === [] ? $this->step : min($steps);
     }
 
     private function formState(): array

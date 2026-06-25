@@ -102,6 +102,48 @@ class ScenarioBuilderTest extends TestCase
         $this->get(route('scenarios.create'))->assertOk()->assertSee('New forecast');
     }
 
+    public function test_the_wizard_starts_on_the_first_step_and_navigates_freely(): void
+    {
+        Livewire::test(ScenarioBuilder::class)
+            ->assertSet('step', 1)
+            ->call('nextStep')->assertSet('step', 2)
+            ->call('goToStep', 5)->assertSet('step', 5)
+            ->call('nextStep')->assertSet('step', 5)      // clamps at the last step
+            ->call('goToStep', 99)->assertSet('step', 5)
+            ->call('prevStep')->assertSet('step', 4)
+            ->call('goToStep', -3)->assertSet('step', 1); // clamps at the first step
+    }
+
+    public function test_the_net_worth_step_groups_savings_and_the_home(): void
+    {
+        Livewire::test(ScenarioBuilder::class)
+            ->set('step', 3)
+            ->assertSee('Your net worth')
+            ->assertSee('Current home');
+    }
+
+    public function test_a_failed_save_lands_on_the_first_step_with_an_error(): void
+    {
+        // A problem in the last step (the sale price) should pull the user back to it.
+        $state = BuilderStateFixture::minimalValid();
+        $state['housing']['salePrice'] = '';
+
+        $this->fill($state)->call('save')
+            ->assertHasErrors('housing.salePrice')
+            ->assertSet('step', 5);
+    }
+
+    public function test_income_end_age_cannot_precede_start_age(): void
+    {
+        $state = BuilderStateFixture::full();
+        $state['name'] = 'X';
+        $state['incomeStreams'][0]['endAge'] = '50'; // start age is 60
+
+        $this->fill($state)->call('save')->assertHasErrors('incomeStreams.0.endAge');
+
+        $this->assertSame(0, Scenario::count());
+    }
+
     /** @param array<string, mixed> $state */
     private function fill(array $state): Testable
     {
