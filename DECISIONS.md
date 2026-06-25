@@ -3,6 +3,31 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-25 — Scenario builder is a wizard; spreadsheet import via a profile registry
+**Decision:** (1) The builder is a **five-step, free-navigation wizard** (About & people; Pensions &
+income; Your net worth = savings + the home; Spending; The decision). Stepping is **server-side**
+(`@if($step===N)` + `wire:click` nav), not Alpine `x-show`, because the existing tests drive the
+component by setting properties and calling `save()` (never the DOM), so server-side steps stay fully
+unit-testable without a browser and the property/`save()` contract is unchanged. A failed `save()`
+catches `ValidationException`, sets `$step` to the first step owning an errored field (a static
+field→step map) and re-throws, so the user lands on the problem. Accessibility (`aria-current`,
+focusable headings + error summary via dispatched events, `aria-invalid`/`aria-describedby`,
+double-submit guard, a new `endAge ≥ startAge` rule) is built into the restructure rather than bolted
+on. (2) **Spreadsheet import** is an `App\Import\ImportProfile` **registry**: each profile turns one
+known layout's contents into a partial form state (`ImportResult`), money summed as **exact integer
+pence** (`MoneyText`, mirroring the assembler's no-float rule), monthly figures ×12 to annual. The
+**RetireForecast CSV** profile is the one calibrated reader; it pre-fills only spending + the main
+salary and reports honestly what the household still needs by hand (budgets carry cashflow, not the
+balance sheet). **IWT / Nischa ship as registered `UncalibratedProfile` stubs** that refuse with a
+reason until a real sample export maps their cells — no guessing a layout we have not seen. XLSX
+(needs phpoffice/phpspreadsheet) and line-item expense categories are deferred to Rob's call.
+**Why:** A wizard was Rob's explicit UX ask and the single long form was the a11y pain point; keeping
+it server-side preserves the test suite and avoids a browser dependency overnight. The profile
+registry makes import extensible and honest — the popular third-party templates are first-class once
+calibrated, and "no silent failure" holds (every refusal carries a reason). Reusing the integer-pence
+rule keeps money lossless across the import boundary. [[2026-06-24 — UI: hand-rolled Livewire + a separate assembler, charts as enhancement]] [[2026-06-25 — External-review triage: what we adopt, and three declines]]
+**Status:** active
+
 ## 2026-06-25 — Compliance layer built: partition lint, acknowledgement gate, walled-off interpretation
 **Decision:** Implemented the regulatory layer (Phase 2 step 4) with these concrete choices.
 (1) The banned-phrasing guard is `App\Compliance\OutputPhrasing` holding **directive-only** regex
