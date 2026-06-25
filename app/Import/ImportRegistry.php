@@ -6,6 +6,7 @@ namespace App\Import;
 
 use App\Import\Profiles\ConsciousSpendingPlan;
 use App\Import\Profiles\IntentionalSpendingTracker;
+use App\Import\Profiles\PayAndExpenditures;
 use App\Import\Profiles\RetireForecastTemplate;
 
 /**
@@ -20,6 +21,7 @@ final class ImportRegistry
     {
         return [
             new RetireForecastTemplate,
+            new PayAndExpenditures,
             new ConsciousSpendingPlan,
             new IntentionalSpendingTracker,
         ];

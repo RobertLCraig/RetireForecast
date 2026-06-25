@@ -16,8 +16,8 @@ class ImportRegistryTest extends TestCase
     {
         $registry = new ImportRegistry;
 
-        $this->assertCount(3, $registry->all());
-        $this->assertCount(2, $registry->available()); // RetireForecast template + IWT CSP
+        $this->assertCount(4, $registry->all());
+        $this->assertCount(3, $registry->available()); // RetireForecast template + Pay&Expenditures + IWT CSP
         $this->assertInstanceOf(RetireForecastTemplate::class, $registry->available()[0]);
     }
 
