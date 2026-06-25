@@ -318,6 +318,14 @@ class ScenarioBuilder extends Component
             $this->people[0]['employmentStatus'] = 'employed';
         }
 
+        foreach ($result->pensions as $pension) {
+            $this->pensions[] = $pension;
+        }
+
+        foreach ($result->incomeStreams as $stream) {
+            $this->incomeStreams[] = $stream;
+        }
+
         $this->importSummary = [
             'filled' => $result->filled,
             'missing' => $result->missing,

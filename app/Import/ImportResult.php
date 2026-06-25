@@ -16,6 +16,8 @@ final class ImportResult
     /**
      * @param  array<string, string>  $expense  partial builder expense state, e.g. ['essential' => '28160.00']
      * @param  string|null  $salaryAnnual  person-1 gross salary as a pounds string, if the sheet gave one
+     * @param  list<array<string, mixed>>  $incomeStreams  builder income-stream rows to append (owner/type/grossAnnual/…)
+     * @param  list<array<string, mixed>>  $pensions  builder pension rows to append (e.g. a state pension)
      * @param  list<string>  $filled  human labels of what was populated
      * @param  list<string>  $missing  human labels of what the user still needs to enter
      * @param  list<string>  $notes  caveats worth surfacing (e.g. how amounts were interpreted)
@@ -23,6 +25,8 @@ final class ImportResult
     public function __construct(
         public readonly array $expense = [],
         public readonly ?string $salaryAnnual = null,
+        public readonly array $incomeStreams = [],
+        public readonly array $pensions = [],
         public readonly array $filled = [],
         public readonly array $missing = [],
         public readonly array $notes = [],

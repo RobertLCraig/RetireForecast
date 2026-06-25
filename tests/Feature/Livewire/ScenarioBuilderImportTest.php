@@ -69,6 +69,7 @@ class ScenarioBuilderImportTest extends TestCase
         $book = new PhpSpreadsheet;
         $book->getActiveSheet()->setTitle('Junk')->fromArray([['nothing here']]);
         $book->createSheet()->setTitle('Demo Buy')->fromArray([
+            ['Person Pension DLA', 11772, 981], // income block above the expenditure header
             ['Expenditure Item', 'Deduction Amount', '% of Total Pay', '% of Take Home Pay', 'Notes'],
             ['Mortgage', 1000],
             ['Total', 1000],
@@ -79,7 +80,7 @@ class ScenarioBuilderImportTest extends TestCase
         $file = UploadedFile::fake()->createWithContent('workbook.xlsx', (string) file_get_contents($path));
         @unlink($path);
 
-        Livewire::test(ScenarioBuilder::class)
+        $component = Livewire::test(ScenarioBuilder::class)
             ->set('importFile', $file)                       // updatedImportFile lists the tabs
             ->assertSet('importSheets', ['Junk', 'Demo Buy'])
             ->set('importProfile', 'pay-and-expenditures')
@@ -87,6 +88,8 @@ class ScenarioBuilderImportTest extends TestCase
             ->call('import')
             ->assertHasNoErrors()
             ->assertSet('expense.essential', '12000.00');    // 1000/mo * 12, from the chosen tab
+
+        $this->assertCount(1, $component->get('incomeStreams')); // DLA pulled onto the form
     }
 
     public function test_a_file_that_does_not_match_the_template_reports_a_reason(): void

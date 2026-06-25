@@ -18,9 +18,10 @@ class PayAndExpendituresTest extends TestCase
             'RC Mortgage Rates' => [['Max purchase price', 'Loan amount']], // a non-scenario tab to skip
             'Demo Test Gate' => [
                 ['', 'Yearly', 'Monthly'],
-                ['Person Pension DLA', '11772', '981'],
-                ['Person Yearly Salary', '30000', '2500'],   // column B is the yearly figure
-                ['Total Pay', '41772', '3481'],
+                ['Person Pension DLA', '11772', '981'],                       // -> tax-free income stream
+                ['Person Pension SP (State Pension)', '10400', '866'],        // -> state pension (10400/52 = 200/wk)
+                ['Person Yearly Salary', '30000', '2500', '', 'Partner Pension', '12000'], // salary (B) + a pension in a later column
+                ['Total Pay', '52172', '4347'],
                 [],
                 // Decoy deductions header: reuses "Expenditure Item" / "Deduction Amount"
                 // but has only "% of Total Pay" — must NOT be picked as the expenditure block.
@@ -53,6 +54,31 @@ class PayAndExpendituresTest extends TestCase
         $result = (new PayAndExpenditures)->parse($this->workbook());
 
         $this->assertSame('30000.00', $result->salaryAnnual);
+    }
+
+    public function test_it_maps_the_state_pension_to_a_weekly_forecast(): void
+    {
+        $result = (new PayAndExpenditures)->parse($this->workbook());
+
+        $this->assertCount(1, $result->pensions);
+        $this->assertSame('state', $result->pensions[0]['subtype']);
+        $this->assertSame('200.00', $result->pensions[0]['weeklyForecast']); // 10400 / 52
+    }
+
+    public function test_it_maps_dla_as_tax_free_income_and_a_partner_pension_as_an_annuity(): void
+    {
+        $result = (new PayAndExpenditures)->parse($this->workbook());
+
+        $this->assertCount(2, $result->incomeStreams);
+
+        $dla = $result->incomeStreams[0];
+        $this->assertSame('11772.00', $dla['grossAnnual']);
+        $this->assertFalse($dla['taxable']); // DLA is tax-free
+        $this->assertSame('', $dla['startAge']); // no age in the sheet — left for the user
+
+        $partner = $result->incomeStreams[1];
+        $this->assertSame('12000.00', $partner['grossAnnual']);
+        $this->assertSame('annuity', $partner['type']);
     }
 
     public function test_it_names_the_tab_it_used(): void
