@@ -250,6 +250,17 @@ Per person: DOB, employment status, (working partner) gross salary + planned ret
   - Plus SDLT bands incl. surcharge-on-overlap, PA £100k taper with a large UFPLS, dividend-rate difference 25/26 vs 26/27, SPA-from-DOB for someone born mid-transition, NI stopping at SPA.
 - **Monte Carlo golden master:** fixed seed + fixed AssumptionSet + fixed inputs gives a byte-identical percentile-band array and success probability against a committed snapshot. Separate sanity test: zero volatility gives the deterministic result.
 - **Feature/Livewire tests:** scenario-builder validation (salary required only if employed, reject negative pence, region forces Scottish-config-or-error); preview renders headline numbers as text; the fan chart's accessible `<table>` is present in the DOM; encryption round-trip (saved scenario decrypts to identical DTO); GDPR export returns all user data; GDPR delete hard-removes it; anonymous use writes nothing; the **banned-phrasing test** over all result templates.
+- **Data-layer integrity tests (added 2026-06-25, see DECISIONS):** reconciliation invariants that
+  assert aggregates equal the sum of their parts at every boundary — sum(imported monthly line
+  items)×12 == reported essential spend; essential+discretionary == target; net sale proceeds ==
+  sale − mortgage − costs − CGT; per-variant terminal wealth == liquid + property. Each spreadsheet
+  profile is additionally pinned by a **sanitised real-file golden fixture** (a layout-faithful copy
+  of the real workbook with fake figures, committed) so the double-counting class of bug is caught
+  every build, not only by a manual run. Every displayed figure traces to one computed value
+  (panel == CSV == interpretation), asserted by test. **Status (2026-06-25): the importer guardrails
+  are built** (`tests/Fixtures/Import/GoldenWorkbooks.php` + `ImportReconciliationTest`); they caught
+  and we fixed two double-count/mis-bucket bugs in the IWT CSP importer. The displayed-figure
+  provenance test and the import reconciliation panel are still to do.
 - **End-to-end:** run the app (`herd` + `php artisan serve` / Vite), build the demo couple, run a preview then a full 10k simulation, confirm live progress, and read the buy-vs-rent comparison with both fan charts and the lump-sum tax-shock panel.
 
 ---

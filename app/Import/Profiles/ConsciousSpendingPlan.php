@@ -63,7 +63,10 @@ final class ConsciousSpendingPlan implements ImportProfile
             throw new ImportException('The file is empty.');
         }
 
-        $annualPence = ['essential' => 0, 'discretionary' => 0, 'contribution' => 0];
+        // Per bucket we track the line items separately from any "… TOTAL" row, because the
+        // sheet states both. The TOTAL is authoritative when present (see the merge below).
+        $lineSum = ['essential' => 0, 'discretionary' => 0, 'contribution' => 0];
+        $totalSum = ['essential' => 0, 'discretionary' => 0, 'contribution' => 0];
         $seen = [];
         $currentBucket = null;
 
@@ -86,15 +89,28 @@ final class ConsciousSpendingPlan implements ImportProfile
 
             $bucket = $rowBucket ?? $currentBucket;
             if ($bucket === null) {
-                continue; // an amount before any bucket (e.g. the net-income input) — skip
+                continue; // an amount before any bucket (e.g. a NET WORTH or net-income row) — skip
             }
 
-            $annualPence[$bucket] += $amount * $this->frequencyFactor($cells);
+            $annual = $amount * $this->frequencyFactor($cells);
+            if ($this->isBucketTotalRow($cells)) {
+                $totalSum[$bucket] += $annual;
+            } else {
+                $lineSum[$bucket] += $annual;
+            }
             $seen[$bucket] = true;
         }
 
-        if (! isset($seen['essential']) && ! isset($seen['discretionary']) && ! isset($seen['contribution'])) {
+        if ($seen === []) {
             throw new ImportException('No Conscious Spending Plan buckets (Fixed Costs / Guilt-Free / Investments / Savings) were found. Export the plan sheet as CSV.');
+        }
+
+        // A bucket that states its own "… TOTAL" is authoritative: use it and do NOT also add
+        // the line items (that double-counts) or the NET WORTH rows that share its keyword
+        // ("Investments"/"Savings" assets). Only when no total is given do we sum the line items.
+        $annualPence = [];
+        foreach (array_keys($lineSum) as $bucket) {
+            $annualPence[$bucket] = $totalSum[$bucket] > 0 ? $totalSum[$bucket] : $lineSum[$bucket];
         }
 
         return $this->result($annualPence, $seen);
@@ -113,6 +129,18 @@ final class ConsciousSpendingPlan implements ImportProfile
         }
 
         return null;
+    }
+
+    /** Whether this row is a bucket subtotal ("FIXED COSTS TOTAL", "SAVINGS TOTAL", …) rather than a line item. */
+    private function isBucketTotalRow(array $cells): bool
+    {
+        foreach ($cells as $cell) {
+            if (str_contains(strtolower((string) $cell), 'total')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** The spend amount in this row, in pence — a currency cell wins; else the largest >= £1 number. Percentages are skipped. */

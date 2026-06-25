@@ -3,6 +3,41 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures
+**Decision:** Treat data-layer consistency as a hard, **tested** requirement, not a hope.
+Concretely: (1) **one definition, one home** for every quantity — totals are **derived from their
+parts**, never stored alongside them (e.g. `ExpenseProfile::targetAnnualSpend()` sums
+essential+discretionary; ages derive from DOB; the engine DTOs stay the single source of truth that
+storage and UI map to/from). (2) **Reconciliation invariants** must be asserted in tests:
+sum(imported monthly line items)×12 == reported essential spend; net sale proceeds == sale −
+mortgage − costs − CGT; per-variant terminal wealth == liquid + property. (3) Every spreadsheet
+profile must be verified against a **sanitised real-file golden fixture** — a structurally faithful
+copy of the real workbook (same layout traps: decoy "take home" rows, merged headers,
+total/remainder rows) with the figures replaced by fakes, committed to the suite — because the
+synthetic happy-path test alone let **two real double-counting bugs through** (`PayAndExpenditures`),
+caught only by running on the real file by hand. (4) Every figure a view shows must trace to **one
+computed value**; the panel, the CSV export and the interpretation read the same field, pinned by a
+test. (5) Aggregated/imported totals are **surfaced for review** (no-silent-failure applied to
+*counting*), so a mismatch is visible, never absorbed.
+**Why:** Rob was burned on a past project not by hallucinated numbers (those were verifiable) but by
+the data layer **inconsistently counting the same information** — the same quantity aggregated
+differently in different places. The integer-pence rule, the DTO single-source-of-truth and the
+round-trip equality tests already defend the *transport* boundary (a stored value decrypts to an
+identical DTO), but they do **not** defend the *aggregation* boundary, where this class of bug lives.
+The two `PayAndExpenditures` double-counting bugs are direct evidence this project is not immune; the
+only thing that caught them was a manual real-file run, which CI does not repeat. Making
+reconciliation an explicit, tested invariant — plus a committed real-shaped fixture — turns "verified
+once by hand" into "verified every build." **Implemented for the importers (2026-06-25):**
+`tests/Fixtures/Import/GoldenWorkbooks.php` (sanitised real-file fixtures, layout-faithful, fake
+figures) + `tests/Unit/Import/ImportReconciliationTest.php` reconcile each profile's output to the
+sheet's own stated totals. On its first run the guardrail immediately caught — and we fixed — **two
+live wrong-aggregation bugs** in the IWT `ConsciousSpendingPlan` importer that the synthetic tests
+missed: a per-bucket "… TOTAL" row was summed on top of its line items (essential came out ~2×), and
+the `NET WORTH` Investments/Savings rows were miscounted as monthly contributions. The fix makes a
+bucket's own TOTAL authoritative. Still to do: the displayed-figure-provenance test (#4, panel == CSV
+== interpretation) and the import reconciliation panel (#5). [[2026-06-25 — `.xlsx` import via PhpSpreadsheet; a bespoke profile for the personal workbook]] [[2026-06-24 — Persistence: one encrypted payload per row, mappers in the app]]
+**Status:** active
+
 ## 2026-06-25 — `.xlsx` import via PhpSpreadsheet; a bespoke profile for the personal workbook
 **Decision:** Read `.xlsx` uploads with **`phpoffice/phpspreadsheet`** (an **app-layer** dependency —
 the engine stays framework- and dependency-free). Profiles no longer take a raw string; they take a
