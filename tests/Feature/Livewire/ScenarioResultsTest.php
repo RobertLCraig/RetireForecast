@@ -161,6 +161,41 @@ class ScenarioResultsTest extends TestCase
             ->assertDontSee('Will the money last?');
     }
 
+    public function test_the_results_page_shows_the_cashflow_ladder_before_any_run(): void
+    {
+        // The ladder is the deterministic central projection, so it shows immediately.
+        $this->get(route('scenarios.results', $this->scenario()))
+            ->assertOk()
+            ->assertSee('Year-by-year cashflow')
+            ->assertSee('Usable (excl. home)')
+            ->assertSee('Total (incl. home)');
+    }
+
+    public function test_a_preview_shows_usable_wealth_alongside_total(): void
+    {
+        // Usable wealth (excl. home) must read separately from total (incl. home), so an
+        // asset-rich household that runs out of cash does not look like the wealthiest.
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->set('previewPaths', 30)
+            ->call('preview')
+            ->assertSee('Usable wealth left (excl. home)')
+            ->assertSee('Total wealth left (incl. home)');
+    }
+
+    public function test_the_cashflow_ladder_csv_export_is_prefixed_with_a_disclaimer(): void
+    {
+        /** @var ScenarioResults $instance */
+        $instance = Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])->instance();
+        $response = $instance->downloadLadderCsv();
+
+        ob_start();
+        $response->sendContent();
+        $csv = ob_get_clean();
+
+        $this->assertStringContainsString('guidance only, not financial advice', strtolower($csv));
+        $this->assertStringContainsString('Usable wealth (excl. home)', $csv);
+    }
+
     private function scenario(): Scenario
     {
         return $this->scenarioFor($this->user);

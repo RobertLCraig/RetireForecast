@@ -7,6 +7,8 @@ namespace App\Forecast;
 use App\Enums\ScenarioVariant;
 use App\Models\Result;
 use Illuminate\Support\Collection;
+use RetireForecast\FinanceEngine\Forecast\ForecastResult;
+use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 
@@ -30,6 +32,18 @@ final class ResultPresenter
 
     /** Fixed display order so the comparison reads the same every time. */
     private const ORDER = ['stay_put', 'buy_outright', 'rent'];
+
+    /** Human labels for the cashflow ladder's income sources (YearResult::INCOME_SOURCES). */
+    private const SOURCE_LABELS = [
+        'salary' => 'Salary',
+        'defined_benefit' => 'DB pension',
+        'state_pension' => 'State Pension',
+        'other_taxable' => 'Annuity / other',
+        'tax_free_income' => 'Tax-free income',
+        'pension_lump_sum' => 'Pension tax-free cash',
+        'pension_drawdown' => 'Pension drawdown',
+        'asset_drawdown' => 'Savings drawn',
+    ];
 
     /**
      * @param  Collection<string, Result>  $resultsByVariant  keyed by variant value
@@ -68,7 +82,16 @@ final class ResultPresenter
             'terminalP10' => $r->terminalWealthPercentiles['p10']->format(),
             'terminalP50' => $r->terminalWealthPercentiles['p50']->format(),
             'terminalP90' => $r->terminalWealthPercentiles['p90']->format(),
+            // Usable wealth excludes the home, so an asset-rich household that runs out of
+            // spendable cash does not read as the "wealthiest" outcome (gotcha P).
+            'usableP50' => self::usableMedian($r),
         ];
+    }
+
+    /** Median terminal usable wealth (excl. home), or null for a run predating the field. */
+    private static function usableMedian(SimulationResult $r): ?string
+    {
+        return isset($r->usableWealthPercentiles['p50']) ? $r->usableWealthPercentiles['p50']->format() : null;
     }
 
     /**
@@ -148,6 +171,7 @@ final class ResultPresenter
                 'successEssentials' => self::pct($r->successProbabilityEssentials),
                 'successFullSpend' => self::pct($r->successProbabilityFullSpend),
                 'depletionRate' => self::pct($r->depletionRate),
+                'medianUsable' => self::usableMedian($r),
                 'medianTerminal' => $r->terminalWealthPercentiles['p50']->format(),
             ];
         }
@@ -164,6 +188,61 @@ final class ResultPresenter
         ];
 
         return ['options' => $options, 'rows' => $rows];
+    }
+
+    /**
+     * The deterministic central-projection cashflow ladder: per year, income split by
+     * source, then tax, spend, and the usable / total wealth carried forward. Only the
+     * income sources that actually occur are kept as columns. This is the year-by-year
+     * walk-through the sector leads with, and the visual guard that every income source
+     * reaches the forecast (no silent drop, gotcha Q).
+     *
+     * @return array{sources: list<string>, sourceLabels: array<string, string>, rows: list<array<string, mixed>>, finalYear: int}
+     */
+    public static function ladder(ForecastResult $forecast): array
+    {
+        // Drop columns for sources that never occur, so the table stays readable.
+        $active = array_values(array_filter(
+            YearResult::INCOME_SOURCES,
+            fn (string $source): bool => self::sourceOccurs($forecast, $source),
+        ));
+
+        $rows = [];
+        foreach ($forecast->years as $year) {
+            $income = [];
+            foreach ($active as $source) {
+                $income[$source] = ($year->incomeBySource[$source] ?? Money::zero())->format();
+            }
+            $rows[] = [
+                'year' => $year->calendarYear,
+                'ages' => implode(' / ', $year->ages),
+                'income' => $income,
+                'tax' => $year->totalTax->format(),
+                'spend' => $year->spendTarget->format(),
+                'shortfall' => $year->unmetSpend->isZero() ? null : $year->unmetSpend->format(),
+                'usableWealth' => $year->liquidWealth->plus($year->pensionWealth)->format(),
+                'totalWealth' => $year->totalWealth->format(),
+            ];
+        }
+
+        return [
+            'sources' => $active,
+            'sourceLabels' => self::SOURCE_LABELS,
+            'rows' => $rows,
+            'finalYear' => $forecast->finalCalendarYear,
+        ];
+    }
+
+    private static function sourceOccurs(ForecastResult $forecast, string $source): bool
+    {
+        foreach ($forecast->years as $year) {
+            $money = $year->incomeBySource[$source] ?? null;
+            if ($money instanceof Money && $money->isPositive()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Whole pounds (chart axes do not need pence and floats stay out of money maths). */

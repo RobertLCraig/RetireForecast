@@ -161,6 +161,58 @@
         </section>
     @endif
 
+    {{-- Year-by-year cashflow ladder. The deterministic central projection, so it shows
+         immediately: where income comes from each year, the tax on it, the spend it must
+         meet, and the usable (excl. home) vs total (incl. home) wealth carried forward. --}}
+    @if ($ladder && $ladder['rows'])
+        <section aria-labelledby="ladder-heading" class="{{ $card }}">
+            <div class="flex items-center justify-between">
+                <h2 id="ladder-heading" class="text-xl font-semibold text-gray-900">Year-by-year cashflow</h2>
+                <button type="button" wire:click="downloadLadderCsv" class="text-sm text-blue-700 underline">Download CSV</button>
+            </div>
+            <p class="mt-1 text-sm text-gray-600">
+                The central best-estimate projection, year by year: where income comes from, the tax on it, the spend it has to meet, and the usable (excl. home) and total (incl. home) wealth carried forward. Figures are in today's money. This is one illustrative path, not a probability.
+            </p>
+            <div class="mt-4 overflow-x-auto">
+                <table class="w-full text-sm whitespace-nowrap">
+                    <caption class="sr-only">Deterministic year-by-year cashflow: income by source, tax, spend and wealth, in real pounds</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col" class="{{ $th }}">Year</th>
+                            <th scope="col" class="{{ $th }}">Age(s)</th>
+                            @foreach ($ladder['sources'] as $source)
+                                <th scope="col" class="{{ $th }} text-right">{{ $ladder['sourceLabels'][$source] }}</th>
+                            @endforeach
+                            <th scope="col" class="{{ $th }} text-right">Tax</th>
+                            <th scope="col" class="{{ $th }} text-right">Spend</th>
+                            <th scope="col" class="{{ $th }} text-right">Usable (excl. home)</th>
+                            <th scope="col" class="{{ $th }} text-right">Total (incl. home)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($ladder['rows'] as $row)
+                            <tr @class(['bg-amber-50' => $row['shortfall']])>
+                                <th scope="row" class="{{ $td }} font-medium">{{ $row['year'] }}</th>
+                                <td class="{{ $td }}">{{ $row['ages'] }}</td>
+                                @foreach ($ladder['sources'] as $source)
+                                    <td class="{{ $td }} text-right">{{ $row['income'][$source] }}</td>
+                                @endforeach
+                                <td class="{{ $td }} text-right">{{ $row['tax'] }}</td>
+                                <td class="{{ $td }} text-right">
+                                    {{ $row['spend'] }}
+                                    @if ($row['shortfall'])<span class="block text-xs text-amber-700">unmet {{ $row['shortfall'] }}</span>@endif
+                                </td>
+                                <td class="{{ $td }} text-right">{{ $row['usableWealth'] }}</td>
+                                <td class="{{ $td }} text-right">{{ $row['totalWealth'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <x-signpost class="mt-4" />
+        </section>
+    @endif
+
     @if (! $presented)
         <div class="{{ $card }} text-sm text-gray-600">
             <p>No completed run yet. Run a preview to see headline figures, then the full forecast for the precise picture.</p>
@@ -193,6 +245,9 @@
                             <div class="flex justify-between"><dt class="text-gray-600">Full spending met</dt><dd class="font-medium">{{ $v['successFullSpend'] }}</dd></div>
                             <div class="flex justify-between"><dt class="text-gray-600">Chance of running out</dt><dd class="font-medium">{{ $v['depletionRate'] }}</dd></div>
                             <div class="flex justify-between"><dt class="text-gray-600">If so, typically by</dt><dd class="font-medium">{{ $v['medianDepletionYear'] ?? '—' }}</dd></div>
+                            @if ($v['usableP50'])
+                                <div class="flex justify-between"><dt class="text-gray-600">Usable wealth left (excl. home)</dt><dd class="font-medium">{{ $v['usableP50'] }}</dd></div>
+                            @endif
                             <div class="flex justify-between"><dt class="text-gray-600">Total wealth left (incl. home)</dt><dd class="font-medium">{{ $v['terminalP50'] }}</dd></div>
                         </dl>
                     </div>
@@ -267,6 +322,7 @@
                             <th scope="col" class="{{ $th }}">Essentials met</th>
                             <th scope="col" class="{{ $th }}">Full spend met</th>
                             <th scope="col" class="{{ $th }}">Runs out</th>
+                            <th scope="col" class="{{ $th }}">Usable wealth left (excl. home)</th>
                             <th scope="col" class="{{ $th }}">Total wealth left (incl. home)</th>
                         </tr>
                     </thead>
@@ -277,6 +333,7 @@
                                 <td class="{{ $td }}">{{ $row['successEssentials'] }}</td>
                                 <td class="{{ $td }}">{{ $row['successFullSpend'] }}</td>
                                 <td class="{{ $td }}">{{ $row['depletionRate'] }}</td>
+                                <td class="{{ $td }}">{{ $row['medianUsable'] ?? '—' }}</td>
                                 <td class="{{ $td }}">{{ $row['medianTerminal'] }}</td>
                             </tr>
                         @endforeach

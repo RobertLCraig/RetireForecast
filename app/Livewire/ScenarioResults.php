@@ -9,6 +9,7 @@ use App\Enums\SimulationStatus;
 use App\Forecast\AssumptionComparison;
 use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ResultPresenter;
+use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
 use App\Models\Result;
 use App\Models\Scenario;
@@ -101,6 +102,35 @@ class ScenarioResults extends Component
         }, "fan-chart-{$fan['variant']}.csv", ['Content-Type' => 'text/csv']);
     }
 
+    public function downloadLadderCsv(): StreamedResponse
+    {
+        $ladder = ResultPresenter::ladder(app(ScenarioForecaster::class)->deterministic($this->scenario));
+
+        return response()->streamDownload(function () use ($ladder): void {
+            $out = fopen('php://output', 'wb');
+            foreach (self::EXPORT_DISCLAIMER as $line) {
+                fputcsv($out, [$line]);
+            }
+            fputcsv($out, []);
+            $header = ['Year', 'Age(s)'];
+            foreach ($ladder['sources'] as $source) {
+                $header[] = $ladder['sourceLabels'][$source];
+            }
+            $header = [...$header, 'Tax', 'Spend', 'Unmet spend', 'Usable wealth (excl. home)', 'Total wealth (incl. home)'];
+            fputcsv($out, $header);
+
+            foreach ($ladder['rows'] as $row) {
+                $line = [$row['year'], $row['ages']];
+                foreach ($ladder['sources'] as $source) {
+                    $line[] = $row['income'][$source];
+                }
+                $line = [...$line, $row['tax'], $row['spend'], $row['shortfall'] ?? '', $row['usableWealth'], $row['totalWealth']];
+                fputcsv($out, $line);
+            }
+            fclose($out);
+        }, 'cashflow-ladder.csv', ['Content-Type' => 'text/csv']);
+    }
+
     public function render(): View
     {
         $run = $this->currentRun();
@@ -126,6 +156,9 @@ class ScenarioResults extends Component
             'shock' => app(LumpSumTaxShock::class)->assess($this->scenario),
             // Compare-assumptions overlay: also deterministic, so it shows immediately.
             'sensitivity' => app(AssumptionComparison::class)->compare($this->scenario),
+            // Deterministic year-by-year cashflow ladder (income by source -> tax -> spend
+            // -> wealth). Shows immediately, before any Monte Carlo run.
+            'ladder' => ResultPresenter::ladder(app(ScenarioForecaster::class)->deterministic($this->scenario)),
         ])->title('Forecast results');
     }
 
