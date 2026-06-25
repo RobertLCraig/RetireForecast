@@ -1,6 +1,6 @@
 # Data model: RetireForecast
 
-_Last updated: 2026-06-24_
+_Last updated: 2026-06-25_
 
 The single source of truth for this project's data shape. Every layer (engine, storage, UI)
 conforms to this. The canonical representation **is** the engine's readonly DTOs under
@@ -171,5 +171,9 @@ on the DC pension inside the household payload, not separately on the scenario.
   scenario does not duplicate them.
 - The `Result` shape stores the Monte Carlo `SimulationResult` per variant. The data-model
   sketch also listed a deterministic `first_year_tax_breakdown` (the lump-sum shock) on Result;
-  that deterministic detail is computed on demand by `ScenarioForecaster::deterministic()` and is
-  not yet persisted — fold it in when the UI needs it stored.
+  that deterministic detail is computed on demand (now surfaced live on the results page by
+  `App\Forecast\LumpSumTaxShock`, via the engine's `FlexibleWithdrawalAssessor`) and is **not
+  persisted** — fold it into `Result` only if a stored copy is ever needed.
+- **Spreadsheet import does not add to the canonical shape:** `app/Import/` profiles produce
+  partial *builder form-state* (the same strings the wizard collects), which `HouseholdAssembler`
+  maps into the existing DTOs. No new persisted entity; money is parsed to exact pence (`MoneyText`).

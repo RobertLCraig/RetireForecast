@@ -4,7 +4,7 @@
 > consequences and run-out-of-money risk visible for an older couple.
 
 **Stage:** active
-_Last updated: 2026-06-24_
+_Last updated: 2026-06-25_
 
 Full implementation plan and scope source of truth: [docs/PLAN.md](docs/PLAN.md). This PRD
 is the orientation layer; the plan holds the exhaustive data model, UK rule set, Monte Carlo
@@ -66,7 +66,7 @@ lump-sum question and longevity risk made explicit.
 ## Constraints
 - Local-first, single-user initially; possible free public release later (do not design
   accounts out, just defer them).
-- Laravel 13 + Livewire 3 + Filament + Fortify; PHP 8.4; SQLite locally.
+- Laravel 13 + Livewire 4 (Filament pulled 4; the plan said 3) + Filament 5 + Fortify; PHP 8.4; SQLite locally.
 - Money = integer pence (hand-rolled; brick/money dropped — see DECISIONS.md).
 - UK tax thresholds frozen to April 2031; figures versioned per tax year.
 
