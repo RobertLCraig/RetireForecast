@@ -1,35 +1,29 @@
 # Morning worklist — Rob
 
-_Written 2026-06-25 by the overnight build session. Tick these off; they unblock the spreadsheet
-import and a couple of data-model calls. None of this blocks the app running — the wizard and the
-RetireForecast CSV import already work end to end (196 tests green)._
+_Written 2026-06-25; updated through the .xlsx / personal-workbook session. None of this blocks the
+app running — the wizard, CSV/`.xlsx` import and the personal-workbook import all work (212 tests green)._
 
 ## 1. Template imports
-- [x] **IWT Conscious Spending Plan** — **now live.** Calibrated to the published structure (Fixed
-      Costs → essential, Guilt-Free → discretionary, Investments + Savings → contributions; amounts
-      normalised by their Frequency to annual). Because CSP is **net-of-tax**, it does **not** set
-      gross salary — that's flagged as still-to-do. **Please test it with your real export** (export
-      the sheet as CSV, pick "IWT Conscious Spending Plan" in the import panel): the review screen
-      shows the imported totals, so check them. If they're off, send me the CSV (or just its header +
-      2–3 rows) and I'll tighten the reader — CSP ships in a few versions.
-- [ ] **Nischa Intentional Spending Tracker** — still **needs a sample**; it's email-gated so I can't
-      fetch it. Export a copy (CSV or `.xlsx`, blank or redacted) and drop it in
-      `storage/app/import-samples/` (gitignored), or paste its column headers / section layout into
-      chat. I only need the structure, not your real numbers. **Do not commit real figures to the repo.**
-- [ ] _(Optional)_ Your own **Pay and Expenditures.xlsx** if you want a bespoke profile for it.
+- [x] **Your "Pay and Expenditures" workbook** — **now live and verified on the real file.** Upload the
+      `.xlsx`, pick the scenario tab (Flat A, Rental B, RC…), choose "Pay & Expenditures". It fills
+      essential spending (£24,600/yr from the Flat A tab), gross salary (£30,000), and pulls income
+      (State Pension £190.00/wk, DLA tax-free, the partner pension as an annuity). **After importing,
+      go to the Pensions & income step and set a start age for each imported income, and split DLA/SP
+      onto the right person** — the sheet has no ages or person split, so those are intentionally left
+      blank and flagged.
+- [x] **IWT Conscious Spending Plan** — live (calibrated from the published structure). Still worth a
+      quick check against your real 2023 export, since CSP ships in a few versions.
+- [ ] **Nischa Intentional Spending Tracker** — **deprioritised** (your call). It's a 50/30/20 formula
+      dashboard; layout captured for later. No action needed unless you want it sooner.
 
-## 2. Decisions I need from you
-- [ ] **Line-item expense categories.** You chose line-item categories earlier; I deferred the
-      data-model change. Today the wizard + import roll everything up to two totals
-      (essential / discretionary). Confirm the approach: keep the **app-layer rollup** (categories are
-      a UI/storage concern that sum to the engine's two totals — keeps the framework-free engine
-      unchanged, my recommendation) **vs** extend the engine's `ExpenseProfile`. This is a
-      DATA-MODEL.md change, so it wants your sign-off before I build it.
-- [ ] **XLSX support.** CSV import works with zero dependencies today. The IWT/Nischa sheets are
-      `.xlsx`/Google Sheets. OK to add **`phpoffice/phpspreadsheet`** (well-established) so users can
-      upload `.xlsx` directly instead of exporting to CSV first?
-- [ ] **Two earners.** The import maps a single salary to Person 1. If a sheet has two incomes, how
-      should it split? (Leave as Person 1 + a note is the current behaviour.)
+## 2. Decisions still needed
+- [ ] **Line-item expense categories.** Today the wizard + every import roll everything into two totals
+      (essential / discretionary) — and your sheet has no per-line essential/discretionary flag, so it
+      all imports as **essential**. Confirm the approach for line items: keep the **app-layer rollup**
+      (categories sum to the engine's two totals — keeps the framework-free engine unchanged, my
+      recommendation) **vs** extend the engine's `ExpenseProfile`. A DATA-MODEL.md change, so it wants
+      your sign-off. _(Resolved this session: **xlsx support** — added `phpoffice/phpspreadsheet`;
+      **two earners** — income lands on Person 1, flagged to split.)_
 
 ## 3. Try it out (no input from me needed)
 ```powershell
@@ -52,7 +46,11 @@ php artisan serve        # then visit http://retireforecast.test or http://127.0
 - [ ] Check the new **compare-assumptions overlay** on the results page — a sensitivity table showing
       the best-estimate outcome under each sourced set (FCA / DMS / OBR).
 
+- [ ] Upload your **Pay and Expenditures.xlsx** (it's already in `docs/`, gitignored), pick a tab, and
+      check the imported totals on the review screen, then set income start ages on the Pensions step.
+
 ## 4. Still owed (I can pick these up next, not blocked on you)
+- The **line-item expense categories** build (once you confirm the approach in §2).
 - A full per-field accessibility sweep + axe/Pa11y in CI.
-- Once samples arrive: calibrate the IWT + Nischa profiles and add XLSX parsing.
+- Re-verify IWT CSP against your real 2023 export; the Nischa 50/30/20 profile if/when you want it.
 - Phase 2 step 5: the demo preset (your anonymised couple, entered via the UI), perf tuning, PDF export.

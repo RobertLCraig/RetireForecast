@@ -3,6 +3,31 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-25 — `.xlsx` import via PhpSpreadsheet; a bespoke profile for the personal workbook
+**Decision:** Read `.xlsx` uploads with **`phpoffice/phpspreadsheet`** (an **app-layer** dependency —
+the engine stays framework- and dependency-free). Profiles no longer take a raw string; they take a
+sheet-aware **`Spreadsheet`** value object (sheetName → string rows) built by **`SpreadsheetReader`**
+from CSV or XLSX. XLSX is read **data-only**, taking the values Excel last **cached** (no
+recalculation), so unsupported formulas don't break the import. Multi-tab workbooks get a **tab
+picker** (`updatedImportFile` lists sheet names; `Spreadsheet::select` narrows to the chosen one
+before parsing). A bespoke **`PayAndExpenditures`** profile reads Rob's scenario tabs: the expenditure
+block is anchored on **"% of Take Home Pay"** (the only heading unique to it — bare "take home" and
+"Expenditure Item" both collide with rows/headers above it), summing monthly outgoings → essential;
+the income block above the deductions header maps **State Pension → a state pension, DLA → tax-free
+income, salary → gross, and a pension named in a later column → an annuity**. Imported income lands on
+**Person 1 with no start age** — the sheet carries neither ages nor a person split — and that is
+**flagged in the import summary**, not guessed. Everything imports as **essential** (no per-line split
+yet). **Each mapping was verified by running the profile on Rob's real workbook**, not just synthetic
+fixtures.
+**Why:** Rob supplied real `.xlsx` files and wants to upload them directly. Reading cached values keeps
+a formula-heavy personal workbook importable without a calc engine. Anchoring on the unique header and
+verifying on the real file caught two double-counting bugs that synthetic tests alone missed (Rob
+flagged the over-confidence) — so "trustworthy / no silent failure" is upheld by surfacing every
+imported total and every unset field for review rather than fabricating ages or a discretionary split.
+Refines [[2026-06-25 — Scenario builder is a wizard; spreadsheet import via a profile registry]]. The
+**line-item expense categories** data model and **Nischa** (a 50/30/20 dashboard) stay deferred.
+**Status:** active
+
 ## 2026-06-25 — Scenario builder is a wizard; spreadsheet import via a profile registry
 **Decision:** (1) The builder is a **five-step, free-navigation wizard** (About & people; Pensions &
 income; Your net worth = savings + the home; Spending; The decision). Stepping is **server-side**
