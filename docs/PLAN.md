@@ -274,10 +274,18 @@ draft mechanism folds into `builder_state`.
   what-if); **ongoing contributions on accounts** (so *saved* self-investment grows).
 
 **3. Projection drill-down.**
-- **Deterministic cashflow ladder** from `YearResult[]` (per year: income-by-source → tax → net →
-  spend → surplus/deficit → asset balances), accessible table + CSV; MC success-rate as the risk
-  lens, framed as a probability (not pass/fail). **Per-pension** current → projected pot → indicative
-  income. Defer the annuity-equivalent (new mortality-pricing math).
+- **Deterministic cashflow ladder** from `YearResult[]` (per year: **income by source** — salary, DB,
+  State Pension, annuity, **tax-free streams like DLA**, drawdown — → tax → net → spend → surplus/deficit
+  → asset balances), accessible table + CSV; MC success-rate as the risk lens, framed as a probability
+  (not pass/fail). Show **how the drawdown was allocated** each year (which pot, the strategy: ~4% from
+  savings/ISA/GIA vs DC lump-sum vs drawdown vs annuity) so the user can verify the mechanics — this is
+  how income-counting gaps get caught (live use found tax-free DLA income was being dropped from the
+  "will the money last" calc; **fixed 2026-06-26**, regression-tested). **Per-pension** current →
+  projected pot → indicative income. Defer the annuity-equivalent (new mortality-pricing math).
+- **Next-steps signposting (later, compliance-gated):** beside the results, point to *regulated channels*
+  to act on or refine the plan — Pension Wise, MoneyHelper, the FCA "find an adviser" register, annuity
+  comparison services — as **categories/channels, never specific product recommendations** (stays
+  guidance-only; passes the `OutputPhrasing` lint).
 
 **Gotchas — what could bite (the important part, refined with the research):**
 | # | Bite | Mitigation |

@@ -186,6 +186,7 @@ final class PathProjector
         $ages = [];
         $taxablePerPerson = [];   // nominal non-savings taxable income
         $taxFreeCashNominal = 0;  // pension tax-free cash received this year
+        $taxFreeIncomeNominal = 0; // tax-free income streams (e.g. DLA) received this year
         $grossIncomeNominal = 0;
 
         foreach ($household->persons as $person) {
@@ -208,7 +209,8 @@ final class PathProjector
             // Guaranteed pension/other income.
             $taxablePerPerson[$person->id] += $this->dbIncome($household, $person->id, $age, $state['dbFactor']);
             $taxablePerPerson[$person->id] += $this->statePensionIncome($household, $person->id, $calendarYear, $state['spaYear'][$person->id], $state['spFactor']);
-            $taxablePerPerson[$person->id] += $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation);
+            $taxablePerPerson[$person->id] += $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: true);
+            $taxFreeIncomeNominal += $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: false);
 
             // Planned DC withdrawals due at this age.
             $wd = $this->plannedWithdrawals($state, $person->id, $age);
@@ -216,8 +218,9 @@ final class PathProjector
             $taxFreeCashNominal += $wd['taxFree'];
         }
 
-        // Tax each person individually; assemble household net cash.
-        $netCashNominal = $taxFreeCashNominal;
+        // Tax each person individually; assemble household net cash. Tax-free income
+        // streams (e.g. DLA) are added untaxed alongside pension tax-free cash.
+        $netCashNominal = $taxFreeCashNominal + $taxFreeIncomeNominal;
         $totalTaxNominal = 0;
         foreach ($household->persons as $person) {
             if (! $alive[$person->id]) {
@@ -230,7 +233,7 @@ final class PathProjector
             $totalTaxNominal += $tax + $ni;
             $netCashNominal += $taxable - $tax - $ni;
         }
-        $grossIncomeNominal += $taxFreeCashNominal;
+        $grossIncomeNominal += $taxFreeCashNominal + $taxFreeIncomeNominal;
 
         // Household spend (nominal), with the survivor factor when only one remains.
         $aliveCount = count(array_filter($alive));
@@ -329,11 +332,11 @@ final class PathProjector
         return 0;
     }
 
-    private function incomeStreamsNominal(Household $household, string $pid, int $age, float $cumInflation): int
+    private function incomeStreamsNominal(Household $household, string $pid, int $age, float $cumInflation, bool $taxable): int
     {
         $total = 0;
         foreach ($household->incomeStreams as $stream) {
-            if ($stream->ownerId !== $pid || ! $stream->taxable) {
+            if ($stream->ownerId !== $pid || $stream->taxable !== $taxable) {
                 continue;
             }
             if ($age < $stream->startAge || ($stream->endAge !== null && $age > $stream->endAge)) {

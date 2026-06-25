@@ -13,6 +13,8 @@ use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\IncomeStream;
+use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\Pension;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Sex;
@@ -42,13 +44,13 @@ final class PathProjectorTest extends TestCase
      * @param  list<Pension>  $pensions
      * @param  list<Account>  $accounts
      */
-    private function couple(ExpenseProfile $expense, array $pensions = [], array $accounts = [], ?Person $override1 = null): Household
+    private function couple(ExpenseProfile $expense, array $pensions = [], array $accounts = [], ?Person $override1 = null, array $incomeStreams = []): Household
     {
         // Both born 1958: aged 68 in 2026 (over State Pension age).
         $p1 = $override1 ?? new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired);
         $p2 = new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired);
 
-        return new Household('Test', RegionProfile::EnglandWalesNi, [$p1, $p2], $expense, $pensions, $accounts);
+        return new Household('Test', RegionProfile::EnglandWalesNi, [$p1, $p2], $expense, $pensions, $accounts, $incomeStreams);
     }
 
     public function test_comfortable_household_never_runs_out(): void
@@ -86,6 +88,24 @@ final class PathProjectorTest extends TestCase
 
         $this->assertFalse($result->essentialsAlwaysMet);
         $this->assertNotNull($result->depletionCalendarYear);
+    }
+
+    public function test_tax_free_income_streams_are_counted_as_usable_income(): void
+    {
+        // Two State Pensions (~£12.5k total) cannot cover £24k of essentials on their own.
+        $expense = new ExpenseProfile(Money::fromPounds(24_000), Money::zero(), Percent::fromPercent(70));
+        $pensions = [
+            new StatePensionEntitlement('p1', weeklyForecast: Money::of(120, 0)),
+            new StatePensionEntitlement('p2', weeklyForecast: Money::of(120, 0)),
+        ];
+        // A tax-free income stream (e.g. DLA) of £14k/yr, owned by p1.
+        $dla = new IncomeStream('p1', IncomeStreamType::Other, Money::fromPounds(14_000), taxable: false, inflationLinked: true, startAge: 0, endAge: null);
+
+        $without = $this->forecaster()->forecast($this->couple($expense, $pensions), AssumptionSetLibrary::default(), $this->settings());
+        $with = $this->forecaster()->forecast($this->couple($expense, $pensions, incomeStreams: [$dla]), AssumptionSetLibrary::default(), $this->settings());
+
+        $this->assertFalse($without->essentialsAlwaysMet, 'control: pension income alone does not cover essentials');
+        $this->assertTrue($with->essentialsAlwaysMet, 'tax-free DLA income must be counted and cover essentials');
     }
 
     public function test_pension_aware_draws_the_pot_sooner_than_tax_efficient(): void
