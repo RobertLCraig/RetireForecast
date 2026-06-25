@@ -51,18 +51,23 @@ final class CohortLifeTable
      * an array [age => q(x)] from $currentAge to the hard cap age (110), built along
      * the period diagonal with a Gompertz-style tail above age 100.
      *
+     * $qxMultiplier scales every year's mortality rate (a longevity what-if): >1
+     * raises mortality (shorter life), <1 lowers it; each rate is capped at 1.0.
+     *
      * @return array<int, float>
      */
-    public function cohortCurve(Sex $sex, int $currentAge, int $baseYear): array
+    public function cohortCurve(Sex $sex, int $currentAge, int $baseYear, float $qxMultiplier = 1.0): array
     {
         $curve = [];
 
         for ($age = $currentAge; $age <= self::MAX_AGE; $age++) {
             $year = $baseYear + ($age - $currentAge);
 
-            $curve[$age] = $age <= OnsPeriodMortalityData::LAST_AGE
+            $raw = $age <= OnsPeriodMortalityData::LAST_AGE
                 ? $this->periodQx($sex, $age, $year)
                 : $this->tailQx($sex, $age, $currentAge, $baseYear);
+
+            $curve[$age] = $qxMultiplier === 1.0 ? $raw : min(1.0, $raw * $qxMultiplier);
         }
 
         // Hard cap: anyone reaching the top age does not survive beyond it.
@@ -75,10 +80,10 @@ final class CohortLifeTable
      * The age by which cumulative survival first falls below 50% — the median age at
      * death, used as the single representative lifespan for a deterministic forecast.
      */
-    public function medianDeathAge(Sex $sex, int $currentAge, int $baseYear): int
+    public function medianDeathAge(Sex $sex, int $currentAge, int $baseYear, float $qxMultiplier = 1.0): int
     {
         $survival = 1.0;
-        foreach ($this->cohortCurve($sex, $currentAge, $baseYear) as $age => $qx) {
+        foreach ($this->cohortCurve($sex, $currentAge, $baseYear, $qxMultiplier) as $age => $qx) {
             $survival *= (1.0 - $qx);
             if ($survival < 0.5) {
                 return $age;

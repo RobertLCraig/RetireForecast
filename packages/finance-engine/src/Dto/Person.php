@@ -29,5 +29,7 @@ final class Person
         public readonly ?string $niCategory = null,
         /** Display label only (e.g. "Alex"); never used in any calculation. */
         public readonly ?string $name = null,
+        /** Optional lifespan what-if; null = cohort-table peer average. */
+        public readonly ?LongevityAdjustment $longevity = null,
     ) {}
 }

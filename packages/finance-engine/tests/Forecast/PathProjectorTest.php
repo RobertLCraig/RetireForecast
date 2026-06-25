@@ -15,6 +15,7 @@ use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\IncomeStream;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
+use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Pension;
 use RetireForecast\FinanceEngine\Dto\Person;
@@ -217,6 +218,29 @@ final class PathProjectorTest extends TestCase
             $result->terminalTotalWealth->pence - $result->terminalUsableWealth->pence,
             'the gap between total and usable wealth is exactly the home value',
         );
+    }
+
+    public function test_forecast_honours_a_fixed_assumed_death_age(): void
+    {
+        $longevity = LongevityAdjustment::fixedAge(80);
+        $household = new Household(
+            'Short-lived',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired, longevity: $longevity),
+                new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired, longevity: $longevity),
+            ],
+            new ExpenseProfile(Money::fromPounds(18_000), Money::fromPounds(2_000), Percent::fromPercent(70)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+            ],
+        );
+
+        $result = $this->forecaster()->forecast($household, AssumptionSetLibrary::default(), $this->settings());
+
+        // Both aged 68 in 2026 and assumed to die at 80 -> the last projected year is 2038.
+        $this->assertSame(2038, $result->finalCalendarYear);
     }
 
     public function test_forecast_terminates_at_the_last_survivor_death(): void

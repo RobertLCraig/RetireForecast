@@ -38,6 +38,18 @@ final class MortalityTest extends TestCase
         $this->assertSame(1.0, $curve[CohortLifeTable::MAX_AGE]);
     }
 
+    public function test_mortality_multiplier_shifts_the_median_death_age(): void
+    {
+        $table = new CohortLifeTable;
+
+        $peer = $table->medianDeathAge(Sex::Male, 65, 2026);
+        $worse = $table->medianDeathAge(Sex::Male, 65, 2026, 2.0);   // double the mortality rates
+        $better = $table->medianDeathAge(Sex::Male, 65, 2026, 0.5);  // half the mortality rates
+
+        $this->assertLessThan($peer, $worse, 'higher mortality shortens the median lifespan');
+        $this->assertGreaterThan($peer, $better, 'lower mortality lengthens it');
+    }
+
     public function test_sampling_is_reproducible_under_a_fixed_seed(): void
     {
         $sampler = new JointLifeSampler(new CohortLifeTable);

@@ -53,7 +53,7 @@ final class Simulator
         $minBaseAge = PHP_INT_MAX;
         foreach ($household->persons as $person) {
             $currentAge = $settings->baseYear - (int) $person->dob->format('Y');
-            $people[] = ['id' => $person->id, 'sex' => $person->sex, 'currentAge' => $currentAge];
+            $people[] = ['id' => $person->id, 'sex' => $person->sex, 'currentAge' => $currentAge, 'longevity' => $person->longevity];
             $minBaseAge = min($minBaseAge, $currentAge);
         }
         $horizon = CohortLifeTable::MAX_AGE - $minBaseAge + 2;
