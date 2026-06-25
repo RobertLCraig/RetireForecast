@@ -98,6 +98,7 @@ final class PathProjector
             fullSpendAlwaysMet: $this->everyYear($years, fn (YearResult $y) => $y->fullSpendMet()),
             depletionCalendarYear: $depletionYear,
             terminalTotalWealth: $terminal ? $terminal->totalWealth : Money::zero(),
+            terminalUsableWealth: $terminal ? $terminal->liquidWealth->plus($terminal->pensionWealth) : Money::zero(),
             finalCalendarYear: $terminal ? $terminal->calendarYear : $settings->baseYear,
         );
     }
@@ -144,6 +145,7 @@ final class PathProjector
                     'value' => $pension->currentValue->pence,
                     'plan' => $pension->withdrawalPlan,
                     'firstAccessDone' => false,
+                    'contribution' => $pension->ongoingContribution->pence + $pension->employerContribution->pence,
                 ];
                 $lsaUsed[$pension->ownerId] += $pension->pclsTakenToDate?->pence ?? 0;
             }
@@ -265,10 +267,14 @@ final class PathProjector
             $fundedNominal = $funded['funded'];
             $totalTaxNominal += $funded['extraTax'];
         } elseif ($shortfall < 0) {
-            // Surplus is saved into the first living person's cash.
+            // Surplus first funds any planned contributions to long-term assets
+            // (DC pension top-ups, regular account savings); what remains is saved
+            // into the first living person's cash.
+            $surplus = -$shortfall;
+            $surplus -= $this->applyContributions($household, $state, $alive, $state['spendFactor'], $surplus);
             $surplusOwner = $this->firstLiving($household, $alive);
-            if ($surplusOwner !== null) {
-                $state['cash'][$surplusOwner] += -$shortfall;
+            if ($surplusOwner !== null && $surplus > 0) {
+                $state['cash'][$surplusOwner] += $surplus;
             }
         }
 
@@ -556,6 +562,64 @@ final class PathProjector
         }
 
         return $total;
+    }
+
+    /**
+     * Direct this year's surplus into any planned long-term contributions — DC
+     * pension top-ups and regular savings into accounts — capped at the surplus
+     * available, in declaration order. Amounts are in today's money, grown to
+     * nominal by $spendFactor. Returns the total contributed (nominal pence).
+     *
+     * Funded from surplus only (never by drawing down other assets), so saving
+     * stops automatically once income no longer covers spend. v1 simplification:
+     * pension contributions are taken from net surplus and tax relief on them is
+     * not modelled, which slightly understates the pre-retirement pot — flagged
+     * for the trust pass.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     */
+    private function applyContributions(Household $household, array &$state, array $alive, float $spendFactor, int $surplus): int
+    {
+        $available = $surplus;
+        $contributed = 0;
+
+        $take = function (int $annualPence) use (&$available, &$contributed, $spendFactor): int {
+            if ($annualPence <= 0 || $available <= 0) {
+                return 0;
+            }
+            $give = min((int) round($annualPence * $spendFactor), $available);
+            $available -= $give;
+            $contributed += $give;
+
+            return $give;
+        };
+
+        // DC pension contributions (employee + employer) into each living owner's pots.
+        foreach ($household->persons as $person) {
+            if (! ($alive[$person->id] ?? false)) {
+                continue;
+            }
+            foreach ($state['pots'][$person->id] as &$pot) {
+                $pot['value'] += $take($pot['contribution'] ?? 0);
+            }
+            unset($pot);
+        }
+
+        // Regular savings into accounts, added to the matching liquid bucket.
+        foreach ($household->accounts as $account) {
+            if ($account->ongoingContributions === null || ! ($alive[$account->ownerId] ?? false)) {
+                continue;
+            }
+            $bucket = match ($account->type) {
+                AccountType::Cash, AccountType::PremiumBonds => 'cash',
+                AccountType::Gia => 'gia',
+                AccountType::Isa => 'isa',
+            };
+            $state[$bucket][$account->ownerId] += $take($account->ongoingContributions->pence);
+        }
+
+        return $contributed;
     }
 
     private function firstLiving(Household $household, array $alive): ?string

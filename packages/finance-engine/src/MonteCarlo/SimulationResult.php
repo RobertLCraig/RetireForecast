@@ -11,12 +11,17 @@ use RetireForecast\FinanceEngine\Money\Money;
  * the spread of terminal wealth, how often and when the money ran out, and the
  * per-year percentile bands for the fan chart. All money figures are REAL (today's
  * money). $seed is recorded so any run is reproducible.
+ *
+ * $terminalWealthPercentiles is total wealth (incl. the primary residence);
+ * $usableWealthPercentiles is the spendable part (excl. the home), so an asset-rich
+ * household whose money runs out does not read as the "wealthiest" outcome.
  */
 final class SimulationResult
 {
     /**
      * @param  array{p10: Money, p25: Money, p50: Money, p75: Money, p90: Money}  $terminalWealthPercentiles
      * @param  list<array{calendarYear: int, paths: int, p10: Money, p25: Money, p50: Money, p75: Money, p90: Money}>  $fanChart
+     * @param  array{p10: Money, p25: Money, p50: Money, p75: Money, p90: Money}|array{}  $usableWealthPercentiles
      */
     public function __construct(
         public readonly int $nPaths,
@@ -27,5 +32,6 @@ final class SimulationResult
         public readonly ?int $medianDepletionYear,
         public readonly array $terminalWealthPercentiles,
         public readonly array $fanChart,
+        public readonly array $usableWealthPercentiles = [],
     ) {}
 }

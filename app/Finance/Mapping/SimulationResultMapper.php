@@ -28,6 +28,9 @@ final class SimulationResultMapper
             'depletionRate' => $result->depletionRate,
             'medianDepletionYear' => $result->medianDepletionYear,
             'terminalWealthPercentiles' => self::penceBands($result->terminalWealthPercentiles),
+            'usableWealthPercentiles' => $result->usableWealthPercentiles === []
+                ? []
+                : self::penceBands($result->usableWealthPercentiles),
             'fanChart' => array_map(
                 static fn (array $band): array => [
                     'calendarYear' => $band['calendarYear'],
@@ -49,6 +52,9 @@ final class SimulationResultMapper
             depletionRate: (float) $data['depletionRate'],
             medianDepletionYear: $data['medianDepletionYear'],
             terminalWealthPercentiles: self::moneyBands($data['terminalWealthPercentiles']),
+            usableWealthPercentiles: empty($data['usableWealthPercentiles'])
+                ? []
+                : self::moneyBands($data['usableWealthPercentiles']),
             fanChart: array_map(
                 static fn (array $band): array => [
                     'calendarYear' => $band['calendarYear'],

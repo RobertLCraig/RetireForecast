@@ -15,8 +15,10 @@ use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\IncomeStream;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
+use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Pension;
 use RetireForecast\FinanceEngine\Dto\Person;
+use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
@@ -132,6 +134,88 @@ final class PathProjectorTest extends TestCase
         $this->assertGreaterThan(
             $taxEfficient->years[2]->liquidWealth->pence,
             $pensionAware->years[2]->liquidWealth->pence,
+        );
+    }
+
+    public function test_dc_contributions_funded_from_surplus_grow_the_pot(): void
+    {
+        // A still-working person (salary well above spend) paying into a DC pot.
+        $worker = new Person('p1', new DateTimeImmutable('1968-04-01'), Sex::Female, EmploymentStatus::Employed, grossSalary: Money::fromPounds(60_000), plannedRetirementAge: 67);
+        $expense = new ExpenseProfile(Money::fromPounds(20_000), Money::zero(), Percent::fromPercent(70));
+
+        $withContrib = $this->couple($expense, pensions: [
+            new DcPension('p1', Money::fromPounds(100_000), Money::fromPounds(10_000), Money::fromPounds(5_000), 57),
+        ], override1: $worker);
+        $without = $this->couple($expense, pensions: [
+            new DcPension('p1', Money::fromPounds(100_000), Money::zero(), Money::zero(), 57),
+        ], override1: $worker);
+
+        $a = $this->forecaster()->forecast($withContrib, AssumptionSetLibrary::default(), $this->settings());
+        $b = $this->forecaster()->forecast($without, AssumptionSetLibrary::default(), $this->settings());
+
+        // Base year (no inflation/growth yet): the pot is larger by exactly the
+        // £15,000 employee + employer contribution, funded entirely from surplus.
+        $this->assertSame(
+            1_500_000,
+            $a->years[0]->pensionWealth->pence - $b->years[0]->pensionWealth->pence,
+        );
+    }
+
+    public function test_account_contributions_route_surplus_into_investments_to_grow_faster(): void
+    {
+        $worker = new Person('p1', new DateTimeImmutable('1968-04-01'), Sex::Female, EmploymentStatus::Employed, grossSalary: Money::fromPounds(60_000), plannedRetirementAge: 67);
+        $expense = new ExpenseProfile(Money::fromPounds(20_000), Money::zero(), Percent::fromPercent(70));
+        $pensions = [
+            new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+            new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+        ];
+
+        $withIsa = $this->couple($expense, pensions: $pensions, accounts: [
+            new Account('p1', AccountType::Isa, Money::zero(), ongoingContributions: Money::fromPounds(10_000)),
+        ], override1: $worker);
+        $cashOnly = $this->couple($expense, pensions: $pensions, override1: $worker);
+
+        $a = $this->forecaster()->forecast($withIsa, AssumptionSetLibrary::default(), $this->settings());
+        $b = $this->forecaster()->forecast($cashOnly, AssumptionSetLibrary::default(), $this->settings());
+
+        // The same surplus, routed into an ISA growing at the investment return
+        // rather than left sitting in cash, leaves more usable wealth at the end.
+        $this->assertGreaterThan($b->terminalUsableWealth->pence, $a->terminalUsableWealth->pence);
+    }
+
+    public function test_terminal_usable_wealth_excludes_the_primary_residence(): void
+    {
+        $household = new Household(
+            'Home owner',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired),
+            ],
+            new ExpenseProfile(Money::fromPounds(18_000), Money::fromPounds(4_000), Percent::fromPercent(70)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+                new DcPension('p2', Money::fromPounds(300_000), Money::zero(), Money::zero(), 55),
+            ],
+            [],
+            [],
+            new Property(Money::fromPounds(400_000), OwnershipType::Outright),
+        );
+
+        $result = $this->forecaster()->forecast($household, AssumptionSetLibrary::default(), $this->settings());
+
+        $terminalYear = $result->years[count($result->years) - 1];
+        $this->assertGreaterThan(0, $terminalYear->propertyWealth->pence, 'the home should still hold value at the end');
+        $this->assertLessThan(
+            $result->terminalTotalWealth->pence,
+            $result->terminalUsableWealth->pence,
+            'usable wealth must exclude the illiquid home',
+        );
+        $this->assertSame(
+            $terminalYear->propertyWealth->pence,
+            $result->terminalTotalWealth->pence - $result->terminalUsableWealth->pence,
+            'the gap between total and usable wealth is exactly the home value',
         );
     }
 

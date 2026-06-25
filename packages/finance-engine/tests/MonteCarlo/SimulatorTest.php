@@ -109,6 +109,19 @@ final class SimulatorTest extends TestCase
         $this->assertGreaterThan(0.0, $result->depletionRate);
     }
 
+    public function test_usable_wealth_percentiles_are_reported_and_not_above_total(): void
+    {
+        $result = $this->simulator()->run($this->comfortable(), $this->settings(), AssumptionSetLibrary::default(), new CohortLifeTable, 200, seed: 11);
+
+        $this->assertArrayHasKey('p50', $result->usableWealthPercentiles);
+        // Usable (excl. the home) can never exceed total (incl. the home). This
+        // couple owns no property, so the two coincide; the invariant must hold.
+        $this->assertLessThanOrEqual(
+            $result->terminalWealthPercentiles['p50']->pence,
+            $result->usableWealthPercentiles['p50']->pence,
+        );
+    }
+
     public function test_zero_volatility_returns_collapse_to_the_mean(): void
     {
         $set = new AssumptionSet(

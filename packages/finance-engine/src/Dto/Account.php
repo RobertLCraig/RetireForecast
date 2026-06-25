@@ -12,6 +12,10 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * capital for means-tested benefits. $unrealisedGain (GIA only) feeds CGT; ISA
  * income and gains are tax-free. $yield is the assumed income return for the
  * forecast.
+ *
+ * $ongoingContributions is a planned regular payment into the account per year
+ * (today's money) — e.g. a "saved" self-investment line. It is funded from surplus
+ * income, so it stops automatically once the household is in net drawdown.
  */
 final class Account
 {
@@ -21,5 +25,6 @@ final class Account
         public readonly Money $balance,
         public readonly ?Money $unrealisedGain = null,
         public readonly ?Percent $yield = null,
+        public readonly ?Money $ongoingContributions = null,
     ) {}
 }

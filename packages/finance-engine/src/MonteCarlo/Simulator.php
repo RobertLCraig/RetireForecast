@@ -63,6 +63,7 @@ final class Simulator
         $depleted = 0;
         $depletionYears = [];
         $terminalWealth = [];
+        $terminalUsable = [];
         $wealthByYearIndex = []; // yearIndex => list<int pence>
 
         for ($p = 0; $p < $nPaths; $p++) {
@@ -79,6 +80,7 @@ final class Simulator
                 $depletionYears[] = $result->depletionCalendarYear;
             }
             $terminalWealth[] = $result->terminalTotalWealth->pence;
+            $terminalUsable[] = $result->terminalUsableWealth->pence;
 
             foreach ($result->years as $year) {
                 $wealthByYearIndex[$year->yearIndex][] = $year->totalWealth->pence;
@@ -101,6 +103,7 @@ final class Simulator
             medianDepletionYear: $depletionYears === [] ? null : (int) round($this->percentile($depletionYears, 0.5)),
             terminalWealthPercentiles: $this->moneyPercentiles($terminalWealth),
             fanChart: $this->fanChart($wealthByYearIndex, $settings->baseYear),
+            usableWealthPercentiles: $this->moneyPercentiles($terminalUsable),
         );
     }
 
