@@ -46,7 +46,7 @@ final class LumpSumTaxShock
      */
     public function assess(Scenario $scenario): ?array
     {
-        $household = $scenario->household->toDto();
+        $household = $scenario->toHousehold();
 
         $first = $this->firstFlexibleWithdrawal($household);
         if ($first === null) {

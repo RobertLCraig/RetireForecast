@@ -35,11 +35,6 @@ class User extends Authenticatable implements FilamentUser
         return $this->disclaimer_acknowledged_at !== null;
     }
 
-    public function households(): HasMany
-    {
-        return $this->hasMany(Household::class);
-    }
-
     public function scenarios(): HasMany
     {
         return $this->hasMany(Scenario::class);

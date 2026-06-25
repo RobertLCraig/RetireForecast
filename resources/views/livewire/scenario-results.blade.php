@@ -9,11 +9,14 @@
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">{{ $scenario->name }}</h1>
             <p class="mt-1 text-sm text-gray-600">
-                {{ $scenario->household->name }} · base tax year {{ $scenario->base_tax_year }} ·
+                {{ $scenario->householdName() }} · base tax year {{ $scenario->base_tax_year }} ·
                 primary option: {{ \App\Forecast\ResultPresenter::variantLabel($scenario->variant) }}
             </p>
         </div>
-        <a href="{{ route('dashboard') }}" class="shrink-0 text-sm text-blue-700 underline">Back to forecasts</a>
+        <div class="flex shrink-0 items-center gap-4">
+            <a href="{{ route('scenarios.edit', $scenario) }}" class="text-sm text-blue-700 underline">Edit inputs</a>
+            <a href="{{ route('dashboard') }}" class="text-sm text-blue-700 underline">Back to forecasts</a>
+        </div>
     </div>
 
     {{-- Run controls --------------------------------------------------------------- --}}

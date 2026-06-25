@@ -4,20 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Forecast;
 
-use App\Enums\ScenarioStatus;
-use App\Enums\ScenarioVariant;
 use App\Enums\SimulationMode;
 use App\Enums\SimulationStatus;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
 use App\Jobs\RunScenarioSimulation;
-use App\Models\Household;
 use App\Models\Result;
 use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-use Tests\Support\HouseholdFixture;
+use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
 class SimulationRunnerTest extends TestCase
@@ -31,23 +28,7 @@ class SimulationRunnerTest extends TestCase
 
     private function scenario(): Scenario
     {
-        $user = User::factory()->create();
-        $household = Household::fromDto(HouseholdFixture::household(), $user->id);
-        $household->save();
-
-        $scenario = new Scenario([
-            'household_id' => $household->id,
-            'user_id' => $user->id,
-            'name' => 'Buy-vs-rent',
-            'variant' => ScenarioVariant::Rent,
-            'base_tax_year' => '2026-27',
-            'iht_modelled' => false,
-            'status' => ScenarioStatus::Ready,
-        ]);
-        $scenario->setHousingAction(HouseholdFixture::housingAction());
-        $scenario->save();
-
-        return $scenario->fresh();
+        return ScenarioFixture::rich(User::factory()->create());
     }
 
     public function test_a_preview_runs_synchronously_persists_three_results_and_completes(): void

@@ -4,20 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Forecast;
 
-use App\Enums\ScenarioStatus;
-use App\Enums\ScenarioVariant;
 use App\Enums\SimulationMode;
 use App\Enums\SimulationStatus;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
 use App\Jobs\RunScenarioSimulation;
-use App\Models\Household;
-use App\Models\Scenario;
 use App\Models\SimulationRun;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RuntimeException;
-use Tests\Support\HouseholdFixture;
+use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
 /**
@@ -64,23 +60,9 @@ class RunScenarioSimulationFailureTest extends TestCase
 
     private function queuedRun(): SimulationRun
     {
-        $user = User::factory()->create();
-        $household = Household::fromDto(HouseholdFixture::household(), $user->id);
-        $household->save();
-
-        $scenario = new Scenario([
-            'household_id' => $household->id,
-            'user_id' => $user->id,
-            'name' => 'Buy-vs-rent',
-            'variant' => ScenarioVariant::Rent,
-            'base_tax_year' => '2026-27',
-            'iht_modelled' => false,
-            'status' => ScenarioStatus::Ready,
-        ]);
-        $scenario->setHousingAction(HouseholdFixture::housingAction());
-        $scenario->save();
+        $scenario = ScenarioFixture::rich(User::factory()->create());
 
         return (new SimulationRunner(new ScenarioForecaster))
-            ->createRun($scenario->fresh(), SimulationMode::Full, seed: 1);
+            ->createRun($scenario, SimulationMode::Full, seed: 1);
     }
 }

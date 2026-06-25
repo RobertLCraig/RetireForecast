@@ -158,22 +158,33 @@ on the DC pension inside the household payload, not separately on the scenario.
 - The domain DTOs under `src/Dto/` (Household, Person, DcPension, DbPension,
   StatePensionEntitlement, Property, Account, IncomeStream, ExpenseProfile, HousingAction,
   AssumptionSet + enums).
-- **App persistence:** Eloquent `Household`, `Scenario`, `AssumptionSet`, `SimulationRun`,
-  `Result` with the to/from-DTO bridges and `encrypted:array` payload casts; the
-  `app/Finance/Mapping/` mappers + `Codec`.
+- **App persistence:** Eloquent `Scenario` (holds the encrypted `builder_state`, the source of
+  truth; derives the engine DTOs), `AssumptionSet`, `SimulationRun`, `Result` with `encrypted:array`
+  payload casts; the `app/Finance/Mapping/` `AssumptionSetMapper` + `SimulationResultMapper` + `Codec`.
+  (The `Household`/`HousingAction` mappers and the `households`/`scenario_drafts` tables were dropped in
+  Phase B — see "Planned shape changes".)
 - **App forecast services:** `app/Forecast/` — `ScenarioForecaster` (assembles engine inputs from
   a persisted scenario; deterministic / single-variant / buy-vs-rent), `SimulationRunner`
   (create → run → persist, with progress + cancel), `RunScenarioSimulation` job.
-- **Builder + drafts (2026-06-25):** `Person` gained an optional display-only `$name` (persisted via
-  the mapper/assembler; never used in any calculation). A new **`scenario_drafts`** table (one per
-  user, encrypted form-state) auto-saves the in-progress builder so work survives leaving the page.
+- **Builder + drafts (2026-06-25, Phase B):** `Person` gained an optional display-only `$name` (carried in
+  `builder_state`, derived by the assembler; never used in any calculation). The in-progress builder
+  auto-saves as a **`draft`-status `Scenario`** (one per user, encrypted `builder_state`) so work survives
+  leaving the page; it is promoted to `ready` on save. (Replaces the dropped `scenario_drafts` table.)
 
 ## Planned shape changes (2026-06-25) — authorised, not yet built
 For the research-backed plan (docs/PLAN.md "Sector-informed build plan"; DECISIONS 2026-06-25).
 Recorded here so the rebuild does not fork the model:
-- **`scenarios.builder_state`** (encrypted): the raw builder form-state — the **editable record**. The
-  engine `Household` DTO becomes a **derived** artifact regenerated from it on save (one source of input).
-- **Base plan + delta child what-ifs:** a child scenario references a base (`parent_scenario_id`) and
+- ✅ **BUILT (2026-06-25 rebuild, Phase B).** **`scenarios.builder_state`** (encrypted) is the raw builder
+  form-state — the **single source of truth / editable record**. The engine `Household` + `HousingAction`
+  DTOs are **derived** from it on demand (`Scenario::toHousehold()` / `toHousingAction()` via the
+  `HouseholdAssembler`); there is **no reverse-mapper**. The clear structural columns (name, variant,
+  base_tax_year, iht_modelled, assumption_set_id) are a **projection** refreshed on every save by
+  `Scenario::fillFromBuilderState()`, never an independent source. The old `households` table + `Household`
+  model + `HouseholdMapper`/`HousingActionMapper`, and the separate `scenario_drafts` table + `ScenarioDraft`
+  model, are **dropped**: an in-progress build is now a `draft`-status scenario (one per user), promoted to
+  `ready` on save. Editing reloads the form-state (`/scenarios/{scenario}/edit`, owner-scoped); save is
+  update-or-create and **invalidates stale runs/results** (gotcha B). (No data migration — rebuild authorised.)
+- **Base plan + delta child what-ifs (Phase C2, not yet built):** a child scenario references a base (`parent_scenario_id`) and
   stores only a **delta** of overridden form-state paths; effective inputs = base ⊕ overrides via one
   merge function. **Not a full copy** (full-copy forks). **List items (expense lines, pensions, accounts)
   gain stable IDs** so an override targets the right row across base edits (people already have ids).
@@ -194,8 +205,7 @@ Recorded here so the rebuild does not fork the model:
   (`usableWealthPercentiles`) alongside total; the results page shows both, so the asset-rich / cash-poor case
   (100% run out yet high "wealth left") reads correctly. Also added **`YearResult::incomeBySource`** (the
   canonical 8 sources) powering the deterministic cashflow ladder + the per-source completeness guard.
-  **Still app-side (not yet built):** `scenarios.builder_state` as source of truth + derived `Household`,
-  delta-child what-ifs, 3-tier line items.
+  **Still app-side (not yet built):** delta-child what-ifs + Compare (Phase C2), 3-tier line items (Phase C1).
 
 ## Known divergences (to close)
 - The DTO carries withdrawals on the DC pension; the original Scenario sketch listed

@@ -5,13 +5,18 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * A scenario is one housing decision (variant) over a household, run under a chosen
- * assumption set and tax year. The housing action's figures are sensitive, so they
- * live in the encrypted payload; variant, tax year, IHT toggle, status and the
- * assumption-set reference are clear structural columns for listing and filtering.
+ * A scenario is a saved forecast: a household and a housing decision the user entered
+ * in the builder. The raw builder form-state is the SINGLE SOURCE OF TRUTH — held in
+ * the encrypted `builder_state` payload; the engine's Household + HousingAction DTOs
+ * are *derived* from it on demand (no reverse-mapper, so the inputs have one home).
  *
- * user_id is denormalised from the household for straightforward ownership scoping.
- * Deleting the user or the household hard-deletes the scenario.
+ * The clear structural columns (name, variant, tax year, IHT toggle, status, the
+ * assumption-set reference) are a projection of that form-state, refreshed on every
+ * save, kept clear for listing and filtering without decrypting.
+ *
+ * user_id is the owner. A scenario starts life as a `draft` (the in-progress build,
+ * one per user) and becomes `ready` on save. Deleting the user or the assumption set
+ * cascades / nulls as set below.
  */
 return new class extends Migration
 {
@@ -19,7 +24,6 @@ return new class extends Migration
     {
         Schema::create('scenarios', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('household_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->nullable()->constrained()->cascadeOnDelete();
             $table->foreignId('assumption_set_id')->nullable()->constrained()->nullOnDelete();
             $table->string('name');
@@ -27,7 +31,7 @@ return new class extends Migration
             $table->string('base_tax_year');
             $table->boolean('iht_modelled')->default(false);
             $table->string('status')->default('draft');
-            $table->text('payload'); // encrypted:array (HousingAction DTO)
+            $table->text('builder_state'); // encrypted:array — the raw builder form-state (source of truth)
             $table->timestamps();
         });
     }

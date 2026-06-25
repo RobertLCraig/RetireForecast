@@ -9,7 +9,7 @@ use App\Models\User;
 /**
  * GDPR data-subject operations for a user. Export returns everything the app holds
  * about them, decrypted, in a portable structure; erase is a hard delete of the
- * account, which cascades (foreign keys) to their households and scenarios. There
+ * account, which cascades (foreign keys) to their scenarios and run history. There
  * is no soft-delete: erased means gone.
  */
 final class GdprService
@@ -17,7 +17,7 @@ final class GdprService
     /** @return array<string, mixed> a portable, JSON-serialisable copy of all the user's data */
     public function export(User $user): array
     {
-        $user->loadMissing(['households', 'scenarios', 'simulationRuns.results']);
+        $user->loadMissing(['scenarios', 'simulationRuns.results']);
 
         return [
             'exported_at' => now()->toIso8601String(),
@@ -26,25 +26,18 @@ final class GdprService
                 'email' => $user->email,
                 'created_at' => $user->created_at?->toIso8601String(),
             ],
-            'households' => $user->households->map(fn ($household): array => [
-                'id' => $household->id,
-                'name' => $household->name,
-                'region' => $household->region->value,
-                'created_at' => $household->created_at?->toIso8601String(),
-                // payload is already decrypted by the model cast.
-                'detail' => $household->payload,
-            ])->all(),
             'scenarios' => $user->scenarios->map(fn ($scenario): array => [
                 'id' => $scenario->id,
-                'household_id' => $scenario->household_id,
                 'name' => $scenario->name,
+                'household_name' => $scenario->householdName(),
                 'variant' => $scenario->variant->value,
                 'base_tax_year' => $scenario->base_tax_year,
                 'iht_modelled' => $scenario->iht_modelled,
                 'status' => $scenario->status->value,
                 'assumption_set_id' => $scenario->assumption_set_id,
                 'created_at' => $scenario->created_at?->toIso8601String(),
-                'housing_action' => $scenario->payload,
+                // The full builder form-state — the editable record — decrypted by the model cast.
+                'builder_state' => $scenario->builder_state,
             ])->all(),
             // The user's forecast history: each run plus its per-variant results, with the
             // sensitive detail decrypted by the model casts (data portability).

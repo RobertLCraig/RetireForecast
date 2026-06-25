@@ -4,21 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Livewire;
 
-use App\Enums\ScenarioStatus;
-use App\Enums\ScenarioVariant;
 use App\Enums\SimulationStatus;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
 use App\Jobs\RunScenarioSimulation;
 use App\Livewire\ScenarioResults;
-use App\Models\Household;
 use App\Models\Scenario;
 use App\Models\SimulationRun;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
-use Tests\Support\HouseholdFixture;
+use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
 class ScenarioResultsTest extends TestCase
@@ -203,21 +200,6 @@ class ScenarioResultsTest extends TestCase
 
     private function scenarioFor(User $user): Scenario
     {
-        $household = Household::fromDto(HouseholdFixture::household(), $user->id);
-        $household->save();
-
-        $scenario = new Scenario([
-            'household_id' => $household->id,
-            'user_id' => $user->id,
-            'name' => 'Buy-vs-rent',
-            'variant' => ScenarioVariant::Rent,
-            'base_tax_year' => '2026-27',
-            'iht_modelled' => false,
-            'status' => ScenarioStatus::Ready,
-        ]);
-        $scenario->setHousingAction(HouseholdFixture::housingAction());
-        $scenario->save();
-
-        return $scenario->fresh();
+        return ScenarioFixture::rich($user);
     }
 }

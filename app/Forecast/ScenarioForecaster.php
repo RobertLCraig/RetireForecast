@@ -84,7 +84,7 @@ final class ScenarioForecaster
 
     public function config(Scenario $scenario): TaxYearConfig
     {
-        return TaxYearRegistry::for($scenario->base_tax_year, $scenario->household->region);
+        return TaxYearRegistry::for($scenario->base_tax_year, $this->household($scenario)->region);
     }
 
     public function assumptions(Scenario $scenario): AssumptionSet
@@ -94,12 +94,12 @@ final class ScenarioForecaster
 
     private function household(Scenario $scenario): Household
     {
-        return $scenario->household->toDto();
+        return $scenario->toHousehold();
     }
 
     private function housingAction(Scenario $scenario): HousingAction
     {
-        return $scenario->housingAction();
+        return $scenario->toHousingAction();
     }
 
     private function settings(Scenario $scenario): ForecastSettings

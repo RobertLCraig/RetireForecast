@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Forecast;
 
-use App\Enums\ScenarioStatus;
-use App\Enums\ScenarioVariant;
 use App\Forecast\AssumptionComparison;
-use App\Models\Household;
 use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\Support\HouseholdFixture;
+use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
 class AssumptionComparisonTest extends TestCase
@@ -46,22 +43,6 @@ class AssumptionComparisonTest extends TestCase
 
     private function scenario(): Scenario
     {
-        $user = User::factory()->create();
-        $household = Household::fromDto(HouseholdFixture::household(), $user->id);
-        $household->save();
-
-        $scenario = new Scenario([
-            'household_id' => $household->id,
-            'user_id' => $user->id,
-            'name' => 'Sensitivity',
-            'variant' => ScenarioVariant::Rent,
-            'base_tax_year' => '2026-27',
-            'iht_modelled' => false,
-            'status' => ScenarioStatus::Ready,
-        ]);
-        $scenario->setHousingAction(HouseholdFixture::housingAction());
-        $scenario->save();
-
-        return $scenario->fresh();
+        return ScenarioFixture::rich(User::factory()->create(), ['name' => 'Sensitivity']);
     }
 }

@@ -7,7 +7,6 @@ namespace Tests\Feature\Persistence;
 use App\Enums\ScenarioStatus;
 use App\Enums\ScenarioVariant;
 use App\Models\AssumptionSet;
-use App\Models\Household;
 use App\Models\Scenario;
 use App\Models\User;
 use Database\Seeders\AssumptionSetSeeder;
@@ -15,36 +14,55 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use Tests\Support\HouseholdFixture;
+use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
 class ScenarioPersistenceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_a_saved_household_decrypts_to_an_identical_dto(): void
+    public function test_a_saved_scenario_derives_the_identical_engine_dtos_from_its_builder_state(): void
     {
         $user = User::factory()->create();
-        $dto = HouseholdFixture::household();
 
-        $saved = Household::fromDto($dto, $user->id);
-        $saved->save();
+        $scenario = ScenarioFixture::rich($user);
+        $reloaded = Scenario::findOrFail($scenario->id);
 
-        $reloaded = Household::findOrFail($saved->id);
-
-        $this->assertEquals($dto, $reloaded->toDto());
+        // The builder form-state is the single source of truth; the engine DTOs are
+        // derived from it and must equal the canonical fixture exactly.
+        $this->assertEquals(HouseholdFixture::household(), $reloaded->toHousehold());
+        $this->assertEquals(HouseholdFixture::housingAction(), $reloaded->toHousingAction());
     }
 
-    public function test_the_household_payload_is_encrypted_at_rest(): void
+    public function test_the_structural_columns_are_projected_from_the_builder_state(): void
     {
         $user = User::factory()->create();
-        $saved = Household::fromDto(HouseholdFixture::household(), $user->id);
-        $saved->save();
 
-        $raw = DB::table('households')->where('id', $saved->id)->value('payload');
+        $scenario = ScenarioFixture::rich($user, [
+            'name' => 'Sell and rent',
+            'variant' => 'buy_outright',
+            'baseTaxYear' => '2025-26',
+            'ihtModelled' => true,
+        ]);
+        $reloaded = Scenario::findOrFail($scenario->id);
 
-        // The £62,000 salary is 6,200,000 pence in the payload; it must not be readable.
-        $this->assertStringNotContainsString('6200000', $raw);
-        $this->assertStringNotContainsString('persons', $raw);
+        $this->assertSame('Sell and rent', $reloaded->name);
+        $this->assertSame(ScenarioVariant::BuyOutright, $reloaded->variant);
+        $this->assertSame('2025-26', $reloaded->base_tax_year);
+        $this->assertTrue($reloaded->iht_modelled);
+        $this->assertSame(ScenarioStatus::Ready, $reloaded->status);
+        $this->assertSame('The Worked-Example Couple', $reloaded->householdName());
+    }
+
+    public function test_the_builder_state_is_encrypted_at_rest(): void
+    {
+        $scenario = ScenarioFixture::rich(User::factory()->create());
+
+        $raw = DB::table('scenarios')->where('id', $scenario->id)->value('builder_state');
+
+        // The household detail (the £62,000 salary string, the people array) must not be readable.
+        $this->assertStringNotContainsString('62000', $raw);
+        $this->assertStringNotContainsString('people', $raw);
 
         // ...but it is a Laravel encryption envelope, not just opaque text.
         $envelope = json_decode(base64_decode($raw), true);
@@ -53,46 +71,22 @@ class ScenarioPersistenceTest extends TestCase
         $this->assertArrayHasKey('value', $envelope);
 
         // Clear structural columns stay readable for listing/filtering.
-        $this->assertSame('The Worked-Example Couple', DB::table('households')->where('id', $saved->id)->value('name'));
-        $this->assertSame('england_wales_ni', DB::table('households')->where('id', $saved->id)->value('region'));
+        $this->assertSame('Buy-vs-rent', DB::table('scenarios')->where('id', $scenario->id)->value('name'));
+        $this->assertSame('rent', DB::table('scenarios')->where('id', $scenario->id)->value('variant'));
     }
 
-    public function test_a_saved_scenario_round_trips_and_links_its_household_and_assumption_set(): void
+    public function test_a_saved_scenario_links_its_assumption_set(): void
     {
         $this->seed(AssumptionSetSeeder::class);
 
         $user = User::factory()->create();
-        $household = Household::fromDto(HouseholdFixture::household(), $user->id);
-        $household->save();
-
         $default = AssumptionSet::where('is_default', true)->firstOrFail();
-        $action = HouseholdFixture::housingAction();
 
-        $scenario = new Scenario([
-            'household_id' => $household->id,
-            'user_id' => $user->id,
-            'assumption_set_id' => $default->id,
-            'name' => 'Sell and rent',
-            'variant' => ScenarioVariant::Rent,
-            'base_tax_year' => '2025-26',
-            'iht_modelled' => true,
-            'status' => ScenarioStatus::Ready,
-        ]);
-        $scenario->setHousingAction($action);
-        $scenario->save();
-
+        $scenario = ScenarioFixture::rich($user, ['assumptionSetId' => $default->id]);
         $reloaded = Scenario::findOrFail($scenario->id);
 
-        $this->assertEquals($action, $reloaded->housingAction());
-        $this->assertSame(ScenarioVariant::Rent, $reloaded->variant);
-        $this->assertSame(ScenarioStatus::Ready, $reloaded->status);
-        $this->assertTrue($reloaded->iht_modelled);
-        $this->assertTrue($reloaded->household->is($household));
+        $this->assertTrue($reloaded->assumptionSet->is($default));
         $this->assertEquals(AssumptionSetLibrary::default(), $reloaded->assumptionSet->toDto());
-
-        // The scenario payload is encrypted at rest too.
-        $raw = DB::table('scenarios')->where('id', $scenario->id)->value('payload');
-        $this->assertStringNotContainsString('salePrice', $raw);
     }
 
     public function test_the_seeder_loads_the_shipped_sets_with_exactly_one_default(): void

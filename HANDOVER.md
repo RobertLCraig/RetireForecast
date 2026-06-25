@@ -3,10 +3,11 @@
 > A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue building the calculation engine and then the app around it. Read `docs/PLAN.md` first: it is the full approved plan and the source of truth for scope.
 
 **Stage:** active
-**Status:** Rebuild **Phase A (engine enrichment) + Phase C3 (results drill-down) done; Phase B (storage inversion — `scenarios.builder_state` as source of truth + edit/clone) is next.** Suite **235 green** (engine 113 / app 122); tree clean, all committed (`2587324`). _The narrative that follows is the full build history; the live picture is the **▶ REBUILD** callout below + the newest session-log entry._
+**Status:** Rebuild **Phase A (engine) + C3 (results drill-down) + Phase B (storage inversion — `scenarios.builder_state` is the single source of truth, the engine DTOs derived from it, edit-in-place + stale-run invalidation) all done.** Suite **239 green** (engine 113 / app 126); tree clean. **Phase C2 (delta-child what-ifs + Compare) is next.** _The narrative that follows is the full build history; the live picture is the **▶ REBUILD** callout below + the newest session-log entry._
 
 _Pre-rebuild prototype history:_ Engine complete (Phase 1); **Phase 2 steps 1–4 of the app layer are in.** Step 1: encrypted DTO persistence, Fortify auth, GDPR, Filament admin. Step 2: forecast/scenario services (`ScenarioForecaster`, `SimulationRun`/`Result` persistence, `SimulationRunner` + queued job with progress + cancel). Step 3: the **Livewire UI + ApexCharts** (auth screens, scenario builder, results page with fan chart + buy-vs-rent, each as text + accessible `<table>` + CSV + signposting). Step 4 (this session): the **compliance/disclaimer layer** — `App\Compliance\OutputPhrasing` directive-only banned-phrase lint + a **partition build test** over every view and app PHP file; a **first-run acknowledgement gate** (`EnsureDisclaimerAcknowledged` middleware + `users.disclaimer_acknowledged_at` + a dedicated screen); reusable `<x-disclaimer.result>` + `<x-signpost>` on every result and a disclaimer prefix on the CSV export; the **admin-granted, off-by-default interpretation toggle** (`users.can_interpret` → `interpret` Gate → walled-off `App\Compliance\Interpretation` service + `interpretation`-named partial, set via a Filament `UserResource` toggle). Also folded in the tagged **no-silent-failure hardening**: GDPR `export()` now includes runs+results, `RunScenarioSimulation::failed()` lands a dead worker's run in Failed, `ScenarioResults::currentRun()` is owner-scoped. **Full suite at that point: 224 tests / 894 assertions (105 engine + 119 app)** — now **235 / 929** (engine 113) after the rebuild; see the callout. This autonomous session landed several committed stages on top of step 4: (1) the **lump-sum tax-shock panel** (headline output #1, `App\Forecast\LumpSumTaxShock` reproducing worked example A through the app) is now **rendered** on the results page; (2) the scenario builder is a **free-navigation wizard** — five steps (About & people; Pensions & income; **Your net worth** = savings + the home; Spending; The decision) with a11y (stepper `aria-current`, focusable headings + error summary, `aria-invalid`/`aria-describedby`, Save double-submit guard, `endAge ≥ startAge`, jump-to-first-error on save); (3) a **spreadsheet-import** layer (`app/Import/`) — an `ImportProfile` registry with the calibrated **RetireForecast CSV** profile (pre-fills spending + salary in exact pence), the **IWT Conscious Spending Plan** profile calibrated to its published structure (header-driven, frequency-aware; Fixed→essential, Guilt-Free→discretionary, net-income so no gross salary), and **Nischa stubbed** pending a sample; (4) the **compare-assumptions overlay** (`App\Forecast\AssumptionComparison`) — the central best-estimate projection under each shipped sourced set (FCA / DMS / OBR), rendered immediately as an accessible sensitivity table; (5) the **IWT CSP import** made live (`$`-currency fix in `MoneyText`); (6) **`.xlsx` import + the personal workbook** — added `phpoffice/phpspreadsheet` (uploads can be `.xlsx`, app-layer only), a sheet-aware `Spreadsheet`/`SpreadsheetReader` (reads Excel's cached values), a **tab picker** for multi-tab workbooks (`updatedImportFile` → sheet names → `Spreadsheet::select`), and a bespoke **`PayAndExpenditures`** profile that reads Rob's scenario tab — expenditure→essential, salary→gross, **State Pension→state pension, DLA→tax-free income, partner pension→annuity** — **verified against the real file** (£24,600/yr essential, £190.00/wk SP, etc.; income lands on Person 1 with no start age, flagged). **Still OPEN**: **calibrating the Nischa import** (deprioritised by Rob; layout captured — it's a 50/30/20 dashboard) and re-verifying the IWT CSP profile against the real 2023 export; the **line-item expense categories** data-model decision; a full per-field a11y sweep + axe/Pa11y CI; 2FA enrolment UI. **This session** added **scenario-draft auto-save**, **person names** (persisted), the **State Pension "full" shortcut**, and **`.xlsx`/Cancel import fixes** (all tested), then captured **sector research** ([docs/RESEARCH-cashflow-modelling.md](docs/RESEARCH-cashflow-modelling.md)) + a **research-backed build plan** (docs/PLAN.md "Sector-informed build plan"). **Next (as planned then — now superseded by the current build order in Status + What's next + the REBUILD callout):** that plan — edit → clone/compare, line-item 3-tier budgets, projection drill-down — plus Phase 2 step 5 (demo/perf/PDF).
-_Last updated: 2026-06-25 (handover refresh, no code changed). Two corrections: (1) reconciled the stale 224/105 headline counts to the verified **235 tests / 929 assertions**, engine 113; (2) corrected the rebuild work's date labels from a mis-stamped **2026-06-26** to **2026-06-25** across all five docs (37 occurrences) — git commit dates and the session clock confirm every commit was 2026-06-25; a prior session had wrongly believed the clock rolled to the 26th. Build history: the rebuild (Phase A + C3) and the builder-UX/sector-research work were both this same day; the prototype's Phase 1 engine + Phase 2 steps 1–3 were 2026-06-24._
+_Last updated: 2026-06-25 (Phase B — storage inversion built; see newest session-log entry). Earlier same-day refresh notes:_
+_Two corrections were made in a prior refresh: (1) reconciled the stale 224/105 headline counts to the verified **235 tests / 929 assertions**, engine 113; (2) corrected the rebuild work's date labels from a mis-stamped **2026-06-26** to **2026-06-25** across all five docs (37 occurrences) — git commit dates and the session clock confirm every commit was 2026-06-25; a prior session had wrongly believed the clock rolled to the 26th. Build history: the rebuild (Phase A + C3) and the builder-UX/sector-research work were both this same day; the prototype's Phase 1 engine + Phase 2 steps 1–3 were 2026-06-24._
 
 **▶ REBUILD IN PROGRESS (2026-06-25 build session).** Rob authorised a clean rebuild treating existing
 code as a prototype, with **no need to preserve any user data / DB layout / data shape** — build storage to
@@ -14,22 +15,29 @@ the new world directly. Decisions locked (DECISIONS 2026-06-25 ×2): **keep the 
 app code; rebuild the storage layer freely**; **ratify Livewire 4 + Filament 5 + SQLite**; **interleave trust
 + features**; the prototype is tagged **`prototype-v1`** (a8f1f68) for recovery (no remote). Build order is
 **A (engine) → B (storage) → C (features) → D (trust + go-live)**.
-**Done this session (5 commits, suite 224→235 green, engine 105→113):**
+**Done across the rebuild (suite 224→239 green, engine 105→113, app →126):**
 - **Phase A (engine, all golden-master/reconciliation tested):** account + DC **ongoing contributions**
   (funded from surplus); per-person **`LongevityAdjustment`** what-if; terminal **usable**-vs-total wealth;
   **`YearResult::incomeBySource`** (8 canonical sources). **A5 (GIA/cash income tax + CGT-on-disposal)
   DELIBERATELY DEFERRED to Phase D** — the projector grows GIA/cash at *total* return, so taxing a yield on
   top would double-count; it needs return decomposition, done with the figure verification.
-- **Phase C3 (results page, on current storage):** **usable-vs-total wealth** in the headline cards + the
+- **Phase C3 (results page):** **usable-vs-total wealth** in the headline cards + the
   buy-vs-rent table (fixes the "wealth left" paradox end-to-end), and a deterministic **cashflow ladder**
   (income-by-source → tax → spend → usable/total wealth) as an accessible table + CSV, shown immediately.
-**Still to build:** **Phase B** — the storage inversion (`scenarios.builder_state` as source of truth, engine
-`Household` derived on save, **edit** route owner-scoped, invalidate stale runs, drop `households` +
-`scenario_drafts`); **C1** 3-tier line-item budget (totals = sum of lines; wire account contributions) +
-reconciliation invariants; **C2** delta-child what-ifs (`parent_scenario_id` + one merge fn + stable list-item
-IDs) + Compare; **C4** income-floor + PLSA benchmark; **D** gov.uk ⚠️ verification + the deferred GIA/CGT
-modelling + go-live polish (a11y CI, CSP, panel lockdown, perf, PDF). Phase B is an atomic-ish rewrite (no
-dual sources) — best started with fresh context. Full plan: docs/PLAN.md "Sector-informed build plan".
+- **Phase B (storage inversion — newest, this session):** **`scenarios.builder_state`** (encrypted) is now
+  the **single source of truth**; the engine `Household` + `HousingAction` DTOs are **derived** from it
+  (`Scenario::toHousehold()`/`toHousingAction()` via the `HouseholdAssembler` — no reverse-mapper). Clear
+  columns (name/variant/tax-year/iht/assumption-set) are a **projection** refreshed on every save
+  (`Scenario::fillFromBuilderState()`). **Edit a saved forecast** at `/scenarios/{scenario}/edit`
+  (owner-scoped); `save()` is **update-or-create** and **invalidates stale runs/results** on edit (gotcha B).
+  The `households` + `scenario_drafts` tables, the `Household`/`ScenarioDraft` models and the
+  `HouseholdMapper`/`HousingActionMapper` are **dropped**; the draft folds into a **`draft`-status scenario**
+  (one per user, promoted to `ready` on save). No data migration (rebuild authorised).
+**Still to build:** **C2** delta-child what-ifs (`parent_scenario_id` + one merge fn + stable list-item
+IDs) + Compare — **next**; **C1** 3-tier line-item budget (totals = sum of lines; wire account contributions) +
+reconciliation invariants; **C4** income-floor + PLSA benchmark; **D** gov.uk ⚠️ verification + the deferred
+GIA/CGT modelling + go-live polish (a11y CI, CSP, panel lockdown, perf, PDF). Full plan: docs/PLAN.md
+"Sector-informed build plan".
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -50,7 +58,7 @@ The single source of truth for the domain shape will be the engine's readonly DT
 - **Laravel 13.17** app at the repo root (SQLite locally). **Fortify** (auth) and **Filament 5** (admin, which pulled **Livewire 4** — a bump from the plan's stated Livewire 3) are **installed**. Fortify's views are now **on** (`config/fortify.php` `views => true`); the `FortifyServiceProvider` points each view route (login/register/forgot/reset) at a Blade screen. 2FA enrolment UI is still deferred (no user can enable it, so its challenge view never fires).
 - **Front end (step 3):** hand-rolled **Livewire 4** full-page components (`app/Livewire/`) rendering into one Blade layout component (`resources/views/components/layouts/app.blade.php`) via `#[Layout('components.layouts.app')]` — **not** Livewire 4's default `layouts::app` (which is only a component namespace here, so it has no view hint path). **ApexCharts** is bundled via npm (`resources/js/app.js` + `charts.js`, an Alpine `chart` wrapper, reduced-motion aware). `public/build` is gitignored, so the base `TestCase` calls `withoutVite()` to keep view tests independent of `npm run build`.
 - **`packages/finance-engine`**: a framework-free Composer **path package** (`retireforecast/finance-engine`, symlinked, required as `"*"`). Zero Laravel dependencies, no I/O, no clock. This is the product; the Laravel app is a shell around it. Keep it that way: the engine must never `use App\...` or `Illuminate\...`.
-- **App ↔ engine boundary:** Eloquent models map to/from the engine DTOs via `app/Finance/Mapping/`; the mappers (not the engine) own serialization, so the engine stays serialization-agnostic. Sensitive data is one `encrypted:array` payload per row; structural columns stay clear for listing.
+- **App ↔ engine boundary (Phase B):** a scenario stores the raw builder **form-state** (`builder_state`, one `encrypted:array` per row) as the single source of truth and **derives** the engine `Household` + `HousingAction` DTOs from it via the `HouseholdAssembler` (`Scenario::toHousehold()`/`toHousingAction()`); there is no reverse-mapper. AssumptionSet / SimulationResult still serialise via `app/Finance/Mapping/` mappers. Structural columns stay clear for listing and are a projection of the form-state.
 - Money handling is **hand-rolled integer pence** (see Decisions: brick/money was dropped over a dependency clash). PHPUnit 12 for tests. **`phpoffice/phpspreadsheet`** is an **app-layer** dependency (for `.xlsx` import only); the engine stays dependency-free.
 - **Spreadsheet import (`app/Import/`):** profiles read a sheet-aware `Spreadsheet` (CSV or `.xlsx`); the Livewire wizard offers a tab picker + applies the parsed partial form-state. Real sample `.xlsx` are gitignored under `docs/*.xlsx`.
 - Still to come (see docs/PLAN.md): **Phase 2 step 5** — demo preset, a11y CI (axe/Pa11y), 10k-path perf tuning, PDF export; the **line-item expense categories** data-model decision; a full per-field a11y sweep.
@@ -101,11 +109,12 @@ app/
 ├─ Compliance/{OutputPhrasing, Interpretation}.php     # step 4: banned-phrase lint (directive-only
 │                                                      #  patterns) + the WALLED-OFF advice-style narrator
 ├─ Enums/{ScenarioVariant, ScenarioStatus, SimulationMode, SimulationStatus}.php
-├─ Finance/Mapping/{Codec, HouseholdMapper, HousingActionMapper,   # DTO <-> storage-array, the
-│                   AssumptionSetMapper, SimulationResultMapper}.php  #  one place serialization lives
-├─ Models/{Household, Scenario, AssumptionSet, SimulationRun, Result, User}.php  # Eloquent + DTO bridges
+├─ Finance/Mapping/{Codec, AssumptionSetMapper, SimulationResultMapper}.php  # DTO <-> storage-array
+│                                                      #  (Household/HousingAction mappers dropped in Phase B)
+├─ Models/{Scenario, AssumptionSet, SimulationRun, Result, User}.php  # Scenario holds builder_state +
+│                                                      #  derives the engine DTOs (toHousehold/toHousingAction)
 ├─ Forecast/{ScenarioForecaster, SimulationRunner, RunCancelled,    # assemble inputs, run, persist
-│            HouseholdAssembler,                       #  form-state -> engine DTOs (lossless, no float)
+│            HouseholdAssembler,                       #  form-state -> engine DTOs (lossless, no float; SOLE source)
 │            ResultPresenter,                          #  SimulationResults -> headline text + chart + table
 │            LumpSumTaxShock,                          #  headline #1: deterministic pension tax shock
 │            AssumptionComparison}.php                 #  compare-assumptions sensitivity table
@@ -114,7 +123,7 @@ app/
 │          Profiles/{RetireForecastTemplate, ConsciousSpendingPlan,      #  CSV + IWT CSP (calibrated),
 │                    PayAndExpenditures, IntentionalSpendingTracker,     #  bespoke personal workbook,
 │                    UncalibratedProfile}}.php                            #  Nischa stub (deprioritised)
-├─ Livewire/{Dashboard, ScenarioBuilder (wizard + import), ScenarioResults}.php  # full-page UI components
+├─ Livewire/{Dashboard, ScenarioBuilder (wizard + import + EDIT + draft), ScenarioResults}.php  # full-page UI
 ├─ Jobs/RunScenarioSimulation.php                      # queued full run (holds run id only) + failed()
 ├─ Gdpr/GdprService.php                                # export() (incl. runs+results) + erase()
 ├─ Http/Controllers/{AccountController, DisclaimerController}.php    # GDPR routes; first-run ack screen
@@ -134,8 +143,8 @@ resources/
           livewire/{dashboard,scenario-builder,scenario-results}.blade.php,
           livewire/partials/interpretation.blade.php}  # WALLED-OFF directive partial (lint-exempt by name)
 routes/web.php                                         # /, /welcome (ack), /dashboard, /scenarios/*, /account/*
-database/migrations/{2026_06_24_*_create_{assumption_sets,households,scenarios,simulation_runs,results}_table,
-                    2026_06_25_*_add_compliance_columns_to_users_table}.php  # disclaimer_acknowledged_at, can_interpret
+database/migrations/{2026_06_24_*_create_{assumption_sets,scenarios,simulation_runs,results}_table,  # scenarios holds builder_state
+                    2026_06_25_*_add_compliance_columns_to_users_table}.php  # (households + scenario_drafts dropped in Phase B)
 database/seeders/AssumptionSetSeeder.php               # mirrors the engine library
 tests/{Unit/{Finance/{MappingRoundTripTest, SimulationResultMappingTest},
              Forecast/HouseholdAssemblerTest},        # form-state -> DTO is lossless vs the fixture
@@ -147,8 +156,9 @@ tests/{Unit/{Finance/{MappingRoundTripTest, SimulationResultMappingTest},
                 Import/{ImportRegistryTest, SpreadsheetReaderTest},   # registry + csv/xlsx reader
                 Forecast/{ScenarioForecasterTest, SimulationRunnerTest, RunScenarioSimulationFailureTest,
                           LumpSumTaxShockTest, AssumptionComparisonTest},
-                Livewire/{ScenarioBuilderTest, ScenarioBuilderImportTest, ScenarioResultsTest}}}.php
-tests/Support/{HouseholdFixture, BuilderStateFixture}.php   # rich DTO + matching form-state strings
+                Livewire/{ScenarioBuilderTest, ScenarioBuilderImportTest, ScenarioResultsTest,
+                          ScenarioEditTest, ScenarioDraftTest}}}.php   # edit-in-place + draft (Phase B)
+tests/Support/{HouseholdFixture, BuilderStateFixture, ScenarioFixture}.php   # expected DTO + form-state + persisted scenario
 ```
 Engine gained (this session, non-breaking): an optional progress callback on
 `MonteCarlo/Simulator::run` and `Housing/HousingComparison::compare` (default null), covered by
@@ -173,28 +183,31 @@ See [DECISIONS.md](DECISIONS.md) for the full log. Highlights:
 - **App layer (this session — Phase 2 step 3):** the Livewire UI + ApexCharts, in three committed milestones. (A) Front-end foundation + **real auth**: app Blade layout (skip link, auth-aware nav, persistent guidance-only disclaimer footer), ApexCharts bundled via npm + an Alpine `chart` wrapper, real Fortify login/register/forgot/reset screens (`config/fortify.php` `views => true`, view routes wired in `FortifyServiceProvider`), public landing + authed `Dashboard`; base `TestCase` calls `withoutVite()`. (B) **Scenario builder** (`ScenarioBuilder` + `HouseholdAssembler`): a full household (two people, all three pension subtypes with a nested withdrawal plan, accounts, income, spending + one-offs, the home) and the housing decision entered by hand, validated (salary-if-employed, money non-negative & ≤2dp, Scotland refused via the registry), assembled losslessly into engine DTOs, persisted encrypted (`HouseholdAssembler` rebuilds the rich `HouseholdFixture` exactly). (C) **Results page** (`ScenarioResults` + `ResultPresenter`): preview sync / full queued with `wire:poll` progress + cancel, then headline numbers as text, the **Monte Carlo fan chart** and **buy-vs-rent comparison** — each with an accessible `<table>` (+`<caption>`), CSV download, and Pension Wise/MoneyHelper signposting; ownership enforced. Tests: auth screens render + flow; assembler lossless; builder validation + round-trip-to-identical-DTO; preview renders headline-as-text + fan-chart table present, full run queued + cancellable, ownership guard. **+24 app tests → 157 total / 690 assertions** (engine still 104).
 - **App layer (this session — Phase 2 step 4 — compliance/disclaimer + interpretation toggle + hardening):** (A) **Banned-phrasing guard:** `App\Compliance\OutputPhrasing` holds directive-only regex patterns; `BannedPhrasingTest` is a **partition** check scanning every Blade view + all app PHP for zero violations, exempting only the `App\Compliance` namespace and `interpretation`-named views, with a non-vacuity guard + a test proving the walled-off layer *does* carry directive phrasing (so the wall is load-bearing). (B) **Disclaimers + signposting:** reusable `<x-disclaimer.result>` + `<x-signpost>` render on every result + an output-mode label; the fan-chart CSV is prefixed with the guidance-only disclaimer; deleted the unused stock `welcome.blade.php` (it tripped the lint). (C) **First-run acknowledgement:** `EnsureDisclaimerAcknowledged` middleware redirects unacknowledged users to a dedicated `/welcome` screen; `users.disclaimer_acknowledged_at` records acceptance; GDPR/account routes stay outside the gate. (D) **Interpretation toggle:** `users.can_interpret` (admin-set via a Filament `UserResource` `ToggleColumn`) behind an `interpret` Gate; the walled-off `App\Compliance\Interpretation` service produces the advice-style readouts into an `interpretation`-named partial, shown only when the gate allows; the public default stays neutral. (E) **No-silent-failure hardening folded in:** GDPR `export()` now includes the user's runs+results (erase already cascades; both covered by tests), `RunScenarioSimulation::failed()` marks a dead worker's run Failed-with-reason, and `ScenarioResults::currentRun()` is owner-scoped against a forged `$runId`. Tests: partition lint (+non-vacuity), acknowledgement gate (redirect/record/GDPR-still-reachable), interpretation gate (off→neutral, granted→walled-off block), per-result + CSV disclaimer, owner-scope tamper, job `failed()` (live/fallback/already-terminal), GDPR runs+results in export & erase, Filament user toggle smoke. **+20 app tests → 177 total / 743 assertions** (engine still 104).
 - **App layer (this session — on top of step 4):** the **lump-sum tax-shock panel** (`LumpSumTaxShock`, reproduces worked example A); the scenario builder reworked into a **free-navigation wizard** (5 steps, a11y, net-worth grouping); the **compare-assumptions overlay** (`AssumptionComparison` sensitivity table); and the full **spreadsheet-import** layer (`app/Import/`) — registry + CSV/`.xlsx` reading (`phpoffice/phpspreadsheet`) + tab picker + profiles (RetireForecast CSV, IWT CSP, the bespoke **PayAndExpenditures** verified on Rob's real workbook incl. income, Nischa stub). **157 → 212 tests / 857 assertions** (engine still 104).
-- **In progress:** nothing mid-edit; tree clean and **all committed** (`2587324`). Beyond the prototype's Phase 2 steps 1–4: the rebuild's **Phase A (engine enrichment) + C3 (results drill-down)** are done (engine 113 / suite 235); **Phase B (storage inversion) is next** — see the **▶ REBUILD** callout + What's next. Phase 2 step 5 (demo/polish) is deferred behind the rebuild.
+- **In progress:** nothing mid-edit; tree clean. The rebuild's **Phase A (engine) + C3 (results drill-down) + Phase B (storage inversion)** are all done (engine 113 / app 126 / suite **239**); **Phase C2 (delta-child what-ifs + Compare) is next** — see the **▶ REBUILD** callout + What's next. Phase 2 step 5 (demo/polish) is deferred behind the rebuild.
 - **Known bugs / broken:** none known. Documented v1 scope limits (all flagged in code): income tax is England/Wales/NI only (Scotland throws); emergency tax models the over-deduction magnitude, not PAYE-table pennies; mortality grid ages 50–100 / years 2025–2074 with clamping + a non-ONS tail above 100 (cap 110); forecast taxes non-savings income only (GIA/cash income tax + CGT-on-disposal deferred; ISA tax-free; pots grow at total return); tax thresholds held frozen for the whole projection; DB escalation + triple lock as smooth growth factors; buy-vs-rent takes main-home CGT as £0 (PRR) and no SDLT surcharge; house/salary growth deterministic inside the Monte Carlo.
 
 ## What's next (in order) — the research-backed rebuild
-The engine + a working prototype app are built and green (235 tests). The rebuild is underway — **Phase A
-(engine enrichments: ongoing contributions, longevity, usable-vs-total wealth, income-by-source) and Phase
-C3 (results: usable-vs-total + the deterministic cashflow ladder) are DONE** (committed, green; A5 GIA/CGT
-deferred to Phase D). **What remains: Phase B (storage inversion) FIRST, then C1 → C2 → C4 features, then D
-(trust + go-live).** Items 4–5 below are kept only to record that they are now done. **Read first:
+The engine + app are built and green (239 tests). The rebuild is underway — **Phase A
+(engine enrichments: ongoing contributions, longevity, usable-vs-total wealth, income-by-source), Phase
+C3 (results: usable-vs-total + the deterministic cashflow ladder), and Phase B (storage inversion:
+`builder_state` source of truth + edit-in-place + stale-run invalidation) are DONE** (green; A5 GIA/CGT
+deferred to Phase D). **What remains: Phase C2 (delta-child what-ifs + Compare) NEXT, then C1 line items → C4
+income-floor, then D (trust + go-live).** Items 1, 4–5 below are kept only to record that they are now done. **Read first:
 docs/PLAN.md "Sector-informed build plan (2026-06-25)" (full steps + the gotchas table A–P) · DATA-MODEL.md
 "Planned shape changes (2026-06-25)" · DECISIONS.md 2026-06-25 (×3) · docs/RESEARCH-cashflow-modelling.md.**
 The rebuild is **authorised** even though it reworks the prototype builder (the UI wins — person names, the
 State Pension shortcut — carry over; the per-user draft mechanism folds into `builder_state`). Build order:
 
-1. **Phase B — scenario data-shape inversion + Edit a saved forecast.** Persist the builder **form-state** on
-   the scenario (encrypted `builder_state`) as the **source of truth**; the engine `Household` DTO becomes a
-   *derived* artifact regenerated on save (no reverse-mapper — single source). Edit route
-   `/scenarios/{scenario}/edit`, **owner-scoped**; `save()` → update-or-create; **invalidate stale
-   runs/results on edit** (gotcha B). Drop the now-redundant `households` + `scenario_drafts` tables (the
-   draft mechanism folds into `builder_state`); no data migration needed (rebuild authorised). **Atomic-ish
-   rewrite — best begun with fresh context.**
-2. **Phase C2 — "Create child" what-ifs + Compare.** A child = a **delta** of overridden form-state paths on a base
+1. ✅ **DONE (rebuild Phase B, 2026-06-25).** Scenario data-shape inversion + Edit a saved forecast.
+   `scenarios.builder_state` (encrypted) is the **single source of truth**; the engine `Household` +
+   `HousingAction` DTOs are **derived** from it (`Scenario::toHousehold()`/`toHousingAction()` via the
+   `HouseholdAssembler` — no reverse-mapper). Clear columns are a projection (`fillFromBuilderState()`).
+   **Edit** at `/scenarios/{scenario}/edit` (owner-scoped); `save()` is update-or-create and **invalidates
+   stale runs/results** (gotcha B). The `households` + `scenario_drafts` tables, the `Household`/`ScenarioDraft`
+   models and the `HouseholdMapper`/`HousingActionMapper` are **dropped**; the draft is a `draft`-status
+   scenario. New tests: `ScenarioEditTest` (prefill / in-place update / run-invalidation / owner-403 /
+   draft→edit redirect), rewritten persistence/draft/GDPR tests, shared `Tests\Support\ScenarioFixture`.
+2. **Phase C2 — "Create child" what-ifs + Compare (NEXT).** A child = a **delta** of overridden form-state paths on a base
    (`parent_scenario_id`); anything-overridable, curated levers as presets; effective = base ⊕ overrides via
    **one merge function** (+ round-trip test). **List items (expense lines, pensions, accounts) gain stable
    IDs** so overrides target the right row (gotcha N). Compare reuses the variant side-by-side rendering.
@@ -266,7 +279,7 @@ Run from the **project root** (the test runner shells out to a relative phpunit 
 Set-Location "C:\Dev\RetireForecast"
 # NB: php / artisan / composer / npm are NOT on the Git Bash PATH on this machine — run them via the
 # PowerShell tool (PHP 8.4 is provided by Laravel Herd). Bash is fine for git / grep / file ops. See CLAUDE.md.
-php artisan test                            # everything: expect 235 passed (929 assertions)
+php artisan test                            # everything: expect 239 passed (946 assertions)
 php artisan test --testsuite=Engine        # engine only: expect 113 passed (547 assertions)
 vendor/bin/pint --dirty                      # house style on changed files
 npm run build                                # build assets (public/build is gitignored); `npm run dev` to watch
@@ -287,11 +300,32 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 ## Branch status
 On `master`, local repo only (no remote, no PR). Personal local-first project; commit directly to `master`.
 **Prototype tagged `prototype-v1` (a8f1f68)** before the rebuild — the recovery point (no remote, so the tag
-is the only snapshot). Rebuild commits this session (newest first): `49637e4` results usable-vs-total +
+is the only snapshot). Rebuild commits (newest first): **Phase B storage inversion** (this session — the
+`builder_state`-source-of-truth rewrite + edit-in-place; commit hash recorded at the checkpoint);
+`9a70d0a`/`2587324` doc refresh + post-rebuild checkpoint; `49637e4` results usable-vs-total +
 cashflow ladder (C3); `b50f2a5` income-by-source on YearResult (A4); `12bd216` per-person longevity (A2);
 `9316e7c` ongoing contributions + usable-vs-total terminal wealth (A1+A3). Built across a series of small committed milestones — engine (docs scaffold, NI+savings/dividends, pension suite, State Pension, SDLT+CGT, benefits, IHT+care, forecast+MonteCarlo+housing); app layer (persistence; Fortify+GDPR; Filament admin; forecast services; run persistence; queued runs + engine progress hook; UI foundation + auth; scenario builder; results page + ApexCharts; this session's builder UX + sector planning). **Everything described above is committed; the working tree is clean.** Recent commits (newest first): `6551219` results-card label clarity ("Total wealth left (incl. home)"); `84292c5` planning close-out (delta what-ifs / 3-tier budget / longevity / usable-vs-total); `2b5abc8` scenario drafts + person names + State Pension shortcut + sector research; `7219f72` import reconciliation guardrails + IWT CSP double-count fix. No remote; commit directly to `master`.
 
 ## Session log
+_2026-06-25 (REBUILD Phase B — storage inversion + edit-in-place)_ — Resumed via `/handover resume`;
+sanity-checked the baseline green (235/929), oriented on the Phase B plan (docs/PLAN.md "Sector-informed
+build plan" item 1, DATA-MODEL "Planned shape changes", DECISIONS scenario-model + rebuild entries), then
+built **Phase B** end to end. Inverted storage so **`scenarios.builder_state`** (encrypted) is the **single
+source of truth**: the engine `Household` + `HousingAction` DTOs are now **derived** from it via the
+`HouseholdAssembler` (`Scenario::toHousehold()`/`toHousingAction()` — no reverse-mapper), and the clear
+structural columns are a **projection** refreshed on save (`Scenario::fillFromBuilderState()`). Added
+**edit-in-place** (`/scenarios/{scenario}/edit`, owner-scoped; `save()` is update-or-create) which
+**invalidates stale runs/results** on edit (gotcha B, FK-cascade). **Dropped** the `households` +
+`scenario_drafts` tables, the `Household`/`ScenarioDraft` models and the `HouseholdMapper`/`HousingActionMapper`
+(now obsolete); the in-progress build folds into a **`draft`-status scenario** (one per user, promoted to
+`ready` on save). Updated the forecaster, `LumpSumTaxShock`, GDPR export, the dashboard (Ready list + Edit
+links + resume-draft banner) and results header (Edit link); guarded a draft's results route to redirect to
+the builder. Reworked every scenario-building test onto a shared **`Tests\Support\ScenarioFixture`** (form-state
+in, persisted scenario out) and added **`ScenarioEditTest`** (prefill / in-place update / run-invalidation /
+owner-403 / draft→edit redirect); rewrote the persistence / draft / GDPR tests and trimmed `MappingRoundTripTest`
+to the surviving AssumptionSet round-trip. Suite **235→239 green / 946 assertions** (engine 113, app →126);
+pint clean. No data migration (rebuild authorised). **Next:** Phase C2 — delta-child what-ifs (`parent_scenario_id`
++ one merge fn + stable list-item IDs) + Compare.
 _2026-06-25 (handover hygiene — no code)_ — Fresh session; `/handover` refresh + `/checkpoint`. The
 post-rebuild checkpoint (`2587324`) had left the **Status** one-liner, **How to pick up**, and **What's
 next** citing the pre-rebuild **224 / engine 105** and listing already-done Phase A2/C3 work as pending.

@@ -8,6 +8,13 @@
         <div role="status" class="mt-4 rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('status') }}</div>
     @endif
 
+    @if ($draft)
+        <div class="mt-4 flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <span>You have a forecast in progress.</span>
+            <a href="{{ route('scenarios.create') }}" class="font-medium underline hover:no-underline">Continue your draft</a>
+        </div>
+    @endif
+
     @if ($scenarios->isEmpty())
         <div class="mt-8 rounded-lg border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
             <p class="text-gray-700">You have not built a forecast yet.</p>
@@ -17,18 +24,19 @@
     @else
         <ul class="mt-6 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
             @foreach ($scenarios as $scenario)
-                <li>
-                    <a href="{{ route('scenarios.results', $scenario) }}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
-                        <div>
-                            <p class="font-medium text-gray-900">{{ $scenario->name }}</p>
-                            <p class="text-sm text-gray-500">
-                                {{ $scenario->household->name }} · base tax year {{ $scenario->base_tax_year }}
-                            </p>
-                        </div>
-                        <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-                            {{ ucfirst($scenario->status->value) }}
-                        </span>
+                <li class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+                    <a href="{{ route('scenarios.results', $scenario) }}" class="min-w-0 flex-1">
+                        <p class="font-medium text-gray-900">{{ $scenario->name }}</p>
+                        <p class="text-sm text-gray-500">
+                            {{ $scenario->householdName() }} · base tax year {{ $scenario->base_tax_year }}
+                        </p>
                     </a>
+                    <div class="ml-4 flex items-center gap-3">
+                        <a href="{{ route('scenarios.edit', $scenario) }}" class="text-sm font-medium text-blue-600 hover:text-blue-700">Edit</a>
+                        <a href="{{ route('scenarios.results', $scenario) }}" class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+                            {{ ucfirst($scenario->status->value) }}
+                        </a>
+                    </div>
                 </li>
             @endforeach
         </ul>

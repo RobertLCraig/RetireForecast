@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Compliance\Interpretation;
+use App\Enums\ScenarioStatus;
 use App\Enums\SimulationStatus;
 use App\Forecast\AssumptionComparison;
 use App\Forecast\LumpSumTaxShock;
@@ -50,6 +51,14 @@ class ScenarioResults extends Component
     public function mount(Scenario $scenario): void
     {
         abort_unless($scenario->user_id === auth()->id(), 403);
+
+        // A draft is an in-progress build with no runnable result yet; send it back to the
+        // builder rather than trying to forecast incomplete inputs.
+        if ($scenario->status === ScenarioStatus::Draft) {
+            $this->redirectRoute('scenarios.edit', $scenario);
+
+            return;
+        }
 
         $this->scenario = $scenario;
         $this->runId = $scenario->simulationRuns()->latest()->value('id');

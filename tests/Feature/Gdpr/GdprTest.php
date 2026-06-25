@@ -4,17 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Gdpr;
 
-use App\Enums\ScenarioStatus;
-use App\Enums\ScenarioVariant;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
-use App\Models\Household;
 use App\Models\Result;
 use App\Models\Scenario;
 use App\Models\SimulationRun;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\Support\HouseholdFixture;
+use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
 class GdprTest extends TestCase
@@ -25,20 +22,7 @@ class GdprTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $household = Household::fromDto(HouseholdFixture::household(), $user->id);
-        $household->save();
-
-        $scenario = new Scenario([
-            'household_id' => $household->id,
-            'user_id' => $user->id,
-            'name' => 'Sell and rent',
-            'variant' => ScenarioVariant::Rent,
-            'base_tax_year' => '2025-26',
-            'iht_modelled' => false,
-            'status' => ScenarioStatus::Draft,
-        ]);
-        $scenario->setHousingAction(HouseholdFixture::housingAction());
-        $scenario->save();
+        ScenarioFixture::rich($user, ['name' => 'Sell and rent', 'baseTaxYear' => '2025-26']);
 
         return $user;
     }
@@ -53,13 +37,12 @@ class GdprTest extends TestCase
         $data = json_decode($response->streamedContent(), true);
 
         $this->assertSame($user->email, $data['user']['email']);
-        $this->assertCount(1, $data['households']);
         $this->assertCount(1, $data['scenarios']);
-        $this->assertSame('The Worked-Example Couple', $data['households'][0]['name']);
         $this->assertSame('rent', $data['scenarios'][0]['variant']);
-        // The decrypted detail is present in the export (data portability).
-        $this->assertSame(52_500_000, $data['scenarios'][0]['housing_action']['salePrice']);
-        $this->assertNotEmpty($data['households'][0]['detail']['persons']);
+        $this->assertSame('The Worked-Example Couple', $data['scenarios'][0]['household_name']);
+        // The decrypted builder form-state — the editable record — is present (data portability).
+        $this->assertSame('525000', $data['scenarios'][0]['builder_state']['housing']['salePrice']);
+        $this->assertNotEmpty($data['scenarios'][0]['builder_state']['people']);
     }
 
     public function test_export_only_returns_the_callers_own_data(): void
@@ -72,9 +55,9 @@ class GdprTest extends TestCase
             true,
         );
 
-        $this->assertCount(1, $data['households']);
-        $this->assertSame($me->id, Household::find($data['households'][0]['id'])->user_id);
-        $this->assertNotSame($someoneElse->id, $data['households'][0]['id']);
+        $this->assertCount(1, $data['scenarios']);
+        $this->assertSame($me->id, Scenario::find($data['scenarios'][0]['id'])->user_id);
+        $this->assertNotSame($someoneElse->id, Scenario::find($data['scenarios'][0]['id'])->user_id);
     }
 
     public function test_export_includes_the_users_simulation_runs_and_results(): void
@@ -104,7 +87,6 @@ class GdprTest extends TestCase
         $this->actingAs($user)->delete(route('account.destroy'))->assertOk();
 
         $this->assertDatabaseMissing('users', ['id' => $user->id]);
-        $this->assertSame(0, Household::where('user_id', $user->id)->count());
         $this->assertSame(0, Scenario::where('user_id', $user->id)->count());
         // The forecast history cascades away too — erased means gone.
         $this->assertSame(0, SimulationRun::where('user_id', $user->id)->count());
@@ -114,15 +96,15 @@ class GdprTest extends TestCase
     public function test_anonymous_callers_cannot_export_or_erase_and_nothing_changes(): void
     {
         $user = $this->makeUserWithData();
-        $householdCount = Household::count();
+        $scenarioCount = Scenario::count();
 
         // A guest is bounced to login (it is a web route, not an API), so neither
         // the export nor the erase ever runs.
         $this->get(route('account.export'))->assertRedirect(route('login'));
         $this->delete(route('account.destroy'))->assertRedirect(route('login'));
 
-        // The guest requests neither read, deleted, nor wrote anything.
+        // The guest read, deleted, and wrote nothing.
         $this->assertDatabaseHas('users', ['id' => $user->id]);
-        $this->assertSame($householdCount, Household::count());
+        $this->assertSame($scenarioCount, Scenario::count());
     }
 }

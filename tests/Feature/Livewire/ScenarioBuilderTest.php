@@ -6,7 +6,6 @@ namespace Tests\Feature\Livewire;
 
 use App\Enums\ScenarioStatus;
 use App\Livewire\ScenarioBuilder;
-use App\Models\Household;
 use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,7 +29,6 @@ class ScenarioBuilderTest extends TestCase
     {
         $this->fill(BuilderStateFixture::minimalValid())->call('save');
 
-        $this->assertSame(1, Household::count());
         $this->assertSame(1, Scenario::count());
         $this->assertSame(ScenarioStatus::Ready, Scenario::firstOrFail()->status);
     }
@@ -65,7 +63,7 @@ class ScenarioBuilderTest extends TestCase
         }
         $component->call('save');
 
-        $this->assertSame('Alex', Household::firstOrFail()->toDto()->persons[0]->name);
+        $this->assertSame('Alex', Scenario::firstOrFail()->toHousehold()->persons[0]->name);
     }
 
     public function test_a_saved_scenario_decrypts_to_the_identical_dto(): void
@@ -79,8 +77,8 @@ class ScenarioBuilderTest extends TestCase
             ->assertRedirect(route('scenarios.results', Scenario::firstOrFail()));
 
         $scenario = Scenario::firstOrFail();
-        $this->assertEquals(HouseholdFixture::household(), $scenario->household->toDto());
-        $this->assertEquals(HouseholdFixture::housingAction(), $scenario->housingAction());
+        $this->assertEquals(HouseholdFixture::household(), $scenario->toHousehold());
+        $this->assertEquals(HouseholdFixture::housingAction(), $scenario->toHousingAction());
     }
 
     public function test_salary_is_required_when_a_person_is_employed(): void
@@ -126,7 +124,6 @@ class ScenarioBuilderTest extends TestCase
 
         $this->fill($state)->call('save')->assertHasErrors('region');
 
-        $this->assertSame(0, Household::count());
         $this->assertSame(0, Scenario::count());
     }
 

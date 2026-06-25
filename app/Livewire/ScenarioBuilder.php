@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Enums\ScenarioStatus;
-use App\Forecast\HouseholdAssembler;
 use App\Import\ImportException;
 use App\Import\ImportRegistry;
 use App\Import\ImportResult;
 use App\Import\SpreadsheetReader;
 use App\Models\AssumptionSet;
-use App\Models\Household;
 use App\Models\Scenario;
-use App\Models\ScenarioDraft;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -32,11 +29,22 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
  * Validation enforces the rules the plan calls out: salary only required when a
  * person is earning, no negative money, and Scotland refused until its band pack is
  * loaded (mirroring the engine's own refusal, rather than silently using rUK bands).
+ *
+ * Storage is inverted (Phase B): the builder form-state is the single source of truth,
+ * persisted as the scenario's encrypted `builder_state`; the engine DTOs are derived
+ * from it. The same component creates a new forecast and edits a saved one, and an
+ * in-progress build auto-saves as a `draft`-status scenario so leaving never loses work.
  */
 #[Layout('components.layouts.app')]
 class ScenarioBuilder extends Component
 {
     use WithFileUploads;
+
+    /** The scenario row this builder is bound to: a resumable draft, or the forecast being edited. */
+    public ?int $scenarioId = null;
+
+    /** True when editing a saved (ready) forecast — auto-save then must not clobber it. */
+    public bool $editing = false;
 
     /** The wizard guides through these steps; the user may also jump between them freely. */
     public const STEPS = [
@@ -112,14 +120,24 @@ class ScenarioBuilder extends Component
     /** @var array<string, list<string>> what an import filled / still needs / noted */
     public array $importSummary = [];
 
-    public function mount(): void
+    public function mount(?Scenario $scenario = null): void
     {
         $this->people = [$this->blankPerson('p1')];
         $this->property = $this->blankProperty();
         $this->housing = $this->blankHousing();
         $this->assumptionSetId = AssumptionSet::where('is_default', true)->value('id');
 
-        // Resume an in-progress forecast if one was left unsaved.
+        if ($scenario !== null && $scenario->exists) {
+            // Editing a saved forecast: owner-scoped, pre-filled from its stored form-state.
+            abort_unless($scenario->user_id === auth()->id(), 403);
+            $this->editing = true;
+            $this->scenarioId = $scenario->id;
+            $this->loadState($scenario->builder_state ?? []);
+
+            return;
+        }
+
+        // A new forecast: resume the user's in-progress draft if one was left unsaved.
         $this->loadDraft();
     }
 
@@ -348,17 +366,27 @@ class ScenarioBuilder extends Component
         $this->dispatch('step-changed');
     }
 
-    /** Persist the in-progress form state (raw strings, encrypted) so leaving never loses work. */
+    /**
+     * Persist the in-progress form state as a draft scenario (encrypted) so leaving never
+     * loses work. Editing a saved forecast is skipped: an auto-save must not silently
+     * overwrite a ready scenario — that only happens on an explicit Save (gotcha D).
+     */
     public function saveDraft(): void
     {
-        if (auth()->id() === null) {
+        if (auth()->id() === null || $this->editing) {
             return;
         }
 
-        ScenarioDraft::updateOrCreate(
-            ['user_id' => auth()->id()],
-            ['payload' => $this->draftState()],
-        );
+        $draft = ($this->scenarioId !== null
+            ? Scenario::where('user_id', auth()->id())->find($this->scenarioId)
+            : null) ?? $this->currentDraft() ?? new Scenario;
+
+        $draft->user_id = auth()->id();
+        $draft->fillFromBuilderState($this->builderState());
+        $draft->status = ScenarioStatus::Draft;
+        $draft->save();
+
+        $this->scenarioId = $draft->id;
     }
 
     /** Save the draft and return to the dashboard — leaving never loses work. */
@@ -373,25 +401,41 @@ class ScenarioBuilder extends Component
     public function discardDraft()
     {
         if (auth()->id() !== null) {
-            ScenarioDraft::where('user_id', auth()->id())->delete();
+            Scenario::where('user_id', auth()->id())->where('status', ScenarioStatus::Draft)->delete();
         }
 
         return redirect()->route('dashboard');
     }
 
-    /** Restore the user's last in-progress forecast, if one exists. */
+    /** Restore the user's last in-progress draft, if one exists. */
     private function loadDraft(): void
     {
-        if (auth()->id() === null) {
-            return;
-        }
-
-        $draft = ScenarioDraft::where('user_id', auth()->id())->first();
+        $draft = $this->currentDraft();
         if ($draft === null) {
             return;
         }
 
-        foreach ($draft->payload as $key => $value) {
+        $this->scenarioId = $draft->id;
+        $this->loadState($draft->builder_state ?? []);
+    }
+
+    /** The user's single in-progress draft scenario, if any. */
+    private function currentDraft(): ?Scenario
+    {
+        if (auth()->id() === null) {
+            return null;
+        }
+
+        return Scenario::where('user_id', auth()->id())
+            ->where('status', ScenarioStatus::Draft)
+            ->latest()
+            ->first();
+    }
+
+    /** Apply a stored form-state map onto the matching component properties. */
+    private function loadState(array $state): void
+    {
+        foreach ($state as $key => $value) {
             if (property_exists($this, $key)) {
                 $this->{$key} = $value;
             }
@@ -399,7 +443,7 @@ class ScenarioBuilder extends Component
     }
 
     /** Everything needed to restore the builder exactly, including which step the user was on. */
-    private function draftState(): array
+    private function builderState(): array
     {
         return [
             'step' => $this->step,
@@ -547,28 +591,29 @@ class ScenarioBuilder extends Component
             throw $e;
         }
 
-        $assembled = (new HouseholdAssembler)->assemble($this->formState());
+        // The bound row: the forecast being edited, the resumed draft promoted to ready,
+        // or a fresh scenario. Owner-scoped, so a tampered id cannot target another user.
+        $scenario = $this->scenarioId !== null
+            ? Scenario::where('user_id', auth()->id())->findOrFail($this->scenarioId)
+            : new Scenario;
 
-        $household = Household::fromDto($assembled['household'], auth()->id());
-        $household->save();
+        $hadRuns = $scenario->exists && $scenario->simulationRuns()->exists();
 
-        $scenario = new Scenario([
-            'household_id' => $household->id,
-            'user_id' => auth()->id(),
-            'assumption_set_id' => $this->assumptionSetId,
-            'name' => $this->name,
-            'variant' => $this->variant,
-            'base_tax_year' => $this->baseTaxYear,
-            'iht_modelled' => $this->ihtModelled,
-            'status' => ScenarioStatus::Ready,
-        ]);
-        $scenario->setHousingAction($assembled['housingAction']);
+        $scenario->user_id = auth()->id();
+        $scenario->fillFromBuilderState($this->builderState());
+        $scenario->status = ScenarioStatus::Ready;
         $scenario->save();
+        $this->scenarioId = $scenario->id;
 
-        // The forecast is now a real saved scenario; the working draft is no longer needed.
-        ScenarioDraft::where('user_id', auth()->id())->delete();
+        // Editing changed the inputs, so any earlier run is now from stale inputs — drop it
+        // (cascading to its results) and prompt a fresh run (gotcha B).
+        if ($hadRuns) {
+            $scenario->simulationRuns()->delete();
+        }
 
-        session()->flash('status', 'Forecast saved. Run it to see the results.');
+        session()->flash('status', $this->editing
+            ? 'Forecast updated. Run it again to refresh the results.'
+            : 'Forecast saved. Run it to see the results.');
 
         return redirect()->route('scenarios.results', $scenario);
     }
@@ -602,23 +647,6 @@ class ScenarioBuilder extends Component
         }
 
         return $steps === [] ? $this->step : min($steps);
-    }
-
-    private function formState(): array
-    {
-        return [
-            'householdName' => $this->householdName,
-            'region' => $this->region,
-            'people' => $this->people,
-            'expense' => $this->expense,
-            'oneOffCosts' => $this->oneOffCosts,
-            'pensions' => $this->pensions,
-            'accounts' => $this->accounts,
-            'incomeStreams' => $this->incomeStreams,
-            'hasProperty' => $this->hasProperty,
-            'property' => $this->property,
-            'housing' => $this->housing,
-        ];
     }
 
     private function firstPersonId(): string
