@@ -3,6 +3,21 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-26 — Forecast income completeness: count every source, no silent drop
+**Decision:** The forecast must count **every** income source that should reach a household's spendable
+cash, and a regression test guards each one. Found via live use: `PathProjector::incomeStreamsNominal`
+summed only **taxable** streams and the tax-free branch was never added anywhere, so **DLA / any tax-free
+income was silently dropped** — understating income and overstating the chance of running out. Fixed
+(tax-free streams counted untaxed into net cash) + a regression test. The durable guard is a **per-source
+completeness test** (salary, DB, State Pension, taxable + tax-free income streams, DC withdrawals, asset
+drawdown each demonstrably contribute).
+**Why:** This is the **completeness** sibling of the data-layer integrity discipline — reconciliation
+catches double-counting (sum of parts == total); completeness catches the opposite (a part silently
+dropped). Both are "no silent failure" applied to the maths, and both are exactly the class of bug Rob has
+been burned by. The drill-down's **income-by-source** view is the visual guard that makes such gaps obvious
+(docs/PLAN.md gotcha Q). [[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
+**Status:** active
+
 ## 2026-06-26 — Scenario model: base plan + delta what-if children + compare
 **Decision:** Adopt the cashflow-modelling sector's standard shape (Voyant): a **base plan** that spawns
 **named "what-if" child scenarios** created from a plain **"Create child" button**, each **overriding

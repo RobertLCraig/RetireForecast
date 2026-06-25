@@ -35,5 +35,10 @@ read. This follows the global project documentation standard.
   and verify every import against a **sanitised real-file golden fixture** — a synthetic
   happy-path test is not enough (two real double-counting bugs slipped past one). Surface every
   imported/aggregated total for review; a mismatch must be a visible failure, not a silent one.
+  **Completeness is the sibling of reconciliation: never silently drop an input that should count.**
+  A tax-free income stream (DLA) was dropped from the forecast because only *taxable* streams were
+  summed. Every input that should affect a result must reach it — guard with a **per-source
+  completeness test** (e.g. salary, DB, State Pension, taxable + tax-free income, DC withdrawals,
+  asset drawdown each demonstrably contribute to the forecast).
 - **Education/guidance only**, never a personal recommendation. A build-time test must fail
   if any result template contains banned recommendation phrasing.

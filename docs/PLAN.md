@@ -304,6 +304,7 @@ draft mechanism folds into `builder_state`.
 | N | Delta-child **override resolution** / orphaned overrides when the base changes | one merge fn `effective = base ⊕ overrides` + round-trip test; **stable IDs** on list items so overrides target the right row; validate keys vs the base (full-copy rejected — it forks) |
 | O | **Saved self-investment double-counted** (a savings line that also grows as an account) | one home per pound — a *saved* line **is** the contribution, never also an account balance; reconciliation invariant |
 | P | **Asset wealth vs usable cash conflated** (live-use bug 2026-06-26: a card shows 100% chance of running out yet the *highest* "median wealth left", because the illiquid home is counted as wealth) | results must separate **usable/liquid** from **total incl. property**; verify what "wealth left" includes; the per-scenario cashflow graph makes it legible |
+| Q | **Income source silently dropped** (live-use bug 2026-06-26: tax-free DLA income was not counted — only taxable streams were summed) | **per-source completeness test** (every income source contributes to net cash); the cashflow ladder's income-by-source view is the visual guard (fixed + tested) |
 
 **Decisions now settled (DECISIONS 2026-06-26):** anything-overridable delta children + "Create child" +
 stable IDs; 3-tier line items (essential/discretionary/self-investment) with spent/saved, totals derived;
