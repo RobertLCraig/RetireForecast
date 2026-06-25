@@ -6,6 +6,7 @@ namespace App\Livewire;
 
 use App\Compliance\Interpretation;
 use App\Enums\SimulationStatus;
+use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ResultPresenter;
 use App\Forecast\SimulationRunner;
 use App\Models\Result;
@@ -120,6 +121,8 @@ class ScenarioResults extends Component
             'run' => $run,
             'presented' => $presented,
             'interpretation' => $interpretation,
+            // Headline output #1: deterministic, independent of any Monte Carlo run.
+            'shock' => app(LumpSumTaxShock::class)->assess($this->scenario),
         ])->title('Forecast results');
     }
 

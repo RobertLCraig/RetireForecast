@@ -91,6 +91,16 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('No completed run yet.');
     }
 
+    public function test_the_results_page_shows_the_lump_sum_tax_shock_before_any_run(): void
+    {
+        // The shock is deterministic, so it renders immediately (no Monte Carlo needed).
+        $this->get(route('scenarios.results', $this->scenario()))
+            ->assertOk()
+            ->assertSee('The pension lump-sum tax shock')
+            ->assertSee('Tax-free (25%)')
+            ->assertSee('emergency (Month-1) basis');
+    }
+
     public function test_a_user_cannot_view_another_users_results(): void
     {
         $scenario = $this->scenario();

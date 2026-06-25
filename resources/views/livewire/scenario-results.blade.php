@@ -50,6 +50,80 @@
         @endif
     </div>
 
+    {{-- Headline output #1: the lump-sum tax shock. Deterministic, so it shows as soon as
+         a withdrawal is planned, before (and independent of) any Monte Carlo run. --}}
+    @if ($shock)
+        <section aria-labelledby="shock-heading" class="{{ $card }} space-y-4">
+            <div>
+                <h2 id="shock-heading" class="text-xl font-semibold text-gray-900">The pension lump-sum tax shock</h2>
+                <p class="mt-1 text-sm text-gray-600">
+                    Your first flexible withdrawal — a {{ $shock['kind'] }} of {{ $shock['gross'] }} by {{ $shock['ownerLabel'] }} at age {{ $shock['atAge'] }}, at {{ $shock['taxYear'] }} rates.
+                    @if ($shock['emergencyApplied'])
+                        Because it is the first such withdrawal, the provider has to tax it on the emergency (Month-1) basis, which over-deducts up front.
+                    @endif
+                </p>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-3">
+                <div class="rounded-md bg-green-50 p-3">
+                    <p class="text-xs text-green-800">Tax-free (25%)</p>
+                    <p class="text-lg font-semibold text-green-900">{{ $shock['taxFree'] }}</p>
+                </div>
+                <div class="rounded-md bg-gray-50 p-3">
+                    <p class="text-xs text-gray-600">Taxable portion</p>
+                    <p class="text-lg font-semibold text-gray-900">{{ $shock['taxable'] }}</p>
+                </div>
+                <div class="rounded-md bg-amber-50 p-3">
+                    <p class="text-xs text-amber-800">Tax taken at source</p>
+                    <p class="text-lg font-semibold text-amber-900">{{ $shock['taxAtSource'] }}</p>
+                </div>
+            </div>
+
+            @if ($shock['hasOverDeduction'])
+                <p class="text-sm text-gray-700">
+                    That is <strong>{{ $shock['overDeduction'] }}</strong> more than the {{ $shock['marginalTax'] }} actually due at your marginal rate. The excess can be reclaimed from HMRC{{ $shock['reclaimForm'] ? ' using form '.$shock['reclaimForm'] : '' }}, leaving {{ $shock['netReceived'] }} in hand until the refund.
+                </p>
+            @else
+                <p class="text-sm text-gray-700">Tax taken at source matches the {{ $shock['marginalTax'] }} due, leaving {{ $shock['netReceived'] }} in hand; there is nothing to reclaim.</p>
+            @endif
+
+            <details>
+                <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the full breakdown</summary>
+                <div class="mt-2 overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <caption class="sr-only">Lump-sum tax-shock breakdown for the first flexible pension withdrawal</caption>
+                        <tbody>
+                            @foreach ($shock['rows'] as $row)
+                                <tr>
+                                    <th scope="row" class="{{ $td }} text-left font-medium">{{ $row['label'] }}</th>
+                                    <td class="{{ $td }} text-right">{{ $row['value'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+
+            @if ($shock['warnings'])
+                <ul class="space-y-1 text-xs text-amber-900">
+                    @foreach ($shock['warnings'] as $warning)
+                        <li class="rounded bg-amber-50 px-3 py-2">{{ $warning }}</li>
+                    @endforeach
+                </ul>
+            @endif
+
+            <p class="text-xs text-gray-500">
+                @if ($shock['workingAssumed'])
+                    Assumes other taxable income that year of {{ $shock['otherIncome'] }} (the owner's current salary, as they are still working at this age).
+                @else
+                    Assumes no other employment income that year, as the plan retires the owner by this age. State Pension and any defined-benefit income in payment are modelled in the full forecast below, not in this first-withdrawal illustration.
+                @endif
+            </p>
+
+            <x-signpost />
+        </section>
+    @endif
+
     @if (! $presented)
         <div class="{{ $card }} text-sm text-gray-600">
             <p>No completed run yet. Run a preview to see headline figures, then the full forecast for the precise picture.</p>
