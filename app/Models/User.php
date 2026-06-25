@@ -29,6 +29,12 @@ class User extends Authenticatable implements FilamentUser
         return true;
     }
 
+    /** True once the user has accepted the first-run guidance-only disclaimer. */
+    public function hasAcknowledgedDisclaimer(): bool
+    {
+        return $this->disclaimer_acknowledged_at !== null;
+    }
+
     public function households(): HasMany
     {
         return $this->hasMany(Household::class);
@@ -37,6 +43,11 @@ class User extends Authenticatable implements FilamentUser
     public function scenarios(): HasMany
     {
         return $this->hasMany(Scenario::class);
+    }
+
+    public function simulationRuns(): HasMany
+    {
+        return $this->hasMany(SimulationRun::class);
     }
 
     /**
@@ -48,6 +59,8 @@ class User extends Authenticatable implements FilamentUser
     {
         return [
             'email_verified_at' => 'datetime',
+            'disclaimer_acknowledged_at' => 'datetime',
+            'can_interpret' => 'boolean',
             'password' => 'hashed',
         ];
     }

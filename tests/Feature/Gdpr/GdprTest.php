@@ -6,8 +6,12 @@ namespace Tests\Feature\Gdpr;
 
 use App\Enums\ScenarioStatus;
 use App\Enums\ScenarioVariant;
+use App\Forecast\ScenarioForecaster;
+use App\Forecast\SimulationRunner;
 use App\Models\Household;
+use App\Models\Result;
 use App\Models\Scenario;
+use App\Models\SimulationRun;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\HouseholdFixture;
@@ -73,15 +77,38 @@ class GdprTest extends TestCase
         $this->assertNotSame($someoneElse->id, $data['households'][0]['id']);
     }
 
+    public function test_export_includes_the_users_simulation_runs_and_results(): void
+    {
+        $user = $this->makeUserWithData();
+        $run = (new SimulationRunner(new ScenarioForecaster))
+            ->preview($user->scenarios()->firstOrFail(), seed: 1, paths: 20);
+
+        $data = json_decode(
+            $this->actingAs($user)->get(route('account.export'))->streamedContent(),
+            true,
+        );
+
+        $this->assertCount(1, $data['simulation_runs']);
+        $this->assertSame($run->id, $data['simulation_runs'][0]['id']);
+        $this->assertCount(3, $data['simulation_runs'][0]['results']);
+        $variants = array_column($data['simulation_runs'][0]['results'], 'variant');
+        $this->assertEqualsCanonicalizing(['stay_put', 'buy_outright', 'rent'], $variants);
+    }
+
     public function test_erase_hard_deletes_the_account_and_cascades(): void
     {
         $user = $this->makeUserWithData();
+        $run = (new SimulationRunner(new ScenarioForecaster))
+            ->preview($user->scenarios()->firstOrFail(), seed: 1, paths: 20);
 
         $this->actingAs($user)->delete(route('account.destroy'))->assertOk();
 
         $this->assertDatabaseMissing('users', ['id' => $user->id]);
         $this->assertSame(0, Household::where('user_id', $user->id)->count());
         $this->assertSame(0, Scenario::where('user_id', $user->id)->count());
+        // The forecast history cascades away too — erased means gone.
+        $this->assertSame(0, SimulationRun::where('user_id', $user->id)->count());
+        $this->assertSame(0, Result::where('simulation_run_id', $run->id)->count());
     }
 
     public function test_anonymous_callers_cannot_export_or_erase_and_nothing_changes(): void

@@ -57,6 +57,15 @@
     @else
         @php $variants = $presented['variants']; $primary = $presented['primary']; @endphp
 
+        {{-- Per-result disclaimer travels with the figures (plan: every Result render). --}}
+        <x-disclaimer.result />
+
+        {{-- Every output is labelled with the mode that produced it (DECISIONS 2026-06-25). --}}
+        <p class="text-xs text-gray-500">
+            Output mode:
+            <span class="font-medium text-gray-700">{{ $interpretation ? 'Interpretation (advice-style, enabled for your account)' : 'Neutral guidance' }}</span>
+        </p>
+
         {{-- Headline numbers as text (never only in a chart) ----------------------- --}}
         <section aria-labelledby="headline-heading" class="space-y-3">
             <h2 id="headline-heading" class="text-xl font-semibold text-gray-900">Will the money last?</h2>
@@ -163,12 +172,13 @@
                 </table>
             </div>
 
-            <p class="mt-4 text-xs text-gray-600">
-                These figures illustrate the consequences of the numbers you entered under this run's assumptions. Pension and
-                housing decisions are significant; free, impartial guidance is available from
-                <a class="underline" href="https://www.moneyhelper.org.uk/en/pensions-and-retirement/pension-wise" rel="noopener">Pension Wise</a>
-                and <a class="underline" href="https://www.moneyhelper.org.uk/" rel="noopener">MoneyHelper</a>.
-            </p>
+            <x-signpost class="mt-4" />
         </section>
+
+        {{-- Walled-off, admin-granted interpretation. Built only when the gate allows;
+             the directive wording lives in App\Compliance\Interpretation, never here. --}}
+        @if ($interpretation)
+            @include('livewire.partials.interpretation', ['interpretation' => $interpretation])
+        @endif
     @endif
 </div>

@@ -148,6 +148,10 @@ Both variants run the **same engine on the same seeds**; only the housing leg an
 
 ## Regulatory / compliance layer
 
+**Built 2026-06-25 (Phase 2 step 4) — see DECISIONS and the code-review status above.** The lint +
+partition test, the first-run acknowledgement gate, the per-result + per-export disclaimers, the
+reusable signpost component and the admin-granted interpretation toggle are all implemented and tested.
+
 - Generic guidance only, user-driven inputs, illustrative consequences. Never "you should".
 - **Disclaimers:** persistent global footer; a first-run modal the user acknowledges (timestamp stored for logged-in users); a per-result disclaimer block on every Result render and every export; a reusable **signposting component** (Pension Wise, MoneyHelper, "find an FCA-regulated adviser") beside every pension-withdrawal or benefits output.
 - **Wording guard:** an `OutputPhrasing` lint with banned recommendation patterns ("you should", "we recommend", "the best option", "is better for you"); all user-facing result strings pass through a neutral formatter ("Under these assumptions...", "This illustrates...", "One consequence is..."). **An automated test fails the build if any Result/warning template contains a banned phrase.** Comparisons present both options neutrally.
@@ -169,31 +173,31 @@ Both variants run the **same engine on the same seeds**; only the housing leg an
 A review of the in-progress app layer (engine + Phase-2 steps 1–3 done) surfaced concrete
 items to pick up as the phases proceed. None break the current green suite; each is tagged to
 the phase it belongs in so the normal build absorbs it rather than treating it as a separate track.
+**Step-4 status (2026-06-25): the compliance items + the no-silent-failure hardening are now BUILT
+(✅ below); the headline-output panels and the a11y/form-UX pass remain OPEN.**
 
-- **Compliance — the immediate next step (step 4 / §Regulatory).** The banned-phrasing build
-  test and disclaimer layer are *designed but not yet built*: nothing currently fails the build on
-  "you should", and exports (incl. the fan-chart CSV) carry no disclaimer. Build the `OutputPhrasing`
-  lint + the test over all result/warning templates, the first-run acknowledgement (timestamp stored
-  for logged-in users), and a per-result/per-export disclaimer block. This closes a stated success
-  criterion, so it ranks first.
-- **Surface the headline outputs still missing from the results page (step 4).** (a) The
+- ✅ **Compliance — BUILT (step 4 / §Regulatory).** `App\Compliance\OutputPhrasing` (directive-only
+  banned patterns) + a partition build test over every Blade view and app PHP file (exempting only the
+  `App\Compliance` namespace and `interpretation`-named views); first-run acknowledgement gate
+  (`EnsureDisclaimerAcknowledged` middleware + `users.disclaimer_acknowledged_at` + a dedicated screen);
+  reusable `<x-disclaimer.result>` + `<x-signpost>` components on every result; a disclaimer prefix on
+  the CSV export. The interpretation toggle is built too (see §Regulatory). Stock `welcome.blade.php`
+  deleted (unused; tripped the lint).
+- ⬚ **Surface the headline outputs still missing from the results page (step 4 — STILL OPEN).** (a) The
   **lump-sum tax-shock panel** — headline output #1, already computed by
   `ScenarioForecaster::deterministic()`'s first-year tax, just not rendered yet; (b) the
   **compare-assumptions overlay** — a run per assumption set feeding a third chart + accessible table
-  (`ScenarioForecaster` already takes the set, so it is a loop over sets).
-- **"No silent failure" hardening (steps 3–4).**
-  - *GDPR export is incomplete:* `GdprService::export()` omits the user's `simulation_runs` and
-    `results` (their forecast history) — add them. Erase already cascades correctly (user_id FK on
-    households/scenarios/simulation_runs, results via simulation_run_id); add a test covering
-    runs+results in **both** export and erase.
-  - *A dead worker leaves a run stuck `Running`:* `SimulationRunner::execute()` records engine
-    exceptions as `Failed`, but `RunScenarioSimulation` has no `failed()` handler and there is no
-    watchdog, so a timeout / OOM / killed worker never reaches a terminal status while the page keeps
-    polling. Add a job `failed()` that marks the run `Failed` with the reason.
-  - *Run fetch is not owner-scoped:* `ScenarioResults::currentRun()` finds by the tamperable public
-    `$runId` with no `user_id` guard (mount checks the scenario, not the run). Scope the query to the
-    owner — matters before any public release.
-- **Accessibility + form UX, against the mandatory WCAG 2.1 AA bar (step 4 / step 6 a11y audit).**
+  (`ScenarioForecaster` already takes the set, so it is a loop over sets). Do these when the results
+  page is next touched.
+- ✅ **"No silent failure" hardening — BUILT (steps 3–4).**
+  - *GDPR export* now includes the user's `simulation_runs` + `results` (decrypted, portable); erase
+    cascades (user_id FK on households/scenarios/simulation_runs, results via simulation_run_id); tests
+    cover runs+results in **both** export and erase.
+  - *Dead worker:* `RunScenarioSimulation::failed()` marks the run `Failed` with the reason so a
+    timeout / OOM / killed worker reaches a terminal status instead of stranding the page on `Running`.
+  - *Owner-scoping:* `ScenarioResults::currentRun()` now scopes by `user_id`, so a forged `$runId`
+    cannot load another user's run.
+- ⬚ **Accessibility + form UX, against the mandatory WCAG 2.1 AA bar (STILL OPEN — step 6 a11y audit).**
   The scenario builder's field errors are not programmatically associated (`aria-describedby` /
   `aria-invalid` missing on invalid inputs), the top-of-form error list has no focus-to-first-error,
   Save has no double-submit guard / loading state (a fast double-click creates two forecasts), and

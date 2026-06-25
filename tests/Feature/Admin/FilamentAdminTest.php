@@ -6,6 +6,7 @@ namespace Tests\Feature\Admin;
 
 use App\Filament\Pages\TaxYearAudit;
 use App\Filament\Resources\AssumptionSets\AssumptionSetResource;
+use App\Filament\Resources\Users\UserResource;
 use App\Models\AssumptionSet;
 use App\Models\User;
 use Database\Seeders\AssumptionSetSeeder;
@@ -39,6 +40,17 @@ class FilamentAdminTest extends TestCase
             ->assertSee('Tax year 2025-26')
             ->assertSee('£12,570.00')   // personal allowance
             ->assertSee('Verified 2026-06-24');
+    }
+
+    public function test_the_user_resource_lists_users_with_the_interpretation_toggle(): void
+    {
+        $admin = User::factory()->create(['email' => 'admin@example.test']);
+
+        $this->actingAs($admin)
+            ->get(UserResource::getUrl('index'))
+            ->assertOk()
+            ->assertSee('admin@example.test')
+            ->assertSee('Interpretation mode');
     }
 
     public function test_only_one_assumption_set_can_be_the_default(): void

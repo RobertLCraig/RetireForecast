@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\Compliance\Interpretation;
 use App\Enums\SimulationStatus;
 use App\Forecast\ResultPresenter;
 use App\Forecast\SimulationRunner;
@@ -12,6 +13,7 @@ use App\Models\Scenario;
 use App\Models\SimulationRun;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -34,6 +36,13 @@ class ScenarioResults extends Component
 
     /** Paths for the synchronous preview (the full queued run uses the engine's 10,000). */
     public int $previewPaths = 1000;
+
+    /** Prepended to every CSV export so a downloaded figure never travels without its disclaimer. */
+    private const EXPORT_DISCLAIMER = [
+        'RetireForecast — guidance only, not financial advice.',
+        'These figures illustrate the consequences of the inputs and assumptions you entered; they are not a personal recommendation.',
+        'Free, impartial guidance: Pension Wise and MoneyHelper (moneyhelper.org.uk), or an FCA-regulated adviser.',
+    ];
 
     public function mount(Scenario $scenario): void
     {
@@ -78,6 +87,10 @@ class ScenarioResults extends Component
 
         return response()->streamDownload(function () use ($fan): void {
             $out = fopen('php://output', 'wb');
+            foreach (self::EXPORT_DISCLAIMER as $line) {
+                fputcsv($out, [$line]);
+            }
+            fputcsv($out, []);
             fputcsv($out, ['Year', 'P10', 'P25', 'P50', 'P75', 'P90']);
             foreach ($fan['rows'] as $row) {
                 fputcsv($out, [$row['year'], $row['p10'], $row['p25'], $row['p50'], $row['p75'], $row['p90']]);
@@ -90,14 +103,23 @@ class ScenarioResults extends Component
     {
         $run = $this->currentRun();
         $presented = null;
+        $interpretation = null;
 
         if ($run && $run->status === SimulationStatus::Done) {
-            $presented = ResultPresenter::build($this->resultsByVariant($run), $this->scenario->variant->value);
+            $resultsByVariant = $this->resultsByVariant($run);
+            $presented = ResultPresenter::build($resultsByVariant, $this->scenario->variant->value);
+
+            // Advice-style readouts only for an admin-granted user; the public default
+            // stays neutral. The directive wording lives solely in Interpretation.
+            if (Gate::allows('interpret')) {
+                $interpretation = Interpretation::readouts($resultsByVariant);
+            }
         }
 
         return view('livewire.scenario-results', [
             'run' => $run,
             'presented' => $presented,
+            'interpretation' => $interpretation,
         ])->title('Forecast results');
     }
 
@@ -108,7 +130,11 @@ class ScenarioResults extends Component
 
     private function currentRun(): ?SimulationRun
     {
-        return $this->runId ? SimulationRun::with('results')->find($this->runId) : null;
+        // Scope by owner: $runId is public and tamperable, so a forged id must not load
+        // another user's run even though mount() already vetted the scenario.
+        return $this->runId
+            ? SimulationRun::with('results')->where('user_id', auth()->id())->find($this->runId)
+            : null;
     }
 
     /** @return Collection<string, Result> */

@@ -28,6 +28,10 @@ class UserFactory extends Factory
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
+            // Established users have accepted the guidance-only disclaimer; the first-run
+            // gate is exercised explicitly via unacknowledged().
+            'disclaimer_acknowledged_at' => now(),
+            'can_interpret' => false,
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
         ];
@@ -40,6 +44,22 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /** A brand-new user who has not yet accepted the first-run disclaimer. */
+    public function unacknowledged(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'disclaimer_acknowledged_at' => null,
+        ]);
+    }
+
+    /** A user the admin has granted the advice-style interpretation capability. */
+    public function canInterpret(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'can_interpret' => true,
         ]);
     }
 }

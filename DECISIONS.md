@@ -3,6 +3,35 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-25 — Compliance layer built: partition lint, acknowledgement gate, walled-off interpretation
+**Decision:** Implemented the regulatory layer (Phase 2 step 4) with these concrete choices.
+(1) The banned-phrasing guard is `App\Compliance\OutputPhrasing` holding **directive-only** regex
+patterns ("you should", "the best option", "is better for you", …) — never the bare nouns — so neutral
+disclaimers that use "recommend"/"advice" in negated form ("not a recommendation", "does not tell you
+what to do") pass. (2) The build test is a **path/namespace partition**: it scans every Blade view plus
+all app PHP and asserts zero violations, with exactly two exemptions — the `App\Compliance` namespace
+(the lint patterns + the `Interpretation` service) and any view whose filename contains
+`interpretation`. A separate assertion proves the partition is load-bearing (the `Interpretation`
+service *does* contain directive phrasing and is the only thing exempt). (3) The first-run
+acknowledgement is a **middleware gate** (`EnsureDisclaimerAcknowledged`) redirecting unacknowledged
+users to a dedicated screen and storing `users.disclaimer_acknowledged_at` — **not** a JS modal (a
+server-side gate is testable and cannot be skipped); GDPR/account routes sit **outside** the gate
+(data-subject rights are not withheld pending acceptance). (4) Per-result disclaimer + signpost are
+reusable Blade components (`<x-disclaimer.result>`, `<x-signpost>`); every CSV export is prefixed with
+the guidance-only disclaimer. (5) The interpretation capability is a `users.can_interpret` boolean
+behind an `interpret` Gate, set via a Filament `UserResource` `ToggleColumn`; the gated partial and the
+`Interpretation` service are the sole homes of directive wording. (6) Deleted the stock Laravel
+`welcome.blade.php` (unused — the landing is `home.blade.php`; it tripped the lint with marketing copy).
+**Why:** Directive-only patterns + a path partition keep the lint precise (no false positives on
+disclaimers, no escape hatch for real recommendations) and make the walled-off advice mode auditable
+rather than ad hoc. A middleware gate honours "no silent failure" and is provable in tests. Implements
+[[2026-06-25 — Optional per-user "interpretation" (advice-style) output, admin-granted, off by default]]
+and [[2026-06-24 — Regulatory posture: guidance only]]. Also folded in the tagged "no silent failure"
+hardening: GDPR `export()` now includes the user's runs+results, `RunScenarioSimulation::failed()`
+lands a dead worker's run in a terminal Failed state, and `ScenarioResults::currentRun()` is
+owner-scoped against a forged `$runId`.
+**Status:** active
+
 ## 2026-06-25 — Optional per-user "interpretation" (advice-style) output, admin-granted, off by default
 **Decision:** Add an optional capability ("interpretation mode" / "what this suggests") that, when
 enabled for a specific user, renders directive plain-language readouts ("under these assumptions,

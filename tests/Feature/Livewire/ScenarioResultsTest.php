@@ -7,6 +7,8 @@ namespace Tests\Feature\Livewire;
 use App\Enums\ScenarioStatus;
 use App\Enums\ScenarioVariant;
 use App\Enums\SimulationStatus;
+use App\Forecast\ScenarioForecaster;
+use App\Forecast\SimulationRunner;
 use App\Jobs\RunScenarioSimulation;
 use App\Livewire\ScenarioResults;
 use App\Models\Household;
@@ -97,14 +99,62 @@ class ScenarioResultsTest extends TestCase
         $this->get(route('scenarios.results', $scenario))->assertForbidden();
     }
 
+    public function test_a_completed_run_carries_the_guidance_only_disclaimer_and_mode_label(): void
+    {
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->set('previewPaths', 30)
+            ->call('preview')
+            ->assertSee('Guidance only, not financial advice.')
+            ->assertSee('Output mode:')
+            ->assertSee('Neutral guidance');
+    }
+
+    public function test_the_csv_export_is_prefixed_with_a_disclaimer(): void
+    {
+        $component = Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->set('previewPaths', 30)
+            ->call('preview');
+
+        /** @var ScenarioResults $instance */
+        $instance = $component->instance();
+        $response = $instance->downloadFanCsv();
+        $this->assertNotNull($response);
+
+        ob_start();
+        $response->sendContent();
+        $csv = ob_get_clean();
+
+        $this->assertStringContainsString('guidance only, not financial advice', strtolower($csv));
+        $this->assertStringContainsString('Year,P10', $csv); // the data header still follows
+    }
+
+    public function test_a_forged_run_id_cannot_load_another_users_run(): void
+    {
+        // A completed run that belongs to someone else.
+        $other = User::factory()->create();
+        $otherRun = (new SimulationRunner(new ScenarioForecaster))->preview($this->scenarioFor($other), seed: 1, paths: 20);
+        $this->assertSame(SimulationStatus::Done, $otherRun->status);
+
+        // Back as me, on my own scenario, tampering the public runId to the other's run.
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->set('runId', $otherRun->id)
+            ->assertSee('No completed run yet.')
+            ->assertDontSee('Will the money last?');
+    }
+
     private function scenario(): Scenario
     {
-        $household = Household::fromDto(HouseholdFixture::household(), $this->user->id);
+        return $this->scenarioFor($this->user);
+    }
+
+    private function scenarioFor(User $user): Scenario
+    {
+        $household = Household::fromDto(HouseholdFixture::household(), $user->id);
         $household->save();
 
         $scenario = new Scenario([
             'household_id' => $household->id,
-            'user_id' => $this->user->id,
+            'user_id' => $user->id,
             'name' => 'Buy-vs-rent',
             'variant' => ScenarioVariant::Rent,
             'base_tax_year' => '2026-27',

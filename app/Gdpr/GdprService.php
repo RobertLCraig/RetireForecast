@@ -17,7 +17,7 @@ final class GdprService
     /** @return array<string, mixed> a portable, JSON-serialisable copy of all the user's data */
     public function export(User $user): array
     {
-        $user->loadMissing(['households', 'scenarios']);
+        $user->loadMissing(['households', 'scenarios', 'simulationRuns.results']);
 
         return [
             'exported_at' => now()->toIso8601String(),
@@ -45,6 +45,25 @@ final class GdprService
                 'assumption_set_id' => $scenario->assumption_set_id,
                 'created_at' => $scenario->created_at?->toIso8601String(),
                 'housing_action' => $scenario->payload,
+            ])->all(),
+            // The user's forecast history: each run plus its per-variant results, with the
+            // sensitive detail decrypted by the model casts (data portability).
+            'simulation_runs' => $user->simulationRuns->map(fn ($run): array => [
+                'id' => $run->id,
+                'scenario_id' => $run->scenario_id,
+                'mode' => $run->mode->value,
+                'n_paths' => $run->n_paths,
+                'seed' => $run->seed,
+                'status' => $run->status->value,
+                'engine_version' => $run->engine_version,
+                'taxyear_config_version' => $run->taxyear_config_version,
+                'created_at' => $run->created_at?->toIso8601String(),
+                'assumption_snapshot' => $run->assumption_snapshot,
+                'results' => $run->results->map(fn ($result): array => [
+                    'id' => $result->id,
+                    'variant' => $result->variant->value,
+                    'detail' => $result->payload,
+                ])->all(),
             ])->all(),
         ];
     }
