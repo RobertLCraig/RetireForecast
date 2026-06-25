@@ -190,6 +190,8 @@ final class PathProjector
         $taxFreeCashNominal = 0;  // pension tax-free cash received this year
         $taxFreeIncomeNominal = 0; // tax-free income streams (e.g. DLA) received this year
         $grossIncomeNominal = 0;
+        // Nominal income split by canonical source (YearResult::INCOME_SOURCES).
+        $src = array_fill_keys(YearResult::INCOME_SOURCES, 0);
 
         foreach ($household->persons as $person) {
             $age = $state['baseAge'][$person->id] + $yearIndex;
@@ -201,23 +203,33 @@ final class PathProjector
             }
 
             // Employment earnings (until planned retirement age).
+            $earnings = 0;
             if ($person->employmentStatus === EmploymentStatus::Employed
                 && $person->grossSalary !== null
                 && ($person->plannedRetirementAge === null || $age < $person->plannedRetirementAge)) {
                 $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor']);
-                $taxablePerPerson[$person->id] += $earnings;
             }
 
-            // Guaranteed pension/other income.
-            $taxablePerPerson[$person->id] += $this->dbIncome($household, $person->id, $age, $state['dbFactor']);
-            $taxablePerPerson[$person->id] += $this->statePensionIncome($household, $person->id, $calendarYear, $state['spaYear'][$person->id], $state['spFactor']);
-            $taxablePerPerson[$person->id] += $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: true);
-            $taxFreeIncomeNominal += $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: false);
+            // Guaranteed pension / other income, kept split by source.
+            $db = $this->dbIncome($household, $person->id, $age, $state['dbFactor']);
+            $sp = $this->statePensionIncome($household, $person->id, $calendarYear, $state['spaYear'][$person->id], $state['spFactor']);
+            $otherTaxable = $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: true);
+            $taxFreeStream = $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: false);
 
             // Planned DC withdrawals due at this age.
             $wd = $this->plannedWithdrawals($state, $person->id, $age);
-            $taxablePerPerson[$person->id] += $wd['taxable'];
+
+            $taxablePerPerson[$person->id] += $earnings + $db + $sp + $otherTaxable + $wd['taxable'];
+            $taxFreeIncomeNominal += $taxFreeStream;
             $taxFreeCashNominal += $wd['taxFree'];
+
+            $src['salary'] += $earnings;
+            $src['defined_benefit'] += $db;
+            $src['state_pension'] += $sp;
+            $src['other_taxable'] += $otherTaxable;
+            $src['tax_free_income'] += $taxFreeStream;
+            $src['pension_lump_sum'] += $wd['taxFree'];
+            $src['pension_drawdown'] += $wd['taxable'];
         }
 
         // Tax each person individually; assemble household net cash. Tax-free income
@@ -266,6 +278,8 @@ final class PathProjector
             $funded = $this->fundShortfall($household, $settings, $state, $alive, $taxablePerPerson, $shortfall);
             $fundedNominal = $funded['funded'];
             $totalTaxNominal += $funded['extraTax'];
+            $src['pension_drawdown'] += $funded['fromPension'];
+            $src['asset_drawdown'] += $funded['fromAssets'];
         } elseif ($shortfall < 0) {
             // Surplus first funds any planned contributions to long-term assets
             // (DC pension top-ups, regular account savings); what remains is saved
@@ -305,6 +319,7 @@ final class PathProjector
             pensionWealth: $r($pension),
             propertyWealth: $r($state['property']),
             totalWealth: $r($liquid + $pension + $state['property']),
+            incomeBySource: array_map($r, $src),
         );
     }
 
@@ -436,22 +451,26 @@ final class PathProjector
 
     /**
      * Draw assets to cover $shortfall (nominal) in the strategy's order, grossing up
-     * pension withdrawals for tax. Returns the net funded and any extra tax incurred.
+     * pension withdrawals for tax. Returns the net funded, any extra tax incurred,
+     * and how much was drawn from pensions (gross) vs other assets — so the cashflow
+     * ladder can show where the shortfall money came from.
      *
      * @param  array<string, mixed>  $state
      * @param  array<string, bool>  $alive
      * @param  array<string, int>  $taxablePerPerson
-     * @return array{funded: int, extraTax: int}
+     * @return array{funded: int, extraTax: int, fromPension: int, fromAssets: int}
      */
     private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $taxablePerPerson, int $shortfall): array
     {
         $remaining = $shortfall;
         $funded = 0;
         $extraTax = 0;
+        $fromPension = 0; // gross pension withdrawn to meet the shortfall
+        $fromAssets = 0;  // capital drawn from cash/GIA/ISA
 
         $pensionFirst = $settings->drawdownStrategy === DrawdownStrategy::PensionAware;
 
-        $drawNonPension = function () use (&$state, &$remaining, &$funded, $alive, $household): void {
+        $drawNonPension = function () use (&$state, &$remaining, &$funded, &$fromAssets, $alive, $household): void {
             foreach (['cash', 'gia', 'isa'] as $bucket) {
                 foreach ($household->persons as $person) {
                     if ($remaining <= 0) {
@@ -465,12 +484,13 @@ final class PathProjector
                         $state[$bucket][$person->id] -= $take;
                         $remaining -= $take;
                         $funded += $take;
+                        $fromAssets += $take;
                     }
                 }
             }
         };
 
-        $drawPension = function (bool $capToBasicRate) use (&$state, &$remaining, &$funded, &$extraTax, $alive, $household, $taxablePerPerson): void {
+        $drawPension = function (bool $capToBasicRate) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, $alive, $household, $taxablePerPerson): void {
             $params = $this->config->incomeTax;
             $basicLimit = $params->personalAllowance->pence + $params->basicRateBand->pence;
 
@@ -503,6 +523,7 @@ final class PathProjector
                     $remaining -= $net;
                     $funded += $net;
                     $extraTax += $taxDelta;
+                    $fromPension += $gross;
                     $alreadyTaxable += $gross;
                 }
                 unset($pot);
@@ -518,7 +539,7 @@ final class PathProjector
             $drawPension(false);  // pension only as a last resort
         }
 
-        return ['funded' => $funded, 'extraTax' => $extraTax];
+        return ['funded' => $funded, 'extraTax' => $extraTax, 'fromPension' => $fromPension, 'fromAssets' => $fromAssets];
     }
 
     /**

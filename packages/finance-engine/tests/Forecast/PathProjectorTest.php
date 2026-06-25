@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
+use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
@@ -22,12 +23,14 @@ use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
+use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
+use RetireForecast\FinanceEngine\Pension\WithdrawalKind;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
@@ -241,6 +244,60 @@ final class PathProjectorTest extends TestCase
 
         // Both aged 68 in 2026 and assumed to die at 80 -> the last projected year is 2038.
         $this->assertSame(2038, $result->finalCalendarYear);
+    }
+
+    public function test_income_by_source_captures_every_regular_inflow(): void
+    {
+        $p1 = new Person('p1', new DateTimeImmutable('1968-04-01'), Sex::Female, EmploymentStatus::Employed, grossSalary: Money::fromPounds(40_000), plannedRetirementAge: 67);
+        $p2 = new Person('p2', new DateTimeImmutable('1955-04-01'), Sex::Male, EmploymentStatus::Retired);
+
+        $household = new Household(
+            'All sources',
+            RegionProfile::EnglandWalesNi,
+            [$p1, $p2],
+            new ExpenseProfile(Money::fromPounds(20_000), Money::fromPounds(5_000), Percent::fromPercent(70)),
+            [
+                new DcPension('p1', Money::fromPounds(200_000), Money::zero(), Money::zero(), 55, [
+                    new WithdrawalInstruction(WithdrawalKind::Ufpls, Money::fromPounds(20_000), 58),
+                ]),
+                new DbPension('p2', Money::fromPounds(8_000), 65),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+            ],
+            [],
+            [
+                new IncomeStream('p2', IncomeStreamType::Annuity, Money::fromPounds(5_000), taxable: true, inflationLinked: false, startAge: 0, endAge: null),
+                new IncomeStream('p2', IncomeStreamType::Other, Money::fromPounds(4_000), taxable: false, inflationLinked: false, startAge: 0, endAge: null),
+            ],
+        );
+
+        // p1 is 58 in 2026, so the UFPLS fires in the base year alongside everything else.
+        $income = $this->forecaster()->forecast($household, AssumptionSetLibrary::default(), $this->settings())->years[0]->incomeBySource;
+
+        foreach (['salary', 'defined_benefit', 'state_pension', 'other_taxable', 'tax_free_income', 'pension_lump_sum', 'pension_drawdown'] as $source) {
+            $this->assertArrayHasKey($source, $income);
+            $this->assertTrue($income[$source]->isPositive(), "income source '{$source}' should contribute to the year");
+        }
+    }
+
+    public function test_income_by_source_records_drawdown_when_funding_a_shortfall(): void
+    {
+        // No guaranteed income, high spend -> the shortfall is funded from savings then the pension.
+        $household = new Household(
+            'Drawdown',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired),
+            ],
+            new ExpenseProfile(Money::fromPounds(40_000), Money::zero(), Percent::fromPercent(70)),
+            [new DcPension('p2', Money::fromPounds(300_000), Money::zero(), Money::zero(), 55)],
+            [new Account('p1', AccountType::Cash, Money::fromPounds(30_000))],
+        );
+
+        $income = $this->forecaster()->forecast($household, AssumptionSetLibrary::default(), $this->settings())->years[0]->incomeBySource;
+
+        $this->assertTrue($income['asset_drawdown']->isPositive(), 'cash should be drawn to fund the shortfall');
+        $this->assertTrue($income['pension_drawdown']->isPositive(), 'the pension should be drawn once cash is exhausted');
     }
 
     public function test_forecast_terminates_at_the_last_survivor_death(): void
