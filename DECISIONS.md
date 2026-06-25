@@ -3,7 +3,7 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
-## 2026-06-26 — Rebuild: keep the engine, rebuild storage to the new world; ratify LW4+SQLite; defer GIA/CGT
+## 2026-06-25 — Rebuild: keep the engine, rebuild storage to the new world; ratify LW4+SQLite; defer GIA/CGT
 **Decision:** Rob authorised a clean rebuild treating the existing code as a prototype, with a key
 liberation: **no existing user data, DB layout or data shape must be preserved** — build storage to match
 the new world directly. Concretely: (1) **Keep the framework-free engine** (penny-accurate, now 113 tests)
@@ -20,10 +20,10 @@ gov.uk figure verification. Shipping it hastily would itself be a trust bug.
 disposable (it existed to get a usable app for feedback). Freeing the rebuild from data migration lets the
 new shape (builder_state source of truth, delta children, line items, account contributions, longevity) be
 built cleanly instead of bolted on. The prototype is preserved at tag **`prototype-v1`** (commit a8f1f68)
-for recovery (no remote). [[2026-06-26 — Scenario model: base plan + delta what-if children + compare]]
+for recovery (no remote). [[2026-06-25 — Scenario model: base plan + delta what-if children + compare]]
 **Status:** active
 
-## 2026-06-26 — Engine enrichments for the new world (contributions, longevity, usable wealth, income-by-source)
+## 2026-06-25 — Engine enrichments for the new world (contributions, longevity, usable wealth, income-by-source)
 **Decision:** Built the engine capabilities the sector-informed rebuild needs (Phase A), each golden-master /
 reconciliation tested, all additive and backward-compatible: (1) **ongoing contributions** on `Account` (new
 field) and DC pensions (the DTO already carried `ongoingContribution`/`employerContribution` but the projector
@@ -39,10 +39,10 @@ ladder and the per-source completeness guard (gotcha Q).
 what-ifs, honest wealth reporting) consume; building them first keeps the engine the single source of truth
 and lets the app layer be rebuilt against a stable, tested surface. v1 simplification flagged: pension
 contributions are funded from net surplus with no tax relief modelled (slightly understates the pre-retirement
-pot), to revisit in the trust pass. [[2026-06-26 — Expenditure: 3-tier line items (essential / discretionary / self-investment) + spent-vs-saved]] [[2026-06-26 — Per-person longevity / health adjustment (new engine input)]]
+pot), to revisit in the trust pass. [[2026-06-25 — Expenditure: 3-tier line items (essential / discretionary / self-investment) + spent-vs-saved]] [[2026-06-25 — Per-person longevity / health adjustment (new engine input)]]
 **Status:** active
 
-## 2026-06-26 — Forecast income completeness: count every source, no silent drop
+## 2026-06-25 — Forecast income completeness: count every source, no silent drop
 **Decision:** The forecast must count **every** income source that should reach a household's spendable
 cash, and a regression test guards each one. Found via live use: `PathProjector::incomeStreamsNominal`
 summed only **taxable** streams and the tax-free branch was never added anywhere, so **DLA / any tax-free
@@ -57,7 +57,7 @@ been burned by. The drill-down's **income-by-source** view is the visual guard t
 (docs/PLAN.md gotcha Q). [[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
 **Status:** active
 
-## 2026-06-26 — Scenario model: base plan + delta what-if children + compare
+## 2026-06-25 — Scenario model: base plan + delta what-if children + compare
 **Decision:** Adopt the cashflow-modelling sector's standard shape (Voyant): a **base plan** that spawns
 **named "what-if" child scenarios** created from a plain **"Create child" button**, each **overriding
 anything the user changes** (often just 1–2 — rent, council tax, a healthcare savings amount, a person's
@@ -86,10 +86,10 @@ though it reworks yesterday's prototype builder, which served to get a usable ap
 wins (person names, the State Pension shortcut) carry over and the draft mechanism folds into
 `builder_state`.
 Generalises [[2026-06-24 — Forecast services: run = 3-variant comparison, deterministic on demand]]; full
-build order in docs/PLAN.md "Sector-informed build plan (2026-06-26)". [[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
+build order in docs/PLAN.md "Sector-informed build plan (2026-06-25)". [[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
 **Status:** active
 
-## 2026-06-26 — Expenditure: 3-tier line items (essential / discretionary / self-investment) + spent-vs-saved
+## 2026-06-25 — Expenditure: 3-tier line items (essential / discretionary / self-investment) + spent-vs-saved
 **Decision:** Replace the flat essential/discretionary totals with **line items as the source of truth**:
 `{id, label, amount(annual), category, savedAsAsset}`, category ∈ **essential** (needs, the floor) /
 **discretionary** (wants, can-drop) / **self-investment**. Essential/discretionary **totals become the sum
@@ -110,7 +110,7 @@ trips the lint). Importers populate the lines (the IWT profile already routes Fi
 Guilt-Free→discretionary, Investments+Savings→saved). [[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
 **Status:** active
 
-## 2026-06-26 — Per-person longevity / health adjustment (new engine input)
+## 2026-06-25 — Per-person longevity / health adjustment (new engine input)
 **Decision:** Add a **per-person longevity adjustment** so a what-if can model someone not expected to
 reach peer-average age (e.g. known health conditions). It feeds the cohort-table `JointLifeSampler` as one
 of: a **fixed assumed death age**, a **±years offset** to life expectancy, or a **mortality multiplier /

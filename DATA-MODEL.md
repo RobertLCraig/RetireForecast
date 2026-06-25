@@ -164,12 +164,12 @@ on the DC pension inside the household payload, not separately on the scenario.
 - **App forecast services:** `app/Forecast/` — `ScenarioForecaster` (assembles engine inputs from
   a persisted scenario; deterministic / single-variant / buy-vs-rent), `SimulationRunner`
   (create → run → persist, with progress + cancel), `RunScenarioSimulation` job.
-- **Builder + drafts (2026-06-26):** `Person` gained an optional display-only `$name` (persisted via
+- **Builder + drafts (2026-06-25):** `Person` gained an optional display-only `$name` (persisted via
   the mapper/assembler; never used in any calculation). A new **`scenario_drafts`** table (one per
   user, encrypted form-state) auto-saves the in-progress builder so work survives leaving the page.
 
-## Planned shape changes (2026-06-26) — authorised, not yet built
-For the research-backed plan (docs/PLAN.md "Sector-informed build plan"; DECISIONS 2026-06-26).
+## Planned shape changes (2026-06-25) — authorised, not yet built
+For the research-backed plan (docs/PLAN.md "Sector-informed build plan"; DECISIONS 2026-06-25).
 Recorded here so the rebuild does not fork the model:
 - **`scenarios.builder_state`** (encrypted): the raw builder form-state — the **editable record**. The
   engine `Household` DTO becomes a **derived** artifact regenerated from it on save (one source of input).
@@ -183,13 +183,13 @@ Recorded here so the rebuild does not fork the model:
   totals are the **sum of the lines** (derived). `savedAsAsset` (self-investment only): *spent* → expense,
   *saved* → a **contribution to net worth**. The budget view shows the 3-tier split as the prioritisation
   **goal**, not a fixed percentage. Deferred: phased ("smile") spend.
-- ✅ **BUILT (2026-06-26 rebuild, Phase A).** **`Account` gained `ongoingContributions`** and the projector
+- ✅ **BUILT (2026-06-25 rebuild, Phase A).** **`Account` gained `ongoingContributions`** and the projector
   now applies it (and DC `ongoingContribution`/`employerContribution`, previously ignored), funded from
   surplus so *saved* self-investment accumulates.
-- ✅ **BUILT (2026-06-26 rebuild, Phase A).** **`Person` gained `LongevityAdjustment`** (`LongevityMode`:
+- ✅ **BUILT (2026-06-25 rebuild, Phase A).** **`Person` gained `LongevityAdjustment`** (`LongevityMode`:
   peer / fixed age / ±years / mortality multiplier) feeding both the deterministic representative death age
   and the Monte-Carlo `JointLifeSampler` (via an optional q(x) multiplier on `CohortLifeTable`).
-- ✅ **BUILT (2026-06-26 rebuild, Phases A + C3).** **Results split usable vs total wealth.** The engine now
+- ✅ **BUILT (2026-06-25 rebuild, Phases A + C3).** **Results split usable vs total wealth.** The engine now
   reports terminal **usable** wealth (excl. home) on `ForecastResult`/`SimulationResult`
   (`usableWealthPercentiles`) alongside total; the results page shows both, so the asset-rich / cash-poor case
   (100% run out yet high "wealth left") reads correctly. Also added **`YearResult::incomeBySource`** (the

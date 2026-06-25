@@ -236,12 +236,12 @@ the planned compliance step). The genuinely new, aligned items, kept as a post-v
 per-row/envelope encryption, a native (Rust/WASM/SIMD) Monte Carlo accelerator, and automated gov.uk
 scraping.
 
-### Sector-informed build plan (2026-06-26) — edit/clone/compare, line-item expenditure, drill-down
+### Sector-informed build plan (2026-06-25) — edit/clone/compare, line-item expenditure, drill-down
 Research into how the cashflow-modelling sector solves these (Voyant/Timeline/CashCalc + PLSA/SMPI)
 is captured in **[docs/RESEARCH-cashflow-modelling.md](RESEARCH-cashflow-modelling.md)**. These are
 solved problems — we follow the proven shape and customise. Agreed build order:
 
-**0. Checkpoint** ✅ done (commit `2b5abc8`). **Rebuild authorised (2026-06-26):** the scenario +
+**0. Checkpoint** ✅ done (commit `2b5abc8`). **Rebuild authorised (2026-06-25):** the scenario +
 expenditure data-shape rebuild is sanctioned even though it reworks yesterday's prototype builder (drafts,
 names, State Pension shortcut) — that work got Rob a usable app for feedback; the UI wins carry over, the
 draft mechanism folds into `builder_state`.
@@ -252,7 +252,7 @@ draft mechanism folds into `builder_state`.
 - Edit route `/scenarios/{scenario}/edit`, **owner-scoped**; `save()` becomes update-or-create.
 - **Child what-if** = a named scenario from a **"Create child" button** that **overrides anything** the
   user changes (often 1–2 fields; curated levers are presets, not a limit) — stored as a **delta** of the
-  changed fields, not a full copy (single-source, no fork; research §1 + DECISIONS 2026-06-26). The child
+  changed fields, not a full copy (single-source, no fork; research §1 + DECISIONS 2026-06-25). The child
   editor is the **full builder pre-filled from the base**; effective = base `builder_state` ⊕ overrides
   via **one merge function** (+ round-trip test). **List items (expense lines, pensions, accounts) gain
   stable IDs** so overrides target the right row. **Compare** reuses the variant side-by-side rendering.
@@ -280,7 +280,7 @@ draft mechanism folds into `builder_state`.
   (not pass/fail). Show **how the drawdown was allocated** each year (which pot, the strategy: ~4% from
   savings/ISA/GIA vs DC lump-sum vs drawdown vs annuity) so the user can verify the mechanics — this is
   how income-counting gaps get caught (live use found tax-free DLA income was being dropped from the
-  "will the money last" calc; **fixed 2026-06-26**, regression-tested). **Per-pension** current →
+  "will the money last" calc; **fixed 2026-06-25**, regression-tested). **Per-pension** current →
   projected pot → indicative income. Defer the annuity-equivalent (new mortality-pricing math).
 - **Next-steps signposting (later, compliance-gated):** beside the results, point to *regulated channels*
   to act on or refine the plan — Pension Wise, MoneyHelper, the FCA "find an adviser" register, annuity
@@ -303,10 +303,10 @@ draft mechanism folds into `builder_state`.
 | M | Success-rate read as pass/fail | present as a **probability under assumptions** (also satisfies the lint) |
 | N | Delta-child **override resolution** / orphaned overrides when the base changes | one merge fn `effective = base ⊕ overrides` + round-trip test; **stable IDs** on list items so overrides target the right row; validate keys vs the base (full-copy rejected — it forks) |
 | O | **Saved self-investment double-counted** (a savings line that also grows as an account) | one home per pound — a *saved* line **is** the contribution, never also an account balance; reconciliation invariant |
-| P | **Asset wealth vs usable cash conflated** (live-use bug 2026-06-26: a card shows 100% chance of running out yet the *highest* "median wealth left", because the illiquid home is counted as wealth) | results must separate **usable/liquid** from **total incl. property**; verify what "wealth left" includes; the per-scenario cashflow graph makes it legible |
-| Q | **Income source silently dropped** (live-use bug 2026-06-26: tax-free DLA income was not counted — only taxable streams were summed) | **per-source completeness test** (every income source contributes to net cash); the cashflow ladder's income-by-source view is the visual guard (fixed + tested) |
+| P | **Asset wealth vs usable cash conflated** (live-use bug 2026-06-25: a card shows 100% chance of running out yet the *highest* "median wealth left", because the illiquid home is counted as wealth) | results must separate **usable/liquid** from **total incl. property**; verify what "wealth left" includes; the per-scenario cashflow graph makes it legible |
+| Q | **Income source silently dropped** (live-use bug 2026-06-25: tax-free DLA income was not counted — only taxable streams were summed) | **per-source completeness test** (every income source contributes to net cash); the cashflow ladder's income-by-source view is the visual guard (fixed + tested) |
 
-**Decisions now settled (DECISIONS 2026-06-26):** anything-overridable delta children + "Create child" +
+**Decisions now settled (DECISIONS 2026-06-25):** anything-overridable delta children + "Create child" +
 stable IDs; 3-tier line items (essential/discretionary/self-investment) with spent/saved, totals derived;
 per-person longevity adjustment; income-floor readout in-phase, PLSA benchmark a fast-follow; phased spend
 + annuity-equivalent deferred. **Drill-down must also split usable cash vs total wealth and graph cashflow

@@ -1,6 +1,6 @@
 # Research: how the cashflow-modelling sector solves this
 
-_Captured 2026-06-26. Purpose: we are not inventing — these features are solved in UK
+_Captured 2026-06-25. Purpose: we are not inventing — these features are solved in UK
 retirement / cashflow-planning software (Voyant, Timeline, CashCalc, Truth) and by public
 sector standards (PLSA Retirement Living Standards, FCA/SMPI). This doc records how they do
 it and what we adopt, so the build follows a proven shape. Every figure here that would enter
@@ -38,7 +38,7 @@ code carries a ⚠️ until sourced + `verified_on`, same as the tax figures._
   exact "same quantity stored in two places that drifts" the guardrails exist to prevent. A delta
   keeps the base single-source; a child holds only its tweaks and otherwise tracks the base. This
   is Voyant's copy-on-write ("changing an item breaks the link for that item only"). _(Corrects an
-  initial full-copy lean — see DECISIONS 2026-06-26; full-copy was rejected because it forks.)_
+  initial full-copy lean — see DECISIONS 2026-06-25; full-copy was rejected because it forks.)_
 - **Compare** = run base + child, reuse the existing variant side-by-side rendering.
 
 **Gap this closed:** the scenario model must support **delta child what-ifs** (overrides on the
