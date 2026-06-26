@@ -361,8 +361,8 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 On `master`, local repo only (no remote, no PR). Personal local-first project; commit directly to `master`.
 **Prototype tagged `prototype-v1` (a8f1f68)** before the rebuild — the recovery point (no remote, so the tag
 is the only snapshot). **Phase C1 fast-follow (results 3-tier display + income-floor + importer
-line-population + per-person longevity lever) is committed in this `/checkpoint` (hash recorded here).**
-Rebuild commits (newest first): doc reconciliation `47436c3`; **Phase C1 core (3-tier line-item budget)**
+line-population + per-person longevity lever) is committed at `c967426`.**
+Rebuild commits (newest first): **Phase C1 fast-follow** (`c967426`); doc reconciliation `47436c3`; **Phase C1 core (3-tier line-item budget)**
 (`2d553d4`); **C2 delta-child what-ifs + Compare** (`5530896`); **Phase B storage inversion** (the
 `builder_state`-source-of-truth rewrite + edit-in-place; `60cc2e2`);
 `9a70d0a`/`2587324` doc refresh + post-rebuild checkpoint; `49637e4` results usable-vs-total +
