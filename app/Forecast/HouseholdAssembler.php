@@ -16,6 +16,7 @@ use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\IncomeStream;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
+use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
@@ -91,7 +92,30 @@ final class HouseholdAssembler
             plannedRetirementAge: $this->intOrNull($p['plannedRetirementAge'] ?? null),
             niCategory: $this->stringOrNull($p['niCategory'] ?? null),
             name: $this->stringOrNull($p['name'] ?? null),
+            longevity: $this->longevity($p),
         );
+    }
+
+    /**
+     * The lifespan what-if for a person: "fixed_age" assumes death at a given age,
+     * "offset_years" shifts the cohort-table peer death age by ± whole years. "peer" (or
+     * an absent/blank field) leaves the cohort-table average untouched (null). This only
+     * moves when a death occurs — never any tax or cashflow figure.
+     *
+     * @param  array<string, mixed>  $p
+     */
+    private function longevity(array $p): ?LongevityAdjustment
+    {
+        $value = $p['longevityValue'] ?? '';
+        if ($value === '' || $value === null) {
+            return null;
+        }
+
+        return match ($p['longevityMode'] ?? 'peer') {
+            'fixed_age' => LongevityAdjustment::fixedAge((int) $value),
+            'offset_years' => LongevityAdjustment::offsetYears((int) $value),
+            default => null,
+        };
     }
 
     /**

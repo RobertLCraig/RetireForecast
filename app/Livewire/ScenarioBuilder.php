@@ -200,6 +200,11 @@ class ScenarioBuilder extends Component
             'people.*.salaryGrowth' => $rate,
             'people.*.plannedRetirementAge' => ['nullable', 'integer', 'min:50', 'max:80'],
             'people.*.niCategory' => ['nullable', 'string', 'max:2'],
+            // Lifespan what-if (optional): peer = cohort-table average; fixed_age needs an
+            // age, offset_years a ± year shift. The range spans both uses; the mortality
+            // grid clamps anything extreme (ages 50–110), so a loose bound is safe.
+            'people.*.longevityMode' => ['nullable', Rule::in(['peer', 'fixed_age', 'offset_years'])],
+            'people.*.longevityValue' => ['nullable', 'integer', 'min:-25', 'max:110', 'required_if:people.*.longevityMode,fixed_age,offset_years'],
 
             'expense.survivorFactor' => ['nullable', 'numeric', 'min:0', 'max:100'],
 
@@ -373,10 +378,20 @@ class ScenarioBuilder extends Component
 
     private function applyImport(ImportResult $result): void
     {
-        if ($result->expense !== []) {
+        if ($result->expenseLines !== []) {
+            // The profile read per-line detail: those 3-tier lines are the source of truth.
+            // Assign stable ids here (the profile leaves them out — id assignment is the
+            // builder's job, gotcha N).
+            $this->expenseLines = array_map(fn (array $l): array => [
+                'id' => $this->newRowId(),
+                'label' => (string) ($l['label'] ?? ''),
+                'amount' => (string) ($l['amount'] ?? ''),
+                'category' => (string) ($l['category'] ?? 'essential'),
+                'savedAsAsset' => (bool) ($l['savedAsAsset'] ?? false),
+            ], $result->expenseLines);
+        } elseif ($result->expense !== []) {
+            // Only category totals: seed the 3-tier editor with two generic lines from them.
             $this->expense = array_merge($this->expense, $result->expense);
-            // Imports still arrive as essential/discretionary totals; turn them into the
-            // 3-tier lines the builder now edits (line-item population is a fast-follow).
             $this->expenseLines = [];
             $this->seedExpenseLinesFromFlat();
         }
@@ -915,6 +930,7 @@ class ScenarioBuilder extends Component
         return [
             'id' => $id, 'name' => '', 'dob' => '', 'sex' => 'female', 'employmentStatus' => 'retired',
             'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => '',
+            'longevityMode' => 'peer', 'longevityValue' => '',
         ];
     }
 

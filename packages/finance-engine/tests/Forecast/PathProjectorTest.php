@@ -223,6 +223,43 @@ final class PathProjectorTest extends TestCase
         );
     }
 
+    public function test_essential_spend_is_exposed_as_the_floor_within_the_target(): void
+    {
+        $household = $this->couple(
+            new ExpenseProfile(Money::fromPounds(18_000), Money::fromPounds(4_000), Percent::fromPercent(70)),
+            pensions: [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+                new DcPension('p2', Money::fromPounds(300_000), Money::zero(), Money::zero(), 55),
+            ],
+        );
+
+        $year0 = $this->forecaster()->forecast($household, AssumptionSetLibrary::default(), $this->settings())->years[0];
+
+        // Base year (no inflation/growth yet): the essential floor is exactly the £18k
+        // entered, and it is the essential part of the £22k target (essential <= target).
+        $this->assertSame(1_800_000, $year0->essentialSpend->pence);
+        $this->assertSame(2_200_000, $year0->spendTarget->pence);
+        $this->assertLessThanOrEqual($year0->spendTarget->pence, $year0->essentialSpend->pence);
+    }
+
+    public function test_essential_spend_includes_rent_on_the_renting_leg(): void
+    {
+        // No property, an £8k/yr rent: rent is an essential cost, so it lifts the essential
+        // floor above the bare £18k entered (the renting household's secure-income bar).
+        $expense = new ExpenseProfile(Money::fromPounds(18_000), Money::fromPounds(4_000), Percent::fromPercent(70));
+        $household = $this->couple($expense, pensions: [
+            new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+            new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+            new DcPension('p2', Money::fromPounds(300_000), Money::zero(), Money::zero(), 55),
+        ]);
+
+        $settings = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', annualRent: Money::fromPounds(8_000));
+        $year0 = $this->forecaster()->forecast($household, AssumptionSetLibrary::default(), $settings)->years[0];
+
+        $this->assertSame(2_600_000, $year0->essentialSpend->pence, 'rent (£8k) lifts the essential floor to £26k');
+    }
+
     public function test_forecast_honours_a_fixed_assumed_death_age(): void
     {
         $longevity = LongevityAdjustment::fixedAge(80);

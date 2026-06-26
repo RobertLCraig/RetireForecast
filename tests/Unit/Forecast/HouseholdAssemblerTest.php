@@ -6,6 +6,13 @@ namespace Tests\Unit\Forecast;
 
 use App\Forecast\HouseholdAssembler;
 use PHPUnit\Framework\TestCase;
+use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
+use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
+use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
+use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
+use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\HouseholdFixture;
 
@@ -81,5 +88,54 @@ class HouseholdAssemblerTest extends TestCase
         $saved = $household->accounts[0];
         $this->assertSame(0, $saved->balance->pence);
         $this->assertSame(300_000, $saved->ongoingContributions->pence);
+    }
+
+    public function test_the_lifespan_what_if_maps_to_the_engine_longevity_adjustment(): void
+    {
+        $assembler = new HouseholdAssembler;
+        $person = fn (string $mode, string $value): array => [
+            'householdName' => 'X', 'region' => 'england_wales_ni',
+            'expenseLines' => [['id' => 'l1', 'label' => 'Bills', 'amount' => '20000', 'category' => 'essential']],
+            'people' => [['id' => 'p1', 'dob' => '1960-01-01', 'sex' => 'male', 'employmentStatus' => 'retired',
+                'longevityMode' => $mode, 'longevityValue' => $value]],
+        ];
+
+        // peer (or a blank value) leaves the cohort-table average in place.
+        $this->assertNull($assembler->household($person('peer', ''))->persons[0]->longevity);
+        $this->assertNull($assembler->household($person('fixed_age', ''))->persons[0]->longevity);
+        // fixed age and ± year offset map to the matching adjustment.
+        $this->assertEquals(LongevityAdjustment::fixedAge(82), $assembler->household($person('fixed_age', '82'))->persons[0]->longevity);
+        $this->assertEquals(LongevityAdjustment::offsetYears(-5), $assembler->household($person('offset_years', '-5'))->persons[0]->longevity);
+    }
+
+    public function test_a_fixed_age_lifespan_what_if_reaches_the_forecast_and_shortens_it(): void
+    {
+        // Completeness: the form-level lifespan lever must actually move the result. A couple
+        // (both 68 in 2026) assumed to die at 80 ends the forecast in 2038 — strictly earlier
+        // than the same couple left on the cohort-table average.
+        $state = fn (string $mode, string $value): array => [
+            'householdName' => 'Lifespan', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'dob' => '1958-04-01', 'sex' => 'female', 'employmentStatus' => 'retired', 'longevityMode' => $mode, 'longevityValue' => $value],
+                ['id' => 'p2', 'dob' => '1958-09-01', 'sex' => 'male', 'employmentStatus' => 'retired', 'longevityMode' => $mode, 'longevityValue' => $value],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230'],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '230'],
+            ],
+            'expenseLines' => [['id' => 'e', 'label' => 'Essentials', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ];
+
+        $assembler = new HouseholdAssembler;
+        $forecaster = new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable);
+        $settings = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27');
+        $assumptions = AssumptionSetLibrary::default();
+
+        $fixed = $forecaster->forecast($assembler->household($state('fixed_age', '80')), $assumptions, $settings);
+        $peer = $forecaster->forecast($assembler->household($state('peer', '')), $assumptions, $settings);
+
+        $this->assertSame(2038, $fixed->finalCalendarYear);
+        $this->assertGreaterThan($fixed->finalCalendarYear, $peer->finalCalendarYear);
     }
 }

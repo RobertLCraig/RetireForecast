@@ -3,6 +3,32 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-26 — C1 fast-follow: income-floor definition, importer line population, longevity lever scope
+**Decision:** Three design calls while building the Phase C1 fast-follow (results 3-tier display + income-floor
+readout + importer line-population + the per-person longevity builder lever). (1) **Income-floor "secure
+income" = DB pension + State Pension + annuity/other + tax-free income**, measured at the **last year everyone
+is still alive** (the mature floor, by when every guaranteed source is in payment and salary has ended). It is
+deliberately the *complement* of the pot-dependent sources (salary, pension lump sum, pension drawdown, asset
+drawdown), and **tax-free income (DLA-type) is included** — excluding it would repeat the exact completeness
+bug the project was burned by. Essential spending it is compared against is the new **`YearResult::essentialSpend`**
+(real terms, incl. rent / property running costs), surfaced from the figure the projector already computes, so
+the readout and the cashflow ladder read one definition, not a re-derivation. The readout reports coverage as a
+fact (a %, a surplus or a gap met from savings) and never says whether it is *enough* (no recommendation).
+(2) **Importers emit per-line `expenseLines` where the source supports it, but CSP stays one line per bucket.**
+RetireForecast (per-row) and PayAndExpenditures (per-outgoing) carry real line items with their labels; the IWT
+CSP importer emits **one line per bucket** using the bucket's authoritative "… TOTAL" rather than re-expanding
+the bucket into its items — re-expansion would re-risk the per-bucket-TOTAL double-count the reconciliation
+guard exists to catch. The flat `expense` total is kept as the reconciliation anchor and the gotcha-A guard now
+also asserts the line sums reconcile to it. (3) **The builder longevity lever exposes peer / fixed_age /
+offset_years only** — the engine's `mortality_multiplier` mode stays engine-side (too technical for the form in
+v1). The two form fields (`longevityMode`+`longevityValue`) ride the existing C2 delta, so a child what-if
+overrides lifespan for free; an end-to-end completeness test proves the form lever reaches and moves the
+forecast. [[2026-06-25 — Engine enrichments for the new world (contributions, longevity, usable wealth, income-by-source)]]
+**Why:** Each respects the data-layer integrity rule (one definition per quantity; completeness — no input
+silently dropped, no figure able to drift from its source) without over-reaching into modelling that needs the
+trust pass (phased spend, GIA/CGT) or a C4 feature (PLSA benchmark).
+**Status:** active
+
 ## 2026-06-25 — Rebuild: keep the engine, rebuild storage to the new world; ratify LW4+SQLite; defer GIA/CGT
 **Decision:** Rob authorised a clean rebuild treating the existing code as a prototype, with a key
 liberation: **no existing user data, DB layout or data shape must be preserved** — build storage to match

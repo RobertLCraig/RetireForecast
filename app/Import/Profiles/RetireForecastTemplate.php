@@ -53,6 +53,9 @@ final class RetireForecastTemplate implements ImportProfile
 
         $totals = ['essential' => 0, 'discretionary' => 0, 'salary' => 0];
         $seen = [];
+        // Per-line 3-tier items (Phase C1): each essential/discretionary row becomes a line,
+        // its label preserved, so the import populates line items, not one lumped total.
+        $lines = [];
 
         foreach (array_slice($rows, 1) as $cols) {
             $section = strtolower(trim($cols[0] ?? ''));
@@ -65,22 +68,34 @@ final class RetireForecastTemplate implements ImportProfile
                 throw new ImportException(sprintf('Row "%s" has an amount that is not a number.', implode(',', $cols)));
             }
 
-            $totals[$section] += MoneyText::toPence($amount);
+            $monthlyPence = MoneyText::toPence($amount);
+            $totals[$section] += $monthlyPence;
             $seen[$section] = true;
+
+            if ($section === 'essential' || $section === 'discretionary') {
+                $label = trim($cols[1] ?? '');
+                $lines[] = [
+                    'label' => $label === '' ? ucfirst($section) : $label,
+                    'amount' => MoneyText::fromPence($monthlyPence * 12),
+                    'category' => $section,
+                    'savedAsAsset' => false,
+                ];
+            }
         }
 
         if ($seen === []) {
             throw new ImportException('No essential, discretionary or salary rows were found — this does not look like a RetireForecast template.');
         }
 
-        return $this->result($totals, $seen);
+        return $this->result($totals, $seen, $lines);
     }
 
     /**
      * @param  array<string, int>  $monthlyPence
      * @param  array<string, bool>  $seen
+     * @param  list<array{label: string, amount: string, category: string, savedAsAsset: bool}>  $lines
      */
-    private function result(array $monthlyPence, array $seen): ImportResult
+    private function result(array $monthlyPence, array $seen, array $lines): ImportResult
     {
         $expense = [];
         $filled = [];
@@ -104,6 +119,7 @@ final class RetireForecastTemplate implements ImportProfile
 
         return new ImportResult(
             expense: $expense,
+            expenseLines: $lines,
             salaryAnnual: $salaryAnnual,
             filled: $filled,
             missing: [

@@ -3,10 +3,10 @@
 > A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue building the calculation engine and then the app around it. Read `docs/PLAN.md` first: it is the full approved plan and the source of truth for scope.
 
 **Stage:** active
-**Status:** Rebuild **Phase A (engine) + C3 (results drill-down) + Phase B (storage inversion) + Phase C2 (delta-child what-ifs + Compare) + Phase C1 core (3-tier line-item budget — line items the source of truth, builder UI, reconciliation) all done.** Suite **262 green** (engine 113 / app 149); tree clean, **C1 core committed (`2d553d4`)**. **C1 fast-follow next: results 3-tier display + income-floor readout + importer line-population; then C4.** _The narrative that follows is the full build history; the live picture is the **▶ REBUILD** callout below + the newest session-log entry._
+**Status:** Rebuild **Phase A (engine) + C3 (results drill-down) + Phase B (storage inversion) + Phase C2 (delta-child what-ifs + Compare) + Phase C1 (3-tier line-item budget: core + fast-follow) all done.** Suite **274 green** (engine 115 / app 159); the C1 fast-follow (results 3-tier display + income-floor readout + importer line-population + per-person longevity builder lever) is **uncommitted** — run `/checkpoint`. **Next: C4 (income-floor/PLSA — the PLSA benchmark is the one remaining C1-list item) then D (trust + go-live).** _The narrative that follows is the full build history; the live picture is the **▶ REBUILD** callout below + the newest session-log entry._
 
 _Pre-rebuild prototype history:_ Engine complete (Phase 1); **Phase 2 steps 1–4 of the app layer are in.** Step 1: encrypted DTO persistence, Fortify auth, GDPR, Filament admin. Step 2: forecast/scenario services (`ScenarioForecaster`, `SimulationRun`/`Result` persistence, `SimulationRunner` + queued job with progress + cancel). Step 3: the **Livewire UI + ApexCharts** (auth screens, scenario builder, results page with fan chart + buy-vs-rent, each as text + accessible `<table>` + CSV + signposting). Step 4 (this session): the **compliance/disclaimer layer** — `App\Compliance\OutputPhrasing` directive-only banned-phrase lint + a **partition build test** over every view and app PHP file; a **first-run acknowledgement gate** (`EnsureDisclaimerAcknowledged` middleware + `users.disclaimer_acknowledged_at` + a dedicated screen); reusable `<x-disclaimer.result>` + `<x-signpost>` on every result and a disclaimer prefix on the CSV export; the **admin-granted, off-by-default interpretation toggle** (`users.can_interpret` → `interpret` Gate → walled-off `App\Compliance\Interpretation` service + `interpretation`-named partial, set via a Filament `UserResource` toggle). Also folded in the tagged **no-silent-failure hardening**: GDPR `export()` now includes runs+results, `RunScenarioSimulation::failed()` lands a dead worker's run in Failed, `ScenarioResults::currentRun()` is owner-scoped. **Full suite at that point: 224 tests / 894 assertions (105 engine + 119 app)** — now **235 / 929** (engine 113) after the rebuild; see the callout. This autonomous session landed several committed stages on top of step 4: (1) the **lump-sum tax-shock panel** (headline output #1, `App\Forecast\LumpSumTaxShock` reproducing worked example A through the app) is now **rendered** on the results page; (2) the scenario builder is a **free-navigation wizard** — five steps (About & people; Pensions & income; **Your net worth** = savings + the home; Spending; The decision) with a11y (stepper `aria-current`, focusable headings + error summary, `aria-invalid`/`aria-describedby`, Save double-submit guard, `endAge ≥ startAge`, jump-to-first-error on save); (3) a **spreadsheet-import** layer (`app/Import/`) — an `ImportProfile` registry with the calibrated **RetireForecast CSV** profile (pre-fills spending + salary in exact pence), the **IWT Conscious Spending Plan** profile calibrated to its published structure (header-driven, frequency-aware; Fixed→essential, Guilt-Free→discretionary, net-income so no gross salary), and **Nischa stubbed** pending a sample; (4) the **compare-assumptions overlay** (`App\Forecast\AssumptionComparison`) — the central best-estimate projection under each shipped sourced set (FCA / DMS / OBR), rendered immediately as an accessible sensitivity table; (5) the **IWT CSP import** made live (`$`-currency fix in `MoneyText`); (6) **`.xlsx` import + the personal workbook** — added `phpoffice/phpspreadsheet` (uploads can be `.xlsx`, app-layer only), a sheet-aware `Spreadsheet`/`SpreadsheetReader` (reads Excel's cached values), a **tab picker** for multi-tab workbooks (`updatedImportFile` → sheet names → `Spreadsheet::select`), and a bespoke **`PayAndExpenditures`** profile that reads Rob's scenario tab — expenditure→essential, salary→gross, **State Pension→state pension, DLA→tax-free income, partner pension→annuity** — **verified against the real file** (£24,600/yr essential, £190.00/wk SP, etc.; income lands on Person 1 with no start age, flagged). **Still OPEN**: **calibrating the Nischa import** (deprioritised by Rob; layout captured — it's a 50/30/20 dashboard) and re-verifying the IWT CSP profile against the real 2023 export; the **line-item expense categories** data-model decision; a full per-field a11y sweep + axe/Pa11y CI; 2FA enrolment UI. **This session** added **scenario-draft auto-save**, **person names** (persisted), the **State Pension "full" shortcut**, and **`.xlsx`/Cancel import fixes** (all tested), then captured **sector research** ([docs/RESEARCH-cashflow-modelling.md](docs/RESEARCH-cashflow-modelling.md)) + a **research-backed build plan** (docs/PLAN.md "Sector-informed build plan"). **Next (as planned then — now superseded by the current build order in Status + What's next + the REBUILD callout):** that plan — edit → clone/compare, line-item 3-tier budgets, projection drill-down — plus Phase 2 step 5 (demo/perf/PDF).
-_Last updated: 2026-06-26 (handover hygiene — reconciled the stale "C1 not yet committed" notes to committed at `2d553d4`; see newest session-log entry). Earlier notes:_
+_Last updated: 2026-06-26 (Phase C1 fast-follow built — results 3-tier display + income-floor readout + importer line-population + per-person longevity lever; see newest session-log entry). Earlier notes:_
 _Two corrections were made in a prior refresh: (1) reconciled the stale 224/105 headline counts to the verified **235 tests / 929 assertions**, engine 113; (2) corrected the rebuild work's date labels from a mis-stamped **2026-06-26** to **2026-06-25** across all five docs (37 occurrences) — git commit dates and the session clock confirm every commit was 2026-06-25; a prior session had wrongly believed the clock rolled to the 26th. Build history: the rebuild (Phase A + C3) and the builder-UX/sector-research work were both this same day; the prototype's Phase 1 engine + Phase 2 steps 1–3 were 2026-06-24._
 
 **▶ REBUILD IN PROGRESS (2026-06-25 build session).** Rob authorised a clean rebuild treating existing
@@ -15,7 +15,7 @@ the new world directly. Decisions locked (DECISIONS 2026-06-25 ×2): **keep the 
 app code; rebuild the storage layer freely**; **ratify Livewire 4 + Filament 5 + SQLite**; **interleave trust
 + features**; the prototype is tagged **`prototype-v1`** (a8f1f68) for recovery (no remote). Build order is
 **A (engine) → B (storage) → C (features) → D (trust + go-live)**.
-**Done across the rebuild (suite 224→262 green, engine 105→113, app →149):**
+**Done across the rebuild (suite 224→274 green, engine 105→115, app →159):**
 - **Phase A (engine, all golden-master/reconciliation tested):** account + DC **ongoing contributions**
   (funded from surplus); per-person **`LongevityAdjustment`** what-if; terminal **usable**-vs-total wealth;
   **`YearResult::incomeBySource`** (8 canonical sources). **A5 (GIA/cash income tax + CGT-on-disposal)
@@ -58,9 +58,20 @@ app code; rebuild the storage layer freely**; **ratify Livewire 4 + Filament 5 +
   editable list with live subtotals; validation requires ≥1 line. **Reconciliation + completeness tested**
   (`ExpenseLineReconciliationTest`: totals == Σ lines; saving a line builds more wealth than spending it).
   The C2 override examples now target an expense line by id.
-**Still to build:** **C1 fast-follow** — results **3-tier breakdown display** + **income-floor readout**
-(essential vs guaranteed income) + **importer line-population** (importers still emit flat totals, seeded into
-2 generic lines) + **PLSA benchmark** + wire the **per-person longevity** lever as a builder field; **C4**
+- **Phase C1 fast-follow (newest, this session — uncommitted):** (1) **results 3-tier display + income-floor
+  readout** — the engine exposes `YearResult::essentialSpend` (real terms, the essential floor incl. rent/
+  running costs, the one definition both the ladder and the readout read); `ResultPresenter::expenseBreakdown()`
+  echoes the budget in 3 tiers (per-line + spent/saved split, **reconciling to the assembled spend**) and
+  `incomeFloor()` shows essential spending vs **secure income** (DB + State Pension + annuity + **tax-free**,
+  at the last all-alive year), both rendered on the results page before any run. (2) **importer
+  line-population** — `ImportResult::expenseLines`; the three calibrated profiles emit line items
+  (RetireForecast per-row, PayAndExpenditures per-outgoing, CSP per-bucket keeping the authoritative-TOTAL
+  guard); the builder applies them as the source; the reconciliation guardrail (gotcha A) extended to assert
+  the line sums reconcile to the sheet-verified totals. (3) **per-person longevity lever** — the assembler maps
+  a `longevityMode`(`peer`/`fixed_age`/`offset_years`)+`longevityValue` person field to the engine
+  `LongevityAdjustment`; the builder's people step has the control + validation; an end-to-end completeness
+  test proves it reaches and shortens the forecast.
+**Still to build:** **PLSA benchmark** (the one remaining C1-list item, folds into C4); **C4**
 income-floor/PLSA; **D** gov.uk ⚠️ verification + the deferred GIA/CGT modelling + go-live polish (a11y CI,
 CSP, panel lockdown, perf, PDF). Full plan: docs/PLAN.md "Sector-informed build plan".
 
@@ -251,17 +262,20 @@ State Pension shortcut — carry over; the per-user draft mechanism folds into `
    overrides *values* only (the canonical levers — rent, a salary, variant, lifespan-once-wired); add/remove a
    person/pension/account belongs in the base or a new forecast. **Residual:** wire the per-person longevity
    lever into the builder as a what-if field (the merge already handles it).
-3. **Phase C1 — 3-tier line-item budget — CORE DONE (2026-06-26); display fast-follow next.** Line items
-   `{id,label,amount(annual),category,savedAsAsset}` are now the **source** (`builder_state.expenseLines`);
+3. ✅ **DONE (Phase C1 — 3-tier line-item budget: core + fast-follow, 2026-06-26).** Line items
+   `{id,label,amount(annual),category,savedAsAsset}` are the **source** (`builder_state.expenseLines`);
    category ∈ essential/discretionary/self_investment; totals = `sum(lines)`, derived in the
    `HouseholdAssembler` (reconciliation invariant tested). `savedAsAsset`: *spent*→discretionary,
    *saved*→a balance-zero contributing ISA (`ongoingContributions`, applied by the engine from surplus —
    gotcha O, one home per pound). Flat totals dropped when lines exist; legacy/imported scenarios seed lines
    from their flat totals (gotcha G). Builder Spending step is a 3-tier editable list with live subtotals.
-   **Fast-follow (not yet built):** results **3-tier breakdown display**, the **income-floor readout**
-   (essential vs guaranteed income = State Pension + DB + annuity), **importer line-population** (importers
-   still emit flat totals → seeded into 2 generic lines; extend the import golden fixtures, gotcha A), the
-   **PLSA benchmark**, and wiring the **per-person longevity** lever as a builder what-if field.
+   **Fast-follow DONE:** results **3-tier breakdown display** (`ResultPresenter::expenseBreakdown`, reconciles
+   to the assembled spend) + the **income-floor readout** (`incomeFloor()` — essential spending vs secure
+   income = State Pension + DB + annuity + **tax-free**, off the new `YearResult::essentialSpend`);
+   **importer line-population** (`ImportResult::expenseLines`; the three calibrated profiles emit lines; gotcha-A
+   reconciliation guard extended to the line sums); and the **per-person longevity** lever wired as a builder
+   field (assembler → `LongevityAdjustment`, completeness-tested end to end). **Remaining (→ C4):** the **PLSA
+   benchmark**.
 4. ✅ **DONE (rebuild Phase C3 + A3).** Drill-down + usable-vs-total wealth — the results page now shows
    **usable (liquid, excl. home) vs total wealth** plus a deterministic **cashflow ladder** from `YearResult[]`
    (income-by-source → tax → spend → wealth), fixing the cards paradox (gotcha P) end-to-end. **Residual for
@@ -325,8 +339,8 @@ Run from the **project root** (the test runner shells out to a relative phpunit 
 Set-Location "C:\Dev\RetireForecast"
 # NB: php / artisan / composer / npm are NOT on the Git Bash PATH on this machine — run them via the
 # PowerShell tool (PHP 8.4 is provided by Laravel Herd). Bash is fine for git / grep / file ops. See CLAUDE.md.
-php artisan test                            # everything: expect 262 passed (1008 assertions)
-php artisan test --testsuite=Engine        # engine only: expect 113 passed (547 assertions)
+php artisan test                            # everything: expect 274 passed (1077 assertions)
+php artisan test --testsuite=Engine        # engine only: expect 115 passed (552 assertions)
 vendor/bin/pint --dirty                      # house style on changed files
 npm run build                                # build assets (public/build is gitignored); `npm run dev` to watch
 ```
@@ -346,14 +360,38 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 ## Branch status
 On `master`, local repo only (no remote, no PR). Personal local-first project; commit directly to `master`.
 **Prototype tagged `prototype-v1` (a8f1f68)** before the rebuild — the recovery point (no remote, so the tag
-is the only snapshot). Rebuild commits (newest first): **Phase C1 core (3-tier line-item budget)** (`2d553d4`);
-**C2 delta-child what-ifs + Compare** (`5530896`); **Phase B storage inversion** (the
+is the only snapshot). **Phase C1 fast-follow (results 3-tier display + income-floor + importer
+line-population + per-person longevity lever) is committed in this `/checkpoint` (hash recorded here).**
+Rebuild commits (newest first): doc reconciliation `47436c3`; **Phase C1 core (3-tier line-item budget)**
+(`2d553d4`); **C2 delta-child what-ifs + Compare** (`5530896`); **Phase B storage inversion** (the
 `builder_state`-source-of-truth rewrite + edit-in-place; `60cc2e2`);
 `9a70d0a`/`2587324` doc refresh + post-rebuild checkpoint; `49637e4` results usable-vs-total +
 cashflow ladder (C3); `b50f2a5` income-by-source on YearResult (A4); `12bd216` per-person longevity (A2);
 `9316e7c` ongoing contributions + usable-vs-total terminal wealth (A1+A3). Built across a series of small committed milestones — engine (docs scaffold, NI+savings/dividends, pension suite, State Pension, SDLT+CGT, benefits, IHT+care, forecast+MonteCarlo+housing); app layer (persistence; Fortify+GDPR; Filament admin; forecast services; run persistence; queued runs + engine progress hook; UI foundation + auth; scenario builder; results page + ApexCharts; this session's builder UX + sector planning). **Everything described above is committed; the working tree is clean.** Recent commits (newest first): `6551219` results-card label clarity ("Total wealth left (incl. home)"); `84292c5` planning close-out (delta what-ifs / 3-tier budget / longevity / usable-vs-total); `2b5abc8` scenario drafts + person names + State Pension shortcut + sector research; `7219f72` import reconciliation guardrails + IWT CSP double-count fix. No remote; commit directly to `master`.
 
 ## Session log
+_2026-06-26 (REBUILD Phase C1 fast-follow — results display + income floor + importer lines + longevity lever)_
+— Continued the same session after the doc reconciliation (`47436c3`). Built the C1 fast-follow in three
+parts. **(A) Results 3-tier display + income-floor readout:** the engine exposes a new
+**`YearResult::essentialSpend`** (real terms, the essential floor incl. rent/property running costs and the
+survivor factor — the projector already computed `essentialNominal`, now surfaced) so the ladder and the
+readout read one definition, not a re-derivation; golden-master tested (incl. rent lifting the floor).
+`ResultPresenter::expenseBreakdown()` echoes the budget back in 3 tiers (per-line + spent/saved split,
+**reconciling to the assembled spend** — display can't drift from the forecast), and `incomeFloor()` shows
+essential spending vs **secure income** (DB + State Pension + annuity + **tax-free**, deliberately incl.
+DLA-type streams to avoid the old completeness drop) at the last all-alive year, with coverage % and
+surplus/gap. Both render on the results page before any Monte Carlo run. **(B) Importer line-population:**
+`ImportResult` gained `expenseLines`; the three calibrated profiles emit line items (RetireForecast per-row,
+PayAndExpenditures per-outgoing with labels preserved, CSP per-bucket — keeping the authoritative-TOTAL guard,
+no re-expansion that would re-risk the double-count); the builder applies them as the source of truth; the
+gotcha-A reconciliation guardrail extended to assert the line sums reconcile to the sheet-verified totals
+(labels carried, contributions never become spend lines). **(C) Per-person longevity lever:** the assembler
+maps a `longevityMode`(`peer`/`fixed_age`/`offset_years`)+`longevityValue` person field to the engine
+`LongevityAdjustment`; the builder's people step has the control + validation (`required_if` when not peer);
+an end-to-end completeness test proves the form lever reaches and shortens the forecast (fixed age 80 →
+final year 2038). Suite **262→274 green / 1077 assertions** (engine 113→115, app →159); pint clean.
+**Deferred to C4:** the **PLSA benchmark** (the one remaining C1-list item). **Next:** C4 income-floor/PLSA,
+then D (trust + go-live).
 _2026-06-26 (handover hygiene — no code)_ — Resumed via `/handover resume`; sanity-checked the suite green
 (**262 / 1008**, engine 113). Found the C1-core handover note stale: the doc's repeated "NOT yet committed —
 run `/checkpoint`" lines (Status, Branch status, the C1 session-log entry) were written inside commit

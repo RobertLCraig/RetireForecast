@@ -166,6 +166,103 @@
         </section>
     @endif
 
+    {{-- The 3-tier spending budget echoed back from the inputs (Phase C1). Essential /
+         discretionary / self-investment, with saved self-investment shown as building net
+         worth rather than counting as spend — reconciles to the forecast's spend. --}}
+    @if ($budget['tiers'])
+        <section aria-labelledby="budget-heading" class="{{ $card }}">
+            <h2 id="budget-heading" class="text-xl font-semibold text-gray-900">Your spending plan</h2>
+            <p class="mt-1 text-sm text-gray-600">
+                The annual budget driving this forecast, in three tiers. Self-investment you mark as saved builds your net worth rather than counting as spending. Figures are per year, in today's money.
+            </p>
+            <div class="mt-4 grid gap-4 md:grid-cols-3">
+                @foreach ($budget['tiers'] as $tier)
+                    <div class="rounded-md border border-gray-200 p-4">
+                        <div class="flex items-baseline justify-between">
+                            <h3 class="font-medium text-gray-900">{{ $tier['label'] }}</h3>
+                            <span class="text-sm font-semibold text-gray-900">{{ $tier['subtotal'] }}</span>
+                        </div>
+                        <ul class="mt-2 space-y-1 text-sm text-gray-700">
+                            @foreach ($tier['lines'] as $line)
+                                <li class="flex justify-between gap-3">
+                                    <span>{{ $line['label'] }}@if ($line['saved'])<span class="ml-1 rounded bg-green-100 px-1.5 text-xs text-green-800">saved</span>@endif</span>
+                                    <span class="tabular-nums">{{ $line['amount'] }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endforeach
+            </div>
+            <dl class="mt-4 flex flex-wrap gap-x-8 gap-y-1 text-sm">
+                <div class="flex gap-2"><dt class="text-gray-600">Total spending</dt><dd class="font-semibold text-gray-900">{{ $budget['spendingTotal'] }}/yr</dd></div>
+                @if ($budget['hasSaving'])
+                    <div class="flex gap-2"><dt class="text-gray-600">Saved, builds net worth</dt><dd class="font-semibold text-gray-900">{{ $budget['savingTotal'] }}/yr</dd></div>
+                @endif
+            </dl>
+        </section>
+    @endif
+
+    {{-- Income-floor readout (Phase C1): essential spending vs secure (guaranteed-for-life)
+         income at the mature point. Neutral — reports the coverage, never whether it is enough. --}}
+    @if ($incomeFloor)
+        <section aria-labelledby="floor-heading" class="{{ $card }}">
+            <h2 id="floor-heading" class="text-xl font-semibold text-gray-900">Essential spending vs secure income</h2>
+            <p class="mt-1 text-sm text-gray-600">
+                In {{ $incomeFloor['year'] }}, when you would be {{ $incomeFloor['ages'] }}, your secure income — guaranteed for life and not dependent on your savings lasting (State Pension, defined-benefit pensions, annuities and any tax-free income) — covers <strong>{{ $incomeFloor['coveragePct'] }}%</strong> of your essential spending (your essential needs, including any rent or home running costs). Figures are per year, in today's money.
+            </p>
+            <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                <div class="rounded-md bg-gray-50 p-3">
+                    <p class="text-xs text-gray-600">Essential spending</p>
+                    <p class="text-lg font-semibold text-gray-900">{{ $incomeFloor['essentialSpend'] }}</p>
+                </div>
+                <div class="rounded-md bg-blue-50 p-3">
+                    <p class="text-xs text-blue-800">Secure income</p>
+                    <p class="text-lg font-semibold text-blue-900">{{ $incomeFloor['secureIncome'] }}</p>
+                </div>
+                @if ($incomeFloor['fullyCovered'])
+                    <div class="rounded-md bg-green-50 p-3">
+                        <p class="text-xs text-green-800">Secure surplus over essentials</p>
+                        <p class="text-lg font-semibold text-green-900">{{ $incomeFloor['surplus'] ?? $incomeFloor['secureIncome'] }}</p>
+                    </div>
+                @else
+                    <div class="rounded-md bg-amber-50 p-3">
+                        <p class="text-xs text-amber-800">Met from savings / pension</p>
+                        <p class="text-lg font-semibold text-amber-900">{{ $incomeFloor['gap'] }}</p>
+                    </div>
+                @endif
+            </div>
+            @if ($incomeFloor['sources'])
+                <div class="mt-4 overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <caption class="sr-only">Secure income by source in {{ $incomeFloor['year'] }}</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col" class="{{ $th }}">Secure income source</th>
+                                <th scope="col" class="{{ $th }} text-right">Per year</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($incomeFloor['sources'] as $s)
+                                <tr>
+                                    <th scope="row" class="{{ $td }} text-left font-medium">{{ $s['label'] }}</th>
+                                    <td class="{{ $td }} text-right">{{ $s['amount'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+            <p class="mt-3 text-xs text-gray-500">
+                @if ($incomeFloor['fullyCovered'])
+                    Essential spending here is fully met by income that does not rely on your savings lasting. Any discretionary spending on top draws on your pots, which the forecast below tests.
+                @else
+                    The rest of essential spending is met by drawing on your savings and pensions, so it depends on those lasting — which is what the forecast below tests.
+                @endif
+            </p>
+            <x-signpost class="mt-4" />
+        </section>
+    @endif
+
     {{-- Year-by-year cashflow ladder. The deterministic central projection, so it shows
          immediately: where income comes from each year, the tax on it, the spend it must
          meet, and the usable (excl. home) vs total (incl. home) wealth carried forward. --}}

@@ -312,6 +312,7 @@ final class PathProjector
             totalTax: $r($totalTaxNominal),
             netIncome: $r($netCashNominal),
             spendTarget: $r($spendNominal),
+            essentialSpend: $r($essentialNominal),
             shortfallFunded: $r($fundedNominal),
             unmetSpend: $r($unmetNominal),
             essentialsMet: $essentialsMet,

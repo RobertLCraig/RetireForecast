@@ -240,6 +240,24 @@
                                 <input id="people-{{ $i }}-plannedRetirementAge" type="number" wire:model="people.{{ $i }}.plannedRetirementAge" class="{{ $field }}" @error('people.'.$i.'.plannedRetirementAge') aria-invalid="true" aria-describedby="people-{{ $i }}-plannedRetirementAge-error" @enderror>
                                 @error('people.'.$i.'.plannedRetirementAge') <p id="people-{{ $i }}-plannedRetirementAge-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                             </div>
+                            <div>
+                                <label for="people-{{ $i }}-longevityMode" class="{{ $label }}">Lifespan assumption</label>
+                                <select id="people-{{ $i }}-longevityMode" wire:model.live="people.{{ $i }}.longevityMode" class="{{ $field }}">
+                                    <option value="peer">Average for their age (default)</option>
+                                    <option value="fixed_age">Assume a specific age at death</option>
+                                    <option value="offset_years">Live longer or shorter than average</option>
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">A what-if on how long this person lives. It shifts only when the money has to last, never any tax figure.</p>
+                            </div>
+                            @if (($person['longevityMode'] ?? 'peer') !== 'peer')
+                                <div>
+                                    <label for="people-{{ $i }}-longevityValue" class="{{ $label }}">
+                                        {{ ($person['longevityMode'] ?? '') === 'fixed_age' ? 'Assumed age at death' : 'Years vs average (+ longer, − shorter)' }}
+                                    </label>
+                                    <input id="people-{{ $i }}-longevityValue" type="number" wire:model="people.{{ $i }}.longevityValue" class="{{ $field }}" @error('people.'.$i.'.longevityValue') aria-invalid="true" aria-describedby="people-{{ $i }}-longevityValue-error" @enderror>
+                                    @error('people.'.$i.'.longevityValue') <p id="people-{{ $i }}-longevityValue-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                </div>
+                            @endif
                         </div>
                     </div>
                 @endforeach

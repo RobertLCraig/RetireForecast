@@ -168,6 +168,20 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('Total (incl. home)');
     }
 
+    public function test_the_results_page_shows_the_spending_plan_and_income_floor_before_any_run(): void
+    {
+        // Both are deterministic (the budget echoes the inputs; the floor reads the central
+        // projection), so they render immediately, before any Monte Carlo run.
+        $this->get(route('scenarios.results', $this->scenario()))
+            ->assertOk()
+            ->assertSee('Your spending plan')
+            ->assertSee('£28,000.00')   // the essential line item
+            ->assertSee('£12,500.00')   // the discretionary line item
+            ->assertSee('Total spending')
+            ->assertSee('Essential spending vs secure income')
+            ->assertSee('secure income');
+    }
+
     public function test_a_preview_shows_usable_wealth_alongside_total(): void
     {
         // Usable wealth (excl. home) must read separately from total (incl. home), so an

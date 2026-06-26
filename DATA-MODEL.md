@@ -204,23 +204,32 @@ Recorded here so the rebuild does not fork the model:
   counted **once** (one home per pound). The flat `expense.essential/discretionary` are cleared when lines
   exist (no drifting total); a legacy/imported scenario seeds lines from its flat totals on load. List rows
   carry stable ids (so a C2 override can target a line). The builder shows the 3-tier split as a goal, not a
-  fixed %. **Deferred (C1 fast-follow):** the results 3-tier display, the income-floor readout, importers
-  emitting real lines (they still emit flat totals → seeded into 2 generic lines), the PLSA benchmark, and
-  phased ("smile") spend (an engine change, deferred).
+  fixed %. **Fast-follow BUILT (2026-06-26):** the results **3-tier display**
+  (`ResultPresenter::expenseBreakdown`, reconciling to the assembled spend) + the **income-floor readout**
+  (`incomeFloor()`, off the new `YearResult::essentialSpend`); **importers now emit real lines** —
+  `ImportResult` gained `expenseLines` (`list<{label, amount, category, savedAsAsset?}>`, no id — the builder
+  assigns ids on apply); the three calibrated profiles populate it (RetireForecast per-row, PayAndExpenditures
+  per-outgoing, CSP per-bucket), with the flat `expense` kept as the reconciliation anchor and the gotcha-A
+  guard extended to the line sums. **Deferred (→ C4):** the PLSA benchmark; phased ("smile") spend (an engine
+  change).
 - ✅ **BUILT (2026-06-25 rebuild, Phase A).** **`Account` gained `ongoingContributions`** and the projector
   now applies it (and DC `ongoingContribution`/`employerContribution`, previously ignored), funded from
   surplus so *saved* self-investment accumulates.
-- ✅ **BUILT (2026-06-25 rebuild, Phase A).** **`Person` gained `LongevityAdjustment`** (`LongevityMode`:
-  peer / fixed age / ±years / mortality multiplier) feeding both the deterministic representative death age
-  and the Monte-Carlo `JointLifeSampler` (via an optional q(x) multiplier on `CohortLifeTable`).
+- ✅ **BUILT (2026-06-25 rebuild, Phase A; builder lever wired 2026-06-26).** **`Person` gained
+  `LongevityAdjustment`** (`LongevityMode`: peer / fixed age / ±years / mortality multiplier) feeding both the
+  deterministic representative death age and the Monte-Carlo `JointLifeSampler` (via an optional q(x)
+  multiplier on `CohortLifeTable`). The builder now carries the lever as two per-person form fields —
+  `longevityMode` (`peer`/`fixed_age`/`offset_years`) + `longevityValue` — which the `HouseholdAssembler` maps
+  to the adjustment (peer/blank → null); a child what-if can override either via the C2 delta. The
+  `mortality_multiplier` mode stays engine-only (no builder control in v1).
 - ✅ **BUILT (2026-06-25 rebuild, Phases A + C3).** **Results split usable vs total wealth.** The engine now
   reports terminal **usable** wealth (excl. home) on `ForecastResult`/`SimulationResult`
   (`usableWealthPercentiles`) alongside total; the results page shows both, so the asset-rich / cash-poor case
   (100% run out yet high "wealth left") reads correctly. Also added **`YearResult::incomeBySource`** (the
-  canonical 8 sources) powering the deterministic cashflow ladder + the per-source completeness guard.
-  **Still app-side (not yet built):** the C1 fast-follow (results 3-tier display, income-floor readout,
-  importer line-population, PLSA benchmark); the per-person longevity lever as a builder what-if field
-  (engine support exists from Phase A2).
+  canonical 8 sources) powering the deterministic cashflow ladder + the per-source completeness guard. Phase
+  C1 added **`YearResult::essentialSpend`** (real terms — the essential floor incl. rent/running costs and the
+  survivor factor) so the income-floor readout reads one definition. **Still app-side (not yet built):** the
+  **PLSA benchmark** (→ C4).
 
 ## Known divergences (to close)
 - The DTO carries withdrawals on the DC pension; the original Scenario sketch listed

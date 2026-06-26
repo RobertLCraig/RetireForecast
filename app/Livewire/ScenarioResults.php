@@ -157,6 +157,10 @@ class ScenarioResults extends Component
             }
         }
 
+        // One deterministic central projection feeds both the cashflow ladder and the
+        // income-floor readout, so they read the same single source (no second run).
+        $forecast = app(ScenarioForecaster::class)->deterministic($this->scenario);
+
         return view('livewire.scenario-results', [
             'run' => $run,
             'presented' => $presented,
@@ -165,9 +169,14 @@ class ScenarioResults extends Component
             'shock' => app(LumpSumTaxShock::class)->assess($this->scenario),
             // Compare-assumptions overlay: also deterministic, so it shows immediately.
             'sensitivity' => app(AssumptionComparison::class)->compare($this->scenario),
+            // The 3-tier spending budget echoed back from the form-state (essential /
+            // discretionary / self-investment), reconciling to the forecast's spend.
+            'budget' => ResultPresenter::expenseBreakdown($this->scenario->effectiveBuilderState()),
+            // Essential spending vs secure (guaranteed-for-life) income at the mature point.
+            'incomeFloor' => ResultPresenter::incomeFloor($forecast),
             // Deterministic year-by-year cashflow ladder (income by source -> tax -> spend
             // -> wealth). Shows immediately, before any Monte Carlo run.
-            'ladder' => ResultPresenter::ladder(app(ScenarioForecaster::class)->deterministic($this->scenario)),
+            'ladder' => ResultPresenter::ladder($forecast),
         ])->title('Forecast results');
     }
 

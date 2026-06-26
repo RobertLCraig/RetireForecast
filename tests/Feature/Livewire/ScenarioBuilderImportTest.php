@@ -32,11 +32,16 @@ class ScenarioBuilderImportTest extends TestCase
             ->set('importFile', UploadedFile::fake()->createWithContent('budget.csv', $csv))
             ->call('import')
             ->assertHasNoErrors()
-            ->assertSet('expense.essential', '12000.00')      // 1000 * 12
-            ->assertSet('expense.discretionary', '2400.00')   // 200 * 12
-            ->assertSet('people.0.grossSalary', '30000.00')   // 2408 * 12
+            // Phase C1: the import populates 3-tier line items (labels preserved), not flat totals.
+            ->assertSet('expenseLines.0.label', 'Rent')
+            ->assertSet('expenseLines.0.amount', '12000.00')      // 1000 * 12
+            ->assertSet('expenseLines.0.category', 'essential')
+            ->assertSet('expenseLines.1.label', 'Fun')
+            ->assertSet('expenseLines.1.amount', '2400.00')       // 200 * 12
+            ->assertSet('expenseLines.1.category', 'discretionary')
+            ->assertSet('people.0.grossSalary', '30000.00')      // 2408 * 12
             ->assertSet('people.0.employmentStatus', 'employed')
-            ->assertSet('step', 4);                            // lands on the spending step
+            ->assertSet('step', 4);                               // lands on the spending step
     }
 
     public function test_an_uncalibrated_profile_reports_instead_of_importing(): void
@@ -59,8 +64,13 @@ class ScenarioBuilderImportTest extends TestCase
             ->set('importFile', UploadedFile::fake()->createWithContent('csp.csv', $csv))
             ->call('import')
             ->assertHasNoErrors()
-            ->assertSet('expense.essential', '18000.00')      // 1500 * 12
-            ->assertSet('expense.discretionary', '4800.00')   // 400 * 12
+            // One 3-tier line per bucket, carrying the bucket's authoritative annual figure.
+            ->assertSet('expenseLines.0.label', 'Fixed costs')
+            ->assertSet('expenseLines.0.amount', '18000.00')   // 1500 * 12
+            ->assertSet('expenseLines.0.category', 'essential')
+            ->assertSet('expenseLines.1.label', 'Guilt-free spending')
+            ->assertSet('expenseLines.1.amount', '4800.00')    // 400 * 12
+            ->assertSet('expenseLines.1.category', 'discretionary')
             ->assertSet('step', 4);
     }
 
@@ -87,7 +97,10 @@ class ScenarioBuilderImportTest extends TestCase
             ->set('importSheet', 'Demo Buy')
             ->call('import')
             ->assertHasNoErrors()
-            ->assertSet('expense.essential', '12000.00');    // 1000/mo * 12, from the chosen tab
+            // Each outgoing becomes its own essential line: Mortgage £1,000/mo -> £12,000/yr.
+            ->assertSet('expenseLines.0.label', 'Mortgage')
+            ->assertSet('expenseLines.0.amount', '12000.00') // 1000/mo * 12, from the chosen tab
+            ->assertSet('expenseLines.0.category', 'essential');
 
         $this->assertCount(1, $component->get('incomeStreams')); // DLA pulled onto the form
     }

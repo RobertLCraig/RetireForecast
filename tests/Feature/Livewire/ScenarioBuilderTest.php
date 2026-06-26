@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\HouseholdFixture;
 use Tests\TestCase;
@@ -64,6 +65,31 @@ class ScenarioBuilderTest extends TestCase
         $component->call('save');
 
         $this->assertSame('Alex', Scenario::firstOrFail()->toHousehold()->persons[0]->name);
+    }
+
+    public function test_a_lifespan_what_if_is_persisted_to_the_saved_household(): void
+    {
+        $state = BuilderStateFixture::minimalValid();
+        $state['people'][0]['longevityMode'] = 'fixed_age';
+        $state['people'][0]['longevityValue'] = '88';
+
+        $this->fill($state)->call('save')->assertHasNoErrors();
+
+        $this->assertEquals(
+            LongevityAdjustment::fixedAge(88),
+            Scenario::firstOrFail()->toHousehold()->persons[0]->longevity,
+        );
+    }
+
+    public function test_a_lifespan_what_if_requires_a_value_when_it_is_not_peer(): void
+    {
+        $state = BuilderStateFixture::minimalValid();
+        $state['people'][0]['longevityMode'] = 'fixed_age';
+        $state['people'][0]['longevityValue'] = '';
+
+        $this->fill($state)->call('save')->assertHasErrors('people.0.longevityValue');
+
+        $this->assertSame(0, Scenario::count());
     }
 
     public function test_a_saved_scenario_decrypts_to_the_identical_dto(): void

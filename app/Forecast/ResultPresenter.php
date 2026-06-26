@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Forecast;
 
 use App\Enums\ScenarioVariant;
+use App\Import\MoneyText;
 use App\Models\Result;
 use Illuminate\Support\Collection;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
@@ -43,6 +44,23 @@ final class ResultPresenter
         'pension_lump_sum' => 'Pension tax-free cash',
         'pension_drawdown' => 'Pension drawdown',
         'asset_drawdown' => 'Savings drawn',
+    ];
+
+    /**
+     * The income sources that count as a secure floor: income that lasts for life and
+     * does not depend on a pot lasting or on investment returns — guaranteed pensions
+     * (DB, State Pension), purchased annuities, and any tax-free income (e.g. DLA, which
+     * must NOT be dropped — see the completeness rule). Salary is excluded (it is earned
+     * and stops at retirement); pension lump sums and drawdown, and savings drawn, are
+     * excluded (they deplete the pot).
+     */
+    private const SECURE_SOURCES = ['defined_benefit', 'state_pension', 'other_taxable', 'tax_free_income'];
+
+    /** The 3-tier budget categories, in display order, with their labels. */
+    private const EXPENSE_TIERS = [
+        'essential' => 'Essential',
+        'discretionary' => 'Discretionary',
+        'self_investment' => 'Self-investment',
     ];
 
     /**
@@ -243,6 +261,145 @@ final class ResultPresenter
         }
 
         return false;
+    }
+
+    /**
+     * The income-floor readout: essential spending vs secure (guaranteed-for-life,
+     * non-pot) income, taken at the last year everyone is still alive — by then every
+     * guaranteed source that ever starts is in payment and any salary has ended, so it
+     * is the household's mature floor. Reports the coverage factually (a percentage and
+     * the surplus or gap); it never says whether that is enough (no recommendation).
+     *
+     * Returns null when the projection has no years to read.
+     *
+     * @return array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool}|null
+     */
+    public static function incomeFloor(ForecastResult $forecast): ?array
+    {
+        $snapshot = self::matureSnapshot($forecast);
+        if ($snapshot === null) {
+            return null;
+        }
+
+        $sources = [];
+        $secure = Money::zero();
+        foreach (self::SECURE_SOURCES as $source) {
+            $money = $snapshot->incomeBySource[$source] ?? Money::zero();
+            if ($money->isPositive()) {
+                $sources[] = ['label' => self::SOURCE_LABELS[$source], 'amount' => $money->format()];
+                $secure = $secure->plus($money);
+            }
+        }
+
+        $essential = $snapshot->essentialSpend;
+        $shortfall = $essential->minus($secure);
+        $surplus = $secure->minus($essential);
+        $coverage = $essential->isPositive() ? (int) round($secure->pence / $essential->pence * 100) : 100;
+
+        return [
+            'year' => $snapshot->calendarYear,
+            'ages' => implode(' / ', $snapshot->ages),
+            'essentialSpend' => $essential->format(),
+            'secureIncome' => $secure->format(),
+            'sources' => $sources,
+            'coveragePct' => $coverage,
+            'surplus' => $surplus->isPositive() ? $surplus->format() : null,
+            'gap' => $shortfall->isPositive() ? $shortfall->format() : null,
+            'fullyCovered' => ! $shortfall->isPositive(),
+        ];
+    }
+
+    /** The last projected year in which every person is still alive (the mature floor point). */
+    private static function matureSnapshot(ForecastResult $forecast): ?YearResult
+    {
+        $snapshot = null;
+        foreach ($forecast->years as $year) {
+            $everyoneAlive = $year->aliveCount === count($year->ages);
+            if ($everyoneAlive) {
+                $snapshot = $year;
+            }
+        }
+
+        // Fall back to the final year if a death falls in the very first year (degenerate),
+        // so the readout still shows rather than silently vanishing.
+        return $snapshot ?? ($forecast->years[array_key_last($forecast->years)] ?? null);
+    }
+
+    /**
+     * The 3-tier line-item budget echoed back from the builder form-state: the user's
+     * spending grouped into essential / discretionary / self-investment with per-line
+     * detail and tier subtotals, plus the split between what is spent (counts as spend
+     * in the forecast) and what is saved (self-investment flagged to build net worth).
+     *
+     * Reads the same `expenseLines` the {@see HouseholdAssembler} derives the engine
+     * totals from, so the displayed subtotals reconcile to the forecast's spend (the
+     * data-integrity invariant — asserted in ExpenseBreakdownReconciliationTest). A
+     * scenario predating line items (none present) falls back to its flat
+     * essential/discretionary totals, mirroring the assembler's own fallback.
+     *
+     * @param  array<string, mixed>  $state  the effective builder form-state
+     * @return array{tiers: list<array{key: string, label: string, lines: list<array{label: string, amount: string, saved: bool}>, subtotal: string}>, spendingTotal: string, savingTotal: string, total: string, hasSaving: bool}
+     */
+    public static function expenseBreakdown(array $state): array
+    {
+        $lines = $state['expenseLines'] ?? [];
+        if ($lines === []) {
+            $lines = self::flatFallbackLines($state['expense'] ?? []);
+        }
+
+        $tiers = [];
+        $spending = Money::zero();
+        $saving = Money::zero();
+        foreach (self::EXPENSE_TIERS as $key => $label) {
+            $tierLines = [];
+            $subtotal = Money::zero();
+            foreach ($lines as $line) {
+                if (($line['category'] ?? '') !== $key) {
+                    continue;
+                }
+                $amount = Money::fromPence(MoneyText::toPence((string) ($line['amount'] ?? '0')));
+                $saved = $key === 'self_investment' && (bool) ($line['savedAsAsset'] ?? false);
+                $tierLines[] = [
+                    'label' => (string) ($line['label'] ?? ''),
+                    'amount' => $amount->format(),
+                    'saved' => $saved,
+                ];
+                $subtotal = $subtotal->plus($amount);
+                // Saved self-investment builds net worth (a contribution), not spend; all
+                // else is spend. One home per pound — exactly mirrors the assembler.
+                $saved ? $saving = $saving->plus($amount) : $spending = $spending->plus($amount);
+            }
+            if ($tierLines !== []) {
+                $tiers[] = ['key' => $key, 'label' => $label, 'lines' => $tierLines, 'subtotal' => $subtotal->format()];
+            }
+        }
+
+        return [
+            'tiers' => $tiers,
+            'spendingTotal' => $spending->format(),
+            'savingTotal' => $saving->format(),
+            'total' => $spending->plus($saving)->format(),
+            'hasSaving' => $saving->isPositive(),
+        ];
+    }
+
+    /**
+     * Synthesise line items from the legacy flat totals so a pre-C1 scenario still shows
+     * a breakdown. Mirrors {@see HouseholdAssembler::essentialAndDiscretionary()}'s
+     * fallback exactly (essential required, discretionary optional), so the displayed
+     * figures still reconcile to the forecast's spend.
+     *
+     * @param  array<string, mixed>  $expense
+     * @return list<array{label: string, amount: string, category: string, savedAsAsset: bool}>
+     */
+    private static function flatFallbackLines(array $expense): array
+    {
+        $lines = [['label' => 'Essential spending', 'amount' => (string) ($expense['essential'] ?? '0'), 'category' => 'essential', 'savedAsAsset' => false]];
+        if (($expense['discretionary'] ?? '') !== '') {
+            $lines[] = ['label' => 'Discretionary spending', 'amount' => (string) $expense['discretionary'], 'category' => 'discretionary', 'savedAsAsset' => false];
+        }
+
+        return $lines;
     }
 
     /** Whole pounds (chart axes do not need pence and floats stay out of money maths). */

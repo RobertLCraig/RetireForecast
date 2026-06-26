@@ -189,14 +189,22 @@ final class ConsciousSpendingPlan implements ImportProfile
     private function result(array $annualPence, array $seen): ImportResult
     {
         $expense = [];
+        $expenseLines = [];
         $filled = [];
 
+        // One 3-tier line per bucket (Phase C1), carrying the bucket's authoritative annual
+        // figure. We deliberately do NOT split the bucket back into its line items: the
+        // sheet's own "… TOTAL" is the trusted figure, and re-expanding it would risk the
+        // double-count the reconciliation guard exists to prevent. The line sum therefore
+        // equals the bucket total exactly.
         if (isset($seen['essential'])) {
             $expense['essential'] = MoneyText::fromPence($annualPence['essential']);
+            $expenseLines[] = ['label' => 'Fixed costs', 'amount' => $expense['essential'], 'category' => 'essential', 'savedAsAsset' => false];
             $filled[] = 'Essential spending from Fixed Costs (£'.$expense['essential'].'/yr)';
         }
         if (isset($seen['discretionary'])) {
             $expense['discretionary'] = MoneyText::fromPence($annualPence['discretionary']);
+            $expenseLines[] = ['label' => 'Guilt-free spending', 'amount' => $expense['discretionary'], 'category' => 'discretionary', 'savedAsAsset' => false];
             $filled[] = 'Discretionary spending from Guilt-Free (£'.$expense['discretionary'].'/yr)';
         }
 
@@ -208,6 +216,7 @@ final class ConsciousSpendingPlan implements ImportProfile
 
         return new ImportResult(
             expense: $expense,
+            expenseLines: $expenseLines,
             salaryAnnual: null, // CSP is built on net take-home; gross must be entered by hand
             filled: $filled,
             missing: [

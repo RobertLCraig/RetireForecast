@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Import;
 
+use App\Import\MoneyText;
 use App\Import\Profiles\ConsciousSpendingPlan;
 use App\Import\Profiles\PayAndExpenditures;
 use App\Import\Profiles\RetireForecastTemplate;
@@ -44,6 +45,15 @@ class ImportReconciliationTest extends TestCase
         $gross = array_map(fn (array $s): string => $s['grossAnnual'], $result->incomeStreams);
         $this->assertContains(GoldenWorkbooks::PAYEXP_DLA_ANNUAL, $gross);
         $this->assertContains(GoldenWorkbooks::PAYEXP_PARTNER_PENSION_ANNUAL, $gross);
+
+        // Phase C1 line population: each monthly outgoing is its own essential line, labels
+        // preserved, and the lines sum back to the verified essential total (no drift, no
+        // line lost) — the same gotcha-A guard applied to the line items, not just the total.
+        $this->assertNotEmpty($result->expenseLines);
+        $this->assertContains('Mortgage', array_column($result->expenseLines, 'label'));
+        $this->assertContains('Food', array_column($result->expenseLines, 'label'));
+        $this->assertSame(['essential'], array_values(array_unique(array_column($result->expenseLines, 'category'))));
+        $this->assertSame($result->expense['essential'], $this->lineTotal($result->expenseLines, 'essential'));
     }
 
     public function test_retireforecast_sections_do_not_bleed_into_each_other(): void
@@ -57,6 +67,14 @@ class ImportReconciliationTest extends TestCase
         // The ignored `savings` row (300/mo) must not have leaked into any spending bucket.
         $this->assertStringNotContainsString('3600', $result->expense['essential']);
         $this->assertStringNotContainsString('3600', $result->expense['discretionary']);
+
+        // Phase C1 line population: per-row lines with their labels, each in the right tier,
+        // summing back to the verified per-category totals. The `savings` row stays out.
+        $this->assertContains('Rent', array_column($result->expenseLines, 'label'));
+        $this->assertContains('Netflix', array_column($result->expenseLines, 'label'));
+        $this->assertNotContains('Pension contribution', array_column($result->expenseLines, 'label'));
+        $this->assertSame($result->expense['essential'], $this->lineTotal($result->expenseLines, 'essential'));
+        $this->assertSame($result->expense['discretionary'], $this->lineTotal($result->expenseLines, 'discretionary'));
     }
 
     public function test_csp_buckets_reconcile_to_their_stated_totals_without_double_counting(): void
@@ -79,5 +97,33 @@ class ImportReconciliationTest extends TestCase
         $haystack = implode('|', [...array_values($result->expense), ...$result->notes]);
         $this->assertStringNotContainsString((string) GoldenWorkbooks::CSP_NETWORTH_INVESTMENTS, $haystack);
         $this->assertStringNotContainsString((string) GoldenWorkbooks::CSP_NETWORTH_SAVINGS, $haystack);
+
+        // Phase C1 line population: one line per spending bucket, each carrying the bucket's
+        // authoritative TOTAL (NOT re-expanded into line items, which would re-risk the
+        // double-count) — so the lines reconcile to the per-category totals exactly.
+        $this->assertSame($result->expense['essential'], $this->lineTotal($result->expenseLines, 'essential'));
+        $this->assertSame($result->expense['discretionary'], $this->lineTotal($result->expenseLines, 'discretionary'));
+        // Contributions (Investments + Savings) are never spending lines.
+        $this->assertSame([], $this->lines($result->expenseLines, 'self_investment'));
+    }
+
+    /** The pence-exact sum of the expense lines in $category, as a pounds string. */
+    private function lineTotal(array $lines, string $category): string
+    {
+        $pence = array_sum(array_map(
+            fn (array $l): int => MoneyText::toPence($l['amount']),
+            $this->lines($lines, $category),
+        ));
+
+        return MoneyText::fromPence($pence);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $lines
+     * @return list<array<string, mixed>>
+     */
+    private function lines(array $lines, string $category): array
+    {
+        return array_values(array_filter($lines, fn (array $l): bool => $l['category'] === $category));
     }
 }

@@ -16,6 +16,10 @@ use RetireForecast\FinanceEngine\Support\Warning;
  * $unmetSpend is the part of the target spend that could not be funded because
  * assets were exhausted — the first year it is positive is when the money runs out.
  *
+ * $essentialSpend is the essential floor within $spendTarget (rent or property running
+ * costs included, survivor factor applied) — the bar the "essentials always met" measure
+ * is judged against, and the figure the income-floor readout compares secure income to.
+ *
  * $incomeBySource breaks the year's inflows into the canonical {@see INCOME_SOURCES}
  * (real money) so the drill-down cashflow ladder can show where money came from and
  * how any shortfall was funded. Every source that should reach spendable cash appears
@@ -54,6 +58,7 @@ final class YearResult
         public readonly Money $totalTax,
         public readonly Money $netIncome,
         public readonly Money $spendTarget,
+        public readonly Money $essentialSpend,
         public readonly Money $shortfallFunded,
         public readonly Money $unmetSpend,
         public readonly bool $essentialsMet,

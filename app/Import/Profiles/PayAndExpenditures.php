@@ -53,13 +53,16 @@ final class PayAndExpenditures implements ImportProfile
 
         $header = $this->expenditureHeaderRow($rows);
 
-        $monthlyPence = 0;
-        $lines = 0;
+        // Each monthly outgoing becomes an essential 3-tier line (Phase C1), its label
+        // preserved and the amount annualised — so the import populates line items, not one
+        // lumped essential total. The annual sum still reconciles to the sheet's Total row.
+        $expenseLines = [];
         foreach (array_slice($rows, $header + 1) as $cells) {
-            $label = strtolower(trim($cells[0] ?? ''));
+            $raw = trim($cells[0] ?? '');
+            $label = strtolower($raw);
             $amount = trim($cells[1] ?? '');
 
-            if ($label === '') {
+            if ($raw === '') {
                 continue;
             }
             if (str_contains($label, 'total') || str_contains($label, 'remainder')) {
@@ -69,15 +72,19 @@ final class PayAndExpenditures implements ImportProfile
                 continue;
             }
 
-            $monthlyPence += MoneyText::toPence($amount);
-            $lines++;
+            $expenseLines[] = [
+                'label' => $raw,
+                'amount' => MoneyText::fromPence(MoneyText::toPence($amount) * 12),
+                'category' => 'essential',
+                'savedAsAsset' => false,
+            ];
         }
 
-        if ($lines === 0) {
+        if ($expenseLines === []) {
             throw new ImportException('Found the expenditure header but no monthly line items below it.');
         }
 
-        return $this->result($tab, $monthlyPence * 12, $lines, $this->yearlySalary($rows), $this->incomeBlock($rows));
+        return $this->result($tab, $expenseLines, $this->yearlySalary($rows), $this->incomeBlock($rows));
     }
 
     /**
@@ -233,11 +240,16 @@ final class PayAndExpenditures implements ImportProfile
     }
 
     /**
+     * @param  list<array{label: string, amount: string, category: string, savedAsAsset: bool}>  $expenseLines
      * @param  array{incomeStreams: list<array<string, mixed>>, pensions: list<array<string, mixed>>, filled: list<string>}  $income
      */
-    private function result(string $tab, int $essentialAnnualPence, int $lines, ?string $salaryAnnual, array $income): ImportResult
+    private function result(string $tab, array $expenseLines, ?string $salaryAnnual, array $income): ImportResult
     {
-        $essential = MoneyText::fromPence($essentialAnnualPence);
+        // The essential total is the exact-pence sum of the lines — the same single source
+        // the lines themselves carry, so the headline figure cannot drift from them.
+        $essentialPence = array_sum(array_map(fn (array $l): int => MoneyText::toPence($l['amount']), $expenseLines));
+        $essential = MoneyText::fromPence($essentialPence);
+        $lines = count($expenseLines);
 
         $filled = ["Essential spending (£{$essential}/yr, from {$lines} monthly outgoing lines)"];
         if ($salaryAnnual !== null) {
@@ -249,6 +261,7 @@ final class PayAndExpenditures implements ImportProfile
 
         return new ImportResult(
             expense: ['essential' => $essential],
+            expenseLines: $expenseLines,
             salaryAnnual: $salaryAnnual,
             incomeStreams: $income['incomeStreams'],
             pensions: $income['pensions'],
