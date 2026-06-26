@@ -158,11 +158,12 @@ on the DC pension inside the household payload, not separately on the scenario.
 - The domain DTOs under `src/Dto/` (Household, Person, DcPension, DbPension,
   StatePensionEntitlement, Property, Account, IncomeStream, ExpenseProfile, HousingAction,
   AssumptionSet + enums).
-- **App persistence:** Eloquent `Scenario` (holds the encrypted `builder_state`, the source of
-  truth; derives the engine DTOs), `AssumptionSet`, `SimulationRun`, `Result` with `encrypted:array`
-  payload casts; the `app/Finance/Mapping/` `AssumptionSetMapper` + `SimulationResultMapper` + `Codec`.
-  (The `Household`/`HousingAction` mappers and the `households`/`scenario_drafts` tables were dropped in
-  Phase B — see "Planned shape changes".)
+- **App persistence:** Eloquent `Scenario` (a base holds the encrypted `builder_state`, the source of
+  truth; a Phase-C2 child instead holds `parent_scenario_id` + an encrypted `overrides` delta and resolves
+  `effectiveBuilderState()` = base ⊕ overrides; both derive the engine DTOs), `AssumptionSet`,
+  `SimulationRun`, `Result` with `encrypted:array` payload casts; the `app/Finance/Mapping/`
+  `AssumptionSetMapper` + `SimulationResultMapper` + `Codec`. (The `Household`/`HousingAction` mappers and
+  the `households`/`scenario_drafts` tables were dropped in Phase B — see "Planned shape changes".)
 - **App forecast services:** `app/Forecast/` — `ScenarioForecaster` (assembles engine inputs from
   a persisted scenario; deterministic / single-variant / buy-vs-rent), `SimulationRunner`
   (create → run → persist, with progress + cancel), `RunScenarioSimulation` job.
@@ -184,11 +185,16 @@ Recorded here so the rebuild does not fork the model:
   model, are **dropped**: an in-progress build is now a `draft`-status scenario (one per user), promoted to
   `ready` on save. Editing reloads the form-state (`/scenarios/{scenario}/edit`, owner-scoped); save is
   update-or-create and **invalidates stale runs/results** (gotcha B). (No data migration — rebuild authorised.)
-- **Base plan + delta child what-ifs (Phase C2, not yet built):** a child scenario references a base (`parent_scenario_id`) and
-  stores only a **delta** of overridden form-state paths; effective inputs = base ⊕ overrides via one
-  merge function. **Not a full copy** (full-copy forks). **List items (expense lines, pensions, accounts)
-  gain stable IDs** so an override targets the right row across base edits (people already have ids).
-  Compare runs base + child side by side.
+- ✅ **BUILT (2026-06-26 rebuild, Phase C2).** **Base plan + delta child what-ifs.** A child scenario
+  references a base (`parent_scenario_id`) and stores only a **delta** of overridden form-state leaves in an
+  encrypted **`overrides`** column (no `builder_state` of its own); effective inputs = base ⊕ overrides via
+  one merge function (`App\Forecast\BuilderStateDelta`), resolved by `Scenario::effectiveBuilderState()`.
+  **Not a full copy** (full-copy forks). **List rows (pensions, accounts, income streams, one-off costs,
+  withdrawals) now carry stable `id`s** so an override targets the right row across base edits (people keep
+  p1/p2). A base edit refreshes its children's projected columns and drops their stale runs; a base delete
+  cascades to its children. **Compare** runs base + children side by side on their deterministic projection.
+  **v1 boundary:** a child overrides *values* only — adding/removing a list row is refused
+  (`structurallyDiffers`) and directed to the base or a new forecast.
 - **Expenditure → 3-tier line items:** `{id, label, amount(annual), category, savedAsAsset}`, category ∈
   essential / discretionary / **self-investment**. Line items are the **source**; essential/discretionary
   totals are the **sum of the lines** (derived). `savedAsAsset` (self-investment only): *spent* → expense,
@@ -205,7 +211,8 @@ Recorded here so the rebuild does not fork the model:
   (`usableWealthPercentiles`) alongside total; the results page shows both, so the asset-rich / cash-poor case
   (100% run out yet high "wealth left") reads correctly. Also added **`YearResult::incomeBySource`** (the
   canonical 8 sources) powering the deterministic cashflow ladder + the per-source completeness guard.
-  **Still app-side (not yet built):** delta-child what-ifs + Compare (Phase C2), 3-tier line items (Phase C1).
+  **Still app-side (not yet built):** 3-tier line items (Phase C1); the per-person longevity lever as a
+  builder what-if field (engine support exists from Phase A2).
 
 ## Known divergences (to close)
 - The DTO carries withdrawals on the DC pension; the original Scenario sketch listed

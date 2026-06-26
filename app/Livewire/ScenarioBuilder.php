@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Enums\ScenarioStatus;
+use App\Forecast\BuilderStateDelta;
 use App\Import\ImportException;
 use App\Import\ImportRegistry;
 use App\Import\ImportResult;
@@ -12,6 +13,7 @@ use App\Import\SpreadsheetReader;
 use App\Models\AssumptionSet;
 use App\Models\Scenario;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -45,6 +47,12 @@ class ScenarioBuilder extends Component
 
     /** True when editing a saved (ready) forecast — auto-save then must not clobber it. */
     public bool $editing = false;
+
+    /** True when this builder produces a delta-child what-if (creating one, or editing one). */
+    public bool $childMode = false;
+
+    /** The base plan a what-if overrides; its effective inputs pre-fill the form. */
+    public ?int $parentScenarioId = null;
 
     /** The wizard guides through these steps; the user may also jump between them freely. */
     public const STEPS = [
@@ -120,7 +128,7 @@ class ScenarioBuilder extends Component
     /** @var array<string, list<string>> what an import filled / still needs / noted */
     public array $importSummary = [];
 
-    public function mount(?Scenario $scenario = null): void
+    public function mount(?Scenario $scenario = null, bool $asChild = false): void
     {
         $this->people = [$this->blankPerson('p1')];
         $this->property = $this->blankProperty();
@@ -128,11 +136,30 @@ class ScenarioBuilder extends Component
         $this->assumptionSetId = AssumptionSet::where('is_default', true)->value('id');
 
         if ($scenario !== null && $scenario->exists) {
-            // Editing a saved forecast: owner-scoped, pre-filled from its stored form-state.
             abort_unless($scenario->user_id === auth()->id(), 403);
+
+            if ($asChild || request()->routeIs('scenarios.child')) {
+                // Creating a what-if of $scenario (the base): the form is the full builder
+                // pre-filled from the base's effective inputs, and whatever the user
+                // changes becomes the child's override on save. No draft is auto-saved.
+                $this->childMode = true;
+                $this->parentScenarioId = $scenario->id;
+                $this->loadState($scenario->effectiveBuilderState());
+                $this->name = $this->childName($scenario->name);
+                $this->step = 1;
+
+                return;
+            }
+
+            // Editing a saved forecast (a base or a what-if), pre-filled from its
+            // effective form-state (the single source of truth).
             $this->editing = true;
             $this->scenarioId = $scenario->id;
-            $this->loadState($scenario->builder_state ?? []);
+            if ($scenario->isChild()) {
+                $this->childMode = true;
+                $this->parentScenarioId = $scenario->parent_scenario_id;
+            }
+            $this->loadState($scenario->effectiveBuilderState());
 
             return;
         }
@@ -373,7 +400,10 @@ class ScenarioBuilder extends Component
      */
     public function saveDraft(): void
     {
-        if (auth()->id() === null || $this->editing) {
+        // Editing a saved forecast or building a what-if must not auto-save: an edit's
+        // changes land only on an explicit Save (gotcha D), and a what-if is a focused
+        // tweak with no draft of its own.
+        if (auth()->id() === null || $this->editing || $this->childMode) {
             return;
         }
 
@@ -440,6 +470,38 @@ class ScenarioBuilder extends Component
                 $this->{$key} = $value;
             }
         }
+
+        $this->normaliseRowIds();
+    }
+
+    /**
+     * Give every list row a stable id, backfilling any saved before ids existed, so a
+     * delta-child override can always target a row by id rather than its position
+     * (gotcha N). People keep their p1/p2 ids; assignment is idempotent.
+     */
+    private function normaliseRowIds(): void
+    {
+        foreach (['pensions', 'accounts', 'incomeStreams', 'oneOffCosts'] as $collection) {
+            foreach ($this->{$collection} as $i => $row) {
+                if (($row['id'] ?? '') === '') {
+                    $this->{$collection}[$i]['id'] = $this->newRowId();
+                }
+            }
+        }
+
+        foreach ($this->pensions as $pi => $pension) {
+            foreach ($pension['withdrawals'] ?? [] as $wi => $withdrawal) {
+                if (($withdrawal['id'] ?? '') === '') {
+                    $this->pensions[$pi]['withdrawals'][$wi]['id'] = $this->newRowId();
+                }
+            }
+        }
+    }
+
+    /** A stable, collision-free id for a freshly added list row. */
+    private function newRowId(): string
+    {
+        return (string) Str::uuid();
     }
 
     /** Everything needed to restore the builder exactly, including which step the user was on. */
@@ -537,7 +599,7 @@ class ScenarioBuilder extends Component
 
     public function addWithdrawal(int $pi): void
     {
-        $this->pensions[$pi]['withdrawals'][] = ['kind' => 'pcls', 'amount' => '', 'atAge' => ''];
+        $this->pensions[$pi]['withdrawals'][] = ['id' => $this->newRowId(), 'kind' => 'pcls', 'amount' => '', 'atAge' => ''];
     }
 
     public function removeWithdrawal(int $pi, int $wi): void
@@ -548,7 +610,7 @@ class ScenarioBuilder extends Component
 
     public function addAccount(): void
     {
-        $this->accounts[] = ['ownerId' => $this->firstPersonId(), 'type' => 'isa', 'balance' => '', 'unrealisedGain' => '', 'yield' => ''];
+        $this->accounts[] = ['id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'type' => 'isa', 'balance' => '', 'unrealisedGain' => '', 'yield' => ''];
     }
 
     public function removeAccount(int $i): void
@@ -559,7 +621,7 @@ class ScenarioBuilder extends Component
 
     public function addIncome(): void
     {
-        $this->incomeStreams[] = ['ownerId' => $this->firstPersonId(), 'type' => 'rental', 'grossAnnual' => '', 'taxable' => true, 'inflationLinked' => true, 'startAge' => '', 'endAge' => ''];
+        $this->incomeStreams[] = ['id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'type' => 'rental', 'grossAnnual' => '', 'taxable' => true, 'inflationLinked' => true, 'startAge' => '', 'endAge' => ''];
     }
 
     public function removeIncome(int $i): void
@@ -570,7 +632,7 @@ class ScenarioBuilder extends Component
 
     public function addOneOff(): void
     {
-        $this->oneOffCosts[] = ['atAge' => '', 'amount' => '', 'label' => ''];
+        $this->oneOffCosts[] = ['id' => $this->newRowId(), 'atAge' => '', 'amount' => '', 'label' => ''];
     }
 
     public function removeOneOff(int $i): void
@@ -600,9 +662,17 @@ class ScenarioBuilder extends Component
         $hadRuns = $scenario->exists && $scenario->simulationRuns()->exists();
 
         $scenario->user_id = auth()->id();
-        $scenario->fillFromBuilderState($this->builderState());
         $scenario->status = ScenarioStatus::Ready;
-        $scenario->save();
+
+        if ($this->childMode) {
+            if (! $this->persistAsChild($scenario)) {
+                return; // a structural change cannot be stored as a delta; stay put
+            }
+        } else {
+            $scenario->fillFromBuilderState($this->builderState());
+            $scenario->save();
+        }
+
         $this->scenarioId = $scenario->id;
 
         // Editing changed the inputs, so any earlier run is now from stale inputs — drop it
@@ -611,11 +681,74 @@ class ScenarioBuilder extends Component
             $scenario->simulationRuns()->delete();
         }
 
+        // A base edit changes every child's effective inputs too: refresh their projected
+        // columns and drop their now-stale runs, so the base stays the single source.
+        $this->refreshChildren($scenario);
+
         session()->flash('status', $this->editing
             ? 'Forecast updated. Run it again to refresh the results.'
             : 'Forecast saved. Run it to see the results.');
 
         return redirect()->route('scenarios.results', $scenario);
+    }
+
+    /**
+     * Persist $scenario as a delta-child of its base: store only the overrides (the
+     * leaves the user changed against the base's effective inputs), never a full copy.
+     * Returns false — leaving the form intact with an error — when the user added or
+     * removed a list row, which a delta cannot represent without forking the base.
+     */
+    private function persistAsChild(Scenario $scenario): bool
+    {
+        $base = Scenario::where('user_id', auth()->id())->findOrFail($this->parentScenarioId);
+        // The step is UI position only — never part of a what-if's delta, so strip it
+        // from both sides (a child has no draft of its own to resume onto a step).
+        $effectiveBase = $this->withoutEphemeral($base->effectiveBuilderState());
+        $edited = $this->withoutEphemeral($this->builderState());
+
+        if (BuilderStateDelta::structurallyDiffers($effectiveBase, $edited)) {
+            $this->addError('childStructure', 'A what-if only changes values on your base plan. To add or remove a person, pension, account or income, edit the base plan itself or start a new forecast.');
+            $this->dispatch('validation-failed');
+
+            return false;
+        }
+
+        $scenario->parent_scenario_id = $base->id;
+        $scenario->overrides = BuilderStateDelta::diff($effectiveBase, $edited);
+        $scenario->builder_state = [];
+        $scenario->projectFrom($edited);
+        $scenario->save();
+
+        return true;
+    }
+
+    /** Refresh each child's projected columns from its (now-changed) effective state and drop its stale runs. */
+    private function refreshChildren(Scenario $scenario): void
+    {
+        foreach ($scenario->children()->get() as $child) {
+            $child->projectFrom($child->effectiveBuilderState())->save();
+            $child->simulationRuns()->delete();
+        }
+    }
+
+    /** A sensible default name for a new what-if, derived from its base. */
+    private function childName(string $baseName): string
+    {
+        return trim($baseName) === '' ? 'What-if' : "{$baseName} — what-if";
+    }
+
+    /**
+     * Form-state with UI-only keys removed, so a what-if's delta carries forecast
+     * inputs alone (the step a base happened to be saved on is not an override).
+     *
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>
+     */
+    private function withoutEphemeral(array $state): array
+    {
+        unset($state['step']);
+
+        return $state;
     }
 
     public function render(): View
@@ -684,7 +817,7 @@ class ScenarioBuilder extends Component
     private function blankPension(string $subtype): array
     {
         return [
-            'ownerId' => $this->firstPersonId(), 'subtype' => $subtype, 'level' => 'amount',
+            'id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'subtype' => $subtype, 'level' => 'amount',
             'currentValue' => '', 'ongoingContribution' => '', 'employerContribution' => '',
             'earliestAccessAge' => '57', 'pclsTakenToDate' => '', 'growthAssumptionOverride' => '', 'withdrawals' => [],
             'accruedAnnualPension' => '', 'normalRetirementAge' => '65', 'revaluationBasis' => 'cpi',

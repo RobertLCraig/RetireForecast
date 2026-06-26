@@ -257,6 +257,13 @@ draft mechanism folds into `builder_state`.
   via **one merge function** (+ round-trip test). **List items (expense lines, pensions, accounts) gain
   stable IDs** so overrides target the right row. **Compare** reuses the variant side-by-side rendering.
   On edit-save, **invalidate stale runs/results**.
+  - ✅ **BUILT — edit (Phase B, 2026-06-25); clone/compare (Phase C2, 2026-06-26).** Children store
+    `parent_scenario_id` + an encrypted `overrides` delta; the merge fn is `App\Forecast\BuilderStateDelta`
+    (id-aware, round-trip + structural-guard tested); list rows carry stable ids; the builder's child mode
+    diffs the edited form to the delta and refuses a structural add/remove; a base edit propagates to its
+    children; `ScenarioCompare` shows base + children on their deterministic projection. **v1 boundary:** a
+    child overrides values only (structural row changes go to the base). Longevity-as-a-builder-field is a
+    C1 fast-follow (engine support exists from A2).
 
 **2. Budget line items + the two cheap sector payoffs.**
 - Line items `{id, label, amount(annual), category, savedAsAsset}` become the **source of truth**,

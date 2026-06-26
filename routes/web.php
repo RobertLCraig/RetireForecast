@@ -5,6 +5,7 @@ use App\Http\Controllers\DisclaimerController;
 use App\Http\Middleware\EnsureDisclaimerAcknowledged;
 use App\Livewire\Dashboard;
 use App\Livewire\ScenarioBuilder;
+use App\Livewire\ScenarioCompare;
 use App\Livewire\ScenarioResults;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +35,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard', Dashboard::class)->name('dashboard');
         Route::get('/scenarios/create', ScenarioBuilder::class)->name('scenarios.create');
         Route::get('/scenarios/{scenario}/edit', ScenarioBuilder::class)->name('scenarios.edit');
+        Route::get('/scenarios/{scenario}/child', ScenarioBuilder::class)->name('scenarios.child');
+        Route::get('/scenarios/{scenario}/compare', ScenarioCompare::class)->name('scenarios.compare');
         Route::get('/scenarios/{scenario}/results', ScenarioResults::class)->name('scenarios.results');
     });
 });

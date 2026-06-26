@@ -21,12 +21,20 @@ use Livewire\Component;
 #[Layout('components.layouts.app')]
 class Dashboard extends Component
 {
-    /** @return Collection<int, Scenario> the user's saved (ready) forecasts, newest first */
+    /**
+     * The user's saved (ready) base forecasts, newest first, each with its delta-child
+     * what-ifs nested under it. Children are not listed at the top level — they belong
+     * to their base (Phase C2).
+     *
+     * @return Collection<int, Scenario>
+     */
     public function scenarios(): Collection
     {
         return auth()->user()
             ->scenarios()
             ->where('status', ScenarioStatus::Ready)
+            ->whereNull('parent_scenario_id')
+            ->with(['children' => fn ($q) => $q->where('status', ScenarioStatus::Ready)->latest()])
             ->latest()
             ->get();
     }

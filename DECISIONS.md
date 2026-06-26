@@ -91,8 +91,17 @@ build order in docs/PLAN.md "Sector-informed build plan (2026-06-25)". [[2026-06
 truth, the engine DTOs are derived from it (no reverse-mapper), structural columns are a projection, and a
 saved forecast is editable in place (owner-scoped update-or-create that invalidates stale runs); the
 `households`/`scenario_drafts` tables + their models/mappers are dropped (the draft is a `draft`-status
-scenario). **Still pending: the delta-child what-ifs + Compare (Phase C2)** and the stable list-item IDs
-they need.
+scenario). **Phase C2 BUILT (2026-06-26):** a child holds `parent_scenario_id` + an encrypted `overrides`
+delta (no `builder_state`); the one merge fn is `App\Forecast\BuilderStateDelta` (`diff`/`merge`/`orphans`/
+`structurallyDiffers`, round-trip + id-stability tested), resolved by `Scenario::effectiveBuilderState()`.
+**List rows gained stable ids** (people kept p1/p2). The builder's child mode pre-fills from the base and
+saves only the delta; a **structural add/remove is refused** (a delta cannot fork the base — gotcha N), a
+**base edit propagates** to children (refresh + drop their stale runs), and a base delete **cascades**.
+**Compare** runs base + children on their deterministic projection, side by side, never ranked. **v1
+boundary recorded:** a child overrides *values* only; adding/removing a person/pension/account belongs to
+the base or a new forecast (keeps the delta honest, no fork). The per-person longevity lever is wired into
+the engine already (Phase A2); surfacing it as a builder what-if field is a C1 fast-follow (the merge
+handles it for free).
 
 ## 2026-06-25 — Expenditure: 3-tier line items (essential / discretionary / self-investment) + spent-vs-saved
 **Decision:** Replace the flat essential/discretionary totals with **line items as the source of truth**:

@@ -13,15 +13,30 @@
     x-on:step-changed.window="$nextTick(() => $refs.stepHeading?.focus())"
     x-on:validation-failed.window="$nextTick(() => $refs.errorSummary?.focus())">
     <div>
-        <h1 class="text-2xl font-semibold text-gray-900">New forecast</h1>
+        <h1 class="text-2xl font-semibold text-gray-900">
+            @if ($childMode){{ $editing ? 'Edit what-if' : 'Create a what-if' }}@elseif ($editing)Edit forecast@else New forecast @endif
+        </h1>
         <p class="mt-1 text-sm text-gray-600">
-            Enter the household and the housing decision to compare. Figures are stored encrypted and private to your
-            account. This tool illustrates consequences; it does not recommend a course of action.
+            @if ($childMode)
+                This is a what-if of your base plan, pre-filled from it. Change the values you want to test —
+                anything you leave alone tracks the base plan. Saving stores only your changes.
+            @else
+                Enter the household and the housing decision to compare. Figures are stored encrypted and private to your
+                account. This tool illustrates consequences; it does not recommend a course of action.
+            @endif
         </p>
     </div>
 
+    @error('childStructure')
+        <div role="alert" class="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {{ $message }}
+        </div>
+    @enderror
+
     {{-- Optional: pre-fill from a budget spreadsheet. Sits outside the form so the file
-         input never triggers a save; the file is read once and not stored. --}}
+         input never triggers a save; the file is read once and not stored. Only for a
+         fresh forecast — a what-if or an edit starts from existing inputs. --}}
+    @unless ($childMode || $editing)
     <details open class="rounded-lg border-2 border-blue-200 bg-blue-50 p-5">
         <summary class="cursor-pointer text-lg font-semibold text-blue-900">⬆ Import from a spreadsheet (optional) — start here if you have one</summary>
         <div class="mt-4 space-y-3">
@@ -80,6 +95,7 @@
             @endif
         </div>
     </details>
+    @endunless
 
     {{-- Step navigation. Jump to any step freely, or move with Back / Next below. --}}
     <nav aria-label="Forecast steps">

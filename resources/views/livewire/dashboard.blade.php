@@ -22,21 +22,39 @@
             <a href="{{ route('scenarios.create') }}" class="mt-4 inline-block rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Build your first forecast</a>
         </div>
     @else
-        <ul class="mt-6 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+        <ul class="mt-6 space-y-4">
             @foreach ($scenarios as $scenario)
-                <li class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
-                    <a href="{{ route('scenarios.results', $scenario) }}" class="min-w-0 flex-1">
-                        <p class="font-medium text-gray-900">{{ $scenario->name }}</p>
-                        <p class="text-sm text-gray-500">
-                            {{ $scenario->householdName() }} · base tax year {{ $scenario->base_tax_year }}
-                        </p>
-                    </a>
-                    <div class="ml-4 flex items-center gap-3">
-                        <a href="{{ route('scenarios.edit', $scenario) }}" class="text-sm font-medium text-blue-600 hover:text-blue-700">Edit</a>
-                        <a href="{{ route('scenarios.results', $scenario) }}" class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-                            {{ ucfirst($scenario->status->value) }}
+                <li class="rounded-lg border border-gray-200 bg-white">
+                    <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+                        <a href="{{ route('scenarios.results', $scenario) }}" class="min-w-0 flex-1">
+                            <p class="font-medium text-gray-900">{{ $scenario->name }}</p>
+                            <p class="text-sm text-gray-500">
+                                {{ $scenario->householdName() }} · base tax year {{ $scenario->base_tax_year }}
+                            </p>
                         </a>
+                        <div class="ml-4 flex items-center gap-3 text-sm font-medium text-blue-600">
+                            <a href="{{ route('scenarios.child', $scenario) }}" class="hover:text-blue-700">Create what-if</a>
+                            @if ($scenario->children->isNotEmpty())
+                                <a href="{{ route('scenarios.compare', $scenario) }}" class="hover:text-blue-700">Compare</a>
+                            @endif
+                            <a href="{{ route('scenarios.edit', $scenario) }}" class="hover:text-blue-700">Edit</a>
+                        </div>
                     </div>
+
+                    @if ($scenario->children->isNotEmpty())
+                        <ul class="border-t border-gray-100 bg-gray-50/60">
+                            @foreach ($scenario->children as $child)
+                                <li class="flex items-center justify-between px-4 py-2 pl-8">
+                                    <a href="{{ route('scenarios.results', $child) }}" class="min-w-0 flex-1">
+                                        <p class="text-sm text-gray-700">
+                                            <span class="text-gray-400">↳ what-if:</span> {{ $child->name }}
+                                        </p>
+                                    </a>
+                                    <a href="{{ route('scenarios.edit', $child) }}" class="ml-4 text-sm font-medium text-blue-600 hover:text-blue-700">Edit</a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
                 </li>
             @endforeach
         </ul>
