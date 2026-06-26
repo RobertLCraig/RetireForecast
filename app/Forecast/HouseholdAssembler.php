@@ -59,9 +59,9 @@ final class HouseholdAssembler
             name: (string) $state['householdName'],
             region: RegionProfile::from($state['region']),
             persons: array_map($this->person(...), $state['people'] ?? []),
-            expenseProfile: $this->expenseProfile($state['expense'] ?? [], $state['oneOffCosts'] ?? []),
+            expenseProfile: $this->expenseProfile($state),
             pensions: array_map($this->pension(...), $state['pensions'] ?? []),
-            accounts: array_map($this->account(...), $state['accounts'] ?? []),
+            accounts: $this->accounts($state),
             incomeStreams: array_map($this->incomeStream(...), $state['incomeStreams'] ?? []),
             primaryResidence: ($state['hasProperty'] ?? false) ? $this->property($state['property'] ?? []) : null,
         );
@@ -94,18 +94,108 @@ final class HouseholdAssembler
         );
     }
 
-    private function expenseProfile(array $e, array $oneOffs): ExpenseProfile
+    /**
+     * The household's spending. With Phase C1, the **line items are the source**: the
+     * essential and discretionary annual totals are the *sum of the lines* (no stored
+     * total to drift). Spending self-investment (courses, books — `savedAsAsset` false)
+     * is consumption, so it folds into discretionary; saved self-investment is not
+     * spend at all (it builds net worth — see {@see accounts()}). A scenario predating
+     * line items (none present) falls back to the flat essential/discretionary totals.
+     */
+    private function expenseProfile(array $state): ExpenseProfile
     {
+        $e = $state['expense'] ?? [];
+        [$essential, $discretionary] = $this->essentialAndDiscretionary($state);
+
         return new ExpenseProfile(
-            essentialAnnualSpend: $this->moneyRequired($e['essential'] ?? null),
-            discretionaryAnnualSpend: $this->money($e['discretionary'] ?? null) ?? Money::zero(),
+            essentialAnnualSpend: $essential,
+            discretionaryAnnualSpend: $discretionary,
             survivorSpendFactor: $this->percent($e['survivorFactor'] ?? null) ?? Percent::fromPercent(70),
             oneOffCosts: array_map(fn (array $c): array => [
                 'atAge' => (int) $c['atAge'],
                 'amount' => $this->moneyRequired($c['amount'] ?? null),
                 'label' => (string) ($c['label'] ?? ''),
-            ], $oneOffs),
+            ], $state['oneOffCosts'] ?? []),
         );
+    }
+
+    /**
+     * The essential floor and the discretionary spend on top, derived from the 3-tier
+     * line items when present (essential = sum of essential lines; discretionary = sum
+     * of discretionary lines + *spent* self-investment), else from the legacy flat
+     * totals.
+     *
+     * @param  array<string, mixed>  $state
+     * @return array{0: Money, 1: Money}
+     */
+    private function essentialAndDiscretionary(array $state): array
+    {
+        $lines = $state['expenseLines'] ?? [];
+        if ($lines === []) {
+            $e = $state['expense'] ?? [];
+
+            return [
+                $this->moneyRequired($e['essential'] ?? null),
+                $this->money($e['discretionary'] ?? null) ?? Money::zero(),
+            ];
+        }
+
+        $essential = $this->sumLines($lines, fn (array $l): bool => ($l['category'] ?? '') === 'essential');
+        $discretionary = $this->sumLines($lines, fn (array $l): bool => ($l['category'] ?? '') === 'discretionary'
+            || (($l['category'] ?? '') === 'self_investment' && ! ($l['savedAsAsset'] ?? false)));
+
+        return [$essential, $discretionary];
+    }
+
+    /**
+     * The household's accounts, plus — when there is *saved* self-investment (a
+     * self-investment line flagged `savedAsAsset`) — a synthetic ISA whose ongoing
+     * contributions are that saved amount. One home per pound: the saved line **is**
+     * the contribution (funded from surplus, growing net worth), never also an account
+     * balance, so it is counted once (gotcha O).
+     *
+     * @param  array<string, mixed>  $state
+     * @return list<Account>
+     */
+    private function accounts(array $state): array
+    {
+        $accounts = array_map($this->account(...), $state['accounts'] ?? []);
+
+        $saved = $this->sumLines(
+            $state['expenseLines'] ?? [],
+            fn (array $l): bool => ($l['category'] ?? '') === 'self_investment' && ($l['savedAsAsset'] ?? false),
+        );
+
+        if ($saved->isPositive()) {
+            $accounts[] = new Account(
+                ownerId: (string) ($state['people'][0]['id'] ?? 'p1'),
+                type: AccountType::Isa,
+                balance: Money::zero(),
+                unrealisedGain: null,
+                yield: null,
+                ongoingContributions: $saved,
+            );
+        }
+
+        return $accounts;
+    }
+
+    /**
+     * Sum the (exact-pence) amounts of the expense lines matching $predicate.
+     *
+     * @param  list<array<string, mixed>>  $lines
+     * @param  callable(array<string, mixed>): bool  $predicate
+     */
+    private function sumLines(array $lines, callable $predicate): Money
+    {
+        $pence = 0;
+        foreach ($lines as $line) {
+            if ($predicate($line)) {
+                $pence += $this->toPence((string) ($line['amount'] ?? '0'));
+            }
+        }
+
+        return Money::fromPence($pence);
     }
 
     private function pension(array $p): DcPension|DbPension|StatePensionEntitlement

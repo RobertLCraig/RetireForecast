@@ -537,22 +537,64 @@
         {{-- Step 4: Spending -------------------------------------------------------- --}}
         @if ($step === 4)
             <fieldset class="{{ $section }}">
-                <legend class="{{ $legend }}">Spending</legend>
-                <div class="mt-4 grid gap-4 sm:grid-cols-3">
-                    <div>
-                        <label for="expense-essential" class="{{ $label }}">Essential spend (£/yr)</label>
-                        <input id="expense-essential" type="text" inputmode="decimal" wire:model="expense.essential" class="{{ $field }}" @error('expense.essential') aria-invalid="true" aria-describedby="expense-essential-error" @enderror>
-                        <p class="mt-1 text-xs text-gray-500">The floor used for the "essentials always met" measure.</p>
-                        @error('expense.essential') <p id="expense-essential-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label for="expense-discretionary" class="{{ $label }}">Discretionary spend (£/yr)</label>
-                        <input id="expense-discretionary" type="text" inputmode="decimal" wire:model="expense.discretionary" class="{{ $field }}">
-                    </div>
-                    <div>
-                        <label for="expense-survivorFactor" class="{{ $label }}">Survivor spend (% of couple's)</label>
-                        <input id="expense-survivorFactor" type="text" inputmode="decimal" wire:model="expense.survivorFactor" class="{{ $field }}">
-                    </div>
+                <legend class="{{ $legend }}">Spending — your yearly budget</legend>
+                <p class="mt-1 text-sm text-gray-600">
+                    List what you spend each year as lines, and tag each one: <strong>essential</strong> (needs — the
+                    floor used for the "essentials always met" measure), <strong>discretionary</strong> (wants you
+                    could trim), or <strong>self-investment</strong> (learning, courses, savings plans). The three
+                    tiers are a way to see where your money goes, not a target to hit.
+                </p>
+
+                @error('expenseLines') <p class="mt-2 text-sm text-red-700">{{ $message }}</p> @enderror
+
+                <div class="mt-4 space-y-2">
+                    @foreach ($expenseLines as $i => $line)
+                        <div wire:key="expline-{{ $line['id'] ?? $i }}" class="grid items-end gap-2 sm:grid-cols-12">
+                            <div class="sm:col-span-5">
+                                <label for="expenseLines-{{ $i }}-label" class="text-xs text-gray-600">Description</label>
+                                <input id="expenseLines-{{ $i }}-label" type="text" wire:model="expenseLines.{{ $i }}.label" placeholder="e.g. Council tax" class="{{ $field }}">
+                            </div>
+                            <div class="sm:col-span-3">
+                                <label for="expenseLines-{{ $i }}-amount" class="text-xs text-gray-600">£ / year</label>
+                                <input id="expenseLines-{{ $i }}-amount" type="text" inputmode="decimal" wire:model="expenseLines.{{ $i }}.amount" class="{{ $field }}" @error('expenseLines.'.$i.'.amount') aria-invalid="true" @enderror>
+                                @error('expenseLines.'.$i.'.amount') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                            </div>
+                            <div class="sm:col-span-3">
+                                <label for="expenseLines-{{ $i }}-category" class="text-xs text-gray-600">Tier</label>
+                                <select id="expenseLines-{{ $i }}-category" wire:model="expenseLines.{{ $i }}.category" class="{{ $field }}">
+                                    <option value="essential">Essential</option>
+                                    <option value="discretionary">Discretionary</option>
+                                    <option value="self_investment">Self-investment</option>
+                                </select>
+                            </div>
+                            <button type="button" wire:click="removeExpenseLine({{ $i }})" class="mb-2 text-sm text-red-700 underline sm:col-span-1">Remove</button>
+
+                            @if (($line['category'] ?? '') === 'self_investment')
+                                <label class="flex items-center gap-2 text-xs text-gray-700 sm:col-span-12">
+                                    <input type="checkbox" wire:model="expenseLines.{{ $i }}.savedAsAsset">
+                                    This is <strong>saved</strong> (builds your net worth) rather than spent — counted as a contribution, not as spending.
+                                </label>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <button type="button" wire:click="addExpenseLine('essential')" class="rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100">+ Essential</button>
+                    <button type="button" wire:click="addExpenseLine('discretionary')" class="rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100">+ Discretionary</button>
+                    <button type="button" wire:click="addExpenseLine('self_investment')" class="rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100">+ Self-investment</button>
+                </div>
+
+                <dl class="mt-4 grid gap-3 rounded-md bg-gray-50 p-3 text-sm sm:grid-cols-4" aria-live="polite">
+                    <div><dt class="text-gray-500">Essential / yr</dt><dd class="font-semibold tabular-nums">£{{ number_format($expenseTotals['essential']) }}</dd></div>
+                    <div><dt class="text-gray-500">Discretionary / yr</dt><dd class="font-semibold tabular-nums">£{{ number_format($expenseTotals['discretionary']) }}</dd></div>
+                    <div><dt class="text-gray-500">Self-investment saved / yr</dt><dd class="font-semibold tabular-nums">£{{ number_format($expenseTotals['saved']) }}</dd></div>
+                    <div><dt class="text-gray-500">Total spend / yr</dt><dd class="font-semibold tabular-nums">£{{ number_format($expenseTotals['total']) }}</dd></div>
+                </dl>
+
+                <div class="mt-5 sm:max-w-xs">
+                    <label for="expense-survivorFactor" class="{{ $label }}">Survivor spend (% of couple's)</label>
+                    <input id="expense-survivorFactor" type="text" inputmode="decimal" wire:model="expense.survivorFactor" class="{{ $field }}">
                 </div>
 
                 <p class="{{ $label }} mt-5 mb-2">One-off costs</p>

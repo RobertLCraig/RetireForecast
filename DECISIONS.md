@@ -122,7 +122,16 @@ reduces wealth, saved is retained + grows) and **double-count-safe**. The split 
 not a fixed percentage** (50/30/20 vs 60/20/20 vary everywhere, and a prescribed target reads as advice →
 trips the lint). Importers populate the lines (the IWT profile already routes Fixed→essential,
 Guilt-Free→discretionary, Investments+Savings→saved). [[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
-**Status:** active
+**Status:** active — **CORE BUILT (2026-06-26, Phase C1):** `builder_state.expenseLines` (`{id, label,
+amount, category, savedAsAsset}`) is the source; the `HouseholdAssembler` derives essential (Σ essential) and
+discretionary (Σ discretionary + *spent* self-investment), and a *saved* self-investment line becomes a
+balance-zero contributing ISA (`ongoingContributions`, applied from surplus by the existing engine —
+**no engine change needed**), counted once (one home per pound). Flat totals dropped when lines exist;
+legacy/imported scenarios seed lines from their flat totals on load. Reconciliation + completeness tested
+(`ExpenseLineReconciliationTest`). **Implementation note:** the saved line is a synthetic ISA (a designated
+single home for the saved amount), not a user-named wrapper — revisit if a real wrapper choice is wanted.
+**Deferred (C1 fast-follow):** the results 3-tier display, the income-floor readout, importers emitting real
+lines (they still emit flat totals → seeded into 2 generic lines), and the PLSA benchmark.
 
 ## 2026-06-25 — Per-person longevity / health adjustment (new engine input)
 **Decision:** Add a **per-person longevity adjustment** so a what-if can model someone not expected to

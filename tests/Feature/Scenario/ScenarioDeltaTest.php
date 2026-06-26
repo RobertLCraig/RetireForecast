@@ -28,15 +28,15 @@ class ScenarioDeltaTest extends TestCase
         $child = new Scenario;
         $child->user_id = $user->id;
         $child->parent_scenario_id = $base->id;
-        $child->overrides = ['expense.essential' => '31000', 'name' => 'Higher essentials'];
+        $child->overrides = ['expenseLines.ess1.amount' => '31000', 'name' => 'Higher essentials'];
         $child->builder_state = [];
         $child->projectFrom($child->effectiveBuilderState());
         $child->save();
 
         $effective = $child->fresh()->effectiveBuilderState();
-        $this->assertSame('31000', $effective['expense']['essential']);
-        // Everything not overridden tracks the base.
-        $this->assertSame($base->builder_state['expense']['discretionary'], $effective['expense']['discretionary']);
+        // The override re-points the essential expense line (by id); everything else tracks the base.
+        $this->assertSame('31000', collect($effective['expenseLines'])->firstWhere('id', 'ess1')['amount']);
+        $this->assertSame('12500', collect($effective['expenseLines'])->firstWhere('id', 'disc1')['amount']);
         // The clear column is projected from the effective state (the child's own name).
         $this->assertSame('Higher essentials', $child->fresh()->name);
     }
@@ -49,7 +49,7 @@ class ScenarioDeltaTest extends TestCase
         $child = new Scenario;
         $child->user_id = $user->id;
         $child->parent_scenario_id = $base->id;
-        $child->overrides = ['expense.essential' => '31000'];
+        $child->overrides = ['expenseLines.ess1.amount' => '31000'];
         $child->builder_state = [];
         $child->projectFrom($child->effectiveBuilderState());
         $child->save();

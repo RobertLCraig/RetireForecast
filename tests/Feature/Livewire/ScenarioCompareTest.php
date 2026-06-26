@@ -41,7 +41,7 @@ class ScenarioCompareTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
         $base = ScenarioFixture::rich($user);
-        $this->childOf($base, $user, ['expense.essential' => '60000'], 'Spend more');
+        $this->childOf($base, $user, ['expenseLines.ess1.amount' => '60000'], 'Spend more');
 
         Livewire::test(ScenarioCompare::class, ['scenario' => $base])
             ->assertSee('Buy-vs-rent')   // the base name
@@ -55,7 +55,7 @@ class ScenarioCompareTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
         $base = ScenarioFixture::rich($user);
-        $child = $this->childOf($base, $user, ['expense.essential' => '90000'], 'Much higher spend');
+        $child = $this->childOf($base, $user, ['expenseLines.ess1.amount' => '90000'], 'Much higher spend');
 
         Livewire::test(ScenarioCompare::class, ['scenario' => $base])
             ->assertViewHas('plans', function ($plans) {
@@ -74,7 +74,7 @@ class ScenarioCompareTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
         $base = ScenarioFixture::rich($user);
-        $child = $this->childOf($base, $user, ['expense.essential' => '60000'], 'A what-if');
+        $child = $this->childOf($base, $user, ['expenseLines.ess1.amount' => '60000'], 'A what-if');
 
         Livewire::test(ScenarioCompare::class, ['scenario' => $child])
             ->assertSet('base.id', $base->id);

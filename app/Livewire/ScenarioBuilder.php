@@ -69,7 +69,7 @@ class ScenarioBuilder extends Component
         'variant' => 1, 'assumptionSetId' => 1, 'ihtModelled' => 1, 'people' => 1,
         'pensions' => 2, 'incomeStreams' => 2,
         'accounts' => 3, 'property' => 3, 'hasProperty' => 3,
-        'expense' => 4, 'oneOffCosts' => 4,
+        'expense' => 4, 'expenseLines' => 4, 'oneOffCosts' => 4,
         'housing' => 5,
     ];
 
@@ -92,8 +92,17 @@ class ScenarioBuilder extends Component
     /** @var list<array<string, mixed>> */
     public array $people = [];
 
-    /** @var array<string, mixed> */
+    /** @var array<string, mixed> Holds the survivor factor; essential/discretionary are derived from the lines now. */
     public array $expense = ['essential' => '', 'discretionary' => '', 'survivorFactor' => '70'];
+
+    /**
+     * The 3-tier spending lines — the source of truth for spend (Phase C1). Each:
+     * {id, label, amount (annual £), category ∈ essential|discretionary|self_investment,
+     * savedAsAsset (self-investment only — true = builds net worth, not spend)}.
+     *
+     * @var list<array<string, mixed>>
+     */
+    public array $expenseLines = [];
 
     /** @var list<array<string, mixed>> */
     public array $oneOffCosts = [];
@@ -192,9 +201,15 @@ class ScenarioBuilder extends Component
             'people.*.plannedRetirementAge' => ['nullable', 'integer', 'min:50', 'max:80'],
             'people.*.niCategory' => ['nullable', 'string', 'max:2'],
 
-            'expense.essential' => $moneyReq,
-            'expense.discretionary' => $money,
             'expense.survivorFactor' => ['nullable', 'numeric', 'min:0', 'max:100'],
+
+            // Spending is entered as 3-tier line items (the source of truth); the
+            // essential/discretionary totals are derived from them, never stored apart.
+            'expenseLines' => ['required', 'array', 'min:1'],
+            'expenseLines.*.label' => ['nullable', 'string', 'max:255'],
+            'expenseLines.*.amount' => $moneyReq,
+            'expenseLines.*.category' => ['required', Rule::in(['essential', 'discretionary', 'self_investment'])],
+            'expenseLines.*.savedAsAsset' => ['boolean'],
 
             'oneOffCosts.*.atAge' => ['required', 'integer', 'min:0', 'max:110'],
             'oneOffCosts.*.amount' => $moneyReq,
@@ -360,6 +375,10 @@ class ScenarioBuilder extends Component
     {
         if ($result->expense !== []) {
             $this->expense = array_merge($this->expense, $result->expense);
+            // Imports still arrive as essential/discretionary totals; turn them into the
+            // 3-tier lines the builder now edits (line-item population is a fast-follow).
+            $this->expenseLines = [];
+            $this->seedExpenseLinesFromFlat();
         }
 
         if ($result->salaryAnnual !== null && isset($this->people[0])) {
@@ -472,6 +491,29 @@ class ScenarioBuilder extends Component
         }
 
         $this->normaliseRowIds();
+        $this->seedExpenseLinesFromFlat();
+    }
+
+    /**
+     * Backfill 3-tier spending lines from the legacy flat essential/discretionary totals
+     * for a scenario saved before line items existed (or just imported as totals), so it
+     * opens in the new line-item editor with nothing lost. No-op once lines are present.
+     */
+    private function seedExpenseLinesFromFlat(): void
+    {
+        if ($this->expenseLines !== []) {
+            return;
+        }
+
+        $seeded = [];
+        foreach (['essential' => 'Essential spending', 'discretionary' => 'Discretionary spending'] as $category => $label) {
+            $amount = $this->expense[$category] ?? '';
+            if ($amount !== '' && $amount !== null) {
+                $seeded[] = ['id' => $this->newRowId(), 'label' => $label, 'amount' => (string) $amount, 'category' => $category, 'savedAsAsset' => false];
+            }
+        }
+
+        $this->expenseLines = $seeded;
     }
 
     /**
@@ -481,7 +523,7 @@ class ScenarioBuilder extends Component
      */
     private function normaliseRowIds(): void
     {
-        foreach (['pensions', 'accounts', 'incomeStreams', 'oneOffCosts'] as $collection) {
+        foreach (['pensions', 'accounts', 'incomeStreams', 'oneOffCosts', 'expenseLines'] as $collection) {
             foreach ($this->{$collection} as $i => $row) {
                 if (($row['id'] ?? '') === '') {
                     $this->{$collection}[$i]['id'] = $this->newRowId();
@@ -507,6 +549,15 @@ class ScenarioBuilder extends Component
     /** Everything needed to restore the builder exactly, including which step the user was on. */
     private function builderState(): array
     {
+        // When line items are present they are the sole source of spend; clear the flat
+        // essential/discretionary so no stale total is stored beside them (one home per
+        // figure). The survivor factor stays — it is not a line.
+        $expense = $this->expense;
+        if ($this->expenseLines !== []) {
+            $expense['essential'] = '';
+            $expense['discretionary'] = '';
+        }
+
         return [
             'step' => $this->step,
             'name' => $this->name,
@@ -517,7 +568,8 @@ class ScenarioBuilder extends Component
             'ihtModelled' => $this->ihtModelled,
             'assumptionSetId' => $this->assumptionSetId,
             'people' => $this->people,
-            'expense' => $this->expense,
+            'expense' => $expense,
+            'expenseLines' => $this->expenseLines,
             'oneOffCosts' => $this->oneOffCosts,
             'pensions' => $this->pensions,
             'accounts' => $this->accounts,
@@ -628,6 +680,57 @@ class ScenarioBuilder extends Component
     {
         unset($this->incomeStreams[$i]);
         $this->incomeStreams = array_values($this->incomeStreams);
+    }
+
+    /**
+     * Live tier subtotals for the Spending step, derived from the lines for display
+     * (the authoritative exact-pence derivation lives in {@see HouseholdAssembler}).
+     * Essential = essential lines; discretionary = discretionary + *spent* self-
+     * investment; saved = *saved* self-investment (a contribution, not spend).
+     *
+     * @return array{essential: float, discretionary: float, saved: float, total: float}
+     */
+    private function expenseTotals(): array
+    {
+        $sum = function (string $category, ?bool $saved = null): float {
+            $total = 0.0;
+            foreach ($this->expenseLines as $line) {
+                if (($line['category'] ?? '') !== $category) {
+                    continue;
+                }
+                if ($saved !== null && (bool) ($line['savedAsAsset'] ?? false) !== $saved) {
+                    continue;
+                }
+                $total += (float) ($line['amount'] ?? 0);
+            }
+
+            return $total;
+        };
+
+        $essential = $sum('essential');
+        $discretionary = $sum('discretionary') + $sum('self_investment', false);
+
+        return [
+            'essential' => $essential,
+            'discretionary' => $discretionary,
+            'saved' => $sum('self_investment', true),
+            'total' => $essential + $discretionary,
+        ];
+    }
+
+    public function addExpenseLine(string $category = 'essential'): void
+    {
+        $this->expenseLines[] = [
+            'id' => $this->newRowId(), 'label' => '', 'amount' => '',
+            'category' => in_array($category, ['essential', 'discretionary', 'self_investment'], true) ? $category : 'essential',
+            'savedAsAsset' => false,
+        ];
+    }
+
+    public function removeExpenseLine(int $i): void
+    {
+        unset($this->expenseLines[$i]);
+        $this->expenseLines = array_values($this->expenseLines);
     }
 
     public function addOneOff(): void
@@ -756,6 +859,7 @@ class ScenarioBuilder extends Component
         return view('livewire.scenario-builder', [
             'assumptionSets' => AssumptionSet::orderByDesc('is_default')->orderBy('name')->get(['id', 'name']),
             'steps' => self::STEPS,
+            'expenseTotals' => $this->expenseTotals(),
             'importProfiles' => array_map(static fn ($p): array => [
                 'key' => $p->key(),
                 'label' => $p->label(),

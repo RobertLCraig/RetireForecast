@@ -66,7 +66,7 @@ class ScenarioEditTest extends TestCase
         $this->assertSame(1, $scenario->simulationRuns()->count());
 
         Livewire::test(ScenarioBuilder::class, ['scenario' => $scenario])
-            ->set('expense.essential', '31000')
+            ->set('expenseLines.0.amount', '31000') // the essential line
             ->call('save');
 
         // The earlier run (and its results) are gone — the inputs it ran on no longer hold.

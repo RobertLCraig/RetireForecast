@@ -266,6 +266,13 @@ draft mechanism folds into `builder_state`.
     C1 fast-follow (engine support exists from A2).
 
 **2. Budget line items + the two cheap sector payoffs.**
+- ✅ **CORE BUILT (Phase C1, 2026-06-26):** line items are the source of truth (`builder_state.expenseLines`);
+  the `HouseholdAssembler` derives essential/discretionary (spent self-investment → discretionary) and a saved
+  self-investment line → a balance-zero contributing ISA (one home per pound) — **no engine change needed**
+  (the contribution machinery already existed from Phase A1). Flat totals dropped when lines exist; legacy/
+  imported scenarios seed lines from flat totals. Reconciliation + completeness tested. **Fast-follow:** the
+  results 3-tier display, the income-floor readout, PLSA benchmark, and importers emitting real lines (they
+  still emit flat totals → seeded into 2 generic lines; extend the import golden fixtures then).
 - Line items `{id, label, amount(annual), category, savedAsAsset}` become the **source of truth**,
   category ∈ **essential / discretionary / self-investment**; essential/discretionary **totals = the sum
   of the lines** (reconciliation discipline). **Self-investment** carries `savedAsAsset`: *spent*

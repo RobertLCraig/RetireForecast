@@ -49,14 +49,14 @@ class ScenarioChildTest extends TestCase
 
         Livewire::test(ScenarioBuilder::class, ['scenario' => $base, 'asChild' => true])
             ->set('name', 'Higher essentials')
-            ->set('expense.essential', '31000')
+            ->set('expenseLines.0.amount', '31000') // the essential line (ess1)
             ->call('save');
 
         $child = Scenario::where('parent_scenario_id', $base->id)->firstOrFail();
 
         // Only the two changed leaves are stored — not a copy of the base.
-        $this->assertEqualsCanonicalizing(['name', 'expense.essential'], array_keys($child->overrides));
-        $this->assertSame('31000', $child->overrides['expense.essential']);
+        $this->assertEqualsCanonicalizing(['name', 'expenseLines.ess1.amount'], array_keys($child->overrides));
+        $this->assertSame('31000', $child->overrides['expenseLines.ess1.amount']);
         $this->assertSame([], $child->builder_state);
         $this->assertSame(ScenarioStatus::Ready, $child->status);
         // The child's effective inputs reflect the override; the base is untouched.
@@ -84,7 +84,7 @@ class ScenarioChildTest extends TestCase
 
         // Edit the base's essential spend; the child inherits it (it did not override it).
         Livewire::test(ScenarioBuilder::class, ['scenario' => $base])
-            ->set('expense.essential', '33000')
+            ->set('expenseLines.0.amount', '33000') // the essential line (ess1)
             ->call('save');
 
         $this->assertSame(0, $child->simulationRuns()->count());

@@ -195,11 +195,18 @@ Recorded here so the rebuild does not fork the model:
   cascades to its children. **Compare** runs base + children side by side on their deterministic projection.
   **v1 boundary:** a child overrides *values* only — adding/removing a list row is refused
   (`structurallyDiffers`) and directed to the base or a new forecast.
-- **Expenditure → 3-tier line items:** `{id, label, amount(annual), category, savedAsAsset}`, category ∈
-  essential / discretionary / **self-investment**. Line items are the **source**; essential/discretionary
-  totals are the **sum of the lines** (derived). `savedAsAsset` (self-investment only): *spent* → expense,
-  *saved* → a **contribution to net worth**. The budget view shows the 3-tier split as the prioritisation
-  **goal**, not a fixed percentage. Deferred: phased ("smile") spend.
+- ✅ **CORE BUILT (2026-06-26, Phase C1). Expenditure → 3-tier line items:** `builder_state.expenseLines`,
+  each `{id, label, amount(annual £ string), category ∈ essential|discretionary|self_investment, savedAsAsset
+  (bool)}`, is the **single source** of spend. The `HouseholdAssembler` derives the engine `ExpenseProfile`
+  totals from them: essential = Σ essential lines; discretionary = Σ discretionary + *spent* self-investment.
+  A *saved* self-investment line (`savedAsAsset: true`) is **not spend** — it becomes a balance-zero ISA
+  `Account` with `ongoingContributions` = the saved amount (the engine applies it from surplus), so it is
+  counted **once** (one home per pound). The flat `expense.essential/discretionary` are cleared when lines
+  exist (no drifting total); a legacy/imported scenario seeds lines from its flat totals on load. List rows
+  carry stable ids (so a C2 override can target a line). The builder shows the 3-tier split as a goal, not a
+  fixed %. **Deferred (C1 fast-follow):** the results 3-tier display, the income-floor readout, importers
+  emitting real lines (they still emit flat totals → seeded into 2 generic lines), the PLSA benchmark, and
+  phased ("smile") spend (an engine change, deferred).
 - ✅ **BUILT (2026-06-25 rebuild, Phase A).** **`Account` gained `ongoingContributions`** and the projector
   now applies it (and DC `ongoingContribution`/`employerContribution`, previously ignored), funded from
   surplus so *saved* self-investment accumulates.
@@ -211,8 +218,9 @@ Recorded here so the rebuild does not fork the model:
   (`usableWealthPercentiles`) alongside total; the results page shows both, so the asset-rich / cash-poor case
   (100% run out yet high "wealth left") reads correctly. Also added **`YearResult::incomeBySource`** (the
   canonical 8 sources) powering the deterministic cashflow ladder + the per-source completeness guard.
-  **Still app-side (not yet built):** 3-tier line items (Phase C1); the per-person longevity lever as a
-  builder what-if field (engine support exists from Phase A2).
+  **Still app-side (not yet built):** the C1 fast-follow (results 3-tier display, income-floor readout,
+  importer line-population, PLSA benchmark); the per-person longevity lever as a builder what-if field
+  (engine support exists from Phase A2).
 
 ## Known divergences (to close)
 - The DTO carries withdrawals on the DC pension; the original Scenario sketch listed

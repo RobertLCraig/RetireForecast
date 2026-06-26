@@ -112,9 +112,9 @@ class ScenarioBuilderTest extends TestCase
     public function test_more_than_two_decimal_places_of_money_is_rejected(): void
     {
         $state = BuilderStateFixture::minimalValid();
-        $state['expense']['essential'] = '20000.123';
+        $state['expenseLines'][0]['amount'] = '20000.123';
 
-        $this->fill($state)->call('save')->assertHasErrors('expense.essential');
+        $this->fill($state)->call('save')->assertHasErrors('expenseLines.0.amount');
     }
 
     public function test_scotland_is_refused_until_its_tax_bands_are_loaded(): void

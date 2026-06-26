@@ -25,7 +25,11 @@ final class BuilderStateFixture
                 ['id' => 'p2', 'dob' => '1963-11-20', 'sex' => 'female', 'employmentStatus' => 'retired',
                     'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => ''],
             ],
-            'expense' => ['essential' => '28000', 'discretionary' => '12500', 'survivorFactor' => '70'],
+            'expense' => ['essential' => '', 'discretionary' => '', 'survivorFactor' => '70'],
+            'expenseLines' => [
+                ['id' => 'ess1', 'label' => 'Essentials', 'amount' => '28000', 'category' => 'essential', 'savedAsAsset' => false],
+                ['id' => 'disc1', 'label' => 'Discretionary', 'amount' => '12500', 'category' => 'discretionary', 'savedAsAsset' => false],
+            ],
             'oneOffCosts' => [['id' => 'oneoff1', 'atAge' => '80', 'amount' => '45000', 'label' => 'Care top-up']],
             'pensions' => [
                 ['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '410000', 'ongoingContribution' => '8000',
@@ -71,7 +75,10 @@ final class BuilderStateFixture
                 ['id' => 'p1', 'dob' => '1955-01-01', 'sex' => 'female', 'employmentStatus' => 'retired',
                     'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => ''],
             ],
-            'expense' => ['essential' => '20000', 'discretionary' => '', 'survivorFactor' => '70'],
+            'expense' => ['essential' => '', 'discretionary' => '', 'survivorFactor' => '70'],
+            'expenseLines' => [
+                ['id' => 'ess1', 'label' => 'Essentials', 'amount' => '20000', 'category' => 'essential', 'savedAsAsset' => false],
+            ],
             'hasProperty' => false,
             'housing' => ['salePrice' => '300000', 'buyPrice' => '', 'annualRent' => '', 'rentInflationReal' => '', 'movingCosts' => '', 'sellingCostRate' => ''],
         ];
