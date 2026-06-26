@@ -122,6 +122,18 @@ yearly_percentile_bands[] (fan chart), first_year_tax_breakdown 🔒 (the lump-s
 estate_value / iht_due (Money?, if toggle on), warnings[] (cliff-edge hits, MPAA triggered,
 emergency tax, capital crossed £16k).
 
+### Retirement Living Standards (PLSA benchmark — sourced reference, not persisted)
+Engine reference data under `src/Benchmark/` (`RetirementLivingStandards` + `RetirementLivingStandardsResult`),
+alongside the other sourced figures (tax config, assumption sets, mortality). Three annual-budget tiers
+(`minimum` \| `moderate` \| `comfortable`) × {single, couple} × {outside London, London}, each a `Money`,
+plus provenance constants `SOURCE` / `EDITION` / `VERIFIED_ON`. **Basis (PLSA's own):** excludes rent +
+mortgage (assumes outright ownership), **includes** home running costs. Not stored and not personal — it is a
+yardstick. The results page compares the household's **lifestyle spend** (`ExpenseProfile::targetAnnualSpend()`,
+i.e. essential + discretionary, excluding *saved* self-investment) **+ owned-home running costs** (rent excluded
+by construction) against the tier for the household's composition, via `App\Forecast\ResultPresenter::plsaBenchmark()`.
+Reconciles to the same `ExpenseProfile` the forecast runs on (no second definition of "spend"). ⚠️ figures
+read 2026-06-26 via automated fetch — re-verify in the go-live figure pass.
+
 ## Storage shape (how the app persists the DTOs)
 Per the persistence decision, every persisted row is **clear structural columns + one encrypted
 payload**. The DTO is the shape; the mapper (`app/Finance/Mapping/`) turns it into the payload

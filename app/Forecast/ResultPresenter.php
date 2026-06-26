@@ -8,6 +8,8 @@ use App\Enums\ScenarioVariant;
 use App\Import\MoneyText;
 use App\Models\Result;
 use Illuminate\Support\Collection;
+use RetireForecast\FinanceEngine\Benchmark\RetirementLivingStandards;
+use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -323,6 +325,76 @@ final class ResultPresenter
         // Fall back to the final year if a death falls in the very first year (degenerate),
         // so the readout still shows rather than silently vanishing.
         return $snapshot ?? ($forecast->years[array_key_last($forecast->years)] ?? null);
+    }
+
+    /**
+     * The PLSA Retirement Living Standards benchmark: where the household's annual
+     * spending lands against the recognised Minimum / Moderate / Comfortable yardsticks
+     * for its composition (single vs couple). A factual orientation — which standard the
+     * spend reaches — never a judgement that it is too low or high, and never a
+     * recommendation.
+     *
+     * The spend compared is put on the PLSA basis (see {@see RetirementLivingStandards}):
+     * it EXCLUDES rent and mortgage (PLSA assumes the home is owned outright — rent lives
+     * in the housing action, not the household, so it is excluded automatically) and
+     * INCLUDES home running costs (energy, council tax, maintenance), which PLSA also
+     * includes. So comparable spend = the household's lifestyle spend
+     * (`expenseProfile->targetAnnualSpend()` — essential + discretionary, already excluding
+     * saved self-investment) plus any owned-home running costs. This reuses the very
+     * `ExpenseProfile` the forecast runs on, so the benchmarked figure cannot drift from
+     * the projection. London is not modelled as a region, so the (lower) outside-London
+     * figures are used and the higher London cut is flagged in the readout.
+     *
+     * Returns null when there is no spend to benchmark.
+     *
+     * @return array{comparableSpend: string, couple: bool, composition: string, runningCostsIncluded: bool, tiers: list<array{key: string, label: string, amount: string, met: bool}>, tierReached: ?string, tierReachedLabel: ?string, belowMinimum: bool, nextTier: ?string, nextTierLabel: ?string, gapToNext: ?string, source: string, edition: string, verifiedOn: string}|null
+     */
+    public static function plsaBenchmark(Household $household): ?array
+    {
+        $spend = $household->expenseProfile->targetAnnualSpend();
+        $runningCosts = $household->primaryResidence?->runningCosts;
+        if ($runningCosts !== null) {
+            $spend = $spend->plus($runningCosts);
+        }
+
+        if (! $spend->isPositive()) {
+            return null;
+        }
+
+        $couple = count($household->persons) >= 2;
+        // London is not a modelled region; use the general (outside-London) figures and
+        // surface the higher-London caveat in the view.
+        $result = RetirementLivingStandards::classify($spend, $couple, london: false);
+
+        $tiers = [];
+        foreach (RetirementLivingStandards::TIERS as $tier) {
+            $tiers[] = [
+                'key' => $tier,
+                'label' => RetirementLivingStandards::TIER_LABELS[$tier],
+                'amount' => $result->tier($tier)->format(),
+                'met' => $result->meets($tier),
+            ];
+        }
+
+        $next = $result->nextTier();
+        $gap = $result->gapToNextTier();
+
+        return [
+            'comparableSpend' => $spend->format(),
+            'couple' => $couple,
+            'composition' => $couple ? 'couple' : 'single person',
+            'runningCostsIncluded' => $runningCosts !== null && $runningCosts->isPositive(),
+            'tiers' => $tiers,
+            'tierReached' => $result->tierReached,
+            'tierReachedLabel' => $result->tierReached !== null ? RetirementLivingStandards::TIER_LABELS[$result->tierReached] : null,
+            'belowMinimum' => $result->belowMinimum(),
+            'nextTier' => $next,
+            'nextTierLabel' => $next !== null ? RetirementLivingStandards::TIER_LABELS[$next] : null,
+            'gapToNext' => $gap !== null ? $gap->format() : null,
+            'source' => RetirementLivingStandards::SOURCE,
+            'edition' => RetirementLivingStandards::EDITION,
+            'verifiedOn' => RetirementLivingStandards::VERIFIED_ON,
+        ];
     }
 
     /**

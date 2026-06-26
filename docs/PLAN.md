@@ -280,9 +280,12 @@ draft mechanism folds into `builder_state`.
   **ongoing contributions on accounts**); one home per pound. Importers populate the lines (today
   discarded into a total). Builder shows an editable list; results show the **3-tier** breakdown framed as
   the **goal, not a %**. New reconciliation invariants + extend the import golden fixtures.
-- **Income-floor readout** (essential vs guaranteed income = State Pension + DB + annuity) and
-  **PLSA benchmark** ("your essentials ≈ Moderate") — both cheap, both reuse existing data. Defer
-  the spending "smile"/phased spend (an engine expense-model change).
+- ✅ **DONE.** **Income-floor readout** (essential vs guaranteed income = State Pension + DB + annuity +
+  tax-free; C1 fast-follow) and **PLSA benchmark** ("your spending reaches the Moderate standard"; **C4,
+  2026-06-26**). The PLSA figures are sourced engine reference data (`src/Benchmark/RetirementLivingStandards`,
+  ⚠️ verify in the go-live figure pass); the comparison is put on the PLSA basis (excludes rent/mortgage,
+  includes home running costs — gotcha J) and reconciles to the same `ExpenseProfile` the forecast runs on.
+  Defer the spending "smile"/phased spend (an engine expense-model change).
 - **Engine additions (small, each golden-master tested):** a per-person **longevity/health adjustment**
   feeding `JointLifeSampler` (fixed assumed age / ±years / mortality multiplier — for the lifespan
   what-if); **ongoing contributions on accounts** (so *saved* self-investment grows).

@@ -202,6 +202,57 @@
         </section>
     @endif
 
+    {{-- PLSA Retirement Living Standards benchmark (Phase C4). Where the household's annual
+         spending lands against the Minimum / Moderate / Comfortable yardsticks, on the PLSA
+         basis (excludes rent/mortgage, includes home running costs). A factual orientation,
+         never a recommendation. --}}
+    @if ($plsa)
+        <section aria-labelledby="plsa-heading" class="{{ $card }}">
+            <h2 id="plsa-heading" class="text-xl font-semibold text-gray-900">How your spending compares — PLSA Retirement Living Standards</h2>
+            <p class="mt-1 text-sm text-gray-600">
+                The PLSA Retirement Living Standards describe what three levels of spending — Minimum, Moderate and Comfortable — typically provide in retirement.
+                On the same basis the standards use (excluding rent and mortgage, including everyday home running costs), your spending of <strong>{{ $plsa['comparableSpend'] }}</strong> a year for a {{ $plsa['composition'] }}
+                @if ($plsa['belowMinimum'])
+                    is below the Minimum standard.
+                @else
+                    reaches the <strong>{{ $plsa['tierReachedLabel'] }}</strong> standard.
+                @endif
+                These are a general yardstick, not a recommendation.
+            </p>
+
+            <div class="mt-4 overflow-x-auto">
+                <table class="w-full text-sm">
+                    <caption class="sr-only">PLSA Retirement Living Standards annual budgets for a {{ $plsa['composition'] }}, and whether your spending reaches each</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col" class="{{ $th }}">Standard</th>
+                            <th scope="col" class="{{ $th }} text-right">Annual budget</th>
+                            <th scope="col" class="{{ $th }}">Your spending reaches it</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($plsa['tiers'] as $tier)
+                            <tr @class(['bg-blue-50' => $tier['key'] === $plsa['tierReached']])>
+                                <th scope="row" class="{{ $td }} text-left font-medium">{{ $tier['label'] }}@if ($tier['key'] === $plsa['tierReached'])<span class="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">your level</span>@endif</th>
+                                <td class="{{ $td }} text-right tabular-nums">{{ $tier['amount'] }}</td>
+                                <td class="{{ $td }}">{{ $tier['met'] ? 'Yes' : 'No' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            @if ($plsa['nextTier'] && $plsa['gapToNext'])
+                <p class="mt-3 text-sm text-gray-700">Spending {{ $plsa['gapToNext'] }} a year more would reach the {{ $plsa['nextTierLabel'] }} standard.</p>
+            @endif
+
+            <p class="mt-3 text-xs text-gray-500">
+                Figures are per year, in today's money, for a {{ $plsa['composition'] }} outside London (the standards publish higher figures for London). The standards assume you own your home outright, so they exclude rent and mortgage payments@if ($plsa['runningCostsIncluded']) but include your home running costs, which are added here@endif. Source: PLSA Retirement Living Standards, {{ $plsa['edition'] }} ({{ $plsa['source'] }}), figures read {{ $plsa['verifiedOn'] }}.
+            </p>
+            <x-signpost class="mt-4" />
+        </section>
+    @endif
+
     {{-- Income-floor readout (Phase C1): essential spending vs secure (guaranteed-for-life)
          income at the mature point. Neutral — reports the coverage, never whether it is enough. --}}
     @if ($incomeFloor)

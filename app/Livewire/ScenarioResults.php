@@ -172,6 +172,10 @@ class ScenarioResults extends Component
             // The 3-tier spending budget echoed back from the form-state (essential /
             // discretionary / self-investment), reconciling to the forecast's spend.
             'budget' => ResultPresenter::expenseBreakdown($this->scenario->effectiveBuilderState()),
+            // Where that spending lands against the PLSA Retirement Living Standards
+            // (Minimum / Moderate / Comfortable) — on the PLSA basis (excludes rent,
+            // includes home running costs), reusing the same ExpenseProfile.
+            'plsa' => ResultPresenter::plsaBenchmark($this->scenario->toHousehold()),
             // Essential spending vs secure (guaranteed-for-life) income at the mature point.
             'incomeFloor' => ResultPresenter::incomeFloor($forecast),
             // Deterministic year-by-year cashflow ladder (income by source -> tax -> spend

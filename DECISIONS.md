@@ -3,6 +3,39 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-26 — C4: PLSA Retirement Living Standards benchmark (placement, basis) + engine-isolation guard
+**Decision:** Built the **PLSA Retirement Living Standards benchmark** (the one remaining C1-list item, the
+core of C4) and added an **engine-isolation guard test**. Calls made:
+(1) **The sourced figures live in the engine** (`RetireForecast\FinanceEngine\Benchmark\RetirementLivingStandards`
++ `RetirementLivingStandardsResult`), framework-free and golden-master tested, alongside the other sourced
+reference data (tax config, assumption sets, mortality) — they carry `SOURCE` + `EDITION` + `VERIFIED_ON`
+(read 2026-06-26 from retirementlivingstandards.org.uk) per the "no magic numbers" rule. **⚠️ flagged for the
+go-live figure-verification pass** because they were read via an automated WebFetch, not yet eyeballed against
+the published table.
+(2) **The comparison is put on the PLSA basis** (PLSA's own definition: excludes rent + mortgage — assumes the
+home is owned outright — but *includes* everyday home running costs). So comparable spend = the household's
+**lifestyle spend** (`ExpenseProfile::targetAnnualSpend()` = essential + discretionary, already excluding the
+*saved* self-investment) **plus owned-home running costs**, with rent excluded by construction (rent lives in
+`HousingAction`, not the `Household`). This reuses the *same* `ExpenseProfile` the forecast runs on, so the
+benchmarked figure cannot drift from the projection (data-integrity reconciliation; tested in
+`PlsaBenchmarkTest`). Presentation (composition single/couple, the housing-leg adjustment, wording) lives in
+`ResultPresenter::plsaBenchmark()`; the engine stays neutral facts only.
+(3) **London is not modelled as a region**, so the (lower) **outside-London** figures are used and the higher
+London cut is flagged in the readout caveat. (4) **Wording stays neutral** ("reaches the Moderate standard",
+"a general yardstick, not a recommendation") — passes the `OutputPhrasing` partition lint.
+(5) **Added `EngineIsolationTest`** (engine test suite) that scans `packages/finance-engine/src` for any
+`use App\…` / `use Illuminate\…` import. **Prompted by a real near-miss this session:** Pint's
+`fully_qualified_strict_types` fixer turned a `{@see ResultPresenter::…}` docblock cross-reference into a real
+`use App\Forecast\ResultPresenter;` import in the engine — a silent breach of the framework-free boundary that
+no test would otherwise have caught. The cross-reference was removed; the guard now makes any future breach a
+visible failure. [[2026-06-26 — C1 fast-follow: income-floor definition, importer line population, longevity lever scope]]
+**Why:** A recognised external benchmark is exactly the kind of "no magic numbers" figure the project requires
+sourced + verified, and exactly the kind of aggregation that must reconcile to the forecast it sits beside (not
+a second, drifting definition of "spend"). The engine-isolation guard closes a hard-rule gap (CLAUDE.md: the
+engine must never `use App\…`/`Illuminate\…`) that had no automated enforcement — the same "loud guard, no
+silent failure" discipline applied to the trust boundary itself.
+**Status:** active
+
 ## 2026-06-26 — C1 fast-follow: income-floor definition, importer line population, longevity lever scope
 **Decision:** Three design calls while building the Phase C1 fast-follow (results 3-tier display + income-floor
 readout + importer line-population + the per-person longevity builder lever). (1) **Income-floor "secure
