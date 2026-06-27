@@ -17,9 +17,10 @@ use RetireForecast\FinanceEngine\Money\Percent;
  *    residenceNilRateBandTaperThreshold (£2,000,000).
  *  - rate (40%) applies to the estate above the available bands.
  *
- * ⚠️ All four figures are frozen but need a confirmatory gov.uk citation. From April
- * 2027 unused pension pots are due to count towards the estate, which is modelled
- * behind a toggle and must be re-verified before go-live.
+ * Verified against gov.uk on 2026-06-27: NRB £325,000 (frozen to 5 April 2031), RNRB
+ * £175,000 (frozen to 5 April 2030), £2,000,000 taper threshold and 40% rate. From
+ * 6 April 2027 unused pension pots count towards the estate (now enacted by Finance
+ * Act 2026, Royal Assent 18 March 2026); that change is modelled behind a toggle.
  */
 final class IhtParameters
 {

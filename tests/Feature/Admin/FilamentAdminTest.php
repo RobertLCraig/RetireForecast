@@ -39,7 +39,7 @@ class FilamentAdminTest extends TestCase
             ->assertOk()
             ->assertSee('Tax year 2025-26')
             ->assertSee('£12,570.00')   // personal allowance
-            ->assertSee('Verified 2026-06-24');
+            ->assertSee('Verified 2026-06-27');
     }
 
     public function test_the_user_resource_lists_users_with_the_interpretation_toggle(): void

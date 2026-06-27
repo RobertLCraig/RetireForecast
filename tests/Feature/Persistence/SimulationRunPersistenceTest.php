@@ -41,7 +41,7 @@ class SimulationRunPersistenceTest extends TestCase
             'status' => SimulationStatus::Done,
             'progress_pct' => 100,
             'engine_version' => ScenarioForecaster::ENGINE_VERSION,
-            'taxyear_config_version' => '2026-06-24',
+            'taxyear_config_version' => '2026-06-27',
         ]);
         $run->setAssumptionSnapshot(AssumptionSetLibrary::default());
         $run->save();
@@ -75,7 +75,7 @@ class SimulationRunPersistenceTest extends TestCase
             'status' => SimulationStatus::Done,
             'progress_pct' => 100,
             'engine_version' => ScenarioForecaster::ENGINE_VERSION,
-            'taxyear_config_version' => '2026-06-24',
+            'taxyear_config_version' => '2026-06-27',
         ]);
         $run->setAssumptionSnapshot(AssumptionSetLibrary::default());
         $run->save();

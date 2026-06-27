@@ -3,6 +3,40 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-27 — Phase D: gov.uk figure-verification pass completed (Tier-1 trust gate)
+**Decision:** Ran the build-time **figure-verification pass** the plan required before any figure is "shown as
+real". Every statutory figure carrying a ⚠️ marker was re-confirmed against gov.uk on 2026-06-27 and its
+`verified_on` / `VERIFIED_ON` stamp moved to 2026-06-27; the ⚠️ docblocks were rewritten to record the specific
+confirmation + source. **No figure value changed — every one was already correct.** Confirmed:
+- **Income tax / NI / dividends / savings** (PA £12,570, 20/40/45, taper £100k→£125,140 frozen to Apr 2031; NI
+  8%/2% on £12,570–£50,270; **dividends 26/27 = 10.75/35.75/39.35** + £500 allowance; PSA + starting-rate band).
+- **Pensions:** LSA £268,275, LSDBA £1,073,100, AA £60k, MPAA £10k, tapered-AA £200k/£260k + £10k floor; NMPA
+  55 → **57 on 6 Apr 2028**.
+- **State Pension** new SP £241.30/wk (26/27) + **SPA 66→67 over DOB 6 Apr 1960–5 Mar 1961** (Pensions Act 2014).
+- **CGT** residential 18%/24% + **£3,000 AEA**; final 9 months always relieved + lettings relief shared-occupancy-only (HS283).
+- **SDLT** bands 0/2/5/10/12 + **5% surcharge**; **benefits** £10k disregard / £1-per-£500/wk / £16k HB cut-off;
+  **care** £23,250/£14,250 + £1-per-£250/wk.
+- **IHT** £325k NRB (frozen to 5 Apr 2031), £175k RNRB (frozen to 5 Apr 2030), £2m taper, 40% — and the
+  **April-2027 unused-pensions-in-estate change is now ENACTED** (Finance Act 2026, Royal Assent 18 Mar 2026,
+  deaths on/after 6 Apr 2027), upgraded from "proposed"; stays behind the toggle.
+- **PLSA Retirement Living Standards:** all 12 figures match the published 2026 table **exactly**.
+- **`investmentIncomeYield` (2%):** reviewed and kept, but reclassified in the docblocks as a **modelling
+  assumption, not a statutory figure** (anchored to the global-equity dividend yield ~1.3–2%); it is not
+  gov.uk-verifiable, so it carries a "reviewed 2026-06-27" note rather than a verified-against-gov.uk claim.
+**Out of v1 scope, deliberately NOT verified** (the region resolver throws rather than guessing): **Scottish
+income-tax bands** and **LBTT/LTT** (Welsh/Scottish property taxes). The FCA/DMS/ONS *assumption-source*
+sign-off (docs/ASSUMPTIONS.md, docs/MORTALITY.md) stays at its 2026-06-24 sign-off — it is a separate academic/
+regulatory review, not part of this gov.uk statutory-figure pass.
+**Coupled tests updated** (the pass changed provenance dates, not figures): the PLSA `VERIFIED_ON`, the
+benchmark readout `verifiedOn`, the Filament audit "Verified …" string, and the `taxyear_config_version`
+fixtures (it is the config's `verifiedOn`, SimulationRunner.php:39) all moved 2026-06-26/24 → 2026-06-27.
+**Why:** Rob's hard rule is no figure shown as real without a sourced, dated confirmation. A re-verification
+that finds everything already correct is the *expected good outcome* — it converts "believed right" into
+"checked right on a known date", and catches the one thing that did move (pensions-in-IHT is now law, not a
+proposal). Per the data-integrity rule, the stamp is the audit trail.
+**Status:** done. Suite 293 green (no value changed, only provenance + 4 coupled date assertions). **Next: Phase
+D go-live polish** (a11y CI, CSP header, `canAccessPanel()` lockdown, perf, PDF, 2FA UI).
+
 ## 2026-06-27 — A5: how GIA/cash tax is modelled (income paid out + taxed; capital → CGT on disposal)
 **Decision:** Phase D started with **A5** (GIA/cash income tax + CGT-on-disposal), the modelling deferred from
 the rebuild. Rob chose the **full** scope (annual income tax AND CGT on disposal). The modelling, decided to

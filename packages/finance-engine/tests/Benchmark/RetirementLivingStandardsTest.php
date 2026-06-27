@@ -91,7 +91,7 @@ final class RetirementLivingStandardsTest extends TestCase
     {
         // No magic numbers: the figures travel with a source and a verified-on date.
         $this->assertStringContainsString('retirementlivingstandards.org.uk', RetirementLivingStandards::SOURCE);
-        $this->assertSame('2026-06-26', RetirementLivingStandards::VERIFIED_ON);
+        $this->assertSame('2026-06-27', RetirementLivingStandards::VERIFIED_ON);
         $this->assertNotSame('', RetirementLivingStandards::EDITION);
     }
 }

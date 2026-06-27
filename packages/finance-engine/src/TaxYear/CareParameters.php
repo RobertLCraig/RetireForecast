@@ -13,9 +13,10 @@ use RetireForecast\FinanceEngine\Money\Money;
  *  - below the lower limit (£14,250) capital is ignored (income is still assessed);
  *  - between the two, every £250 of capital is treated as £1 a week of income.
  *
- * ⚠️ The promised £86,000 lifetime care cap appears scrapped or indefinitely
- * delayed, so it is deliberately NOT modelled. Confirm these thresholds and the cap
- * position against gov.uk before showing them as real.
+ * Verified on 2026-06-27 (gov.uk + DHSC charging-for-care guidance 2025-26): the
+ * £23,250 and £14,250 limits and the £1-a-week-per-£250 tariff are frozen (15th year
+ * running). The £86,000 lifetime care cap was cancelled in July 2024, so it is
+ * deliberately NOT modelled.
  */
 final class CareParameters
 {

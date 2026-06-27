@@ -20,8 +20,8 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * a General Investment Account portfolio. The forecast splits a GIA's total return
  * into this taxable income (taxed each year as dividends) and the remaining capital
  * growth (taxed as CGT only on disposal), so an unwrapped holding carries its real tax
- * drag. ⚠️ ~2% is anchored to the global-equity dividend yield (e.g. FTSE All-World
- * ~1.3-2%); confirm in the go-live figure-verification pass.
+ * drag. The ~2% is a modelling assumption (not a statutory figure), anchored to the
+ * global-equity dividend yield (FTSE All-World ~1.3-2%); reviewed 2026-06-27 and kept.
  */
 final class AssumptionSet
 {

@@ -19,8 +19,9 @@ use RetireForecast\FinanceEngine\Money\Money;
  * asset into assessable capital, which can create tariff income and tip the
  * household over the £16,000 cliff.
  *
- * ⚠️ Confirm the £16,000 limit's exact boundary treatment and any uprating of these
- * figures against gov.uk before showing them as real.
+ * Verified against gov.uk/pension-credit/eligibility on 2026-06-27: £10,000 disregard,
+ * £1 a week of tariff income per £500 above it, and the £16,000 upper limit for Housing
+ * Benefit / Council Tax Support (Pension Credit itself has no upper capital limit).
  */
 final class BenefitsParameters
 {

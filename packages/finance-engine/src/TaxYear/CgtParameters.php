@@ -15,8 +15,9 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * let or was not the main home throughout) and for gains on a General Investment
  * Account.
  *
- * ⚠️ The residential rates (18% / 24%) and the £3,000 annual exempt amount need a
- * confirmatory gov.uk citation before being shown as real.
+ * Verified against gov.uk/capital-gains-tax/rates on 2026-06-27: residential gains are
+ * 18% within the basic-rate band and 24% above it, the annual exempt amount is £3,000,
+ * and the final 9 months of ownership always qualify for Private Residence Relief (HS283).
  */
 final class CgtParameters
 {

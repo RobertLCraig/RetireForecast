@@ -12,10 +12,11 @@ use RuntimeException;
 /**
  * Builds the {@see TaxYearConfig} for a given tax year and region.
  *
- * Figures verified against official sources on 2026-06-24. Items still needing a
- * confirmatory gov.uk citation before any figure is shown as real are tracked in
- * the project plan's "build-time verification checklist". Where a region is not
- * yet supported the registry throws rather than substituting wrong bands.
+ * Every figure below was re-verified against gov.uk on 2026-06-27 (the go-live
+ * figure-verification pass); the per-helper docblocks record the specific
+ * confirmations. The earlier 2026-06-24 sign-off stands for the figures unchanged
+ * since. Where a region is not yet supported the registry throws rather than
+ * substituting wrong bands.
  */
 final class TaxYearRegistry
 {
@@ -97,7 +98,7 @@ final class TaxYearRegistry
                 'iht' => 'https://www.gov.uk/inheritance-tax',
                 'care' => 'https://www.gov.uk/help-with-care-costs/financial-assessment',
             ],
-            verifiedOn: '2026-06-24',
+            verifiedOn: '2026-06-27',
         );
     }
 
@@ -166,15 +167,17 @@ final class TaxYearRegistry
                 'iht' => 'https://www.gov.uk/inheritance-tax',
                 'care' => 'https://www.gov.uk/help-with-care-costs/financial-assessment',
             ],
-            verifiedOn: '2026-06-24',
+            verifiedOn: '2026-06-27',
         );
     }
 
     /**
      * Pension allowances and limits. Frozen since 6 April 2024, so the same object
-     * serves both tax years. ⚠️ The tapered-AA thresholds, the Lump Sum & Death
-     * Benefit Allowance and the 6 April 2028 rise of the minimum pension age to 57
-     * still need a confirmatory gov.uk citation before any figure is shown as real.
+     * serves both tax years. Verified against gov.uk on 2026-06-27: LSA £268,275 and
+     * LSDBA £1,073,100 (gov.uk/tax-on-your-private-pension/lump-sum-allowance); AA
+     * £60,000, MPAA £10,000, tapered-AA adjusted-income £260,000 / threshold-income
+     * £200,000 / £10,000 floor; minimum pension age 55, rising to 57 on 6 April 2028
+     * (HMRC "Increasing Normal Minimum Pension Age", effect on and after 6 April 2028).
      */
     private static function pensionParameters(): PensionParameters
     {
@@ -212,9 +215,10 @@ final class TaxYearRegistry
     }
 
     /**
-     * Residential CGT parameters. ⚠️ The 18%/24% residential rates, the £3,000
-     * annual exempt amount and the 9-month final-period exemption all need a
-     * confirmatory gov.uk citation before being shown as real.
+     * Residential CGT parameters. Verified against gov.uk/capital-gains-tax/rates on
+     * 2026-06-27: residential gains are 18% within the basic-rate band and 24% above
+     * it; the annual exempt amount is £3,000; the final 9 months of ownership always
+     * qualify for Private Residence Relief (HS283).
      */
     private static function cgtParameters(): CgtParameters
     {
@@ -228,8 +232,11 @@ final class TaxYearRegistry
 
     /**
      * Pension-age means-tested benefit capital rules. These figures have been static
-     * for years; the same object serves both tax years modelled here. ⚠️ Confirm
-     * against gov.uk before being shown as real.
+     * for years; the same object serves both tax years modelled here. Verified against
+     * gov.uk/pension-credit/eligibility on 2026-06-27: the first £10,000 of capital is
+     * disregarded and every £500 above it counts as £1 a week of tariff income; the
+     * £16,000 upper limit applies to Housing Benefit / Council Tax Support (Pension
+     * Credit itself has no upper capital limit).
      */
     private static function benefitsParameters(): BenefitsParameters
     {
@@ -243,8 +250,11 @@ final class TaxYearRegistry
 
     /**
      * Inheritance Tax thresholds and rate. Frozen, so shared across both tax years.
-     * ⚠️ Confirm against gov.uk, and re-verify the April 2027 pensions-in-estate
-     * change before relying on the toggle.
+     * Verified against gov.uk on 2026-06-27: NRB £325,000 (frozen to 5 April 2031),
+     * RNRB £175,000 (frozen to 5 April 2030), tapered away £1 for every £2 of estate
+     * above £2,000,000, standard rate 40%. The April 2027 pensions-in-estate change is
+     * now enacted (Finance Act 2026, Royal Assent 18 March 2026, for deaths on or after
+     * 6 April 2027) and stays behind the toggle.
      */
     private static function ihtParameters(): IhtParameters
     {
@@ -258,8 +268,10 @@ final class TaxYearRegistry
     }
 
     /**
-     * Adult social care means-test capital thresholds (England). ⚠️ Confirm against
-     * gov.uk; the £86,000 care cap is deliberately not modelled.
+     * Adult social care means-test capital thresholds (England). Verified on 2026-06-27
+     * (gov.uk + DHSC charging-for-care guidance 2025-26): upper £23,250, lower £14,250,
+     * and £1 a week per £250 of capital between them, all frozen. The £86,000 lifetime
+     * care cap was cancelled in July 2024 and is deliberately not modelled.
      */
     private static function careParameters(): CareParameters
     {

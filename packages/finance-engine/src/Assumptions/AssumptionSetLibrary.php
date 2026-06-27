@@ -15,7 +15,8 @@ use RetireForecast\FinanceEngine\Money\Percent;
  *
  * $investmentIncomeYield (added 2026-06-27 for A5 — GIA income tax + CGT) is a NOMINAL
  * income yield, held uniform at 2.0% across the sets for v1 (a portfolio's income yield
- * is broadly regime-independent); ⚠️ confirm in the go-live figure-verification pass.
+ * is broadly regime-independent). A modelling assumption, not a statutory figure: it is
+ * anchored to the global-equity dividend yield (~1.3-2%), reviewed 2026-06-27 and kept.
  *
  * Three asset classes in a fixed order — global equities, gilts/bonds, cash — so
  * the correlation matrices line up with {@see AssumptionSet::$assetClasses}.

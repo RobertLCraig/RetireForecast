@@ -95,7 +95,7 @@ Units everywhere: money = integer **pence**; rates = a `Percent` value object (b
 
 ## Tax / rules engine — UK rule set (2025/26 and 2026/27)
 
-One immutable `TaxYearConfig` per tax year via `TaxYearRegistry::for('2025-26')`; region income-tax bands from a `RegionProfile`. **Every figure carries a `source` URL and `verified_on` date.** A build-time job confirms each ⚠️ item against gov.uk before go-live. ✅ = web-verified 2026-06-24.
+One immutable `TaxYearConfig` per tax year via `TaxYearRegistry::for('2025-26')`; region income-tax bands from a `RegionProfile`. **Every figure carries a `source` URL and `verified_on` date.** A build-time job confirms each ⚠️ item against gov.uk before go-live. **Figure-verification pass completed 2026-06-27** (Phase D Tier-1 trust gate): every statutory figure below was re-confirmed against gov.uk and is now stamped `verified_on: 2026-06-27`; no figure changed (all were already correct). See DECISIONS 2026-06-27. ✅ = web-verified.
 
 **Income tax (England/Wales/NI default):** PA £12,570 ✅ (taper £1/£2 over £100k, gone by £125,140 ✅); basic 20% to £50,270 ✅; higher 40% to £125,140 ✅; additional 45% above ✅; **freeze to April 2031** (corrected). Ordering: non-savings then savings then dividends.
 
@@ -103,23 +103,23 @@ One immutable `TaxYearConfig` per tax year via `TaxYearRegistry::for('2025-26')`
 
 **Savings and dividends:** PSA £1,000 basic / £500 higher / £0 additional ✅; starting-rate-for-savings £5,000 at 0% tapered ✅; dividend allowance £500 ✅; **dividend rates 25/26 = 8.75/33.75/39.35%, 26/27 = 10.75/35.75/39.35%** (keyed by tax year) ✅.
 
-**National Insurance (working partner):** Class 1 employee 8% between £12,570 and £50,270, 2% above ✅ (⚠️ confirm 26/27). **NI stops at SPA; pension income bears no NI** (guard against charging it).
+**National Insurance (working partner):** Class 1 employee 8% between £12,570 and £50,270, 2% above ✅ (26/27 confirmed 2026-06-27: rates + frozen thresholds unchanged). **NI stops at SPA; pension income bears no NI** (guard against charging it).
 
-**Pensions (the headline pitfalls):** 25% tax-free PCLS subject to **LSA £268,275** ✅ (track pcls_taken_to_date); UFPLS 25% tax-free / 75% taxable per chunk ✅; drawdown taxable as earnings, no NI ✅; **Month-1 emergency-tax on the first flexible withdrawal** (non-cumulative code treats a one-off as 1/12 of annual income, large over-deduction at source) ✅, model the over-deduction *and* the reclaim, and report which form applies: **P55** (part-withdrawal, pot not emptied, other income), **P50Z** (whole pot emptied, no other PAYE income), **P53Z** (whole pot emptied, still has other taxable income) ✅; **MPAA £10,000** ✅ (triggered by flexible access of DC, not PCLS-only; caps money-purchase AA and kills DC carry-forward, warn when a planned withdrawal trips it while the working partner still contributes); Annual Allowance £60,000 ✅, tapered AA −£1/£2 over £260k adjusted income, floor £10k ⚠️; access age 55 now, **57 from 6 Apr 2028** (model the step).
+**Pensions (the headline pitfalls):** 25% tax-free PCLS subject to **LSA £268,275** ✅ (track pcls_taken_to_date); UFPLS 25% tax-free / 75% taxable per chunk ✅; drawdown taxable as earnings, no NI ✅; **Month-1 emergency-tax on the first flexible withdrawal** (non-cumulative code treats a one-off as 1/12 of annual income, large over-deduction at source) ✅, model the over-deduction *and* the reclaim, and report which form applies: **P55** (part-withdrawal, pot not emptied, other income), **P50Z** (whole pot emptied, no other PAYE income), **P53Z** (whole pot emptied, still has other taxable income) ✅; **MPAA £10,000** ✅ (triggered by flexible access of DC, not PCLS-only; caps money-purchase AA and kills DC carry-forward, warn when a planned withdrawal trips it while the working partner still contributes); Annual Allowance £60,000 ✅, tapered AA −£1/£2 over £260k adjusted income, floor £10k ✅ (verified 2026-06-27); access age 55 now, **57 from 6 Apr 2028** ✅ (verified 2026-06-27; model the step).
 
 **State Pension:** new SP full rate £230.25/wk (25/26) to £241.30/wk (26/27, +4.8% triple lock) ✅; basic SP £176.45 to £184.90/wk ✅; **SPA 66 to 67 rising 6 May 2026 to 6 Apr 2028 by DOB, computed from DOB not hard-coded** ✅; deferral uplift ~5.8%/yr ✅; **State Pension is taxable, fed through the income-tax calc** (the full new SP now sits just under the frozen PA, so many start paying tax on it around 27/28) ✅.
 
-**CGT — Private Residence Relief:** main-home sale fully relieved, no CGT ✅. Edges: `ever_let` restricts relief; a second/non-main property is chargeable; final 9 months always relieved. CGT on GIA holdings separate — **NOW MODELLED (A5, 2026-06-27):** GIA disposals realise the pro-rata gain vs cost basis, shared £3k AEA, 18/24% by band, reusing the residential rates (equal to share-gain rates since Oct-2024). Rates ⚠️ + AEA £3,000 ⚠️ still in the figure pass.
+**CGT — Private Residence Relief:** main-home sale fully relieved, no CGT ✅. Edges: `ever_let` restricts relief; a second/non-main property is chargeable; final 9 months always relieved. CGT on GIA holdings separate — **NOW MODELLED (A5, 2026-06-27):** GIA disposals realise the pro-rata gain vs cost basis, shared £3k AEA, 18/24% by band, reusing the residential rates (equal to share-gain rates since Oct-2024). Rates + AEA £3,000 ✅ (verified 2026-06-27); final 9 months always relieved + lettings relief shared-occupancy-only ✅ (HS283, verified 2026-06-27).
 
-**SDLT (buying the cheaper home, England/NI):** 0% to £125k, 2% to £250k, 5% to £925k, 10% to £1.5m, 12% above (from 1 Apr 2025) ✅; **+5% additional-property surcharge** if they own two homes momentarily (buy before sell), reclaimable within 36 months, model the timing ✅. Scotland/Wales use LBTT/LTT (different taxes) ⚠️, swap by region, ship SDLT first.
+**SDLT (buying the cheaper home, England/NI):** 0% to £125k, 2% to £250k, 5% to £925k, 10% to £1.5m, 12% above (from 1 Apr 2025) ✅; **+5% additional-property surcharge** if they own two homes momentarily (buy before sell), reclaimable within 36 months, model the timing ✅. SDLT bands + 5% surcharge ✅ (verified 2026-06-27). Scotland/Wales use LBTT/LTT (different taxes; out of v1 scope, region resolver throws), swap by region, ship SDLT first.
 
-**Means-tested benefits:** Pension Credit capital, first **£10,000 disregarded**, then **deemed income £1/wk per £500** (pensioner tariff, not the working-age £6,000/£250 rule), **no upper limit for PC itself** ✅; **HB / Council Tax Support: same tariff but £16,000 upper cut-off** ✅; **downsizing converts an exempt home into assessable capital** (the killer interaction, warn on crossing £16,000) ✅; deprivation-of-capital surfaced as information only, never a recommendation. PC weekly Guarantee Credit rates ⚠️ verify 26/27 uprating.
+**Means-tested benefits:** Pension Credit capital, first **£10,000 disregarded**, then **deemed income £1/wk per £500** (pensioner tariff, not the working-age £6,000/£250 rule), **no upper limit for PC itself** ✅; **HB / Council Tax Support: same tariff but £16,000 upper cut-off** ✅; **downsizing converts an exempt home into assessable capital** (the killer interaction, warn on crossing £16,000) ✅; deprivation-of-capital surfaced as information only, never a recommendation. Capital tariff (£10k disregard, £1/wk per £500, £16k HB/CTS cut-off) ✅ verified 2026-06-27. (The PC weekly Guarantee Credit *payment* rates are not modelled — the engine models only the capital-tariff interaction, not the benefit award — so there is no GC figure to verify.)
 
-**IHT (toggle):** NRB £325,000 ⚠️, RNRB £175,000 ⚠️ with £2m taper, spousal transfer (up to £1m for a couple) ✅ structure; **unused pension pots enter the IHT estate from April 2027** ⚠️ (directly relevant to draw-down vs preserve), model behind the toggle.
+**IHT (toggle):** NRB £325,000 ✅ (frozen to 5 Apr 2031), RNRB £175,000 ✅ (frozen to 5 Apr 2030) with £2m taper ✅, spousal transfer (up to £1m for a couple) ✅ structure (all verified 2026-06-27); **unused pension pots enter the IHT estate from 6 April 2027** ✅ — **now enacted** (Finance Act 2026, Royal Assent 18 Mar 2026), upgraded from "proposed"; model behind the toggle.
 
-**Care (secondary):** England means-test upper £23,250 / lower £14,250 ⚠️ (the £86k cap reform appears scrapped/delayed, do not assume it is in force); deprivation risk mirrors benefits.
+**Care (secondary):** England means-test upper £23,250 / lower £14,250 ✅ (verified 2026-06-27, frozen 15th year; £1/wk per £250 between limits); the £86k cap reform was **cancelled July 2024**, not in force (confirmed 2026-06-27), so not modelled; deprivation risk mirrors benefits.
 
-**Build-time verification checklist (⚠️):** Scottish bands; NI 26/27; tapered-AA thresholds; LSDBA; access-age-57 date; CGT rates + £3,000 AEA; LBTT/LTT; PC/HB weekly rates 26/27; IHT NRB/RNRB freeze-end + the April-2027 pensions-in-estate change; care thresholds. Each ✅ figure still gets a gov.uk citation in config.
+**Build-time verification checklist — COMPLETED 2026-06-27** (was ⚠️): NI 26/27 ✅; tapered-AA thresholds ✅; LSA + LSDBA ✅; access-age-57 date (6 Apr 2028) ✅; CGT residential rates + £3,000 AEA ✅; PC/HB capital tariff (£10k/£500/£16k) ✅; IHT NRB/RNRB + £2m taper ✅ (NRB frozen to 5 Apr 2031, RNRB to 5 Apr 2030) + the **April-2027 pensions-in-estate change now enacted** (Finance Act 2026) ✅; care thresholds ✅ (£86k cap cancelled). Still out of v1 scope (not verified, region resolver throws): **Scottish income-tax bands** and **LBTT/LTT** (Wales/Scotland property taxes). Each ✅ figure carries its gov.uk citation + `verified_on: 2026-06-27` in config. See DECISIONS 2026-06-27.
 
 ---
 
@@ -283,7 +283,7 @@ draft mechanism folds into `builder_state`.
 - ✅ **DONE.** **Income-floor readout** (essential vs guaranteed income = State Pension + DB + annuity +
   tax-free; C1 fast-follow) and **PLSA benchmark** ("your spending reaches the Moderate standard"; **C4,
   2026-06-26**). The PLSA figures are sourced engine reference data (`src/Benchmark/RetirementLivingStandards`,
-  ⚠️ verify in the go-live figure pass); the comparison is put on the PLSA basis (excludes rent/mortgage,
+  figures ✅ verified 2026-06-27 against the published table); the comparison is put on the PLSA basis (excludes rent/mortgage,
   includes home running costs — gotcha J) and reconciles to the same `ExpenseProfile` the forecast runs on.
   Defer the spending "smile"/phased spend (an engine expense-model change).
 - **Engine additions (small, each golden-master tested):** a per-person **longevity/health adjustment**
@@ -371,6 +371,6 @@ Per person: DOB, employment status, (working partner) gross salary + planned ret
 
 ## Risks / open items to watch during build
 - Joint-life mortality + per-path tax + two housing variants is the heaviest part computationally. Keep the inner loop tight; the 10k run must stay responsive with live progress.
-- All ⚠️ figures need the gov.uk citation pass before anything is shown as real.
+- ✅ **DONE 2026-06-27.** The gov.uk figure-verification pass is complete: every statutory figure was re-confirmed against gov.uk and stamped `verified_on: 2026-06-27`; no value changed. Only out-of-v1-scope items (Scottish bands, LBTT/LTT) remain unverified, and the region resolver throws for those.
 - Scotland (income tax + LBTT) is out of v1; region resolver throws rather than guessing.
-- The April-2027 pensions-in-IHT change is still bedding in; keep it behind the toggle and re-verify before go-live.
+- The April-2027 pensions-in-IHT change is **now enacted** (Finance Act 2026, Royal Assent 18 Mar 2026, deaths on/after 6 Apr 2027); keep it behind the toggle.

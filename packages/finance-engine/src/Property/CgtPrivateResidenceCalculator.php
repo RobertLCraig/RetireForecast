@@ -15,10 +15,11 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  * home at some point). The rest of the gain is chargeable. A property that was never
  * the main residence gets no relief or final-period exemption.
  *
- * Lettings relief was effectively withdrawn from April 2020 except where the owner
- * shared occupancy, so a period of letting (other than the final 9 months) is
- * treated here as chargeable rather than relieved. ⚠️ Confirm the lettings-relief
- * position for any shared-occupancy case before relying on it.
+ * Lettings relief was restricted from 6 April 2020 to cases where the owner shared
+ * occupancy with the tenant (verified 2026-06-27 against gov.uk HS283 — Private
+ * Residence Relief), so a period of letting (other than the final 9 months) is treated
+ * here as chargeable rather than relieved. Scope caveat: the narrow shared-occupancy
+ * lettings-relief case is not modelled.
  */
 final class CgtPrivateResidenceCalculator
 {

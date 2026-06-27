@@ -130,7 +130,7 @@ final class PlsaBenchmarkTest extends TestCase
 
         // No magic numbers: the readout carries the figures' source and verified-on date.
         $this->assertStringContainsString('retirementlivingstandards.org.uk', $plsa['source']);
-        $this->assertSame('2026-06-26', $plsa['verifiedOn']);
+        $this->assertSame('2026-06-27', $plsa['verifiedOn']);
         $this->assertNotSame('', $plsa['edition']);
     }
 }

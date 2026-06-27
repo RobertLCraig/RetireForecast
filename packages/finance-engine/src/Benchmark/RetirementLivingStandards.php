@@ -24,9 +24,8 @@ use RetireForecast\FinanceEngine\Money\Money;
  * it never names the app layer.)
  *
  * Per the project rule "no magic numbers": every external figure carries its source
- * and the date it was verified. ⚠️ These were read from the PLSA site on
- * {@see VERIFIED_ON} via an automated fetch; re-confirm them against the published
- * table in the go-live figure-verification pass before relying on them publicly.
+ * and the date it was verified. The figures below were re-confirmed against the
+ * published table at {@see SOURCE} on {@see VERIFIED_ON} (the go-live figure pass).
  */
 final class RetirementLivingStandards
 {
@@ -37,7 +36,7 @@ final class RetirementLivingStandards
     public const EDITION = '2025 update (research during 2025, modelling completed 2026)';
 
     /** The date the figures were read from {@see SOURCE}. */
-    public const VERIFIED_ON = '2026-06-26';
+    public const VERIFIED_ON = '2026-06-27';
 
     /** The three standards, in ascending order. */
     public const TIERS = ['minimum', 'moderate', 'comfortable'];
@@ -52,7 +51,7 @@ final class RetirementLivingStandards
     /**
      * Annual expenditure in whole pounds, per tier, as
      * [single outside London, couple outside London, single in London, couple in London].
-     * ⚠️ Verify against {@see SOURCE} (edition {@see EDITION}) before go-live.
+     * Confirmed against {@see SOURCE} (edition {@see EDITION}) on {@see VERIFIED_ON}.
      *
      * @var array<string, array{int, int, int, int}>
      */

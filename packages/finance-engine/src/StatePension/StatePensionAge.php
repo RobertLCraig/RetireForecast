@@ -19,10 +19,11 @@ use DateTimeImmutable;
  * the next). This is a pure function of the date of birth: no clock is read, so a
  * given DOB always yields the same answer.
  *
- * ⚠️ The exact monthly boundary dates of both transitions should be confirmed
- * against gov.uk's "Check your State Pension age" before any figure is shown as
- * real. Cohorts before 6 April 1960 (already at or past pension age) are treated
- * as 66, which is outside this tool's forward-looking scope.
+ * Verified on 2026-06-27 against gov.uk's State Pension age timetable: the rise from 66
+ * to 67 is phased across those born 6 April 1960 to 5 March 1961 (Pensions Act 2014,
+ * taking effect between 2026 and 2028), and the rise to 68 across the 1977-78 cohort.
+ * Cohorts before 6 April 1960 (already at or past pension age) are treated as 66, which
+ * is outside this tool's forward-looking scope.
  */
 final class StatePensionAge
 {
