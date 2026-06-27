@@ -65,7 +65,7 @@ final class HousingComparison
         ?callable $onProgress = null,
     ): array {
         $simulator = new Simulator($this->config);
-        $netProceeds = $this->netSaleProceeds($household, $action);
+        $netProceeds = $this->saleProceeds($household, $action)->netProceeds;
 
         // Each variant fills one third of the overall progress bar.
         $variantProgress = static fn (int $i): ?callable => $onProgress === null
@@ -97,14 +97,21 @@ final class HousingComparison
         return ['stay_put' => $stayPut, 'buy_outright' => $buyResult, 'rent' => $rentResult];
     }
 
-    private function netSaleProceeds(Household $household, HousingAction $action): Money
+    /**
+     * Decompose the sale of the current home into net proceeds and the costs netted
+     * off it (single source — {@see HousingProceeds}). Public so the figure can be
+     * surfaced and reconciled rather than recomputed.
+     */
+    public function saleProceeds(Household $household, HousingAction $action): HousingProceeds
     {
         $sellingRate = $action->sellingCostRate ?? Percent::fromBasisPoints(self::DEFAULT_SELLING_COST_RATE_BP);
         $sellingCosts = $action->salePrice->applyRate($sellingRate);
         $mortgage = $household->primaryResidence?->outstandingMortgage ?? Money::zero();
+        $cgt = Money::zero(); // CGT on a main home is fully relieved by PRR in v1.
 
-        // CGT on a main home is fully relieved by PRR in v1.
-        return $action->salePrice->minus($mortgage)->minus($sellingCosts)->minZero();
+        $netProceeds = $action->salePrice->minus($mortgage)->minus($sellingCosts)->minus($cgt)->minZero();
+
+        return new HousingProceeds($action->salePrice, $mortgage, $sellingCosts, $cgt, $netProceeds);
     }
 
     private function buyVariant(Household $household, HousingAction $action, Money $netProceeds): Household
