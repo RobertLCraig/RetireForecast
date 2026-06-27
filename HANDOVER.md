@@ -15,7 +15,7 @@ the new world directly. Decisions locked (DECISIONS 2026-06-25 ×2): **keep the 
 app code; rebuild the storage layer freely**; **ratify Livewire 4 + Filament 5 + SQLite**; **interleave trust
 + features**; the prototype is tagged **`prototype-v1`** (a8f1f68) for recovery (no remote). Build order is
 **A (engine) → B (storage) → C (features) → D (trust + go-live)**.
-**Done across the rebuild (suite 224→274 green, engine 105→115, app →159):**
+**Done across the rebuild (suite 224→293 green, engine 105→129, app →164; through C4 + Phase D's A5):**
 - **Phase A (engine, all golden-master/reconciliation tested):** account + DC **ongoing contributions**
   (funded from surplus); per-person **`LongevityAdjustment`** what-if; terminal **usable**-vs-total wealth;
   **`YearResult::incomeBySource`** (8 canonical sources). **A5 (GIA/cash income tax + CGT-on-disposal)
@@ -58,7 +58,7 @@ app code; rebuild the storage layer freely**; **ratify Livewire 4 + Filament 5 +
   editable list with live subtotals; validation requires ≥1 line. **Reconciliation + completeness tested**
   (`ExpenseLineReconciliationTest`: totals == Σ lines; saving a line builds more wealth than spending it).
   The C2 override examples now target an expense line by id.
-- **Phase C1 fast-follow (newest, this session — uncommitted):** (1) **results 3-tier display + income-floor
+- **Phase C1 fast-follow (committed `c967426`):** (1) **results 3-tier display + income-floor
   readout** — the engine exposes `YearResult::essentialSpend` (real terms, the essential floor incl. rent/
   running costs, the one definition both the ladder and the readout read); `ResultPresenter::expenseBreakdown()`
   echoes the budget in 3 tiers (per-line + spent/saved split, **reconciling to the assembled spend**) and
@@ -254,7 +254,7 @@ See [DECISIONS.md](DECISIONS.md) for the full log. Highlights:
 - **App layer (this session — Phase 2 step 3):** the Livewire UI + ApexCharts, in three committed milestones. (A) Front-end foundation + **real auth**: app Blade layout (skip link, auth-aware nav, persistent guidance-only disclaimer footer), ApexCharts bundled via npm + an Alpine `chart` wrapper, real Fortify login/register/forgot/reset screens (`config/fortify.php` `views => true`, view routes wired in `FortifyServiceProvider`), public landing + authed `Dashboard`; base `TestCase` calls `withoutVite()`. (B) **Scenario builder** (`ScenarioBuilder` + `HouseholdAssembler`): a full household (two people, all three pension subtypes with a nested withdrawal plan, accounts, income, spending + one-offs, the home) and the housing decision entered by hand, validated (salary-if-employed, money non-negative & ≤2dp, Scotland refused via the registry), assembled losslessly into engine DTOs, persisted encrypted (`HouseholdAssembler` rebuilds the rich `HouseholdFixture` exactly). (C) **Results page** (`ScenarioResults` + `ResultPresenter`): preview sync / full queued with `wire:poll` progress + cancel, then headline numbers as text, the **Monte Carlo fan chart** and **buy-vs-rent comparison** — each with an accessible `<table>` (+`<caption>`), CSV download, and Pension Wise/MoneyHelper signposting; ownership enforced. Tests: auth screens render + flow; assembler lossless; builder validation + round-trip-to-identical-DTO; preview renders headline-as-text + fan-chart table present, full run queued + cancellable, ownership guard. **+24 app tests → 157 total / 690 assertions** (engine still 104).
 - **App layer (this session — Phase 2 step 4 — compliance/disclaimer + interpretation toggle + hardening):** (A) **Banned-phrasing guard:** `App\Compliance\OutputPhrasing` holds directive-only regex patterns; `BannedPhrasingTest` is a **partition** check scanning every Blade view + all app PHP for zero violations, exempting only the `App\Compliance` namespace and `interpretation`-named views, with a non-vacuity guard + a test proving the walled-off layer *does* carry directive phrasing (so the wall is load-bearing). (B) **Disclaimers + signposting:** reusable `<x-disclaimer.result>` + `<x-signpost>` render on every result + an output-mode label; the fan-chart CSV is prefixed with the guidance-only disclaimer; deleted the unused stock `welcome.blade.php` (it tripped the lint). (C) **First-run acknowledgement:** `EnsureDisclaimerAcknowledged` middleware redirects unacknowledged users to a dedicated `/welcome` screen; `users.disclaimer_acknowledged_at` records acceptance; GDPR/account routes stay outside the gate. (D) **Interpretation toggle:** `users.can_interpret` (admin-set via a Filament `UserResource` `ToggleColumn`) behind an `interpret` Gate; the walled-off `App\Compliance\Interpretation` service produces the advice-style readouts into an `interpretation`-named partial, shown only when the gate allows; the public default stays neutral. (E) **No-silent-failure hardening folded in:** GDPR `export()` now includes the user's runs+results (erase already cascades; both covered by tests), `RunScenarioSimulation::failed()` marks a dead worker's run Failed-with-reason, and `ScenarioResults::currentRun()` is owner-scoped against a forged `$runId`. Tests: partition lint (+non-vacuity), acknowledgement gate (redirect/record/GDPR-still-reachable), interpretation gate (off→neutral, granted→walled-off block), per-result + CSV disclaimer, owner-scope tamper, job `failed()` (live/fallback/already-terminal), GDPR runs+results in export & erase, Filament user toggle smoke. **+20 app tests → 177 total / 743 assertions** (engine still 104).
 - **App layer (this session — on top of step 4):** the **lump-sum tax-shock panel** (`LumpSumTaxShock`, reproduces worked example A); the scenario builder reworked into a **free-navigation wizard** (5 steps, a11y, net-worth grouping); the **compare-assumptions overlay** (`AssumptionComparison` sensitivity table); and the full **spreadsheet-import** layer (`app/Import/`) — registry + CSV/`.xlsx` reading (`phpoffice/phpspreadsheet`) + tab picker + profiles (RetireForecast CSV, IWT CSP, the bespoke **PayAndExpenditures** verified on Rob's real workbook incl. income, Nischa stub). **157 → 212 tests / 857 assertions** (engine still 104).
-- **In progress:** nothing mid-edit; tree clean (after this session's checkpoint commit). The rebuild's **Phase A (engine) + C3 (results drill-down) + Phase B (storage inversion) + Phase C2 (delta-child what-ifs + Compare) + Phase C1 (3-tier line items, core + fast-follow) + Phase C4 (PLSA benchmark)** are all done (engine 123 / app 164 / suite **287**); **Phase D (trust + go-live) is next** — see the **▶ REBUILD** callout + What's next. Phase 2 step 5 (demo/polish) folds into Phase D.
+- **In progress:** nothing mid-edit; tree clean (all committed). The rebuild's **Phase A (engine) + C3 (results drill-down) + Phase B (storage inversion) + Phase C2 (delta-child what-ifs + Compare) + Phase C1 (3-tier line items, core + fast-follow) + Phase C4 (PLSA benchmark)** are all done, and **Phase D has started: A5 (GIA/cash income tax + CGT-on-disposal) is complete** (engine 129 / app 164 / suite **293**). **The rest of Phase D is next** — the gov.uk ⚠️ figure-verification pass + go-live polish; see the **▶ REBUILD** callout + What's next. Phase 2 step 5 (demo/polish) folds into Phase D.
 - **Known bugs / broken:** none known. Documented v1 scope limits (all flagged in code): income tax is England/Wales/NI only (Scotland throws); emergency tax models the over-deduction magnitude, not PAYE-table pennies; mortality grid ages 50–100 / years 2025–2074 with clamping + a non-ONS tail above 100 (cap 110); forecast now taxes GIA dividends + cash interest annually AND realises CGT on GIA disposal (A5 complete; ISA tax-free; GIA/cash grow at capital only; v1 omits capital-loss relief + judges the CGT band on non-savings income); tax thresholds held frozen for the whole projection; DB escalation + triple lock as smooth growth factors; buy-vs-rent takes main-home CGT as £0 (PRR) and no SDLT surcharge; house/salary growth deterministic inside the Monte Carlo.
 
 ## What's next (in order) — the research-backed rebuild
@@ -263,9 +263,10 @@ The engine + app are built and green (287 tests). The rebuild is nearly complete
 C3 (results: usable-vs-total + the deterministic cashflow ladder), Phase B (storage inversion:
 `builder_state` source of truth + edit-in-place + stale-run invalidation), Phase C2 (delta-child what-ifs
 + Compare), Phase C1 (3-tier line items, core + fast-follow), and **Phase C4 (PLSA Retirement Living Standards
-benchmark)** are DONE** (green; A5 GIA/CGT deferred to Phase D). **What remains: Phase D (trust + go-live) —
-the gov.uk ⚠️ figure pass (incl. the new PLSA figures), the deferred GIA/CGT modelling (A5), and go-live polish
-(a11y CI, CSP, panel lockdown, perf, PDF, 2FA UI).** Items 1–5 below are kept only to record that they are now done. **Read first:
+benchmark)** are DONE**, and **Phase D has started: A5 (GIA/cash income tax + CGT-on-disposal) is complete**
+(green). **What remains: the rest of Phase D (trust + go-live) — the gov.uk ⚠️ figure pass (incl. the new PLSA,
+`investmentIncomeYield`, and CGT-rate/£3k-AEA figures), and go-live polish (a11y CI, CSP, panel lockdown, perf,
+PDF, 2FA UI).** Items 1–6 below are kept only to record that they are now done. **Read first:
 docs/PLAN.md "Sector-informed build plan (2026-06-25)" (full steps + the gotchas table A–P) · DATA-MODEL.md
 "Planned shape changes (2026-06-25)" · DECISIONS.md 2026-06-25 (×3) · docs/RESEARCH-cashflow-modelling.md.**
 The rebuild is **authorised** even though it reworks the prototype builder (the UI wins — person names, the
@@ -334,9 +335,9 @@ gaps, tiered by severity:
   NRB/RNRB + the Apr-2027 pensions-in-estate change, care thresholds, SPA boundary dates, benefits
   £16k boundary, SDLT Wales/Scotland, lettings relief) **plus the new PLSA Retirement Living Standards
   figures** (`src/Benchmark/RetirementLivingStandards`, read 2026-06-26 via automated fetch — eyeball against
-  the published table); the **forecast taxes non-savings income only**
-  (GIA/cash income tax + CGT-on-disposal deferred), a material drag understatement for a household
-  holding unwrapped assets; and the **data-layer integrity guardrails** (below).
+  the published table) and the **A5 `investmentIncomeYield`** (2%, read 2026-06-27); the GIA/cash income tax +
+  CGT-on-disposal drag is now **modelled (A5 done)**, so the unwrapped-asset understatement is closed (its
+  CGT rates + £3k AEA join the figure pass above); and the **data-layer integrity guardrails** (below).
 - **Tier 2 — Phase 5–6 not built:** demo preset/seeder, PDF export, **CSP header** (none set, charts
   are embedded), a11y CI (axe/Pa11y), 10k-path perf tuning. Scotland config pack is deliberately out of v1.
 - **Tier 3 — shipped-surface gaps:** 2FA enrolment UI (Fortify 2FA on, no screens), real-browser
@@ -398,10 +399,9 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 ## Branch status
 On `master`, local repo only (no remote, no PR). Personal local-first project; commit directly to `master`.
 **Prototype tagged `prototype-v1` (a8f1f68)** before the rebuild — the recovery point (no remote, so the tag
-is the only snapshot). **Phase C4 (PLSA Retirement Living Standards benchmark + engine-isolation guard) is
-this session's checkpoint commit** (hash in `git log`); the prior **Phase C1 fast-follow** is committed at
-`c967426`.
-Rebuild commits (newest first): **Phase C1 fast-follow** (`c967426`); doc reconciliation `47436c3`; **Phase C1 core (3-tier line-item budget)**
+is the only snapshot). This session's commits (newest first): **A5 part 2 — CGT on GIA disposal** (`b78c1a4`);
+**A5 part 1 — GIA/cash income tax** (`937413b`); **C4 — PLSA benchmark + engine-isolation guard** (`df9fce0`).
+Rebuild commits (newest first): **C1 fast-follow commit-hash record** (`0915215`); **Phase C1 fast-follow** (`c967426`); doc reconciliation `47436c3`; **Phase C1 core (3-tier line-item budget)**
 (`2d553d4`); **C2 delta-child what-ifs + Compare** (`5530896`); **Phase B storage inversion** (the
 `builder_state`-source-of-truth rewrite + edit-in-place; `60cc2e2`);
 `9a70d0a`/`2587324` doc refresh + post-rebuild checkpoint; `49637e4` results usable-vs-total +
