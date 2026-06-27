@@ -409,8 +409,9 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 ## Branch status
 On `master`, local repo only (no remote, no PR). Personal local-first project; commit directly to `master`.
 **Prototype tagged `prototype-v1` (a8f1f68)** before the rebuild — the recovery point (no remote, so the tag
-is the only snapshot). This session's commits (newest first): **A5 part 2 — CGT on GIA disposal** (`b78c1a4`);
-**A5 part 1 — GIA/cash income tax** (`937413b`); **C4 — PLSA benchmark + engine-isolation guard** (`df9fce0`).
+is the only snapshot). This session's commits (newest first): **Phase D — gov.uk figure-verification pass**
+(`52f3679`); **A5 part 2 — CGT on GIA disposal** (`b78c1a4`); **A5 part 1 — GIA/cash income tax** (`937413b`);
+**C4 — PLSA benchmark + engine-isolation guard** (`df9fce0`).
 Rebuild commits (newest first): **C1 fast-follow commit-hash record** (`0915215`); **Phase C1 fast-follow** (`c967426`); doc reconciliation `47436c3`; **Phase C1 core (3-tier line-item budget)**
 (`2d553d4`); **C2 delta-child what-ifs + Compare** (`5530896`); **Phase B storage inversion** (the
 `builder_state`-source-of-truth rewrite + edit-in-place; `60cc2e2`);
