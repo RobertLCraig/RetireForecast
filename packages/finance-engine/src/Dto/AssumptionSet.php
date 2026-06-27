@@ -15,6 +15,13 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * simulation snapshots the set it used so results stay reproducible. $assetClasses
  * and $correlationMatrix must be in the same order (the matrix is square,
  * symmetric, with 1.0 on the diagonal).
+ *
+ * $investmentIncomeYield is the NOMINAL annual income yield (dividends + interest) of
+ * a General Investment Account portfolio. The forecast splits a GIA's total return
+ * into this taxable income (taxed each year as dividends) and the remaining capital
+ * growth (taxed as CGT only on disposal), so an unwrapped holding carries its real tax
+ * drag. ⚠️ ~2% is anchored to the global-equity dividend yield (e.g. FTSE All-World
+ * ~1.3-2%); confirm in the go-live figure-verification pass.
  */
 final class AssumptionSet
 {
@@ -32,6 +39,7 @@ final class AssumptionSet
         public readonly Percent $houseGrowth,
         public readonly Percent $rentInflation,
         public readonly Percent $salaryGrowth,
+        public readonly Percent $investmentIncomeYield,
         public readonly bool $isDefault = false,
     ) {}
 }

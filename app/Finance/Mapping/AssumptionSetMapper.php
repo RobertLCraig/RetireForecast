@@ -56,6 +56,7 @@ final class AssumptionSetMapper
             'houseGrowth' => Codec::bps($set->houseGrowth),
             'rentInflation' => Codec::bps($set->rentInflation),
             'salaryGrowth' => Codec::bps($set->salaryGrowth),
+            'investmentIncomeYield' => Codec::bps($set->investmentIncomeYield),
         ];
     }
 
@@ -81,6 +82,8 @@ final class AssumptionSetMapper
             houseGrowth: Codec::percent($payload['houseGrowth']),
             rentInflation: Codec::percent($payload['rentInflation']),
             salaryGrowth: Codec::percent($payload['salaryGrowth']),
+            // Back-compat: a pre-A5 snapshot has no income yield; default to 2.0% (200 bps).
+            investmentIncomeYield: Codec::percent($payload['investmentIncomeYield'] ?? 200),
             isDefault: $isDefault,
         );
     }

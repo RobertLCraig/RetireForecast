@@ -32,8 +32,10 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  *
  * Documented v1 scope (refinements deferred, all flagged for later):
  *  - Income tax covers non-savings income (earnings, pensions, State Pension,
- *    drawdown, taxable streams). Taxable interest/dividends on cash/GIA and CGT on
- *    GIA disposals are NOT yet modelled; ISA is tax-free; pots grow at total return.
+ *    drawdown, taxable streams) plus, from A5, the annual income on unwrapped assets:
+ *    cash interest (savings) and GIA dividends (dividend income), paid out and taxed
+ *    each year while the asset grows at capital only. ISA stays tax-free. CGT on the
+ *    capital growth of GIA disposals is the next A5 step (not yet realised here).
  *  - Tax thresholds are held frozen for the whole projection (slightly overstates
  *    fiscal drag after the 2031 freeze ends).
  *  - DB revaluation/escalation and the State Pension triple lock are modelled as
@@ -232,6 +234,16 @@ final class PathProjector
             $src['pension_drawdown'] += $wd['taxable'];
         }
 
+        // Taxable investment income from unwrapped assets, on opening balances (A5):
+        // GIA dividends and cash interest are paid out as income each year and taxed.
+        // ISA is tax-free, so excluded. The rest of the return is capital growth, left in
+        // the asset and taxed as CGT only on disposal — growState then grows GIA/cash at
+        // capital only (these rates must mirror those there), so income paid out + capital
+        // growth == total return, never double-counted.
+        $infl = $draws->inflation($yearIndex);
+        $cashInterestRate = max(0.0, (1.0 + $draws->cashRealReturn($yearIndex)) * (1.0 + $infl) - 1.0);
+        $giaYield = $draws->investmentIncomeYield();
+
         // Tax each person individually; assemble household net cash. Tax-free income
         // streams (e.g. DLA) are added untaxed alongside pension tax-free cash.
         $netCashNominal = $taxFreeCashNominal + $taxFreeIncomeNominal;
@@ -240,12 +252,23 @@ final class PathProjector
             if (! $alive[$person->id]) {
                 continue;
             }
+            $cashInterest = (int) round($state['cash'][$person->id] * $cashInterestRate);
+            $giaDividends = (int) round($state['gia'][$person->id] * $giaYield);
+            $investmentIncome = $cashInterest + $giaDividends;
+
             $taxable = $taxablePerPerson[$person->id];
-            $grossIncomeNominal += $taxable;
-            $tax = $this->incomeTax->compute(TaxableIncome::ofNonSavings(Money::fromPence($taxable)))->total->pence;
+            $grossIncomeNominal += $taxable + $investmentIncome;
+            // Combined pass: non-savings, then cash interest (savings, with the PSA), then
+            // GIA dividends (dividend allowance + rates) stacked on top.
+            $tax = $this->incomeTax->compute(new TaxableIncome(
+                Money::fromPence($taxable),
+                Money::fromPence($cashInterest),
+                Money::fromPence($giaDividends),
+            ))->total->pence;
             $ni = $this->niForPerson($household, $person->id, $state, $yearIndex);
             $totalTaxNominal += $tax + $ni;
-            $netCashNominal += $taxable - $tax - $ni;
+            $netCashNominal += $taxable + $investmentIncome - $tax - $ni;
+            $src['investment_income'] += $investmentIncome;
         }
         $grossIncomeNominal += $taxFreeCashNominal + $taxFreeIncomeNominal;
 
@@ -668,9 +691,16 @@ final class PathProjector
         $houseNominal = (1.0 + $draws->houseGrowthReal($yearIndex)) * (1.0 + $infl) - 1.0;
         $salaryNominal = (1.0 + $draws->salaryGrowthReal($yearIndex)) * (1.0 + $infl) - 1.0;
 
+        // GIA/cash distribute their income (taxed in projectYear), so they grow at capital
+        // only: total return minus the income yield. These rates MUST mirror the income
+        // rates in projectYear, so income paid out + capital growth == total return (no
+        // double count). ISA reinvests tax-free, so it keeps the full total return.
+        $giaCapital = $investNominal - $draws->investmentIncomeYield();
+        $cashCapital = $cashNominal - max(0.0, $cashNominal);
+
         foreach ($state['cash'] as $pid => $v) {
-            $state['cash'][$pid] = (int) round($v * (1.0 + $cashNominal));
-            $state['gia'][$pid] = (int) round($state['gia'][$pid] * (1.0 + $investNominal));
+            $state['cash'][$pid] = (int) round($v * (1.0 + $cashCapital));
+            $state['gia'][$pid] = (int) round($state['gia'][$pid] * (1.0 + $giaCapital));
             $state['isa'][$pid] = (int) round($state['isa'][$pid] * (1.0 + $investNominal));
             foreach ($state['pots'][$pid] as &$pot) {
                 $pot['value'] = (int) round($pot['value'] * (1.0 + $investNominal));

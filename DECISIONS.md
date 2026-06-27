@@ -3,6 +3,33 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-27 — A5: how GIA/cash tax is modelled (income paid out + taxed; capital → CGT on disposal)
+**Decision:** Phase D started with **A5** (GIA/cash income tax + CGT-on-disposal), the modelling deferred from
+the rebuild. Rob chose the **full** scope (annual income tax AND CGT on disposal). The modelling, decided to
+avoid the double-count that caused the deferral:
+(1) A GIA's/cash's **total return is split into income + capital growth**. The income (cash interest as savings,
+GIA dividends as dividend income) is **paid out to net cash and taxed each year** via the existing combined
+income-tax pass (PSA + dividend allowance stacking); the asset then **grows at capital only** (total return
+minus the income yield). So income paid out + capital growth == total return, **never double-counted** — the
+exact failure mode that made shipping this hastily a trust bug. ISA stays tax-free and reinvests at total
+return. Conservation is asserted by a test (the taxed, capital-only GIA can never out-grow an equal tax-free
+ISA).
+(2) The income yield is a **new sourced figure** `AssumptionSet::$investmentIncomeYield` (nominal, **2.0%**,
+uniform across the three sets for v1), anchored to the global-equity dividend yield (FTSE All-World ~1.3-2%).
+⚠️ flagged for the go-live figure-verification pass (read 2026-06-27, like the PLSA figures). Per-account
+`Account::$yield` overrides are reserved for a later refinement (balances are aggregated per person in the
+projector, so honouring per-account yields needs de-aggregation).
+(3) **Capital gains → CGT only on disposal** (the next A5 step): when a GIA is drawn to fund a shortfall the
+pro-rata gain is realised and taxed (shared £3k AEA, 18/24% by band — reusing `CgtParameters`, whose residential
+rates have equalled the share-gain rates since the Oct-2024 Budget). Basis is tracked through contributions and
+disposals; losses are not relieved in v1.
+[[2026-06-25 — Rebuild: keep the engine, rebuild storage to the new world; ratify LW4+SQLite; defer GIA/CGT]]
+**Why:** This is the trust pass: an unwrapped holding must carry its real tax drag (income tax now, CGT on
+disposal next), and the income/capital split is the only way to add it without taxing the same return twice.
+The new yield is sourced + verified-flagged like every other external figure (no magic numbers); the
+conservation invariant is guarded by a test (no silent double count).
+**Status:** active (income side done + committed; CGT on disposal in progress)
+
 ## 2026-06-26 — C4: PLSA Retirement Living Standards benchmark (placement, basis) + engine-isolation guard
 **Decision:** Built the **PLSA Retirement Living Standards benchmark** (the one remaining C1-list item, the
 core of C4) and added an **engine-isolation guard test**. Calls made:

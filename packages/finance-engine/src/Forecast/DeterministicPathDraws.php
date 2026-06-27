@@ -26,6 +26,8 @@ final class DeterministicPathDraws implements PathDraws
 
     private readonly float $salaryGrowth;
 
+    private readonly float $incomeYield;
+
     /**
      * @param  array<string, int>  $deathAges  personId => age at death
      */
@@ -39,6 +41,7 @@ final class DeterministicPathDraws implements PathDraws
         $this->inflationRate = $set->inflationMean->asFraction();
         $this->houseGrowth = $set->houseGrowth->asFraction();
         $this->salaryGrowth = $set->salaryGrowth->asFraction();
+        $this->incomeYield = $set->investmentIncomeYield->asFraction();
     }
 
     public function investmentRealReturn(int $yearIndex): float
@@ -49,6 +52,11 @@ final class DeterministicPathDraws implements PathDraws
     public function cashRealReturn(int $yearIndex): float
     {
         return $this->cashReturn;
+    }
+
+    public function investmentIncomeYield(): float
+    {
+        return $this->incomeYield;
     }
 
     public function inflation(int $yearIndex): float

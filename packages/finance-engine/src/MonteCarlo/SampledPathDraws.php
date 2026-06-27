@@ -26,11 +26,14 @@ final class SampledPathDraws implements PathDraws
     ) {
         $this->houseGrowth = $set->houseGrowth->asFraction();
         $this->salaryGrowth = $set->salaryGrowth->asFraction();
+        $this->incomeYield = $set->investmentIncomeYield->asFraction();
     }
 
     private readonly float $houseGrowth;
 
     private readonly float $salaryGrowth;
+
+    private readonly float $incomeYield;
 
     public function investmentRealReturn(int $yearIndex): float
     {
@@ -40,6 +43,11 @@ final class SampledPathDraws implements PathDraws
     public function cashRealReturn(int $yearIndex): float
     {
         return $this->at($this->path['cash'], $yearIndex);
+    }
+
+    public function investmentIncomeYield(): float
+    {
+        return $this->incomeYield;
     }
 
     public function inflation(int $yearIndex): float

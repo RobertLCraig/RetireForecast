@@ -13,6 +13,10 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * volatility figures are REAL (above-inflation), annual. Figures signed off
  * 2026-06-24; see docs/ASSUMPTIONS.md for sourcing and the judgement calls.
  *
+ * $investmentIncomeYield (added 2026-06-27 for A5 — GIA income tax + CGT) is a NOMINAL
+ * income yield, held uniform at 2.0% across the sets for v1 (a portfolio's income yield
+ * is broadly regime-independent); ⚠️ confirm in the go-live figure-verification pass.
+ *
  * Three asset classes in a fixed order — global equities, gilts/bonds, cash — so
  * the correlation matrices line up with {@see AssumptionSet::$assetClasses}.
  */
@@ -41,6 +45,7 @@ final class AssumptionSetLibrary
             houseGrowth: Percent::fromPercent(1.0),
             rentInflation: Percent::fromPercent(0.5),
             salaryGrowth: Percent::fromPercent(1.0),
+            investmentIncomeYield: Percent::fromPercent(2.0),
             isDefault: true,
         );
     }
@@ -68,6 +73,7 @@ final class AssumptionSetLibrary
             houseGrowth: Percent::fromPercent(2.5),
             rentInflation: Percent::fromPercent(0.5),
             salaryGrowth: Percent::fromPercent(1.5),
+            investmentIncomeYield: Percent::fromPercent(2.0),
         );
     }
 
@@ -94,6 +100,7 @@ final class AssumptionSetLibrary
             houseGrowth: Percent::fromPercent(1.0),
             rentInflation: Percent::fromPercent(0.0),
             salaryGrowth: Percent::fromPercent(1.0),
+            investmentIncomeYield: Percent::fromPercent(2.0),
         );
     }
 

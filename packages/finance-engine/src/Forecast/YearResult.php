@@ -29,7 +29,8 @@ final class YearResult
 {
     /**
      * The canonical income-source keys, in display order: earned salary; defined
-     * benefit; State Pension; other taxable income (annuity, rental); tax-free
+     * benefit; State Pension; other taxable income (annuity, rental); taxable
+     * investment income (GIA dividends + cash interest paid out, A5); tax-free
      * income (e.g. DLA); pension tax-free lump sums; taxable pension drawdown
      * (planned + drawn to meet a shortfall); and capital drawn from savings/ISA/GIA.
      */
@@ -38,6 +39,7 @@ final class YearResult
         'defined_benefit',
         'state_pension',
         'other_taxable',
+        'investment_income',
         'tax_free_income',
         'pension_lump_sum',
         'pension_drawdown',

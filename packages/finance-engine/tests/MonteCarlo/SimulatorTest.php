@@ -138,6 +138,7 @@ final class SimulatorTest extends TestCase
             houseGrowth: Percent::fromPercent(1),
             rentInflation: Percent::fromPercent(0),
             salaryGrowth: Percent::fromPercent(1),
+            investmentIncomeYield: Percent::fromPercent(2),
         );
 
         $model = new ReturnModel($set, new PortfolioAllocation([0.40, 0.60, 0.0]));

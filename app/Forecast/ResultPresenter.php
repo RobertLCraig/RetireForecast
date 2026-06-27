@@ -42,6 +42,7 @@ final class ResultPresenter
         'defined_benefit' => 'DB pension',
         'state_pension' => 'State Pension',
         'other_taxable' => 'Annuity / other',
+        'investment_income' => 'Investment income',
         'tax_free_income' => 'Tax-free income',
         'pension_lump_sum' => 'Pension tax-free cash',
         'pension_drawdown' => 'Pension drawdown',
