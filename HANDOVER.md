@@ -3,7 +3,7 @@
 > A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue building the calculation engine and then the app around it. Read `docs/PLAN.md` first: it is the full approved plan and the source of truth for scope.
 
 **Stage:** active
-**Status:** Rebuild through **C4 done**; now in **Phase D (trust + go-live)**. **A5 complete** — GIA dividends + cash interest taxed annually (asset grows at capital only, conservation tested) **and CGT realised on GIA disposal** (pro-rata gain vs cost basis, shared £3k AEA, 18/24% by band; CGT-incidence tested). GIA/CGT no longer deferred. Suite **293 green** (engine 129 / app 164). **Figure-verification pass DONE (2026-06-27)** — every ⚠️ statutory figure re-confirmed against gov.uk and stamped `verified_on: 2026-06-27`; **no value changed** (all already correct), and the **April-2027 pensions-in-IHT change is now enacted** (Finance Act 2026). **Next: Phase D go-live polish** (a11y CI, CSP header, panel lockdown, perf, PDF, 2FA UI). _The narrative that follows is the full build history; the live picture is the **▶ REBUILD** callout below + the newest session-log entry._
+**Status:** Rebuild through **C4 done**; now in **Phase D (trust + go-live)**. **A5 complete** — GIA dividends + cash interest taxed annually (asset grows at capital only, conservation tested) **and CGT realised on GIA disposal** (pro-rata gain vs cost basis, shared £3k AEA, 18/24% by band; CGT-incidence tested). GIA/CGT no longer deferred. Suite **298 green** (engine 129 / app 169). **Figure-verification pass DONE (2026-06-27)** — every ⚠️ statutory figure re-confirmed against gov.uk and stamped `verified_on: 2026-06-27`; **no value changed** (all already correct), and the **April-2027 pensions-in-IHT change is now enacted** (Finance Act 2026). **Admin-panel lockdown DONE (2026-06-27)** — `canAccessPanel()` gated on a new `is_admin` flag (first admin via `php artisan user:make-admin`). **Next: Phase D go-live polish** (a11y CI, CSP header, perf, PDF, 2FA UI). _The narrative that follows is the full build history; the live picture is the **▶ REBUILD** callout below + the newest session-log entry._
 
 _Pre-rebuild prototype history:_ Engine complete (Phase 1); **Phase 2 steps 1–4 of the app layer are in.** Step 1: encrypted DTO persistence, Fortify auth, GDPR, Filament admin. Step 2: forecast/scenario services (`ScenarioForecaster`, `SimulationRun`/`Result` persistence, `SimulationRunner` + queued job with progress + cancel). Step 3: the **Livewire UI + ApexCharts** (auth screens, scenario builder, results page with fan chart + buy-vs-rent, each as text + accessible `<table>` + CSV + signposting). Step 4 (this session): the **compliance/disclaimer layer** — `App\Compliance\OutputPhrasing` directive-only banned-phrase lint + a **partition build test** over every view and app PHP file; a **first-run acknowledgement gate** (`EnsureDisclaimerAcknowledged` middleware + `users.disclaimer_acknowledged_at` + a dedicated screen); reusable `<x-disclaimer.result>` + `<x-signpost>` on every result and a disclaimer prefix on the CSV export; the **admin-granted, off-by-default interpretation toggle** (`users.can_interpret` → `interpret` Gate → walled-off `App\Compliance\Interpretation` service + `interpretation`-named partial, set via a Filament `UserResource` toggle). Also folded in the tagged **no-silent-failure hardening**: GDPR `export()` now includes runs+results, `RunScenarioSimulation::failed()` lands a dead worker's run in Failed, `ScenarioResults::currentRun()` is owner-scoped. **Full suite at that point: 224 tests / 894 assertions (105 engine + 119 app)** — now **235 / 929** (engine 113) after the rebuild; see the callout. This autonomous session landed several committed stages on top of step 4: (1) the **lump-sum tax-shock panel** (headline output #1, `App\Forecast\LumpSumTaxShock` reproducing worked example A through the app) is now **rendered** on the results page; (2) the scenario builder is a **free-navigation wizard** — five steps (About & people; Pensions & income; **Your net worth** = savings + the home; Spending; The decision) with a11y (stepper `aria-current`, focusable headings + error summary, `aria-invalid`/`aria-describedby`, Save double-submit guard, `endAge ≥ startAge`, jump-to-first-error on save); (3) a **spreadsheet-import** layer (`app/Import/`) — an `ImportProfile` registry with the calibrated **RetireForecast CSV** profile (pre-fills spending + salary in exact pence), the **IWT Conscious Spending Plan** profile calibrated to its published structure (header-driven, frequency-aware; Fixed→essential, Guilt-Free→discretionary, net-income so no gross salary), and **Nischa stubbed** pending a sample; (4) the **compare-assumptions overlay** (`App\Forecast\AssumptionComparison`) — the central best-estimate projection under each shipped sourced set (FCA / DMS / OBR), rendered immediately as an accessible sensitivity table; (5) the **IWT CSP import** made live (`$`-currency fix in `MoneyText`); (6) **`.xlsx` import + the personal workbook** — added `phpoffice/phpspreadsheet` (uploads can be `.xlsx`, app-layer only), a sheet-aware `Spreadsheet`/`SpreadsheetReader` (reads Excel's cached values), a **tab picker** for multi-tab workbooks (`updatedImportFile` → sheet names → `Spreadsheet::select`), and a bespoke **`PayAndExpenditures`** profile that reads Rob's scenario tab — expenditure→essential, salary→gross, **State Pension→state pension, DLA→tax-free income, partner pension→annuity** — **verified against the real file** (£24,600/yr essential, £190.00/wk SP, etc.; income lands on Person 1 with no start age, flagged). **Still OPEN**: **calibrating the Nischa import** (deprioritised by Rob; layout captured — it's a 50/30/20 dashboard) and re-verifying the IWT CSP profile against the real 2023 export; the **line-item expense categories** data-model decision; a full per-field a11y sweep + axe/Pa11y CI; 2FA enrolment UI. **This session** added **scenario-draft auto-save**, **person names** (persisted), the **State Pension "full" shortcut**, and **`.xlsx`/Cancel import fixes** (all tested), then captured **sector research** ([docs/RESEARCH-cashflow-modelling.md](docs/RESEARCH-cashflow-modelling.md)) + a **research-backed build plan** (docs/PLAN.md "Sector-informed build plan"). **Next (as planned then — now superseded by the current build order in Status + What's next + the REBUILD callout):** that plan — edit → clone/compare, line-item 3-tier budgets, projection drill-down — plus Phase 2 step 5 (demo/perf/PDF).
 _Last updated: 2026-06-27 (Phase D — gov.uk figure-verification pass complete: every ⚠️ statutory figure re-confirmed against gov.uk + stamped verified_on 2026-06-27, no value changed, pensions-in-IHT now enacted. Earlier today: A5 complete. See newest session-log entries). Earlier notes:_
@@ -103,8 +103,15 @@ app code; rebuild the storage layer freely**; **ratify Livewire 4 + Filament 5 +
   (2%) was reclassified as a **modelling assumption, not a statutory figure** (reviewed + kept). Out of v1 scope and
   deliberately unverified: Scottish bands + LBTT/LTT (region resolver throws). 4 coupled date-assertions updated; suite
   stays **293 green**. See DECISIONS 2026-06-27 (figure-verification pass).
-**Still to build:** **Phase D go-live polish** — a11y CI (axe/Pa11y), CSP header, `User::canAccessPanel()`
-lockdown, 10k-path perf, PDF export, 2FA enrolment UI. Full plan: docs/PLAN.md "Sector-informed build plan".
+- **Phase D — admin-panel lockdown (2026-06-27):** `User::canAccessPanel()` is now gated on a new
+  **`is_admin`** boolean (migration, default false; cast on the model) instead of returning `true` for every
+  authenticated user — closing the privilege-escalation gap whereby any user could reach `/admin` and the
+  advice-style `interpret` grant that lives behind it. The first admin is bootstrapped from the CLI
+  (`php artisan user:make-admin {email}`, `--revoke` to undo — no-silent-failure: unknown email fails loudly);
+  thereafter an admin can toggle others via a new **Admin access** `ToggleColumn` on the Users resource. Tests:
+  a non-admin gets **403** from the panel, admins pass, the command grants/revokes/no-ops/fails-on-unknown.
+**Still to build:** **Phase D go-live polish** — a11y CI (axe/Pa11y), CSP header, 10k-path perf, PDF export,
+2FA enrolment UI. Full plan: docs/PLAN.md "Sector-informed build plan".
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -332,8 +339,8 @@ State Pension shortcut — carry over; the per-user draft mechanism folds into `
    Phase B/C2.
 
 **Independent of the rebuild (Phase 2 step 5 + go-live):** demo preset/seeder, a11y CI (axe/Pa11y), 10k
-perf, PDF export, CSP header, `User::canAccessPanel()` lockdown, 2FA UI, and the **gov.uk ⚠️ verification
-pass** (Tier-1 go-live gate). See "Readiness gaps" + "Blockers".
+perf, PDF export, CSP header, 2FA UI (✅ `User::canAccessPanel()` lockdown DONE 2026-06-27; ✅ gov.uk
+verification pass DONE 2026-06-27). See "Readiness gaps" + "Blockers".
 
 ## Readiness gaps (2026-06-25 doc/code review — suite verified green at 212/857)
 A review against the docs confirmed **no drift** (the 212/857 suite, the file structure and the stack
@@ -351,9 +358,9 @@ gaps, tiered by severity:
 - **Tier 2 — Phase 5–6 not built:** demo preset/seeder, PDF export, **CSP header** (none set, charts
   are embedded), a11y CI (axe/Pa11y), 10k-path perf tuning. Scotland config pack is deliberately out of v1.
 - **Tier 3 — shipped-surface gaps:** 2FA enrolment UI (Fortify 2FA on, no screens), real-browser
-  ApexCharts verification (only the tables/text are tested), `User::canAccessPanel()` still returns
-  true for any authenticated user (tighten before public release — the `interpret` toggle lives behind
-  it), assumption-set figures not numerically editable in Filament.
+  ApexCharts verification (only the tables/text are tested), assumption-set figures not numerically editable
+  in Filament. ✅ **`User::canAccessPanel()` lockdown DONE 2026-06-27** — gated on `is_admin` (the `interpret`
+  grant now sits behind admin; first admin via `php artisan user:make-admin {email}`).
 - **Tier 4 — open data-model/import decisions:** line-item expense categories; re-verify IWT CSP vs the
   real 2023 export; Nischa stub; imported income lands on Person 1 with no start age (flagged).
 
@@ -380,7 +387,8 @@ gaps, tiered by severity:
 - [ ] **v1 modelling refinements** (deferred, listed under Current state → Known bugs): ~~GIA/cash income tax + CGT-on-disposal~~ (**DONE — A5, 2026-06-27**), post-2031 threshold reindexing, per-scheme DB escalation, stochastic house/salary growth, SDLT surcharge timing in buy-vs-rent. Revisit when the app surfaces them.
 - [ ] **Demo data:** Rob supplies the anonymised couple's figures later, entered via the UI, not hardcoded (field list in docs/PLAN.md "Data Rob supplies").
 - [ ] **Results page — still open:** the **lump-sum tax-shock panel** ✅ and **compare-assumptions overlay** ✅ are now built; remaining: **2FA enrolment UI** (Fortify 2FA feature is on but has no screens, so no user can enable it) and **real-browser verification** of the ApexCharts canvases (the accessible tables/text are tested, the rendered chart is not). Run `npm run build` before viewing the app (`public/build` is gitignored).
-- [ ] **Deferred earlier, still open:** numeric editing of assumption-set figures in Filament (currently curate-metadata-only, figures seeded from the engine library); tighten `User::canAccessPanel()` beyond "any authenticated user" before any public release (now more pressing — a Filament `UserResource` exists and public multi-user release is a genuine goal; the `interpret` toggle is admin-grantable there, so admin access must be locked down first).
+- [x] **`User::canAccessPanel()` lockdown — DONE 2026-06-27.** Gated on a new `is_admin` boolean (was "any authenticated user"), closing the escalation whereby any user could reach `/admin` and grant themselves the advice-style `interpret` capability. First admin via `php artisan user:make-admin {email}`; admins toggle others on the Users resource. Non-admin → 403 (tested).
+- [ ] **Deferred earlier, still open:** numeric editing of assumption-set figures in Filament (currently curate-metadata-only, figures seeded from the engine library).
 
 ## How to pick up
 Run from the **project root** (the test runner shells out to a relative phpunit path, so it fails from `C:\Users\r`):
@@ -388,12 +396,12 @@ Run from the **project root** (the test runner shells out to a relative phpunit 
 Set-Location "C:\Dev\RetireForecast"
 # NB: php / artisan / composer / npm are NOT on the Git Bash PATH on this machine — run them via the
 # PowerShell tool (PHP 8.4 is provided by Laravel Herd). Bash is fine for git / grep / file ops. See CLAUDE.md.
-php artisan test                            # everything: expect 293 passed (1153 assertions)
+php artisan test                            # everything: expect 298 passed (1164 assertions)
 php artisan test --testsuite=Engine        # engine only: expect 129 passed (598 assertions)
 vendor/bin/pint --dirty                      # house style on changed files
 npm run build                                # build assets (public/build is gitignored); `npm run dev` to watch
 ```
-If `vendor/` is missing: `composer install`. If engine classes are not found, re-register the path package: `composer update retireforecast/finance-engine`. To use the app locally: migrate + `php artisan db:seed --class=AssumptionSetSeeder` (populates assumption sets), `npm run build`, then `php artisan serve` — a **local test user already exists** (`td@test.com` / `password`, disclaimer accepted) for quick sign-in, or register at `/register` and **accept the one-time guidance-only disclaimer at `/welcome`**. Build a forecast at `/scenarios/create`, run it on its results page. The full queued run needs a worker (`php artisan queue:listen`); the synchronous preview does not. Admin panel at `/admin` (any authenticated user) — the `UserResource` there toggles `can_interpret` to unlock the advice-style interpretation. Tests neutralise Vite, so they pass without a build.
+If `vendor/` is missing: `composer install`. If engine classes are not found, re-register the path package: `composer update retireforecast/finance-engine`. To use the app locally: migrate + `php artisan db:seed --class=AssumptionSetSeeder` (populates assumption sets), `npm run build`, then `php artisan serve` — a **local test user already exists** (`td@test.com` / `password`, disclaimer accepted) for quick sign-in, or register at `/register` and **accept the one-time guidance-only disclaimer at `/welcome`**. Build a forecast at `/scenarios/create`, run it on its results page. The full queued run needs a worker (`php artisan queue:listen`); the synchronous preview does not. **Admin panel at `/admin` is now gated on `is_admin`** (default false) — a non-admin gets 403; grant yourself access once with `php artisan user:make-admin {email}` (e.g. `td@test.com`), after which the Users resource there toggles **Admin access** + `can_interpret`. **NB:** run `php artisan migrate` first to add the new `is_admin` column to an existing local DB. Tests neutralise Vite, so they pass without a build.
 
 ## Sibling docs
 | Doc | Purpose |
@@ -420,6 +428,19 @@ cashflow ladder (C3); `b50f2a5` income-by-source on YearResult (A4); `12bd216` p
 `9316e7c` ongoing contributions + usable-vs-total terminal wealth (A1+A3). Built across a series of small committed milestones — engine (docs scaffold, NI+savings/dividends, pension suite, State Pension, SDLT+CGT, benefits, IHT+care, forecast+MonteCarlo+housing); app layer (persistence; Fortify+GDPR; Filament admin; forecast services; run persistence; queued runs + engine progress hook; UI foundation + auth; scenario builder; results page + ApexCharts; this session's builder UX + sector planning). **Everything described above is committed; the working tree is clean.** Recent commits (newest first): `6551219` results-card label clarity ("Total wealth left (incl. home)"); `84292c5` planning close-out (delta what-ifs / 3-tier budget / longevity / usable-vs-total); `2b5abc8` scenario drafts + person names + State Pension shortcut + sector research; `7219f72` import reconciliation guardrails + IWT CSP double-count fix. No remote; commit directly to `master`.
 
 ## Session log
+_2026-06-27 (Phase D go-live polish — admin-panel lockdown)_ — Continued straight from the figure-pass
+checkpoint. Closed the **`User::canAccessPanel()`** privilege-escalation gap (it returned `true` for every
+authenticated user, so anyone could reach `/admin` and toggle themselves the advice-style `interpret` grant).
+Added a new **`is_admin`** boolean (migration `2026_06_27_120000`, default false, cast on the model); `canAccessPanel()`
+now returns `$this->is_admin === true`. Bootstrap the first admin from the CLI — new **`user:make-admin {email}`**
+command (`--revoke` to undo; no-silent-failure: unknown email fails loudly, already-in-state is a reported no-op).
+Surfaced an **Admin access** `ToggleColumn` on the Filament Users resource so an existing admin can manage others,
+beside the `can_interpret` toggle. Factory gained an `admin()` state + an `is_admin => false` default. Tests:
+non-admin → **403** from the panel, admins pass (the three existing panel tests moved to `->admin()`), and a new
+`MakeUserAdminTest` (grant / revoke / unknown-email-fails / no-op). Suite **293 → 298 green / 1164 assertions**
+(app 164 → 169); pint clean. **Local note:** run `php artisan migrate` then `php artisan user:make-admin td@test.com`
+to regain admin access locally. **Next:** the remaining go-live polish — a11y CI (axe/Pa11y), CSP header, 10k-path
+perf, PDF export, 2FA enrolment UI.
 _2026-06-27 (Phase D — gov.uk figure-verification pass, Tier-1 trust gate)_ — Resumed via `/handover resume`;
 sanity-checked the suite green (**293 / 1153**), then ran the **figure-verification pass** the plan made the
 Tier-1 go-live gate. Inventoried every ⚠️ marker in `packages/finance-engine/src` (12 files) and the plan's

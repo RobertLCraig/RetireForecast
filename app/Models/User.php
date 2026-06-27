@@ -21,12 +21,14 @@ class User extends Authenticatable implements FilamentUser
     use HasFactory, Notifiable;
 
     /**
-     * Local-first single-user app: any authenticated user may reach the admin
-     * panel. Tighten this (e.g. an is_admin flag) before any public release.
+     * Only users flagged is_admin may reach the Filament admin panel. This is the
+     * privilege boundary the advice-style `interpret` grant sits behind (can_interpret
+     * is set from the panel's Users resource), so it must stay the tighter gate.
+     * Bootstrap the first admin with `php artisan user:make-admin {email}`.
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return true;
+        return $this->is_admin === true;
     }
 
     /** True once the user has accepted the first-run guidance-only disclaimer. */
@@ -56,6 +58,7 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'disclaimer_acknowledged_at' => 'datetime',
             'can_interpret' => 'boolean',
+            'is_admin' => 'boolean',
             'password' => 'hashed',
         ];
     }

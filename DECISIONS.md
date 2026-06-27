@@ -3,6 +3,22 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-27 — Phase D: admin-panel access gated on an is_admin flag (go-live lockdown)
+**Decision:** `User::canAccessPanel()` no longer returns `true` for every authenticated user; it is gated on a
+new **`is_admin`** boolean (migration, default false, cast on the model). The first admin is bootstrapped from
+the CLI (`php artisan user:make-admin {email}`, `--revoke` to undo); once one exists, admins toggle others via an
+**Admin access** `ToggleColumn` on the Filament Users resource. A non-admin hitting `/admin` gets a 403.
+**Why:** the advice-style `interpret` capability is admin-granted from inside the panel, so "any authenticated
+user can reach the panel" was a privilege-escalation path: a public user could self-grant `can_interpret` and turn
+on directive, advice-style output — exactly the regulatory line the compliance layer exists to hold. Admin access
+must therefore be the *tighter* gate, set out-of-band (CLI), not self-serve. A flag beats an email allowlist
+because the existing `UserResource` already manages per-user capabilities; `is_admin` sits beside `can_interpret`
+as one more admin-managed boolean. The CLI command follows the no-silent-failure rule (unknown email fails loudly;
+an already-correct state is a reported no-op). [[2026-06-25 — Compliance: directive-only lint + partition test + interpretation toggle]]
+**Status:** done. Suite 298 green (app 164 → 169: a non-admin-403 test + a 4-case command test; the three existing
+panel tests moved to an `admin()` factory state). **Local migration note:** existing DBs need `php artisan migrate`
+then `php artisan user:make-admin {email}` to restore admin access.
+
 ## 2026-06-27 — Phase D: gov.uk figure-verification pass completed (Tier-1 trust gate)
 **Decision:** Ran the build-time **figure-verification pass** the plan required before any figure is "shown as
 real". Every statutory figure carrying a ⚠️ marker was re-confirmed against gov.uk on 2026-06-27 and its

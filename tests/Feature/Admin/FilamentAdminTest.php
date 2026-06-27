@@ -22,11 +22,20 @@ class FilamentAdminTest extends TestCase
         $this->get(AssumptionSetResource::getUrl('index'))->assertRedirect();
     }
 
-    public function test_an_authenticated_user_can_list_assumption_sets(): void
+    public function test_a_non_admin_user_cannot_reach_the_admin_panel(): void
+    {
+        // Authenticated but not an admin: the panel is forbidden, not just login-gated.
+        // This is the privilege boundary the advice-style interpret grant sits behind.
+        $this->actingAs(User::factory()->create())
+            ->get(AssumptionSetResource::getUrl('index'))
+            ->assertForbidden();
+    }
+
+    public function test_an_admin_can_list_assumption_sets(): void
     {
         $this->seed(AssumptionSetSeeder::class);
 
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(User::factory()->admin()->create())
             ->get(AssumptionSetResource::getUrl('index'))
             ->assertOk()
             ->assertSee('FCA default');
@@ -34,7 +43,7 @@ class FilamentAdminTest extends TestCase
 
     public function test_the_tax_year_audit_page_shows_sourced_figures(): void
     {
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(User::factory()->admin()->create())
             ->get(TaxYearAudit::getUrl())
             ->assertOk()
             ->assertSee('Tax year 2025-26')
@@ -42,14 +51,15 @@ class FilamentAdminTest extends TestCase
             ->assertSee('Verified 2026-06-27');
     }
 
-    public function test_the_user_resource_lists_users_with_the_interpretation_toggle(): void
+    public function test_the_user_resource_lists_users_with_the_admin_and_interpretation_toggles(): void
     {
-        $admin = User::factory()->create(['email' => 'admin@example.test']);
+        $admin = User::factory()->admin()->create(['email' => 'admin@example.test']);
 
         $this->actingAs($admin)
             ->get(UserResource::getUrl('index'))
             ->assertOk()
             ->assertSee('admin@example.test')
+            ->assertSee('Admin access')
             ->assertSee('Interpretation mode');
     }
 

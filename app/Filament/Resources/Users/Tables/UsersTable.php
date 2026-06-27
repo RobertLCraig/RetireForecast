@@ -18,6 +18,11 @@ class UsersTable
                 TextColumn::make('email')
                     ->searchable()
                     ->sortable(),
+                // Admin-panel access. Toggling persists `is_admin`, which
+                // User::canAccessPanel() reads. This is the tighter gate the
+                // interpretation grant sits behind, so keep it to trusted users only.
+                ToggleColumn::make('is_admin')
+                    ->label('Admin access'),
                 // The grant itself: toggling persists `can_interpret`, which the
                 // `interpret` Gate reads. Grant only to yourself or family on a live
                 // deployment; never to arbitrary public users.

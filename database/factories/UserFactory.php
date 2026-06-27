@@ -32,6 +32,7 @@ class UserFactory extends Factory
             // gate is exercised explicitly via unacknowledged().
             'disclaimer_acknowledged_at' => now(),
             'can_interpret' => false,
+            'is_admin' => false,
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
         ];
@@ -60,6 +61,14 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'can_interpret' => true,
+        ]);
+    }
+
+    /** An administrator: the only kind of user who may reach the Filament panel. */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_admin' => true,
         ]);
     }
 }
