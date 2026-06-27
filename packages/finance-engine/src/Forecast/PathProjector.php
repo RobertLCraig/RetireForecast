@@ -34,8 +34,9 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  *  - Income tax covers non-savings income (earnings, pensions, State Pension,
  *    drawdown, taxable streams) plus, from A5, the annual income on unwrapped assets:
  *    cash interest (savings) and GIA dividends (dividend income), paid out and taxed
- *    each year while the asset grows at capital only. ISA stays tax-free. CGT on the
- *    capital growth of GIA disposals is the next A5 step (not yet realised here).
+ *    each year while the asset grows at capital only. ISA stays tax-free. CGT on GIA
+ *    disposals is realised pro-rata against cost basis (shared £3k AEA, 18/24% by band).
+ *    v1: capital losses are not relieved; the CGT band is judged on non-savings income.
  *  - Tax thresholds are held frozen for the whole projection (slightly overstates
  *    fiscal drag after the 2031 freeze ends).
  *  - DB revaluation/escalation and the State Pension triple lock are modelled as
@@ -117,6 +118,7 @@ final class PathProjector
         $spaYear = [];
         $cash = [];
         $gia = [];
+        $giaBasis = [];
         $isa = [];
         $pots = [];
         $lsaUsed = [];
@@ -127,6 +129,7 @@ final class PathProjector
             $spaYear[$person->id] = (int) StatePensionAge::for($person->dob)->dateReached->format('Y');
             $cash[$person->id] = 0;
             $gia[$person->id] = 0;
+            $giaBasis[$person->id] = 0;
             $isa[$person->id] = 0;
             $pots[$person->id] = [];
             $lsaUsed[$person->id] = 0;
@@ -139,6 +142,11 @@ final class PathProjector
                 AccountType::Gia => $gia[$pid] += $account->balance->pence,
                 AccountType::Isa => $isa[$pid] += $account->balance->pence,
             };
+            // GIA cost basis = balance minus the unrealised gain carried on the account,
+            // so a later disposal taxes only the gain (CGT, A5). Other wrappers need no basis.
+            if ($account->type === AccountType::Gia) {
+                $giaBasis[$pid] += $account->balance->pence - ($account->unrealisedGain?->pence ?? 0);
+            }
         }
 
         foreach ($household->pensions as $pension) {
@@ -159,6 +167,7 @@ final class PathProjector
             'spaYear' => $spaYear,
             'cash' => $cash,
             'gia' => $gia,
+            'giaBasis' => $giaBasis,
             'isa' => $isa,
             'pots' => $pots,
             'lsaUsed' => $lsaUsed,
@@ -491,10 +500,12 @@ final class PathProjector
         $extraTax = 0;
         $fromPension = 0; // gross pension withdrawn to meet the shortfall
         $fromAssets = 0;  // capital drawn from cash/GIA/ISA
+        // GIA gains realised this year by disposals, per person (feeds CGT below).
+        $realisedGain = array_fill_keys(array_map(fn ($p): string => $p->id, $household->persons), 0);
 
         $pensionFirst = $settings->drawdownStrategy === DrawdownStrategy::PensionAware;
 
-        $drawNonPension = function () use (&$state, &$remaining, &$funded, &$fromAssets, $alive, $household): void {
+        $drawNonPension = function () use (&$state, &$remaining, &$funded, &$fromAssets, &$realisedGain, $alive, $household): void {
             foreach (['cash', 'gia', 'isa'] as $bucket) {
                 foreach ($household->persons as $person) {
                     if ($remaining <= 0) {
@@ -505,6 +516,14 @@ final class PathProjector
                     }
                     $take = min($remaining, $state[$bucket][$person->id]);
                     if ($take > 0) {
+                        // Selling a GIA holding realises the pro-rata gain and consumes the
+                        // matching slice of cost basis, so a later disposal is not taxed twice.
+                        if ($bucket === 'gia') {
+                            $balance = $state['gia'][$person->id];
+                            $basis = $state['giaBasis'][$person->id];
+                            $realisedGain[$person->id] += (int) round(max(0, $balance - $basis) * $take / $balance);
+                            $state['giaBasis'][$person->id] -= (int) round($basis * $take / $balance);
+                        }
                         $state[$bucket][$person->id] -= $take;
                         $remaining -= $take;
                         $funded += $take;
@@ -563,7 +582,58 @@ final class PathProjector
             $drawPension(false);  // pension only as a last resort
         }
 
+        // CGT on the GIA gains realised funding this year's spend (computed before any
+        // further drawing, so the small extra gain from funding the tax itself is not
+        // re-taxed — a bounded v1 simplification). It is a real cost, so draw a little
+        // more to pay it; that funding is not spend, so it is taken back out of $funded.
+        $cgt = $this->capitalGainsTax($realisedGain, $taxablePerPerson, $alive);
+        if ($cgt > 0) {
+            $extraTax += $cgt;
+            $remaining = $cgt;
+            $fundedBeforeCgt = $funded;
+            $drawNonPension();
+            $drawPension(false);
+            $funded = $fundedBeforeCgt;
+        }
+
         return ['funded' => $funded, 'extraTax' => $extraTax, 'fromPension' => $fromPension, 'fromAssets' => $fromAssets];
+    }
+
+    /**
+     * Capital Gains Tax on the GIA gains realised this year, per person, after the shared
+     * annual exempt amount. Gains stack on top of income: the basic-rate band left after the
+     * person's income is taxed at the lower CGT rate, the rest at the higher rate. The
+     * residential CGT rates are reused — since the October 2024 Budget they equal the rates
+     * for gains on shares (18% / 24%). v1 simplifications (flagged): the band is judged on
+     * non-savings income only, and capital losses are not relieved.
+     *
+     * @param  array<string, int>  $realisedGain  personId => gain realised (nominal pence)
+     * @param  array<string, int>  $taxablePerPerson
+     * @param  array<string, bool>  $alive
+     */
+    private function capitalGainsTax(array $realisedGain, array $taxablePerPerson, array $alive): int
+    {
+        $cgt = $this->config->cgt;
+        $aea = $cgt->annualExemptAmount->pence;
+        $basicLimit = $this->config->incomeTax->personalAllowance->pence + $this->config->incomeTax->basicRateBand->pence;
+
+        $total = 0;
+        foreach ($realisedGain as $pid => $gain) {
+            if (! ($alive[$pid] ?? false)) {
+                continue;
+            }
+            $chargeable = max(0, $gain - $aea);
+            if ($chargeable <= 0) {
+                continue;
+            }
+            $basicRoom = max(0, $basicLimit - ($taxablePerPerson[$pid] ?? 0));
+            $atBasic = min($chargeable, $basicRoom);
+            $atHigher = $chargeable - $atBasic;
+            $total += Money::fromPence($atBasic)->applyRate($cgt->residentialBasicRate)->pence;
+            $total += Money::fromPence($atHigher)->applyRate($cgt->residentialHigherRate)->pence;
+        }
+
+        return $total;
     }
 
     /**
@@ -661,7 +731,12 @@ final class PathProjector
                 AccountType::Gia => 'gia',
                 AccountType::Isa => 'isa',
             };
-            $state[$bucket][$account->ownerId] += $take($account->ongoingContributions->pence);
+            $added = $take($account->ongoingContributions->pence);
+            $state[$bucket][$account->ownerId] += $added;
+            // New money into a GIA raises its cost basis, so only later growth is a gain.
+            if ($account->type === AccountType::Gia) {
+                $state['giaBasis'][$account->ownerId] += $added;
+            }
         }
 
         return $contributed;

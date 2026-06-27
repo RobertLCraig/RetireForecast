@@ -109,7 +109,7 @@ One immutable `TaxYearConfig` per tax year via `TaxYearRegistry::for('2025-26')`
 
 **State Pension:** new SP full rate £230.25/wk (25/26) to £241.30/wk (26/27, +4.8% triple lock) ✅; basic SP £176.45 to £184.90/wk ✅; **SPA 66 to 67 rising 6 May 2026 to 6 Apr 2028 by DOB, computed from DOB not hard-coded** ✅; deferral uplift ~5.8%/yr ✅; **State Pension is taxable, fed through the income-tax calc** (the full new SP now sits just under the frozen PA, so many start paying tax on it around 27/28) ✅.
 
-**CGT — Private Residence Relief:** main-home sale fully relieved, no CGT ✅. Edges: `ever_let` restricts relief; a second/non-main property is chargeable; final 9 months always relieved. CGT on GIA holdings separate (rates ⚠️ verify post-Oct-2024; AEA £3,000 ⚠️).
+**CGT — Private Residence Relief:** main-home sale fully relieved, no CGT ✅. Edges: `ever_let` restricts relief; a second/non-main property is chargeable; final 9 months always relieved. CGT on GIA holdings separate — **NOW MODELLED (A5, 2026-06-27):** GIA disposals realise the pro-rata gain vs cost basis, shared £3k AEA, 18/24% by band, reusing the residential rates (equal to share-gain rates since Oct-2024). Rates ⚠️ + AEA £3,000 ⚠️ still in the figure pass.
 
 **SDLT (buying the cheaper home, England/NI):** 0% to £125k, 2% to £250k, 5% to £925k, 10% to £1.5m, 12% above (from 1 Apr 2025) ✅; **+5% additional-property surcharge** if they own two homes momentarily (buy before sell), reclaimable within 36 months, model the timing ✅. Scotland/Wales use LBTT/LTT (different taxes) ⚠️, swap by region, ship SDLT first.
 
@@ -206,8 +206,8 @@ the phase it belongs in so the normal build absorbs it rather than treating it a
 
 ### External review triage (2026-06-25) — post-v1 enhancement backlog
 A second-opinion review (MS Copilot, from the doc set) was triaged. Much of it re-surfaced our own
-deferred "v1 modelling refinements" (GIA/cash CGT-on-disposal, stochastic house/salary growth,
-post-2031 reindexing, per-scheme DB escalation — already logged) or things already built (login
+deferred "v1 modelling refinements" (GIA/cash income tax + CGT-on-disposal — **now built (A5, 2026-06-27)**;
+stochastic house/salary growth, post-2031 reindexing, per-scheme DB escalation — still logged) or things already built (login
 rate-limiting is in `FortifyServiceProvider`; the first-run acknowledgement + banned-phrase lint are
 the planned compliance step). The genuinely new, aligned items, kept as a post-v1 backlog:
 

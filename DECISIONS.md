@@ -24,11 +24,14 @@ pro-rata gain is realised and taxed (shared £3k AEA, 18/24% by band — reusing
 rates have equalled the share-gain rates since the Oct-2024 Budget). Basis is tracked through contributions and
 disposals; losses are not relieved in v1.
 [[2026-06-25 — Rebuild: keep the engine, rebuild storage to the new world; ratify LW4+SQLite; defer GIA/CGT]]
-**Why:** This is the trust pass: an unwrapped holding must carry its real tax drag (income tax now, CGT on
-disposal next), and the income/capital split is the only way to add it without taxing the same return twice.
-The new yield is sourced + verified-flagged like every other external figure (no magic numbers); the
-conservation invariant is guarded by a test (no silent double count).
-**Status:** active (income side done + committed; CGT on disposal in progress)
+**Why:** This is the trust pass: an unwrapped holding must carry its real tax drag (income tax + CGT on
+disposal), and the income/capital split is the only way to add it without taxing the same return twice. The new
+yield is sourced + verified-flagged like every other external figure (no magic numbers); the conservation
+invariant is guarded by a test (no silent double count), as is CGT incidence (a gainful GIA is taxed where a
+no-gain one is not).
+**Status:** done (income side committed at `937413b`; CGT-on-disposal + basis tracking complete — GIA gains
+realised pro-rata on drawdown, shared £3k AEA, 18/24% by band, reusing `CgtParameters`; v1 omits loss relief
+and judges the CGT band on non-savings income, both flagged). A5 fully closed; GIA/CGT no longer deferred.
 
 ## 2026-06-26 — C4: PLSA Retirement Living Standards benchmark (placement, basis) + engine-isolation guard
 **Decision:** Built the **PLSA Retirement Living Standards benchmark** (the one remaining C1-list item, the

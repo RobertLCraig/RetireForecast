@@ -106,8 +106,12 @@ base_tax_year, iht_modelled (bool toggle), encrypted_payload 🔒.
 name, source_note, asset_classes [{ name, expected_real_return (Percent),
 volatility (Percent) }], correlation_matrix, inflation_mean (Percent), inflation_vol (Percent),
 salary_growth (Percent), house_price_growth (Percent), rent_inflation (Percent),
+investment_income_yield (Percent — nominal GIA income yield, A5; ~2%, ⚠️ verify),
 is_default (bool). Shipped presets: FCA-derived (default), DMS/EGS-derived,
-OBR/BoE-inflation-blended.
+OBR/BoE-inflation-blended. A5: the projector splits a GIA's total return into this taxable
+income (dividends, taxed yearly) + capital growth (CGT on disposal vs the account's
+`unrealised_gain` cost basis); cash interest = the cash return, taxed as savings; ISA stays
+tax-free. Mapper defaults a pre-A5 snapshot's yield to 2.0%.
 
 ### SimulationRun
 scenario_id, mode (`preview` \| `full`), n_paths (int), seed (int?; null = random, always
