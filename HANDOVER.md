@@ -154,7 +154,10 @@ app code; rebuild the storage layer freely**; **ratify Livewire 4 + Filament 5 +
   required. Rendered ApexCharts canvases stay a manual check.
 **Still to build:** **Tier-2 build is COMPLETE.** The one remaining go-live activity is a **real-browser
 verification pass** (run `npm run a11y`; eyeball charts under the CSP, the 2FA QR, the PDF layout), then optionally
-tighten the CSP `script-src` to nonces. Full plan: docs/PLAN.md "Sector-informed build plan".
+tighten the CSP `script-src` to nonces. **One small UX item is now on the backlog** (docs/PLAN.md "Go-live UX
+backlog 2026-06-28"): a **"waiting for a worker" hint** when a full run sits `queued` with no progress (the full
+10k run needs `php artisan queue:work`; with none running it shows "Queued — 0%" forever — a silent-failure gap hit
+during the verification pass). Full plan: docs/PLAN.md "Sector-informed build plan".
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -483,6 +486,7 @@ gaps, tiered by severity:
 - [ ] **v1 modelling refinements** (deferred, listed under Current state → Known bugs): ~~GIA/cash income tax + CGT-on-disposal~~ (**DONE — A5, 2026-06-27**), post-2031 threshold reindexing, per-scheme DB escalation, stochastic house/salary growth, SDLT surcharge timing in buy-vs-rent. Revisit when the app surfaces them.
 - [ ] **Demo data:** Rob supplies the anonymised couple's figures later, entered via the UI, not hardcoded (field list in docs/PLAN.md "Data Rob supplies").
 - [ ] **Results page — still open:** the **lump-sum tax-shock panel** ✅, **compare-assumptions overlay** ✅ and **2FA enrolment UI** ✅ (DONE 2026-06-28 — `App\Livewire\AccountSecurity`) are now built; remaining: **real-browser verification** of the ApexCharts canvases (the accessible tables/text are tested, the rendered chart is not) and the 2FA QR scan. Run `npm run build` before viewing the app (`public/build` is gitignored).
+- [ ] **Queued-run "waiting for a worker" hint (go-live UX, 2026-06-28).** A full 10k run is dispatched to the database queue and needs `php artisan queue:work`; with no worker it shows **"Queued — 0%" indefinitely with no reason** (a silent-failure gap, hit during the verification pass). Planned fix in docs/PLAN.md "Go-live UX backlog": in `ScenarioResults`, show a neutral "start a worker" note when a run sits `queued` with zero progress for ~15s. Small (component timestamp check + Blade line + test); not blocking.
 - [x] **`User::canAccessPanel()` lockdown — DONE 2026-06-27.** Gated on a new `is_admin` boolean (was "any authenticated user"), closing the escalation whereby any user could reach `/admin` and grant themselves the advice-style `interpret` capability. First admin via `php artisan user:make-admin {email}`; admins toggle others on the Users resource. Non-admin → 403 (tested).
 - [ ] **Deferred earlier, still open:** numeric editing of assumption-set figures in Filament (currently curate-metadata-only, figures seeded from the engine library).
 

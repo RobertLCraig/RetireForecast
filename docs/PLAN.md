@@ -330,6 +330,20 @@ per-person longevity adjustment; income-floor readout in-phase, PLSA benchmark a
 per scenario** (live-use finding, gotcha P). Planning closed — ready to build, starting with the scenario
 data-shape + edit/clone.
 
+### Go-live UX backlog (2026-06-28, from the verification pass)
+- **Queued-run "waiting for a worker" hint (no-silent-failure).** Live use surfaced that clicking *Run the full
+  10,000-path forecast* with **no queue worker running** leaves the run at "Queued — 0%" **indefinitely with no
+  indication why**. The full run is dispatched to the database queue (`QUEUE_CONNECTION=database`) and needs a
+  worker (`php artisan queue:work`); the synchronous *preview* does not. A run that sits queued forever with no
+  feedback violates the design ethos (*no silent failure; long runs show live progress / a reason*). **Fix:** in
+  `App\Livewire\ScenarioResults`, when a run has been `queued` with zero progress for ~15s (compare the run's
+  `created_at`/`updated_at` against now), render a neutral note on the results page — e.g. *"Still waiting for a
+  background worker to start this run. If you're running locally, start one with `php artisan queue:work`."* — and
+  clear it once it moves to running/done. Small, well-scoped: a timestamp check in the component + a Blade line +
+  a test (queued-and-stale ⇒ hint shown; running/done ⇒ hidden). Optionally surface a one-line "start a worker"
+  reminder in the docs/landing for local use. **Not blocking**; closes the exact gap hit during the 2026-06-28
+  browser verification pass.
+
 ### Data Rob supplies for the demo couple (agree the shape now, needed at step 5)
 Per person: DOB, employment status, (working partner) gross salary + planned retirement age + NI category, State Pension weekly forecast (or qualifying years) + deferral, sex (for life table). Per pension: type, and DC → value, contributions, access age, withdrawal plan; DB → accrued annual pension, NRA, revaluation + in-payment escalation, commutation option + factor, spouse fraction; State → weekly forecast/qualifying years + triple-lock assumption. Property: value, ownership, mortgage left, ever-let, running costs. Accounts: each ISA/GIA/cash balance + owner (+ GIA unrealised gain). Expenses: target annual spend split essential/discretionary + inflation basis + one-offs + survivor spend factor. Housing: assumed sale price, candidate purchase price, assumed rent + rent inflation. Region. Default assumption set. All anonymised.
 
