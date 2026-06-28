@@ -430,9 +430,11 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 ## Branch status
 On `master`, local repo only (no remote, no PR). Personal local-first project; commit directly to `master`.
 **Prototype tagged `prototype-v1` (a8f1f68)** before the rebuild — the recovery point (no remote, so the tag
-is the only snapshot). This session's commits (newest first): **Phase D Tier-1 — forecast-boundary
+is the only snapshot). This session's commits (newest first): **Phase D Tier-1 — displayed-figure
+provenance** (one shared `%` formatter + fan/ladder CSV == panel + interpretation provenance test; `e6884ec`);
+**Phase D Tier-1 — forecast-boundary
 reconciliation invariants** (`HousingProceeds` + net-proceeds reconciliation, total-wealth-from-parts, penny-drift
-fix; `d1ffa5a`); **Phase D — admin-panel lockdown (`is_admin`)**
+fix; `d1ffa5a`, hash-record `bd9efa7`); **Phase D — admin-panel lockdown (`is_admin`)**
 (`b98caba`); **Phase D — gov.uk figure-verification pass** (`52f3679`, hash-record `bf5d1a0`); **A5 part 2 — CGT
 on GIA disposal** (`b78c1a4`); **A5 part 1 — GIA/cash income tax** (`937413b`); **C4 — PLSA benchmark +
 engine-isolation guard** (`df9fce0`).
