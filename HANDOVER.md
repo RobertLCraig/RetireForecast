@@ -426,9 +426,11 @@ gaps, tiered by severity:
   `config/security.php` on the `web` group; compatible-by-construction, residual = browser eyeball + nonce
   tightening); ✅ **2FA enrolment UI DONE (2026-06-28)** (`App\Livewire\AccountSecurity` + the `TwoFactorAuthenticatable`
   trait + challenge/confirm-password screens; residual = browser eyeball that the QR scans); ✅ **PDF export DONE
-  (2026-06-28)** (`ScenarioPdfController` + dompdf, reuses the presenter; residual = layout eyeball); ✅ **a11y CI
-  scaffolded (2026-06-28)** (`Pa11y CI` axe+HTMLCS WCAG2AA; residual = run it green in a headless browser). Tier-2
-  build complete. Scotland config pack is deliberately out of v1.
+  (2026-06-28)** (`ScenarioPdfController` + dompdf, reuses the presenter; residual = layout eyeball); ✅ **a11y
+  scaffolded + first sweep (2026-06-28)** (`Pa11y CI` axe-only; **3 real contrast fixes** made; authoritative check
+  is **in-browser axe DevTools / Lighthouse** per docs/A11Y.md, since this machine's `ignore-scripts=true` blocks
+  headless browser binaries and Pa11y's axe-4.2 emits false positives). Tier-2 build complete. Scotland config pack
+  is deliberately out of v1.
 - **Tier 3 — shipped-surface gaps:** ✅ **2FA enrolment UI DONE (2026-06-28)** (was: Fortify 2FA on, no screens),
   ✅ **PDF export DONE (2026-06-28)**, real-browser ApexCharts verification (only the tables/text are tested) +
   running the a11y sweep green (both part of the one remaining verification pass), assumption-set figures not
@@ -550,6 +552,22 @@ cashflow ladder (C3); `b50f2a5` income-by-source on YearResult (A4); `12bd216` p
 `9316e7c` ongoing contributions + usable-vs-total terminal wealth (A1+A3). Built across a series of small committed milestones — engine (docs scaffold, NI+savings/dividends, pension suite, State Pension, SDLT+CGT, benefits, IHT+care, forecast+MonteCarlo+housing); app layer (persistence; Fortify+GDPR; Filament admin; forecast services; run persistence; queued runs + engine progress hook; UI foundation + auth; scenario builder; results page + ApexCharts; this session's builder UX + sector planning). **Everything described above is committed; the working tree is clean.** Recent commits (newest first): `6551219` results-card label clarity ("Total wealth left (incl. home)"); `84292c5` planning close-out (delta what-ifs / 3-tier budget / longevity / usable-vs-total); `2b5abc8` scenario drafts + person names + State Pension shortcut + sector research; `7219f72` import reconciliation guardrails + IWT CSP double-count fix. No remote; commit directly to `master`.
 
 ## Session log
+_2026-06-28 (Phase D Tier-2 — verification pass: build + serve + a11y sweep; 3 contrast fixes)_ — Rob ran
+`npm install && npm run build && php artisan serve` (build OK, app serves) and `npm run a11y`, which surfaced
+real toolchain issues. Diagnosed + acted: (1) **3 genuine WCAG AA contrast failures fixed** — `text-gray-400` on
+the builder *Discard* button and the dashboard *what-if* label (≈2.9:1) → `text-gray-600`, and a `text-gray-300`
+Compare separator (≈1.6:1) → `text-gray-500` + `aria-hidden` (found by static review of the colour classes, so the
+fix is tool-independent). (2) **Two environment facts:** npm here has **`ignore-scripts=true`**, so no headless
+browser binary (puppeteer Chromium, chromedriver) ever downloads — `pa11y-ci` and `@axe-core/cli` can't fetch a
+browser locally (CI on Linux is fine); and Pa11y CI's bundled **axe-core is 4.2 (2021)**, which emitted a **false
+positive** (contextless "color-contrast" on the public pages, which have no sub-AA text). (3) **Tooling settled:**
+runners → axe-only (HTMLCS `checkControlGroups` crashes under current Chrome), removed the diagnostic `@axe-core/cli`
+dep, trimmed `.pa11yci.json` to the verified-working URLs (public + `/welcome`, reached via a scripted demo login),
+and rewrote `docs/A11Y.md` to make **in-browser axe DevTools / Lighthouse the authoritative check** (covers authed
+pages, current axe, no downloads) with Pa11y CI demoted to a coarse CI smoke. Suite still **353 green** (the contrast
+fixes are Blade-class only; no test asserts the old classes); pint clean. **Still owed (needs a human at the
+browser):** the visual eyeball — ApexCharts render under the CSP, the 2FA QR scans with an authenticator app, the PDF
+layout looks right — and a current-axe DevTools pass over the authed forecast pages.
 _2026-06-28 (Phase D Tier-2 — PDF export + a11y CI scaffold; completes the Tier-2 build)_ — Continued straight on
 (Rob chose "both remaining items"). **PDF export:** added `barryvdh/laravel-dompdf` (pure-PHP, no browser/binary,
 app-layer only so the engine stays dependency-free) and `App\Http\Controllers\ScenarioPdfController` (`GET

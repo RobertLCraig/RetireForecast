@@ -47,7 +47,7 @@
                                 <li class="flex items-center justify-between px-4 py-2 pl-8">
                                     <a href="{{ route('scenarios.results', $child) }}" class="min-w-0 flex-1">
                                         <p class="text-sm text-gray-700">
-                                            <span class="text-gray-400">↳ what-if:</span> {{ $child->name }}
+                                            <span class="text-gray-600">↳ what-if:</span> {{ $child->name }}
                                         </p>
                                     </a>
                                     <a href="{{ route('scenarios.edit', $child) }}" class="ml-4 text-sm font-medium text-blue-600 hover:text-blue-700">Edit</a>

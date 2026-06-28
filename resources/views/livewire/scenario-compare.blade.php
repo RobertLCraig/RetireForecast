@@ -55,7 +55,7 @@
                         <td class="px-4 py-3 tabular-nums text-gray-900">{{ $plan['totalWealth'] }}</td>
                         <td class="px-4 py-3 text-right">
                             <a href="{{ $plan['resultsUrl'] }}" class="font-medium text-blue-600 hover:text-blue-700">Results</a>
-                            <span class="text-gray-300">·</span>
+                            <span class="text-gray-500" aria-hidden="true">·</span>
                             <a href="{{ $plan['editUrl'] }}" class="font-medium text-blue-600 hover:text-blue-700">Edit</a>
                         </td>
                     </tr>

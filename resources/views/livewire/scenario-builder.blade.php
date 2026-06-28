@@ -715,7 +715,7 @@
                         <button type="button" wire:click="prevStep" class="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100">Back</button>
                     @endif
                     <button type="button" wire:click="leave" class="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Save draft &amp; exit</button>
-                    <button type="button" wire:click="discardDraft" wire:confirm="Discard this forecast and delete the draft? Anything you have entered will be lost." class="text-sm text-gray-400 underline hover:text-red-700">Discard</button>
+                    <button type="button" wire:click="discardDraft" wire:confirm="Discard this forecast and delete the draft? Anything you have entered will be lost." class="text-sm text-gray-600 underline hover:text-red-700">Discard</button>
                 </div>
                 <div class="flex items-center gap-3">
                     @if ($step < $lastStep)

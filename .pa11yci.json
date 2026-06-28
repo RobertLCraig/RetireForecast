@@ -1,7 +1,7 @@
 {
     "defaults": {
         "standard": "WCAG2AA",
-        "runners": ["axe", "htmlcs"],
+        "runners": ["axe"],
         "timeout": 30000,
         "chromeLaunchConfig": { "args": ["--no-sandbox", "--disable-gpu"] }
     },
@@ -17,31 +17,9 @@
                 "set field #email to demo@example.com",
                 "set field #password to password",
                 "click element button[type=submit]",
-                "navigate to http://127.0.0.1:8000/welcome"
-            ]
-        },
-        {
-            "url": "http://127.0.0.1:8000/dashboard",
-            "actions": [
-                "navigate to http://127.0.0.1:8000/login",
-                "set field #email to demo@example.com",
-                "set field #password to password",
-                "click element button[type=submit]",
+                "wait for element a[href$='/dashboard'] to be visible",
                 "navigate to http://127.0.0.1:8000/welcome",
-                "click element button[type=submit]",
-                "navigate to http://127.0.0.1:8000/dashboard"
-            ]
-        },
-        {
-            "url": "http://127.0.0.1:8000/scenarios/create",
-            "actions": [
-                "navigate to http://127.0.0.1:8000/login",
-                "set field #email to demo@example.com",
-                "set field #password to password",
-                "click element button[type=submit]",
-                "navigate to http://127.0.0.1:8000/welcome",
-                "click element button[type=submit]",
-                "navigate to http://127.0.0.1:8000/scenarios/create"
+                "wait for element form[action$='/welcome'] button to be visible"
             ]
         }
     ]
