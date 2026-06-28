@@ -73,6 +73,48 @@
         Figures are in today's money (real terms).
     </p>
 
+    {{-- Wealth-over-time burndown: each plan as one line, overlaid. --}}
+    <section aria-labelledby="burndown-heading" class="mt-8 rounded-lg border border-gray-200 bg-white p-5">
+        <h2 id="burndown-heading" class="text-xl font-semibold text-gray-900">Usable wealth over time</h2>
+        <p class="mt-1 text-sm text-gray-600">
+            Each plan's spendable money (excluding your home) across the central projection, overlaid so you can
+            read the trajectories against each other. A line burning down to zero is money running out. Figures are
+            in today's money. These are consequences, not a recommendation.
+        </p>
+
+        <div class="mt-4" wire:ignore>
+            <div x-data="chart(@js($burndown['options']))" role="img"
+                aria-label="Line chart of usable wealth (excluding the home) by year for each plan. The full figures are in the data table below."></div>
+        </div>
+
+        <details class="mt-4">
+            <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers behind this chart</summary>
+            <div class="mt-2 overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <caption class="sr-only">Usable wealth (excluding the home) by year for each plan, in today's money.</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col" class="border-b border-gray-200 px-3 py-2 text-left font-medium text-gray-700">Year</th>
+                            @foreach ($burndown['rows'] as $row)
+                                <th scope="col" class="border-b border-gray-200 px-3 py-2 text-right font-medium text-gray-700">{{ $row['name'] }}</th>
+                            @endforeach
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($burndown['years'] as $year)
+                            <tr>
+                                <th scope="row" class="border-b border-gray-100 px-3 py-2 text-left font-medium text-gray-800">{{ $year }}</th>
+                                @foreach ($burndown['rows'] as $row)
+                                    <td class="border-b border-gray-100 px-3 py-2 text-right tabular-nums text-gray-800">{{ $row['cells'][$year] ?? '—' }}</td>
+                                @endforeach
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </details>
+    </section>
+
     <div class="mt-6">
         <x-disclaimer.result />
     </div>

@@ -154,7 +154,9 @@ final class ResultPresenter
             'dataLabels' => ['enabled' => false],
             'markers' => ['size' => 0],
             'xaxis' => ['type' => 'numeric', 'tickAmount' => 8, 'decimalsInFloat' => 0, 'title' => ['text' => 'Calendar year']],
-            'yaxis' => ['title' => ['text' => 'Total wealth (real £)'], 'labels' => ['formatter' => null]],
+            // No yaxis label formatter: passing `formatter: null` makes ApexCharts call null
+            // as a function and the whole (range-area) chart fails to render. Let it default.
+            'yaxis' => ['title' => ['text' => 'Total wealth (real £)']],
             'legend' => ['position' => 'top'],
         ];
 
@@ -211,6 +213,67 @@ final class ResultPresenter
         ];
 
         return ['options' => $options, 'rows' => $rows];
+    }
+
+    /**
+     * Wealth-over-time "burndown" for a set of plans (a base + its delta-child what-ifs),
+     * each plotted as one line and overlaid so the trajectories read against each other.
+     * Plots USABLE wealth (excl. home) — the spendable money that actually burns down and
+     * hits zero if it runs out, the honest "will it last" measure (gotcha P); the home, being
+     * illiquid, is excluded. Usable is `liquidWealth + pensionWealth`, the SAME definition the
+     * cashflow ladder uses, so the two can't drift.
+     *
+     * Returns the ApexCharts line options plus a year × plan table (the accessible source of
+     * truth — every line the chart draws is also a column here). Plans can end in different
+     * years (different death ages), so a plan that has ended shows a null/blank cell.
+     *
+     * @param  list<array{name: string, forecast: ForecastResult}>  $plans
+     * @return array{options: array<string, mixed>, years: list<int>, rows: list<array{name: string, cells: array<int, ?string>}>}
+     */
+    public static function burndown(array $plans): array
+    {
+        // Union of calendar years across the plans, ascending.
+        $yearsSet = [];
+        foreach ($plans as $plan) {
+            foreach ($plan['forecast']->years as $year) {
+                $yearsSet[$year->calendarYear] = true;
+            }
+        }
+        $years = array_keys($yearsSet);
+        sort($years);
+
+        $series = [];
+        $rows = [];
+        foreach ($plans as $plan) {
+            $usableByYear = [];
+            foreach ($plan['forecast']->years as $year) {
+                $usableByYear[$year->calendarYear] = $year->liquidWealth->plus($year->pensionWealth);
+            }
+
+            $data = [];
+            $cells = [];
+            foreach ($years as $calendarYear) {
+                $usable = $usableByYear[$calendarYear] ?? null;
+                $data[] = ['x' => $calendarYear, 'y' => $usable !== null ? self::pounds($usable) : null];
+                $cells[$calendarYear] = $usable?->format();
+            }
+
+            $series[] = ['name' => $plan['name'], 'data' => $data];
+            $rows[] = ['name' => $plan['name'], 'cells' => $cells];
+        }
+
+        $options = [
+            'chart' => ['type' => 'line', 'height' => 360, 'toolbar' => ['show' => false]],
+            'series' => $series,
+            'stroke' => ['curve' => 'straight', 'width' => 2],
+            'dataLabels' => ['enabled' => false],
+            'markers' => ['size' => 0],
+            'xaxis' => ['type' => 'numeric', 'tickAmount' => 8, 'decimalsInFloat' => 0, 'title' => ['text' => 'Calendar year']],
+            'yaxis' => ['title' => ['text' => 'Usable wealth, excl. home (real £)']],
+            'legend' => ['position' => 'top'],
+        ];
+
+        return ['options' => $options, 'years' => $years, 'rows' => $rows];
     }
 
     /**

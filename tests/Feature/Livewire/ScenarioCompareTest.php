@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Livewire;
 
 use App\Enums\ScenarioStatus;
+use App\Forecast\ResultPresenter;
+use App\Forecast\ScenarioForecaster;
 use App\Livewire\ScenarioCompare;
 use App\Models\Scenario;
 use App\Models\User;
@@ -78,6 +80,42 @@ class ScenarioCompareTest extends TestCase
 
         Livewire::test(ScenarioCompare::class, ['scenario' => $child])
             ->assertSet('base.id', $base->id);
+    }
+
+    public function test_it_shows_a_wealth_over_time_burndown_overlay(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user);
+        $this->childOf($base, $user, ['expenseLines.ess1.amount' => '90000'], 'Spend more');
+
+        Livewire::test(ScenarioCompare::class, ['scenario' => $base])
+            ->assertSee('Usable wealth over time')
+            ->assertViewHas('burndown', function (array $burndown): bool {
+                // One overlaid line per plan (base + the what-if); each plan has a cell for
+                // every year in the union (a figure or null for years it does not reach).
+                return count($burndown['rows']) === 2
+                    && $burndown['years'] !== []
+                    && count($burndown['rows'][0]['cells']) === count($burndown['years'])
+                    && $burndown['rows'][1]['name'] === 'Spend more';
+            });
+    }
+
+    public function test_the_burndown_reconciles_to_the_cashflow_ladder_usable_wealth(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user);
+
+        $forecast = app(ScenarioForecaster::class)->deterministic($base);
+        $burndown = ResultPresenter::burndown([['name' => $base->name, 'forecast' => $forecast]]);
+        $ladder = ResultPresenter::ladder($forecast);
+
+        // The burndown's usable-wealth line is the SAME figure the cashflow ladder shows for
+        // each year — one definition, so the chart can't drift from the table.
+        foreach ($ladder['rows'] as $row) {
+            $this->assertSame($row['usableWealth'], $burndown['rows'][0]['cells'][$row['year']], "usable wealth in {$row['year']}");
+        }
     }
 
     public function test_compare_is_owner_scoped(): void

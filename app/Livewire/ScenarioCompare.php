@@ -41,13 +41,23 @@ class ScenarioCompare extends Component
     {
         $forecaster = app(ScenarioForecaster::class);
 
-        $plans = $this->plans()->map(
-            fn (Scenario $plan): array => $this->summarise($plan, $forecaster->deterministic($plan)),
+        // One deterministic projection per plan, reused for both the summary table and the
+        // wealth-over-time burndown overlay (so the chart can't drift from the table).
+        $forecasts = $this->plans()->map(fn (Scenario $plan): array => [
+            'scenario' => $plan,
+            'forecast' => $forecaster->deterministic($plan),
+        ]);
+
+        $plans = $forecasts->map(fn (array $pf): array => $this->summarise($pf['scenario'], $pf['forecast']));
+
+        $burndown = ResultPresenter::burndown(
+            $forecasts->map(fn (array $pf): array => ['name' => $pf['scenario']->name, 'forecast' => $pf['forecast']])->all(),
         );
 
         return view('livewire.scenario-compare', [
             'base' => $this->base,
             'plans' => $plans,
+            'burndown' => $burndown,
         ])->title('Compare what-ifs');
     }
 
