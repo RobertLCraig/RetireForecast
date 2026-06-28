@@ -4,7 +4,7 @@
 > consequences and run-out-of-money risk visible for an older couple.
 
 **Stage:** active
-_Last updated: 2026-06-25_
+_Last updated: 2026-06-28_
 
 Full implementation plan and scope source of truth: [docs/PLAN.md](docs/PLAN.md). This PRD
 is the orientation layer; the plan holds the exhaustive data model, UK rule set, Monte Carlo
@@ -71,9 +71,13 @@ lump-sum question and longevity risk made explicit.
 - UK tax thresholds frozen to April 2031; figures versioned per tax year.
 
 ## Open questions
-- [ ] **Default assumption-set figures** (return/volatility/inflation) need Rob's source pick
-      and citation before any forecast is shown as real. FCA projection rates are the chosen
-      default baseline; DMS/EGS and OBR/BoE are alternative compare sets.
-- [ ] **gov.uk verification pass** on every figure marked ⚠️ in docs/PLAN.md, before go-live.
+- [x] **Default assumption-set figures** (return/volatility/inflation) — **RESOLVED 2026-06-24**:
+      FCA real returns + DMS volatilities are the signed-off default; DMS/EGS and OBR/BoE ship as
+      compare overlays. See DECISIONS 2026-06-24 "Assumption figures signed off".
+- [x] **gov.uk verification pass** on every figure marked ⚠️ in docs/PLAN.md — **DONE 2026-06-27**:
+      every ⚠️ statutory figure re-confirmed against gov.uk and stamped `verified_on: 2026-06-27`;
+      no value changed; the April-2027 pensions-in-IHT change is now enacted (Finance Act 2026). See
+      DECISIONS 2026-06-27. (The ONS mortality + FCA/DMS assumption *sources* sit at their 2026-06-24
+      sign-off — a separate review, not this gov.uk statutory pass.)
 - [ ] **Demo couple's anonymised figures** supplied by Rob, entered via the UI (not hardcoded),
       once the scenario builder exists.

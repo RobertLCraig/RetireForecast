@@ -7,7 +7,7 @@ Rob wants a UK financial-forecasting **decision-support tool**. The flagship wor
 The problem it solves: people in this situation make irreversible six-figure decisions (drawing a pension pot, selling a home, signing a tenancy) on gut feel, and the tax and benefit traps are invisible until it is too late. The intended outcome is a tool that lets them drive their own numbers and *see* the consequences, framed as **education/guidance, never regulated advice**.
 
 ### Locked decisions
-- **Stack:** Laravel (latest stable) + Livewire 3, Filament for admin, Fortify for auth, Redis + Horizon for queues.
+- **Stack:** Laravel (latest stable) + Livewire 3, Filament for admin, Fortify for auth, Redis + Horizon for queues. _(Superseded 2026-06-25: the build runs **Livewire 4 + Filament 5 + SQLite + db/sync queue** — Filament 5 pulled Livewire 4, and a local-first single-user app needs no Redis/Horizon. See DECISIONS 2026-06-25 "Rebuild … ratify LW4+SQLite".)_
 - **Accounts:** optional. Anonymous use writes nothing server-side; logged-in users can save scenarios. Stored financial PII is **encrypted at rest**, with **GDPR export + delete** from day one.
 - **Modelling:** HMRC-accurate deterministic engine **plus** Monte Carlo (return uncertainty, inflation, sequence-of-returns risk).
 - **Pensions:** model DC (flexible access), DB (final salary), and State Pension.

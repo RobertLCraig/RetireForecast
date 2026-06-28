@@ -135,21 +135,29 @@ mortgage (assumes outright ownership), **includes** home running costs. Not stor
 yardstick. The results page compares the household's **lifestyle spend** (`ExpenseProfile::targetAnnualSpend()`,
 i.e. essential + discretionary, excluding *saved* self-investment) **+ owned-home running costs** (rent excluded
 by construction) against the tier for the household's composition, via `App\Forecast\ResultPresenter::plsaBenchmark()`.
-Reconciles to the same `ExpenseProfile` the forecast runs on (no second definition of "spend"). ⚠️ figures
-read 2026-06-26 via automated fetch — re-verify in the go-live figure pass.
+Reconciles to the same `ExpenseProfile` the forecast runs on (no second definition of "spend"). Figures
+read 2026-06-26 and **re-confirmed against the published table in the gov.uk figure pass 2026-06-27** (all 12
+match exactly; see DECISIONS 2026-06-27).
 
 ## Storage shape (how the app persists the DTOs)
-Per the persistence decision, every persisted row is **clear structural columns + one encrypted
-payload**. The DTO is the shape; the mapper (`app/Finance/Mapping/`) turns it into the payload
-array and back. Money is stored as integer pence, Percent as integer basis points, dates as
-ISO `Y-m-d`, backed enums by value, the unbacked `WithdrawalKind` by case name.
+**Post-Phase-B (2026-06-25 rebuild).** A scenario stores the **raw builder form-state** as one encrypted
+payload (`builder_state`), which is the **single source of truth**; the engine `Household` + `HousingAction`
+DTOs are **derived** from it on demand by the `HouseholdAssembler` (`Scenario::toHousehold()` /
+`toHousingAction()`) — there is **no reverse-mapper**. The clear structural columns are a **projection** of
+that form-state, refreshed on every save (`fillFromBuilderState()`), kept clear for listing/filtering. Money
+is stored as integer pence, Percent as integer basis points, dates as ISO `Y-m-d`, backed enums by value, the
+unbacked `WithdrawalKind` by case name. (The pre-rebuild `households` + `scenario_drafts` tables and the
+`Household`/`HousingAction` mappers were **dropped** — see "Materialised today" and "Planned shape changes".)
 
-- **households** — clear: `user_id?`, `name`, `region`. Encrypted `payload`: persons, pensions
-  (dc/db/state, each carrying its own withdrawal plan), accounts, income streams, expense
-  profile, primary residence. Maps to/from the `Household` DTO.
-- **scenarios** — clear: `household_id`, `user_id?`, `assumption_set_id?`, `name`, `variant`
-  (`buy_outright|rent|stay_put`), `base_tax_year`, `iht_modelled`, `status` (`draft|ready`).
-  Encrypted `payload`: the `HousingAction` (sale/buy/rent figures).
+- **scenarios** — clear: `user_id?` (owner), `assumption_set_id?`, `name`, `variant`
+  (`buy_outright|rent|stay_put`), `base_tax_year`, `iht_modelled`, `status` (`draft|ready`),
+  `parent_scenario_id?` (a what-if **child**'s base; self-FK, cascade). A **base** scenario holds the
+  encrypted `builder_state` (the form-state above; an in-progress build is a `draft`-status base, one per
+  user, promoted to `ready` on save). A **child** holds **no `builder_state`** — instead an encrypted
+  `overrides` delta (a sparse map of changed form-state leaves); effective inputs = base ⊕ overrides via
+  `App\Forecast\BuilderStateDelta`, resolved by `Scenario::effectiveBuilderState()`, off which the same
+  `toHousehold()`/`toHousingAction()` + clear-column projection run. There is **no** `household_id` and no
+  separate `HousingAction` payload (the housing figures live inside `builder_state`).
 - **assumption_sets** — clear: `name`, `source_note`, `is_default`. Plain JSON `payload`
   (asset classes, correlation matrix, inflation/growth rates) — not personal data, so not
   encrypted. Seeded from the engine's `AssumptionSetLibrary`; at most one default. Maps
@@ -165,7 +173,7 @@ ISO `Y-m-d`, backed enums by value, the unbacked `WithdrawalKind` by case name.
 
 `ScenarioVariant`, `ScenarioStatus`, `SimulationMode` and `SimulationStatus` are app-level enums
 (the engine takes a Household + HousingAction and does not name the variants). Withdrawals live
-on the DC pension inside the household payload, not separately on the scenario.
+on the DC pension inside the `builder_state` form-state, not separately on the scenario.
 
 ## Materialised today (concrete shape in code)
 - `Money/{Money, Percent, IntMath, RoundingMode}` — integer-pence money + basis-point rates.
