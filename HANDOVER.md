@@ -3,8 +3,8 @@
 > A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue building the calculation engine and then the app around it. Read `docs/PLAN.md` first: it is the full approved plan and the source of truth for scope.
 
 **Stage:** active
-**Status:** Phase D go-live. Rebuild complete through Phase C4 + Phase D Tier-1 (trust) + Tier-2 (go-live polish) **BUILD**; the only remaining go-live activity is **one real-browser verification pass** (ApexCharts render under the CSP, the 2FA QR scans, the PDF layout) plus two backlog items (the queued-run "waiting for a worker" hint; CSP `script-src` nonce tightening). See What's next + the Session log.
-_Last updated: 2026-06-28 (docs-only: parked statement-driven onboarding + document import; this session also consolidated the handover to kill doc-drift — derivable facts and history pulled out of live prose, see CLAUDE.md "Doc hygiene". Full per-session history is in the Session log.)_
+**Status:** Phase D go-live — the rebuild and Phase D Tier-1 (trust) + Tier-2 (go-live polish) BUILD are complete; only a real-browser verification pass + minor polish remain (see What's next).
+_Last updated: 2026-06-28 (handover consolidated + doc-hygiene guard added; see Session log)._
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -53,15 +53,13 @@ See [DECISIONS.md](DECISIONS.md) for the full append-only log + rationale. The l
 - **Known bugs / broken:** none open (the five 2026-06-28 re-review findings are all resolved — see Session log + docs/PLAN.md "Review findings"). Documented v1 scope limits, all flagged in code: income tax England/Wales/NI only (Scotland throws); emergency tax models the over-deduction magnitude, not PAYE-table pennies; mortality grid ages 50–100 / years 2025–2074 with clamping + a non-ONS tail above 100 (cap 110); forecast taxes GIA dividends + cash interest annually AND realises CGT on GIA disposal (ISA tax-free; GIA/cash grow at capital only; v1 omits capital-loss relief + judges the CGT band on non-savings income); income-tax thresholds frozen until 2031, then indexed with inflation; DB escalation + triple lock as smooth growth factors; buy-vs-rent takes main-home CGT as £0 (PRR) and no SDLT surcharge; house/salary growth deterministic inside the Monte Carlo.
 
 ## What's next (in order)
-The build is essentially complete; what remains is verification and small polish.
+The go-live critical path — what stands between here and "done". Longer-tail and parked work is under Open items, not repeated here.
 1. **Real-browser verification pass** (the one remaining go-live activity): with the app served (`npm run build` then `php artisan serve`), eyeball that the ApexCharts fan + ladder canvases render under the CSP, that the 2FA QR scans with an authenticator app, and that the PDF layout looks right; run the accessibility sweep via in-browser axe DevTools / Lighthouse (the authoritative check — see docs/A11Y.md).
-2. **Queued-run "waiting for a worker" hint** (go-live UX): a full 10k run needs `php artisan queue:work`; with no worker it sits "Queued — 0%" with no reason. Show a neutral "start a worker" note when a run sits `queued` with zero progress for ~15s. Small; spec in docs/PLAN.md "Go-live UX backlog".
+2. **Queued-run "waiting for a worker" hint** (go-live UX): a full 10k run needs `php artisan queue:work`; with no worker it sits "Queued — 0%" with no reason. Show a neutral "start a worker" note when a run sits `queued` with zero progress for ~15s. Spec in docs/PLAN.md "Go-live UX backlog".
 3. **Optional:** tighten the CSP `script-src` to nonces (Alpine CSP build) — needs the browser.
-4. **Open data-model / import calls:** the line-item expense-categories decision; re-verify the IWT CSP profile against the real 2023 export; (imported income lands on Person 1 with no start age, by design + flagged; Nischa import deprioritised).
 
 ## Open items
-- [ ] **Real-browser verification pass** — charts under the CSP, the 2FA QR scan, the PDF layout, the a11y sweep (the accessible tables/text are tested; the rendered canvases are not). The one remaining go-live activity.
-- [ ] **Queued-run "waiting for a worker" hint** (go-live UX) — docs/PLAN.md "Go-live UX backlog".
+Open decisions and parked work, off the immediate go-live path (which is under What's next).
 - [ ] **Spreadsheet import** — the line-item expense-categories data-model decision; re-verify IWT CSP vs the real 2023 export (the fixture was built from a masked dump); Nischa deprioritised (`isAvailable()=false`); imported income → Person 1, no start age (by design, flagged). Real sample `.xlsx` live in gitignored `docs/*.xlsx` (never commit).
 - [ ] **Assumption-set figures** are not numerically editable in Filament (curate-metadata-only; figures seeded from the engine library — editing one means re-sourcing with a new verified-on date).
 - [ ] **ONS mortality + FCA/DMS assumption *sources*** sit at their 2026-06-24 sign-off (docs/ASSUMPTIONS.md, docs/MORTALITY.md) — a separate review from the gov.uk statutory-figure pass; the `investmentIncomeYield` 2% is a reviewed-and-kept modelling assumption.
@@ -107,6 +105,16 @@ On `master`, local repo only (no remote, no PR) — personal local-first project
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-06-28 (handover consolidation + doc-hygiene guard)_ — A doc-drift review found a stale test count in the
+headline; the root cause was an append-only handover that restated derivable facts (counts, the commit list, the
+file tree) in several places with no reconciliation. Consolidated the doc (~1097 → ~165 lines: dropped the
+duplicated REBUILD callout, the mirrored file tree, the hand-kept commit lists and the old session-log tail — all
+derivable from git/filesystem or duplicated in DECISIONS/Session log) and made the discipline enforceable rather
+than manual: `tests/Feature/Docs/HandoverHygieneTest` fails the build on a test count in live prose, a finished
+item lingering under "What's next", or a resolved `[x]` under "Open items", and CLAUDE.md gained a "Doc hygiene"
+convention + "Green is the invariant". Also de-staled PRD/DATA-MODEL/PLAN. Commit `349fe20` (+ a follow-up that
+de-duplicated the CLAUDE.md wording and disjoined What's next / Open items, per Rob's review).
 
 _2026-06-28 (parked: statement-driven onboarding + document import — the local-AI question, reframed)_ — Rob
 asked whether a local **Ollama** AI could run the forecasting/modelling. Investigated (web research): **no** —
