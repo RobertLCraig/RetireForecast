@@ -1,6 +1,6 @@
 # Data model: RetireForecast
 
-_Last updated: 2026-06-25_
+_Last updated: 2026-06-28_
 
 The single source of truth for this project's data shape. Every layer (engine, storage, UI)
 conforms to this. The canonical representation **is** the engine's readonly DTOs under

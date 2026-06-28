@@ -344,6 +344,40 @@ data-shape + edit/clone.
   reminder in the docs/landing for local use. **Not blocking**; closes the exact gap hit during the 2026-06-28
   browser verification pass.
 
+### Review findings (2026-06-28 re-review — data presentation/analysis/provision)
+A focused re-review (3 parallel agents + direct verification) confirmed the project is on track and the
+data-integrity discipline holds (one-formatter percentages, usable-vs-total one definition, no stored aggregates,
+per-source completeness incl. tax-free income, reconciliation tests, no recommendation leak). Verified findings,
+prioritised:
+- **[MED] PDF Monte-Carlo summary can diverge from the screen + carries no run provenance.** The PDF
+  (`ScenarioPdfController::monteCarloSummary`) selects `latest Done` run, while the screen
+  (`ScenarioResults::mount`/`currentRun`) shows the *latest* run only if it is `Done`. So after a `Done` run
+  followed by a *cancelled/failed* new run, the screen hides the MC table but the PDF still prints the earlier
+  `Done` one — the PDF can show figures the screen is suppressing, contradicting its "cannot drift from what the
+  user saw" claim. The PDF MC table also lacks the run's mode/n_paths/seed/date that the screen stamps, so a
+  1,000-path *preview* can be printed as the report headline indistinguishably from a 10k full run. **Fix:** make
+  the PDF select the run the same way the screen does (latest; include MC only if `Done`), or decide both should
+  fall back to the last successful run (a product choice); and stamp the PDF MC section with mode/n_paths/seed/date.
+  Add a test. (Bugs introduced with the PDF feature this session.)
+- **[MED] `freezeEndYear` documented but never implemented (engine).** `ForecastSettings::$freezeEndYear`
+  (default 2031) is documented as "the year thresholds stop being frozen and rise with inflation again" and is
+  plumbed through `HousingComparison`, but `PathProjector` uses one fixed tax-year config and never reads it —
+  thresholds are frozen for the *whole* projection (the projector docblock admits this). So the two docblocks
+  contradict and every long projection overstates fiscal drag post-2031. **Decision needed:** implement
+  threshold un-freezing from `freezeEndYear`, or correct the `ForecastSettings` docblock (and drop the dead param)
+  to match the conservative actual behaviour.
+- **[LOW] GIA disposal gain/basis split rounds two float-derived parts independently** (`PathProjector.php:533-534`):
+  `realisedGain += round((balance-basis)*take/balance)` and `giaBasis -= round(basis*take/balance)` use float
+  division and round separately, so cost basis can drift a penny over many partial disposals — the sum-of-rounds
+  vs round-of-sum pattern, in a *tax* calc where exact pence is the standard. **Fix:** derive one part from the
+  other (`basisReduction = round(basis*take/balance)`, `realisedGain = take − basisReduction`, capped) and add a
+  multi-disposal basis-reconciliation test. (Bounded; no current test pins the basis invariant.)
+- **[LOW] `medianDepletionYear` reaches only the screen headline.** It is computed and shown in the per-variant
+  headline cards but is absent from the comparison table, the fan CSV and the PDF — a computed figure reaching one
+  of four surfaces. Add it to `ResultPresenter::comparison()` rows so all surfaces carry it.
+- **[LOW] No cash-interest conservation test** mirroring the GIA one (income+capital == total return is correct in
+  code but only GIA is pinned by a test).
+
 ### Data Rob supplies for the demo couple (agree the shape now, needed at step 5)
 Per person: DOB, employment status, (working partner) gross salary + planned retirement age + NI category, State Pension weekly forecast (or qualifying years) + deferral, sex (for life table). Per pension: type, and DC → value, contributions, access age, withdrawal plan; DB → accrued annual pension, NRA, revaluation + in-payment escalation, commutation option + factor, spouse fraction; State → weekly forecast/qualifying years + triple-lock assumption. Property: value, ownership, mortgage left, ever-let, running costs. Accounts: each ISA/GIA/cash balance + owner (+ GIA unrealised gain). Expenses: target annual spend split essential/discretionary + inflation basis + one-offs + survivor spend factor. Housing: assumed sale price, candidate purchase price, assumed rent + rent inflation. Region. Default assumption set. All anonymised.
 
