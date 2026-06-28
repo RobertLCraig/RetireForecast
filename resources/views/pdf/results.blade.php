@@ -36,6 +36,10 @@
 
     @if ($presented)
         <h2>Will the money last? (Monte Carlo, per option)</h2>
+        @if ($mcRun)
+            <p class="muted">{{ ucfirst($mcRun['mode']) }} run &middot; {{ number_format($mcRun['paths']) }} simulated
+                futures &middot; seed {{ $mcRun['seed'] }}@if ($mcRun['date']) &middot; run {{ $mcRun['date'] }}@endif.</p>
+        @endif
         <table>
             <thead>
                 <tr>
@@ -43,6 +47,7 @@
                     <th class="num">Essentials always met</th>
                     <th class="num">Full spend met</th>
                     <th class="num">Ran out at some point</th>
+                    <th class="num">If so, typically by</th>
                     <th class="num">Median usable (excl. home)</th>
                     <th class="num">Median total (incl. home)</th>
                 </tr>
@@ -54,6 +59,7 @@
                         <td class="num">{{ $row['successEssentials'] }}</td>
                         <td class="num">{{ $row['successFullSpend'] }}</td>
                         <td class="num">{{ $row['depletionRate'] }}</td>
+                        <td class="num">{{ $row['medianDepletionYear'] ?? '—' }}</td>
                         <td class="num">{{ $row['medianUsable'] ?? '—' }}</td>
                         <td class="num">{{ $row['medianTerminal'] }}</td>
                     </tr>

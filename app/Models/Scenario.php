@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\ScenarioStatus;
 use App\Enums\ScenarioVariant;
+use App\Enums\SimulationStatus;
 use App\Forecast\BuilderStateDelta;
 use App\Forecast\HouseholdAssembler;
 use Illuminate\Database\Eloquent\Model;
@@ -85,6 +86,22 @@ class Scenario extends Model
     public function simulationRuns(): HasMany
     {
         return $this->hasMany(SimulationRun::class);
+    }
+
+    /**
+     * The latest successfully completed run — the SINGLE source for the results both the
+     * results page and the PDF present. A newer queued/running/failed/cancelled run never
+     * hides the last good result (the screen and PDF would otherwise disagree). Editing
+     * inputs deletes runs, so this always reflects the current inputs. Results are eager
+     * loaded since every consumer maps them per variant.
+     */
+    public function latestCompletedRun(): ?SimulationRun
+    {
+        return $this->simulationRuns()
+            ->where('status', SimulationStatus::Done)
+            ->with('results')
+            ->latest()
+            ->first();
     }
 
     /**

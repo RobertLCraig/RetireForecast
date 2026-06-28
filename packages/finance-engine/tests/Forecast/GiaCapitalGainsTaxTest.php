@@ -17,6 +17,7 @@ use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Forecast\PathProjector;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -84,5 +85,33 @@ final class GiaCapitalGainsTaxTest extends TestCase
         $noGain = $this->forecaster()->forecast($this->household(Money::zero()), AssumptionSetLibrary::default(), $this->settings());
 
         $this->assertLessThanOrEqual($noGain->terminalTotalWealth->pence, $withGain->terminalTotalWealth->pence);
+    }
+
+    public function test_partial_gia_disposals_conserve_cost_basis_with_no_drift(): void
+    {
+        // £300k holding, £100k cost basis -> £200k embedded gain (all in pence). Sell it in
+        // uneven slices: each slice's realised gain + basis consumed must equal the slice
+        // exactly, and once fully sold the realised gains must sum to exactly the embedded
+        // gain with the basis at zero — no round-of-sum drift across disposals.
+        $balance = 30_000_000;
+        $basis = 10_000_000;
+        $embeddedGain = $balance - $basis;
+
+        $totalGain = 0;
+        foreach ([1_234_567, 5_000_000, 333_333, 9_999_999, 7_777_777] as $take) {
+            [$gain, $basisConsumed] = PathProjector::disposeGiaSlice($balance, $basis, $take);
+            $this->assertSame($take, $gain + $basisConsumed, 'gain + basis consumed must equal the disposal');
+            $totalGain += $gain;
+            $balance -= $take;
+            $basis -= $basisConsumed;
+        }
+
+        // Sell whatever remains.
+        [$gain, $basisConsumed] = PathProjector::disposeGiaSlice($balance, $basis, $balance);
+        $totalGain += $gain;
+        $basis -= $basisConsumed;
+
+        $this->assertSame(0, $basis, 'cost basis is fully consumed once the holding is sold');
+        $this->assertSame($embeddedGain, $totalGain, 'total realised gain equals the embedded gain — no drift');
     }
 }

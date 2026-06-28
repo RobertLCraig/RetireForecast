@@ -7,6 +7,7 @@ namespace Tests\Feature\Forecast;
 use App\Compliance\Interpretation;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
+use App\Http\Controllers\ScenarioPdfController;
 use App\Livewire\ScenarioResults;
 use App\Models\Result;
 use App\Models\SimulationRun;
@@ -111,6 +112,32 @@ final class DisplayedFigureProvenanceTest extends TestCase
             // the figure no longer traces to the one the panel shows.
             $this->assertContains($token, $panelPercents, "interpretation percentage {$token} is not a figure the panel shows");
         }
+    }
+
+    public function test_the_pdf_reproduces_the_panel_figures_and_carries_run_provenance(): void
+    {
+        [$instance, $presented] = $this->completedRun();
+        $scenario = $instance->scenario;
+
+        $data = app(ScenarioPdfController::class)->data($scenario);
+        $html = view('pdf.results', $data)->render();
+
+        // The PDF's Monte Carlo figures ARE the panel's comparison figures — same presenter,
+        // same latest-completed run, so the PDF can't print a run the screen would hide.
+        foreach ($presented['comparison']['rows'] as $row) {
+            $this->assertStringContainsString($row['successEssentials'], $html);
+            $this->assertStringContainsString($row['medianTerminal'], $html);
+        }
+
+        // The deterministic ladder figures match the panel's ladder (one projection).
+        $ladder = ResultPresenter::ladder(app(ScenarioForecaster::class)->deterministic($scenario));
+        $this->assertStringContainsString($ladder['rows'][0]['totalWealth'], $html);
+
+        // The Monte Carlo section carries its run's provenance, so a preview can't pose as
+        // the 10k report.
+        $this->assertNotNull($data['mcRun']);
+        $this->assertStringContainsString((string) $data['mcRun']['seed'], $html);
+        $this->assertStringContainsString(number_format($data['mcRun']['paths']), $html);
     }
 
     /**

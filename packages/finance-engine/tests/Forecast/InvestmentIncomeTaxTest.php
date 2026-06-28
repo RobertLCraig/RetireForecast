@@ -103,4 +103,26 @@ final class InvestmentIncomeTaxTest extends TestCase
 
         $this->assertLessThan($isa->terminalTotalWealth->pence, $gia->terminalTotalWealth->pence, 'the taxed, capital-only GIA cannot beat the tax-free reinvesting ISA');
     }
+
+    public function test_cash_interest_is_received_as_taxable_investment_income(): void
+    {
+        $year0 = $this->forecaster()->forecast($this->couple(AccountType::Cash), AssumptionSetLibrary::default(), $this->settings())->years[0];
+
+        // Cash interest is paid out to net cash and reported as investment income — the same
+        // completeness guard as the GIA dividend / tax-free DLA cases.
+        $this->assertArrayHasKey('investment_income', $year0->incomeBySource);
+        $this->assertGreaterThan(0, $year0->incomeBySource['investment_income']->pence, 'cash interest must reach the forecast as income');
+    }
+
+    public function test_cash_total_return_is_conserved_against_a_tax_free_isa(): void
+    {
+        // Cash interest is paid out + taxed and the balance then grows at capital only, while
+        // the ISA reinvests the full total return tax-free — so the ISA ends with at least as
+        // much. If cash ever came out ahead, interest + capital growth would exceed the total
+        // return (a double count). The savings-side mirror of the GIA conservation guard.
+        $cash = $this->forecaster()->forecast($this->couple(AccountType::Cash), AssumptionSetLibrary::default(), $this->settings());
+        $isa = $this->forecaster()->forecast($this->couple(AccountType::Isa), AssumptionSetLibrary::default(), $this->settings());
+
+        $this->assertLessThanOrEqual($isa->terminalTotalWealth->pence, $cash->terminalTotalWealth->pence, 'the taxed, capital-only cash cannot beat the tax-free reinvesting ISA');
+    }
 }

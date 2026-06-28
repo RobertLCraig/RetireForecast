@@ -528,10 +528,13 @@ final class PathProjector
                         // Selling a GIA holding realises the pro-rata gain and consumes the
                         // matching slice of cost basis, so a later disposal is not taxed twice.
                         if ($bucket === 'gia') {
-                            $balance = $state['gia'][$person->id];
-                            $basis = $state['giaBasis'][$person->id];
-                            $realisedGain[$person->id] += (int) round(max(0, $balance - $basis) * $take / $balance);
-                            $state['giaBasis'][$person->id] -= (int) round($basis * $take / $balance);
+                            [$gainSlice, $basisConsumed] = self::disposeGiaSlice(
+                                $state['gia'][$person->id],
+                                $state['giaBasis'][$person->id],
+                                $take,
+                            );
+                            $realisedGain[$person->id] += $gainSlice;
+                            $state['giaBasis'][$person->id] -= $basisConsumed;
                         }
                         $state[$bucket][$person->id] -= $take;
                         $remaining -= $take;
@@ -606,6 +609,23 @@ final class PathProjector
         }
 
         return ['funded' => $funded, 'extraTax' => $extraTax, 'fromPension' => $fromPension, 'fromAssets' => $fromAssets];
+    }
+
+    /**
+     * Split a partial GIA disposal of $take (from a holding worth $balance with cost
+     * $basis) into the realised gain and the cost basis it consumes. The gain is rounded
+     * and the basis consumed is derived as the remainder, so gain + basisConsumed == $take
+     * exactly — the cost basis can never drift across many partial disposals (round-of-sum
+     * vs sum-of-rounds, applied to a tax figure where exact pence is the standard). Public
+     * static so the conservation invariant is unit-tested directly.
+     *
+     * @return array{0: int, 1: int} [realisedGain, basisConsumed], both in pence
+     */
+    public static function disposeGiaSlice(int $balance, int $basis, int $take): array
+    {
+        $gain = (int) round(max(0, $balance - $basis) * $take / $balance);
+
+        return [$gain, $take - $gain];
     }
 
     /**

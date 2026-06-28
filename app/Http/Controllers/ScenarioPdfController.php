@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\ScenarioStatus;
-use App\Enums\SimulationStatus;
 use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
@@ -47,6 +46,10 @@ class ScenarioPdfController extends Controller
         // the results page does, so the printed figures match the screen.
         $forecast = app(ScenarioForecaster::class)->deterministic($scenario);
 
+        // The SAME run the results page presents (latest completed), so the PDF can never
+        // print a Monte Carlo summary the screen is hiding.
+        [$presented, $mcRun] = $this->monteCarlo($scenario);
+
         return [
             'scenario' => $scenario,
             'generatedAt' => now()->format('j F Y'),
@@ -55,26 +58,39 @@ class ScenarioPdfController extends Controller
             'plsa' => ResultPresenter::plsaBenchmark($scenario->toHousehold()),
             'incomeFloor' => ResultPresenter::incomeFloor($forecast),
             'ladder' => ResultPresenter::ladder($forecast),
-            // Monte Carlo headline summary, only if a completed run exists.
-            'presented' => $this->monteCarloSummary($scenario),
+            // Monte Carlo headline summary + the run's provenance, only if a completed run
+            // exists, so a 1,000-path preview can't masquerade as the 10k report.
+            'presented' => $presented,
+            'mcRun' => $mcRun,
         ];
     }
 
-    /** @return array<string, mixed>|null */
-    private function monteCarloSummary(Scenario $scenario): ?array
+    /**
+     * The Monte Carlo summary + the producing run's provenance, from the scenario's
+     * latest completed run (the one source the results page also reads).
+     *
+     * @return array{0: array<string, mixed>|null, 1: array<string, mixed>|null}
+     */
+    private function monteCarlo(Scenario $scenario): array
     {
-        $run = $scenario->simulationRuns()
-            ->where('status', SimulationStatus::Done)
-            ->latest()
-            ->first();
+        $run = $scenario->latestCompletedRun();
 
         if (! $run instanceof SimulationRun) {
-            return null;
+            return [null, null];
         }
 
-        $resultsByVariant = $run->load('results')->results
+        $resultsByVariant = $run->results
             ->keyBy(fn (Result $r): string => $r->variant->value);
 
-        return ResultPresenter::build($resultsByVariant, $scenario->variant->value);
+        $presented = ResultPresenter::build($resultsByVariant, $scenario->variant->value);
+
+        $mcRun = [
+            'mode' => $run->mode->value,
+            'paths' => $run->n_paths,
+            'seed' => $run->seed,
+            'date' => $run->updated_at?->format('j F Y'),
+        ];
+
+        return [$presented, $mcRun];
     }
 }

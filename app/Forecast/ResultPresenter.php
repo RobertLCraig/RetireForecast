@@ -192,6 +192,8 @@ final class ResultPresenter
                 'successEssentials' => self::formatPercent($r->successProbabilityEssentials),
                 'successFullSpend' => self::formatPercent($r->successProbabilityFullSpend),
                 'depletionRate' => self::formatPercent($r->depletionRate),
+                // Reaches the comparison table, CSV and PDF, not only the headline cards.
+                'medianDepletionYear' => $r->medianDepletionYear ?? null,
                 'medianUsable' => self::usableMedian($r),
                 'medianTerminal' => $r->terminalWealthPercentiles['p50']->format(),
             ];

@@ -6,7 +6,6 @@ namespace App\Livewire;
 
 use App\Compliance\Interpretation;
 use App\Enums\ScenarioStatus;
-use App\Enums\SimulationStatus;
 use App\Forecast\AssumptionComparison;
 use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ResultPresenter;
@@ -89,8 +88,10 @@ class ScenarioResults extends Component
 
     public function downloadFanCsv(): ?StreamedResponse
     {
-        $run = $this->currentRun();
-        if (! $run || $run->status !== SimulationStatus::Done) {
+        // Export the run whose results are on screen (the latest completed one), so the
+        // CSV always matches the displayed fan table.
+        $run = $this->resultsRun();
+        if (! $run) {
             return null;
         }
 
@@ -142,12 +143,18 @@ class ScenarioResults extends Component
 
     public function render(): View
     {
+        // Two distinct runs: $run is the latest of any status (drives the live
+        // progress / status / cancel UI), while $resultsRun is the latest *completed*
+        // run (drives the presented results). Keeping them separate means a newer
+        // failed/cancelled run shows its status without hiding the last good result —
+        // and the PDF, which reads the same latestCompletedRun(), can't diverge.
         $run = $this->currentRun();
+        $resultsRun = $this->resultsRun();
         $presented = null;
         $interpretation = null;
 
-        if ($run && $run->status === SimulationStatus::Done) {
-            $resultsByVariant = $this->resultsByVariant($run);
+        if ($resultsRun) {
+            $resultsByVariant = $this->resultsByVariant($resultsRun);
             $presented = ResultPresenter::build($resultsByVariant, $this->scenario->variant->value);
 
             // Advice-style readouts only for an admin-granted user; the public default
@@ -163,6 +170,7 @@ class ScenarioResults extends Component
 
         return view('livewire.scenario-results', [
             'run' => $run,
+            'resultsRun' => $resultsRun,
             'presented' => $presented,
             'interpretation' => $interpretation,
             // Headline output #1: deterministic, independent of any Monte Carlo run.
@@ -196,6 +204,17 @@ class ScenarioResults extends Component
         return $this->runId
             ? SimulationRun::with('results')->where('user_id', auth()->id())->find($this->runId)
             : null;
+    }
+
+    /**
+     * The run whose RESULTS are presented: the scenario's latest completed run (the one
+     * single source the PDF also reads). It ignores the tamperable $runId entirely and
+     * is owner-safe because mount() already vetted the scenario. So a newer
+     * failed/cancelled/in-flight run never hides the last good result.
+     */
+    private function resultsRun(): ?SimulationRun
+    {
+        return $this->scenario->latestCompletedRun();
     }
 
     /** @return Collection<string, Result> */

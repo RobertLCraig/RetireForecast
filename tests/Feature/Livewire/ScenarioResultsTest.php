@@ -207,6 +207,26 @@ class ScenarioResultsTest extends TestCase
         $this->assertStringContainsString('Usable wealth (excl. home)', $csv);
     }
 
+    public function test_a_completed_run_still_shows_when_a_newer_run_is_cancelled(): void
+    {
+        // The latest run being cancelled/failed must not hide the last good result — the
+        // page presents the latest *completed* run, not merely the latest run.
+        Queue::fake();
+        $scenario = $this->scenario();
+        $runner = new SimulationRunner(new ScenarioForecaster);
+
+        $done = $runner->preview($scenario, paths: 20);
+        $this->assertSame(SimulationStatus::Done, $done->status);
+
+        $newer = $runner->dispatch($scenario);
+        $runner->cancel($newer);
+        $this->assertSame(SimulationStatus::Cancelled, $newer->fresh()->status);
+
+        Livewire::test(ScenarioResults::class, ['scenario' => $scenario->fresh()])
+            ->assertSee('Will the money last?')
+            ->assertDontSee('No completed run yet.');
+    }
+
     private function scenario(): Scenario
     {
         return $this->scenarioFor($this->user);

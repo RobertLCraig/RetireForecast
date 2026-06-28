@@ -387,8 +387,8 @@
         <section aria-labelledby="headline-heading" class="space-y-3">
             <h2 id="headline-heading" class="text-xl font-semibold text-gray-900">Will the money last?</h2>
             <p class="text-sm text-gray-600">
-                Under this run's assumptions, across {{ $run->n_paths }} simulated futures
-                ({{ $run->mode->value }} run, seed {{ $run->seed }}).
+                Under this run's assumptions, across {{ $resultsRun->n_paths }} simulated futures
+                ({{ $resultsRun->mode->value }} run, seed {{ $resultsRun->seed }}).
             </p>
             <div class="grid gap-4 md:grid-cols-3">
                 @foreach ($variants as $key => $v)
@@ -476,6 +476,7 @@
                             <th scope="col" class="{{ $th }}">Essentials met</th>
                             <th scope="col" class="{{ $th }}">Full spend met</th>
                             <th scope="col" class="{{ $th }}">Runs out</th>
+                            <th scope="col" class="{{ $th }}">If so, typically by</th>
                             <th scope="col" class="{{ $th }}">Usable wealth left (excl. home)</th>
                             <th scope="col" class="{{ $th }}">Total wealth left (incl. home)</th>
                         </tr>
@@ -487,6 +488,7 @@
                                 <td class="{{ $td }}">{{ $row['successEssentials'] }}</td>
                                 <td class="{{ $td }}">{{ $row['successFullSpend'] }}</td>
                                 <td class="{{ $td }}">{{ $row['depletionRate'] }}</td>
+                                <td class="{{ $td }}">{{ $row['medianDepletionYear'] ?? '—' }}</td>
                                 <td class="{{ $td }}">{{ $row['medianUsable'] ?? '—' }}</td>
                                 <td class="{{ $td }}">{{ $row['medianTerminal'] }}</td>
                             </tr>
