@@ -8,6 +8,7 @@ use App\Import\ImportException;
 use App\Import\ImportProfile;
 use App\Import\ImportResult;
 use App\Import\MoneyText;
+use App\Import\ReconciliationLine;
 use App\Import\Spreadsheet;
 
 /**
@@ -57,6 +58,7 @@ final class PayAndExpenditures implements ImportProfile
         // preserved and the amount annualised — so the import populates line items, not one
         // lumped essential total. The annual sum still reconciles to the sheet's Total row.
         $expenseLines = [];
+        $statedTotalAnnual = null;
         foreach (array_slice($rows, $header + 1) as $cells) {
             $raw = trim($cells[0] ?? '');
             $label = strtolower($raw);
@@ -66,7 +68,13 @@ final class PayAndExpenditures implements ImportProfile
                 continue;
             }
             if (str_contains($label, 'total') || str_contains($label, 'remainder')) {
-                break; // the block ends at its total / remainder
+                // The block ends at its own Total/Remainder. Capture the sheet's stated
+                // monthly Total (annualised) as the independent cross-check for the panel —
+                // it must equal the sum of the line items above it (CLAUDE.md integrity rule).
+                if (str_contains($label, 'total') && MoneyText::looksNumeric($amount)) {
+                    $statedTotalAnnual = MoneyText::fromPence(MoneyText::toPence($amount) * 12);
+                }
+                break;
             }
             if (! MoneyText::looksNumeric($amount)) {
                 continue;
@@ -84,7 +92,7 @@ final class PayAndExpenditures implements ImportProfile
             throw new ImportException('Found the expenditure header but no monthly line items below it.');
         }
 
-        return $this->result($tab, $expenseLines, $this->yearlySalary($rows), $this->incomeBlock($rows));
+        return $this->result($tab, $expenseLines, $statedTotalAnnual, $this->yearlySalary($rows), $this->incomeBlock($rows));
     }
 
     /**
@@ -243,7 +251,7 @@ final class PayAndExpenditures implements ImportProfile
      * @param  list<array{label: string, amount: string, category: string, savedAsAsset: bool}>  $expenseLines
      * @param  array{incomeStreams: list<array<string, mixed>>, pensions: list<array<string, mixed>>, filled: list<string>}  $income
      */
-    private function result(string $tab, array $expenseLines, ?string $salaryAnnual, array $income): ImportResult
+    private function result(string $tab, array $expenseLines, ?string $statedTotalAnnual, ?string $salaryAnnual, array $income): ImportResult
     {
         // The essential total is the exact-pence sum of the lines — the same single source
         // the lines themselves carry, so the headline figure cannot drift from them.
@@ -278,6 +286,14 @@ final class PayAndExpenditures implements ImportProfile
                 $salaryAnnual !== null ? 'The salary was read as a yearly figure.' : null,
                 $importedIncome ? 'Income was imported onto Person 1 with no start age — set start ages, split across people, and check each type/tax flag on the Pensions & income step.' : null,
             ])),
+            reconciliation: [
+                new ReconciliationLine(
+                    label: 'Essential spending',
+                    imported: $essential,
+                    stated: $statedTotalAnnual,
+                    detail: "summed from {$lines} monthly outgoings, each ×12",
+                ),
+            ],
         );
     }
 }

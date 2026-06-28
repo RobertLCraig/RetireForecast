@@ -8,6 +8,7 @@ use App\Import\MoneyText;
 use App\Import\Profiles\ConsciousSpendingPlan;
 use App\Import\Profiles\PayAndExpenditures;
 use App\Import\Profiles\RetireForecastTemplate;
+use App\Import\ReconciliationLine;
 use Tests\Fixtures\Import\GoldenWorkbooks;
 use Tests\TestCase;
 
@@ -105,6 +106,83 @@ class ImportReconciliationTest extends TestCase
         $this->assertSame($result->expense['discretionary'], $this->lineTotal($result->expenseLines, 'discretionary'));
         // Contributions (Investments + Savings) are never spending lines.
         $this->assertSame([], $this->lines($result->expenseLines, 'self_investment'));
+    }
+
+    public function test_pay_and_expenditures_surfaces_a_reconciliation_against_the_sheets_total(): void
+    {
+        $result = (new PayAndExpenditures)->parse(GoldenWorkbooks::payAndExpenditures());
+
+        $line = $this->reconLine($result->reconciliation, 'Essential');
+        // The summed-from-lines figure is set beside the sheet's own "Total" row, and they agree.
+        $this->assertSame(GoldenWorkbooks::PAYEXP_ESSENTIAL_ANNUAL, $line->imported);
+        $this->assertSame(GoldenWorkbooks::PAYEXP_ESSENTIAL_ANNUAL, $line->stated);
+        $this->assertTrue($line->reconciles());
+        $this->assertFalse($line->mismatch());
+    }
+
+    public function test_csp_buckets_each_reconcile_their_total_against_their_line_items(): void
+    {
+        $result = (new ConsciousSpendingPlan)->parse(GoldenWorkbooks::consciousSpendingPlan());
+
+        $fixed = $this->reconLine($result->reconciliation, 'Fixed Costs');
+        $this->assertSame(GoldenWorkbooks::CSP_ESSENTIAL_ANNUAL, $fixed->imported); // the stated bucket total
+        $this->assertSame(GoldenWorkbooks::CSP_ESSENTIAL_ANNUAL, $fixed->stated);   // == the line-item sum
+        $this->assertFalse($fixed->mismatch());
+
+        // Contributions (Investments + Savings) are surfaced too, reconciling totals vs lines.
+        $contrib = $this->reconLine($result->reconciliation, 'Contributions');
+        $this->assertSame(GoldenWorkbooks::CSP_CONTRIBUTION_ANNUAL, $contrib->imported);
+        $this->assertFalse($contrib->mismatch());
+
+        // Guilt-Free has only a TOTAL row (no line items), so there is nothing to cross-check.
+        $guilt = $this->reconLine($result->reconciliation, 'Guilt-Free');
+        $this->assertNull($guilt->stated);
+        $this->assertTrue($guilt->reconciles());
+    }
+
+    public function test_a_csp_bucket_total_that_disagrees_with_its_line_items_is_a_visible_mismatch(): void
+    {
+        // The data-layer integrity proof: when the sheet's stated total and its own line items
+        // disagree, the panel must show a mismatch — not silently pick one. The importer still
+        // trusts the stated TOTAL (the documented rule), so the wrong figure reaches the form,
+        // and the reconciliation makes that loud.
+        $result = (new ConsciousSpendingPlan)->parse(GoldenWorkbooks::consciousSpendingPlanWithInconsistentFixedTotal());
+
+        $fixed = $this->reconLine($result->reconciliation, 'Fixed Costs');
+        $this->assertSame('119988.00', $fixed->imported);                 // 9999 * 12 (the stated TOTAL)
+        $this->assertSame(GoldenWorkbooks::CSP_ESSENTIAL_ANNUAL, $fixed->stated); // 3300 * 12 (the line items)
+        $this->assertTrue($fixed->mismatch());
+
+        // And the form was indeed pre-filled with the (wrong) stated total — surfaced, not hidden.
+        $this->assertSame('119988.00', $result->expense['essential']);
+    }
+
+    public function test_retireforecast_surfaces_each_category_total_for_eyeball_review(): void
+    {
+        $result = (new RetireForecastTemplate)->parse(GoldenWorkbooks::retireForecastCsv());
+
+        // This layout has no independent total of its own, so each aggregated figure is
+        // surfaced (stated = null) for the user to verify, and never falsely flags a mismatch.
+        $essential = $this->reconLine($result->reconciliation, 'Essential');
+        $this->assertSame(GoldenWorkbooks::RF_ESSENTIAL_ANNUAL, $essential->imported);
+        $this->assertNull($essential->stated);
+        $this->assertFalse($essential->mismatch());
+
+        $discretionary = $this->reconLine($result->reconciliation, 'Discretionary');
+        $this->assertSame(GoldenWorkbooks::RF_DISCRETIONARY_ANNUAL, $discretionary->imported);
+        $this->assertNull($discretionary->stated);
+    }
+
+    /** The first reconciliation line whose label contains $fragment. */
+    private function reconLine(array $reconciliation, string $fragment): ReconciliationLine
+    {
+        foreach ($reconciliation as $line) {
+            if (str_contains($line->label, $fragment)) {
+                return $line;
+            }
+        }
+
+        $this->fail("No reconciliation line matching '{$fragment}'.");
     }
 
     /** The pence-exact sum of the expense lines in $category, as a pounds string. */

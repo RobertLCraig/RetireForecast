@@ -8,6 +8,7 @@ use App\Import\ImportException;
 use App\Import\ImportProfile;
 use App\Import\ImportResult;
 use App\Import\MoneyText;
+use App\Import\ReconciliationLine;
 use App\Import\Spreadsheet;
 
 /**
@@ -69,6 +70,7 @@ final class ConsciousSpendingPlan implements ImportProfile
         $totalSum = ['essential' => 0, 'discretionary' => 0, 'contribution' => 0];
         $seen = [];
         $currentBucket = null;
+        $inNonBucketSection = false;
 
         foreach ($rows as $cells) {
             if ($cells === []) {
@@ -79,17 +81,27 @@ final class ConsciousSpendingPlan implements ImportProfile
             $amount = $this->amountIn($cells);
 
             if ($amount === null) {
-                // A bucket name with no amount is a section header; remember it.
+                // A header row. A bucket header opens a spending section; a NET WORTH / INCOME
+                // header opens a non-bucket section whose rows must be ignored — even the
+                // "Investments" / "Savings" balance-sheet rows that happen to carry a bucket
+                // keyword (they are assets, not spending or contributions).
                 if ($rowBucket !== null) {
                     $currentBucket = $rowBucket;
+                    $inNonBucketSection = false;
+                } elseif ($this->isNonBucketSectionHeader($cells)) {
+                    $inNonBucketSection = true;
                 }
 
                 continue;
             }
 
+            if ($inNonBucketSection) {
+                continue; // a balance-sheet / income figure — never a spending or contribution line
+            }
+
             $bucket = $rowBucket ?? $currentBucket;
             if ($bucket === null) {
-                continue; // an amount before any bucket (e.g. a NET WORTH or net-income row) — skip
+                continue; // an amount before any bucket (e.g. a stray net-income row) — skip
             }
 
             $annual = $amount * $this->frequencyFactor($cells);
@@ -113,7 +125,7 @@ final class ConsciousSpendingPlan implements ImportProfile
             $annualPence[$bucket] = $totalSum[$bucket] > 0 ? $totalSum[$bucket] : $lineSum[$bucket];
         }
 
-        return $this->result($annualPence, $seen);
+        return $this->result($annualPence, $seen, $lineSum, $totalSum);
     }
 
     /** The destination bucket named in this row, if any. */
@@ -136,6 +148,24 @@ final class ConsciousSpendingPlan implements ImportProfile
     {
         foreach ($cells as $cell) {
             if (str_contains(strtolower((string) $cell), 'total')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether this header opens a NET WORTH or INCOME section — neither holds spending, so its
+     * rows are skipped (the balance-sheet "Investments" / "Savings" assets carry a bucket
+     * keyword but must not be summed as contributions). A real bucket header is checked first
+     * by the caller, so a bucket that happened to mention "income" still wins.
+     */
+    private function isNonBucketSectionHeader(array $cells): bool
+    {
+        foreach ($cells as $cell) {
+            $lower = strtolower(trim((string) $cell));
+            if ($lower !== '' && (str_contains($lower, 'net worth') || str_contains($lower, 'income'))) {
                 return true;
             }
         }
@@ -183,10 +213,12 @@ final class ConsciousSpendingPlan implements ImportProfile
     }
 
     /**
-     * @param  array<string, int>  $annualPence
+     * @param  array<string, int>  $annualPence  the figure used per bucket (TOTAL if stated, else line sum)
      * @param  array<string, bool>  $seen
+     * @param  array<string, int>  $lineSum  annual pence summed from the bucket's line items
+     * @param  array<string, int>  $totalSum  annual pence from the bucket's own "… TOTAL" rows
      */
-    private function result(array $annualPence, array $seen): ImportResult
+    private function result(array $annualPence, array $seen, array $lineSum, array $totalSum): ImportResult
     {
         $expense = [];
         $expenseLines = [];
@@ -227,6 +259,50 @@ final class ConsciousSpendingPlan implements ImportProfile
                 'The current home and the housing decision to compare',
             ],
             notes: $notes,
+            reconciliation: $this->reconciliation($seen, $lineSum, $totalSum),
         );
+    }
+
+    /**
+     * One cross-check per bucket. The figure that went into the form is the bucket's own
+     * stated "… TOTAL" when present, otherwise the sum of its line items; the independent
+     * figure for the panel is the *other* one (the line-item sum) when a TOTAL was used and
+     * line items also exist. They must agree — a disagreement means the sheet's total and its
+     * own line items diverge, which the panel surfaces loudly rather than silently picking one.
+     *
+     * @param  array<string, bool>  $seen
+     * @param  array<string, int>  $lineSum
+     * @param  array<string, int>  $totalSum
+     * @return list<ReconciliationLine>
+     */
+    private function reconciliation(array $seen, array $lineSum, array $totalSum): array
+    {
+        $labels = [
+            'essential' => 'Essential spending (Fixed Costs)',
+            'discretionary' => 'Discretionary spending (Guilt-Free)',
+            'contribution' => 'Contributions (Investments + Savings)',
+        ];
+
+        $lines = [];
+        foreach ($labels as $bucket => $label) {
+            if (! isset($seen[$bucket])) {
+                continue;
+            }
+
+            $usedTotal = $totalSum[$bucket] > 0;
+            $imported = MoneyText::fromPence($usedTotal ? $totalSum[$bucket] : $lineSum[$bucket]);
+
+            // Cross-check only when both a stated total and line items exist; otherwise there
+            // is just the one figure, surfaced for the user to eyeball (stated = null).
+            $hasBoth = $usedTotal && $lineSum[$bucket] > 0;
+            $stated = $hasBoth ? MoneyText::fromPence($lineSum[$bucket]) : null;
+            $detail = $usedTotal
+                ? "from the sheet's own bucket total"
+                : 'summed from the line items';
+
+            $lines[] = new ReconciliationLine($label, $imported, $stated, $detail);
+        }
+
+        return $lines;
     }
 }

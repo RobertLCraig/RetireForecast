@@ -28,6 +28,11 @@ final class ImportResult
      * @param  list<string>  $filled  human labels of what was populated
      * @param  list<string>  $missing  human labels of what the user still needs to enter
      * @param  list<string>  $notes  caveats worth surfacing (e.g. how amounts were interpreted)
+     * @param  list<ReconciliationLine>  $reconciliation  per-aggregate cross-checks for the user-facing
+     *                                                    reconciliation panel: each imported total set beside the
+     *                                                    sheet's own independent figure, so a double-count or a
+     *                                                    dropped line is a visible failure, not a silent one
+     *                                                    (CLAUDE.md data-layer integrity rule).
      */
     public function __construct(
         public readonly array $expense = [],
@@ -38,5 +43,6 @@ final class ImportResult
         public readonly array $filled = [],
         public readonly array $missing = [],
         public readonly array $notes = [],
+        public readonly array $reconciliation = [],
     ) {}
 }

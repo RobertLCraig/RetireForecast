@@ -9,6 +9,7 @@ use App\Forecast\BuilderStateDelta;
 use App\Import\ImportException;
 use App\Import\ImportRegistry;
 use App\Import\ImportResult;
+use App\Import\ReconciliationLine;
 use App\Import\SpreadsheetReader;
 use App\Models\AssumptionSet;
 use App\Models\Scenario;
@@ -413,6 +414,13 @@ class ScenarioBuilder extends Component
             'filled' => $result->filled,
             'missing' => $result->missing,
             'notes' => $result->notes,
+            // Each aggregated total set beside the sheet's own independent figure, so a
+            // double-count or a dropped line is a visible failure in the panel, not silent
+            // (CLAUDE.md data-layer integrity rule). Flattened to arrays for the public prop.
+            'reconciliation' => array_map(
+                fn (ReconciliationLine $r): array => $r->toArray(),
+                $result->reconciliation,
+            ),
         ];
 
         // Most of what was imported is spending, so land there to review it.

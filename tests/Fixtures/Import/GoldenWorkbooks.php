@@ -49,6 +49,9 @@ final class GoldenWorkbooks
 
     public const CSP_CONTRIBUTION_ANNUAL = '12000.00';  // (600 + 400) * 12, from the bucket TOTALs
 
+    /** A deliberately wrong Fixed Costs TOTAL — the line items still sum to CSP_FIXED_MONTHLY_TOTAL (3300). */
+    public const CSP_FIXED_INCONSISTENT_TOTAL = 9999;
+
     /** Balance-sheet figures in the NET WORTH section that must NEVER reach a spending bucket. */
     public const CSP_NETWORTH_INVESTMENTS = 200000;
 
@@ -149,6 +152,30 @@ final class GoldenWorkbooks
             ['Long Term Emergency Fund', '250', 'Monthly'],
             ['SAVINGS TOTAL', '400'],
             // Bucket: GUILT-FREE -> discretionary. Only a TOTAL row, no line items.
+            ['GUILT-FREE SPENDING (20-35% of take home)', '0.25'],
+            ['GUILT-FREE SPENDING TOTAL (Dining out, movies, anything you want!)', (string) self::CSP_GUILT_MONTHLY_TOTAL],
+        ]]);
+    }
+
+    /**
+     * The CSP "Example" shape but with the FIXED COSTS TOTAL deliberately wrong: its line
+     * items sum to 3300/mo while the TOTAL row claims 9999/mo. The importer trusts the stated
+     * TOTAL, so the wrong figure reaches the form — and the reconciliation panel must surface
+     * the disagreement loudly rather than silently picking one (CLAUDE.md: a mismatch is a
+     * visible failure, not a silent one).
+     */
+    public static function consciousSpendingPlanWithInconsistentFixedTotal(): Spreadsheet
+    {
+        return new Spreadsheet(['' => [
+            ['FIXED COSTS (50-60% of take home)', '0.55'],
+            ['Rent / Mortgage', '2000', 'Monthly'],
+            ['Utilities (gas, water, electric, internet, cable, etc.)', '300', 'Monthly'],
+            ['Insurance (medical, auto, home / renters, etc.)', '200', 'Monthly'],
+            ['Groceries', '500', 'Monthly'],
+            ['Phone', '100', 'Monthly'],
+            ['Subscriptions (Netflix, gym membership, etc.)', '50', 'Monthly'],
+            ['Miscellaneous (automatically adds 15% for things you forgot)', '150', 'Monthly'],
+            ['FIXED COSTS TOTAL', (string) self::CSP_FIXED_INCONSISTENT_TOTAL],  // != the 3300 line sum
             ['GUILT-FREE SPENDING (20-35% of take home)', '0.25'],
             ['GUILT-FREE SPENDING TOTAL (Dining out, movies, anything you want!)', (string) self::CSP_GUILT_MONTHLY_TOTAL],
         ]]);

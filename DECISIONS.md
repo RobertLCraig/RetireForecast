@@ -3,6 +3,31 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-28 — Phase D Tier-1: import reconciliation surfaced to the user (the panel, completing Tier-1)
+**Decision:** The data-layer integrity rule's "surface every imported/aggregated total; a mismatch must be a
+*visible* failure, not a silent one" is now enforced at the **user-facing** layer, not only in tests. A new
+`App\Import\ReconciliationLine` value object pairs the figure that went **into the form** (`imported`) with the
+sheet's **own independent figure** for the same quantity (`stated`, nullable) — a TOTAL row, or the sum of the
+line items the importer did not take as primary. Equality is judged in **exact pence** (`reconciles()` /
+`mismatch()`), so formatting can neither mask nor invent a divergence; `stated = null` means the layout offers no
+second figure, so the value is surfaced for eyeball review and never reported as a mismatch. `ImportResult` carries
+`reconciliation: list<ReconciliationLine>`, the three calibrated profiles emit it (`PayAndExpenditures` captures
+the sheet's own Total row it previously discarded; `ConsciousSpendingPlan` reconciles each bucket's stated `… TOTAL`
+against its line-item sum; `RetireForecastTemplate` surfaces each category with `stated = null`), and the Blade
+import panel renders each pair, turning red + `role=alert` on any divergence.
+**Why:** the importers already *resolve* discrepancies internally (CSP trusts the stated TOTAL; PayExp uses the
+summed lines) but the user never saw that a second figure existed or whether the two agreed — exactly the
+silent-aggregation blind spot that burned a past project. Showing both figures side by side makes the resolution
+auditable before the user saves. The test layer enforced reconciliation; the UI did not, so this closes the gap.
+**One latent correctness fix fell out:** to make the CSP line-item sum a *faithful* cross-check, the parser now
+skips the `NET WORTH`/`INCOME` sections (their Investments/Savings rows shared the bucket keywords and inflated the
+contributions sum). No imported figure changes — the stated TOTAL stays authoritative — but a CSP file lacking
+bucket TOTAL rows would no longer mis-import balance-sheet assets as monthly contributions.
+**Status:** done — this is the **last Tier-1 (trust) item**, so Tier-1 is COMPLETE. Suite 309 → **320 green / 1626
+assertions** (app 172 → 183; engine 137); pint clean. Proof the failure is visible, not silent: a deliberately
+-inconsistent golden fixture (`csp-inconsistent-bucket-total`, a £9,999/mo TOTAL vs £3,000/mo of line items) plus
+its Livewire twin assert the panel flags it. [[2026-06-25 — Data-layer integrity: one definition, one home + reconciliation/completeness tests]]
+
 ## 2026-06-27 — Phase D: admin-panel access gated on an is_admin flag (go-live lockdown)
 **Decision:** `User::canAccessPanel()` no longer returns `true` for every authenticated user; it is gated on a
 new **`is_admin`** boolean (migration, default false, cast on the model). The first admin is bootstrapped from

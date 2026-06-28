@@ -8,6 +8,7 @@ use App\Import\ImportException;
 use App\Import\ImportProfile;
 use App\Import\ImportResult;
 use App\Import\MoneyText;
+use App\Import\ReconciliationLine;
 use App\Import\Spreadsheet;
 
 /**
@@ -99,16 +100,19 @@ final class RetireForecastTemplate implements ImportProfile
     {
         $expense = [];
         $filled = [];
+        $reconciliation = [];
 
         if (isset($seen['essential'])) {
             $annual = $monthlyPence['essential'] * 12;
             $expense['essential'] = MoneyText::fromPence($annual);
             $filled[] = 'Essential spending (£'.MoneyText::fromPence($annual).'/yr)';
+            $reconciliation[] = $this->reconciliationLine('Essential spending', $expense['essential'], $lines, 'essential');
         }
         if (isset($seen['discretionary'])) {
             $annual = $monthlyPence['discretionary'] * 12;
             $expense['discretionary'] = MoneyText::fromPence($annual);
             $filled[] = 'Discretionary spending (£'.MoneyText::fromPence($annual).'/yr)';
+            $reconciliation[] = $this->reconciliationLine('Discretionary spending', $expense['discretionary'], $lines, 'discretionary');
         }
 
         $salaryAnnual = null;
@@ -129,6 +133,26 @@ final class RetireForecastTemplate implements ImportProfile
                 'The current home and the housing decision to compare',
             ],
             notes: ['Amounts were read as monthly and multiplied to annual figures.'],
+            reconciliation: $reconciliation,
+        );
+    }
+
+    /**
+     * A reconciliation row for one category. This CSV layout states no independent total of
+     * its own, so {@see ReconciliationLine::$stated} is null: the aggregated figure is
+     * surfaced for the user to eyeball against their spreadsheet rather than auto-checked.
+     *
+     * @param  list<array{label: string, amount: string, category: string, savedAsAsset: bool}>  $lines
+     */
+    private function reconciliationLine(string $label, string $imported, array $lines, string $category): ReconciliationLine
+    {
+        $count = count(array_filter($lines, fn (array $l): bool => $l['category'] === $category));
+
+        return new ReconciliationLine(
+            label: $label,
+            imported: $imported,
+            stated: null,
+            detail: "summed from {$count} monthly rows, each ×12",
         );
     }
 }

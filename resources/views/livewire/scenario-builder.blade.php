@@ -78,6 +78,7 @@
             </button>
 
             @if ($importSummary)
+                @php($reconMismatch = collect($importSummary['reconciliation'] ?? [])->contains('mismatch', true))
                 <div role="status" class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
                     <p class="font-medium">Imported. Review the figures below and complete the rest of the wizard.</p>
                     @if (! empty($importSummary['filled']))
@@ -92,6 +93,35 @@
                         <ul class="mt-2 list-disc pl-5 text-xs text-green-800">@foreach ($importSummary['notes'] as $n)<li>{{ $n }}</li>@endforeach</ul>
                     @endif
                 </div>
+
+                {{-- Reconciliation: every imported total set beside the sheet's own figure, so a
+                     double-count or a dropped line shows up as a visible failure, not silently. --}}
+                @if (! empty($importSummary['reconciliation']))
+                    <div role="{{ $reconMismatch ? 'alert' : 'status' }}"
+                        class="mt-3 rounded-md border px-4 py-3 text-sm {{ $reconMismatch ? 'border-red-300 bg-red-50 text-red-900' : 'border-gray-200 bg-white text-gray-800' }}">
+                        <p class="font-medium">Reconciliation — check these totals against your spreadsheet</p>
+                        @if ($reconMismatch)
+                            <p class="mt-1 font-semibold text-red-800">A figure below does not reconcile with your spreadsheet. Check it before saving.</p>
+                        @endif
+                        <ul class="mt-2 space-y-2">
+                            @foreach ($importSummary['reconciliation'] as $r)
+                                <li>
+                                    <span class="font-medium text-gray-900">{{ $r['label'] }}:</span>
+                                    £{{ $r['imported'] }}/yr
+                                    @if ($r['detail'])<span class="text-xs text-gray-500">({{ $r['detail'] }})</span>@endif
+                                    <br>
+                                    @if ($r['mismatch'])
+                                        <span class="font-semibold text-red-700">⚠ Does not reconcile: £{{ $r['imported'] }}/yr is in the form, but your spreadsheet's own figure for this is £{{ $r['stated'] }}/yr. Check your spreadsheet before saving.</span>
+                                    @elseif ($r['stated'] !== null)
+                                        <span class="text-green-800">✓ Reconciles with your spreadsheet's own figure (£{{ $r['stated'] }}/yr).</span>
+                                    @else
+                                        <span class="text-gray-600">No separate total in the file to cross-check — please verify against your spreadsheet.</span>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
             @endif
         </div>
     </details>

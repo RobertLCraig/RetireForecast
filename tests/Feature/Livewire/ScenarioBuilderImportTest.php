@@ -115,4 +115,36 @@ class ScenarioBuilderImportTest extends TestCase
             ->call('import')
             ->assertHasErrors('importFile');
     }
+
+    public function test_the_reconciliation_panel_confirms_a_total_that_matches_its_line_items(): void
+    {
+        // A bucket whose own TOTAL agrees with the sum of its line items: £3,000/mo either way.
+        $csv = "Fixed Costs,,\nRent,\$2000,Monthly\nGroceries,\$1000,Monthly\nFIXED COSTS TOTAL,\$3000,Monthly\n";
+
+        Livewire::test(ScenarioBuilder::class)
+            ->set('importProfile', 'iwt-csp')
+            ->set('importFile', UploadedFile::fake()->createWithContent('csp.csv', $csv))
+            ->call('import')
+            ->assertHasNoErrors()
+            ->assertSee('Reconciliation')
+            ->assertSee('Reconciles with')
+            ->assertSee('36000.00'); // 3000 * 12
+    }
+
+    public function test_the_reconciliation_panel_flags_a_total_that_disagrees_with_its_line_items(): void
+    {
+        // The visible-failure proof: the stated TOTAL (£9,999/mo) does not equal the line items
+        // (£3,000/mo). The importer trusts the TOTAL, so the wrong figure is pre-filled — and the
+        // panel must say so loudly rather than silently picking one (CLAUDE.md integrity rule).
+        $csv = "Fixed Costs,,\nRent,\$2000,Monthly\nGroceries,\$1000,Monthly\nFIXED COSTS TOTAL,\$9999,Monthly\n";
+
+        Livewire::test(ScenarioBuilder::class)
+            ->set('importProfile', 'iwt-csp')
+            ->set('importFile', UploadedFile::fake()->createWithContent('csp.csv', $csv))
+            ->call('import')
+            ->assertHasNoErrors()
+            ->assertSee('does not reconcile')
+            ->assertSee('119988.00')  // 9999 * 12, the (wrong) stated total now in the form
+            ->assertSee('36000.00');  // 3000 * 12, the sheet's own line items
+    }
 }

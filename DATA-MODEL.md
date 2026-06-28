@@ -226,8 +226,12 @@ Recorded here so the rebuild does not fork the model:
   `ImportResult` gained `expenseLines` (`list<{label, amount, category, savedAsAsset?}>`, no id — the builder
   assigns ids on apply); the three calibrated profiles populate it (RetireForecast per-row, PayAndExpenditures
   per-outgoing, CSP per-bucket), with the flat `expense` kept as the reconciliation anchor and the gotcha-A
-  guard extended to the line sums. **Deferred (→ C4):** the PLSA benchmark; phased ("smile") spend (an engine
-  change).
+  guard extended to the line sums. **(2026-06-28, Phase D Tier-1):** `ImportResult` also gained
+  `reconciliation: list<ReconciliationLine>` — a **transient (not stored)** import-review artifact pairing each
+  imported/aggregated total with the sheet's own independent figure for the same quantity
+  (`{label, imported, stated?, detail?}`, compared in **exact pence**, `stated = null` when the layout has no
+  second figure) so the import panel can flag a divergence loudly. **Deferred (→ C4):** the PLSA benchmark;
+  phased ("smile") spend (an engine change).
 - ✅ **BUILT (2026-06-25 rebuild, Phase A).** **`Account` gained `ongoingContributions`** and the projector
   now applies it (and DC `ongoingContribution`/`employerContribution`, previously ignored), funded from
   surplus so *saved* self-investment accumulates.
