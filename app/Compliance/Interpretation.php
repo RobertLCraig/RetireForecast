@@ -52,14 +52,15 @@ final class Interpretation
         $best = reset($scored);
         $worst = end($scored);
 
-        $pct = static fn (float $fraction): string => round($fraction * 100).'%';
-
+        // Use the presenter's single percentage formatter, so an interpreted figure is
+        // formatted identically to the same figure on the neutral panel (one figure, one
+        // home — the displayed-figure provenance rule).
         $bestLabel = $best['label'];
         $worstLabel = $worst['label'];
-        $bestFull = $pct($best['fullSpend']);
-        $worstFull = $pct($worst['fullSpend']);
-        $bestDeplete = $pct($best['depletion']);
-        $worstDeplete = $pct($worst['depletion']);
+        $bestFull = ResultPresenter::formatPercent($best['fullSpend']);
+        $worstFull = ResultPresenter::formatPercent($worst['fullSpend']);
+        $bestDeplete = ResultPresenter::formatPercent($best['depletion']);
+        $worstDeplete = ResultPresenter::formatPercent($worst['depletion']);
 
         if (count($scored) < 2) {
             return [

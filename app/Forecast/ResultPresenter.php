@@ -96,9 +96,9 @@ final class ResultPresenter
         return [
             'key' => $variant,
             'label' => self::LABELS[$variant],
-            'successEssentials' => self::pct($r->successProbabilityEssentials),
-            'successFullSpend' => self::pct($r->successProbabilityFullSpend),
-            'depletionRate' => self::pct($r->depletionRate),
+            'successEssentials' => self::formatPercent($r->successProbabilityEssentials),
+            'successFullSpend' => self::formatPercent($r->successProbabilityFullSpend),
+            'depletionRate' => self::formatPercent($r->depletionRate),
             'medianDepletionYear' => $r->medianDepletionYear ?? null,
             'terminalP10' => $r->terminalWealthPercentiles['p10']->format(),
             'terminalP50' => $r->terminalWealthPercentiles['p50']->format(),
@@ -189,9 +189,9 @@ final class ResultPresenter
             $medianWealth[] = self::pounds($r->terminalWealthPercentiles['p50']);
             $rows[] = [
                 'label' => self::LABELS[$key],
-                'successEssentials' => self::pct($r->successProbabilityEssentials),
-                'successFullSpend' => self::pct($r->successProbabilityFullSpend),
-                'depletionRate' => self::pct($r->depletionRate),
+                'successEssentials' => self::formatPercent($r->successProbabilityEssentials),
+                'successFullSpend' => self::formatPercent($r->successProbabilityFullSpend),
+                'depletionRate' => self::formatPercent($r->depletionRate),
                 'medianUsable' => self::usableMedian($r),
                 'medianTerminal' => $r->terminalWealthPercentiles['p50']->format(),
             ];
@@ -481,7 +481,13 @@ final class ResultPresenter
         return intdiv($money->pence, 100);
     }
 
-    private static function pct(float $fraction): string
+    /**
+     * One definition for a probability shown as a percentage — shared by the headline
+     * cards, the comparison table, the CSV exports and the walled-off interpretation, so
+     * the same figure can never be formatted two different ways on two surfaces
+     * (data-integrity: one figure, one home).
+     */
+    public static function formatPercent(float $fraction): string
     {
         return round($fraction * 100).'%';
     }
