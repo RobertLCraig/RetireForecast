@@ -37,8 +37,11 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  *    each year while the asset grows at capital only. ISA stays tax-free. CGT on GIA
  *    disposals is realised pro-rata against cost basis (shared £3k AEA, 18/24% by band).
  *    v1: capital losses are not relieved; the CGT band is judged on non-savings income.
- *  - Tax thresholds are held frozen for the whole projection (slightly overstates
- *    fiscal drag after the 2031 freeze ends).
+ *  - Income-tax thresholds are frozen until {@see ForecastSettings::$freezeEndYear}
+ *    (April 2031), then index with inflation again — so fiscal drag bites during the
+ *    freeze and eases after it (the tax function is homogeneous in income and its
+ *    thresholds, so the indexing is applied without rebuilding the band config in the
+ *    hot loop; see {@see indexedTotalPence()}).
  *  - DB revaluation/escalation and the State Pension triple lock are modelled as
  *    smooth annual growth factors.
  */
@@ -63,6 +66,7 @@ final class PathProjector
 
         $years = [];
         $cumInflation = 1.0; // product of (1+inflation) before the current year
+        $freezeRefInflation = 1.0; // price level when the income-tax threshold freeze ends
         $depletionYear = null;
 
         for ($yearIndex = 0; ; $yearIndex++) {
@@ -77,7 +81,16 @@ final class PathProjector
                 break; // last survivor has died
             }
 
-            $year = $this->projectYear($household, $settings, $draws, $state, $yearIndex, $calendarYear, $alive, $cumInflation);
+            // Income-tax thresholds are frozen until freezeEndYear, then index with inflation.
+            // $thresholdFactor is how far they have risen by this year: 1.0 during the freeze,
+            // then the price level relative to the freeze-end year. (If the base year is past
+            // the freeze, $freezeRefInflation stays 1.0 and thresholds index from the base.)
+            if ($calendarYear === $settings->freezeEndYear) {
+                $freezeRefInflation = $cumInflation;
+            }
+            $thresholdFactor = $calendarYear <= $settings->freezeEndYear ? 1.0 : $cumInflation / $freezeRefInflation;
+
+            $year = $this->projectYear($household, $settings, $draws, $state, $yearIndex, $calendarYear, $alive, $cumInflation, $thresholdFactor);
             $years[] = $year;
 
             if ($depletionYear === null && ! $year->essentialsMet) {
@@ -195,6 +208,7 @@ final class PathProjector
         int $calendarYear,
         array $alive,
         float $cumInflation,
+        float $thresholdFactor = 1.0,
     ): YearResult {
         $ages = [];
         $taxablePerPerson = [];   // nominal non-savings taxable income
@@ -270,11 +284,11 @@ final class PathProjector
             // Combined pass: non-savings, then cash interest (savings, with the PSA), then
             // GIA dividends (dividend allowance + rates) stacked on top. The hot loop only
             // needs the total, so use the lean integer twin of compute() (same band core).
-            $tax = $this->incomeTax->totalPence(new TaxableIncome(
+            $tax = $this->indexedTotalPence(new TaxableIncome(
                 Money::fromPence($taxable),
                 Money::fromPence($cashInterest),
                 Money::fromPence($giaDividends),
-            ));
+            ), $thresholdFactor);
             $ni = $this->niForPerson($household, $person->id, $state, $yearIndex);
             $totalTaxNominal += $tax + $ni;
             $netCashNominal += $taxable + $investmentIncome - $tax - $ni;
@@ -308,7 +322,7 @@ final class PathProjector
         $shortfall = $spendNominal - $netCashNominal;
         $fundedNominal = 0;
         if ($shortfall > 0) {
-            $funded = $this->fundShortfall($household, $settings, $state, $alive, $taxablePerPerson, $shortfall);
+            $funded = $this->fundShortfall($household, $settings, $state, $alive, $taxablePerPerson, $shortfall, $thresholdFactor);
             $fundedNominal = $funded['funded'];
             $totalTaxNominal += $funded['extraTax'];
             $src['pension_drawdown'] += $funded['fromPension'];
@@ -502,7 +516,7 @@ final class PathProjector
      * @param  array<string, int>  $taxablePerPerson
      * @return array{funded: int, extraTax: int, fromPension: int, fromAssets: int}
      */
-    private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $taxablePerPerson, int $shortfall): array
+    private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $taxablePerPerson, int $shortfall, float $thresholdFactor = 1.0): array
     {
         $remaining = $shortfall;
         $funded = 0;
@@ -545,7 +559,7 @@ final class PathProjector
             }
         };
 
-        $drawPension = function (bool $capToBasicRate) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, $alive, $household, $taxablePerPerson): void {
+        $drawPension = function (bool $capToBasicRate) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, $alive, $household, $taxablePerPerson, $thresholdFactor): void {
             $params = $this->config->incomeTax;
             $basicLimit = $params->personalAllowance->pence + $params->basicRateBand->pence;
 
@@ -568,11 +582,11 @@ final class PathProjector
                     if ($cap <= 0) {
                         continue;
                     }
-                    $gross = $this->grossUpPension($remaining, $alreadyTaxable, $cap);
+                    $gross = $this->grossUpPension($remaining, $alreadyTaxable, $cap, $thresholdFactor);
                     if ($gross <= 0) {
                         continue;
                     }
-                    $taxDelta = $this->marginalTax($alreadyTaxable, $gross);
+                    $taxDelta = $this->marginalTax($alreadyTaxable, $gross, $thresholdFactor);
                     $net = $gross - $taxDelta;
                     $pot['value'] -= $gross;
                     $remaining -= $net;
@@ -670,11 +684,11 @@ final class PathProjector
      * person's existing taxable income, capped at $maxGross. Iterates to convergence
      * (income tax is piecewise linear, so this is exact within a few rounds).
      */
-    private function grossUpPension(int $netNeeded, int $existingTaxable, int $maxGross): int
+    private function grossUpPension(int $netNeeded, int $existingTaxable, int $maxGross, float $thresholdFactor = 1.0): int
     {
         $gross = $netNeeded;
         for ($i = 0; $i < 8; $i++) {
-            $tax = $this->marginalTax($existingTaxable, $gross);
+            $tax = $this->marginalTax($existingTaxable, $gross, $thresholdFactor);
             $next = $netNeeded + $tax;
             if (abs($next - $gross) <= 1) {
                 $gross = $next;
@@ -686,12 +700,35 @@ final class PathProjector
         return min($gross, $maxGross);
     }
 
-    private function marginalTax(int $existingTaxable, int $extra): int
+    private function marginalTax(int $existingTaxable, int $extra, float $thresholdFactor = 1.0): int
     {
-        $base = $this->incomeTax->totalPence(TaxableIncome::ofNonSavings(Money::fromPence($existingTaxable)));
-        $with = $this->incomeTax->totalPence(TaxableIncome::ofNonSavings(Money::fromPence($existingTaxable + $extra)));
+        $base = $this->indexedTotalPence(TaxableIncome::ofNonSavings(Money::fromPence($existingTaxable)), $thresholdFactor);
+        $with = $this->indexedTotalPence(TaxableIncome::ofNonSavings(Money::fromPence($existingTaxable + $extra)), $thresholdFactor);
 
         return $with - $base;
+    }
+
+    /**
+     * Income tax due, in pence, under income-tax thresholds indexed for inflation since the
+     * freeze ended. The income-tax function is homogeneous of degree 1 in (income, all of its
+     * monetary thresholds), so taxing income deflated to the freeze-end price level against the
+     * frozen base-year thresholds and re-inflating the result equals tax under the inflated
+     * thresholds — without rebuilding the band config in the 10k-path hot loop. $factor == 1.0
+     * (during the freeze, and for the HMRC worked-example unit tests) is the exact identity.
+     */
+    private function indexedTotalPence(TaxableIncome $income, float $factor): int
+    {
+        if ($factor <= 1.0) {
+            return $this->incomeTax->totalPence($income);
+        }
+
+        $deflated = new TaxableIncome(
+            Money::fromPence((int) round($income->nonSavings->pence / $factor)),
+            Money::fromPence((int) round($income->savings->pence / $factor)),
+            Money::fromPence((int) round($income->dividends->pence / $factor)),
+        );
+
+        return (int) round($this->incomeTax->totalPence($deflated) * $factor);
     }
 
     private function oneOffCostsNominal(Household $household, array $ages, float $cumInflation): int
