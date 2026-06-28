@@ -353,7 +353,10 @@ data-shape + edit/clone.
   confusing. The existing footnote only explains the home-illiquidity paradox (total vs usable), not this
   transient-shortfall one. **Fix:** relabel to e.g. *"Chance of a shortfall year"* (or keep "running out" + a
   one-line clarifier) and extend the footnote to cover transient-recovery. Small Blade/presenter change + a test.
-  Offered 2026-06-28; not yet actioned.
+  **✅ Resolved (2026-06-28, `5277155`):** kept the "Chance of running out" label (Rob wanted the punch) and added a
+  blunt plain-English verdict per option (`ResultPresenter::runOutVerdict` — "you'd very likely run out of money…",
+  factual + lint-safe) plus a footnote that reconciles "running out" (a shortfall year, may recover) with "wealth
+  left" (end state). So the phrasing keeps its bite and the figures no longer read as contradictory.
 
 ### Review findings (2026-06-28 re-review — data presentation/analysis/provision)
 A focused re-review (3 parallel agents + direct verification) confirmed the project is on track and the

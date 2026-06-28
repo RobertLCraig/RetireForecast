@@ -502,7 +502,7 @@ Run from the **project root** (the test runner shells out to a relative phpunit 
 Set-Location "C:\Dev\RetireForecast"
 # NB: php / artisan / composer / npm are NOT on the Git Bash PATH on this machine — run them via the
 # PowerShell tool (PHP 8.4 is provided by Laravel Herd). Bash is fine for git / grep / file ops. See CLAUDE.md.
-php artisan test                            # everything: expect 361 passed (2916 assertions)
+php artisan test                            # everything: expect 362 passed (2917 assertions)
 php artisan test --testsuite=Engine        # engine only: expect 143 passed (1772 assertions)
 npm run a11y                                 # Pa11y CI a11y sweep (needs the served app — see docs/A11Y.md)
 vendor/bin/pint --dirty                      # house style on changed files
@@ -564,6 +564,16 @@ cashflow ladder (C3); `b50f2a5` income-by-source on YearResult (A4); `12bd216` p
 `9316e7c` ongoing contributions + usable-vs-total terminal wealth (A1+A3). Built across a series of small committed milestones — engine (docs scaffold, NI+savings/dividends, pension suite, State Pension, SDLT+CGT, benefits, IHT+care, forecast+MonteCarlo+housing); app layer (persistence; Fortify+GDPR; Filament admin; forecast services; run persistence; queued runs + engine progress hook; UI foundation + auth; scenario builder; results page + ApexCharts; this session's builder UX + sector planning). **Everything described above is committed; the working tree is clean.** Recent commits (newest first): `6551219` results-card label clarity ("Total wealth left (incl. home)"); `84292c5` planning close-out (delta what-ifs / 3-tier budget / longevity / usable-vs-total); `2b5abc8` scenario drafts + person names + State Pension shortcut + sector research; `7219f72` import reconciliation guardrails + IWT CSP double-count fix. No remote; commit directly to `master`.
 
 ## Session log
+_2026-06-28 (run-out verdict — keep the punch, fix the contradiction)_ — Rob wanted to keep the visceral
+"you'll run out of money" framing while fixing the "55% runs out vs £659k wealth left" contradiction. Added
+`ResultPresenter::runOutVerdict()` — a blunt plain-English verdict per option on the results cards, scaling from
+"the money lasts in every simulated future" to "you'd very likely run out of money before the end", colour-coded
+(role=alert at high risk). It is a **factual** statement about the simulated futures (anchored "on these figures"),
+never a recommendation, so it stays guidance-side and **clears the banned-phrasing partition lint** (confirmed by
+the suite). Kept the "Chance of running out" label (the punch) and rewrote the footnote to reconcile the two
+figures: "running out" = a future with ≥1 year essentials weren't fully covered (may later recover); "wealth left"
+= the median end-of-life amount; "total" includes any home still owned. Suite **361 → 362 green**; pint clean;
+Blade/PHP only (no rebuild). Closes the label-clarity item offered earlier.
 _2026-06-28 (results-page fan chart fix + a wealth-over-time burndown overlay on Compare)_ — From live use of the
 full 10k run. **(1) Fan chart was blank** while the bar chart rendered: the fan's `yaxis.labels.formatter` was set
 to `null`, which ApexCharts calls as a function and throws, failing that chart's render (the bar chart had no
