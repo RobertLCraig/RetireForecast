@@ -435,7 +435,7 @@ php artisan test --testsuite=Engine        # engine only: expect 137 passed (635
 vendor/bin/pint --dirty                      # house style on changed files
 npm run build                                # build assets (public/build is gitignored); `npm run dev` to watch
 ```
-If `vendor/` is missing: `composer install`. If engine classes are not found, re-register the path package: `composer update retireforecast/finance-engine`. To use the app locally: migrate + `php artisan db:seed --class=AssumptionSetSeeder` (populates assumption sets), `npm run build`, then `php artisan serve` — a **local test user already exists** (`td@test.com` / `password`, disclaimer accepted) for quick sign-in, or register at `/register` and **accept the one-time guidance-only disclaimer at `/welcome`**. For a ready-made, obviously-fictional sample to look at, seed the **demo preset**: `php artisan db:seed --class=Database\Seeders\DemoScenarioSeeder` (idempotent; outside production it creates `demo@example.com` / `password` with a base plan + one what-if child; in production set `DEMO_USER_EMAIL` to an existing user instead). Build a forecast at `/scenarios/create`, run it on its results page. The full queued run needs a worker (`php artisan queue:listen`); the synchronous preview does not. **Admin panel at `/admin` is now gated on `is_admin`** (default false) — a non-admin gets 403; grant yourself access once with `php artisan user:make-admin {email}` (e.g. `td@test.com`), after which the Users resource there toggles **Admin access** + `can_interpret`. **NB:** run `php artisan migrate` first to add the new `is_admin` column to an existing local DB. Tests neutralise Vite, so they pass without a build.
+If `vendor/` is missing: `composer install`. If engine classes are not found, re-register the path package: `composer update retireforecast/finance-engine`. To use the app locally: `npm run build`, then `php artisan serve`. **DB setup — IMPORTANT:** a local `database.sqlite` that predates the Phase B rebuild has a stale schema (the `create_scenarios` migration was **rewritten in place**, so `php artisan migrate` alone will NOT add `builder_state` — it silently stays on the old `payload`/`household_id` columns and the app breaks). On any pre-rebuild DB, run **`php artisan migrate:fresh --seed`** (drops + rebuilds from the current migrations; `--seed` runs `DatabaseSeeder` → assumption sets + a `test@example.com` / `password` user). For a ready-made, obviously-fictional sample to sign in to, then seed the **demo preset**: `php artisan db:seed --class=Database\Seeders\DemoScenarioSeeder` (idempotent; outside production it creates **`demo@example.com` / `password`** with a base plan + one what-if child — the documented quick-login now the prototype's `td@test.com` is gone; in production set `DEMO_USER_EMAIL` to an existing user instead). Register your own at `/register` and **accept the one-time guidance-only disclaimer at `/welcome`**. Build a forecast at `/scenarios/create`, run it on its results page. The full queued run needs a worker (`php artisan queue:listen`); the synchronous preview does not. **Admin panel at `/admin` is gated on `is_admin`** (default false) — a non-admin gets 403; grant yourself access once with `php artisan user:make-admin {email}` (e.g. `demo@example.com`), after which the Users resource there toggles **Admin access** + `can_interpret`. Tests neutralise Vite, so they pass without a build.
 
 ## Sibling docs
 | Doc | Purpose |
@@ -490,8 +490,16 @@ runnable household; spend totals reconcile to the line items; the what-if is a v
 (runnable base+child through the forecaster — a living integration smoke; the what-if changes the forecast;
 idempotent; attaches to an explicit `DEMO_USER_EMAIL` user; refuses in production). Suite **320 → 330 green /
 1658 assertions** (app 183 → 193; engine 137 untouched); pint clean (it resolved the `{@see}` docblock to an
-app-layer import — no engine-isolation concern). **Next: the rest of Tier-2** — CSP header, a11y CI (axe/Pa11y),
-PDF export, 10k-path perf, 2FA enrolment UI.
+app-layer import — no engine-isolation concern). **Verified live against the real local DB:** seeding it first
+surfaced that the local `database.sqlite` was still on the **pre-rebuild prototype schema** (`scenarios.payload`/
+`household_id`, no `builder_state`; the dropped `households`/`scenario_drafts` tables still present) — because the
+rebuild **rewrote the create-scenarios migration in place**, so a DB already migrated under the old definition never
+gained the Phase B columns (`php artisan migrate` is insufficient; `migrate:fresh` is required). Backed up the file,
+then with Rob's go-ahead ran `migrate:fresh --seed` + the demo seed; the seeded base runs to 2049 with £1,124,230
+terminal wealth and the what-if (retire 2 yrs earlier) to £1,028,348 — ~£96k lower, proving the override reaches the
+engine. The prototype's manually-created `td@test.com` user was dropped by the fresh; `demo@example.com` / `password`
+is now the documented quick-login. (How-to-pick-up updated with the `migrate:fresh` requirement.) **Next: the rest
+of Tier-2** — CSP header, a11y CI (axe/Pa11y), PDF export, 10k-path perf, 2FA enrolment UI.
 _2026-06-28 (Phase D Tier-1 COMPLETE — user-facing import reconciliation panel + a latent CSP parser fix)_ —
 Resumed via `/handover resume`, sanity-checked the suite green (309/1589), then built the last Tier-1
 data-integrity item: the user-facing import reconciliation panel. Added `App\Import\ReconciliationLine` (pairs the
