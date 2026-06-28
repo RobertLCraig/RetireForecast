@@ -3,6 +3,33 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-28 — Phase D Tier-2: security headers — a compatible-by-construction CSP on the web group
+**Decision:** A new `App\Http\Middleware\SecurityHeaders` (appended to the `web` group in `bootstrap/app.php`)
+sets a **Content-Security-Policy** plus a small set of static hardening headers on every response of the public
+surface (landing, Fortify auth screens, the Livewire forecast UI). The policy and its toggles live in one home,
+`config/security.php`, so the test asserts against the same definition the middleware reads. The CSP is
+**compatible-by-construction** with the current self-hosted stack: `default-src 'self'`, self-hosted Vite bundle +
+Bunny fonts (`font-src 'self'`, `img-src 'self' data:`, `connect-src 'self'`), with `script-src`/`style-src` keeping
+`'unsafe-inline'`/`'unsafe-eval'` because Livewire injects an inline init script, Alpine evaluates expressions via the
+Function constructor and ApexCharts injects inline styles. The high-value structural directives are enforced
+regardless of inline handling: `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`.
+The static headers are `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+`Referrer-Policy: strict-origin-when-cross-origin` and a restrictive `Permissions-Policy`. Two env toggles:
+`SECURITY_HEADERS_ENABLED` (master switch) and `SECURITY_CSP_REPORT_ONLY` (send `Content-Security-Policy-Report-Only`
+to stage a rollout). The Filament `/admin` panel is **deliberately out of scope** — it runs its own middleware stack
+(not the `web` group), manages its own asset loading (incl. its own font source) and is admin-only.
+**Why:** a CSP + hardening headers are a standard go-live requirement. The policy is shipped enforcing (not
+report-only) because it is permissive exactly where this self-hosted stack needs it, so breakage risk is low while
+the structural protections are real. Tightening `script-src`/`style-src` to nonce-based (dropping `'unsafe-inline'`
+and `'unsafe-eval'`) needs Alpine's CSP build and a real-browser verification pass, so it is left as the residual
+go-live item rather than shipped untested. Applying only to the `web` group keeps Filament's own CSP/asset story
+intact (a `web`-group CSP with `font-src 'self'` would otherwise break Filament's default Bunny-hosted font). Chosen
+as the next Tier-2 item because the server-side policy + toggles are fully verifiable headlessly (the only
+browser-dependent part — confirming ApexCharts/Livewire still render under the CSP — is the documented eyeball).
+Tested by `SecurityHeadersTest` (header present on web + auth routes, structural + stack directives, exact match to
+config, static headers, report-only swap, disabled-switch). Suite 332 → 340 green.
+**Status:** active
+
 ## 2026-06-28 — Phase D Tier-2: Monte Carlo 10k-path perf — a lean integer tax twin + JIT for the worker
 **Decision:** The 10k-path run is sped up two ways, both proven to leave results byte-identical. (1) **In-repo:**
 profiling showed `PathProjector::project()` is **93%** of per-path time and within it the income-tax calculator
