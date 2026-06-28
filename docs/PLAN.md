@@ -399,10 +399,13 @@ Per person: DOB, employment status, (working partner) gross salary + planned ret
   profile is additionally pinned by a **sanitised real-file golden fixture** (a layout-faithful copy
   of the real workbook with fake figures, committed) so the double-counting class of bug is caught
   every build, not only by a manual run. Every displayed figure traces to one computed value
-  (panel == CSV == interpretation), asserted by test. **Status (2026-06-25): the importer guardrails
-  are built** (`tests/Fixtures/Import/GoldenWorkbooks.php` + `ImportReconciliationTest`); they caught
-  and we fixed two double-count/mis-bucket bugs in the IWT CSP importer. The displayed-figure
-  provenance test and the import reconciliation panel are still to do.
+  (panel == CSV == interpretation), asserted by test. **Status: the importer guardrails
+  (`tests/Fixtures/Import/GoldenWorkbooks.php` + `ImportReconciliationTest`), the displayed-figure
+  provenance test (`DisplayedFigureProvenanceTest`) and the user-facing import reconciliation panel are
+  all built (Tier-1 complete);** the importer guardrail caught and we fixed two double-count/mis-bucket
+  bugs in the IWT CSP importer. **Gap (2026-06-28 re-review): the PDF export surface, added after that
+  test, is NOT covered by the provenance assertion** — which is exactly why the PDF Monte-Carlo divergence
+  (see "Review findings" #1) slipped through; extend `DisplayedFigureProvenanceTest` to the PDF when fixing it.
 - **End-to-end:** run the app (`herd` + `php artisan serve` / Vite), build the demo couple, run a preview then a full 10k simulation, confirm live progress, and read the buy-vs-rent comparison with both fan charts and the lump-sum tax-shock panel.
 
 ---
@@ -422,3 +425,7 @@ Per person: DOB, employment status, (working partner) gross salary + planned ret
 - ✅ **DONE 2026-06-27.** The gov.uk figure-verification pass is complete: every statutory figure was re-confirmed against gov.uk and stamped `verified_on: 2026-06-27`; no value changed. Only out-of-v1-scope items (Scottish bands, LBTT/LTT) remain unverified, and the region resolver throws for those.
 - Scotland (income tax + LBTT) is out of v1; region resolver throws rather than guessing.
 - The April-2027 pensions-in-IHT change is **now enacted** (Finance Act 2026, Royal Assent 18 Mar 2026, deaths on/after 6 Apr 2027); keep it behind the toggle.
+- **Open findings from the 2026-06-28 re-review** (full list above under "Review findings"): the engine `freezeEndYear`
+  doc/behaviour contradiction (overstates post-2031 drag) and the GIA disposal basis float-split penny-drift are the
+  two to watch in the engine; the PDF Monte-Carlo divergence + missing provenance is the one app-side data-presentation
+  bug. None block the suite; decisions/fixes pending.
