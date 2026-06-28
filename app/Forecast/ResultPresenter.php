@@ -100,6 +100,9 @@ final class ResultPresenter
             'successFullSpend' => self::formatPercent($r->successProbabilityFullSpend),
             'depletionRate' => self::formatPercent($r->depletionRate),
             'medianDepletionYear' => $r->medianDepletionYear ?? null,
+            // A plain-English verdict that drives the risk home. Factual (anchored to the
+            // simulated futures), never a recommendation, so it stays on the guidance side.
+            'verdict' => self::runOutVerdict($r->depletionRate),
             'terminalP10' => $r->terminalWealthPercentiles['p10']->format(),
             'terminalP50' => $r->terminalWealthPercentiles['p50']->format(),
             'terminalP90' => $r->terminalWealthPercentiles['p90']->format(),
@@ -113,6 +116,28 @@ final class ResultPresenter
     private static function usableMedian(SimulationResult $r): ?string
     {
         return isset($r->usableWealthPercentiles['p50']) ? $r->usableWealthPercentiles['p50']->format() : null;
+    }
+
+    /**
+     * A plain-English verdict on the depletion (run-short) risk, scaling from "lasts in
+     * every future" to "you'd very likely run out of money". It is deliberately blunt where
+     * the risk is high — but it is a FACTUAL statement about the simulated futures, anchored
+     * with "on these figures", never a recommendation to act, so it stays guidance-side and
+     * clears the banned-phrasing lint. `level` drives the colour the panel gives it.
+     *
+     * @return array{level: string, text: string}
+     */
+    private static function runOutVerdict(float $depletionRate): array
+    {
+        $pct = self::formatPercent($depletionRate);
+
+        return match (true) {
+            $depletionRate <= 0.0 => ['level' => 'none', 'text' => 'On these figures, the money lasts to the end in every simulated future.'],
+            $depletionRate < 0.2 => ['level' => 'low', 'text' => "On these figures, the money lasts in the large majority of futures — it runs short in {$pct} of them."],
+            $depletionRate < 0.5 => ['level' => 'medium', 'text' => "On these figures, there's a real risk the money runs short — it does in {$pct} of simulated futures."],
+            $depletionRate < 0.8 => ['level' => 'high', 'text' => "On these figures, you'd more likely than not run out of money before the end — it runs short in {$pct} of simulated futures."],
+            default => ['level' => 'high', 'text' => "On these figures, you'd very likely run out of money before the end — it runs short in {$pct} of simulated futures."],
+        };
     }
 
     /**

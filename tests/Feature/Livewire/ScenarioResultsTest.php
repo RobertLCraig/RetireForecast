@@ -207,6 +207,16 @@ class ScenarioResultsTest extends TestCase
         $this->assertStringContainsString('Usable wealth (excl. home)', $csv);
     }
 
+    public function test_a_completed_run_shows_a_plain_english_run_out_verdict(): void
+    {
+        // The blunt, plain-English verdict (factual, anchored to the simulated futures) renders
+        // alongside the metrics; the banned-phrasing partition test guards it stays guidance-side.
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->set('previewPaths', 30)
+            ->call('preview')
+            ->assertSee('On these figures');
+    }
+
     public function test_a_completed_run_still_shows_when_a_newer_run_is_cancelled(): void
     {
         // The latest run being cancelled/failed must not hide the last good result — the

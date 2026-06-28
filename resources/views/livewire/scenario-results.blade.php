@@ -392,8 +392,17 @@
             </p>
             <div class="grid gap-4 md:grid-cols-3">
                 @foreach ($variants as $key => $v)
+                    @php
+                        $verdictStyle = [
+                            'none' => 'bg-green-50 text-green-800',
+                            'low' => 'bg-green-50 text-green-800',
+                            'medium' => 'bg-amber-50 text-amber-800',
+                            'high' => 'bg-red-50 text-red-800',
+                        ][$v['verdict']['level']];
+                    @endphp
                     <div class="{{ $card }} {{ $key === $primary ? 'ring-2 ring-blue-500' : '' }}">
                         <h3 class="font-semibold text-gray-900">{{ $v['label'] }}@if ($key === $primary)<span class="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">primary</span>@endif</h3>
+                        <p class="mt-2 rounded-md px-3 py-2 text-sm font-medium {{ $verdictStyle }}" @if ($v['verdict']['level'] === 'high') role="alert" @endif>{{ $v['verdict']['text'] }}</p>
                         <dl class="mt-3 space-y-1 text-sm">
                             <div class="flex justify-between"><dt class="text-gray-600">Essentials always met</dt><dd class="font-medium">{{ $v['successEssentials'] }}</dd></div>
                             <div class="flex justify-between"><dt class="text-gray-600">Full spending met</dt><dd class="font-medium">{{ $v['successFullSpend'] }}</dd></div>
@@ -407,7 +416,7 @@
                     </div>
                 @endforeach
             </div>
-            <p class="mt-3 text-xs text-gray-500">"Total wealth left" includes any home you would still own, so it can stay high even when the usable cash to meet day-to-day spending has run out — which is why an option can show a large figure here yet still have a high chance of running out.</p>
+            <p class="mt-3 text-xs text-gray-500">"Chance of running out" counts the simulated futures with at least one year your essential spending isn't fully covered by income and savings — a shortfall a future may later recover from as guaranteed income catches up. "Wealth left" is the median amount at the very end. So an option can leave money at the end yet still have run short along the way — and "total wealth left" includes any home you would still own, which stays high even when the usable cash for day-to-day spending has run out.</p>
         </section>
 
         {{-- Fan chart ------------------------------------------------------------- --}}
