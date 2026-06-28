@@ -502,7 +502,7 @@ Run from the **project root** (the test runner shells out to a relative phpunit 
 Set-Location "C:\Dev\RetireForecast"
 # NB: php / artisan / composer / npm are NOT on the Git Bash PATH on this machine — run them via the
 # PowerShell tool (PHP 8.4 is provided by Laravel Herd). Bash is fine for git / grep / file ops. See CLAUDE.md.
-php artisan test                            # everything: expect 359 passed (2887 assertions)
+php artisan test                            # everything: expect 361 passed (2916 assertions)
 php artisan test --testsuite=Engine        # engine only: expect 143 passed (1772 assertions)
 npm run a11y                                 # Pa11y CI a11y sweep (needs the served app — see docs/A11Y.md)
 vendor/bin/pint --dirty                      # house style on changed files
@@ -564,6 +564,22 @@ cashflow ladder (C3); `b50f2a5` income-by-source on YearResult (A4); `12bd216` p
 `9316e7c` ongoing contributions + usable-vs-total terminal wealth (A1+A3). Built across a series of small committed milestones — engine (docs scaffold, NI+savings/dividends, pension suite, State Pension, SDLT+CGT, benefits, IHT+care, forecast+MonteCarlo+housing); app layer (persistence; Fortify+GDPR; Filament admin; forecast services; run persistence; queued runs + engine progress hook; UI foundation + auth; scenario builder; results page + ApexCharts; this session's builder UX + sector planning). **Everything described above is committed; the working tree is clean.** Recent commits (newest first): `6551219` results-card label clarity ("Total wealth left (incl. home)"); `84292c5` planning close-out (delta what-ifs / 3-tier budget / longevity / usable-vs-total); `2b5abc8` scenario drafts + person names + State Pension shortcut + sector research; `7219f72` import reconciliation guardrails + IWT CSP double-count fix. No remote; commit directly to `master`.
 
 ## Session log
+_2026-06-28 (results-page fan chart fix + a wealth-over-time burndown overlay on Compare)_ — From live use of the
+full 10k run. **(1) Fan chart was blank** while the bar chart rendered: the fan's `yaxis.labels.formatter` was set
+to `null`, which ApexCharts calls as a function and throws, failing that chart's render (the bar chart had no
+formatter). Removed it (ApexCharts defaults), and **hardened the Alpine chart wrapper** (`resources/js/charts.js`):
+render is wrapped in try/catch — on failure it logs to the console and shows a visible "chart could not be drawn,
+the figures are in the table below" fallback rather than a silent blank (charts are a progressive enhancement; the
+table is the source of truth). **(2) Burndown overlay (requested):** the Compare page now shows "Usable wealth over
+time" — the base + each delta-child what-if as one overlaid line. New `ResultPresenter::burndown()` plots usable
+wealth (excl. home = `liquidWealth + pensionWealth`, the SAME definition the cashflow ladder uses, so no drift),
+reusing the one deterministic projection per plan the summary table already computes; backed by an accessible
+year × plan table. Tests: the overlay renders; the burndown figures reconcile to the ladder's usable wealth
+year-for-year. Suite **359 → 361 green**; pint clean; `npm run build` run. **Verified during the same live run:** the
+full 10k run completes end-to-end and the comparison **bar chart renders under the CSP** (so the CSP eyeball passes
+for that chart type). **Still open (offered, not yet actioned):** a wording clarifier on the results cards — "chance
+of running out" means "at least one year essentials weren't fully met" (can be transient + recover), which reads as
+contradictory beside the positive "wealth left" for the rent option; see docs/PLAN.md "Go-live UX backlog".
 _2026-06-28 (re-review findings RESOLVED — all five fixed)_ — Implemented every finding from the re-review.
 **Finding 1 (PDF/screen MC divergence + provenance):** added `Scenario::latestCompletedRun()` as the one source for
 the presented run; `ScenarioResults` now presents that (a newer failed/cancelled run no longer hides the last good

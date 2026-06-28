@@ -344,6 +344,17 @@ data-shape + edit/clone.
   reminder in the docs/landing for local use. **Not blocking**; closes the exact gap hit during the 2026-06-28
   browser verification pass.
 
+### Go-live UX backlog, cont. (2026-06-28, from live use of the full run)
+- **"Chance of running out" label reads as contradictory beside "wealth left" (presentation, not a bug).** Verified
+  in the engine: `depletionRate == 1 − successProbabilityEssentials`, i.e. "runs out" means *at least one year
+  essentials weren't fully met* (flagged on the first such year; the path then continues and can recover as
+  guaranteed income later outpaces spend). It sits next to the median *end-of-life* "wealth left", so e.g. Sell &
+  rent can show **55% runs out** beside **£659k usable wealth left** — internally consistent (different lenses) but
+  confusing. The existing footnote only explains the home-illiquidity paradox (total vs usable), not this
+  transient-shortfall one. **Fix:** relabel to e.g. *"Chance of a shortfall year"* (or keep "running out" + a
+  one-line clarifier) and extend the footnote to cover transient-recovery. Small Blade/presenter change + a test.
+  Offered 2026-06-28; not yet actioned.
+
 ### Review findings (2026-06-28 re-review — data presentation/analysis/provision)
 A focused re-review (3 parallel agents + direct verification) confirmed the project is on track and the
 data-integrity discipline holds (one-formatter percentages, usable-vs-total one definition, no stored aggregates,
