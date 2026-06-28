@@ -403,6 +403,45 @@ noted inline below; the original findings are kept for the record.
   code but only GIA is pinned by a test). **✅ Resolved:** added (cash interest reaches the forecast; the taxed
   capital-only cash can't out-grow a tax-free ISA).
 
+### Statement-driven onboarding + document import (2026-06-28) — PARKED, post-v1
+Rob's ask: let the wizard **ingest uploaded documents** (bank statements, credit-card statements,
+payslips, benefit/State-Pension statements), **pre-fill** every field it can extract, then **ask only
+the remainder** — and build the budget from **what the household actually spends**, not "average user"
+national figures. Full design + sector evidence: **[docs/RESEARCH-document-import.md](RESEARCH-document-import.md)**.
+This is the correct framing of the [Ollama/local-AI question](RESEARCH-document-import.md): the model's
+job here is **wrangling, not predicting**, and most of the feature is **deterministic matching**.
+
+Key calls (settled in DECISIONS 2026-06-28):
+- **Transfer-matching is deterministic-only.** The £1,258 "card payment looks like £2,516 of spend"
+  case is an **internal transfer** — equal-and-opposite across the household's own accounts, matched by
+  rules (opposite sign, equal pence, date window), **user-confirmed**, **excluded from spend**. This is
+  the double-counting bug class the data-integrity rule exists to kill (DECISIONS 2026-06-25) — an LLM is
+  the *wrong* tool for it (non-deterministic, unreliable arithmetic). Gets a reconciliation invariant +
+  a real-file golden fixture with a known transfer pair.
+- **Categorisation is rules-first; an LLM is an optional, walled-off, local-only assist** for the
+  long tail of unknown merchants (rules handle 60–80% at perfect accuracy). A mis-tier never changes the
+  grand total (completeness holds); statement data **never leaves the machine**.
+- **Documents pre-fill different builder sections:** bank/CC → expense lines + recurring income +
+  transfers; payslip → gross salary / pension contributions / NI / tax code; benefit statement →
+  `IncomeStream` with **taxable vs tax-free** classified (the DLA-completeness rule applies). Extends the
+  existing `PayAndExpenditures` mapping.
+- **Actuals = the input baseline; PLSA stays the benchmark** (not the input). Imported spend is
+  *today's* cost; the wizard marks which lines continue into retirement and the forecast adjusts (the
+  mortgage ends, commuting stops, the spending smile).
+- **Architecture:** an extension of `app/Import/` (a statement profile family producing
+  `ImportResult::expenseLines` + `reconciliation`), app-layer only — the engine stays dependency-free.
+  Output writes `builder_state.expenseLines` (the existing single source of truth). Open Banking
+  (regulated AISP, online) is **out of scope** for the local-first v1; file import (CSV/OFX/QIF; PDF+OCR
+  a flagged sub-phase) is the path.
+
+**Phasing (each delivers alone; the model is the last, optional layer):** (1) deterministic
+parse + dedup + transfer-matcher + reconciliation, tested — delivers the £1,258 fix + accurate spend
+with zero AI; (2) rules categorisation → the 3 tiers + a review screen; (3) optional local-model
+long-tail assist; (4) payslip/benefit income extraction; (5) wire it into the wizard's first step as
+document-upload onboarding. **Gotchas** DI-1…DI-9 in the research doc (transfer double-count,
+re-import dupes, over-annualising one-offs, saved-to-own-account double-count, tax-free drop, model
+hallucination, data exfiltration, actuals-as-retirement-budget, PDF mis-read).
+
 ### Data Rob supplies for the demo couple (agree the shape now, needed at step 5)
 Per person: DOB, employment status, (working partner) gross salary + planned retirement age + NI category, State Pension weekly forecast (or qualifying years) + deferral, sex (for life table). Per pension: type, and DC → value, contributions, access age, withdrawal plan; DB → accrued annual pension, NRA, revaluation + in-payment escalation, commutation option + factor, spouse fraction; State → weekly forecast/qualifying years + triple-lock assumption. Property: value, ownership, mortgage left, ever-let, running costs. Accounts: each ISA/GIA/cash balance + owner (+ GIA unrealised gain). Expenses: target annual spend split essential/discretionary + inflation basis + one-offs + survivor spend factor. Housing: assumed sale price, candidate purchase price, assumed rent + rent inflation. Region. Default assumption set. All anonymised.
 

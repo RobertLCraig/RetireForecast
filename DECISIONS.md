@@ -3,6 +3,42 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-28 — Statement-driven onboarding + document import: deterministic core, LLM only as a walled-off assist (PARKED)
+**Decision:** A planned post-v1 feature is designed and recorded before building: the wizard will
+**ingest uploaded documents** (bank statements, credit-card statements, payslips, benefit/State-Pension
+statements), **pre-fill** every extractable field, and **ask only the remainder**, building the budget from
+the household's **actual** spending rather than "average user" national figures. Design + sector evidence:
+[docs/RESEARCH-document-import.md](docs/RESEARCH-document-import.md); plan entry: docs/PLAN.md
+"Statement-driven onboarding + document import". The load-bearing calls:
+(1) **Transfer-matching is deterministic-only.** Rob's £1,258 case — a card-payment credit matched by an
+equal-and-opposite current-account debit — is an **internal transfer** and must be **excluded from spend**,
+matched by rules (opposite sign, equal pence, date window), **user-confirmed**, with a reconciliation
+invariant + a real-file golden fixture carrying a known transfer pair. An LLM is the **wrong tool** here
+(non-deterministic, unreliable arithmetic, non-auditable). Dedup uses a stable `imported_id`.
+(2) **Categorisation is rules-first; an LLM is an optional, walled-off, LOCAL-only assist** for the long
+tail of unknown merchants (a merchant-map + string rules cover 60–80% at perfect accuracy). A mis-tier
+moves a pound between tiers but **never changes the grand total** (completeness holds); statement data
+**never leaves the machine**.
+(3) **Documents pre-fill different builder sections** (bank/CC → expense lines + recurring income +
+transfers; payslip → gross salary / pension contributions / NI / tax code; benefit statement →
+`IncomeStream` with **taxable vs tax-free** classified), extending the existing `PayAndExpenditures` mapping.
+(4) **Actuals = the input baseline; PLSA stays the benchmark, not the input** — imported spend is *today's*
+cost; the wizard marks which lines continue into retirement and the forecast adjusts.
+(5) **Architecture:** an extension of `app/Import/` (a statement profile family →
+`ImportResult::expenseLines` + `reconciliation`), app-layer only (engine stays dependency-free), writing
+`builder_state.expenseLines` (the existing single source of truth). **Open Banking (regulated AISP, online)
+is out of scope** for the local-first v1; file import (CSV/OFX/QIF; PDF+OCR a flagged sub-phase) is the path.
+**Why:** this is the correct framing of Rob's "could a local Ollama AI do the forecasting?" question — the
+answer being that a model has **no place in the trusted numeric path** (it would break HMRC-to-the-penny,
+reproducibility, sourcing and no-silent-failure), but **wrangling and explaining** imported documents is a
+genuine fit, and the **privacy** argument (sensitive bank data, local-only) is strong for *this* feature
+specifically. The transfer-matcher is kept deterministic because the £1,258 double-count is precisely the
+inconsistent-aggregation bug class the project was burned by — and the tax-free classification on benefit
+statements is the completeness sibling (the DLA bug). Each phase delivers value alone; the model is the last,
+optional layer, so the whole feature lands without any AI at all.
+[[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]] [[2026-06-25 — Forecast income completeness: count every source, no silent drop]] [[2026-06-25 — Expenditure: 3-tier line items (essential / discretionary / self-investment) + spent-vs-saved]] [[2026-06-25 — `.xlsx` import via PhpSpreadsheet; a bespoke profile for the personal workbook]]
+**Status:** active (design decision recorded; the feature itself is **parked, post-v1** — not started).
+
 ## 2026-06-28 — Engine: income-tax thresholds un-freeze after freezeEndYear (homogeneity, not config rebuild)
 **Decision:** The forecast now models UK income-tax thresholds **un-freezing** after
 `ForecastSettings::$freezeEndYear` (April 2031): frozen until then, indexed with inflation afterwards. It is
