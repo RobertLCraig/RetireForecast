@@ -1,0 +1,58 @@
+# Accessibility (WCAG 2.1 AA) CI sweep with Pa11y CI (axe + HTML CodeSniffer).
+#
+# This is the CI home for the a11y gate. The project is local-first with no remote
+# today, so this workflow activates the first time it is pushed to a GitHub remote.
+# To run the same sweep locally instead, see docs/A11Y.md.
+name: a11y
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pa11y:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: sqlite3, pdo_sqlite, mbstring, intl, bcmath, gd
+          coverage: none
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Prepare the app
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+          php artisan migrate:fresh --seed --force
+          php artisan db:seed --class="Database\\Seeders\\DemoScenarioSeeder" --force
+
+      - name: Serve the app
+        run: php artisan serve --host=127.0.0.1 --port=8000 &
+
+      - name: Wait for the server
+        run: npx wait-on http://127.0.0.1:8000 --timeout 60000
+
+      - name: Run the accessibility sweep
+        run: npm run a11y

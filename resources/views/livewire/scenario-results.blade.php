@@ -17,6 +17,7 @@
             <a href="{{ route('scenarios.edit', $scenario) }}" class="text-sm text-blue-700 underline">Edit inputs</a>
             <a href="{{ route('scenarios.child', $scenario->baseScenario()) }}" class="text-sm text-blue-700 underline">Create a what-if</a>
             <a href="{{ route('scenarios.compare', $scenario->baseScenario()) }}" class="text-sm text-blue-700 underline">Compare what-ifs</a>
+            <a href="{{ route('scenarios.results.pdf', $scenario) }}" class="text-sm text-blue-700 underline">Download PDF summary</a>
             <a href="{{ route('dashboard') }}" class="text-sm text-blue-700 underline">Back to forecasts</a>
         </div>
     </div>

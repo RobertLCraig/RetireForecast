@@ -1,0 +1,48 @@
+{
+    "defaults": {
+        "standard": "WCAG2AA",
+        "runners": ["axe", "htmlcs"],
+        "timeout": 30000,
+        "chromeLaunchConfig": { "args": ["--no-sandbox", "--disable-gpu"] }
+    },
+    "urls": [
+        "http://127.0.0.1:8000/",
+        "http://127.0.0.1:8000/login",
+        "http://127.0.0.1:8000/register",
+        "http://127.0.0.1:8000/forgot-password",
+        {
+            "url": "http://127.0.0.1:8000/welcome",
+            "actions": [
+                "navigate to http://127.0.0.1:8000/login",
+                "set field #email to demo@example.com",
+                "set field #password to password",
+                "click element button[type=submit]",
+                "navigate to http://127.0.0.1:8000/welcome"
+            ]
+        },
+        {
+            "url": "http://127.0.0.1:8000/dashboard",
+            "actions": [
+                "navigate to http://127.0.0.1:8000/login",
+                "set field #email to demo@example.com",
+                "set field #password to password",
+                "click element button[type=submit]",
+                "navigate to http://127.0.0.1:8000/welcome",
+                "click element button[type=submit]",
+                "navigate to http://127.0.0.1:8000/dashboard"
+            ]
+        },
+        {
+            "url": "http://127.0.0.1:8000/scenarios/create",
+            "actions": [
+                "navigate to http://127.0.0.1:8000/login",
+                "set field #email to demo@example.com",
+                "set field #password to password",
+                "click element button[type=submit]",
+                "navigate to http://127.0.0.1:8000/welcome",
+                "click element button[type=submit]",
+                "navigate to http://127.0.0.1:8000/scenarios/create"
+            ]
+        }
+    ]
+}

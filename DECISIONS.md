@@ -3,6 +3,39 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-28 — Phase D Tier-2: accessibility CI — Pa11y CI (axe + HTMLCS), scaffolded
+**Decision:** The a11y gate is automated with **Pa11y CI** running **axe-core + HTML CodeSniffer** against
+**WCAG2AA** over the rendered pages. The page list + login scripting live in `.pa11yci.json` (public pages run
+with no setup; the authed shell pages — `/welcome`, `/dashboard`, `/scenarios/create` — are reached by scripting a
+login + disclaimer acknowledgement with the seeded **demo** account). `pa11y-ci` is a devDependency with an
+`npm run a11y` script; `.github/workflows/a11y.yml` runs the same sweep on push/PR (dormant until the repo has a
+GitHub remote, since it is local-first today); `docs/A11Y.md` documents the local run + how to extend coverage.
+**Why:** accessibility is a hard project constraint (every figure also rendered as text + an accessible table, skip
+link, landmarks, `aria-*` on forms), so it deserves a machine guard, not just discipline. Pa11y CI with both
+engines is the standard headless WCAG checker and reuses the demo seeder for authed coverage. **Honesty caveat:**
+this is **scaffolded, not yet run green** in this environment — it needs a headless Chrome + the served app, which
+is the real-browser verification pass this work always required; the config/workflow are correct-by-construction
+and documented as unrun. The rendered ApexCharts canvases stay a manual real-browser check (only the accessible
+tables/text are machine-checkable). **Status:** active
+
+## 2026-06-28 — Phase D Tier-2: PDF results export — dompdf reusing the on-screen presenter
+**Decision:** A scenario's results are downloadable as a PDF via `App\Http\Controllers\ScenarioPdfController`
+(`GET /scenarios/{scenario}/results/pdf`, owner-scoped, inside the disclaimer-acknowledged group; a draft 404s),
+rendering `resources/views/pdf/results.blade.php` with **`barryvdh/laravel-dompdf`** (pure-PHP dompdf — no headless
+browser or binary, app-layer only so the engine stays dependency-free). The report is built from the **same
+`ResultPresenter`** the on-screen page uses (lump-sum tax shock, income floor, 3-tier budget, PLSA benchmark, the
+cashflow ladder, and — if a completed run exists — the Monte Carlo headline summary), so the print **cannot drift**
+from the screen (the displayed-figure provenance rule). The data assembly is a public `data()` method so the
+view-render test exercises the exact data the controller produces. The PDF carries the guidance-only disclaimer +
+signposting (and passes the banned-phrasing partition lint). The full per-year income-by-source split stays in the
+CSV export; the PDF shows the wealth trajectory (tax/spend/usable/total), keeping the table portrait-friendly and
+every column a presenter-provided string (no in-view derivation).
+**Why:** a shareable/printable summary is a standard go-live want, and dompdf is the lightest way to get one that
+is fully testable headlessly (the route streams a real `%PDF`, the view renders the figures + disclaimer). Reusing
+the presenter rather than re-deriving figures is mandatory under the data-integrity rules. **Residual:** a
+real-browser/PDF-viewer eyeball of layout fidelity (the figures + structure are tested; the visual rendering is
+not). Suite 348 → 353 green. **Status:** active
+
 ## 2026-06-28 — Phase D Tier-2: two-factor enrolment UI — a Livewire page driving Fortify's actions
 **Decision:** Two-factor authentication enrolment is delivered as a full-page Livewire component,
 `App\Livewire\AccountSecurity` (at `/account/security`), that drives **Fortify's own actions**
