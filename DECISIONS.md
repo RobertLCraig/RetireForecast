@@ -3,6 +3,25 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-28 — Phase D Tier-2: demo preset is an opt-in, production-safe seeder over the canonical shape
+**Decision:** The demo "preset" the plan owes at step 5 is delivered as a seeder, not a hardcoded record or a
+separate sample format. `App\Demo\DemoScenario` is the one home for an obviously-fictional sample plan expressed
+in the **canonical `builder_state` shape**, so it assembles to the engine DTOs and runs exactly like a user-built
+scenario (no parallel representation that could drift). `Database\Seeders\DemoScenarioSeeder` persists it as a
+**base plan + one delta-child what-if** ("retire two years earlier"), the child derived via `BuilderStateDelta::diff`
+so it stores only the override and the base stays the single source. It is **opt-in** (not wired into
+`DatabaseSeeder`, so it never fires in the normal dev/test seed), **idempotent** (matched by owner + name, drops
+stale runs on re-seed), and **release-safe**: outside production it provisions a fictional `demo@example.com` /
+`password` account; in production it **refuses** to mint a default-credential account unless `DEMO_USER_EMAIL`
+names an existing user (loud `RuntimeException`).
+**Why:** the locked decisions require any first-run sample to be obviously fictional and forbid client data in the
+repo, and "do not design accounts out, just defer them" leaves possible public release on the table — so a demo
+account must never ship default credentials by accident. Building the demo on the canonical shape makes it double
+as a living end-to-end integration smoke (assemble → forecast → results), the highest-confidence way to keep the
+sample honest. Chosen as the first Tier-2 item because it is fully verifiable headlessly (CSP + a11y CI both need
+real-browser eyeballing).
+**Status:** active
+
 ## 2026-06-28 — Phase D Tier-1: import reconciliation surfaced to the user (the panel, completing Tier-1)
 **Decision:** The data-layer integrity rule's "surface every imported/aggregated total; a mismatch must be a
 *visible* failure, not a silent one" is now enforced at the **user-facing** layer, not only in tests. A new
