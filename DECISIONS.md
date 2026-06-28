@@ -3,6 +3,36 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-28 — Phase D Tier-2: two-factor enrolment UI — a Livewire page driving Fortify's actions
+**Decision:** Two-factor authentication enrolment is delivered as a full-page Livewire component,
+`App\Livewire\AccountSecurity` (at `/account/security`), that drives **Fortify's own actions**
+(`EnableTwoFactorAuthentication`, `ConfirmTwoFactorAuthentication`, `GenerateNewRecoveryCodes`,
+`DisableTwoFactorAuthentication`) directly rather than posting to Fortify's HTTP endpoints, so enrolment is
+one fluid page (turn on → scan QR / type setup key → confirm a code → recovery codes shown; regenerate; turn
+off). The `User` model gains Fortify's `TwoFactorAuthenticatable` trait (the 2FA columns were already
+migrated); `two_factor_secret`/`two_factor_recovery_codes` are stored encrypted and read raw by the trait, so
+they are **not** given an Eloquent `encrypted` cast (that would double-encrypt) and are added to the model's
+`$hidden`. `FortifyServiceProvider` now wires the two previously-missing views: the login **two-factor
+challenge** and the **password-confirmation** screen. Because the component calls the actions directly (not the
+endpoints that carry Fortify's `confirmPassword` middleware), the page **route** is placed behind the
+`password.confirm` middleware — a "sudo" step that is the equivalent protection for the direct-action approach.
+The security page sits **outside** the guidance-only disclaimer gate (like the GDPR controls): account
+management is not withheld pending acceptance of the forecast framing. A "Security" link is added to the authed
+nav.
+**Why:** Fortify's 2FA feature was enabled (`config/fortify.php`, with `confirm` + `confirmPassword`) and the
+columns migrated, but no screens existed, so no user could enrol — a real shipped-surface security gap, and one
+that matters for the possible public release. Calling the actions from Livewire (the Jetstream pattern) gives a
+clean single-page UX and is cleanly testable headlessly; the QR/recovery-code/TOTP machinery is all provided by
+the already-installed `pragmarx/google2fa` + `bacon/qr-code`. Chosen as a Tier-2 item because the whole flow is
+verifiable without a browser: `TwoFactorAuthenticationTest` enables + confirms with a computed current TOTP,
+rejects a wrong code, regenerates recovery codes, disables, drives the full login challenge to completion, and
+asserts the security page demands a confirmed password. **Test gotcha recorded:** Fortify rejects reuse of a
+TOTP within its window, so a test that both confirms enrolment and later completes a login challenge must not
+spend the same current code twice — the enrol helper stamps `two_factor_confirmed_at` directly instead of
+burning a code. **Residual:** a real-browser eyeball that the QR renders and an authenticator app round-trips
+(the SVG + flow are headless-tested, the visual scan is not). Suite 340 → 348 green.
+**Status:** active
+
 ## 2026-06-28 — Phase D Tier-2: security headers — a compatible-by-construction CSP on the web group
 **Decision:** A new `App\Http\Middleware\SecurityHeaders` (appended to the `web` group in `bootstrap/app.php`)
 sets a **Content-Security-Policy** plus a small set of static hardening headers on every response of the public

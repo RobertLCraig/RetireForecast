@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\DisclaimerController;
 use App\Http\Middleware\EnsureDisclaimerAcknowledged;
+use App\Livewire\AccountSecurity;
 use App\Livewire\Dashboard;
 use App\Livewire\ScenarioBuilder;
 use App\Livewire\ScenarioCompare;
@@ -28,6 +29,13 @@ Route::middleware('auth')->group(function () {
     // reach these; anonymous use of the app writes nothing server-side.
     Route::get('/account/export', [AccountController::class, 'export'])->name('account.export');
     Route::delete('/account', [AccountController::class, 'destroy'])->name('account.destroy');
+
+    // Account security: two-factor enrolment. Account management is not held back
+    // pending the guidance-only disclaimer (like the GDPR controls above), but it is a
+    // secured area, so it sits behind a fresh password confirmation ("sudo" step).
+    Route::get('/account/security', AccountSecurity::class)
+        ->middleware('password.confirm')
+        ->name('account.security');
 
     // The forecast pages: gated on having accepted the guidance-only disclaimer, so no
     // one reaches a result without first seeing the framing.

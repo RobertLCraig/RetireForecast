@@ -35,13 +35,17 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::redirectUserForTwoFactorAuthenticationUsing(RedirectIfTwoFactorAuthenticatable::class);
 
-        // The UI phase serves Fortify's view routes from these Blade screens. Two-factor
-        // enrolment has no UI yet (no user can turn it on), so its challenge view is not
-        // wired up until that flow is built.
+        // The UI phase serves Fortify's view routes from these Blade screens.
         Fortify::loginView(fn () => view('auth.login'));
         Fortify::registerView(fn () => view('auth.register'));
         Fortify::requestPasswordResetLinkView(fn () => view('auth.forgot-password'));
         Fortify::resetPasswordView(fn (Request $request) => view('auth.reset-password', ['request' => $request]));
+
+        // Two-factor enrolment is managed on the account-security page (App\Livewire\
+        // AccountSecurity). The challenge fires at login for a 2FA-enabled user; the
+        // password-confirmation screen gates the security page (a "sudo" step).
+        Fortify::twoFactorChallengeView(fn () => view('auth.two-factor-challenge'));
+        Fortify::confirmPasswordView(fn () => view('auth.confirm-password'));
 
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
