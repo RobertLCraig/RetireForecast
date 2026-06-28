@@ -3,6 +3,31 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-28 — Engine: income-tax thresholds un-freeze after freezeEndYear (homogeneity, not config rebuild)
+**Decision:** The forecast now models UK income-tax thresholds **un-freezing** after
+`ForecastSettings::$freezeEndYear` (April 2031): frozen until then, indexed with inflation afterwards. It is
+implemented in `PathProjector` via the income-tax function's **degree-1 homogeneity** in (income, all of its
+monetary thresholds): post-freeze, `indexedTotalPence()` taxes income **deflated** to the freeze-end price level
+against the frozen base-year thresholds and **re-inflates** the result — mathematically equal to taxing under the
+inflated thresholds, but without rebuilding the band config per year per path in the 10k-path hot loop. The
+threshold factor is `1.0` during the freeze (and for any caller passing the default), so the HMRC worked-example
+unit tests and all freeze-period years are the **exact identity** (unchanged). The factor is threaded through both
+tax call sites — the main per-person pass and the drawdown grossing-up (`marginalTax`/`grossUpPension`) — so the
+tax paid and the withdrawal sizing share one basis.
+**Why:** previously the projector kept thresholds frozen for the *whole* projection, which **overstated post-2031
+fiscal drag** on every retirement-length forecast, and `ForecastSettings::$freezeEndYear` was documented-but-dead
+(its docblock contradicted the projector's). This was finding #2 of the 2026-06-28 re-review; Rob chose to
+**implement** rather than just document the conservative bias. The homogeneity approach was chosen over rebuilding a
+scaled `TaxYearConfig` per year because the latter would allocate config objects in the hot loop — the very cost the
+recent `totalPence()` perf work removed — whereas homogeneity is pure arithmetic on the income before the existing
+lean tax call, at a penny-level rounding cost that is immaterial in a multi-year forecast (and zero during the
+freeze). **Verification:** `ThresholdFreezeTest` pins identical tax within the freeze window, strictly lower tax
+after it, and lower cumulative drag overall; the Monte Carlo tests are a determinism check (no committed percentile
+snapshot), so nothing needed regenerating. The deflate→tax→re-inflate path rounds income by the factor, so it is a
+deliberate (tiny) approximation versus exact scaled thresholds — acceptable because the HMRC-exact paths use factor
+1.0 and the projection is already nominal/real with rounding throughout.
+**Status:** active
+
 ## 2026-06-28 — Phase D Tier-2: a11y verification sweep — 3 real contrast fixes + the toolchain reality
 **Decision:** A local accessibility sweep was run (build + `php artisan serve` + axe). It **fixed three genuine
 WCAG AA contrast failures**: `text-gray-400` on the builder *Discard* button and the dashboard *what-if* label

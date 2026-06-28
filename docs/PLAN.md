@@ -349,6 +349,9 @@ A focused re-review (3 parallel agents + direct verification) confirmed the proj
 data-integrity discipline holds (one-formatter percentages, usable-vs-total one definition, no stored aggregates,
 per-source completeness incl. tax-free income, reconciliation tests, no recommendation leak). Verified findings,
 prioritised:
+
+**✅ ALL FIVE RESOLVED (2026-06-28, commits `fff3f07` + `86d5d82`; suite 353 → 359 green).** Resolution per item is
+noted inline below; the original findings are kept for the record.
 - **[MED] PDF Monte-Carlo summary can diverge from the screen + carries no run provenance.** The PDF
   (`ScenarioPdfController::monteCarloSummary`) selects `latest Done` run, while the screen
   (`ScenarioResults::mount`/`currentRun`) shows the *latest* run only if it is `Done`. So after a `Done` run
@@ -358,25 +361,33 @@ prioritised:
   1,000-path *preview* can be printed as the report headline indistinguishably from a 10k full run. **Fix:** make
   the PDF select the run the same way the screen does (latest; include MC only if `Done`), or decide both should
   fall back to the last successful run (a product choice); and stamp the PDF MC section with mode/n_paths/seed/date.
-  Add a test. (Bugs introduced with the PDF feature this session.)
+  Add a test. (Bugs introduced with the PDF feature this session.) **✅ Resolved:** both screen + PDF now read
+  `Scenario::latestCompletedRun()` (fall back to the last successful run); the PDF stamps mode/paths/seed/date; and
+  `DisplayedFigureProvenanceTest` now covers the PDF (the gap that let it slip through).
 - **[MED] `freezeEndYear` documented but never implemented (engine).** `ForecastSettings::$freezeEndYear`
   (default 2031) is documented as "the year thresholds stop being frozen and rise with inflation again" and is
   plumbed through `HousingComparison`, but `PathProjector` uses one fixed tax-year config and never reads it —
   thresholds are frozen for the *whole* projection (the projector docblock admits this). So the two docblocks
   contradict and every long projection overstates fiscal drag post-2031. **Decision needed:** implement
   threshold un-freezing from `freezeEndYear`, or correct the `ForecastSettings` docblock (and drop the dead param)
-  to match the conservative actual behaviour.
+  to match the conservative actual behaviour. **✅ Resolved:** implemented the un-freezing via the income-tax
+  function's degree-1 homogeneity (`PathProjector::indexedTotalPence` — no hot-loop config rebuild); `ThresholdFreezeTest`
+  pins it; both docblocks now accurate.
 - **[LOW] GIA disposal gain/basis split rounds two float-derived parts independently** (`PathProjector.php:533-534`):
   `realisedGain += round((balance-basis)*take/balance)` and `giaBasis -= round(basis*take/balance)` use float
   division and round separately, so cost basis can drift a penny over many partial disposals — the sum-of-rounds
   vs round-of-sum pattern, in a *tax* calc where exact pence is the standard. **Fix:** derive one part from the
   other (`basisReduction = round(basis*take/balance)`, `realisedGain = take − basisReduction`, capped) and add a
-  multi-disposal basis-reconciliation test. (Bounded; no current test pins the basis invariant.)
+  multi-disposal basis-reconciliation test. (Bounded; no current test pins the basis invariant.) **✅ Resolved:**
+  extracted `PathProjector::disposeGiaSlice` (gain rounded, basis derived as the remainder so gain + basis == take
+  exactly); pinned by a multi-disposal conservation test.
 - **[LOW] `medianDepletionYear` reaches only the screen headline.** It is computed and shown in the per-variant
   headline cards but is absent from the comparison table, the fan CSV and the PDF — a computed figure reaching one
-  of four surfaces. Add it to `ResultPresenter::comparison()` rows so all surfaces carry it.
+  of four surfaces. Add it to `ResultPresenter::comparison()` rows so all surfaces carry it. **✅ Resolved:** added to
+  `comparison()` rows → now in the screen comparison table + the PDF.
 - **[LOW] No cash-interest conservation test** mirroring the GIA one (income+capital == total return is correct in
-  code but only GIA is pinned by a test).
+  code but only GIA is pinned by a test). **✅ Resolved:** added (cash interest reaches the forecast; the taxed
+  capital-only cash can't out-grow a tax-free ISA).
 
 ### Data Rob supplies for the demo couple (agree the shape now, needed at step 5)
 Per person: DOB, employment status, (working partner) gross salary + planned retirement age + NI category, State Pension weekly forecast (or qualifying years) + deferral, sex (for life table). Per pension: type, and DC → value, contributions, access age, withdrawal plan; DB → accrued annual pension, NRA, revaluation + in-payment escalation, commutation option + factor, spouse fraction; State → weekly forecast/qualifying years + triple-lock assumption. Property: value, ownership, mortgage left, ever-let, running costs. Accounts: each ISA/GIA/cash balance + owner (+ GIA unrealised gain). Expenses: target annual spend split essential/discretionary + inflation basis + one-offs + survivor spend factor. Housing: assumed sale price, candidate purchase price, assumed rent + rent inflation. Region. Default assumption set. All anonymised.
@@ -403,9 +414,8 @@ Per person: DOB, employment status, (working partner) gross salary + planned ret
   (`tests/Fixtures/Import/GoldenWorkbooks.php` + `ImportReconciliationTest`), the displayed-figure
   provenance test (`DisplayedFigureProvenanceTest`) and the user-facing import reconciliation panel are
   all built (Tier-1 complete);** the importer guardrail caught and we fixed two double-count/mis-bucket
-  bugs in the IWT CSP importer. **Gap (2026-06-28 re-review): the PDF export surface, added after that
-  test, is NOT covered by the provenance assertion** — which is exactly why the PDF Monte-Carlo divergence
-  (see "Review findings" #1) slipped through; extend `DisplayedFigureProvenanceTest` to the PDF when fixing it.
+  bugs in the IWT CSP importer. **The PDF export surface is now also covered** by `DisplayedFigureProvenanceTest`
+  (extended 2026-06-28 — it was the gap that let the PDF Monte-Carlo divergence slip through; see "Review findings" #1).
 - **End-to-end:** run the app (`herd` + `php artisan serve` / Vite), build the demo couple, run a preview then a full 10k simulation, confirm live progress, and read the buy-vs-rent comparison with both fan charts and the lump-sum tax-shock panel.
 
 ---
@@ -425,7 +435,7 @@ Per person: DOB, employment status, (working partner) gross salary + planned ret
 - ✅ **DONE 2026-06-27.** The gov.uk figure-verification pass is complete: every statutory figure was re-confirmed against gov.uk and stamped `verified_on: 2026-06-27`; no value changed. Only out-of-v1-scope items (Scottish bands, LBTT/LTT) remain unverified, and the region resolver throws for those.
 - Scotland (income tax + LBTT) is out of v1; region resolver throws rather than guessing.
 - The April-2027 pensions-in-IHT change is **now enacted** (Finance Act 2026, Royal Assent 18 Mar 2026, deaths on/after 6 Apr 2027); keep it behind the toggle.
-- **Open findings from the 2026-06-28 re-review** (full list above under "Review findings"): the engine `freezeEndYear`
-  doc/behaviour contradiction (overstates post-2031 drag) and the GIA disposal basis float-split penny-drift are the
-  two to watch in the engine; the PDF Monte-Carlo divergence + missing provenance is the one app-side data-presentation
-  bug. None block the suite; decisions/fixes pending.
+- **2026-06-28 re-review findings — ✅ all resolved** (commits `fff3f07` + `86d5d82`; see "Review findings" above):
+  `freezeEndYear` un-freezing implemented, GIA basis split drift-proofed, PDF/screen Monte-Carlo run aligned +
+  provenance stamped + provenance test extended to the PDF, `medianDepletionYear` surfaced, cash-interest
+  conservation test added.
