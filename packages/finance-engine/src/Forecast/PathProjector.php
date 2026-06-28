@@ -268,12 +268,13 @@ final class PathProjector
             $taxable = $taxablePerPerson[$person->id];
             $grossIncomeNominal += $taxable + $investmentIncome;
             // Combined pass: non-savings, then cash interest (savings, with the PSA), then
-            // GIA dividends (dividend allowance + rates) stacked on top.
-            $tax = $this->incomeTax->compute(new TaxableIncome(
+            // GIA dividends (dividend allowance + rates) stacked on top. The hot loop only
+            // needs the total, so use the lean integer twin of compute() (same band core).
+            $tax = $this->incomeTax->totalPence(new TaxableIncome(
                 Money::fromPence($taxable),
                 Money::fromPence($cashInterest),
                 Money::fromPence($giaDividends),
-            ))->total->pence;
+            ));
             $ni = $this->niForPerson($household, $person->id, $state, $yearIndex);
             $totalTaxNominal += $tax + $ni;
             $netCashNominal += $taxable + $investmentIncome - $tax - $ni;
@@ -667,8 +668,8 @@ final class PathProjector
 
     private function marginalTax(int $existingTaxable, int $extra): int
     {
-        $base = $this->incomeTax->compute(TaxableIncome::ofNonSavings(Money::fromPence($existingTaxable)))->total->pence;
-        $with = $this->incomeTax->compute(TaxableIncome::ofNonSavings(Money::fromPence($existingTaxable + $extra)))->total->pence;
+        $base = $this->incomeTax->totalPence(TaxableIncome::ofNonSavings(Money::fromPence($existingTaxable)));
+        $with = $this->incomeTax->totalPence(TaxableIncome::ofNonSavings(Money::fromPence($existingTaxable + $extra)));
 
         return $with - $base;
     }

@@ -3,6 +3,28 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-28 — Phase D Tier-2: Monte Carlo 10k-path perf — a lean integer tax twin + JIT for the worker
+**Decision:** The 10k-path run is sped up two ways, both proven to leave results byte-identical. (1) **In-repo:**
+profiling showed `PathProjector::project()` is **93%** of per-path time and within it the income-tax calculator
+dominates, yet every projector tax call reads only `->total->pence`. So `IncomeTaxCalculator` now exposes a lean
+`totalPence(TaxableIncome): int` that shares the **same private band core** (`bandedTax()`) as `compute()` but skips
+the `Money`/`lines` decoration the hot loop discards — one computation, two presentations. The allowance taper also
+moved to an integer home (`grantedAllowancePence()`) that the public `personalAllowance()` Money method now delegates
+to. The projector's main per-person pass and `marginalTax()` route through `totalPence()`. (2) **Deployment:** the
+queue worker that runs the full simulation should start PHP with **OPcache JIT enabled** (it is off by default on
+this machine: `opcache.enable_cli=0`, `opcache.jit=disable`) — see How to pick up for the exact flags.
+**Why:** the engine is the product and the 10k run is its slowest path; tuning it is the Tier-2 perf item. The
+calculator is trust-critical, so the rule was *no behaviour change* — the integer per-slice rounding mirrors
+`Money::applyRate` exactly, and a new `IncomeTaxTotalPenceTest` pins `totalPence($i) === compute($i)->total->pence`
+across a 1,120-cell grid (every band crossing, taper window, PSA tier, dividend allowance, both tax years), so the
+two presentations can never silently diverge — the one-definition-one-home rule applied to a perf split. The rich
+`compute()` result is consumed only by the composite test (production reads only the total), so the blast radius is
+small. **Measured** (the `comfortable` MC couple, 10k paths): interpreted **13.9 s → 8.9 s** (1.57×) from the
+refactor alone; with function-mode JIT **→ 4.75 s** (2.9× vs the original), the leaner allocation profile compounding
+with JIT. Memory unchanged (~16 MB). JIT is a *startup* setting, so it is surfaced as a documented worker invocation
+rather than silently written into Rob's global Herd `php.ini`.
+**Status:** active
+
 ## 2026-06-28 — Phase D Tier-2: demo preset is an opt-in, production-safe seeder over the canonical shape
 **Decision:** The demo "preset" the plan owes at step 5 is delivered as a seeder, not a hardcoded record or a
 separate sample format. `App\Demo\DemoScenario` is the one home for an obviously-fictional sample plan expressed
