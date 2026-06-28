@@ -445,8 +445,10 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 ## Branch status
 On `master`, local repo only (no remote, no PR). Personal local-first project; commit directly to `master`.
 **Prototype tagged `prototype-v1` (a8f1f68)** before the rebuild — the recovery point (no remote, so the tag
-is the only snapshot). This session's commits (newest first): **Phase D Tier-1 — displayed-figure
-provenance** (one shared `%` formatter + fan/ladder CSV == panel + interpretation provenance test; `e6884ec`);
+is the only snapshot). This session's commits (newest first): **Phase D Tier-1 — user-facing import
+reconciliation panel** (`ReconciliationLine` + `ImportResult::reconciliation` + the three profiles emit it +
+Blade panel + CSP `NET WORTH`/`INCOME` parser fix; completes Tier-1; `378e4e3`); **Phase D Tier-1 —
+displayed-figure provenance** (one shared `%` formatter + fan/ladder CSV == panel + interpretation provenance test; `e6884ec`);
 **Phase D Tier-1 — forecast-boundary
 reconciliation invariants** (`HousingProceeds` + net-proceeds reconciliation, total-wealth-from-parts, penny-drift
 fix; `d1ffa5a`, hash-record `bd9efa7`); **Phase D — admin-panel lockdown (`is_admin`)**
