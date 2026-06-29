@@ -42,9 +42,12 @@ class ScenarioPdfController extends Controller
      */
     public function data(Scenario $scenario): array
     {
-        // One deterministic central projection feeds the ladder + income floor, exactly as
-        // the results page does, so the printed figures match the screen.
-        $forecast = app(ScenarioForecaster::class)->deterministic($scenario);
+        // Deterministic projections, exactly as the results page does, so the printed figures
+        // match the screen: the cashflow ladder follows the scenario's own chosen strategy (the
+        // page's default), while the income floor reads the raw (stay-put) household.
+        $variants = app(ScenarioForecaster::class)->deterministicVariants($scenario);
+        $ladderForecast = $variants[$scenario->variant->value] ?? $variants['stay_put'];
+        $forecast = $variants['stay_put'];
 
         // The SAME run the results page presents (latest completed), so the PDF can never
         // print a Monte Carlo summary the screen is hiding.
@@ -57,7 +60,7 @@ class ScenarioPdfController extends Controller
             'budget' => ResultPresenter::expenseBreakdown($scenario->effectiveBuilderState()),
             'plsa' => ResultPresenter::plsaBenchmark($scenario->toHousehold()),
             'incomeFloor' => ResultPresenter::incomeFloor($forecast),
-            'ladder' => ResultPresenter::ladder($forecast),
+            'ladder' => ResultPresenter::ladder($ladderForecast),
             // Monte Carlo headline summary + the run's provenance, only if a completed run
             // exists, so a 1,000-path preview can't masquerade as the 10k report.
             'presented' => $presented,

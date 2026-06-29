@@ -163,6 +163,18 @@ class ScenarioResultsTest extends TestCase
             ->assertDontSee('Will the money last?');
     }
 
+    public function test_the_results_page_has_an_on_this_page_side_nav(): void
+    {
+        // A long page needs jump-navigation. The nav lists only sections actually present and
+        // its links are real anchors (work without JS); a bundled observer highlights on scroll.
+        $this->get(route('scenarios.results', $this->scenario()))
+            ->assertOk()
+            ->assertSee('On this page')
+            ->assertSeeHtml('data-results-toc')
+            ->assertSeeHtml('href="#sec-shock"')
+            ->assertSeeHtml('href="#sec-ladder"');
+    }
+
     public function test_the_results_page_shows_the_cashflow_ladder_before_any_run(): void
     {
         // The ladder is the deterministic central projection, so it shows immediately.
@@ -196,6 +208,20 @@ class ScenarioResultsTest extends TestCase
             ->call('preview')
             ->assertSee('Usable wealth left (excl. home)')
             ->assertSee('Total wealth left (incl. home)');
+    }
+
+    public function test_the_cashflow_ladder_switches_by_housing_strategy_and_shows_the_home_sale(): void
+    {
+        // The rich fixture configures a sale (£525k) + a cheaper home (£320k), variant 'rent',
+        // so all three strategies are offered and the ladder opens on the scenario's own
+        // (sell-&-rent) strategy — a sell strategy, so the home-sale milestone is shown.
+        $component = Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->assertSee('The year-by-year picture, by housing strategy')
+            ->assertSee('The home is sold');
+
+        // Switch to staying put: no sale happens, so that milestone disappears.
+        $component->set('ladderVariant', 'stay_put')
+            ->assertDontSee('The home is sold');
     }
 
     public function test_the_cashflow_ladder_csv_export_is_prefixed_with_a_disclaimer(): void

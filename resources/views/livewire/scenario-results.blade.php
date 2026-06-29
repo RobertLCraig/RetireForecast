@@ -2,9 +2,48 @@
     $card = 'rounded-lg border border-gray-200 bg-white p-5';
     $th = 'border-b border-gray-200 px-3 py-2 text-left font-medium text-gray-700';
     $td = 'border-b border-gray-100 px-3 py-2 text-gray-800';
+
+    // "On this page" floating nav: list only the sections actually present this render
+    // (same conditions the sections use below), in document order. One source — add a
+    // section to the page and its nav entry here together.
+    $toc = array_values(array_filter([
+        ['id' => 'sec-input-notes', 'label' => 'A note on your inputs', 'show' => (bool) $inputNotes],
+        ['id' => 'sec-shock', 'label' => 'Pension lump-sum tax shock', 'show' => (bool) $shock],
+        ['id' => 'sec-sensitivity', 'label' => 'Assumption sensitivity', 'show' => (bool) $sensitivity],
+        ['id' => 'sec-budget', 'label' => 'Your spending plan', 'show' => ! empty($budget['tiers'])],
+        ['id' => 'sec-plsa', 'label' => 'PLSA living standards', 'show' => (bool) $plsa],
+        ['id' => 'sec-income-floor', 'label' => 'Spending vs secure income', 'show' => (bool) $incomeFloor],
+        ['id' => 'sec-assumptions', 'label' => 'Assumptions used', 'show' => true],
+        ['id' => 'sec-sale', 'label' => 'If you sell', 'show' => (bool) $saleExplainer],
+        ['id' => 'sec-milestones', 'label' => 'Life events', 'show' => (bool) $milestones],
+        ['id' => 'sec-ladder', 'label' => 'Year-by-year cashflow', 'show' => ! empty($ladder['rows'])],
+        ['id' => 'sec-headline', 'label' => 'Will the money last?', 'show' => (bool) $presented],
+        ['id' => 'sec-fan', 'label' => 'Outlook over time', 'show' => (bool) $presented],
+        ['id' => 'sec-comparison', 'label' => 'By housing strategy', 'show' => (bool) $presented],
+    ], fn ($s) => $s['show']));
 @endphp
 
-<div class="space-y-6">
+<div class="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:gap-8">
+    {{-- Floating "on this page" nav: jump between sections on a long results page. Real
+         anchor links (work without JS); a bundled IntersectionObserver highlights the
+         section in view (resources/js/toc.js). Sticky on large screens, hidden on small. --}}
+    @if (count($toc) > 1)
+        <nav aria-label="On this page" data-results-toc class="sticky top-8 hidden self-start lg:block">
+            <p class="px-3 pb-2 text-xs font-semibold tracking-wide text-gray-400 uppercase">On this page</p>
+            <ul class="space-y-0.5 border-l border-gray-200">
+                @foreach ($toc as $item)
+                    <li>
+                        <a href="#{{ $item['id'] }}" data-toc-link="{{ $item['id'] }}"
+                            class="-ml-px block border-l-2 border-transparent px-3 py-1.5 text-sm text-gray-600 hover:border-gray-300 hover:text-gray-900">
+                            {{ $item['label'] }}
+                        </a>
+                    </li>
+                @endforeach
+            </ul>
+        </nav>
+    @endif
+
+    <div class="min-w-0 space-y-6">
     <div class="flex items-start justify-between gap-4">
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">{{ $scenario->name }}</h1>
@@ -13,7 +52,7 @@
                 primary option: {{ \App\Forecast\ResultPresenter::variantLabel($scenario->variant) }}
             </p>
         </div>
-        <div class="flex shrink-0 items-center gap-4">
+        <div class="flex shrink-0 flex-wrap items-center justify-end gap-x-4 gap-y-2">
             <a href="{{ route('scenarios.edit', $scenario) }}" class="text-sm text-blue-700 underline">Edit inputs</a>
             <a href="{{ route('scenarios.child', $scenario->baseScenario()) }}" class="text-sm text-blue-700 underline">Create a what-if</a>
             <a href="{{ route('scenarios.compare', $scenario->baseScenario()) }}" class="text-sm text-blue-700 underline">Compare what-ifs</a>
@@ -67,7 +106,7 @@
          modelling consequence, so a surprising result is understood, not silently wrong.
          Placed high, before the figures it affects. --}}
     @if ($inputNotes)
-        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4" role="note" aria-label="Notes about your inputs">
+        <div id="sec-input-notes" class="scroll-mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4" role="note" aria-label="Notes about your inputs">
             <h2 class="text-sm font-semibold text-amber-900">A note on your inputs</h2>
             <ul class="mt-2 space-y-1 text-sm text-amber-800">
                 @foreach ($inputNotes as $note)
@@ -80,7 +119,7 @@
     {{-- Headline output #1: the lump-sum tax shock. Deterministic, so it shows as soon as
          a withdrawal is planned, before (and independent of) any Monte Carlo run. --}}
     @if ($shock)
-        <section aria-labelledby="shock-heading" class="{{ $card }} space-y-4">
+        <section id="sec-shock" aria-labelledby="shock-heading" class="{{ $card }} scroll-mt-6 space-y-4">
             <div>
                 <h2 id="shock-heading" class="text-xl font-semibold text-gray-900">The pension lump-sum tax shock</h2>
                 <p class="mt-1 text-sm text-gray-600">
@@ -154,7 +193,7 @@
     {{-- Compare-assumptions overlay. Deterministic central projection under each sourced
          assumption set, so it shows immediately and illustrates sensitivity, not a ranking. --}}
     @if ($sensitivity)
-        <section aria-labelledby="sensitivity-heading" class="{{ $card }}">
+        <section id="sec-sensitivity" aria-labelledby="sensitivity-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="sensitivity-heading" class="text-xl font-semibold text-gray-900">How sensitive is this to the assumptions?</h2>
             <p class="mt-1 text-sm text-gray-600">
                 The central best-estimate projection run under each sourced assumption set. The spread shows how much the answer depends on the assumptions. These are consequences under different assumptions, not a recommendation.
@@ -192,7 +231,7 @@
          discretionary / self-investment, with saved self-investment shown as building net
          worth rather than counting as spend — reconciles to the forecast's spend. --}}
     @if ($budget['tiers'])
-        <section aria-labelledby="budget-heading" class="{{ $card }}">
+        <section id="sec-budget" aria-labelledby="budget-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="budget-heading" class="text-xl font-semibold text-gray-900">Your spending plan</h2>
             <p class="mt-1 text-sm text-gray-600">
                 The annual budget driving this forecast, in three tiers. Self-investment you mark as saved builds your net worth rather than counting as spending. Figures are per year, in today's money.
@@ -229,7 +268,7 @@
          basis (excludes rent/mortgage, includes home running costs). A factual orientation,
          never a recommendation. --}}
     @if ($plsa)
-        <section aria-labelledby="plsa-heading" class="{{ $card }}">
+        <section id="sec-plsa" aria-labelledby="plsa-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="plsa-heading" class="text-xl font-semibold text-gray-900">How your spending compares — PLSA Retirement Living Standards</h2>
             <p class="mt-1 text-sm text-gray-600">
                 The PLSA Retirement Living Standards describe what three levels of spending — Minimum, Moderate and Comfortable — typically provide in retirement.
@@ -278,7 +317,7 @@
     {{-- Income-floor readout (Phase C1): essential spending vs secure (guaranteed-for-life)
          income at the mature point. Neutral — reports the coverage, never whether it is enough. --}}
     @if ($incomeFloor)
-        <section aria-labelledby="floor-heading" class="{{ $card }}">
+        <section id="sec-income-floor" aria-labelledby="floor-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="floor-heading" class="text-xl font-semibold text-gray-900">Essential spending vs secure income</h2>
             <p class="mt-1 text-sm text-gray-600">
                 In {{ $incomeFloor['year'] }}, when you would be {{ $incomeFloor['ages'] }}, your secure income — guaranteed for life and not dependent on your savings lasting (State Pension, defined-benefit pensions, annuities and any tax-free income) — covers <strong>{{ $incomeFloor['coveragePct'] }}%</strong> of your essential spending (your essential needs, including any rent or home running costs). Figures are per year, in today's money.
@@ -338,7 +377,7 @@
 
     {{-- Show-your-working: the assumptions every figure on this page rests on, surfaced so a
          headline figure can be traced to its basis. Factual, never a recommendation. --}}
-    <section aria-labelledby="assumptions-heading" class="{{ $card }}">
+    <section id="sec-assumptions" aria-labelledby="assumptions-heading" class="{{ $card }} scroll-mt-6">
         <h2 id="assumptions-heading" class="text-xl font-semibold text-gray-900">The assumptions behind these figures</h2>
         <p class="mt-1 text-sm text-gray-600">
             Every figure on this page rests on these assumptions. Returns and growth are <strong>real</strong> — they are above inflation, so amounts stay in today's money. The "How sensitive is this?" section above shows how much the answer changes under different sets.
@@ -372,7 +411,7 @@
          reconciled. Shows only when a sale is configured. Factual, never a recommendation. --}}
     @if ($saleExplainer)
         @php $se = $saleExplainer; @endphp
-        <section aria-labelledby="sale-heading" class="{{ $card }}">
+        <section id="sec-sale" aria-labelledby="sale-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="sale-heading" class="text-xl font-semibold text-gray-900">If you sell: where the money comes from and goes</h2>
             <p class="mt-1 text-sm text-gray-600">
                 Selling the current home is assumed at {{ $se['proceeds']['salePrice'] }}. After the costs of selling, this is what is left to invest — and, if buying a cheaper home, what is left over after that purchase. Figures are in today's money.
@@ -422,28 +461,52 @@
         </section>
     @endif
 
+    {{-- Per-strategy cashflow picker: the milestones + year-by-year cashflow below describe
+         the SELECTED housing strategy (the raw ladder used to ignore the sale entirely). Only
+         shown when the inputs configure more than one strategy. Consequences, not a recommendation. --}}
+    @if (count($ladderStrategies) > 1)
+        <section aria-labelledby="strategy-heading" class="{{ $card }}">
+            <h2 id="strategy-heading" class="text-xl font-semibold text-gray-900">The year-by-year picture, by housing strategy</h2>
+            <p class="mt-1 text-sm text-gray-600">
+                Choose a housing strategy to see its life-event milestones and year-by-year cashflow below. Selling frees the home's value into investments and stops the mortgage and service charge from the year of sale; renting then pays rent from that year. These are the consequences of each strategy, not a recommendation of one.
+            </p>
+            <div role="group" aria-label="Housing strategy" class="mt-4 flex flex-wrap gap-2">
+                @foreach ($ladderStrategies as $s)
+                    <button type="button" wire:click="$set('ladderVariant', '{{ $s['key'] }}')"
+                        aria-pressed="{{ $s['key'] === $ladderSelected ? 'true' : 'false' }}"
+                        @class([
+                            'rounded-md border px-3 py-1.5 text-sm font-medium transition',
+                            'border-blue-600 bg-blue-600 text-white' => $s['key'] === $ladderSelected,
+                            'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' => $s['key'] !== $ladderSelected,
+                        ])>{{ $s['label'] }}</button>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
     {{-- Life-event milestones: WHEN the major events happen, so the year-by-year cashflow
          below is legible — what drives each step change. Deterministic; read-only facts. --}}
     @if ($milestones)
         @php
             $milestoneDot = [
+                'house_sale' => 'bg-purple-500',
                 'retirement' => 'bg-amber-400',
                 'pension_access' => 'bg-blue-400',
                 'state_pension' => 'bg-green-400',
                 'death' => 'bg-gray-500',
             ];
         @endphp
-        <section aria-labelledby="milestones-heading" class="{{ $card }}">
+        <section id="sec-milestones" aria-labelledby="milestones-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="milestones-heading" class="text-xl font-semibold text-gray-900">When the big events happen</h2>
             <p class="mt-1 text-sm text-gray-600">
-                The major life events in this forecast, in order. These drive the step changes in the year-by-year cashflow below — when earnings stop, a pension starts, or the household changes size. Ages are each person's age in that year.
+                The major life events in this forecast, in order. These drive the step changes in the year-by-year cashflow below — when earnings stop, a pension starts, the home is sold, or the household changes size. Ages are each person's age in that year.
             </p>
             <ul class="mt-4 space-y-2">
                 @foreach ($milestones as $m)
                     <li class="flex items-baseline gap-3 text-sm">
                         <span class="w-12 shrink-0 font-semibold tabular-nums text-gray-900">{{ $m['year'] }}</span>
                         <span class="h-2 w-2 shrink-0 self-center rounded-full {{ $milestoneDot[$m['kind']] ?? 'bg-gray-300' }}" aria-hidden="true"></span>
-                        <span class="text-gray-700">{{ $m['label'] }} <span class="text-gray-500">(age {{ $m['age'] }})</span></span>
+                        <span class="text-gray-700">{{ $m['label'] }}@if ($m['age'] !== null) <span class="text-gray-500">(age {{ $m['age'] }})</span>@endif</span>
                     </li>
                 @endforeach
             </ul>
@@ -454,9 +517,12 @@
          immediately: where income comes from each year, the tax on it, the spend it must
          meet, and the usable (excl. home) vs total (incl. home) wealth carried forward. --}}
     @if ($ladder && $ladder['rows'])
-        <section aria-labelledby="ladder-heading" class="{{ $card }}">
+        <section id="sec-ladder" aria-labelledby="ladder-heading" class="{{ $card }} scroll-mt-6">
             <div class="flex items-center justify-between">
-                <h2 id="ladder-heading" class="text-xl font-semibold text-gray-900">Year-by-year cashflow</h2>
+                <h2 id="ladder-heading" class="text-xl font-semibold text-gray-900">
+                    Year-by-year cashflow
+                    @if (count($ladderStrategies) > 1)<span class="ml-2 align-middle rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">{{ $ladderSelectedLabel }}</span>@endif
+                </h2>
                 <button type="button" wire:click="downloadLadderCsv" class="text-sm text-blue-700 underline">Download CSV</button>
             </div>
             <p class="mt-1 text-sm text-gray-600">
@@ -520,7 +586,7 @@
         </p>
 
         {{-- Headline numbers as text (never only in a chart) ----------------------- --}}
-        <section aria-labelledby="headline-heading" class="space-y-3">
+        <section id="sec-headline" aria-labelledby="headline-heading" class="scroll-mt-6 space-y-3">
             <h2 id="headline-heading" class="text-xl font-semibold text-gray-900">Will the money last?</h2>
             <p class="text-sm text-gray-600">
                 Under this run's assumptions, across {{ $resultsRun->n_paths }} simulated futures
@@ -566,7 +632,7 @@
 
         {{-- Fan chart: the chosen strategy's outcome spread over time --------------- --}}
         @php $fan = $presented['fan']; @endphp
-        <section aria-labelledby="fan-heading" class="{{ $card }}">
+        <section id="sec-fan" aria-labelledby="fan-heading" class="{{ $card }} scroll-mt-6">
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <h2 id="fan-heading" class="text-xl font-semibold text-gray-900">Projected {{ $fan['usableBasis'] ? 'spendable money' : 'total wealth' }} over time — {{ $fan['label'] }}</h2>
                 <div class="flex items-center gap-4">
@@ -634,7 +700,7 @@
 
         {{-- Strategy comparison OVER TIME: which keeps the most spendable money for longest --}}
         @php $comparison = $presented['comparison']; @endphp
-        <section aria-labelledby="compare-heading" class="{{ $card }}">
+        <section id="sec-comparison" aria-labelledby="compare-heading" class="{{ $card }} scroll-mt-6">
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <h2 id="compare-heading" class="text-xl font-semibold text-gray-900">{{ $comparison['usableBasis'] ? 'Spendable money' : 'Total wealth' }} over time, by housing strategy</h2>
                 <label class="flex items-center gap-2 text-sm text-gray-600">
@@ -729,4 +795,5 @@
             @include('livewire.partials.interpretation', ['interpretation' => $interpretation])
         @endif
     @endif
-</div>
+    </div>{{-- /content column --}}
+</div>{{-- /on-this-page grid --}}

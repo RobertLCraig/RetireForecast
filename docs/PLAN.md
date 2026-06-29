@@ -500,16 +500,26 @@ wrong for offsetting reasons — the exact failure mode that destroys trust in t
 "essentials fall short from 2027 because P2 is modelled to die that year, leaving ~£9.8k State Pension against
 ~£37k of planned spend." Factual, milestone-anchored, lint-safe (guidance, never a recommendation).
 
-**6. [LEGIBILITY] Per-strategy cashflow ladder — show the year-by-year differences by housing strategy.** The
-"Year-by-year cashflow" table is currently a single deterministic projection of the household *as entered*
-(`ScenarioForecaster::deterministic` runs the **raw** household; it does **not** apply the variant transforms, so it
-neither reflects the sale nor the rent leg). Rob wants the ladder to **showcase the differences between the housing
+**6. [LEGIBILITY] Per-strategy cashflow ladder — show the year-by-year differences by housing strategy.** ✅ **Built
+(2026-06-29; DECISIONS 2026-06-29 "Built #6"):** `ScenarioForecaster::deterministicVariants()` runs each strategy
+through `DeterministicForecaster` on the variant household + settings from **`HousingComparison::variantInputs()`**
+(the *same single source* the Monte Carlo comparison runs, so they can't drift; `stay_put` == the old
+`deterministic()`). The results page gained a **strategy selector** driving the ladder + its milestones (default =
+the scenario's own variant; a wide table makes a switch the right call over side-by-side, offering only meaningful
+strategies — stay-put always, buy only with a buy price, rent only when a sale is set); the **house-sale milestone**
+now lands (year 0, household-level) for a sell strategy; the **PDF** ladder follows the scenario's variant too. The
+displayed-figure provenance invariant (panel == CSV == PDF) still holds, now on the *selected* variant. Income-floor
+/ input-sanity notes deliberately stay on the raw (stay-put) projection. **Original spec follows.** The
+"Year-by-year cashflow" table *was* a single deterministic projection of the household *as entered*
+(`ScenarioForecaster::deterministic` ran the **raw** household; it did **not** apply the variant transforms, so it
+reflected neither the sale nor the rent leg). Rob wanted the ladder to **showcase the differences between the housing
 strategies** (stay put / buy cheaper / sell & rent) year by year — where the sale proceeds land, when rent starts,
-when the mortgage + service charge stop on sale, how each strategy's usable wealth diverges. Needs a
-**deterministic per-variant projection** (a deterministic analogue of `HousingComparison`, or `DeterministicForecaster`
-run on each variant household), then a switch / side-by-side in the ladder. Pairs with #1 (the variant households
-are exactly where the contingent-cost rules bite) and shares the over-time comparison chart's per-strategy
-definition (one source, no drift).
+when the mortgage + service charge stop on sale, how each strategy's usable wealth diverges.
+
+**Results-page navigation (2026-06-29):** the page is long, so it gained a sticky **"on this page" side nav** (a
+2-col grid on `lg+`, hidden on mobile) listing only the sections present this render, as real anchor links that work
+without JS, with a CSP-safe `IntersectionObserver` scroll-spy (`resources/js/toc.js`). Browser-verified by Rob
+(desktop); **mobile check deferred** to later in the dev timeline.
 
 **7. [LEGIBILITY] Real-time cost toggles.** Let the user switch individual cost lines (and key assumptions) on/off
 and see the forecast update live — e.g. toggle the mortgage, service charge or commute and watch the buy-vs-rent
@@ -531,13 +541,16 @@ numbers); #6 builds the per-variant deterministic projection that #1's cost rule
 Rob chose to build the **legibility presentation layer first** (over #1), and it is **built** — the **sale explainer +
 assumptions panel** (#3), **life-event milestones** (#2), the **results-page half of input-sanity** (#4) and itemised
 per-year spend — pending his browser sign-off. His browser pass then set the remaining order:
-1. **#1 contingent costs via option (b)** — auto-classify each expense line by category/label (mortgage / service
-   charge / ground rent → while-owning; commute → while-working; else always) with a **per-line override**. The
-   correctness fix; it changes the numbers and unblocks an honest buy-vs-rent.
-2. **#6 per-variant deterministic ladder** — the projection #1's cost rules act on; also lands the house-sale milestone.
-3. **Editable-assumptions layer** — make *all* thresholds/assumptions user-editable (investment growth, inflation,
+1. ✅ **#1 contingent costs via option (b)** — auto-classify each expense line by category/label (mortgage / service
+   charge / ground rent → while-owning; commute → while-working; else always) with a **per-line override** (the
+   override *UI* is still to build; auto-classification gives the defaults today). The correctness fix; it changes
+   the numbers and unblocks an honest buy-vs-rent.
+2. ✅ **#6 per-variant deterministic ladder** — the projection #1's cost rules act on; also lands the house-sale
+   milestone. **Built (2026-06-29).**
+3. **[next] Editable-assumptions layer** — make *all* thresholds/assumptions user-editable (investment growth, inflation,
    house/rent growth, age of death, cost components), deriving a user-tweakable **custom set** from the sourced
-   presets, with live preview. Subsumes **#7** (real-time toggles) and the **rate/£ half of #4** (builder validation).
+   presets, with live preview. Subsumes **#7** (real-time toggles), the **per-line cost-condition override UI** (#1's
+   remaining piece) and the **rate/£ half of #4** (builder validation).
 4. **Buy-vs-rent as a deliberate Compare / what-if** (not baked into every report) + the per-option **#5** narrative.
 
 ### Statement-driven onboarding + document import (2026-06-28) — PARKED, post-v1

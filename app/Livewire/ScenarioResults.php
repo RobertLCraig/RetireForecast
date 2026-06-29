@@ -19,6 +19,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -48,6 +49,15 @@ class ScenarioResults extends Component
      */
     public bool $includeHome = false;
 
+    /**
+     * Which housing strategy the year-by-year cashflow ladder (and its life-event milestones)
+     * shows: stay_put | buy_outright | rent. Defaults to the scenario's own chosen variant.
+     * The raw ladder used to project the household as-entered (always stay put), ignoring the
+     * sale; this lets the user read each strategy's year-by-year picture. Clamped on render to
+     * a strategy the inputs actually configure (see ladderContext()).
+     */
+    public string $ladderVariant = 'stay_put';
+
     /** Prepended to every CSV export so a downloaded figure never travels without its disclaimer. */
     private const EXPORT_DISCLAIMER = [
         'RetireForecast — guidance only, not financial advice.',
@@ -69,6 +79,9 @@ class ScenarioResults extends Component
 
         $this->scenario = $scenario;
         $this->runId = $scenario->simulationRuns()->latest()->value('id');
+        // Open the cashflow ladder on the scenario's own chosen strategy; render() clamps it
+        // to one the inputs configure (e.g. stay put when no sale is set).
+        $this->ladderVariant = $scenario->variant->value;
     }
 
     public function preview(): void
@@ -120,9 +133,42 @@ class ScenarioResults extends Component
         }, "fan-chart-{$fan['variant']}.csv", ['Content-Type' => 'text/csv']);
     }
 
+    /**
+     * The per-strategy cashflow context: a deterministic forecast for each housing strategy,
+     * which strategies the inputs make worth offering, and the currently selected one (clamped
+     * to an offered strategy). One source for the rendered ladder/milestones and the CSV, so
+     * they can never show different strategies.
+     *
+     * @return array{forecasts: array<string, ForecastResult>, strategies: list<array{key: string, label: string}>, selected: string}
+     */
+    private function ladderContext(): array
+    {
+        $forecasts = app(ScenarioForecaster::class)->deterministicVariants($this->scenario);
+        $action = $this->scenario->toHousingAction();
+
+        // Offer a strategy only where the inputs make it meaningful: stay put always; sell &
+        // buy cheaper only with a buy price; sell & rent only when a sale is configured — the
+        // same gating the sale explainer / assumptions panel already use for the buy/sale rows.
+        $saleConfigured = $action->salePrice->isPositive();
+        $strategies = [['key' => 'stay_put', 'label' => ResultPresenter::strategyLabel('stay_put')]];
+        if ($saleConfigured && $action->buyPrice !== null && $action->buyPrice->isPositive()) {
+            $strategies[] = ['key' => 'buy_outright', 'label' => ResultPresenter::strategyLabel('buy_outright')];
+        }
+        if ($saleConfigured) {
+            $strategies[] = ['key' => 'rent', 'label' => ResultPresenter::strategyLabel('rent')];
+        }
+
+        $offered = array_column($strategies, 'key');
+        $selected = in_array($this->ladderVariant, $offered, true) ? $this->ladderVariant : 'stay_put';
+
+        return ['forecasts' => $forecasts, 'strategies' => $strategies, 'selected' => $selected];
+    }
+
     public function downloadLadderCsv(): StreamedResponse
     {
-        $ladder = ResultPresenter::ladder(app(ScenarioForecaster::class)->deterministic($this->scenario));
+        $ctx = $this->ladderContext();
+        $selected = $ctx['selected'];
+        $ladder = ResultPresenter::ladder($ctx['forecasts'][$selected]);
 
         return response()->streamDownload(function () use ($ladder): void {
             $out = fopen('php://output', 'wb');
@@ -146,7 +192,7 @@ class ScenarioResults extends Component
                 fputcsv($out, $line);
             }
             fclose($out);
-        }, 'cashflow-ladder.csv', ['Content-Type' => 'text/csv']);
+        }, "cashflow-ladder-{$selected}.csv", ['Content-Type' => 'text/csv']);
     }
 
     public function render(): View
@@ -174,9 +220,17 @@ class ScenarioResults extends Component
 
         $forecaster = app(ScenarioForecaster::class);
 
-        // One deterministic central projection feeds both the cashflow ladder and the
-        // income-floor readout, so they read the same single source (no second run).
-        $forecast = $forecaster->deterministic($this->scenario);
+        // Per-strategy cashflow: a deterministic forecast for each housing strategy (single
+        // source — the same variant households the Monte Carlo comparison runs). The ladder +
+        // its milestones follow the selected strategy; the income-floor / input-sanity notes
+        // stay on the raw (stay-put) household, which is the household exactly as entered.
+        $ladderContext = $this->ladderContext();
+        $selectedStrategy = $ladderContext['selected'];
+        $ladderForecast = $ladderContext['forecasts'][$selectedStrategy];
+        $forecast = $ladderContext['forecasts']['stay_put'];
+        // A sell variant frees the home's value into investments at year 0 — the house-sale
+        // milestone the timeline shows only for those strategies (never stay put).
+        $homeSold = in_array($selectedStrategy, ['buy_outright', 'rent'], true);
 
         // The deterministic home-sale decomposition + the assumptions behind it, so every
         // headline figure traces to its inputs (show-your-working). Single-sourced from the
@@ -206,11 +260,16 @@ class ScenarioResults extends Component
             // Essential spending vs secure (guaranteed-for-life) income at the mature point.
             'incomeFloor' => ResultPresenter::incomeFloor($forecast),
             // Deterministic year-by-year cashflow ladder (income by source -> tax -> spend
-            // -> wealth). Shows immediately, before any Monte Carlo run.
-            'ladder' => ResultPresenter::ladder($forecast),
+            // -> wealth) for the selected housing strategy. Shows immediately, before any run.
+            'ladder' => ResultPresenter::ladder($ladderForecast),
+            // The housing strategies worth offering + which is selected, for the ladder picker.
+            'ladderStrategies' => $ladderContext['strategies'],
+            'ladderSelected' => $selectedStrategy,
+            'ladderSelectedLabel' => ResultPresenter::strategyLabel($selectedStrategy),
             // Life-event milestones (when each person retires / SP starts / takes a pension /
-            // dies), so the year-by-year cashflow is legible — what drives each step change.
-            'milestones' => ResultPresenter::milestones($household, $forecast),
+            // dies, and — for a sell strategy — when the home is sold), so the year-by-year
+            // cashflow is legible: what drives each step change.
+            'milestones' => ResultPresenter::milestones($household, $ladderForecast, homeSold: $homeSold),
             // Input-sanity heads-up where an entered value did something drastic (no salary
             // because retirement age <= current age; a death floored to the base year).
             'inputNotes' => ResultPresenter::inputNotes($household, $forecast),

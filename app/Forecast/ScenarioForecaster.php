@@ -49,6 +49,36 @@ final class ScenarioForecaster
             ->forecast($this->household($scenario), $assumptions, $this->settings($scenario));
     }
 
+    /**
+     * The central best-estimate forecast for EACH housing strategy (stay put / buy cheaper /
+     * sell & rent), so the cashflow ladder can show the year-by-year picture by strategy
+     * rather than only the raw household. Each variant household + settings comes from
+     * {@see HousingComparison::variantInputs()} — the SAME single source the Monte Carlo
+     * comparison runs — so the deterministic ladder and the simulated comparison transform
+     * the household for a sale identically and cannot drift. With the contingent-cost rule
+     * the sell variants carry no property cost and no home value, and invest the freed
+     * proceeds; `stay_put` is byte-identical to {@see deterministic()} (the raw household).
+     *
+     * @return array{stay_put: ForecastResult, buy_outright: ForecastResult, rent: ForecastResult}
+     */
+    public function deterministicVariants(Scenario $scenario): array
+    {
+        $assumptions = $this->assumptions($scenario);
+        $variants = $this->housingComparison($scenario)->variantInputs(
+            $this->household($scenario),
+            $this->settings($scenario),
+            $assumptions,
+            $this->housingAction($scenario),
+        );
+
+        $forecaster = new DeterministicForecaster($this->config($scenario), new CohortLifeTable);
+
+        return array_map(
+            fn (array $variant): ForecastResult => $forecaster->forecast($variant['household'], $assumptions, $variant['settings']),
+            $variants,
+        );
+    }
+
     /** One variant's Monte Carlo run (the scenario's household as it stands). */
     public function simulate(Scenario $scenario, int $nPaths, int $seed): SimulationResult
     {

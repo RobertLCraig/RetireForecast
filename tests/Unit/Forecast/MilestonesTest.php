@@ -118,6 +118,23 @@ final class MilestonesTest extends TestCase
         $this->assertNotContains('Sam retires', $labels);
     }
 
+    public function test_a_house_sale_milestone_appears_only_when_the_home_is_sold(): void
+    {
+        [$household, $forecast] = $this->forecast($this->state());
+
+        // A sell strategy ($homeSold = true): the sale is a household event at the base year
+        // (the proceeds are freed at year 0), with no per-person age, and it sorts first.
+        $sold = ResultPresenter::milestones($household, $forecast, homeSold: true);
+        $this->assertSame('house_sale', $sold[0]['kind']);
+        $this->assertSame(2026, $sold[0]['year']);
+        $this->assertNull($sold[0]['age']);
+        $this->assertSame('The home is sold', $sold[0]['label']);
+
+        // Default (stay put / not a sell strategy): no sale milestone.
+        $kinds = array_column(ResultPresenter::milestones($household, $forecast), 'kind');
+        $this->assertNotContains('house_sale', $kinds);
+    }
+
     public function test_an_empty_forecast_yields_no_milestones(): void
     {
         $household = (new HouseholdAssembler)->household($this->state());

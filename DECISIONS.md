@@ -3,6 +3,33 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-29 — Built #6: per-variant deterministic cashflow ladder + a results-page "on this page" nav
+**Decision:** Built the per-strategy cashflow ladder (the legibility item #6). `ScenarioForecaster::deterministicVariants()`
+runs each housing strategy through `DeterministicForecaster` on the variant household + settings from
+**`HousingComparison::variantInputs()`** — the *same single source* the Monte Carlo comparison runs, so the
+deterministic ladder and the simulated comparison transform the household for a sale identically and cannot drift
+(`stay_put` is byte-identical to the old `deterministic()`). The results page gained a **strategy selector** driving
+the ladder + its milestones (default = the scenario's own variant); the deferred **house-sale milestone** now lands
+(year 0, household-level, no per-person age) for a sell strategy; the **PDF** ladder follows the scenario's variant
+too (it had the same stay-put-only bug). The displayed-figure provenance invariant (panel == CSV == PDF, one
+source) still holds, now on the *selected* variant.
+**Why (presentation choices):** (1) **Switch, not side-by-side** — the ladder table is very wide; three side by
+side are unreadable, so a selector that swaps the single table is the legible choice. (2) **Only meaningful
+strategies are offered** — stay-put always; buy-cheaper only with a buy price; rent only when a sale is configured
+(the same gating the sale explainer / assumptions panel already use), so a £0-home or phantom-sale ladder never
+shows. (3) **Income-floor / input-sanity notes stay on the raw (stay-put) projection** — they are separate
+"household" readouts higher up the page; only the adjacent milestones+ladder block follows the selector, keeping
+the blast radius small. Extendable to per-strategy later.
+**Also:** the results page is long, so it gained a sticky **"On this page" side nav** (a 2-col grid on `lg+`,
+hidden on mobile). It lists only the sections actually present this render (built from the same flags the sections
+render under — one source) as **real anchor links that work without JS**; a bundled, CSP-safe `IntersectionObserver`
+(`resources/js/toc.js`) highlights the section in view, with a defensive Livewire `commit`-hook re-init for
+sections that appear/disappear (a no-op if the hook API differs). Browser-verified by Rob (desktop); mobile
+deferred.
+**Status:** active. Next in the workstream: the editable-assumptions layer (everything user-editable), then
+buy-vs-rent as a deliberate Compare. Builds on [[2026-06-29 — Built #1: contingent-cost placement]] (the variant
+households #6 projects are exactly where #1's cost rules bite).
+
 ## 2026-06-29 — Built #1: contingent-cost placement (option b) — engine + data-model + auto-classify
 **Decision:** Built the correctness fix. An expense line now carries a **condition** (`always` /
 `while_owning_home` / `while_working`), **auto-classified by label** (mortgage / service charge / ground rent →

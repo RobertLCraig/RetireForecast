@@ -63,8 +63,11 @@ final class DisplayedFigureProvenanceTest extends TestCase
         [$instance] = $this->completedRun();
         $scenario = $instance->scenario;
 
-        // The component builds the ladder CSV from this same deterministic projection.
-        $ladder = ResultPresenter::ladder(app(ScenarioForecaster::class)->deterministic($scenario));
+        // The component builds the ladder CSV from the SELECTED strategy's deterministic
+        // projection (default = the scenario's own variant), the single source it also renders.
+        $ladder = ResultPresenter::ladder(
+            app(ScenarioForecaster::class)->deterministicVariants($scenario)[$scenario->variant->value],
+        );
 
         $csv = $this->capture($instance->downloadLadderCsv());
         $rows = $this->dataRowsAfter($csv, fn (string $line): bool => str_starts_with($line, 'Year,Age(s)'));
@@ -132,8 +135,11 @@ final class DisplayedFigureProvenanceTest extends TestCase
             $this->assertStringContainsString($row['medianTerminal'], $html);
         }
 
-        // The deterministic ladder figures match the panel's ladder (one projection).
-        $ladder = ResultPresenter::ladder(app(ScenarioForecaster::class)->deterministic($scenario));
+        // The deterministic ladder figures match the panel's ladder — the SELECTED strategy's
+        // projection (default = the scenario's own variant), the same one source the page uses.
+        $ladder = ResultPresenter::ladder(
+            app(ScenarioForecaster::class)->deterministicVariants($scenario)[$scenario->variant->value],
+        );
         $this->assertStringContainsString($ladder['rows'][0]['totalWealth'], $html);
 
         // The Monte Carlo section carries its run's provenance, so a preview can't pose as

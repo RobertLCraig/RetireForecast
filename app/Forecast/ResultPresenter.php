@@ -490,8 +490,8 @@ final class ResultPresenter
         return false;
     }
 
-    /** When same-year milestones tie, order them by life sequence (work → pension → death). */
-    private const MILESTONE_ORDER = ['retirement' => 0, 'pension_access' => 1, 'state_pension' => 2, 'death' => 3];
+    /** When same-year milestones tie, order them by life sequence (sale → work → pension → death). */
+    private const MILESTONE_ORDER = ['house_sale' => -1, 'retirement' => 0, 'pension_access' => 1, 'state_pension' => 2, 'death' => 3];
 
     /**
      * The life-event milestones timeline: *when* the major events happen across the
@@ -503,12 +503,14 @@ final class ResultPresenter
      * ({@see ForecastResult::$deathCalendarYears}) — never a recommendation.
      *
      * Only events within the projection window are shown (a person already past an event has
-     * no upcoming milestone for it). The house sale (year 0 of a sell variant) is not shown
-     * here — it belongs with the per-variant ladder, which carries the variant transforms.
+     * no upcoming milestone for it). The house sale is a per-variant event (it only happens in
+     * a sell variant), so it is added only when $homeSold is set, by the per-variant ladder
+     * that carries the variant transforms; it is modelled at the start of the projection (the
+     * proceeds are freed at year 0) and so is dated to the base year, with no per-person age.
      *
-     * @return list<array{year: int, age: int, label: string, kind: string}>
+     * @return list<array{year: int, age: ?int, label: string, kind: string}>
      */
-    public static function milestones(Household $household, ForecastResult $forecast): array
+    public static function milestones(Household $household, ForecastResult $forecast, bool $homeSold = false): array
     {
         if ($forecast->years === []) {
             return [];
@@ -518,11 +520,17 @@ final class ResultPresenter
         $finalYear = $forecast->finalCalendarYear;
 
         $events = [];
-        $add = function (int $year, int $age, string $label, string $kind) use (&$events, $baseYear, $finalYear): void {
+        $add = function (int $year, ?int $age, string $label, string $kind) use (&$events, $baseYear, $finalYear): void {
             if ($year >= $baseYear && $year <= $finalYear) {
                 $events[] = ['year' => $year, 'age' => $age, 'label' => $label, 'kind' => $kind];
             }
         };
+
+        // The home sale: a household-level event (not tied to one person), at the start of the
+        // projection. Only present for a sell variant — the buy/rent ladder, never stay put.
+        if ($homeSold) {
+            $add($baseYear, null, 'The home is sold', 'house_sale');
+        }
 
         foreach ($household->persons as $i => $person) {
             $name = self::personLabel($person, $i);
@@ -1021,5 +1029,11 @@ final class ResultPresenter
     public static function variantLabel(ScenarioVariant $variant): string
     {
         return self::LABELS[$variant->value];
+    }
+
+    /** The display label for a housing-strategy key (stay_put / buy_outright / rent). */
+    public static function strategyLabel(string $variant): string
+    {
+        return self::LABELS[$variant] ?? $variant;
     }
 }
