@@ -248,69 +248,15 @@ Wording stays guidance-side (clears the banned-phrasing lint). Tests: a focused 
 status/age/progress case) plus a Livewire test (fresh queued ⇒ hidden; stale via `travel(20)->seconds()` ⇒ shown).
 Suite 366 → 368 green. PHP/Blade only; PLAN "Go-live UX backlog" item marked resolved.
 
-_2026-06-28 (handover consolidation + doc-hygiene guard)_ — A doc-drift review found a stale test count in the
-headline; the root cause was an append-only handover that restated derivable facts (counts, the commit list, the
-file tree) in several places with no reconciliation. Consolidated the doc (~1097 → ~165 lines: dropped the
-duplicated REBUILD callout, the mirrored file tree, the hand-kept commit lists and the old session-log tail — all
-derivable from git/filesystem or duplicated in DECISIONS/Session log) and made the discipline enforceable rather
-than manual: `tests/Feature/Docs/HandoverHygieneTest` fails the build on a test count in live prose, a finished
-item lingering under "What's next", or a resolved `[x]` under "Open items", and CLAUDE.md gained a "Doc hygiene"
-convention + "Green is the invariant". Also de-staled PRD/DATA-MODEL/PLAN. Commit `349fe20` (+ a follow-up that
-de-duplicated the CLAUDE.md wording and disjoined What's next / Open items, per Rob's review).
-
-_2026-06-28 (parked: statement-driven onboarding + document import — the local-AI question, reframed)_ — Rob
-asked whether a local **Ollama** AI could run the forecasting/modelling. Investigated (web research): **no** —
-chat LLMs are unreliable at arithmetic, non-deterministic, non-auditable and would break HMRC-to-the-penny +
-reproducibility + sourcing + no-silent-failure; the real "AI forecasters" (time-series foundation models —
-Chronos/TimesFM/Moirai) aren't Ollama models and still can't model UK tax law or a specific household; the
-engine's deterministic-rules + Monte-Carlo design is already the right tool. Rob then reframed to the genuinely
-useful idea: **upload documents** (bank/credit-card statements, payslips, benefit statements), extract +
-pre-fill the wizard, ask only the remainder, and build the budget from **actual** spend rather than "average
-user" figures. Captured as a **parked, post-v1** feature across three docs:
-**[docs/RESEARCH-document-import.md](docs/RESEARCH-document-import.md)**, a **PARKED** section in docs/PLAN.md, and a
-DECISIONS.md entry. Load-bearing calls: **transfer-matching is deterministic-only** (the "£1,258 card payment
-looks like £2,516 of spend" internal-transfer double-count is the inconsistent-aggregation bug class the project
-was burned by — not an LLM job); **categorisation is rules-first** with an **optional, walled-off, LOCAL-only LLM
-assist** for the long tail (bank data never leaves the machine; a mis-tier never changes the grand total); benefit
-statements must classify **taxable vs tax-free** (the DLA completeness rule); **actuals = the input baseline, PLSA
-stays the benchmark**; Open Banking out of scope; architecture extends `app/Import/`, app-layer only. Docs-only.
-
-_2026-06-28 (run-out verdict — keep the punch, fix the contradiction)_ — Rob wanted to keep the visceral
-"you'll run out of money" framing while fixing the "55% runs out vs £659k wealth left" contradiction. Added
-`ResultPresenter::runOutVerdict()` — a blunt plain-English verdict per option on the results cards, scaling from
-"the money lasts in every simulated future" to "you'd very likely run out of money before the end", colour-coded
-(role=alert at high risk). It is a **factual** statement about the simulated futures (anchored "on these figures"),
-never a recommendation, so it stays guidance-side and clears the banned-phrasing partition lint. Kept the "Chance
-of running out" label and rewrote the footnote to reconcile the two figures: "running out" = a future with ≥1 year
-essentials weren't fully covered (may later recover); "wealth left" = the median end-of-life amount; "total"
-includes any home still owned. Blade/PHP only.
-
-_2026-06-28 (results-page fan chart fix + a wealth-over-time burndown overlay on Compare)_ — From live use of the
-full 10k run. **(1) Fan chart was blank** while the bar chart rendered: the fan's `yaxis.labels.formatter` was set
-to `null`, which ApexCharts calls as a function and throws, failing that chart's render. Removed it, and
-**hardened the Alpine chart wrapper** (`resources/js/charts.js`): render is wrapped in try/catch — on failure it
-logs and shows a visible "chart could not be drawn, the figures are in the table below" fallback rather than a
-silent blank (charts are a progressive enhancement; the table is the source of truth). **(2) Burndown overlay:**
-the Compare page now shows "Usable wealth over time" — the base + each delta-child what-if as one overlaid line via
-`ResultPresenter::burndown()` (usable wealth excl. home = `liquidWealth + pensionWealth`, the SAME definition the
-ladder uses, so no drift), reusing the one deterministic projection per plan the summary table already computes;
-backed by an accessible year × plan table. **Verified live:** the full 10k run completes end-to-end and the
-comparison bar chart renders under the CSP (so the CSP eyeball passes for that chart type).
-
-_2026-06-28 (re-review findings RESOLVED — all five fixed)_ — Implemented every finding from the prior re-review.
-**Finding 1 (PDF/screen MC divergence + provenance):** added `Scenario::latestCompletedRun()` as the one source
-for the presented run; `ScenarioResults` and the PDF both read it, so they can't diverge; the PDF MC section stamps
-mode/paths/seed/date; `DisplayedFigureProvenanceTest` extended to the PDF (the surface that wasn't covered — why
-the divergence slipped through). **Finding 4:** `medianDepletionYear` now in `ResultPresenter::comparison()` rows →
-reaches the comparison table + PDF. **Finding 3:** `PathProjector::disposeGiaSlice()` extracted — rounds the
-realised gain and derives the consumed basis as the remainder (gain + basis == take exactly, no drift), pinned by a
-multi-disposal conservation test. **Finding 5:** cash-interest conservation test added. **Finding 2 (freezeEndYear):**
-implemented threshold un-freezing — the income-tax function is homogeneous degree 1 in (income, thresholds), so
-`indexedTotalPence()` taxes income deflated to the freeze-end price level against the frozen thresholds and
-re-inflates (factor 1.0 = identity during the freeze + for the HMRC unit tests); threaded through the main pass +
-drawdown grossing-up; `ThresholdFreezeTest` pins it. Commits `fff3f07` + `86d5d82`.
+_2026-06-28 (go-live polish + parked work — detail in `git log` + DECISIONS.md):_ the **five re-review findings
+resolved** (PDF/screen Monte-Carlo one-source via `Scenario::latestCompletedRun()`; `freezeEndYear` threshold
+un-freezing; GIA-disposal basis conservation; `medianDepletionYear` to all surfaces; cash-interest conservation);
+the **fan-chart blank-render fix** + the Compare **wealth-over-time burndown**; the per-option run-out **verdict**;
+the **handover consolidation + doc-hygiene guard** (`HandoverHygieneTest`, CLAUDE.md "Doc hygiene" + "Green is the
+invariant"); and the **parked** statement-driven **document-import** design (deterministic transfer-matching core,
+an LLM only as a walled-off LOCAL assist — the £1,258 internal-transfer double-count is a rules job, not an LLM one).
 
 _Earlier sessions (the engine build; app Phase 2 steps 1–4; rebuild Phases A, C3, B, C2, C1, C4; Phase D — A5, the
-gov.uk figure-verification pass, the admin-panel lockdown, the Tier-1 data-integrity guardrails, and the earlier
-Tier-2 items: demo seeder, 10k perf, CSP headers, 2FA UI, PDF export, a11y scaffold) — see `git log` and
-DECISIONS.md for the dated detail._
+gov.uk figure-verification pass, the admin-panel lockdown, the Tier-1 data-integrity guardrails, and the Tier-2
+items: demo seeder, 10k perf, CSP headers, 2FA UI, PDF export, a11y scaffold) — see `git log` and DECISIONS.md for
+the dated detail._
