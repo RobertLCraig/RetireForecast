@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** Phase D go-live. Rebuild + Tier-1/Tier-2 + the results-chart rework are all built and signed off. A new **adviser-legibility workstream** is now the priority, opened from Rob's 2026-06-29 browser walkthrough: one **correctness** fix (housing + commute costs leak across the buy-vs-rent variants) plus four legibility gaps (life-event milestones, house-sale explainer, input-sanity notes, per-option "why"). See What's next + docs/PLAN.md + DECISIONS 2026-06-29.
-_Last updated: 2026-06-29 (adviser-legibility presentation layer built — sale waterfall, assumptions panel, itemised spend, life-event milestones, input-sanity notes; pending Rob's browser sign-off. Correctness fix #1 + per-variant ladder remain)._
+_Last updated: 2026-06-29 (Rob's browser pass: fixed the selling-costs label bug + rent/cost clarity; researched editable-assumptions UX. New direction — **everything user-editable**, contingent costs **option (b)**, buy-vs-rent as a deliberate what-if; see DECISIONS + docs/RESEARCH-editable-assumptions-ux.md. Next: build #1 option-b)._
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -99,6 +99,7 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 |-----|---------|
 | docs/PLAN.md | The full approved implementation plan. Source of truth for scope, data model, tax rules, Monte Carlo design, phasing. Holds the "Sector-informed build plan (2026-06-25)". |
 | docs/RESEARCH-cashflow-modelling.md | How the sector (Voyant/Timeline/CashCalc, PLSA/SMPI) solves edit/clone/compare, line-item expenditure, drill-down — what we adopt + the gaps it surfaced. |
+| docs/RESEARCH-editable-assumptions-ux.md | How free consumer tools (Boldin, ProjectionLab, NYT rent-vs-buy, Guiide, Actuaries Longevity Illustrator) handle editable assumptions, buy-vs-rent and cost breakdowns — what we adopt (2026-06-29). |
 | docs/RESEARCH-document-import.md | PARKED post-v1 feature: statement-driven onboarding + document import (sector evidence, document→builder-field map, gotchas). |
 | PRD.md | Goal, success criteria, scope, non-goals, open questions. |
 | DATA-MODEL.md | Canonical data shape; what is materialised in code today vs planned. |
@@ -110,6 +111,24 @@ On `master`, local repo only (no remote, no PR) — personal local-first project
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-06-29 (Rob's browser pass → fixes + a new "everything editable" direction + research)_ — Rob reviewed the new
+explainer layer in the browser. **Fixed:** a Blade `@if` glued to a word (`price@if`) never compiled and leaked the
+raw directive onto the sale waterfall — the selling-costs label is now built in `ResultPresenter::saleExplainer`
+(`sellingCostsLabel`, test-guarded); named what the 2% covers (estate agent + legal/conveyancing); relabelled the
+ambiguous "Rent" as the *projected cost of renting after selling* (not current rent), on the waterfall + assumptions
+panel. Commit `1f544bd`. **New direction (DECISIONS 2026-06-29 "everything user-editable"):** (1) #1 contingent-cost
+placement uses **option (b)** — auto-classify each expense line by category/label (mortgage/service charge → while-
+owning; commute → while-working) with a per-line override; (2) **all thresholds/assumptions must be user-editable in
+the UI** (investment growth, inflation, house/rent growth, **age of death**, cost components) — keep the sourced
+presets as starting points that derive a custom set; (3) **buy-vs-rent becomes a deliberate what-if/Compare**, not
+baked into every report; (4) costs shown as real figures with a breakdown. **Research** (Rob asked for free tools to
+look at): [docs/RESEARCH-editable-assumptions-ux.md](docs/RESEARCH-editable-assumptions-ux.md) — Boldin, ProjectionLab,
+the NYT rent-vs-buy calculator, Guiide (UK), the Actuaries Longevity Illustrator; the universal pattern is sensible
+sourced defaults + every assumption overridable + live update, and we're already *ahead* on longevity (cohort
+mortality + the lever + the on-screen death year). Proposed build order: #1 option-b → per-variant ladder → editable-
+assumptions layer → buy-vs-rent as Compare. Docs-only this entry (after the `1f544bd` fix); the build is pending Rob's
+confirmation of the sequence.
 
 _2026-06-29 (adviser-legibility: input-sanity notes built)_ — Rounded out the legibility *presentation* layer with
 **input-sanity notes** on the results page (`ResultPresenter::inputNotes` + an "A note on your inputs" box, placed

@@ -3,6 +3,39 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-29 — Direction from Rob's browser pass: everything user-editable; contingent costs auto-classified (option b); buy-vs-rent as a deliberate what-if
+**Decision:** From Rob's browser review of the new explainer layer, four directional calls that reshape the rest of
+the workstream:
+1. **#1 contingent-cost placement → option (b).** Each expense line is **auto-classified by category/label**
+   (mortgage, service charge, ground rent → *while owning the home*; commute → *while working*; everything else →
+   *always*) with a **per-line override** in the builder. Rob picked this over a blank per-line dropdown (option a) or
+   a fixed set of named contingent lines (option c).
+2. **Make all thresholds/assumptions user-editable in the website — nothing hardcoded.** Investment growth, inflation,
+   house/rent growth, the **age of death / longevity**, and the selling-cost components must be editable in the UI, not
+   baked-in constants. Keep the sourced presets (FCA / DMS / OBR) as *starting points* that derive a user-tweakable
+   **custom set**. The per-variant ladder and input-sanity thresholds are likewise user-set, not hardcoded.
+3. **Move buy-vs-rent out of the always-baked-in single report into deliberate what-if scenarios** (reusing the
+   existing delta-child + Compare infrastructure); the primary report focuses on one chosen strategy.
+4. **Show costs as real figures with a breakdown** (estate agent + legal/conveyancing + EPC/removals, SDLT, CGT,
+   moving), each editable — not a single opaque 2% rate.
+**Why:** Rob's standing principle is trust-through-explanation *and* user control — "I can't trust a number I can't
+see the basis of, or change." Research into how existing **free** tools handle this (Boldin, ProjectionLab, the NYT
+rent-vs-buy calculator, Guiide, the Actuaries Longevity Illustrator, Honest Math) backs every call: the universal
+pattern is **sensible sourced defaults + every assumption overridable + live update**, buy-vs-rent as its *own*
+focused comparison, and costs as editable line items. Full findings + the free-tools shortlist:
+[docs/RESEARCH-editable-assumptions-ux.md](docs/RESEARCH-editable-assumptions-ux.md). Notably we are already *ahead*
+on longevity (ONS cohort mortality + the per-person lever + the on-screen modelled death year) — the gap there is UX
+(surface + edit), not modelling.
+**Sequencing (proposed, to confirm):** (1) #1 contingent costs (option b) — the correctness fix that unblocks an
+honest buy-vs-rent; (2) per-variant deterministic ladder (#6); (3) the editable-assumptions layer (custom set +
+longevity + cost components, live preview); (4) buy-vs-rent as a deliberate Compare + the per-option narrative.
+**Also fixed this pass:** a Blade `@if` glued to a word ("price@if") never compiled and leaked onto the page — the
+selling-costs label is now built in the presenter (`saleExplainer` → `sellingCostsLabel`) and guarded by a test; the
+ambiguous "Rent" is relabelled as the *projected cost of renting after selling* (not current rent).
+[[2026-06-29 — Contingent costs have one home tied to what they depend on (housing costs belong with the decision, not shared spending)]] [[2026-06-29 — Adviser-legibility: the explainer / show-your-working layer (sale waterfall, assumptions panel, itemised spend)]]
+**Status:** agreed direction + research recorded; the build (option-b #1 first) not yet started — pending Rob's
+confirmation of the sequencing.
+
 ## 2026-06-29 — Adviser-legibility: input-sanity notes (explain a "wild numbers" result back to its input)
 **Decision:** Added **input-sanity notes** on the results page — a neutral "A note on your inputs" heads-up, placed
 above the figures it affects, explaining when an entered value produced a drastic modelling consequence, so a
