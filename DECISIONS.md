@@ -3,6 +3,38 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-29 — Built #1: contingent-cost placement (option b) — engine + data-model + auto-classify
+**Decision:** Built the correctness fix. An expense line now carries a **condition** (`always` /
+`while_owning_home` / `while_working`), **auto-classified by label** (mortgage / service charge / ground rent →
+while-owning; commute / season ticket → while-working; else always) with an **explicit per-line override** honoured
+first (option b). The engine charges each cost only while its condition holds:
+- **`ExpenseProfile`** gains `propertyCosts` + `employmentCosts` — the contingent portions, carried as a **marked
+  subset** of essential/discretionary (not a second total, so no drift), with a `withoutPropertyCosts()` that removes
+  the housing-linked costs from the essential floor.
+- **`HousingComparison`**: the new public **`variantInputs()`** is the single source of the three variant households
+  (`compare()` now runs them, and the per-variant ladder #6 will too); the **sell variants (buy/rent) build with
+  `withoutPropertyCosts()`**, so the mortgage / service charge stop when the current home is sold — killing the
+  phantom-cost bias the buy-vs-rent comparison had.
+- **`PathProjector`**: employment-linked costs (commute) are **dropped in years no one earns** (`anyoneWorking()`
+  mirrors the earnings condition), so they stop from the retirement year, in every variant.
+- **`HouseholdAssembler`** does the label auto-classification (+ override) and aggregates the two markers; *saved*
+  self-investment is never contingent (it is not spend).
+- **PLSA** comparable spend now **excludes property costs** too (PLSA assumes outright ownership), so the benchmark
+  and the variants treat the mortgage on one consistent basis.
+**Why:** this is the data-integrity rule applied to contingent expenses — one home per cost, charged only while its
+condition holds, with the spend each year equal to the sum of the lines *active* that year (no phantom charge, no
+silent drop). Guarded by reconciliation tests: property costs appear **only** in stay-put (zeroed in the sell
+variants); the commute **falls by its full amount at the retirement year**; the auto-classify + override + saved-
+exclusion + PLSA-exclusion each pinned. **v1 simplifications (flagged):** employment costs stop when the *last*
+earner retires (not tied to a specific commuter); contingent costs are treated as essential (removed from the
+essential floor first). **Not yet built:** the **builder UI** for the per-line override (the condition is read from
+`builder_state` but no control sets it yet — auto-classification gives the defaults); a lifelong-*single*
+household's spend is scaled by the survivor factor every year (a pre-existing oddity, noted, left out of scope).
+[[2026-06-29 — Direction from Rob's browser pass: everything user-editable; contingent costs auto-classified (option b); buy-vs-rent as a deliberate what-if]] [[2026-06-29 — Contingent costs have one home tied to what they depend on (housing costs belong with the decision, not shared spending)]]
+**Status:** active (built, suite green). Next: the **per-variant deterministic cashflow ladder (#6)** (using
+`variantInputs()`) to *show* the corrected per-strategy numbers + the house-sale milestone, then the builder
+override UI as part of the editable-assumptions layer.
+
 ## 2026-06-29 — Direction from Rob's browser pass: everything user-editable; contingent costs auto-classified (option b); buy-vs-rent as a deliberate what-if
 **Decision:** From Rob's browser review of the new explainer layer, four directional calls that reshape the rest of
 the workstream:

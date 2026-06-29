@@ -416,6 +416,13 @@ says what an input means, where a cost belongs, or *when* a life event happens. 
 explanation. Priority order below.
 
 **1. [CORRECTNESS] Housing- and status-linked costs sit in shared *spending*, so they leak across options.**
+✅ **Built (2026-06-29, option b; DECISIONS 2026-06-29 "Built #1").** An expense line carries a **condition**
+(always / while-owning-home / while-working), auto-classified by label with a per-line override; `ExpenseProfile`
+gains `propertyCosts` + `employmentCosts` markers; the **sell variants build with `withoutPropertyCosts()`** (so the
+mortgage/service charge stop when the home is sold) and `PathProjector` **drops the commute when no one earns** (so
+it stops at retirement); `HousingComparison::variantInputs()` is the new single source of the variant households
+(also for the #6 ladder); PLSA excludes property costs too. Reconciliation-tested. **Still to build:** the **builder
+UI** for the per-line override (auto-classification gives the defaults today). The original analysis follows.
 `expenseProfile` is shared by all three housing variants (`HousingComparison::withHousing` passes it through
 unchanged) and `PathProjector` charges `targetAnnualSpend()` in every variant. So costs that should depend on a
 *choice* or a *life phase* are charged unconditionally:

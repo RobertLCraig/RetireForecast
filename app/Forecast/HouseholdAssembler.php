@@ -131,6 +131,15 @@ final class HouseholdAssembler
         $e = $state['expense'] ?? [];
         [$essential, $discretionary] = $this->essentialAndDiscretionary($state);
 
+        // Contingent costs (option b): the portions of spend tied to a condition, summed from
+        // the spend lines whose condition (explicit override, else auto-classified by label)
+        // is housing- or employment-linked. They are a marked subset of essential/discretionary,
+        // so the engine can stop charging them when the home is sold / the household retires.
+        $lines = $state['expenseLines'] ?? [];
+        $isSpend = fn (array $l): bool => ! (($l['category'] ?? '') === 'self_investment' && ($l['savedAsAsset'] ?? false));
+        $propertyCosts = $this->sumLines($lines, fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_owning_home');
+        $employmentCosts = $this->sumLines($lines, fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_working');
+
         return new ExpenseProfile(
             essentialAnnualSpend: $essential,
             discretionaryAnnualSpend: $discretionary,
@@ -140,7 +149,40 @@ final class HouseholdAssembler
                 'amount' => $this->moneyRequired($c['amount'] ?? null),
                 'label' => (string) ($c['label'] ?? ''),
             ], $state['oneOffCosts'] ?? []),
+            propertyCosts: $propertyCosts->isPositive() ? $propertyCosts : null,
+            employmentCosts: $employmentCosts->isPositive() ? $employmentCosts : null,
         );
+    }
+
+    /**
+     * The condition under which an expense line is charged — the user's explicit override if
+     * set (option b's per-line override), else auto-classified by label: housing-linked labels
+     * (mortgage, service charge, ground rent) are charged only *while owning* the current home;
+     * commuting only *while working*; everything else *always*. Saved self-investment is not
+     * spend, so callers exclude it before classifying.
+     *
+     * @param  array<string, mixed>  $line
+     */
+    private function lineCondition(array $line): string
+    {
+        $explicit = $line['condition'] ?? null;
+        if (is_string($explicit) && in_array($explicit, ['always', 'while_owning_home', 'while_working'], true)) {
+            return $explicit;
+        }
+
+        $label = strtolower((string) ($line['label'] ?? ''));
+        foreach (['mortgage', 'service charge', 'ground rent', 'factor fee'] as $keyword) {
+            if (str_contains($label, $keyword)) {
+                return 'while_owning_home';
+            }
+        }
+        foreach (['commute', 'commuting', 'season ticket'] as $keyword) {
+            if (str_contains($label, $keyword)) {
+                return 'while_working';
+            }
+        }
+
+        return 'always';
     }
 
     /**

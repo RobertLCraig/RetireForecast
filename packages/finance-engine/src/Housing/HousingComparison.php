@@ -65,36 +65,48 @@ final class HousingComparison
         ?callable $onProgress = null,
     ): array {
         $simulator = new Simulator($this->config);
-        $netProceeds = $this->saleProceeds($household, $action)->netProceeds;
+        $variants = $this->variantInputs($household, $settings, $assumptions, $action);
 
         // Each variant fills one third of the overall progress bar.
         $variantProgress = static fn (int $i): ?callable => $onProgress === null
             ? null
             : static fn (int $completed, int $total): mixed => $onProgress(($i + $completed / $total) / 3);
 
-        $stayPut = $simulator->run($household, $settings, $assumptions, $this->lifeTable, $nPaths, $seed, $variantProgress(0));
-
-        $buyResult = $simulator->run(
-            $this->buyVariant($household, $action),
-            $settings,
+        $run = fn (string $key, int $i): SimulationResult => $simulator->run(
+            $variants[$key]['household'],
+            $variants[$key]['settings'],
             $assumptions,
             $this->lifeTable,
             $nPaths,
             $seed,
-            $variantProgress(1),
+            $variantProgress($i),
         );
 
-        $rentResult = $simulator->run(
-            $this->rentVariant($household, $netProceeds),
-            $this->rentSettings($settings, $assumptions, $action),
-            $assumptions,
-            $this->lifeTable,
-            $nPaths,
-            $seed,
-            $variantProgress(2),
-        );
+        return [
+            'stay_put' => $run('stay_put', 0),
+            'buy_outright' => $run('buy_outright', 1),
+            'rent' => $run('rent', 2),
+        ];
+    }
 
-        return ['stay_put' => $stayPut, 'buy_outright' => $buyResult, 'rent' => $rentResult];
+    /**
+     * The three variant households + their settings, the single source of the housing
+     * transforms: "stay put" keeps the current household; "buy outright" swaps in a cheaper
+     * outright home and invests the surplus; "rent" sells, invests all proceeds and pays rent.
+     * Both `compare()` (Monte Carlo) and a deterministic per-variant projection (the
+     * per-strategy cashflow ladder) run these, so the transforms can't drift between the two.
+     *
+     * @return array{stay_put: array{household: Household, settings: ForecastSettings}, buy_outright: array{household: Household, settings: ForecastSettings}, rent: array{household: Household, settings: ForecastSettings}}
+     */
+    public function variantInputs(Household $household, ForecastSettings $settings, AssumptionSet $assumptions, HousingAction $action): array
+    {
+        $netProceeds = $this->saleProceeds($household, $action)->netProceeds;
+
+        return [
+            'stay_put' => ['household' => $household, 'settings' => $settings],
+            'buy_outright' => ['household' => $this->buyVariant($household, $action), 'settings' => $settings],
+            'rent' => ['household' => $this->rentVariant($household, $netProceeds), 'settings' => $this->rentSettings($settings, $assumptions, $action)],
+        ];
     }
 
     /**
@@ -189,7 +201,11 @@ final class HousingComparison
             name: $household->name,
             region: $household->region,
             persons: $household->persons,
-            expenseProfile: $household->expenseProfile,
+            // The current home is sold in both sell variants, so its housing-linked spend
+            // (mortgage payment, service charge) stops — only "stay put" keeps it. This is
+            // the contingent-cost rule that stops the buy/rent comparison being charged a
+            // phantom mortgage on a property it no longer owns.
+            expenseProfile: $household->expenseProfile->withoutPropertyCosts(),
             pensions: $household->pensions,
             accounts: $accounts,
             incomeStreams: $household->incomeStreams,

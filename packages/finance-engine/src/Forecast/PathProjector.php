@@ -307,9 +307,21 @@ final class PathProjector
         // Household spend (nominal), with the survivor factor when only one remains.
         $aliveCount = count(array_filter($alive));
         $survivor = $aliveCount === 1 ? $household->expenseProfile->survivorSpendFactor->asFraction() : 1.0;
-        $spendNominal = (int) round($household->expenseProfile->targetAnnualSpend()->pence * $state['spendFactor'] * $survivor)
+
+        // Employment-linked costs (e.g. commuting) are charged only while someone is still
+        // earning; once everyone has retired they stop. They are essential, so drop them from
+        // both the target and the essential floor in years no one works.
+        $targetPence = $household->expenseProfile->targetAnnualSpend()->pence;
+        $essentialPence = $household->expenseProfile->essentialAnnualSpend->pence;
+        if (! $this->anyoneWorking($household, $alive, $state, $yearIndex)) {
+            $employment = $household->expenseProfile->employmentCosts()->pence;
+            $targetPence = max(0, $targetPence - $employment);
+            $essentialPence = max(0, $essentialPence - $employment);
+        }
+
+        $spendNominal = (int) round($targetPence * $state['spendFactor'] * $survivor)
             + $this->oneOffCostsNominal($household, $ages, $cumInflation);
-        $essentialNominal = (int) round($household->expenseProfile->essentialAnnualSpend->pence * $state['spendFactor'] * $survivor);
+        $essentialNominal = (int) round($essentialPence * $state['spendFactor'] * $survivor);
 
         // Rent (the "sell and rent" leg) is an essential cost with its own inflation.
         if ($settings->annualRent !== null) {
@@ -825,6 +837,31 @@ final class PathProjector
         }
 
         return null;
+    }
+
+    /**
+     * Whether anyone in the household is still earning a salary this year — the same
+     * condition that produces employment earnings (employed, alive, before the planned
+     * retirement age), and so the condition that keeps employment-linked costs (e.g.
+     * commuting) charged. v1 simplification: the cost stops when the *last* earner retires
+     * (it is not tied to a specific commuter).
+     *
+     * @param  array<string, bool>  $alive
+     * @param  array<string, mixed>  $state
+     */
+    private function anyoneWorking(Household $household, array $alive, array $state, int $yearIndex): bool
+    {
+        foreach ($household->persons as $person) {
+            $age = $state['baseAge'][$person->id] + $yearIndex;
+            if (($alive[$person->id] ?? false)
+                && $person->employmentStatus === EmploymentStatus::Employed
+                && $person->grossSalary !== null
+                && ($person->plannedRetirementAge === null || $age < $person->plannedRetirementAge)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
