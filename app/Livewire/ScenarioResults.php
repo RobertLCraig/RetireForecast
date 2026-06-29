@@ -11,6 +11,7 @@ use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
+use App\Forecast\WhatIfChanges;
 use App\Models\Result;
 use App\Models\Scenario;
 use App\Models\SimulationRun;
@@ -246,6 +247,14 @@ class ScenarioResults extends Component
             'resultsRun' => $resultsRun,
             'presented' => $presented,
             'interpretation' => $interpretation,
+            // For a what-if (delta-child): what it changed from its base, so the page reads
+            // as a variation of the base rather than an independent plan. Null for a base.
+            'whatIf' => $this->scenario->isChild() ? [
+                'baseName' => $this->scenario->parent->name,
+                'baseUrl' => route('scenarios.results', $this->scenario->parent),
+                'changes' => WhatIfChanges::of($this->scenario),
+                'orphans' => $this->scenario->orphanedOverrides(),
+            ] : null,
             // Headline output #1: deterministic, independent of any Monte Carlo run.
             'shock' => app(LumpSumTaxShock::class)->assess($this->scenario),
             // Compare-assumptions overlay: also deterministic, so it shows immediately.

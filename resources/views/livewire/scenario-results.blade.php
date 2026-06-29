@@ -47,6 +47,11 @@
     <div class="flex items-start justify-between gap-4">
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">{{ $scenario->name }}</h1>
+            @if ($whatIf)
+                <p class="mt-1 text-sm text-gray-600">
+                    A what-if of <a href="{{ $whatIf['baseUrl'] }}" class="font-medium text-blue-700 underline">{{ $whatIf['baseName'] }}</a>
+                </p>
+            @endif
             <p class="mt-1 text-sm text-gray-600">
                 {{ $scenario->householdName() }} · base tax year {{ $scenario->base_tax_year }} ·
                 primary option: {{ \App\Forecast\ResultPresenter::variantLabel($scenario->variant) }}
@@ -60,6 +65,33 @@
             <a href="{{ route('dashboard') }}" class="text-sm text-blue-700 underline">Back to forecasts</a>
         </div>
     </div>
+
+    {{-- What this what-if changes vs its base: every overridden input as base → new, so the
+         difference is explicit rather than buried in identical-looking inputs. --}}
+    @if ($whatIf)
+        <section aria-labelledby="whatif-heading" class="rounded-lg border border-amber-200 bg-amber-50 p-5">
+            <h2 id="whatif-heading" class="text-sm font-semibold text-amber-900">What this what-if changes</h2>
+            @if ($whatIf['changes'])
+                <ul class="mt-3 space-y-1.5">
+                    @foreach ($whatIf['changes'] as $change)
+                        <li class="flex flex-wrap items-baseline gap-x-2 text-sm">
+                            <span class="text-gray-700">{{ $change['label'] }}:</span>
+                            <span class="text-gray-500 line-through tabular-nums">{{ $change['from'] }}</span>
+                            <span aria-hidden="true" class="text-amber-700">→</span>
+                            <span class="font-semibold text-amber-900 tabular-nums">{{ $change['to'] }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p class="mt-2 text-sm text-amber-900">This what-if currently matches its base (no inputs changed).</p>
+            @endif
+            @if ($whatIf['orphans'])
+                <p class="mt-3 text-xs text-amber-800">
+                    Some earlier changes no longer apply because the base was edited since: {{ implode(', ', $whatIf['orphans']) }}. Edit this what-if to refresh them.
+                </p>
+            @endif
+        </section>
+    @endif
 
     {{-- Run controls --------------------------------------------------------------- --}}
     <div class="{{ $card }}">

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Enums\ScenarioStatus;
+use App\Forecast\WhatIfChanges;
 use App\Models\Scenario;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -51,9 +52,23 @@ class Dashboard extends Component
 
     public function render(): View
     {
+        $scenarios = $this->scenarios();
+
+        // Each what-if's changes vs its base, keyed by child id, so the dashboard can tag a
+        // what-if with what it varied. Computed once here (the base state is already loaded)
+        // rather than re-queried per child in the view.
+        $whatIfChanges = [];
+        foreach ($scenarios as $base) {
+            $baseState = $base->effectiveBuilderState();
+            foreach ($base->children as $child) {
+                $whatIfChanges[$child->id] = WhatIfChanges::compute($baseState, $child->overrides ?? []);
+            }
+        }
+
         return view('livewire.dashboard', [
-            'scenarios' => $this->scenarios(),
+            'scenarios' => $scenarios,
             'draft' => $this->draft(),
+            'whatIfChanges' => $whatIfChanges,
         ])->title('Dashboard');
     }
 }

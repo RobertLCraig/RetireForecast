@@ -38,6 +38,15 @@
                             @if ($plan['isBase'])
                                 <span class="ml-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">Base</span>
                             @endif
+                            @if ($plan['changes'])
+                                <div class="mt-1 flex flex-wrap gap-1 font-normal">
+                                    @foreach ($plan['changes'] as $change)
+                                        <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                            {{ $change['label'] }}: {{ $change['to'] }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @endif
                             @if ($plan['orphans'] !== [])
                                 <span class="mt-1 block text-xs font-normal text-amber-700">Some of this what-if's changes no longer apply because the base plan changed. Re-open it to review.</span>
                             @endif

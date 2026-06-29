@@ -7,6 +7,7 @@ namespace App\Livewire;
 use App\Enums\ScenarioStatus;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
+use App\Forecast\WhatIfChanges;
 use App\Models\Scenario;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -79,6 +80,9 @@ class ScenarioCompare extends Component
         return [
             'name' => $plan->name,
             'isBase' => ! $plan->isChild(),
+            // What this what-if changed from the base (empty for the base itself), so the
+            // comparison says not just how each plan turns out but what makes it different.
+            'changes' => WhatIfChanges::of($plan),
             'variant' => ResultPresenter::variantLabel($plan->variant),
             'essentialsMet' => $forecast->essentialsAlwaysMet,
             'fullSpendMet' => $forecast->fullSpendAlwaysMet,

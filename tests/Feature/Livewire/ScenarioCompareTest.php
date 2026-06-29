@@ -46,9 +46,11 @@ class ScenarioCompareTest extends TestCase
         $this->childOf($base, $user, ['expenseLines.ess1.amount' => '60000'], 'Spend more');
 
         Livewire::test(ScenarioCompare::class, ['scenario' => $base])
-            ->assertSee('Buy-vs-rent')   // the base name
-            ->assertSee('Spend more')    // the child name
-            ->assertSee('Base')          // the base is labelled
+            ->assertSee('Buy-vs-rent')          // the base name
+            ->assertSee('Spend more')           // the child name
+            ->assertSee('Base')                 // the base is labelled
+            ->assertSee('Essentials · amount')  // the what-if's change, tagged
+            ->assertSee('£60,000')              // the new value, in the tag
             ->assertViewHas('plans', fn ($plans) => $plans->count() === 2);
     }
 

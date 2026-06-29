@@ -203,7 +203,11 @@ on the DC pension inside the `builder_state` form-state, not separately on the s
   AssumptionSet + enums).
 - **App persistence:** Eloquent `Scenario` (a base holds the encrypted `builder_state`, the source of
   truth; a Phase-C2 child instead holds `parent_scenario_id` + an encrypted `overrides` delta and resolves
-  `effectiveBuilderState()` = base ⊕ overrides; both derive the engine DTOs), `AssumptionSet`,
+  `effectiveBuilderState()` = base ⊕ overrides; both derive the engine DTOs). The child's `overrides` is also
+  surfaced **read-only as "what changed"** by `App\Forecast\WhatIfChanges` (a pure projection of the delta — one
+  home per fact, never a separate store): it reads the base value each override replaced via
+  `BuilderStateDelta::valueAt()` and humanises each dot-path into `{label, from, to}` for the results panel,
+  the dashboard tags and the Compare chips. `AssumptionSet`,
   `SimulationRun`, `Result` with `encrypted:array` payload casts; the `app/Finance/Mapping/`
   `AssumptionSetMapper` + `SimulationResultMapper` + `Codec`. (The `Household`/`HousingAction` mappers and
   the `households`/`scenario_drafts` tables were dropped in Phase B — see "Planned shape changes".)

@@ -44,13 +44,27 @@
                     @if ($scenario->children->isNotEmpty())
                         <ul class="border-t border-gray-100 bg-gray-50/60">
                             @foreach ($scenario->children as $child)
-                                <li class="flex items-center justify-between px-4 py-2 pl-8">
+                                <li class="flex items-start justify-between px-4 py-2 pl-8">
                                     <a href="{{ route('scenarios.results', $child) }}" class="min-w-0 flex-1">
                                         <p class="text-sm text-gray-700">
                                             <span class="text-gray-600">↳ what-if:</span> {{ $child->name }}
                                         </p>
+                                        {{-- Tags: what this what-if changed from the base, at a glance. --}}
+                                        @php($changes = $whatIfChanges[$child->id] ?? [])
+                                        @if ($changes)
+                                            <div class="mt-1 flex flex-wrap gap-1">
+                                                @foreach (array_slice($changes, 0, 4) as $change)
+                                                    <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                                        {{ $change['label'] }}: {{ $change['to'] }}
+                                                    </span>
+                                                @endforeach
+                                                @if (count($changes) > 4)
+                                                    <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">+{{ count($changes) - 4 }} more</span>
+                                                @endif
+                                            </div>
+                                        @endif
                                     </a>
-                                    <a href="{{ route('scenarios.edit', $child) }}" class="ml-4 text-sm font-medium text-blue-600 hover:text-blue-700">Edit</a>
+                                    <a href="{{ route('scenarios.edit', $child) }}" class="ml-4 shrink-0 text-sm font-medium text-blue-600 hover:text-blue-700">Edit</a>
                                 </li>
                             @endforeach
                         </ul>

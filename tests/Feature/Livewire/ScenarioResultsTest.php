@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Livewire;
 
+use App\Enums\ScenarioStatus;
 use App\Enums\SimulationStatus;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
@@ -339,6 +340,27 @@ class ScenarioResultsTest extends TestCase
 
         $this->assertStringContainsString('Essential spend', $csv);
         $this->assertStringContainsString('Discretionary spend', $csv);
+    }
+
+    public function test_a_what_if_highlights_what_it_changed_from_its_base(): void
+    {
+        $base = $this->scenario();
+        $child = new Scenario;
+        $child->user_id = $this->user->id;
+        $child->parent_scenario_id = $base->id;
+        $child->overrides = ['name' => 'Higher essentials', 'expenseLines.ess1.amount' => '31000'];
+        $child->builder_state = [];
+        $child->status = ScenarioStatus::Ready;
+        $child->projectFrom($child->effectiveBuilderState());
+        $child->save();
+
+        Livewire::test(ScenarioResults::class, ['scenario' => $child])
+            ->assertSee('A what-if of')
+            ->assertSee('Buy-vs-rent')              // the base name
+            ->assertSee('What this what-if changes')
+            ->assertSee('Essentials · amount')      // the humanised changed input
+            ->assertSee('£28,000')                  // base value
+            ->assertSee('£31,000');                 // new value
     }
 
     private function scenario(): Scenario

@@ -3,6 +3,25 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-29 — A what-if highlights what it changed from its base (results panel, dashboard tags, Compare chips)
+**Decision:** On Rob's ask ("what-ifs need to highlight what's changed from the base, and add these as tags in the
+dashboard"), a delta-child what-if now **shows its `overrides` as readable changes** in three places: a "What this
+what-if changes" **panel** at the top of the what-if's results page (each change as **base → new**, plus a "what-if
+of <base>" line in the header), compact **change tags** on each what-if row in the **dashboard**, and per-plan
+**change chips** in the **Compare** table. One presenter, `App\Forecast\WhatIfChanges`, turns the sparse override
+map into `{label, from, to}`: the base value an override replaces is read back through a new
+**`BuilderStateDelta::valueAt()`** (the read mirror of `setPath`, descending maps by key and row-lists by stable
+id), and each dot-path is humanised — top-level fields, assumption/housing/property figures, and **list rows named
+by their own label/identity** ("Essentials · amount", "DC pension · current value", "P1 · gross salary"). Money is
+shown as £, rates with %, enums readably; meta fields (the auto-name, the wizard step) are excluded.
+**Why:** trust-through-explanation (the workstream's governing principle) applies to what-ifs too — a what-if that
+looks identical to its base except for buried numbers can't be reasoned about. Reusing the existing **`overrides`
+delta** as the single source (not a separate "what changed" store) keeps one home per fact: the highlight is a pure
+projection of the delta, so it can never drift from what the what-if actually overrides, and a base edit flows
+through. Orphaned overrides (a base row the child still targets) are surfaced in the panel too (no silent drop).
+[[2026-06-29 — Direction from Rob's browser pass: everything user-editable; contingent costs auto-classified (option b); buy-vs-rent as a deliberate what-if]]
+**Status:** built, suite green, pending Rob's browser sign-off.
+
 ## 2026-06-29 — Built the editable-assumptions layer (core): a user-derived custom set from a sourced preset
 **Decision:** Built the first slice of the "everything user-editable" direction — the **economic assumptions** are
 now editable in the builder. The six figures the read-only assumptions panel already surfaces (investment growth

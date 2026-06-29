@@ -68,6 +68,19 @@ final class BuilderStateDelta
     }
 
     /**
+     * The leaf value at $path in $state, descending maps by key and row-lists by id (the
+     * same addressing {@see merge()} writes with), or null if the path does not resolve.
+     * Lets a consumer read the base value an override replaces, so a what-if can show
+     * "what changed" (base value -> new value) rather than just the new value.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    public static function valueAt(array $state, string $path): mixed
+    {
+        return self::getPath($state, explode('.', $path));
+    }
+
+    /**
      * The override paths that no longer resolve against $base — for example a pension
      * the base later deleted. Surfaced to the user so a stale what-if is visible, not
      * silently ignored (no silent failure).
@@ -177,6 +190,39 @@ final class BuilderStateDelta
         }
 
         return self::setPath($node[$segment], $rest, $value);
+    }
+
+    /**
+     * Read the leaf at $segments, descending maps by key and row-lists by id — the read
+     * mirror of {@see setPath()}. Returns null (without error) if the path runs off the
+     * shape, so a base that no longer goes this deep reads as "no prior value".
+     *
+     * @param  list<string>  $segments
+     */
+    private static function getPath(mixed $node, array $segments): mixed
+    {
+        if (! is_array($node) || $segments === []) {
+            return null;
+        }
+
+        $segment = $segments[0];
+        $rest = array_slice($segments, 1);
+
+        if (self::isRowList($node)) {
+            foreach ($node as $row) {
+                if (is_array($row) && (string) ($row['id'] ?? '') === $segment) {
+                    return $rest === [] ? $row : self::getPath($row, $rest);
+                }
+            }
+
+            return null; // no row carries this id
+        }
+
+        if (! array_key_exists($segment, $node)) {
+            return null;
+        }
+
+        return $rest === [] ? $node[$segment] : self::getPath($node[$segment], $rest);
     }
 
     private static function walkStructural(mixed $base, mixed $effective): bool

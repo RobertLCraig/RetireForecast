@@ -59,6 +59,21 @@ class BuilderStateDeltaTest extends TestCase
         $this->assertSame($reordered['pensions'][0]['id'], $merged['pensions'][0]['id']);
     }
 
+    public function test_value_at_reads_the_leaf_an_override_would_replace(): void
+    {
+        $base = BuilderStateFixture::full();
+
+        // Top-level map leaf, a row addressed by id, and a row nested inside a row.
+        $this->assertSame('62000', BuilderStateDelta::valueAt($base, 'people.p1.grossSalary'));
+        $this->assertSame('28000', BuilderStateDelta::valueAt($base, 'expenseLines.ess1.amount'));
+        $this->assertSame('18000', BuilderStateDelta::valueAt($base, 'housing.annualRent'));
+        $this->assertSame('100000', BuilderStateDelta::valueAt($base, 'pensions.dc1.withdrawals.wd1.amount'));
+
+        // A path that does not resolve reads as null (no prior value), never an error.
+        $this->assertNull(BuilderStateDelta::valueAt($base, 'people.pX.grossSalary'));
+        $this->assertNull(BuilderStateDelta::valueAt($base, 'nope.not.here'));
+    }
+
     public function test_structural_add_or_remove_is_detected(): void
     {
         $base = BuilderStateFixture::full();
