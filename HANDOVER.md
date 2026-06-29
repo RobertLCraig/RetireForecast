@@ -3,7 +3,7 @@
 > A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue building the calculation engine and then the app around it. Read `docs/PLAN.md` first: it is the full approved plan and the source of truth for scope.
 
 **Stage:** active
-**Status:** Phase D go-live. The **adviser-legibility workstream** is the active priority (from Rob's 2026-06-29 browser walkthrough). Its legibility **presentation layer is built** (house-sale waterfall, assumptions panel, itemised per-year spend, life-event milestones, input-sanity notes), the **contingent-cost correctness fix (#1, option b) is built**, the **per-variant deterministic cashflow ladder (#6) is built**, and now the **editable-assumptions layer's *core* is built** — the six **economic assumptions** are editable on builder step 1, defaulting to the chosen preset and deriving a user-tweakable **custom set** (stored as a sparse `assumptionOverrides` delta; applied once in `ScenarioForecaster::assumptions()`; results panel labels it *customised*). **Remaining in this layer (in order):** live in-builder preview, the longevity-lever UX, decomposed editable cost components, the per-line cost-condition override UI (#1's remainder), real-time cost toggles. Then **buy-vs-rent as a deliberate what-if/Compare**. See What's next + docs/PLAN.md + DECISIONS 2026-06-29 + docs/RESEARCH-editable-assumptions-ux.md.
+**Status:** Phase D go-live. The **adviser-legibility workstream** is the active priority (from Rob's 2026-06-29 browser walkthrough). Built so far: the legibility **presentation layer** (house-sale waterfall, assumptions panel, itemised per-year spend, life-event milestones, input-sanity notes), the **contingent-cost correctness fix (#1, option b)**, the **per-variant deterministic cashflow ladder (#6)**, the **editable-assumptions layer's *core*** (the six economic assumptions editable on builder step 1, deriving a user-tweakable **custom set** stored as a sparse `assumptionOverrides` delta, applied once in `ScenarioForecaster::assumptions()`), and a **what-if legibility cluster** (a what-if highlights what it changed vs its base on the results page + dashboard tags + Compare chips; one-click **quick what-ifs**; the builder **rings + shows the base value** of each changed input). **Remaining in the editable-assumptions layer (in order):** live in-builder preview, the longevity-lever UX, decomposed editable cost components, the per-line cost-condition override UI (#1's remainder), real-time cost toggles. Then **buy-vs-rent as a deliberate what-if/Compare**. See What's next + docs/PLAN.md + DECISIONS 2026-06-29/30 + docs/RESEARCH-editable-assumptions-ux.md.
 _Last updated: 2026-06-30 (the **builder highlights a what-if's changed inputs and shows the base value** each diverged from ("was £18,000") — a server-computed `path => base value` map + a bundled `builder-diff.js` matching inputs by `wire:model`, base value via a wrapper `::after` (no injected node). Recent prior work: **one-click quick what-ifs**, **what-ifs highlight what they changed from the base**, the **editable-assumptions core**. All pending Rob's browser sign-off. Next: live preview + the longevity-lever UX.)_
 
 ## Goal & success criteria
@@ -112,30 +112,28 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 | CLAUDE.md | Root orient tripwire + build/test conventions + "Doc hygiene" rules. |
 
 ## Branch status
-On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/RetireForecast); as of this checkpoint local `master` **tracks `origin/master`** (prior work has been pushed — verify with `git rev-list --count origin/master..master` before assuming). **Pushing to `master` is gated and needs Rob's explicit go-ahead — do not push unprompted.** Otherwise commit directly to `master` (personal local-first project; no PR flow). A second Claude session has previously run concurrently in this tree; **re-check `git status` / `git log` before any commit or push** — the tree can move under you. The pre-rebuild prototype is tagged **`prototype-v1` (a8f1f68)**, the only recovery snapshot. For the commit history use **`git log`** (the source of truth — not restated here, where it would drift); the recent trajectory is in the Session log + DECISIONS.md.
+On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/RetireForecast). As of this save local `master` is **ahead of `origin/master` by this session's commits (the editable-assumptions core + the what-if legibility cluster), unpushed** — confirm the count with `git rev-list --count origin/master..master`. **Pushing to `master` is gated and needs Rob's explicit go-ahead — do not push unprompted.** Otherwise commit directly to `master` (personal local-first project; no PR flow). **Re-check `git status` / `git log` before any commit or push** (a second Claude session has shared this tree before; the tree can move under you). The pre-rebuild prototype is tagged **`prototype-v1` (a8f1f68)**, the only recovery snapshot. For the commit history use **`git log`** (the source of truth — not restated here, where it would drift); the recent trajectory is in the Session log + DECISIONS.md.
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
 
-_2026-06-30 (the builder highlights a what-if's changed inputs)_ — On Rob's ask (prompted by the what-if highlighting:
-"the input field that differs from the base should be highlighted", his example being an edited annual rent), the
-builder now **rings every input whose value differs from the base** in amber when editing a what-if, with a one-line
-banner. `ScenarioBuilder::changedFromBasePaths()` computes the changed form-state leaf paths — a **positional** diff of
-the live `builderState()` against the base's `effectiveBuilderState()`, **index-based** so the paths match each input's
-`wire:model` — and renders them on the `<form>` (`data-builder-diff` + `data-changed-paths`). A bundled
-`resources/js/builder-diff.js` matches inputs to the set by their `wire:model` path and applies a plain
-`.builder-diff-changed` class (amber border + ring + bg, defined in `app.css`). **Why one script not ~70 annotated
-inputs:** the wizard has ~70 `wire:model` inputs; one server-computed set + one script covers them all uniformly
-(four small files), is CSP-safe (paths in a data attribute, bundled script) and morph-aware (re-applied on the
-Livewire `commit` hook, like `toc.js`). Pure progressive enhancement — the form is fully usable without JS; a
-highlight carries no data, so JS-only is the right call. The diff is positional because a child can't reorder/add/
-remove rows (the delta rule), so indices align with the base; name/step are excluded. On opening an existing what-if
-the changed fields highlight on load; live-as-you-type follows the deferred `wire:model` round-trips. **Follow-up
-(same day, Rob: "would be good to see the original figure we diverged from"):** the set became a `path => base value`
-map (`changedFromBase()`, base values formatted by the shared `WhatIfChanges::formatValue()`), and each changed field
-now also **shows its base value** ("was £18,000") via the field wrapper's `::after` from a `data-original` attribute —
-**no injected node**, so it stays morph-safe like the ring. Livewire-tested (childMode maps `housing.annualRent` to
-`£18,000` + renders the hook; a base does neither). Suite green; assets rebuilt.
+_2026-06-30 (the builder highlights a what-if's changed inputs + shows the base value)_ — On Rob's ask ("the input
+that differs from the base should be highlighted", his example an edited annual rent; then "would be good to see the
+original figure we diverged from"), the builder now, when editing a what-if, **rings every input whose value differs
+from the base in amber and shows the base value it diverged from** ("was £18,000"), with a one-line banner.
+`ScenarioBuilder::changedFromBase()` computes a `path => formatted base value` map — a **positional** diff of the live
+`builderState()` against the base's `effectiveBuilderState()`, **index-based** so the keys match each input's
+`wire:model`; values formatted by the shared `WhatIfChanges::formatValue()`. It renders on the `<form>`
+(`data-builder-diff` + a `data-changes` object); a bundled `resources/js/builder-diff.js` matches inputs by their
+`wire:model` path, rings each (`.builder-diff-changed`) and shows its base value via the field wrapper's `::after`
+from a `data-original` attribute (**not an injected node**, so morph-safe). **Why one script, not ~70 annotated
+inputs:** the wizard has ~70 `wire:model` inputs; one server-computed map + one script covers them all uniformly, is
+CSP-safe (data attribute + bundled script) and morph-aware (re-applied on the Livewire `commit` hook, like `toc.js`).
+Pure progressive enhancement (a highlight carries no data, so JS-only is the right call). The diff is positional
+because a what-if child can't reorder/add/remove rows (the delta rule), so indices align with the base; name/step are
+excluded. On opening an existing what-if the changed fields show on load; live-as-you-type follows the deferred
+`wire:model` round-trips. Livewire-tested (childMode maps `housing.annualRent` to `£18,000` + renders the hook; a base
+does neither). Suite green; assets rebuilt.
 
 _2026-06-29 (one-click "quick what-ifs": retire later / live longer)_ — On Rob's ask (prompted by the new what-if
 highlighting), added **preset what-if buttons** — **"Retire 2 years later"** and **"Live 10 years longer"** — on the
@@ -219,125 +217,31 @@ scope). **Builder override UI still to build** (folds into the editable-assumpti
 the defaults today). Suite green. **Next: the per-variant deterministic ladder (#6)** via `variantInputs()` → it
 *shows* the corrected per-strategy numbers + lands the house-sale milestone.
 
-_2026-06-29 (Rob's browser pass → fixes + a new "everything editable" direction + research)_ — Rob reviewed the new
-explainer layer in the browser. **Fixed:** a Blade `@if` glued to a word (`price@if`) never compiled and leaked the
-raw directive onto the sale waterfall — the selling-costs label is now built in `ResultPresenter::saleExplainer`
-(`sellingCostsLabel`, test-guarded); named what the 2% covers (estate agent + legal/conveyancing); relabelled the
-ambiguous "Rent" as the *projected cost of renting after selling* (not current rent), on the waterfall + assumptions
-panel. Commit `1f544bd`. **New direction (DECISIONS 2026-06-29 "everything user-editable"):** (1) #1 contingent-cost
-placement uses **option (b)** — auto-classify each expense line by category/label (mortgage/service charge → while-
-owning; commute → while-working) with a per-line override; (2) **all thresholds/assumptions must be user-editable in
-the UI** (investment growth, inflation, house/rent growth, **age of death**, cost components) — keep the sourced
-presets as starting points that derive a custom set; (3) **buy-vs-rent becomes a deliberate what-if/Compare**, not
-baked into every report; (4) costs shown as real figures with a breakdown. **Research** (Rob asked for free tools to
-look at): [docs/RESEARCH-editable-assumptions-ux.md](docs/RESEARCH-editable-assumptions-ux.md) — Boldin, ProjectionLab,
-the NYT rent-vs-buy calculator, Guiide (UK), the Actuaries Longevity Illustrator; the universal pattern is sensible
-sourced defaults + every assumption overridable + live update, and we're already *ahead* on longevity (cohort
-mortality + the lever + the on-screen death year). Proposed build order: #1 option-b → per-variant ladder → editable-
-assumptions layer → buy-vs-rent as Compare. Docs-only this entry (after the `1f544bd` fix); the build is pending Rob's
-confirmation of the sequence.
+_2026-06-29 (Rob's browser pass → the "everything user-editable" direction + research — folded; detail in DECISIONS.md + docs/RESEARCH-editable-assumptions-ux.md):_
+fixed a leaked Blade `@if`-glued-to-a-word on the sale waterfall (`1f544bd`) and set the direction that reshaped the
+rest of the workstream: #1 contingent costs via **option (b)** (auto-classify by label + per-line override); **all
+assumptions user-editable** (sourced presets deriving a custom set); **buy-vs-rent as a deliberate what-if/Compare**;
+costs as real figures with a breakdown. Backed by research into the free tools (Boldin, ProjectionLab, NYT rent-vs-buy,
+Guiide, the Actuaries Longevity Illustrator) — the universal pattern being sensible sourced defaults + every assumption
+overridable + live update.
 
-_2026-06-29 (adviser-legibility: input-sanity notes built)_ — Rounded out the legibility *presentation* layer with
-**input-sanity notes** on the results page (`ResultPresenter::inputNotes` + an "A note on your inputs" box, placed
-above the figures it affects): a neutral heads-up where an entered value did something drastic — (a) an employed
-person whose **retirement age is at/below their current age**, so no salary is modelled; (b) a person **modelled to
-die in the base year** (a longevity/health age below the current age, which the engine floors at the current age),
-read from the new `ForecastResult::deathCalendarYears`. These are exactly the two live-edit foot-guns behind the
-"wild numbers" Rob saw, now explained at the point of surprise. Factual/lint-safe; no notes when nothing is amiss.
-Presenter test covers both cases + the no-noise case. **Still open from the plan's input-sanity item:** the rate/£
-*builder-side* validation (live £-for-a-rate, out-of-range flag). This is the **third committed increment** of the
-session (after the explainer layer and milestones); all three are local-only, pending Rob's browser pass. Next: the
-correctness fix **#1 (contingent-cost placement)** + the **per-variant ladder (#6)** — bigger, engine + data-model
-work that also needs Rob's input on the builder UX for tagging a cost's condition.
+_2026-06-29 (adviser-legibility presentation layer + the browser walkthrough that birthed it — folded; detail in `git log` + DECISIONS.md):_
+Rob's browser walkthrough of the real couple found **no engine bug** (the swings were live-edit foot-guns: a
+retirement age ≤ current age zeroing salary, a longevity offset clamped to the base year); the real find was
+**contingent costs charged in every housing variant** (a phantom mortgage/commute biasing buy-vs-rent), plus a
+20%-not-2% selling-cost entry and a monthly-as-annual rent — totals reading plausible while wrong. His framing
+("I can't trust numbers the output hasn't explained") set explainability above go-live polish. Built the **explainer /
+show-your-working layer**: the house-sale waterfall (`saleExplainer` + the reconciled engine `HousingPurchase`), the
+assumptions panel (real-vs-nominal labelled, single-source blended return), itemised per-year spend, **life-event
+milestones** (+ the single-source engine field `ForecastResult::deathCalendarYears`), and **input-sanity notes**.
 
-_2026-06-29 (adviser-legibility: life-event milestones built)_ — Continued the explainer layer with a **life-event
-milestones** timeline on the results page (`ResultPresenter::milestones` + a "When the big events happen" section): a
-dated, aged list of *when* each person retires, takes their first planned pension withdrawal, their State Pension
-starts (SPA from the engine's `StatePensionAge`), and their modelled death — answering Rob's "what is the 2040
-event?" by making the cashflow ladder's step-change drivers legible. The only engine change is a new single-source
-**`ForecastResult::deathCalendarYears`** (personId → birthYear + death age, computed once in `PathProjector` from the
-draws; additive field, default `[]`), so "when does each person die" is no longer buried in the projection;
-everything else derives from existing inputs/helpers. Events outside the projection window are filtered out; the
-**house-sale marker is deferred** to the per-variant ladder (a variant transform the raw-household ladder doesn't
-apply). Guards: a presenter test (events / order / retired-person exclusion) + a death-year-is-the-engine-source
-assertion. Assets rebuilt; **pending Rob's browser sign-off**. (Concurrency unchanged: the other session's CI a11y
-commits are still local-only; this session owns the workstream.) Next: per-strategy ladder + contingent-cost #1.
-
-_2026-06-29 (adviser-legibility: explainer / show-your-working layer built)_ — From Rob's choice to start the
-workstream with the explainer layer (over the correctness fix first), built three deterministic results-page
-additions, all factual/lint-safe: (1) a **house-sale waterfall** (`ResultPresenter::saleExplainer`) — sale −
-mortgage − selling costs − CGT = net, then per-option destinations (rent: full net invested; buy cheaper: net −
-buy − SDLT − moving = surplus), with the **selling-cost rate shown beside the £** so the real couple's 20% = £70k
-is glaring; backed by a new reconciled engine value object **`HousingPurchase`** (buy-side surplus, single source —
-`HousingComparison::buyVariant` now reads `buyOutcome()`, behaviour-preserving). (2) an **assumptions panel**
-(`assumptionsPanel`) surfacing the blended **real** return (engine single-source, asset mix described) + CPI +
-house/rent/salary growth (real) + income yield (nominal), each labelled so real/nominal can't be confused. (3)
-**itemised per-year spend** in the cashflow ladder (essential / discretionary, reconciling to the total) + the two
-new CSV columns. Reconciliation + real-vs-nominal labelling guards added; the displayed-figure provenance test was
-extended to the new CSV columns. Assets rebuilt; **pending Rob's in-browser visual sign-off**. NB a **second Claude
-session** was concurrently active in this working tree on the CI a11y fix (commits `60d7da9`, `bb4d8ef`, not yet
-pushed); this session owns the adviser-legibility workstream, that one owns the CI push (Rob's call 2026-06-29).
-Next: the per-strategy cashflow ladder + the contingent-cost placement correctness fix (#1) it acts on.
-
-_2026-06-29 (browser walkthrough → adviser-legibility workstream; no engine bug)_ — Rob walked the rendered
-results for the real "FR + YC" couple and raised: missing adviser-style explanations, an odd 2040 "shortfall then
-rapid recovery", confusion over spending vs the housing decision, and that the year-by-year cashflow should show
-the differences by housing strategy. Investigation was read-only (engine instrumented via `artisan tinker`): **no
-engine bug** — the forecast is deterministic (repeated runs byte-identical) and cohort mortality is correct
-(median death age is conditional on current age). The dramatic swings that appeared mid-session were Rob's **live
-input edits**: a retirement age at/below current age zeroes the salary (P1 born 1960, retire-age 66 in base-year
-2026 → £30,000 dropped from year one), and a longevity *offset* below current age floors at current age (P2 median
-88, −15 → clamped to 80 → modelled dying ~2027, removing ~£23k income and collapsing the forecast). The **2040**
-event was a correct income/spend crossover (triple-locked State Pension overtaking flat real spend as a thin cash
-buffer empties). **The real find:** mortgage + service charge (~£22.9k/yr) live in shared `expenseProfile`, so
-they are charged in *every* housing variant including sell-&-rent / buy-outright where the property is gone —
-**biasing the buy-vs-rent comparison against selling** (commute fuel similarly never stops at retirement; and the
-cashflow ladder runs the raw household, ignoring the variant transforms). A deterministic trace of the sell-&-rent variant
-showed the £72k net proceeds draining to £0 by 2030 from three compounding issues: selling costs applied at **20%
-(£70k, vs ~2%)** from a `sellingCostRate:"20"` entry, the phantom mortgage + service charge (~£22.9k/yr, #1), and
-rent entered as **£1,650/yr** (≈£137/mo, almost certainly monthly) — the under-stated rent and the phantom costs
-partly cancel, so totals read plausible while wrong (the trust-killer). Rob's framing: **"I can't trust the
-numbers because they have not been sufficiently explained by the output"** — so explainability is the gate to
-trust, above remaining go-live polish. Recorded a **contingent-cost** decision (one home per cost, charged only
-while its condition holds) in DECISIONS 2026-06-29 and a seven-item **Adviser-legibility workstream** in
-docs/PLAN.md (cost-placement fix + per-strategy ladder first, then milestones / sale-explainer / input-sanity /
-per-option narrative / real-time cost toggles). Docs-only this session; the earlier a11y `tabindex` fix
-(scrollable tables keyboard-focusable, from the axe sweep) is also in the tree, uncommitted.
-
-_2026-06-29 (results charts reworked — spendable-money default + over-time strategy comparison)_ — From Rob's
-browser pass: the fan + comparison charts read flat and near-identical because both plotted total wealth incl.
-the home (a large, illiquid floor that barely moves and dwarfs the spendable variation). Reworked so both
-default to **spendable money (excl. home)** with an **"Include home value" toggle** (flips both charts + their
-tables); **replaced the terminal-wealth comparison bar with an over-time line per housing strategy** (median
-spendable money by year — directly answers "if I live to 100, which strategy keeps the most usable money"),
-keeping the per-strategy run-out stats in a table beside it; **anchored the fan y-axis at £0 + forceNiceScale**
-and added a **£-abbreviating axis/tooltip formatter** in `charts.js` (`moneyAxis` flag — a JS fn can't travel
-through the JSON options). **Engine:** `MonteCarlo\SimulationResult` gained a **per-year usable fan**
-(`usableFanChart`) beside the total `fanChart`, same `liquid + pension` definition as the ladder, with a
-`usable ≤ total` per-year reconciliation test; round-trips via `SimulationResultMapper` (empty for pre-change
-runs). Suite 368 → 372 green; assets rebuilt. Rationale in DECISIONS 2026-06-29. **Pending Rob's in-browser
-visual sign-off** of the reworked charts + toggle (the chart-swap-on-toggle is the one bit unverifiable without a
-browser; built with a keyed non-ignored wrapper around the `wire:ignore` canvas so a basis change replaces +
-re-inits it). Then, on Rob's follow-up ("why does it shoot up at 2068–2070?"), added a `partials/tail-note`
-explainer under both charts: the rise is two real effects, **verified against the engine** (per-year `paths`
-collapses ~1,700 → single digits over the last decade; the median drifts up, total £1.05M→£1.22M / usable
-£510k→£644k) — the sample thins to a handful of very-long-lived futures, and a long survivor's guaranteed income
-covers their reduced spending so the remaining pot compounds. Then two more follow-ups: (a) the calendar-year
-axis + both chart tables now show each **person's age** that year (age = `calendarYear − birthYear`, the engine's
-own `YearResult::ages` definition, reconciled to the cashflow ladder in a test; axis formatter in `charts.js`),
-and (b) a **stale-run prompt** — a run computed before this change has no `usableFanChart`, so instead of
-silently drawing total wealth as spendable (which reads as "toggle does nothing / title stuck on Total wealth"),
-the page shows a neutral re-run note via a `usableFanAvailable` flag. **Existing runs must be re-run** to get the
-spendable view. Suite 372 → 375 green. Commits `6283b86` (charts + worker hint) then `6a1633f` (ages/stale-run follow-up). **Rob signed off the reworked charts on 2026-06-29.**
-
-_2026-06-29 (queued-run "waiting for a worker" hint — no silent failure)_ — Closed the go-live UX gap the
-2026-06-28 browser pass surfaced: clicking *Run the full 10,000-path forecast* with no `php artisan queue:work`
-worker left the run at "Queued — 0%" indefinitely with no reason. Added `SimulationRun::isAwaitingWorker()`
-(queued + 0% + created past a 15s grace window) and a neutral `role="status"` note on the results page inside the
-existing `wire:poll` progress block, so it appears on the next poll and clears once the run moves to running/done.
-Wording stays guidance-side (clears the banned-phrasing lint). Tests: a focused model-predicate test (every
-status/age/progress case) plus a Livewire test (fresh queued ⇒ hidden; stale via `travel(20)->seconds()` ⇒ shown).
-Suite 366 → 368 green. PHP/Blade only; PLAN "Go-live UX backlog" item marked resolved.
+_2026-06-29 (results charts reworked + queued-run hint — folded; detail in `git log` + DECISIONS.md):_ reworked the
+fan + comparison charts to default to **spendable money (excl. home)** with an include-home toggle, replaced the
+terminal-wealth bar with a per-strategy **over-time** line, anchored the fan at £0, added £-abbreviating + person-age
+axis formatters (`charts.js`), and a thin-tail explainer for the end-of-life rise; engine gained a per-year
+`usableFanChart` (with a `usable ≤ total` reconciliation test) + a stale-run re-run prompt. **Rob signed these off.**
+Also the queued-run **"waiting for a worker" hint** (`SimulationRun::isAwaitingWorker()`) so a run with no worker
+explains itself instead of sitting at 0%.
 
 _2026-06-28 (go-live polish + parked work — detail in `git log` + DECISIONS.md):_ the **five re-review findings
 resolved** (PDF/screen Monte-Carlo one-source via `Scenario::latestCompletedRun()`; `freezeEndYear` threshold
