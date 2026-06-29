@@ -37,6 +37,12 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      - name: Install Pa11y's headless browser
+        # .npmrc sets ignore-scripts=true (supply-chain hardening), so puppeteer's
+        # postinstall never runs and no browser is downloaded. Install one explicitly;
+        # puppeteer then finds it in its cache automatically.
+        run: npx puppeteer browsers install chrome
+
       - name: Build assets
         run: npm run build
 
