@@ -95,6 +95,12 @@ inflation_linked (bool), start_age (int), end_age (int?).
 target_annual_spend (Money 🔒/yr), essential_portion (Money 🔒 — the floor for "success"),
 discretionary_portion (Money 🔒), inflation_basis (enum), one_off_costs (OneOff[]:
 care/SDLT/etc.), survivor_spend_factor (Percent, spend change on first death, default ~70%).
+**Contingent costs (2026-06-29, #1):** `propertyCosts` (Money?) and `employmentCosts` (Money?)
+are the housing- and employment-linked portions of the spend, carried as a **marked subset** of
+essential (not a second total), so the engine can stop charging them when their condition no
+longer holds — the sell variants build with `withoutPropertyCosts()` (mortgage/service charge
+gone when the home is sold) and the projector drops `employmentCosts` (commute) in years no one
+earns. Aggregated by `HouseholdAssembler` from each line's condition (below).
 
 ### Scenario
 household_id, name, variant (`buy_outright` \| `rent` \| `stay_put`),
@@ -221,7 +227,10 @@ Recorded here so the rebuild does not fork the model:
   (`structurallyDiffers`) and directed to the base or a new forecast.
 - ✅ **CORE BUILT (2026-06-26, Phase C1). Expenditure → 3-tier line items:** `builder_state.expenseLines`,
   each `{id, label, amount(annual £ string), category ∈ essential|discretionary|self_investment, savedAsAsset
-  (bool)}`, is the **single source** of spend. The `HouseholdAssembler` derives the engine `ExpenseProfile`
+  (bool), condition?}`, is the **single source** of spend. **(2026-06-29, #1)** an optional `condition ∈
+  always|while_owning_home|while_working` is the contingent-cost override; when absent the `HouseholdAssembler`
+  **auto-classifies by label** (mortgage / service charge → while-owning; commute → while-working; else always)
+  and aggregates the contingent lines into `ExpenseProfile::propertyCosts`/`employmentCosts` (above). The `HouseholdAssembler` derives the engine `ExpenseProfile`
   totals from them: essential = Σ essential lines; discretionary = Σ discretionary + *spent* self-investment.
   A *saved* self-investment line (`savedAsAsset: true`) is **not spend** — it becomes a balance-zero ISA
   `Account` with `ongoingContributions` = the saved amount (the engine applies it from surplus), so it is
