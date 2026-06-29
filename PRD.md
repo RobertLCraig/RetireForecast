@@ -4,7 +4,7 @@
 > consequences and run-out-of-money risk visible for an older couple.
 
 **Stage:** active
-_Last updated: 2026-06-28_
+_Last updated: 2026-06-29_
 
 Full implementation plan and scope source of truth: [docs/PLAN.md](docs/PLAN.md). This PRD
 is the orientation layer; the plan holds the exhaustive data model, UK rule set, Monte Carlo
@@ -81,3 +81,8 @@ lump-sum question and longevity risk made explicit.
       sign-off — a separate review, not this gov.uk statutory pass.)
 - [ ] **Demo couple's anonymised figures** supplied by Rob, entered via the UI (not hardcoded),
       once the scenario builder exists.
+- [ ] **Everything user-editable in the UI** (Rob's 2026-06-29 direction) — investment growth, inflation,
+      house/rent growth, **age of death**, and the selling-cost components become user-editable, with the sourced
+      presets as starting points that derive a tweakable custom set + live preview; and **buy-vs-rent becomes a
+      deliberate what-if/Compare** rather than baked into every report. Sequenced after the #1 contingent-cost fix
+      (option b). See DECISIONS 2026-06-29 "everything user-editable" + docs/RESEARCH-editable-assumptions-ux.md.

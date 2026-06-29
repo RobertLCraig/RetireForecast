@@ -1,6 +1,6 @@
 # Data model: RetireForecast
 
-_Last updated: 2026-06-28_
+_Last updated: 2026-06-29_
 
 The single source of truth for this project's data shape. Every layer (engine, storage, UI)
 conforms to this. The canonical representation **is** the engine's readonly DTOs under
@@ -261,6 +261,15 @@ Recorded here so the rebuild does not fork the model:
   C1 added **`YearResult::essentialSpend`** (real terms — the essential floor incl. rent/running costs and the
   survivor factor) so the income-floor readout reads one definition. **Still app-side (not yet built):** the
   **PLSA benchmark** (→ C4).
+- ✅ **BUILT (2026-06-29, adviser-legibility presentation layer).** Two small **additive engine** outputs feed the
+  legibility layer, each a single source the app only reads: (1) **`ForecastResult::deathCalendarYears`**
+  (`array<personId, int>` = birthYear + modelled death age, computed once in `PathProjector` from the draws; default
+  `[]`) — the canonical "when does each person die", powering the milestones + input-sanity notes without
+  re-deriving the death age; (2) **`Housing\HousingPurchase`** (a reconciled value object beside `HousingProceeds`:
+  `netProceeds − buyPrice − stampDuty − movingCosts = surplus`) — the single source of the buy-side surplus, read by
+  `HousingComparison::buyVariant` and the sale-explainer. The results-page **view-models** (`ResultPresenter::saleExplainer`
+  / `assumptionsPanel` / `milestones` / `inputNotes`, plus the ladder's essential/discretionary split) are app-side
+  presentation derived from these + the household — they add **no** persisted entity and **no** canonical-shape change.
 
 ## Known divergences (to close)
 - The DTO carries withdrawals on the DC pension; the original Scenario sketch listed

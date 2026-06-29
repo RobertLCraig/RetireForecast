@@ -515,10 +515,23 @@ polish item** — every headline figure must be traceable on screen to the input
 (show-your-working), or it cannot be trusted no matter how correct the engine is. This raises the workstream above
 remaining go-live polish.
 
-**Sequencing:** #1 first (it changes the numbers, and the legibility layers should explain *correct* numbers); #6
-builds the per-variant deterministic projection that #1's cost rules act on, so it pairs naturally with #1; #2–#5
-+ #7 are the explanation/interaction layer and land incrementally on top. All stay education/guidance side
+**Sequencing — original:** #1 first (it changes the numbers, and the legibility layers should explain *correct*
+numbers); #6 builds the per-variant deterministic projection that #1's cost rules act on, so it pairs naturally with
+#1; #2–#5 + #7 are the explanation/interaction layer and land incrementally on top. All stay education/guidance side
 (banned-phrasing lint).
+
+**Sequencing — revised 2026-06-29 (after Rob's browser pass; DECISIONS 2026-06-29 "everything user-editable" + docs/RESEARCH-editable-assumptions-ux.md).**
+Rob chose to build the **legibility presentation layer first** (over #1), and it is **built** — the **sale explainer +
+assumptions panel** (#3), **life-event milestones** (#2), the **results-page half of input-sanity** (#4) and itemised
+per-year spend — pending his browser sign-off. His browser pass then set the remaining order:
+1. **#1 contingent costs via option (b)** — auto-classify each expense line by category/label (mortgage / service
+   charge / ground rent → while-owning; commute → while-working; else always) with a **per-line override**. The
+   correctness fix; it changes the numbers and unblocks an honest buy-vs-rent.
+2. **#6 per-variant deterministic ladder** — the projection #1's cost rules act on; also lands the house-sale milestone.
+3. **Editable-assumptions layer** — make *all* thresholds/assumptions user-editable (investment growth, inflation,
+   house/rent growth, age of death, cost components), deriving a user-tweakable **custom set** from the sourced
+   presets, with live preview. Subsumes **#7** (real-time toggles) and the **rate/£ half of #4** (builder validation).
+4. **Buy-vs-rent as a deliberate Compare / what-if** (not baked into every report) + the per-option **#5** narrative.
 
 ### Statement-driven onboarding + document import (2026-06-28) — PARKED, post-v1
 Rob's ask: let the wizard **ingest uploaded documents** (bank statements, credit-card statements,
