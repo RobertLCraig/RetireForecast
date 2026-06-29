@@ -3,8 +3,8 @@
 > A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue building the calculation engine and then the app around it. Read `docs/PLAN.md` first: it is the full approved plan and the source of truth for scope.
 
 **Stage:** active
-**Status:** Phase D go-live — rebuild + Tier-1/Tier-2 BUILD complete, the queued-run worker hint is in, and the results-chart rework (spendable-money default + over-time strategy comparison + axis ages) is built, green and **signed off by Rob (2026-06-29)**. Remaining go-live activity: the rest of the in-browser pass (2FA QR, PDF layout, a11y sweep) — see What's next.
-_Last updated: 2026-06-29 (results-chart rework signed off; checkpoint)._
+**Status:** Phase D go-live. Rebuild + Tier-1/Tier-2 + the results-chart rework are all built and signed off. A new **adviser-legibility workstream** is now the priority, opened from Rob's 2026-06-29 browser walkthrough: one **correctness** fix (housing + commute costs leak across the buy-vs-rent variants) plus four legibility gaps (life-event milestones, house-sale explainer, input-sanity notes, per-option "why"). See What's next + docs/PLAN.md + DECISIONS 2026-06-29.
+_Last updated: 2026-06-29 (browser walkthrough → adviser-legibility workstream added; docs updated)._
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -53,9 +53,17 @@ See [DECISIONS.md](DECISIONS.md) for the full append-only log + rationale. The l
 - **Known bugs / broken:** none open (the five 2026-06-28 re-review findings are all resolved — see Session log + docs/PLAN.md "Review findings"). Documented v1 scope limits, all flagged in code: income tax England/Wales/NI only (Scotland throws); emergency tax models the over-deduction magnitude, not PAYE-table pennies; mortality grid ages 50–100 / years 2025–2074 with clamping + a non-ONS tail above 100 (cap 110); forecast taxes GIA dividends + cash interest annually AND realises CGT on GIA disposal (ISA tax-free; GIA/cash grow at capital only; v1 omits capital-loss relief + judges the CGT band on non-savings income); income-tax thresholds frozen until 2031, then indexed with inflation; DB escalation + triple lock as smooth growth factors; buy-vs-rent takes main-home CGT as £0 (PRR) and no SDLT surcharge; house/salary growth deterministic inside the Monte Carlo.
 
 ## What's next (in order)
-The go-live critical path — what stands between here and "done". Longer-tail and parked work is under Open items, not repeated here.
-1. **Finish the real-browser verification pass** (the one remaining go-live activity). The reworked results charts are **signed off (2026-06-29)** — the fan + over-time strategy comparison render under the CSP, default to spendable money, toggle, and carry axis ages. Still to eyeball with the app served (`npm run build` then `php artisan serve`): the **2FA QR** scans with an authenticator app, the **PDF** layout looks right, and the in-browser **accessibility sweep** (axe DevTools / Lighthouse) is clean (the authoritative a11y check — see docs/A11Y.md). One charts caveat for whoever picks up: a pre-existing stored run must be re-run (older runs lack the per-year usable fan and the page shows a re-run prompt).
-2. **Optional:** tighten the CSP `script-src` to nonces (Alpine CSP build) — needs the browser.
+The go-live critical path. Longer-tail and parked work is under Open items, not repeated here.
+1. **Adviser-legibility workstream** — the priority from Rob's 2026-06-29 browser walkthrough (full detail: docs/PLAN.md "Adviser-legibility workstream (2026-06-29)"; decision: DECISIONS 2026-06-29). None of it is an engine bug (determinism + mortality re-verified); it is cost placement + missing explanation. **Guiding principle (Rob): trust comes from explanation — every headline figure must be traceable on screen to its inputs/assumptions, so this sits above remaining go-live polish.** In order:
+   1. **[correctness] Contingent-cost placement.** Housing costs (mortgage payment, service charge, owner maintenance) and status costs (commute fuel) currently sit in shared `expenseProfile`, so they're charged in *every* buy-vs-rent variant — phantom mortgage + service charge in *sell & rent* and *buy outright*, commute that never stops at retirement. Give each cost one home tied to what it depends on (property/decision, or employment status), charged only while its condition holds; guard with reconciliation tests (property costs in zero post-sale years; commute zero from the retirement year).
+   2. **Per-strategy cashflow ladder** — the year-by-year cashflow must show the differences *by housing strategy* (it is currently a single projection of the raw household that ignores the variant transforms). Needs a deterministic per-variant projection; pairs with step 1.
+   3. Life-event **milestones** — show *when* retire / SPA start / pension access / house sale / each death happen (list + markers on the ladder and charts), from figures the engine already produces.
+   4. House-**sale explainer** — a plain-text block: proceeds decomposition (sale − mortgage − selling costs − CGT = net; − buy − SDLT − moving = surplus), the assumptions used, where the money goes (invested in a GIA at the assumption set's blended real return) and the year-by-year drawdown reason, reconciled.
+   5. **Input-sanity** notes — retirement age ≤ current age (salary dropped); longevity offset below current age (death within the year); **rate/£ validation** (the real couple's selling-cost rate applied as 20% = £70k vs ~2%, rent as £1,650/yr ≈ £137/mo likely monthly, both with no on-screen feedback).
+   6. Per-option plain-English **"why"** narrative, milestone-anchored, lint-safe.
+   7. **Real-time cost toggles** — switch individual cost lines (mortgage / service charge / commute) on/off and see the forecast move live.
+2. **Finish the real-browser verification pass.** The a11y axe/Lighthouse sweep is underway — one finding fixed (the scrollable data-table wrappers are now keyboard-focusable via `tabindex="0"`; see docs/A11Y.md sweep log). PDF layout looked right to Rob; **2FA QR scan deferred by Rob**. NB the local DB has **0 completed runs**, so re-run a forecast before checking the Monte Carlo charts / PDF.
+3. **Optional:** tighten the CSP `script-src` to nonces (Alpine CSP build) — needs the browser.
 
 ## Open items
 Open decisions and parked work, off the immediate go-live path (which is under What's next).
@@ -104,6 +112,31 @@ On `master`, local repo only (no remote, no PR) — personal local-first project
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-06-29 (browser walkthrough → adviser-legibility workstream; no engine bug)_ — Rob walked the rendered
+results for the real "FR + YC" couple and raised: missing adviser-style explanations, an odd 2040 "shortfall then
+rapid recovery", confusion over spending vs the housing decision, and that the year-by-year cashflow should show
+the differences by housing strategy. Investigation was read-only (engine instrumented via `artisan tinker`): **no
+engine bug** — the forecast is deterministic (repeated runs byte-identical) and cohort mortality is correct
+(median death age is conditional on current age). The dramatic swings that appeared mid-session were Rob's **live
+input edits**: a retirement age at/below current age zeroes the salary (P1 born 1960, retire-age 66 in base-year
+2026 → £30,000 dropped from year one), and a longevity *offset* below current age floors at current age (P2 median
+88, −15 → clamped to 80 → modelled dying ~2027, removing ~£23k income and collapsing the forecast). The **2040**
+event was a correct income/spend crossover (triple-locked State Pension overtaking flat real spend as a thin cash
+buffer empties). **The real find:** mortgage + service charge (~£22.9k/yr) live in shared `expenseProfile`, so
+they are charged in *every* housing variant including sell-&-rent / buy-outright where the property is gone —
+**biasing the buy-vs-rent comparison against selling** (commute fuel similarly never stops at retirement; and the
+cashflow ladder runs the raw household, ignoring the variant transforms). A deterministic trace of the sell-&-rent variant
+showed the £72k net proceeds draining to £0 by 2030 from three compounding issues: selling costs applied at **20%
+(£70k, vs ~2%)** from a `sellingCostRate:"20"` entry, the phantom mortgage + service charge (~£22.9k/yr, #1), and
+rent entered as **£1,650/yr** (≈£137/mo, almost certainly monthly) — the under-stated rent and the phantom costs
+partly cancel, so totals read plausible while wrong (the trust-killer). Rob's framing: **"I can't trust the
+numbers because they have not been sufficiently explained by the output"** — so explainability is the gate to
+trust, above remaining go-live polish. Recorded a **contingent-cost** decision (one home per cost, charged only
+while its condition holds) in DECISIONS 2026-06-29 and a seven-item **Adviser-legibility workstream** in
+docs/PLAN.md (cost-placement fix + per-strategy ladder first, then milestones / sale-explainer / input-sanity /
+per-option narrative / real-time cost toggles). Docs-only this session; the earlier a11y `tabindex` fix
+(scrollable tables keyboard-focusable, from the axe sweep) is also in the tree, uncommitted.
 
 _2026-06-29 (results charts reworked — spendable-money default + over-time strategy comparison)_ — From Rob's
 browser pass: the fan + comparison charts read flat and near-identical because both plotted total wealth incl.

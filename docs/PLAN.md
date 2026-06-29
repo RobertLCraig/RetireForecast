@@ -408,6 +408,98 @@ noted inline below; the original findings are kept for the record.
   code but only GIA is pinned by a test). **✅ Resolved:** added (cash interest reaches the forecast; the taxed
   capital-only cash can't out-grow a tax-free ISA).
 
+### Adviser-legibility workstream (2026-06-29, from Rob's browser walkthrough)
+Rob walked the rendered results for a real couple and surfaced one **correctness** issue and a cluster of
+**legibility** gaps. Unifying problem: the tool computes faithfully but does not make its model legible — it never
+says what an input means, where a cost belongs, or *when* a life event happens. None of this is an engine bug
+(determinism, mortality and tax were all re-verified this session); it is data-model placement + missing
+explanation. Priority order below.
+
+**1. [CORRECTNESS] Housing- and status-linked costs sit in shared *spending*, so they leak across options.**
+`expenseProfile` is shared by all three housing variants (`HousingComparison::withHousing` passes it through
+unchanged) and `PathProjector` charges `targetAnnualSpend()` in every variant. So costs that should depend on a
+*choice* or a *life phase* are charged unconditionally:
+  - **Mortgage payment + service charge** (~£22.9k/yr in the test couple) are essential-spend line items, so
+    *sell & rent* pays a phantom mortgage + service charge on a flat it no longer owns (on top of rent), and
+    *buy outright* pays a phantom mortgage on a home owned outright. This **biases the headline buy-vs-rent
+    comparison against selling.**
+  - **Commute fuel** is charged for life, but should stop when P1 retires (no job, no commute).
+
+  **Agreed direction:** a cost has **one home, tied to what it depends on.** Housing-linked costs (ongoing
+  mortgage payment, service charge / ground rent, owner maintenance) belong with the *property / decision* so
+  selling removes them; status-linked costs (commuting) are tagged to the status that creates them (employment)
+  and stop when it ends; general living costs (food, utilities, cars, leisure, insurance) stay in spending —
+  they are the same whichever option is chosen. This is the data-integrity "one definition, one home" rule
+  (DECISIONS 2026-06-25) + completeness, applied to **contingent expenses**. Already foreseen for the parked
+  import work ("the mortgage ends, commuting stops, the spending smile"); **promote it from import-only to a core
+  data-model concept** — an expense line can carry a *condition* (while-owning / while-working / age-bounded).
+  **Guard:** reconciliation tests — a property's costs appear in **zero** post-sale years of the rent/buy
+  variants; commute cost is **zero** from the retirement year; the spend charged in a year equals the sum of the
+  lines *active* that year (no silent drop, no phantom charge).
+
+**2. [LEGIBILITY] Life-event milestones are modelled but never shown "when".** Major events — each person
+**retires**, **State Pension starts** (SPA), planned **pension access / lump sum**, **house sale**, each person's
+**modelled death**, and the cost changes they trigger (commute stops, mortgage ends) — all happen inside the
+projection but are invisible on screen. **Fix:** a milestones layer — a dated/aged list plus markers on the
+cashflow ladder + charts ("2027 · P2 dies", "2027 · P1's State Pension starts", "year 0 · home sold"). Reuses
+figures the engine already produces (`YearResult::ages`, SPA year, withdrawal ages, death ages); read-only
+presentation.
+
+**3. [LEGIBILITY] House-sale explainer — show the decomposition and the destination.** "Sell gives us ~£80k?"
+must be auditable: sale price − outstanding mortgage − selling costs (2%) − CGT (£0, PRR v1) = **net proceeds**;
+for buy-cheaper, − buy price − SDLT − moving = **surplus**; then **where the money goes** — it is invested into a
+GIA following the chosen assumption set's **blended real return** (state the %, and that it is *real*, i.e. after
+inflation; ~2% of it is paid out as taxable income, the rest is capital growth), not idle cash losing value.
+`HousingComparison::saleProceeds()` already returns the full breakdown (`HousingProceeds`); surface it on the
+results + PDF and reconcile (the parts sum to the proceeds; the invested amount equals what enters the GIA).
+Deliver it as a **plain-text explainer block** that states the assumptions actually used (blended real return,
+inflation, rent inflation, selling-cost rate) and then narrates the money: what was spent when and on what, and
+how the proceeds are invested, so a user can see *why* a balance moves. Concrete need: tracing the real couple's
+sell-&-rent showed £72k net proceeds draining to £0 in ~4 years with no on-screen reason (see #1 + #4 for the two
+causes).
+
+**4. [LEGIBILITY] Input-sanity explanations where an entry silently does something drastic.** Retirement age
+**≤** the person's current age → no earnings modelled at all (P1, born 1960, retire-age 66 in base-year 2026 →
+£30,000 salary dropped from year one). Longevity **offset** landing below current age → floored at current age =
+"dies within the year" (P2, median 88, −15 → 73 → clamped to 80). Surface a neutral note at the input and/or on
+the results so the consequence is visible, not discovered in a collapsed forecast. **Rate / percentage inputs must
+show their resulting £ live and flag values far outside typical ranges** — the real couple's selling-cost rate was
+entered as `20` and silently applied as **20% = £70,000** on a £[redacted] sale (~10x the typical 1–3%), and rent was
+entered as `1650` (≈ £137/month, almost certainly a *monthly* figure in an *annual* field). These two compound
+with #1: the phantom housing costs and the under-stated rent partly cancel, so totals read plausible while being
+wrong for offsetting reasons — the exact failure mode that destroys trust in the output.
+
+**5. [LEGIBILITY] Results narrative — per-option plain-English "why", anchored to the milestones.** e.g.
+"essentials fall short from 2027 because P2 is modelled to die that year, leaving ~£9.8k State Pension against
+~£37k of planned spend." Factual, milestone-anchored, lint-safe (guidance, never a recommendation).
+
+**6. [LEGIBILITY] Per-strategy cashflow ladder — show the year-by-year differences by housing strategy.** The
+"Year-by-year cashflow" table is currently a single deterministic projection of the household *as entered*
+(`ScenarioForecaster::deterministic` runs the **raw** household; it does **not** apply the variant transforms, so it
+neither reflects the sale nor the rent leg). Rob wants the ladder to **showcase the differences between the housing
+strategies** (stay put / buy cheaper / sell & rent) year by year — where the sale proceeds land, when rent starts,
+when the mortgage + service charge stop on sale, how each strategy's usable wealth diverges. Needs a
+**deterministic per-variant projection** (a deterministic analogue of `HousingComparison`, or `DeterministicForecaster`
+run on each variant household), then a switch / side-by-side in the ladder. Pairs with #1 (the variant households
+are exactly where the contingent-cost rules bite) and shares the over-time comparison chart's per-strategy
+definition (one source, no drift).
+
+**7. [LEGIBILITY] Real-time cost toggles.** Let the user switch individual cost lines (and key assumptions) on/off
+and see the forecast update live — e.g. toggle the mortgage, service charge or commute and watch the buy-vs-rent
+answer move. Builds on the existing Livewire reactivity + the deterministic preview (cheap to re-run); a natural
+companion to #1 (the same contingent-cost tags decide which lines are toggleable) and to the what-if/Compare feature.
+
+**Guiding principle (Rob, 2026-06-29): trust comes from explanation.** "I can't trust the numbers because the
+numbers have not been sufficiently explained by the output." So **explainability is the gate to trust, not a
+polish item** — every headline figure must be traceable on screen to the inputs and assumptions that produced it
+(show-your-working), or it cannot be trusted no matter how correct the engine is. This raises the workstream above
+remaining go-live polish.
+
+**Sequencing:** #1 first (it changes the numbers, and the legibility layers should explain *correct* numbers); #6
+builds the per-variant deterministic projection that #1's cost rules act on, so it pairs naturally with #1; #2–#5
++ #7 are the explanation/interaction layer and land incrementally on top. All stay education/guidance side
+(banned-phrasing lint).
+
 ### Statement-driven onboarding + document import (2026-06-28) — PARKED, post-v1
 Rob's ask: let the wizard **ingest uploaded documents** (bank statements, credit-card statements,
 payslips, benefit/State-Pension statements), **pre-fill** every field it can extract, then **ask only

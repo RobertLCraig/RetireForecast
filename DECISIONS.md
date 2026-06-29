@@ -3,6 +3,41 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-29 — Contingent costs have one home tied to what they depend on (housing costs belong with the decision, not shared spending)
+**Decision:** From Rob's browser walkthrough of a real couple, a cost belongs **wherever the thing it depends on
+lives**, and is charged **only while that thing holds** — not as a flat lifelong line in shared `expenseProfile`:
+- **Housing-linked costs** (ongoing mortgage payment, service charge / ground rent, owner maintenance) belong
+  with the **property / housing decision**, so selling the home removes them. They must **not** be charged in the
+  *sell & rent* or *buy outright* variants, where that property is gone.
+- **Status-linked costs** (e.g. commute fuel) are tagged to the status that creates them (employment) and **stop
+  when it ends** (P1 retires → no commute).
+- **General living costs** (food, utilities, cars, leisure, insurance) stay in spending — they are the same
+  whichever housing option is chosen.
+
+**Why:** `expenseProfile` is shared across all three housing variants (`HousingComparison::withHousing` passes it
+through unchanged) and `PathProjector` charges `targetAnnualSpend()` in every variant. With mortgage + service
+charge (~£22.9k/yr for the test couple) sitting in essential spending, *sell & rent* was paying a **phantom
+mortgage + service charge on a flat it no longer owns, plus rent**, and *buy outright* a phantom mortgage on a
+home owned outright — silently **biasing the headline buy-vs-rent comparison against selling**. This is the
+single-definition / completeness rule applied to **contingent expenses**: an expense line can carry a *condition*
+(while-owning / while-working / age-bounded), and the spend charged in a year must equal the sum of the lines
+**active** that year — no phantom charge, no silent drop. The idea was already foreseen for the parked import work
+("the mortgage ends, commuting stops, the spending smile"); this **promotes it to a core data-model concept**.
+Guarded by reconciliation tests (property costs in zero post-sale years; commute zero from the retirement year).
+
+**Also recorded this session (not bugs — verified):** the engine is deterministic (repeated runs byte-identical)
+and cohort mortality is correct (median death age is conditional on current age); the dramatic swings Rob saw mid-
+session were his **live input edits** — a retirement age at/below current age zeroes the salary, and a longevity
+*offset* below current age floors at current age ("dies within the year"). These motivate the **legibility
+workstream** in docs/PLAN.md "Adviser-legibility workstream (2026-06-29)": life-event milestones (when retire /
+SPA / sale / death happen), a house-sale explainer (proceeds decomposition + where the money is invested), input-
+sanity notes, and a per-option plain-English "why". The 2040 "shortfall then rapid recovery" was confirmed a
+**correct** income/spend crossover (triple-locked State Pension overtaking flat real spend as a thin cash buffer
+empties), not a glitch.
+[[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
+**Status:** agreed direction; not yet built. Sequencing: the cost-placement fix (#1) lands before the legibility
+layers, which should explain *correct* numbers.
+
 ## 2026-06-29 — Results charts: spendable (excl-home) money is the default basis; the strategy comparison is over-time, not a terminal bar
 **Decision:** From live browser use, the two Monte Carlo charts on the results page were reworked:
 (1) **Spendable money (excl. home) is the default basis**, with an **"Include home value" toggle** (off by
