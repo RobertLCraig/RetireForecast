@@ -102,7 +102,7 @@
 
             <details>
                 <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the full breakdown</summary>
-                <div class="mt-2 overflow-x-auto">
+                <div class="mt-2 overflow-x-auto" tabindex="0">
                     <table class="w-full text-sm">
                         <caption class="sr-only">Lump-sum tax-shock breakdown for the first flexible pension withdrawal</caption>
                         <tbody>
@@ -145,7 +145,7 @@
             <p class="mt-1 text-sm text-gray-600">
                 The central best-estimate projection run under each sourced assumption set. The spread shows how much the answer depends on the assumptions. These are consequences under different assumptions, not a recommendation.
             </p>
-            <div class="mt-4 overflow-x-auto">
+            <div class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-sm">
                     <caption class="sr-only">Best-estimate outcome under each shipped assumption set</caption>
                     <thead>
@@ -228,7 +228,7 @@
                 These are a general yardstick, not a recommendation.
             </p>
 
-            <div class="mt-4 overflow-x-auto">
+            <div class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-sm">
                     <caption class="sr-only">PLSA Retirement Living Standards annual budgets for a {{ $plsa['composition'] }}, and whether your spending reaches each</caption>
                     <thead>
@@ -291,7 +291,7 @@
                 @endif
             </div>
             @if ($incomeFloor['sources'])
-                <div class="mt-4 overflow-x-auto">
+                <div class="mt-4 overflow-x-auto" tabindex="0">
                     <table class="w-full text-sm">
                         <caption class="sr-only">Secure income by source in {{ $incomeFloor['year'] }}</caption>
                         <thead>
@@ -334,7 +334,7 @@
             <p class="mt-1 text-sm text-gray-600">
                 The central best-estimate projection, year by year: where income comes from, the tax on it, the spend it has to meet, and the usable (excl. home) and total (incl. home) wealth carried forward. Figures are in today's money. This is one illustrative path, not a probability.
             </p>
-            <div class="mt-4 overflow-x-auto">
+            <div class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-sm whitespace-nowrap">
                     <caption class="sr-only">Deterministic year-by-year cashflow: income by source, tax, spend and wealth, in real pounds</caption>
                     <thead>
@@ -471,7 +471,7 @@
 
             <details class="mt-4">
                 <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers behind this chart</summary>
-                <div class="mt-2 overflow-x-auto">
+                <div class="mt-2 overflow-x-auto" tabindex="0">
                     <table class="w-full text-sm">
                         <caption class="sr-only">Projected {{ $fan['usableBasis'] ? 'spendable money (excl. home)' : 'total wealth (incl. home)' }} (real pounds) by calendar year and percentile for {{ $fan['label'] }}</caption>
                         <thead>
@@ -528,7 +528,7 @@
 
             <details class="mt-4">
                 <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the year-by-year figures behind this chart</summary>
-                <div class="mt-2 overflow-x-auto">
+                <div class="mt-2 overflow-x-auto" tabindex="0">
                     <table class="w-full text-sm">
                         <caption class="sr-only">Median {{ $comparison['usableBasis'] ? 'spendable money (excl. home)' : 'total wealth (incl. home)' }} by calendar year and housing strategy</caption>
                         <thead>
@@ -560,7 +560,7 @@
             <div class="mt-6">
                 <h3 class="text-sm font-semibold text-gray-900">How each strategy ends up</h3>
                 <p class="mt-1 text-xs text-gray-500">"Chance of running short" is the share of futures with at least one year your essential spending wasn't fully covered (a future may recover later). "Median … left" is the typical amount at the very end.</p>
-                <div class="mt-2 overflow-x-auto">
+                <div class="mt-2 overflow-x-auto" tabindex="0">
                     <table class="w-full text-sm">
                         <caption class="sr-only">Run-out risk and median wealth left by housing strategy</caption>
                         <thead>

@@ -16,7 +16,7 @@
         change tracks the base. The figures are shown side by side for you to read, not ranked.
     </p>
 
-    <div class="mt-6 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+    <div class="mt-6 overflow-x-auto rounded-lg border border-gray-200 bg-white" tabindex="0">
         <table class="min-w-full divide-y divide-gray-200 text-sm">
             <caption class="sr-only">Your base plan and its what-ifs compared on their central projection.</caption>
             <thead class="bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -89,7 +89,7 @@
 
         <details class="mt-4">
             <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers behind this chart</summary>
-            <div class="mt-2 overflow-x-auto">
+            <div class="mt-2 overflow-x-auto" tabindex="0">
                 <table class="min-w-full text-sm">
                     <caption class="sr-only">Usable wealth (excluding the home) by year for each plan, in today's money.</caption>
                     <thead>
