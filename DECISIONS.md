@@ -43,7 +43,7 @@ read as "the toggle does nothing / the title is stuck on Total wealth"), the pag
 prompt driven by a `usableFanAvailable` flag — no silent failure. Existing runs must be re-run to get the
 spendable view.
 [[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
-**Status:** active (built + green; pending Rob's in-browser visual sign-off of the reworked charts + toggle).
+**Status:** active (built, green, and signed off by Rob in the browser on 2026-06-29).
 
 ## 2026-06-28 — Statement-driven onboarding + document import: deterministic core, LLM only as a walled-off assist (PARKED)
 **Decision:** A planned post-v1 feature is designed and recorded before building: the wizard will

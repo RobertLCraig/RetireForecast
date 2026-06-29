@@ -3,8 +3,8 @@
 > A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue building the calculation engine and then the app around it. Read `docs/PLAN.md` first: it is the full approved plan and the source of truth for scope.
 
 **Stage:** active
-**Status:** Phase D go-live — rebuild + Tier-1/Tier-2 BUILD complete and the queued-run worker hint is in; Rob's browser pass drove a results-chart rework (spendable-money default + over-time strategy comparison), now built + green and awaiting his in-browser visual sign-off (see What's next).
-_Last updated: 2026-06-29 (results charts reworked: spendable-money default + over-time strategy comparison; see Session log)._
+**Status:** Phase D go-live — rebuild + Tier-1/Tier-2 BUILD complete, the queued-run worker hint is in, and the results-chart rework (spendable-money default + over-time strategy comparison + axis ages) is built, green and **signed off by Rob (2026-06-29)**. Remaining go-live activity: the rest of the in-browser pass (2FA QR, PDF layout, a11y sweep) — see What's next.
+_Last updated: 2026-06-29 (results-chart rework signed off; checkpoint)._
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -54,7 +54,7 @@ See [DECISIONS.md](DECISIONS.md) for the full append-only log + rationale. The l
 
 ## What's next (in order)
 The go-live critical path — what stands between here and "done". Longer-tail and parked work is under Open items, not repeated here.
-1. **Real-browser verification pass** (the one remaining go-live activity): with the app served (`npm run build` then `php artisan serve`), eyeball that the ApexCharts fan + ladder canvases render under the CSP, that the 2FA QR scans with an authenticator app, and that the PDF layout looks right; run the accessibility sweep via in-browser axe DevTools / Lighthouse (the authoritative check — see docs/A11Y.md). **Now also re-verify the reworked results charts** (DECISIONS 2026-06-29): the fan + strategy-comparison default to spendable money (excl. home); the **"Include home value" toggle** swaps both charts (confirm the canvas actually re-renders on toggle, not just the tables); the comparison reads as one line per strategy over time; the £-abbreviated y-axis looks right; the calendar-year axis shows the people's ages on a second line. **Re-run any pre-existing forecast** first — older stored runs lack the per-year usable fan and the page will show a re-run prompt (the spendable view + toggle only work on a fresh run).
+1. **Finish the real-browser verification pass** (the one remaining go-live activity). The reworked results charts are **signed off (2026-06-29)** — the fan + over-time strategy comparison render under the CSP, default to spendable money, toggle, and carry axis ages. Still to eyeball with the app served (`npm run build` then `php artisan serve`): the **2FA QR** scans with an authenticator app, the **PDF** layout looks right, and the in-browser **accessibility sweep** (axe DevTools / Lighthouse) is clean (the authoritative a11y check — see docs/A11Y.md). One charts caveat for whoever picks up: a pre-existing stored run must be re-run (older runs lack the per-year usable fan and the page shows a re-run prompt).
 2. **Optional:** tighten the CSP `script-src` to nonces (Alpine CSP build) — needs the browser.
 
 ## Open items
@@ -129,7 +129,7 @@ own `YearResult::ages` definition, reconciled to the cashflow ladder in a test; 
 and (b) a **stale-run prompt** — a run computed before this change has no `usableFanChart`, so instead of
 silently drawing total wealth as spendable (which reads as "toggle does nothing / title stuck on Total wealth"),
 the page shows a neutral re-run note via a `usableFanAvailable` flag. **Existing runs must be re-run** to get the
-spendable view. Suite 372 → 375 green. Commits `6283b86` (charts + worker hint) then the ages/stale-run follow-up.
+spendable view. Suite 372 → 375 green. Commits `6283b86` (charts + worker hint) then `6a1633f` (ages/stale-run follow-up). **Rob signed off the reworked charts on 2026-06-29.**
 
 _2026-06-29 (queued-run "waiting for a worker" hint — no silent failure)_ — Closed the go-live UX gap the
 2026-06-28 browser pass surfaced: clicking *Run the full 10,000-path forecast* with no `php artisan queue:work`
