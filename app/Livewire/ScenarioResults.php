@@ -40,6 +40,14 @@ class ScenarioResults extends Component
     /** Paths for the synchronous preview (the full queued run uses the engine's 10,000). */
     public int $previewPaths = 1000;
 
+    /**
+     * Chart wealth basis. False (default) plots USABLE wealth (excl. the home) — the
+     * spendable money that actually runs out, the honest "will it last" view for a couple
+     * not planning to sell again; true counts the home too. Flips both the fan and the
+     * strategy-comparison chart (and their tables); the headline cards show both regardless.
+     */
+    public bool $includeHome = false;
+
     /** Prepended to every CSV export so a downloaded figure never travels without its disclaimer. */
     private const EXPORT_DISCLAIMER = [
         'RetireForecast — guidance only, not financial advice.',
@@ -95,7 +103,7 @@ class ScenarioResults extends Component
             return null;
         }
 
-        $presented = ResultPresenter::build($this->resultsByVariant($run), $this->scenario->variant->value);
+        $presented = ResultPresenter::build($this->resultsByVariant($run), $this->scenario->variant->value, $this->includeHome);
         $fan = $presented['fan'];
 
         return response()->streamDownload(function () use ($fan): void {
@@ -155,7 +163,7 @@ class ScenarioResults extends Component
 
         if ($resultsRun) {
             $resultsByVariant = $this->resultsByVariant($resultsRun);
-            $presented = ResultPresenter::build($resultsByVariant, $this->scenario->variant->value);
+            $presented = ResultPresenter::build($resultsByVariant, $this->scenario->variant->value, $this->includeHome);
 
             // Advice-style readouts only for an admin-granted user; the public default
             // stays neutral. The directive wording lives solely in Interpretation.

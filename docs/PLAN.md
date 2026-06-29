@@ -342,7 +342,12 @@ data-shape + edit/clone.
   clear it once it moves to running/done. Small, well-scoped: a timestamp check in the component + a Blade line +
   a test (queued-and-stale ⇒ hint shown; running/done ⇒ hidden). Optionally surface a one-line "start a worker"
   reminder in the docs/landing for local use. **Not blocking**; closes the exact gap hit during the 2026-06-28
-  browser verification pass.
+  browser verification pass. **✅ Resolved (2026-06-29):** the predicate lives on the model
+  (`SimulationRun::isAwaitingWorker()` = queued + 0% + `created_at` past a 15s grace window), with a neutral
+  `role="status"` note rendered inside the existing `wire:poll` progress block in `ScenarioResults` (appears on the
+  next poll, clears once the run moves to running/done). Covered by a model-predicate test (every status/age/progress
+  case) and a Livewire test (fresh ⇒ hidden, stale ⇒ shown). The docs/landing reminder was not added (deferred as
+  genuinely optional).
 
 ### Go-live UX backlog, cont. (2026-06-28, from live use of the full run)
 - **"Chance of running out" label reads as contradictory beside "wealth left" (presentation, not a bug).** Verified

@@ -48,6 +48,24 @@ class SimulationRun extends Model
         ];
     }
 
+    /** Seconds a run may sit queued at 0% before we surface the "is a worker running?" hint. */
+    private const WORKER_WAIT_HINT_SECONDS = 15;
+
+    /**
+     * True when this run has sat queued at 0% long enough that, run locally, the likely
+     * cause is that no queue worker is running. The full run is dispatched to the database
+     * queue and needs `php artisan queue:work`; a worker would have moved it to `running`
+     * by now. Drives a neutral on-screen hint so the run never sits silently at "Queued —
+     * 0%" with no reason (no silent failure).
+     */
+    public function isAwaitingWorker(): bool
+    {
+        return $this->status === SimulationStatus::Queued
+            && (int) $this->progress_pct === 0
+            && $this->created_at !== null
+            && $this->created_at->lte(now()->subSeconds(self::WORKER_WAIT_HINT_SECONDS));
+    }
+
     public function scenario(): BelongsTo
     {
         return $this->belongsTo(Scenario::class);

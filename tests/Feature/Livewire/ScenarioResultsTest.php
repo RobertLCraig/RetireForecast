@@ -48,11 +48,14 @@ class ScenarioResultsTest extends TestCase
         Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
             ->set('previewPaths', 30)
             ->call('preview')
-            ->assertSee('Projected wealth over time')
+            ->assertSee('Projected spendable money over time')
             ->assertSeeHtml('<table')
             ->assertSeeHtml('<caption')
             ->assertSee('Median')
-            ->assertSee('Show the numbers behind this chart');
+            ->assertSee('Show the numbers behind this chart')
+            // The end-of-life rise is explained (thin-sample tail + old-age pot compounding),
+            // not left to look like a glitch.
+            ->assertSee('Why the line can climb sharply at the far right');
     }
 
     public function test_a_completed_preview_persists_three_variant_results(): void
@@ -235,6 +238,43 @@ class ScenarioResultsTest extends TestCase
         Livewire::test(ScenarioResults::class, ['scenario' => $scenario->fresh()])
             ->assertSee('Will the money last?')
             ->assertDontSee('No completed run yet.');
+    }
+
+    public function test_the_include_home_toggle_flips_both_charts_between_spendable_and_total(): void
+    {
+        $component = Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->set('previewPaths', 30)
+            ->call('preview');
+
+        // Default: the spendable (excl-home) basis leads on both the fan and the comparison.
+        $component
+            ->assertSee('Projected spendable money over time')
+            ->assertSee('Spendable money over time, by housing strategy');
+
+        // Toggle the home back in -> both charts switch to the total-wealth basis.
+        $component->set('includeHome', true)
+            ->assertSee('Projected total wealth over time')
+            ->assertSee('Total wealth over time, by housing strategy')
+            ->assertDontSee('Projected spendable money over time');
+    }
+
+    public function test_a_stale_queued_run_with_no_worker_surfaces_a_start_a_worker_hint(): void
+    {
+        // No worker: the job is captured but never executed, so the run stays queued at 0%.
+        Queue::fake();
+        $component = Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->call('runFull');
+
+        // Freshly queued, it must NOT flash the hint immediately (a worker may be about to pick it up).
+        $component->call('refreshRun')
+            ->assertDontSee('Still waiting for a background worker');
+
+        // After the grace window with no worker, the page explains why it is stuck rather than
+        // sitting silently at "Queued — 0%".
+        $this->travel(20)->seconds();
+        $component->call('refreshRun')
+            ->assertSee('Still waiting for a background worker')
+            ->assertSee('php artisan queue:work');
     }
 
     private function scenario(): Scenario

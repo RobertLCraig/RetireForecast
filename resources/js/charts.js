@@ -1,4 +1,24 @@
 /**
+ * Abbreviated GBP for chart axes and tooltips (£0, £25k, £1.2m). Defined here, not in
+ * the options blob, because an ApexCharts formatter is a function and cannot travel
+ * through the JSON the server renders. Presenters opt in with `moneyAxis: true`.
+ */
+function gbpAxis(value) {
+    if (value === null || value === undefined || isNaN(value)) {
+        return ''
+    }
+    const n = Number(value)
+    const abs = Math.abs(n)
+    if (abs >= 1e6) {
+        return '£' + (n / 1e6).toFixed(abs >= 1e7 ? 0 : 1) + 'm'
+    }
+    if (abs >= 1e3) {
+        return '£' + Math.round(n / 1e3) + 'k'
+    }
+    return '£' + Math.round(n)
+}
+
+/**
  * A small Alpine wrapper around ApexCharts.
  *
  * The chart is never the source of truth: every figure it plots is also rendered as
@@ -27,6 +47,20 @@ function chart(options) {
                     fontFamily: 'inherit',
                 },
             }
+
+            // moneyAxis is our flag, not an ApexCharts option: attach the £ formatter to the
+            // y-axis labels and the tooltip, then drop the flag so ApexCharts never sees it.
+            if (merged.moneyAxis === true && !Array.isArray(merged.yaxis)) {
+                merged.yaxis = {
+                    ...(merged.yaxis ?? {}),
+                    labels: { ...((merged.yaxis ?? {}).labels ?? {}), formatter: gbpAxis },
+                }
+                merged.tooltip = {
+                    ...(merged.tooltip ?? {}),
+                    y: { ...((merged.tooltip ?? {}).y ?? {}), formatter: gbpAxis },
+                }
+            }
+            delete merged.moneyAxis
 
             // The chart is a progressive enhancement: every figure it plots is also in the
             // accessible table beside it. So if a chart ever fails to render, fail loud in the

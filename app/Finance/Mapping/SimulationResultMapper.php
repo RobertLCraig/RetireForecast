@@ -31,14 +31,8 @@ final class SimulationResultMapper
             'usableWealthPercentiles' => $result->usableWealthPercentiles === []
                 ? []
                 : self::penceBands($result->usableWealthPercentiles),
-            'fanChart' => array_map(
-                static fn (array $band): array => [
-                    'calendarYear' => $band['calendarYear'],
-                    'paths' => $band['paths'],
-                    ...self::penceBands($band),
-                ],
-                $result->fanChart,
-            ),
+            'fanChart' => self::penceFan($result->fanChart),
+            'usableFanChart' => self::penceFan($result->usableFanChart),
         ];
     }
 
@@ -55,15 +49,40 @@ final class SimulationResultMapper
             usableWealthPercentiles: empty($data['usableWealthPercentiles'])
                 ? []
                 : self::moneyBands($data['usableWealthPercentiles']),
-            fanChart: array_map(
-                static fn (array $band): array => [
-                    'calendarYear' => $band['calendarYear'],
-                    'paths' => $band['paths'],
-                    ...self::moneyBands($band),
-                ],
-                $data['fanChart'],
-            ),
+            fanChart: self::moneyFan($data['fanChart']),
+            // Runs persisted before the per-year usable fan landed have no key — default to empty.
+            usableFanChart: self::moneyFan($data['usableFanChart'] ?? []),
         );
+    }
+
+    /**
+     * A per-year fan (list of bands) Money -> pence. Shared by the total and usable fans.
+     *
+     * @param  list<array<string, mixed>>  $fan
+     * @return list<array<string, int>>
+     */
+    private static function penceFan(array $fan): array
+    {
+        return array_map(static fn (array $band): array => [
+            'calendarYear' => $band['calendarYear'],
+            'paths' => $band['paths'],
+            ...self::penceBands($band),
+        ], $fan);
+    }
+
+    /**
+     * A per-year fan (list of bands) pence -> Money. Shared by the total and usable fans.
+     *
+     * @param  list<array<string, mixed>>  $fan
+     * @return list<array<string, mixed>>
+     */
+    private static function moneyFan(array $fan): array
+    {
+        return array_map(static fn (array $band): array => [
+            'calendarYear' => $band['calendarYear'],
+            'paths' => $band['paths'],
+            ...self::moneyBands($band),
+        ], $fan);
     }
 
     /**

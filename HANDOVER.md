@@ -3,8 +3,8 @@
 > A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue building the calculation engine and then the app around it. Read `docs/PLAN.md` first: it is the full approved plan and the source of truth for scope.
 
 **Stage:** active
-**Status:** Phase D go-live — the rebuild and Phase D Tier-1 (trust) + Tier-2 (go-live polish) BUILD are complete; only a real-browser verification pass + minor polish remain (see What's next).
-_Last updated: 2026-06-28 (handover consolidated + doc-hygiene guard added; see Session log)._
+**Status:** Phase D go-live — rebuild + Tier-1/Tier-2 BUILD complete and the queued-run worker hint is in; Rob's browser pass drove a results-chart rework (spendable-money default + over-time strategy comparison), now built + green and awaiting his in-browser visual sign-off (see What's next).
+_Last updated: 2026-06-29 (results charts reworked: spendable-money default + over-time strategy comparison; see Session log)._
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -48,15 +48,14 @@ See [DECISIONS.md](DECISIONS.md) for the full append-only log + rationale. The l
 - **Done — app layer:** encrypted DTO persistence + Fortify auth + GDPR export/erase + Filament admin; forecast/scenario services (`ScenarioForecaster`, `SimulationRunner` + queued `RunScenarioSimulation` with progress + cancel); Livewire UI + ApexCharts (auth screens, builder wizard, results page, Compare); compliance layer (partition lint, first-run disclaimer gate, walled-off interpretation toggle); spreadsheet import (CSV/`.xlsx`, calibrated profiles); lump-sum tax-shock panel; compare-assumptions overlay.
 - **Done — rebuild:** Phase A (engine enrichments: ongoing contributions, longevity, usable-vs-total wealth, income-by-source), C3 (results usable-vs-total + cashflow ladder), B (`builder_state` storage inversion + edit-in-place + stale-run invalidation), C2 (delta-child what-ifs + Compare), C1 (3-tier line-item budget, core + fast-follow), C4 (PLSA Retirement Living Standards benchmark).
 - **Done — Phase D Tier-1 (trust), COMPLETE:** A5; the gov.uk ⚠️ figure-verification pass (every statutory figure re-confirmed + stamped `verified_on: 2026-06-27`, no value changed, pensions-in-IHT now enacted); admin-panel lockdown (`is_admin`); forecast-boundary reconciliation invariants; displayed-figure provenance; the user-facing import reconciliation panel.
-- **Done — Phase D Tier-2 (go-live polish), BUILD COMPLETE:** demo preset/seeder; 10k-path Monte Carlo perf (lean `IncomeTaxCalculator::totalPence()` + worker JIT); CSP + security headers; 2FA enrolment UI; PDF results export (dompdf, reuses `ResultPresenter`); a11y CI scaffold + a first local sweep (3 contrast fixes).
+- **Done — Phase D Tier-2 (go-live polish), BUILD COMPLETE:** demo preset/seeder; 10k-path Monte Carlo perf (lean `IncomeTaxCalculator::totalPence()` + worker JIT); CSP + security headers; 2FA enrolment UI; PDF results export (dompdf, reuses `ResultPresenter`); a11y CI scaffold + a first local sweep (3 contrast fixes); queued-run "waiting for a worker" hint (`SimulationRun::isAwaitingWorker()` → neutral on-screen note when a run sits queued at 0% past a 15s grace window).
 - **In progress:** nothing mid-edit; tree clean.
 - **Known bugs / broken:** none open (the five 2026-06-28 re-review findings are all resolved — see Session log + docs/PLAN.md "Review findings"). Documented v1 scope limits, all flagged in code: income tax England/Wales/NI only (Scotland throws); emergency tax models the over-deduction magnitude, not PAYE-table pennies; mortality grid ages 50–100 / years 2025–2074 with clamping + a non-ONS tail above 100 (cap 110); forecast taxes GIA dividends + cash interest annually AND realises CGT on GIA disposal (ISA tax-free; GIA/cash grow at capital only; v1 omits capital-loss relief + judges the CGT band on non-savings income); income-tax thresholds frozen until 2031, then indexed with inflation; DB escalation + triple lock as smooth growth factors; buy-vs-rent takes main-home CGT as £0 (PRR) and no SDLT surcharge; house/salary growth deterministic inside the Monte Carlo.
 
 ## What's next (in order)
 The go-live critical path — what stands between here and "done". Longer-tail and parked work is under Open items, not repeated here.
-1. **Real-browser verification pass** (the one remaining go-live activity): with the app served (`npm run build` then `php artisan serve`), eyeball that the ApexCharts fan + ladder canvases render under the CSP, that the 2FA QR scans with an authenticator app, and that the PDF layout looks right; run the accessibility sweep via in-browser axe DevTools / Lighthouse (the authoritative check — see docs/A11Y.md).
-2. **Queued-run "waiting for a worker" hint** (go-live UX): a full 10k run needs `php artisan queue:work`; with no worker it sits "Queued — 0%" with no reason. Show a neutral "start a worker" note when a run sits `queued` with zero progress for ~15s. Spec in docs/PLAN.md "Go-live UX backlog".
-3. **Optional:** tighten the CSP `script-src` to nonces (Alpine CSP build) — needs the browser.
+1. **Real-browser verification pass** (the one remaining go-live activity): with the app served (`npm run build` then `php artisan serve`), eyeball that the ApexCharts fan + ladder canvases render under the CSP, that the 2FA QR scans with an authenticator app, and that the PDF layout looks right; run the accessibility sweep via in-browser axe DevTools / Lighthouse (the authoritative check — see docs/A11Y.md). **Now also re-verify the reworked results charts** (DECISIONS 2026-06-29): the fan + strategy-comparison default to spendable money (excl. home); the **"Include home value" toggle** swaps both charts (confirm the canvas actually re-renders on toggle, not just the tables); the comparison reads as one line per strategy over time; the £-abbreviated y-axis looks right.
+2. **Optional:** tighten the CSP `script-src` to nonces (Alpine CSP build) — needs the browser.
 
 ## Open items
 Open decisions and parked work, off the immediate go-live path (which is under What's next).
@@ -105,6 +104,35 @@ On `master`, local repo only (no remote, no PR) — personal local-first project
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-06-29 (results charts reworked — spendable-money default + over-time strategy comparison)_ — From Rob's
+browser pass: the fan + comparison charts read flat and near-identical because both plotted total wealth incl.
+the home (a large, illiquid floor that barely moves and dwarfs the spendable variation). Reworked so both
+default to **spendable money (excl. home)** with an **"Include home value" toggle** (flips both charts + their
+tables); **replaced the terminal-wealth comparison bar with an over-time line per housing strategy** (median
+spendable money by year — directly answers "if I live to 100, which strategy keeps the most usable money"),
+keeping the per-strategy run-out stats in a table beside it; **anchored the fan y-axis at £0 + forceNiceScale**
+and added a **£-abbreviating axis/tooltip formatter** in `charts.js` (`moneyAxis` flag — a JS fn can't travel
+through the JSON options). **Engine:** `MonteCarlo\SimulationResult` gained a **per-year usable fan**
+(`usableFanChart`) beside the total `fanChart`, same `liquid + pension` definition as the ladder, with a
+`usable ≤ total` per-year reconciliation test; round-trips via `SimulationResultMapper` (empty for pre-change
+runs). Suite 368 → 372 green; assets rebuilt. Rationale in DECISIONS 2026-06-29. **Pending Rob's in-browser
+visual sign-off** of the reworked charts + toggle (the chart-swap-on-toggle is the one bit unverifiable without a
+browser; built with a keyed non-ignored wrapper around the `wire:ignore` canvas so a basis change replaces +
+re-inits it). Then, on Rob's follow-up ("why does it shoot up at 2068–2070?"), added a `partials/tail-note`
+explainer under both charts: the rise is two real effects, **verified against the engine** (per-year `paths`
+collapses ~1,700 → single digits over the last decade; the median drifts up, total £1.05M→£1.22M / usable
+£510k→£644k) — the sample thins to a handful of very-long-lived futures, and a long survivor's guaranteed income
+covers their reduced spending so the remaining pot compounds. Suite stays green at 372 (one assertion added).
+
+_2026-06-29 (queued-run "waiting for a worker" hint — no silent failure)_ — Closed the go-live UX gap the
+2026-06-28 browser pass surfaced: clicking *Run the full 10,000-path forecast* with no `php artisan queue:work`
+worker left the run at "Queued — 0%" indefinitely with no reason. Added `SimulationRun::isAwaitingWorker()`
+(queued + 0% + created past a 15s grace window) and a neutral `role="status"` note on the results page inside the
+existing `wire:poll` progress block, so it appears on the next poll and clears once the run moves to running/done.
+Wording stays guidance-side (clears the banned-phrasing lint). Tests: a focused model-predicate test (every
+status/age/progress case) plus a Livewire test (fresh queued ⇒ hidden; stale via `travel(20)->seconds()` ⇒ shown).
+Suite 366 → 368 green. PHP/Blade only; PLAN "Go-live UX backlog" item marked resolved.
 
 _2026-06-28 (handover consolidation + doc-hygiene guard)_ — A doc-drift review found a stale test count in the
 headline; the root cause was an append-only handover that restated derivable facts (counts, the commit list, the

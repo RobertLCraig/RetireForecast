@@ -3,6 +3,36 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-29 — Results charts: spendable (excl-home) money is the default basis; the strategy comparison is over-time, not a terminal bar
+**Decision:** From live browser use, the two Monte Carlo charts on the results page were reworked:
+(1) **Spendable money (excl. home) is the default basis**, with an **"Include home value" toggle** (off by
+default) flipping both charts and their tables. The headline cards still show both figures as text.
+(2) The buy-vs-rent **comparison is now a line chart over time** — each housing strategy's **median spendable
+money by calendar year**, overlaid — replacing the single terminal-wealth **bar** chart, which is gone. The
+per-strategy run-out stats stay in a table beside it (a high line must never hide a high shortfall risk).
+(3) The **fan chart** plots the spendable series by default and gains a £0-anchored, `forceNiceScale` y-axis
+plus a `£`-abbreviating axis/tooltip formatter (attached in `charts.js`, since a JS function can't travel
+through the JSON options).
+(4) **Engine support:** `MonteCarlo\SimulationResult` gained a **per-year usable fan** (`usableFanChart`)
+beside the per-year total `fanChart` — same `liquid + pension` definition as the cashflow ladder/burndown,
+guarded by a `usable ≤ total` per-year reconciliation test; it round-trips through `SimulationResultMapper`
+(empty for runs persisted before this change).
+(5) **End-of-life rise is explained, not hidden** (`partials/tail-note`): the over-time lines can climb sharply
+at the far right for two real reasons, verified against the engine (per-year `paths` collapses from ~1,700 to
+single digits over the last decade; the median drifts up, e.g. total £1.05M→£1.22M, usable £510k→£644k): the
+**sample thins** to a handful of very-long-lived futures (so the median is noisy), and a long survivor's
+**guaranteed income covers their reduced spending so the pot keeps compounding**. The note states the far tail is
+indicative, not precise. **Why:** the charts plotted **total wealth including the home**,
+so they read as flat and near-identical — a large, illiquid house value dominates and barely moves, squashing
+the spendable variation into a thin band and making stay/buy/rent look the same even though their *spendable*
+paths diverge sharply (≈£437k / £609k / £660k). For a couple **not planning to sell again**, the home can't
+pay day-to-day bills, so excl-home is the honest "will it last" view. A terminal bar also dropped the time
+dimension Rob actually needs ("if I live to 100, which strategy keeps the most usable money?"); a line per
+strategy answers that directly. Median lines are paired with the run-out table so the level-vs-risk tension
+(e.g. rent's high median beside its 55% shortfall chance) stays visible, not hidden.
+[[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
+**Status:** active (built + green; pending Rob's in-browser visual sign-off of the reworked charts + toggle).
+
 ## 2026-06-28 — Statement-driven onboarding + document import: deterministic core, LLM only as a walled-off assist (PARKED)
 **Decision:** A planned post-v1 feature is designed and recorded before building: the wizard will
 **ingest uploaded documents** (bank statements, credit-card statements, payslips, benefit/State-Pension

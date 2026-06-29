@@ -68,9 +68,16 @@ final class ResultPresenter
 
     /**
      * @param  Collection<string, Result>  $resultsByVariant  keyed by variant value
+     * @param  bool  $includeHome  false (default) plots USABLE wealth (excl. the home) —
+     *                             the spendable money that actually runs out; true plots
+     *                             TOTAL wealth (incl. the home). The home is an illiquid
+     *                             floor that props total up without paying any bills, so
+     *                             excl-home is the honest "will it last" view for a couple
+     *                             not planning to sell again. The headline cards always
+     *                             show both figures as text regardless of this toggle.
      * @return array<string, mixed>
      */
-    public static function build(Collection $resultsByVariant, string $primaryVariant): array
+    public static function build(Collection $resultsByVariant, string $primaryVariant, bool $includeHome = false): array
     {
         $variants = [];
         foreach (self::ORDER as $key) {
@@ -85,8 +92,9 @@ final class ResultPresenter
         return [
             'variants' => $variants,
             'primary' => $primary,
-            'fan' => self::fan($primary, $resultsByVariant->get($primary)->simulationResult()),
-            'comparison' => self::comparison($resultsByVariant),
+            'includeHome' => $includeHome,
+            'fan' => self::fan($primary, $resultsByVariant->get($primary)->simulationResult(), $includeHome),
+            'comparison' => self::comparison($resultsByVariant, $includeHome),
         ];
     }
 
@@ -146,15 +154,17 @@ final class ResultPresenter
      *
      * @return array<string, mixed>
      */
-    private static function fan(string $variant, SimulationResult $r): array
+    private static function fan(string $variant, SimulationResult $r, bool $includeHome): array
     {
+        [$series, $usableBasis] = self::fanSeries($r, $includeHome);
+
         $band = fn (string $lo, string $hi): array => array_map(
             fn (array $y): array => ['x' => $y['calendarYear'], 'y' => [self::pounds($y[$lo]), self::pounds($y[$hi])]],
-            $r->fanChart,
+            $series,
         );
         $line = array_map(
             fn (array $y): array => ['x' => $y['calendarYear'], 'y' => self::pounds($y['p50'])],
-            $r->fanChart,
+            $series,
         );
 
         $rows = array_map(fn (array $y): array => [
@@ -164,7 +174,9 @@ final class ResultPresenter
             'p50' => $y['p50']->format(),
             'p75' => $y['p75']->format(),
             'p90' => $y['p90']->format(),
-        ], $r->fanChart);
+        ], $series);
+
+        $basisLabel = $usableBasis ? 'Spendable money, excl. home' : 'Total wealth, incl. home';
 
         $options = [
             'chart' => ['type' => 'rangeArea', 'height' => 380, 'toolbar' => ['show' => false]],
@@ -178,33 +190,71 @@ final class ResultPresenter
             'stroke' => ['curve' => 'straight', 'width' => [0, 0, 3], 'dashArray' => [0, 0, 0]],
             'dataLabels' => ['enabled' => false],
             'markers' => ['size' => 0],
+            // moneyAxis: charts.js attaches a £-abbreviating axis/tooltip formatter (a JS
+            // function can't travel through JSON). Anchoring the axis at 0 keeps "do we hit
+            // zero?" honest; forceNiceScale stops the big upside tail from squashing the
+            // body of the data into a flat-looking band near the bottom (the old complaint).
+            'moneyAxis' => true,
             'xaxis' => ['type' => 'numeric', 'tickAmount' => 8, 'decimalsInFloat' => 0, 'title' => ['text' => 'Calendar year']],
-            // No yaxis label formatter: passing `formatter: null` makes ApexCharts call null
-            // as a function and the whole (range-area) chart fails to render. Let it default.
-            'yaxis' => ['title' => ['text' => 'Total wealth (real £)']],
+            'yaxis' => ['min' => 0, 'forceNiceScale' => true, 'title' => ['text' => $basisLabel.' (real £)']],
             'legend' => ['position' => 'top'],
         ];
 
         return [
             'variant' => $variant,
             'label' => self::LABELS[$variant],
+            'usableBasis' => $usableBasis,
+            'basisLabel' => $basisLabel,
             'options' => $options,
             'rows' => $rows,
         ];
     }
 
     /**
-     * Buy-vs-rent: median terminal wealth per variant as bars, plus a table carrying
-     * the success probabilities and depletion rate the bars do not show.
+     * The per-year band to plot: USABLE (excl. home) by default, TOTAL (incl. home) when
+     * includeHome. Falls back to the total fan for a run persisted before the per-year
+     * usable fan landed (its usableFanChart is empty), so an old stored run still draws.
+     *
+     * @return array{0: list<array<string, mixed>>, 1: bool} [bands, isUsableBasis]
+     */
+    private static function fanSeries(SimulationResult $r, bool $includeHome): array
+    {
+        if (! $includeHome && $r->usableFanChart !== []) {
+            return [$r->usableFanChart, true];
+        }
+
+        return [$r->fanChart, false];
+    }
+
+    /** A distinct line colour per housing strategy, so each reads the same across the app. */
+    private const VARIANT_COLOURS = [
+        'stay_put' => '#6b7280',      // slate
+        'buy_outright' => '#2563eb',  // blue
+        'rent' => '#d97706',          // amber
+    ];
+
+    /**
+     * How the three housing strategies compare OVER TIME: each variant's MEDIAN spendable
+     * money (excl. home, or total when includeHome) by calendar year, overlaid as one line
+     * each, so you can read which strategy keeps the most usable money as the household ages
+     * and where each trajectory trends toward zero. The earlier terminal-wealth bar chart
+     * hid exactly this: it dropped the time dimension and, counting the home, made the
+     * options look near-identical even when the spendable paths diverge sharply.
+     *
+     * A high median line is not the whole story (a future can run short along the way and
+     * recover), so the per-strategy run-out stats stay in `rows` beside the chart — a high
+     * line never hides a high risk. Late years thin out as fewer simulated futures still
+     * have both partners alive; `paths` is carried per point for that caveat.
      *
      * @param  Collection<string, Result>  $resultsByVariant
-     * @return array<string, mixed>
+     * @return array{options: array<string, mixed>, rows: list<array<string, mixed>>, years: list<int>, lineRows: list<array{year: int, cells: array<string, ?string>}>, strategies: list<array{key: string, label: string}>, usableBasis: bool, basisLabel: string}
      */
-    private static function comparison(Collection $resultsByVariant): array
+    private static function comparison(Collection $resultsByVariant, bool $includeHome): array
     {
-        $categories = [];
-        $medianWealth = [];
         $rows = [];
+        $yearsSet = [];
+        $byVariant = []; // key => [calendarYear => ['pounds' => int, 'text' => string]]
+        $usableBasis = true;
 
         foreach (self::ORDER as $key) {
             $result = $resultsByVariant->get($key);
@@ -212,8 +262,17 @@ final class ResultPresenter
                 continue;
             }
             $r = $result->simulationResult();
-            $categories[] = self::LABELS[$key];
-            $medianWealth[] = self::pounds($r->terminalWealthPercentiles['p50']);
+            [$fan, $isUsable] = self::fanSeries($r, $includeHome);
+            $usableBasis = $usableBasis && $isUsable;
+
+            $median = [];
+            foreach ($fan as $band) {
+                $year = $band['calendarYear'];
+                $yearsSet[$year] = true;
+                $median[$year] = ['pounds' => self::pounds($band['p50']), 'text' => $band['p50']->format()];
+            }
+            $byVariant[$key] = $median;
+
             $rows[] = [
                 'label' => self::LABELS[$key],
                 'successEssentials' => self::formatPercent($r->successProbabilityEssentials),
@@ -226,18 +285,58 @@ final class ResultPresenter
             ];
         }
 
+        $years = array_keys($yearsSet);
+        sort($years);
+
+        // One overlaid line per strategy (chart) + the matching year x strategy table
+        // (the accessible source of truth — every point the chart plots is also text here).
+        $series = [];
+        $colours = [];
+        $strategies = [];
+        $lineRows = [];
+        foreach (array_keys($byVariant) as $key) {
+            $strategies[] = ['key' => $key, 'label' => self::LABELS[$key]];
+            $colours[] = self::VARIANT_COLOURS[$key];
+            $series[] = [
+                'name' => self::LABELS[$key],
+                'data' => array_map(
+                    fn (int $year): array => ['x' => $year, 'y' => $byVariant[$key][$year]['pounds'] ?? null],
+                    $years,
+                ),
+            ];
+        }
+        foreach ($years as $year) {
+            $cells = [];
+            foreach (array_keys($byVariant) as $key) {
+                $cells[$key] = $byVariant[$key][$year]['text'] ?? null;
+            }
+            $lineRows[] = ['year' => $year, 'cells' => $cells];
+        }
+
+        $basisLabel = $usableBasis ? 'Median spendable money, excl. home' : 'Median total wealth, incl. home';
+
         $options = [
-            'chart' => ['type' => 'bar', 'height' => 320, 'toolbar' => ['show' => false]],
-            'colors' => ['#3b82f6'],
-            'plotOptions' => ['bar' => ['borderRadius' => 4, 'columnWidth' => '45%']],
-            'series' => [['name' => 'Total wealth left, incl. home (real £)', 'data' => $medianWealth]],
-            'xaxis' => ['categories' => $categories],
-            'yaxis' => ['title' => ['text' => 'Real £']],
+            'chart' => ['type' => 'line', 'height' => 360, 'toolbar' => ['show' => false]],
+            'colors' => $colours,
+            'series' => $series,
+            'stroke' => ['curve' => 'straight', 'width' => 3],
             'dataLabels' => ['enabled' => false],
-            'legend' => ['show' => false],
+            'markers' => ['size' => 0],
+            'moneyAxis' => true,
+            'xaxis' => ['type' => 'numeric', 'tickAmount' => 8, 'decimalsInFloat' => 0, 'title' => ['text' => 'Calendar year']],
+            'yaxis' => ['min' => 0, 'forceNiceScale' => true, 'title' => ['text' => $basisLabel.' (real £)']],
+            'legend' => ['position' => 'top'],
         ];
 
-        return ['options' => $options, 'rows' => $rows];
+        return [
+            'options' => $options,
+            'rows' => $rows,
+            'years' => $years,
+            'lineRows' => $lineRows,
+            'strategies' => $strategies,
+            'usableBasis' => $usableBasis,
+            'basisLabel' => $basisLabel,
+        ];
     }
 
     /**

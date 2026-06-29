@@ -64,7 +64,8 @@ final class Simulator
         $depletionYears = [];
         $terminalWealth = [];
         $terminalUsable = [];
-        $wealthByYearIndex = []; // yearIndex => list<int pence>
+        $wealthByYearIndex = [];       // yearIndex => list<int pence> total wealth (incl. home)
+        $usableByYearIndex = [];       // yearIndex => list<int pence> usable wealth (excl. home)
 
         for ($p = 0; $p < $nPaths; $p++) {
             $deathAges = $jointLife->sampleHousehold($people, $settings->baseYear, $rng);
@@ -84,6 +85,9 @@ final class Simulator
 
             foreach ($result->years as $year) {
                 $wealthByYearIndex[$year->yearIndex][] = $year->totalWealth->pence;
+                // Usable = liquid + pension (excl. home) — the SAME definition the cashflow
+                // ladder and burndown use, so the spendable series can't drift between views.
+                $usableByYearIndex[$year->yearIndex][] = $year->liquidWealth->plus($year->pensionWealth)->pence;
             }
 
             if ($onProgress !== null) {
@@ -104,6 +108,7 @@ final class Simulator
             terminalWealthPercentiles: $this->moneyPercentiles($terminalWealth),
             fanChart: $this->fanChart($wealthByYearIndex, $settings->baseYear),
             usableWealthPercentiles: $this->moneyPercentiles($terminalUsable),
+            usableFanChart: $this->fanChart($usableByYearIndex, $settings->baseYear),
         );
     }
 

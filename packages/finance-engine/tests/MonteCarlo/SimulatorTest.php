@@ -15,7 +15,9 @@ use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Person;
+use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
@@ -120,6 +122,52 @@ final class SimulatorTest extends TestCase
             $result->terminalWealthPercentiles['p50']->pence,
             $result->usableWealthPercentiles['p50']->pence,
         );
+    }
+
+    public function test_usable_fan_tracks_the_total_fan_year_by_year_and_never_exceeds_it(): void
+    {
+        // A home-owning couple: the per-year usable fan (excl. home) must share the total
+        // fan's calendar years and sit at or below it in every year and percentile, and the
+        // £400k home must pull usable strictly below total in at least one year (proving the
+        // exclusion is real, not just plumbed). usable = liquid + pension, the one definition.
+        $household = new Household(
+            'MC couple with a home',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired),
+            ],
+            new ExpenseProfile(Money::fromPounds(18_000), Money::fromPounds(4_000), Percent::fromPercent(70)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+                new DcPension('p2', Money::fromPounds(350_000), Money::zero(), Money::zero(), 55),
+            ],
+            primaryResidence: new Property(Money::fromPounds(400_000), OwnershipType::Outright),
+        );
+
+        $result = $this->simulator()->run($household, $this->settings(), AssumptionSetLibrary::default(), new CohortLifeTable, 200, seed: 13);
+
+        $this->assertNotEmpty($result->usableFanChart);
+        $this->assertSameSize($result->fanChart, $result->usableFanChart);
+
+        $separatedYears = 0;
+        foreach ($result->fanChart as $i => $totalBand) {
+            $usableBand = $result->usableFanChart[$i];
+            $this->assertSame($totalBand['calendarYear'], $usableBand['calendarYear'], 'the fans must share calendar years, in order');
+            foreach (['p10', 'p25', 'p50', 'p75', 'p90'] as $p) {
+                $this->assertLessThanOrEqual(
+                    $totalBand[$p]->pence,
+                    $usableBand[$p]->pence,
+                    "usable {$p} exceeds total in {$totalBand['calendarYear']}",
+                );
+            }
+            if ($usableBand['p50']->pence < $totalBand['p50']->pence) {
+                $separatedYears++;
+            }
+        }
+
+        $this->assertGreaterThan(0, $separatedYears, 'the home should pull usable below total in at least one year');
     }
 
     public function test_zero_volatility_returns_collapse_to_the_mean(): void
