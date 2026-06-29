@@ -3,6 +3,27 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-30 — The builder highlights a what-if's inputs that differ from the base
+**Decision:** When editing a what-if in the builder, each input whose value differs from the base plan is **ringed in
+amber** (with a one-line "fields you change from the base are highlighted" banner), so the difference is obvious while
+editing — e.g. an annual rent set to a what-if value stands out against the base. The server computes the changed
+form-state leaf paths (`ScenarioBuilder::changedFromBasePaths()`, a positional diff of the live `builderState()` vs the
+base's `effectiveBuilderState()`, **index-based** so they match each input's `wire:model`), renders them on the form
+(`data-builder-diff` + `data-changed-paths`), and a bundled script (`resources/js/builder-diff.js`) rings each matching
+input via a plain `.builder-diff-changed` class.
+**Why (the load-bearing choice):** there are ~70 inputs across the wizard, so annotating each one server-side was a
+non-starter (huge, fragile diff). Instead one server-computed set + one script that matches inputs by their existing
+`wire:model` path covers **every** input uniformly, including ones added later, with four small files touched. It is
+**pure progressive enhancement** (the form is fully usable without JS; the ring is visual-only), so JS-only is the
+right tradeoff here — unlike a result figure, a highlight carries no data. CSP-safe (bundled, not inline; the paths
+travel in a data attribute, not an inline script) and morph-aware (re-applied on the Livewire `commit` hook, like
+`toc.js`, since a morph rewrites inputs from server HTML that has no ring). The diff is **positional** because a
+what-if child cannot reorder/add/remove rows (the delta rule), so index positions align with the base; the
+auto-generated name and the wizard step are excluded (not real input changes). On first load of an existing what-if
+the changed fields highlight immediately; live-as-you-type refresh follows the deferred `wire:model` round-trips.
+[[2026-06-29 — A what-if highlights what it changed from its base (results panel, dashboard tags, Compare chips)]] [[2026-06-29 — One-click "quick what-ifs" (retire later / live longer) generated as ordinary delta-children]]
+**Status:** built, suite green, pending Rob's browser sign-off.
+
 ## 2026-06-29 — One-click "quick what-ifs" (retire later / live longer) generated as ordinary delta-children
 **Decision:** Added **one-click what-if presets** for the two questions a reader most often asks of a forecast —
 **"Retire 2 years later"** and **"Live 10 years longer"** — as buttons on the base's results page and on each

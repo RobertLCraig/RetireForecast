@@ -26,6 +26,40 @@ class ScenarioChildTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_editing_a_what_if_flags_the_inputs_that_differ_from_the_base(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user); // base rent is 18000
+
+        $child = new Scenario;
+        $child->user_id = $user->id;
+        $child->parent_scenario_id = $base->id;
+        $child->overrides = ['name' => 'Higher rent', 'housing.annualRent' => '20000'];
+        $child->builder_state = [];
+        $child->status = ScenarioStatus::Ready;
+        $child->projectFrom($child->effectiveBuilderState());
+        $child->save();
+
+        Livewire::test(ScenarioBuilder::class, ['scenario' => $child])
+            ->assertSet('childMode', true)
+            // The changed rent is flagged for highlighting; the auto-name is not a "change".
+            ->assertViewHas('changedPaths', fn (array $paths): bool => in_array('housing.annualRent', $paths, true) && ! in_array('name', $paths, true))
+            ->assertSeeHtml('data-builder-diff');
+    }
+
+    public function test_a_base_forecast_has_no_changed_field_highlighting(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user);
+
+        Livewire::test(ScenarioBuilder::class, ['scenario' => $base])
+            ->assertSet('childMode', false)
+            ->assertViewHas('changedPaths', fn (array $paths): bool => $paths === [])
+            ->assertDontSeeHtml('data-builder-diff');
+    }
+
     public function test_creating_a_child_prefills_from_the_base(): void
     {
         $user = User::factory()->create();

@@ -158,7 +158,16 @@
         </div>
     @endif
 
-    <form wire:submit="save" class="space-y-6">
+    @if ($childMode)
+        {{-- A what-if: fields whose value differs from the base plan are ringed in amber, so
+             the changes are obvious while editing (matched to inputs by wire:model, client-side). --}}
+        <p class="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+            You are building a <strong>what-if</strong>. Fields you change from the base plan are <span class="rounded bg-amber-100 px-1 font-medium">highlighted</span>.
+        </p>
+    @endif
+
+    <form wire:submit="save" class="space-y-6"
+        @if ($childMode) data-builder-diff data-changed-paths="{{ json_encode($changedPaths) }}" @endif>
         <div role="group" aria-labelledby="step-heading" class="space-y-6">
 
         {{-- Step 1: About this forecast & the people -------------------------------- --}}
