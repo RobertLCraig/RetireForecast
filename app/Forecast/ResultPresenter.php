@@ -906,11 +906,18 @@ final class ResultPresenter
      * the investment income yield is NOMINAL (the share of the return paid out and taxed each
      * year). Each row says which it is, so a real and a nominal figure are never confused.
      *
-     * @return array{setName: string, sourceNote: string, mix: string, economic: list<array{label: string, value: string, note: string}>, housing: list<array{label: string, value: string}>}
+     * When the user has edited any figure into a custom set, $overrides carries the keys
+     * they changed ({@see AssumptionOverrides}); the panel marks those rows as the user's
+     * own figure and labels the set "(customised)", so a tuned assumption is visible rather
+     * than passing as the named preset.
+     *
+     * @param  array<string, mixed>  $overrides  the sparse `assumptionOverrides` map (keys only matter)
+     * @return array{setName: string, sourceNote: string, customised: bool, mix: string, economic: list<array{key: string, label: string, value: string, note: string, edited: bool}>, housing: list<array{label: string, value: string}>}
      */
-    public static function assumptionsPanel(AssumptionSet $set, HousingAction $action, PortfolioAllocation $allocation): array
+    public static function assumptionsPanel(AssumptionSet $set, HousingAction $action, PortfolioAllocation $allocation, array $overrides = []): array
     {
         $blended = $allocation->blendedRealReturn($set);
+        $changed = AssumptionOverrides::changedKeys($overrides);
 
         // Describe the mix the blended return is weighted from, straight from the weights +
         // asset-class names, so it can never drift from the figure it explains.
@@ -923,13 +930,17 @@ final class ResultPresenter
         }
 
         $economic = [
-            ['label' => 'Investment growth (blended, real)', 'value' => self::ratePct($blended * 100), 'note' => 'a year above inflation, for invested pots and proceeds'],
-            ['label' => 'Inflation (CPI)', 'value' => self::ratePct($set->inflationMean->asPercent()), 'note' => 'figures on this page are shown in today\'s money'],
-            ['label' => 'House price growth (real)', 'value' => self::ratePct($set->houseGrowth->asPercent()), 'note' => 'a year above inflation'],
-            ['label' => 'Rent growth (real)', 'value' => self::ratePct($set->rentInflation->asPercent()), 'note' => 'a year above inflation'],
-            ['label' => 'Salary growth (real)', 'value' => self::ratePct($set->salaryGrowth->asPercent()), 'note' => 'a year above inflation'],
-            ['label' => 'Investment income yield (nominal)', 'value' => self::ratePct($set->investmentIncomeYield->asPercent()), 'note' => 'the part of the return paid out and taxed each year; the rest is capital growth'],
+            ['key' => 'investmentGrowth', 'label' => 'Investment growth (blended, real)', 'value' => self::ratePct($blended * 100), 'note' => 'a year above inflation, for invested pots and proceeds'],
+            ['key' => 'inflation', 'label' => 'Inflation (CPI)', 'value' => self::ratePct($set->inflationMean->asPercent()), 'note' => 'figures on this page are shown in today\'s money'],
+            ['key' => 'houseGrowth', 'label' => 'House price growth (real)', 'value' => self::ratePct($set->houseGrowth->asPercent()), 'note' => 'a year above inflation'],
+            ['key' => 'rentGrowth', 'label' => 'Rent growth (real)', 'value' => self::ratePct($set->rentInflation->asPercent()), 'note' => 'a year above inflation'],
+            ['key' => 'salaryGrowth', 'label' => 'Salary growth (real)', 'value' => self::ratePct($set->salaryGrowth->asPercent()), 'note' => 'a year above inflation'],
+            ['key' => 'incomeYield', 'label' => 'Investment income yield (nominal)', 'value' => self::ratePct($set->investmentIncomeYield->asPercent()), 'note' => 'the part of the return paid out and taxed each year; the rest is capital growth'],
         ];
+        $economic = array_map(
+            fn (array $row): array => [...$row, 'edited' => in_array($row['key'], $changed, true)],
+            $economic,
+        );
 
         $housing = [
             ['label' => 'Selling costs', 'value' => self::ratePct($action->sellingCostRate?->asPercent() ?? 2.0).' of the sale price'],
@@ -947,6 +958,7 @@ final class ResultPresenter
         return [
             'setName' => $set->name,
             'sourceNote' => $set->sourceNote,
+            'customised' => $changed !== [],
             'mix' => implode(' / ', $mixParts),
             'economic' => $economic,
             'housing' => $housing,

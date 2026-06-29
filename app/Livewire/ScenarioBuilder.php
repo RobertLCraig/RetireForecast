@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Enums\ScenarioStatus;
+use App\Forecast\AssumptionOverrides;
 use App\Forecast\BuilderStateDelta;
 use App\Import\ImportException;
 use App\Import\ImportRegistry;
@@ -20,6 +21,8 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
@@ -67,7 +70,7 @@ class ScenarioBuilder extends Component
     /** Which top-level form section lives on which step — drives the jump-to-first-error on save. */
     private const STEP_OF_FIELD = [
         'name' => 1, 'householdName' => 1, 'region' => 1, 'baseTaxYear' => 1,
-        'variant' => 1, 'assumptionSetId' => 1, 'ihtModelled' => 1, 'people' => 1,
+        'variant' => 1, 'assumptionSetId' => 1, 'assumptionOverrides' => 1, 'ihtModelled' => 1, 'people' => 1,
         'pensions' => 2, 'incomeStreams' => 2,
         'accounts' => 3, 'property' => 3, 'hasProperty' => 3,
         'expense' => 4, 'expenseLines' => 4, 'oneOffCosts' => 4,
@@ -89,6 +92,16 @@ class ScenarioBuilder extends Component
     public bool $ihtModelled = false;
 
     public ?int $assumptionSetId = null;
+
+    /**
+     * The user's edits to the chosen assumption set's economic figures — a sparse map
+     * of {@see AssumptionOverrides::KEYS} => percentage string, empty by default. Each
+     * filled key overrides one preset figure into a derived custom set; an empty key
+     * keeps the preset (which therefore stays the single source for untouched figures).
+     *
+     * @var array<string, string>
+     */
+    public array $assumptionOverrides = [];
 
     /** @var list<array<string, mixed>> */
     public array $people = [];
@@ -192,6 +205,16 @@ class ScenarioBuilder extends Component
             'baseTaxYear' => ['required', Rule::in(['2025-26', '2026-27'])],
             'variant' => ['required', Rule::in(['buy_outright', 'rent', 'stay_put'])],
             'assumptionSetId' => ['nullable', 'integer', 'exists:assumption_sets,id'],
+            // Editable economic assumptions: each is an optional override of the chosen
+            // preset's figure (empty = keep the preset). Real growth rates may be negative;
+            // inflation and the income yield cannot. Loose bounds keep an obvious typo out
+            // without second-guessing a deliberate stress test.
+            'assumptionOverrides.investmentGrowth' => ['nullable', 'numeric', 'between:-10,30'],
+            'assumptionOverrides.inflation' => ['nullable', 'numeric', 'between:0,30'],
+            'assumptionOverrides.houseGrowth' => ['nullable', 'numeric', 'between:-15,30'],
+            'assumptionOverrides.rentGrowth' => ['nullable', 'numeric', 'between:-15,30'],
+            'assumptionOverrides.salaryGrowth' => ['nullable', 'numeric', 'between:-15,30'],
+            'assumptionOverrides.incomeYield' => ['nullable', 'numeric', 'between:0,30'],
 
             'people' => ['required', 'array', 'min:1', 'max:2'],
             'people.*.dob' => ['required', 'date', 'before:today'],
@@ -581,7 +604,7 @@ class ScenarioBuilder extends Component
             $expense['discretionary'] = '';
         }
 
-        return [
+        $state = [
             'step' => $this->step,
             'name' => $this->name,
             'householdName' => $this->householdName,
@@ -601,6 +624,16 @@ class ScenarioBuilder extends Component
             'property' => $this->property,
             'housing' => $this->housing,
         ];
+
+        // Carry the edited assumptions only when the user actually changed one — an untouched
+        // assumption keeps following the preset (one home per figure, never the preset's value
+        // stored back), and the key is omitted entirely so a what-if child records no delta for it.
+        $assumptionOverrides = AssumptionOverrides::sparse($this->assumptionOverrides);
+        if ($assumptionOverrides !== []) {
+            $state['assumptionOverrides'] = $assumptionOverrides;
+        }
+
+        return $state;
     }
 
     public function nextStep(): void
@@ -881,6 +914,23 @@ class ScenarioBuilder extends Component
     {
         return view('livewire.scenario-builder', [
             'assumptionSets' => AssumptionSet::orderByDesc('is_default')->orderBy('name')->get(['id', 'name']),
+            // The editable economic assumptions, in {@see AssumptionOverrides::KEYS} order:
+            // the label/note are presentation; the keys are the single source the override
+            // map and apply() share, so the form and the engine can't list different figures.
+            'assumptionFields' => [
+                ['key' => 'investmentGrowth', 'label' => 'Investment growth (blended, real)', 'note' => 'for invested pots and proceeds'],
+                ['key' => 'inflation', 'label' => 'Inflation (CPI)', 'note' => 'figures are shown in today\'s money'],
+                ['key' => 'houseGrowth', 'label' => 'House price growth (real)', 'note' => 'a year above inflation'],
+                ['key' => 'rentGrowth', 'label' => 'Rent growth (real)', 'note' => 'a year above inflation'],
+                ['key' => 'salaryGrowth', 'label' => 'Salary growth (real)', 'note' => 'a year above inflation'],
+                ['key' => 'incomeYield', 'label' => 'Investment income yield (nominal)', 'note' => 'the part of the return paid out and taxed each year'],
+            ],
+            // The chosen preset's current figures, so each editable assumption shows the
+            // value it would override as its placeholder (and updates when the set changes).
+            'assumptionDefaults' => AssumptionOverrides::presetFigures(
+                $this->selectedAssumptionSet(),
+                PortfolioAllocation::cautious40_60(),
+            ),
             'steps' => self::STEPS,
             'expenseTotals' => $this->expenseTotals(),
             'importProfiles' => array_map(static fn ($p): array => [
@@ -890,6 +940,19 @@ class ScenarioBuilder extends Component
                 'available' => $p->isAvailable(),
             ], (new ImportRegistry)->all()),
         ])->title('New forecast');
+    }
+
+    /**
+     * The engine DTO for the currently-selected assumption set (the chosen preset, or the
+     * engine default when none is picked). Used only to show the preset's figures as the
+     * editable assumptions' placeholders — the forecast itself resolves the set through
+     * {@see ScenarioForecaster::assumptions()}.
+     */
+    private function selectedAssumptionSet(): \RetireForecast\FinanceEngine\Dto\AssumptionSet
+    {
+        $model = $this->assumptionSetId !== null ? AssumptionSet::find($this->assumptionSetId) : null;
+
+        return $model?->toDto() ?? AssumptionSetLibrary::default();
     }
 
     /**

@@ -119,6 +119,19 @@ income (dividends, taxed yearly) + capital growth (CGT on disposal vs the accoun
 `unrealised_gain` cost basis); cash interest = the cash return, taxed as savings; ISA stays
 tax-free. Mapper defaults a pre-A5 snapshot's yield to 2.0%.
 
+**User-editable custom set (2026-06-29).** A scenario may tune the chosen preset's economic
+figures into a derived custom set. The edits live in `builder_state` under
+`assumptionOverrides`: a **sparse map** of `{ investmentGrowth, inflation, houseGrowth,
+rentGrowth, salaryGrowth, incomeYield }` => percentage string, holding **only the figures the
+user changed** (an absent key keeps following the preset, so a re-source flows through — the
+same base ⊕ overrides discipline as a delta-child, merged by `BuilderStateDelta`). The engine
+`AssumptionSet` gains pure `with*` derivations (`withRealReturnShift` for the blended-real
+investment growth, single-field setters for the rest); `App\Forecast\AssumptionOverrides::apply()`
+overlays the delta onto the preset DTO; and `ScenarioForecaster::assumptions()` is the **single
+place** it is applied, so every consumer (deterministic, per-variant ladder, Monte Carlo, the
+frozen run snapshot) sees one customised set. The `AssumptionSet` DTO stays the canonical shape;
+the overrides are an app-layer edit on top, never a parallel store.
+
 ### SimulationRun
 scenario_id, mode (`preview` \| `full`), n_paths (int), seed (int?; null = random, always
 recorded), horizon (joint-life), status (`queued` \| `running` \| `done` \| `failed`),

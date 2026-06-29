@@ -75,6 +75,35 @@ class ScenarioForecasterTest extends TestCase
         );
     }
 
+    public function test_an_edited_assumption_reaches_the_forecast(): void
+    {
+        $user = User::factory()->create();
+        $forecaster = new ScenarioForecaster;
+
+        // The same household, once on the preset and once with the user's investment growth
+        // cut to 0% real — the override must demonstrably change the forecast (completeness:
+        // an edited assumption that did not reach the result would be a silent drop).
+        $base = $forecaster->deterministic(ScenarioFixture::rich($user));
+        $slowed = $forecaster->deterministic(
+            ScenarioFixture::rich($user, ['assumptionOverrides' => ['investmentGrowth' => '0']]),
+        );
+
+        $this->assertLessThan(
+            $base->terminalTotalWealth->pence,
+            $slowed->terminalTotalWealth->pence,
+            'Lower investment growth should leave less terminal wealth — the override did not reach the engine',
+        );
+    }
+
+    public function test_the_assumption_set_carries_the_users_edits(): void
+    {
+        $user = User::factory()->create();
+        $scenario = ScenarioFixture::rich($user, ['assumptionOverrides' => ['inflation' => '3.5']]);
+
+        // The single resolution point hands the customised set to every consumer.
+        $this->assertSame(350, (new ScenarioForecaster)->assumptions($scenario)->inflationMean->basisPoints);
+    }
+
     public function test_buy_vs_rent_returns_all_three_variants_and_is_reproducible(): void
     {
         $scenario = $this->scenario();

@@ -127,9 +127,19 @@ final class ScenarioForecaster
         return TaxYearRegistry::for($scenario->base_tax_year, $this->household($scenario)->region);
     }
 
+    /**
+     * The economic assumptions the forecast runs against: the scenario's chosen sourced
+     * preset (or the engine default), overlaid with any figures the user has edited into
+     * a derived custom set ({@see AssumptionOverrides}). This is the ONE place overrides
+     * are applied, so the deterministic forecast, the per-variant ladder, the Monte Carlo
+     * and the frozen run snapshot all run against the same set and cannot drift.
+     */
     public function assumptions(Scenario $scenario): AssumptionSet
     {
-        return $scenario->assumptionSet?->toDto() ?? AssumptionSetLibrary::default();
+        $base = $scenario->assumptionSet?->toDto() ?? AssumptionSetLibrary::default();
+        $overrides = $scenario->effectiveBuilderState()['assumptionOverrides'] ?? [];
+
+        return AssumptionOverrides::apply($base, $overrides, $this->settings($scenario)->allocation());
     }
 
     private function household(Scenario $scenario): Household

@@ -547,10 +547,18 @@ per-year spend — pending his browser sign-off. His browser pass then set the r
    the numbers and unblocks an honest buy-vs-rent.
 2. ✅ **#6 per-variant deterministic ladder** — the projection #1's cost rules act on; also lands the house-sale
    milestone. **Built (2026-06-29).**
-3. **[next] Editable-assumptions layer** — make *all* thresholds/assumptions user-editable (investment growth, inflation,
-   house/rent growth, age of death, cost components), deriving a user-tweakable **custom set** from the sourced
-   presets, with live preview. Subsumes **#7** (real-time toggles), the **per-line cost-condition override UI** (#1's
-   remaining piece) and the **rate/£ half of #4** (builder validation).
+3. **Editable-assumptions layer** — make *all* thresholds/assumptions user-editable, deriving a user-tweakable
+   **custom set** from the sourced presets. Subsumes **#7** (real-time toggles), the **per-line cost-condition
+   override UI** (#1's remaining piece) and the **rate/£ half of #4** (builder validation).
+   - ✅ **Core built (2026-06-29):** the six **economic assumptions** (investment growth blended-real, CPI, house /
+     rent / salary growth, income yield) are editable on builder step 1, defaulting to the chosen preset and deriving
+     a custom set stored as a **sparse `assumptionOverrides` delta** (engine `AssumptionSet::with*` + app
+     `AssumptionOverrides` + applied once in `ScenarioForecaster::assumptions()`; results panel labels it
+     *customised*). Reconciliation-tested. See DECISIONS 2026-06-29.
+   - **[next, in order]** live in-builder preview · **age of death / longevity-lever UX** (surface the existing
+     per-person lever + show the modelled death year) · decomposed editable **cost components** (estate agent +
+     legal/conveyancing + EPC/removals) · the **per-line cost-condition override UI** (#1's remaining piece) ·
+     real-time cost toggles (#7).
 4. **Buy-vs-rent as a deliberate Compare / what-if** (not baked into every report) + the per-option **#5** narrative.
 
 ### Statement-driven onboarding + document import (2026-06-28) — PARKED, post-v1

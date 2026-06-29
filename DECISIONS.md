@@ -3,6 +3,39 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-29 — Built the editable-assumptions layer (core): a user-derived custom set from a sourced preset
+**Decision:** Built the first slice of the "everything user-editable" direction — the **economic assumptions** are
+now editable in the builder. The six figures the read-only assumptions panel already surfaces (investment growth
+blended-real, CPI, house growth, rent growth, salary growth, income yield) each get an optional input on step 1,
+**defaulting to the chosen preset** (shown as the placeholder + named in the hint); a typed value derives a
+**custom set**. Stored as a **sparse `assumptionOverrides` delta** in `builder_state` (only filled figures; an empty
+box keeps following the preset, so a re-source still flows through — the same base ⊕ overrides discipline as a
+delta-child, and it composes with one for free via `BuilderStateDelta`). The engine `AssumptionSet` gained pure,
+immutable `with*` derivations; `App\Forecast\AssumptionOverrides::apply()` overlays the delta; and
+**`ScenarioForecaster::assumptions()` is the ONE place it is applied**, so the deterministic forecast, the
+per-variant ladder, the Monte Carlo and the **frozen run snapshot** all run the same customised set and cannot
+drift. The results panel labels a tuned set **(customised)** and marks **which figures are the user's own**.
+**Why (design choices):** (1) **Investment growth is a blended-real return over three asset classes**, not a single
+field, so "growth = X%" is applied as a **uniform shift across the asset classes that lands the blend on X**
+(`AssumptionSet::withRealReturnShift`) — because the weights sum to 1, the deterministic blend and the per-class
+Monte Carlo draws move by the same amount, with **no divergence**; volatility/correlations (risk) are left alone
+(the user edits return, not risk). (2) **Sparse delta, key omitted when empty** — never store the preset's value
+back (one home per figure), and a what-if child records no spurious assumption delta. (3) **Loose validation bounds**
+(e.g. inflation 0–30%, real growth −15–30%) keep an obvious typo out without second-guessing a deliberate stress
+test. Reconciliation-tested: no overrides ⇒ the preset unchanged; an edit demonstrably reaches the forecast
+(completeness — a lower growth leaves less terminal wealth); the blend lands on the target under any allocation.
+**Still to build in this layer:** live in-builder preview; the longevity-lever UX (surface the existing per-person
+lever + show the modelled death year); decomposed editable **cost components** (estate agent + legal + EPC/removals);
+the **per-line cost-condition override UI** (#1's remaining piece); real-time cost toggles (#7).
+**v1 gotcha (engine, recorded so it is not re-hit):** a Blade **block `@php … @endphp`** mis-compiles when the file
+already contains an inline **`@php(...)`** form — Blade's non-greedy raw-block regex pairs the inline `@php` with the
+block's `@endphp`, silently leaving the opening `@php` literal and emitting a stray `?>` (a parse error far away).
+Fix: keep view metadata in the component (`render()` view data), not a `@php` block. Sibling of the earlier
+"`@if` glued to a word never compiles" trap.
+[[2026-06-29 — Direction from Rob's browser pass: everything user-editable; contingent costs auto-classified (option b); buy-vs-rent as a deliberate what-if]] [[2026-06-29 — Built #6: per-variant deterministic cashflow ladder + a results-page "on this page" nav]]
+**Status:** active (core built, suite green, pending Rob's browser sign-off). Next: the remaining editable items
+above, then buy-vs-rent as a deliberate Compare.
+
 ## 2026-06-29 — Built #6: per-variant deterministic cashflow ladder + a results-page "on this page" nav
 **Decision:** Built the per-strategy cashflow ladder (the legibility item #6). `ScenarioForecaster::deterministicVariants()`
 runs each housing strategy through `DeterministicForecaster` on the variant household + settings from

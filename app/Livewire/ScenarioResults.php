@@ -275,7 +275,12 @@ class ScenarioResults extends Component
             'inputNotes' => ResultPresenter::inputNotes($household, $forecast),
             // Show-your-working: the assumptions every figure rests on, and (if a sale is
             // configured) where the sale proceeds come from and go. Both deterministic.
-            'assumptions' => ResultPresenter::assumptionsPanel($assumptions, $action, $allocation),
+            'assumptions' => ResultPresenter::assumptionsPanel(
+                $assumptions,
+                $action,
+                $allocation,
+                $this->scenario->effectiveBuilderState()['assumptionOverrides'] ?? [],
+            ),
             'saleExplainer' => ResultPresenter::saleExplainer(
                 $housing->saleProceeds($household, $action),
                 $housing->buyOutcome($household, $action),

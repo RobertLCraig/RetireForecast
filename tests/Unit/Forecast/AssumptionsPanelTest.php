@@ -130,4 +130,36 @@ final class AssumptionsPanelTest extends TestCase
 
         return '';
     }
+
+    public function test_with_no_overrides_the_panel_is_not_customised_and_no_row_is_edited(): void
+    {
+        $panel = $this->panel();
+
+        $this->assertFalse($panel['customised']);
+        foreach ($panel['economic'] as $row) {
+            $this->assertFalse($row['edited']);
+        }
+    }
+
+    public function test_overrides_mark_the_set_customised_and_flag_only_the_changed_rows(): void
+    {
+        $panel = ResultPresenter::assumptionsPanel(
+            AssumptionSetLibrary::default(),
+            new HousingAction(salePrice: Money::zero()),
+            PortfolioAllocation::cautious40_60(),
+            ['investmentGrowth' => '3', 'inflation' => ''], // one filled, one blank
+        );
+
+        $this->assertTrue($panel['customised']);
+
+        $edited = [];
+        foreach ($panel['economic'] as $row) {
+            if ($row['edited']) {
+                $edited[] = $row['key'];
+            }
+        }
+
+        // Only the figure the user filled is the user's; a blank stays the preset's.
+        $this->assertSame(['investmentGrowth'], $edited);
+    }
 }

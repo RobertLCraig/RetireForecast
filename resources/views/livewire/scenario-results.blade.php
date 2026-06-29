@@ -378,23 +378,33 @@
     {{-- Show-your-working: the assumptions every figure on this page rests on, surfaced so a
          headline figure can be traced to its basis. Factual, never a recommendation. --}}
     <section id="sec-assumptions" aria-labelledby="assumptions-heading" class="{{ $card }} scroll-mt-6">
-        <h2 id="assumptions-heading" class="text-xl font-semibold text-gray-900">The assumptions behind these figures</h2>
+        <h2 id="assumptions-heading" class="text-xl font-semibold text-gray-900">
+            The assumptions behind these figures
+            @if ($assumptions['customised'])
+                <span class="ml-2 align-middle rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">customised</span>
+            @endif
+        </h2>
         <p class="mt-1 text-sm text-gray-600">
-            Every figure on this page rests on these assumptions. Returns and growth are <strong>real</strong> — they are above inflation, so amounts stay in today's money. The "How sensitive is this?" section above shows how much the answer changes under different sets.
+            Every figure on this page rests on these assumptions. Returns and growth are <strong>real</strong> — they are above inflation, so amounts stay in today's money.
+            @if ($assumptions['customised'])
+                The figures marked <strong>your figure</strong> are ones you set yourself; the rest come from the assumption set.
+            @else
+                The "How sensitive is this?" section above shows how much the answer changes under different sets.
+            @endif
         </p>
         <dl class="mt-4 grid gap-3 sm:grid-cols-2">
             @foreach ($assumptions['economic'] as $row)
-                <div class="rounded-md border border-gray-200 p-3">
+                <div class="rounded-md border p-3 {{ $row['edited'] ? 'border-amber-300 bg-amber-50' : 'border-gray-200' }}">
                     <div class="flex items-baseline justify-between gap-3">
                         <dt class="text-sm text-gray-700">{{ $row['label'] }}</dt>
                         <dd class="text-sm font-semibold text-gray-900 tabular-nums">{{ $row['value'] }}</dd>
                     </div>
-                    <p class="mt-1 text-xs text-gray-500">{{ $row['note'] }}</p>
+                    <p class="mt-1 text-xs {{ $row['edited'] ? 'text-amber-800' : 'text-gray-500' }}">{{ $row['edited'] ? 'your figure · ' : '' }}{{ $row['note'] }}</p>
                 </div>
             @endforeach
         </dl>
         <p class="mt-3 text-xs text-gray-500">
-            Investment growth blends {{ $assumptions['mix'] }}. Assumption set: <strong>{{ $assumptions['setName'] }}</strong>. {{ $assumptions['sourceNote'] }}
+            Investment growth blends {{ $assumptions['mix'] }}. Assumption set: <strong>{{ $assumptions['setName'] }}{{ $assumptions['customised'] ? ' (customised)' : '' }}</strong>. {{ $assumptions['sourceNote'] }}
         </p>
         @if ($assumptions['housing'])
             <h3 class="mt-5 text-sm font-semibold text-gray-900">Housing-decision inputs</h3>

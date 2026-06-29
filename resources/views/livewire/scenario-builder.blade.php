@@ -219,6 +219,31 @@
                 </div>
             </fieldset>
 
+            {{-- Editable economic assumptions. The set chosen above is a starting point;
+                 any figure can be tuned into a custom set. A blank box uses the set's
+                 figure (shown as the faint placeholder + named in the hint), so an
+                 untouched assumption keeps following the preset. --}}
+            <fieldset class="{{ $section }}">
+                <legend class="{{ $legend }}">Economic assumptions</legend>
+                <p class="mt-1 text-sm text-gray-600">
+                    These come from the assumption set above. Leave a box blank to use that set's figure; type a value to use your own. Growth and returns are <strong>real</strong> (a year above inflation).
+                </p>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    @foreach ($assumptionFields as $f)
+                        <div wire:key="assumption-{{ $f['key'] }}">
+                            <label for="assumption-{{ $f['key'] }}" class="{{ $label }}">{{ $f['label'] }}</label>
+                            <input id="assumption-{{ $f['key'] }}" type="text" inputmode="decimal"
+                                wire:model="assumptionOverrides.{{ $f['key'] }}"
+                                placeholder="{{ $assumptionDefaults[$f['key']] ?? '' }}"
+                                class="{{ $field }}"
+                                @error('assumptionOverrides.'.$f['key']) aria-invalid="true" aria-describedby="assumption-{{ $f['key'] }}-error" @enderror>
+                            <p class="mt-1 text-xs text-gray-500">{{ $f['note'] }} · set's figure: {{ $assumptionDefaults[$f['key']] ?? '—' }}%</p>
+                            @error('assumptionOverrides.'.$f['key']) <p id="assumption-{{ $f['key'] }}-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                        </div>
+                    @endforeach
+                </div>
+            </fieldset>
+
             <fieldset class="{{ $section }}">
                 <legend class="{{ $legend }}">People</legend>
                 @foreach ($people as $i => $person)

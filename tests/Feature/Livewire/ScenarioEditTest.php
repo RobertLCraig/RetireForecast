@@ -56,6 +56,38 @@ class ScenarioEditTest extends TestCase
         $this->assertSame(ScenarioStatus::Ready, $scenario->fresh()->status);
     }
 
+    public function test_edited_assumptions_are_stored_as_a_sparse_delta_and_reach_the_forecast(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $scenario = ScenarioFixture::rich($user);
+
+        Livewire::test(ScenarioBuilder::class, ['scenario' => $scenario])
+            ->set('assumptionOverrides.inflation', '3.5')
+            ->set('assumptionOverrides.investmentGrowth', '') // blank: keep the preset
+            ->call('save')
+            ->assertHasNoErrors();
+
+        // Only the figure the user actually filled is stored — a blank keeps following the
+        // preset (one home per figure), so a later re-source still flows through.
+        $this->assertSame(['inflation' => '3.5'], $scenario->fresh()->builder_state['assumptionOverrides']);
+
+        // ...and the edit reaches the engine via the single resolution point.
+        $this->assertSame(350, (new ScenarioForecaster)->assumptions($scenario->fresh())->inflationMean->basisPoints);
+    }
+
+    public function test_an_out_of_range_assumption_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $scenario = ScenarioFixture::rich($user);
+
+        Livewire::test(ScenarioBuilder::class, ['scenario' => $scenario])
+            ->set('assumptionOverrides.inflation', '999')
+            ->call('save')
+            ->assertHasErrors(['assumptionOverrides.inflation']);
+    }
+
     public function test_editing_and_saving_invalidates_a_stale_run(): void
     {
         $user = User::factory()->create();
