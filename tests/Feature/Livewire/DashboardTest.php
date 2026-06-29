@@ -50,6 +50,18 @@ class DashboardTest extends TestCase
             ->assertViewHas('whatIfChanges');
     }
 
+    public function test_each_base_offers_one_click_quick_what_ifs(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        ScenarioFixture::rich($user);
+
+        Livewire::test(Dashboard::class)
+            ->assertSee('Quick what-if:')
+            ->assertSee('Retire 2 years later')
+            ->assertSee('Live 10 years longer');
+    }
+
     public function test_a_base_with_no_what_ifs_shows_no_tags(): void
     {
         $user = User::factory()->create();

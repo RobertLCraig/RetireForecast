@@ -91,7 +91,10 @@ class ScenarioResultsTest extends TestCase
         $this->get(route('scenarios.results', $this->scenario()))
             ->assertOk()
             ->assertSee('Run a quick preview')
-            ->assertSee('No completed run yet.');
+            ->assertSee('No completed run yet.')
+            // A base offers the one-click what-ifs.
+            ->assertSee('Retire 2 years later')
+            ->assertSee('Live 10 years longer');
     }
 
     public function test_the_results_page_shows_the_lump_sum_tax_shock_before_any_run(): void
@@ -360,7 +363,9 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('What this what-if changes')
             ->assertSee('Essentials · amount')      // the humanised changed input
             ->assertSee('£28,000')                  // base value
-            ->assertSee('£31,000');                 // new value
+            ->assertSee('£31,000')                  // new value
+            // The quick-what-if launcher is a base-only affordance, not shown on a what-if.
+            ->assertDontSee('Quick what-if:');
     }
 
     private function scenario(): Scenario

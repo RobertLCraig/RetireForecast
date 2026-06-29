@@ -66,6 +66,16 @@
         </div>
     </div>
 
+    @if (session('status'))
+        <div role="status" class="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('status') }}</div>
+    @endif
+
+    {{-- One-click what-ifs off the base: a quick way to ask "what if we retire later / live
+         longer?" without rebuilding the plan. Each opens the new what-if's results. --}}
+    @unless ($whatIf)
+        <x-quick-what-ifs :scenario="$scenario" />
+    @endunless
+
     {{-- What this what-if changes vs its base: every overridden input as base → new, so the
          difference is explicit rather than buried in identical-looking inputs. --}}
     @if ($whatIf)

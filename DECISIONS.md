@@ -3,6 +3,25 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-29 — One-click "quick what-ifs" (retire later / live longer) generated as ordinary delta-children
+**Decision:** Added **one-click what-if presets** for the two questions a reader most often asks of a forecast —
+**"Retire 2 years later"** and **"Live 10 years longer"** — as buttons on the base's results page and on each
+dashboard base row. Each posts to `QuickWhatIfController`, which uses `App\Forecast\QuickWhatIf` to edit the base's
+people (retire-later bumps each *working* person's `plannedRetirementAge` by 2, clamped to the builder's 50–80;
+live-longer moves each person onto a +10-year `offset_years` longevity lever, relative to whatever the base already
+models) and stores the result as an **ordinary delta-child**, then opens its results.
+**Why:** the what-if highlighting made the gap obvious — exploring "what if we retire/live longer" shouldn't need a
+full rebuild. Generating the child through **`BuilderStateDelta::diff()`** against the base (not a hand-written
+override map) is the load-bearing choice: the delta is automatically **minimal** (only changed leaves) and
+**structurally identical** to the base (it only retunes existing people, never adds/removes a row), so a quick
+what-if is byte-for-byte the same shape as a hand-built one — it shows its changes through `WhatIfChanges`, compares,
+and edits like any other. A preset that would change nothing (e.g. a lone retiree for "retire later") **builds and
+creates nothing** and says so (no empty what-if, no silent no-op); repeated presets get distinct names; the endpoint
+is owner-scoped. The longevity preset is the first UI use of the existing per-person longevity lever (the
+editable-assumptions plan will surface it directly too).
+[[2026-06-29 — A what-if highlights what it changed from its base (results panel, dashboard tags, Compare chips)]] [[2026-06-29 — Direction from Rob's browser pass: everything user-editable; contingent costs auto-classified (option b); buy-vs-rent as a deliberate what-if]]
+**Status:** built, suite green, pending Rob's browser sign-off.
+
 ## 2026-06-29 — A what-if highlights what it changed from its base (results panel, dashboard tags, Compare chips)
 **Decision:** On Rob's ask ("what-ifs need to highlight what's changed from the base, and add these as tags in the
 dashboard"), a delta-child what-if now **shows its `overrides` as readable changes** in three places: a "What this

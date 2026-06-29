@@ -25,14 +25,19 @@
         <ul class="mt-6 space-y-4">
             @foreach ($scenarios as $scenario)
                 <li class="rounded-lg border border-gray-200 bg-white">
-                    <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
-                        <a href="{{ route('scenarios.results', $scenario) }}" class="min-w-0 flex-1">
-                            <p class="font-medium text-gray-900">{{ $scenario->name }}</p>
-                            <p class="text-sm text-gray-500">
-                                {{ $scenario->householdName() }} · base tax year {{ $scenario->base_tax_year }}
-                            </p>
-                        </a>
-                        <div class="ml-4 flex items-center gap-3 text-sm font-medium text-blue-600">
+                    <div class="flex items-start justify-between gap-4 px-4 py-3 hover:bg-gray-50">
+                        <div class="min-w-0 flex-1">
+                            <a href="{{ route('scenarios.results', $scenario) }}" class="block">
+                                <p class="font-medium text-gray-900">{{ $scenario->name }}</p>
+                                <p class="text-sm text-gray-500">
+                                    {{ $scenario->householdName() }} · base tax year {{ $scenario->base_tax_year }}
+                                </p>
+                            </a>
+                            <div class="mt-2">
+                                <x-quick-what-ifs :scenario="$scenario" />
+                            </div>
+                        </div>
+                        <div class="ml-4 flex shrink-0 items-center gap-3 text-sm font-medium text-blue-600">
                             <a href="{{ route('scenarios.child', $scenario) }}" class="hover:text-blue-700">Create what-if</a>
                             @if ($scenario->children->isNotEmpty())
                                 <a href="{{ route('scenarios.compare', $scenario) }}" class="hover:text-blue-700">Compare</a>
