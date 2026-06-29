@@ -7,6 +7,7 @@ namespace App\Livewire;
 use App\Enums\ScenarioStatus;
 use App\Forecast\AssumptionOverrides;
 use App\Forecast\BuilderStateDelta;
+use App\Forecast\WhatIfChanges;
 use App\Import\ImportException;
 use App\Import\ImportRegistry;
 use App\Import\ImportResult;
@@ -637,15 +638,16 @@ class ScenarioBuilder extends Component
     }
 
     /**
-     * The form-state leaf paths whose current value differs from the base plan — only when
-     * building a what-if (childMode). Index-based so they match each input's `wire:model`
-     * path, letting a bundled script ring the changed inputs (so the user sees, at a glance,
-     * which fields this what-if changes from its base, e.g. a rent edited from the base value).
-     * A pure read; the auto-generated name and the wizard step are not "changes" to highlight.
+     * The inputs whose current value differs from the base plan, mapped to the base value
+     * they diverged from (formatted for display) — only when building a what-if (childMode).
+     * Keyed by the form-state leaf path, **index-based** so the keys match each input's
+     * `wire:model`; a bundled script rings each changed input and shows its base value ("was
+     * £18,000") so the user sees what this what-if changes and what it changed from. A pure
+     * read; the auto-generated name and the wizard step are not "changes" to surface.
      *
-     * @return list<string>
+     * @return array<string, string> wire:model path => formatted base value
      */
-    public function changedFromBasePaths(): array
+    public function changedFromBase(): array
     {
         if (! $this->childMode || $this->parentScenarioId === null) {
             return [];
@@ -653,28 +655,32 @@ class ScenarioBuilder extends Component
 
         $base = Scenario::where('user_id', auth()->id())->find($this->parentScenarioId)?->effectiveBuilderState() ?? [];
 
-        $paths = [];
-        self::collectChangedLeaves($base, $this->builderState(), '', $paths);
+        $changes = [];
+        self::collectChangedLeaves($base, $this->builderState(), '', $changes);
+        unset($changes['name'], $changes['step']);
 
-        return array_values(array_filter(
-            $paths,
-            static fn (string $path): bool => $path !== 'name' && $path !== 'step',
-        ));
+        $out = [];
+        foreach ($changes as $path => $baseValue) {
+            $segments = explode('.', (string) $path);
+            $out[$path] = WhatIfChanges::formatValue((string) end($segments), $baseValue);
+        }
+
+        return $out;
     }
 
     /**
-     * Walk $current against $base by position, collecting the dot-path of every scalar leaf
-     * that differs (a value the base lacks counts as different). List rows are walked by index,
-     * matching the inputs' `wire:model` paths — a what-if child cannot reorder, add or remove
-     * rows, so positions align with the base.
+     * Walk $current against $base by position, collecting each scalar leaf that differs as
+     * `dot-path => base value` (a value the base lacks counts as different, base value null).
+     * List rows are walked by index, matching the inputs' `wire:model` paths — a what-if child
+     * cannot reorder, add or remove rows, so positions align with the base.
      *
-     * @param  list<string>  $paths
+     * @param  array<string, mixed>  $changes
      */
-    private static function collectChangedLeaves(mixed $base, mixed $current, string $prefix, array &$paths): void
+    private static function collectChangedLeaves(mixed $base, mixed $current, string $prefix, array &$changes): void
     {
         if (! is_array($current)) {
             if ($base !== $current) {
-                $paths[] = $prefix;
+                $changes[$prefix] = $base;
             }
 
             return;
@@ -683,7 +689,7 @@ class ScenarioBuilder extends Component
         foreach ($current as $key => $value) {
             $baseValue = is_array($base) ? ($base[$key] ?? null) : null;
             $path = $prefix === '' ? (string) $key : "{$prefix}.{$key}";
-            self::collectChangedLeaves($baseValue, $value, $path, $paths);
+            self::collectChangedLeaves($baseValue, $value, $path, $changes);
         }
     }
 
@@ -982,10 +988,10 @@ class ScenarioBuilder extends Component
                 $this->selectedAssumptionSet(),
                 PortfolioAllocation::cautious40_60(),
             ),
-            // For a what-if: the inputs whose value differs from the base, so they can be
-            // highlighted (matched to inputs by their wire:model path, client-side). Empty
-            // for a base forecast.
-            'changedPaths' => $this->changedFromBasePaths(),
+            // For a what-if: the inputs whose value differs from the base, mapped to the base
+            // value they diverged from, so each can be highlighted and show its base value
+            // (matched to inputs by their wire:model path, client-side). Empty for a base.
+            'changedFromBase' => $this->changedFromBase(),
             'steps' => self::STEPS,
             'expenseTotals' => $this->expenseTotals(),
             'importProfiles' => array_map(static fn ($p): array => [

@@ -167,7 +167,7 @@
     @endif
 
     <form wire:submit="save" class="space-y-6"
-        @if ($childMode) data-builder-diff data-changed-paths="{{ json_encode($changedPaths) }}" @endif>
+        @if ($childMode) data-builder-diff data-changes="{{ json_encode($changedFromBase) }}" @endif>
         <div role="group" aria-labelledby="step-heading" class="space-y-6">
 
         {{-- Step 1: About this forecast & the people -------------------------------- --}}

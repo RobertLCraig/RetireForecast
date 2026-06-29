@@ -3,14 +3,17 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
-## 2026-06-30 — The builder highlights a what-if's inputs that differ from the base
+## 2026-06-30 — The builder highlights a what-if's inputs that differ from the base (and shows the base value)
 **Decision:** When editing a what-if in the builder, each input whose value differs from the base plan is **ringed in
-amber** (with a one-line "fields you change from the base are highlighted" banner), so the difference is obvious while
-editing — e.g. an annual rent set to a what-if value stands out against the base. The server computes the changed
-form-state leaf paths (`ScenarioBuilder::changedFromBasePaths()`, a positional diff of the live `builderState()` vs the
-base's `effectiveBuilderState()`, **index-based** so they match each input's `wire:model`), renders them on the form
-(`data-builder-diff` + `data-changed-paths`), and a bundled script (`resources/js/builder-diff.js`) rings each matching
-input via a plain `.builder-diff-changed` class.
+amber** *and shows the base value it diverged from* ("was £18,000"), with a one-line "fields you change from the base
+are highlighted" banner — so the difference is obvious *and* the original figure is visible while editing (Rob: "would
+be good to see the original figure that we have diverged from"). The server computes the changed form-state leaves
+mapped to their base value (`ScenarioBuilder::changedFromBase()`, a positional diff of the live `builderState()` vs the
+base's `effectiveBuilderState()`, **index-based** so the keys match each input's `wire:model`; base values formatted by
+the shared `WhatIfChanges::formatValue()` so the builder hint and the results-page changes format identically), renders
+them on the form (`data-builder-diff` + a `data-changes` object), and a bundled script (`resources/js/builder-diff.js`)
+rings each matching input (`.builder-diff-changed`) and shows its base value via the field wrapper's `::after`
+(`.builder-diff-field[data-original]`) — **not an injected node**, so it never confuses Livewire's morph.
 **Why (the load-bearing choice):** there are ~70 inputs across the wizard, so annotating each one server-side was a
 non-starter (huge, fragile diff). Instead one server-computed set + one script that matches inputs by their existing
 `wire:model` path covers **every** input uniformly, including ones added later, with four small files touched. It is

@@ -43,8 +43,9 @@ class ScenarioChildTest extends TestCase
 
         Livewire::test(ScenarioBuilder::class, ['scenario' => $child])
             ->assertSet('childMode', true)
-            // The changed rent is flagged for highlighting; the auto-name is not a "change".
-            ->assertViewHas('changedPaths', fn (array $paths): bool => in_array('housing.annualRent', $paths, true) && ! in_array('name', $paths, true))
+            // The changed rent is flagged with the base value it diverged from; the auto-name
+            // is not a "change".
+            ->assertViewHas('changedFromBase', fn (array $changes): bool => ($changes['housing.annualRent'] ?? null) === '£18,000' && ! array_key_exists('name', $changes))
             ->assertSeeHtml('data-builder-diff');
     }
 
@@ -56,7 +57,7 @@ class ScenarioChildTest extends TestCase
 
         Livewire::test(ScenarioBuilder::class, ['scenario' => $base])
             ->assertSet('childMode', false)
-            ->assertViewHas('changedPaths', fn (array $paths): bool => $paths === [])
+            ->assertViewHas('changedFromBase', fn (array $changes): bool => $changes === [])
             ->assertDontSeeHtml('data-builder-diff');
     }
 

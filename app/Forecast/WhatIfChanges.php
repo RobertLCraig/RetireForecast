@@ -83,8 +83,8 @@ final class WhatIfChanges
             $leaf = self::leaf($path);
             $changes[] = [
                 'label' => self::label($path, $baseState),
-                'from' => self::format($leaf, BuilderStateDelta::valueAt($baseState, $path), $path),
-                'to' => self::format($leaf, $value, $path),
+                'from' => self::formatValue($leaf, BuilderStateDelta::valueAt($baseState, $path)),
+                'to' => self::formatValue($leaf, $value),
             ];
         }
 
@@ -181,8 +181,12 @@ final class WhatIfChanges
         };
     }
 
-    /** Format a leaf value for display: money as £, rates with %, enums/bools readable, '—' when absent. */
-    private static function format(string $leaf, mixed $value, string $path): string
+    /**
+     * Format a form-state value for display by its leaf field name: money as £, rates with %,
+     * enums/bools readable, '—' when absent. Shared so the results-page changes and the
+     * builder's "base value" hint format the same value the same way.
+     */
+    public static function formatValue(string $leaf, mixed $value): string
     {
         if ($value === null || $value === '') {
             return '—';

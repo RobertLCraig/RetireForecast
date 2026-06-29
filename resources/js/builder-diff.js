@@ -4,10 +4,16 @@
  * this; it only rings the changed fields so the user sees, at a glance, what this what-if
  * changes from its base.
  *
- * The server renders the form with [data-builder-diff] and a JSON list of changed
- * wire:model paths in [data-changed-paths] (index-based, matching each input's wire:model).
- * Re-applied after Livewire updates (which morph the inputs and may strip the ring class).
- * Bundled (not inline) so it is CSP-safe, and a no-op when the attributes are absent.
+ * The server renders the form with [data-builder-diff] and a JSON object in [data-changes]
+ * mapping each changed wire:model path (index-based, matching each input's wire:model) to
+ * the base value it diverged from, formatted for display. This rings each changed input and
+ * shows its base value ("was £18,000") under the field, so the user sees both what this
+ * what-if changes and what it changed from.
+ *
+ * The base value is shown via the field wrapper's `::after` (a data attribute), not an
+ * injected node, so it never confuses Livewire's morph. Re-applied after Livewire updates
+ * (which morph the inputs and strip the client-set class/attribute). Bundled (not inline)
+ * so it is CSP-safe, and a no-op when the attributes are absent.
  */
 function wireModelPath(el) {
     for (const attr of el.attributes) {
@@ -18,30 +24,45 @@ function wireModelPath(el) {
     return null
 }
 
-function applyBuilderDiff() {
-    // Clear any previous rings first (a re-render may have changed the set, or left the what-if).
+function clearBuilderDiff() {
     document.querySelectorAll('.builder-diff-changed').forEach((el) => el.classList.remove('builder-diff-changed'))
+    document.querySelectorAll('.builder-diff-field').forEach((el) => {
+        el.classList.remove('builder-diff-field')
+        el.removeAttribute('data-original')
+    })
+}
+
+function applyBuilderDiff() {
+    // Clear any previous marks first (a re-render may have changed the set, or left the what-if).
+    clearBuilderDiff()
 
     const form = document.querySelector('[data-builder-diff]')
     if (!form) {
         return
     }
 
-    let changed
+    let changes
     try {
-        changed = JSON.parse(form.getAttribute('data-changed-paths') || '[]')
+        changes = JSON.parse(form.getAttribute('data-changes') || '{}')
     } catch (e) {
         return
     }
-    if (!Array.isArray(changed) || changed.length === 0) {
+    if (!changes || typeof changes !== 'object' || Object.keys(changes).length === 0) {
         return
     }
 
-    const set = new Set(changed)
     form.querySelectorAll('input, select, textarea').forEach((el) => {
         const path = wireModelPath(el)
-        if (path && set.has(path)) {
-            el.classList.add('builder-diff-changed')
+        if (!path || !Object.prototype.hasOwnProperty.call(changes, path)) {
+            return
+        }
+        // Ring the changed input...
+        el.classList.add('builder-diff-changed')
+        // ...and show the base value on its wrapping field via a ::after (no injected node).
+        const field = el.closest('div')
+        if (field) {
+            field.classList.add('builder-diff-field')
+            field.setAttribute('data-original', changes[path])
         }
     })
 }

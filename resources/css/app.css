@@ -9,11 +9,21 @@
 }
 
 /*
- * A builder input whose value differs from the base plan (a what-if). Applied client-side
- * by builder-diff.js, so it is a plain class (not a Tailwind utility scanned from markup).
+ * A builder input whose value differs from the base plan (a what-if), and its field wrapper
+ * showing the base value it diverged from. Applied client-side by builder-diff.js, so these
+ * are plain classes (not Tailwind utilities scanned from markup).
  */
 .builder-diff-changed {
     border-color: #f59e0b; /* amber-500 */
     background-color: #fffbeb; /* amber-50 */
     box-shadow: 0 0 0 2px #fde68a; /* amber-200 ring */
+}
+
+.builder-diff-field::after {
+    content: 'was ' attr(data-original);
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: #b45309; /* amber-700 */
 }
