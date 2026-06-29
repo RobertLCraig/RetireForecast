@@ -295,6 +295,8 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('Net proceeds')
             ->assertSee('If you sell & buy cheaper')
             ->assertSee('Surplus invested')
+            // Life-event milestones (when retire / SP / death happen) make the cashflow legible.
+            ->assertSee('When the big events happen')
             // The ladder spend is itemised into its essential floor and discretionary remainder.
             ->assertSee('split into its essential floor and discretionary remainder');
     }

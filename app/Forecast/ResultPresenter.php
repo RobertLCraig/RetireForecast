@@ -10,6 +10,8 @@ use App\Models\Result;
 use Illuminate\Support\Collection;
 use RetireForecast\FinanceEngine\Benchmark\RetirementLivingStandards;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
+use RetireForecast\FinanceEngine\Dto\DcPension;
+use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\Person;
@@ -20,6 +22,7 @@ use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\HousingPurchase;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
+use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
 
 /**
  * Turns a run's three variant {@see SimulationResult}s into everything the results
@@ -485,6 +488,94 @@ final class ResultPresenter
         }
 
         return false;
+    }
+
+    /** When same-year milestones tie, order them by life sequence (work → pension → death). */
+    private const MILESTONE_ORDER = ['retirement' => 0, 'pension_access' => 1, 'state_pension' => 2, 'death' => 3];
+
+    /**
+     * The life-event milestones timeline: *when* the major events happen across the
+     * projection — each person retires, their State Pension starts, their first planned
+     * pension withdrawal, and their modelled death — as a dated, aged list, so the user can
+     * see what drives the year-by-year cashflow (e.g. why income steps down in a given year,
+     * the question Rob's "what is the 2040 event" raised). Read-only and factual: every date
+     * traces to one source — DOB + the relevant age, or the engine's single-source death year
+     * ({@see ForecastResult::$deathCalendarYears}) — never a recommendation.
+     *
+     * Only events within the projection window are shown (a person already past an event has
+     * no upcoming milestone for it). The house sale (year 0 of a sell variant) is not shown
+     * here — it belongs with the per-variant ladder, which carries the variant transforms.
+     *
+     * @return list<array{year: int, age: int, label: string, kind: string}>
+     */
+    public static function milestones(Household $household, ForecastResult $forecast): array
+    {
+        if ($forecast->years === []) {
+            return [];
+        }
+
+        $baseYear = $forecast->years[0]->calendarYear;
+        $finalYear = $forecast->finalCalendarYear;
+
+        $events = [];
+        $add = function (int $year, int $age, string $label, string $kind) use (&$events, $baseYear, $finalYear): void {
+            if ($year >= $baseYear && $year <= $finalYear) {
+                $events[] = ['year' => $year, 'age' => $age, 'label' => $label, 'kind' => $kind];
+            }
+        };
+
+        foreach ($household->persons as $i => $person) {
+            $name = self::personLabel($person, $i);
+            $birthYear = (int) $person->dob->format('Y');
+
+            // Retirement — only for someone still working with a planned retirement age.
+            if ($person->plannedRetirementAge !== null
+                && in_array($person->employmentStatus, [EmploymentStatus::Employed, EmploymentStatus::SelfEmployed], true)) {
+                $add($birthYear + $person->plannedRetirementAge, $person->plannedRetirementAge, "{$name} retires", 'retirement');
+            }
+
+            // First planned pension withdrawal (earliest across this person's DC pots).
+            $accessAge = self::firstWithdrawalAge($household, $person->id);
+            if ($accessAge !== null) {
+                $add($birthYear + $accessAge, $accessAge, "{$name} starts taking their pension", 'pension_access');
+            }
+
+            // State Pension start — the SPA computed from DOB (single source).
+            $spaYear = (int) StatePensionAge::for($person->dob)->dateReached->format('Y');
+            $add($spaYear, $spaYear - $birthYear, "{$name}'s State Pension starts", 'state_pension');
+
+            // Modelled death — the engine's single-source death year.
+            $deathYear = $forecast->deathCalendarYears[$person->id] ?? null;
+            if ($deathYear !== null) {
+                $add($deathYear, $deathYear - $birthYear, "{$name} dies", 'death');
+            }
+        }
+
+        usort($events, fn (array $a, array $b): int => [$a['year'], self::MILESTONE_ORDER[$a['kind']] ?? 9]
+            <=> [$b['year'], self::MILESTONE_ORDER[$b['kind']] ?? 9]);
+
+        return $events;
+    }
+
+    /** A person's display name if set, else "Person N" in household order. */
+    private static function personLabel(Person $person, int $index): string
+    {
+        return $person->name ?? 'Person '.($index + 1);
+    }
+
+    /** The earliest planned pension-withdrawal age across a person's DC pots, or null. */
+    private static function firstWithdrawalAge(Household $household, string $personId): ?int
+    {
+        $ages = [];
+        foreach ($household->pensions as $pension) {
+            if ($pension instanceof DcPension && $pension->ownerId === $personId) {
+                foreach ($pension->withdrawalPlan as $withdrawal) {
+                    $ages[] = $withdrawal->atAge;
+                }
+            }
+        }
+
+        return $ages === [] ? null : min($ages);
     }
 
     /**

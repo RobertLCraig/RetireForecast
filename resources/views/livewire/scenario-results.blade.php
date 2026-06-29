@@ -408,6 +408,34 @@
         </section>
     @endif
 
+    {{-- Life-event milestones: WHEN the major events happen, so the year-by-year cashflow
+         below is legible — what drives each step change. Deterministic; read-only facts. --}}
+    @if ($milestones)
+        @php
+            $milestoneDot = [
+                'retirement' => 'bg-amber-400',
+                'pension_access' => 'bg-blue-400',
+                'state_pension' => 'bg-green-400',
+                'death' => 'bg-gray-500',
+            ];
+        @endphp
+        <section aria-labelledby="milestones-heading" class="{{ $card }}">
+            <h2 id="milestones-heading" class="text-xl font-semibold text-gray-900">When the big events happen</h2>
+            <p class="mt-1 text-sm text-gray-600">
+                The major life events in this forecast, in order. These drive the step changes in the year-by-year cashflow below — when earnings stop, a pension starts, or the household changes size. Ages are each person's age in that year.
+            </p>
+            <ul class="mt-4 space-y-2">
+                @foreach ($milestones as $m)
+                    <li class="flex items-baseline gap-3 text-sm">
+                        <span class="w-12 shrink-0 font-semibold tabular-nums text-gray-900">{{ $m['year'] }}</span>
+                        <span class="h-2 w-2 shrink-0 self-center rounded-full {{ $milestoneDot[$m['kind']] ?? 'bg-gray-300' }}" aria-hidden="true"></span>
+                        <span class="text-gray-700">{{ $m['label'] }} <span class="text-gray-500">(age {{ $m['age'] }})</span></span>
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
+
     {{-- Year-by-year cashflow ladder. The deterministic central projection, so it shows
          immediately: where income comes from each year, the tax on it, the spend it must
          meet, and the usable (excl. home) vs total (incl. home) wealth carried forward. --}}

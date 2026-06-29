@@ -437,7 +437,13 @@ unchanged) and `PathProjector` charges `targetAnnualSpend()` in every variant. S
   variants; commute cost is **zero** from the retirement year; the spend charged in a year equals the sum of the
   lines *active* that year (no silent drop, no phantom charge).
 
-**2. [LEGIBILITY] Life-event milestones are modelled but never shown "when".** Major events — each person
+**2. [LEGIBILITY] Life-event milestones are modelled but never shown "when".** ✅ **Built (2026-06-29, results page
+"When the big events happen"; DECISIONS 2026-06-29 "life-event milestones"):** `ResultPresenter::milestones` shows a
+dated/aged list of *when* each person **retires**, takes their first **pension** withdrawal, their **State Pension
+starts** (SPA from `StatePensionAge`), and their **modelled death** — the death from a new single-source engine
+field `ForecastResult::deathCalendarYears` (birthYear + death age). **Still to do:** the **house-sale** marker (a
+variant transform — lands with the per-variant ladder, #6) and **markers on the ladder + charts** (the list is
+text-only for now). The original spec follows. Major events — each person
 **retires**, **State Pension starts** (SPA), planned **pension access / lump sum**, **house sale**, each person's
 **modelled death**, and the cost changes they trigger (commute stops, mortgage ends) — all happen inside the
 projection but are invisible on screen. **Fix:** a milestones layer — a dated/aged list plus markers on the

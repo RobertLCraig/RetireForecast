@@ -108,6 +108,13 @@ final class PathProjector
 
         $terminal = end($years) ?: null;
 
+        // The modelled calendar year of each person's death (birthYear + death age), so the
+        // milestones layer can show *when* each person dies without re-deriving the death age.
+        $deathCalendarYears = [];
+        foreach ($household->persons as $person) {
+            $deathCalendarYears[$person->id] = (int) $person->dob->format('Y') + $draws->deathAge($person->id);
+        }
+
         return new ForecastResult(
             years: $years,
             essentialsAlwaysMet: $this->everyYear($years, fn (YearResult $y) => $y->essentialsMet),
@@ -116,6 +123,7 @@ final class PathProjector
             terminalTotalWealth: $terminal ? $terminal->totalWealth : Money::zero(),
             terminalUsableWealth: $terminal ? $terminal->liquidWealth->plus($terminal->pensionWealth) : Money::zero(),
             finalCalendarYear: $terminal ? $terminal->calendarYear : $settings->baseYear,
+            deathCalendarYears: $deathCalendarYears,
         );
     }
 

@@ -208,6 +208,9 @@ class ScenarioResults extends Component
             // Deterministic year-by-year cashflow ladder (income by source -> tax -> spend
             // -> wealth). Shows immediately, before any Monte Carlo run.
             'ladder' => ResultPresenter::ladder($forecast),
+            // Life-event milestones (when each person retires / SP starts / takes a pension /
+            // dies), so the year-by-year cashflow is legible — what drives each step change.
+            'milestones' => ResultPresenter::milestones($household, $forecast),
             // Show-your-working: the assumptions every figure rests on, and (if a sale is
             // configured) where the sale proceeds come from and go. Both deterministic.
             'assumptions' => ResultPresenter::assumptionsPanel($assumptions, $action, $allocation),

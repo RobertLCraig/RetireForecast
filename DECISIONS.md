@@ -3,6 +3,27 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-29 — Adviser-legibility: life-event milestones ("when does each event happen")
+**Decision:** Built the life-event **milestones** timeline on the results page — a dated, aged list of *when* the
+major events happen across the projection: each person retires, takes their first planned pension withdrawal, their
+State Pension starts, and their modelled death. It answers Rob's "what is the 2040 event?" by making the drivers of
+the cashflow ladder's step changes legible. Read-only, factual, lint-safe. Every date traces to **one source** —
+DOB + the relevant age (planned retirement age; SPA from the engine's `StatePensionAge`; the earliest DC withdrawal
+age) — or the engine's new single-source death year: **`ForecastResult::$deathCalendarYears`** (personId → birthYear
++ death age), computed once in `PathProjector` from the draws' death age, so "when does each person die" is no longer
+buried inside the projection. Only events within the projection window show (someone already past an event has no
+upcoming milestone). The **house-sale milestone is deferred** to the per-variant ladder (it is a variant transform;
+the raw-household ladder does not sell).
+**Why:** continues the explainer / show-your-working layer — *trust comes from explanation*. Rob's confusion (the
+2040 income/spend crossover; "P2 dies in 2027") was precisely a *when* gap: the events are modelled but never shown.
+The death year needed the only engine change (additive field, default `[]`, one construction site); everything else
+derives from existing inputs/helpers, so the engine stays the single source. Guarded by a presenter test (the
+events, their order, the retired-person exclusion) and an assertion that the death milestones ARE the engine's
+`deathCalendarYears`, not a re-derivation.
+[[2026-06-29 — Adviser-legibility: the explainer / show-your-working layer (sale waterfall, assumptions panel, itemised spend)]]
+**Status:** active (built, suite green; pending Rob's browser sign-off). Next: the per-strategy cashflow ladder +
+the contingent-cost placement correctness fix (#1) — which also lands the house-sale milestone.
+
 ## 2026-06-29 — Adviser-legibility: the explainer / show-your-working layer (sale waterfall, assumptions panel, itemised spend)
 **Decision:** Built the first slice of the adviser-legibility workstream — the **explainer / show-your-working
 layer** (the option Rob chose over starting with the correctness fix), all deterministic so it renders before any
