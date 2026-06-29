@@ -103,7 +103,7 @@ class ScenarioResults extends Component
             return null;
         }
 
-        $presented = ResultPresenter::build($this->resultsByVariant($run), $this->scenario->variant->value, $this->includeHome);
+        $presented = ResultPresenter::build($this->resultsByVariant($run), $this->scenario->variant->value, $this->includeHome, $this->scenario->toHousehold());
         $fan = $presented['fan'];
 
         return response()->streamDownload(function () use ($fan): void {
@@ -163,7 +163,7 @@ class ScenarioResults extends Component
 
         if ($resultsRun) {
             $resultsByVariant = $this->resultsByVariant($resultsRun);
-            $presented = ResultPresenter::build($resultsByVariant, $this->scenario->variant->value, $this->includeHome);
+            $presented = ResultPresenter::build($resultsByVariant, $this->scenario->variant->value, $this->includeHome, $this->scenario->toHousehold());
 
             // Advice-style readouts only for an admin-granted user; the public default
             // stays neutral. The directive wording lives solely in Interpretation.

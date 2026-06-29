@@ -426,6 +426,15 @@
             <p class="mt-3 text-xs text-gray-500">"Chance of running out" counts the simulated futures with at least one year your essential spending isn't fully covered by income and savings — a shortfall a future may later recover from as guaranteed income catches up. "Wealth left" is the median amount at the very end. So an option can leave money at the end yet still have run short along the way — and "total wealth left" includes any home you would still own, which stays high even when the usable cash for day-to-day spending has run out.</p>
         </section>
 
+        {{-- A run computed before the spendable-money view existed can't show it: say so and
+             point at the re-run buttons, rather than silently drawing total wealth as if it
+             were spendable money (no silent failure). --}}
+        @unless ($presented['usableFanAvailable'])
+            <div role="status" class="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                These results were calculated before the spendable-money (excluding home) view was added, so the charts below show total wealth only and the <strong>Include home value</strong> toggle has nothing to switch to. Run the forecast again (the buttons above) to see your spendable money over time.
+            </div>
+        @endunless
+
         {{-- Fan chart: the chosen strategy's outcome spread over time --------------- --}}
         @php $fan = $presented['fan']; @endphp
         <section aria-labelledby="fan-heading" class="{{ $card }}">
@@ -468,6 +477,7 @@
                         <thead>
                             <tr>
                                 <th scope="col" class="{{ $th }}">Year</th>
+                                <th scope="col" class="{{ $th }}">Age(s)</th>
                                 <th scope="col" class="{{ $th }}">10th</th>
                                 <th scope="col" class="{{ $th }}">25th</th>
                                 <th scope="col" class="{{ $th }}">Median</th>
@@ -479,6 +489,7 @@
                             @foreach ($fan['rows'] as $row)
                                 <tr>
                                     <th scope="row" class="{{ $td }} font-medium">{{ $row['year'] }}</th>
+                                    <td class="{{ $td }}">{{ $row['ages'] ?? '—' }}</td>
                                     <td class="{{ $td }}">{{ $row['p10'] }}</td>
                                     <td class="{{ $td }}">{{ $row['p25'] }}</td>
                                     <td class="{{ $td }}">{{ $row['p50'] }}</td>
@@ -523,6 +534,7 @@
                         <thead>
                             <tr>
                                 <th scope="col" class="{{ $th }}">Year</th>
+                                <th scope="col" class="{{ $th }}">Age(s)</th>
                                 @foreach ($comparison['strategies'] as $strategy)
                                     <th scope="col" class="{{ $th }}">{{ $strategy['label'] }}</th>
                                 @endforeach
@@ -532,6 +544,7 @@
                             @foreach ($comparison['lineRows'] as $row)
                                 <tr>
                                     <th scope="row" class="{{ $td }} font-medium">{{ $row['year'] }}</th>
+                                    <td class="{{ $td }}">{{ $row['ages'] ?? '—' }}</td>
                                     @foreach ($comparison['strategies'] as $strategy)
                                         <td class="{{ $td }}">{{ $row['cells'][$strategy['key']] ?? '—' }}</td>
                                     @endforeach

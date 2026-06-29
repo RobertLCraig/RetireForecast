@@ -30,6 +30,18 @@ pay day-to-day bills, so excl-home is the honest "will it last" view. A terminal
 dimension Rob actually needs ("if I live to 100, which strategy keeps the most usable money?"); a line per
 strategy answers that directly. Median lines are paired with the run-out table so the level-vs-risk tension
 (e.g. rent's high median beside its 55% shortfall chance) stays visible, not hidden.
+
+**Follow-ups (same review loop):**
+(6) **Person ages on the axis + tables.** The calendar-year axis and both chart tables now show each person's
+age that year (age = `calendarYear − birthYear`, exactly the engine's `YearResult::ages` = baseAge + yearIndex,
+reconciled to the cashflow ladder in a test — one age definition). Small, but it makes "when" legible. The axis
+formatter lives in `charts.js` (a two-line label: year, then "age 82 / 84"), since a JS function can't travel
+through the JSON options.
+(7) **Stale-run prompt, not silent fallback.** A run computed *before* this change has no `usableFanChart`, so
+the spendable view falls back to total. Rather than silently drawing total wealth as if it were spendable (which
+read as "the toggle does nothing / the title is stuck on Total wealth"), the page now shows a neutral re-run
+prompt driven by a `usableFanAvailable` flag — no silent failure. Existing runs must be re-run to get the
+spendable view.
 [[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
 **Status:** active (built + green; pending Rob's in-browser visual sign-off of the reworked charts + toggle).
 

@@ -55,7 +55,9 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('Show the numbers behind this chart')
             // The end-of-life rise is explained (thin-sample tail + old-age pot compounding),
             // not left to look like a glitch.
-            ->assertSee('Why the line can climb sharply at the far right');
+            ->assertSee('Why the line can climb sharply at the far right')
+            // Person ages label the chart tables (and the axis, client-side).
+            ->assertSee('Age(s)');
     }
 
     public function test_a_completed_preview_persists_three_variant_results(): void
@@ -246,10 +248,12 @@ class ScenarioResultsTest extends TestCase
             ->set('previewPaths', 30)
             ->call('preview');
 
-        // Default: the spendable (excl-home) basis leads on both the fan and the comparison.
+        // Default: the spendable (excl-home) basis leads on both the fan and the comparison,
+        // and a fresh run carries the usable fan so no "re-run" prompt shows.
         $component
             ->assertSee('Projected spendable money over time')
-            ->assertSee('Spendable money over time, by housing strategy');
+            ->assertSee('Spendable money over time, by housing strategy')
+            ->assertDontSee('These results were calculated before');
 
         // Toggle the home back in -> both charts switch to the total-wealth basis.
         $component->set('includeHome', true)

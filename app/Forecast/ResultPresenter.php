@@ -10,6 +10,7 @@ use App\Models\Result;
 use Illuminate\Support\Collection;
 use RetireForecast\FinanceEngine\Benchmark\RetirementLivingStandards;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -75,9 +76,12 @@ final class ResultPresenter
      *                             excl-home is the honest "will it last" view for a couple
      *                             not planning to sell again. The headline cards always
      *                             show both figures as text regardless of this toggle.
+     * @param  Household|null  $household  when given, the charts label the calendar-year axis
+     *                                     and tables with the people's ages (age = year -
+     *                                     birthYear, the engine's own definition).
      * @return array<string, mixed>
      */
-    public static function build(Collection $resultsByVariant, string $primaryVariant, bool $includeHome = false): array
+    public static function build(Collection $resultsByVariant, string $primaryVariant, bool $includeHome = false, ?Household $household = null): array
     {
         $variants = [];
         foreach (self::ORDER as $key) {
@@ -88,13 +92,23 @@ final class ResultPresenter
         }
 
         $primary = array_key_exists($primaryVariant, $variants) ? $primaryVariant : array_key_first($variants);
+        $primarySim = $resultsByVariant->get($primary)->simulationResult();
+
+        // Ages by calendar year for the axis + tables (empty if no household passed).
+        $ageByYear = $household !== null
+            ? self::agesByYear($household, array_column($primarySim->fanChart, 'calendarYear'))
+            : [];
 
         return [
             'variants' => $variants,
             'primary' => $primary,
             'includeHome' => $includeHome,
-            'fan' => self::fan($primary, $resultsByVariant->get($primary)->simulationResult(), $includeHome),
-            'comparison' => self::comparison($resultsByVariant, $includeHome),
+            // False for a run computed before the per-year usable fan existed: the spendable
+            // (excl-home) view then falls back to total, so the page prompts a re-run rather
+            // than silently showing total wealth as if it were spendable money (no silent failure).
+            'usableFanAvailable' => $primarySim->usableFanChart !== [],
+            'fan' => self::fan($primary, $primarySim, $includeHome, $ageByYear),
+            'comparison' => self::comparison($resultsByVariant, $includeHome, $ageByYear),
         ];
     }
 
@@ -154,7 +168,7 @@ final class ResultPresenter
      *
      * @return array<string, mixed>
      */
-    private static function fan(string $variant, SimulationResult $r, bool $includeHome): array
+    private static function fan(string $variant, SimulationResult $r, bool $includeHome, array $ageByYear = []): array
     {
         [$series, $usableBasis] = self::fanSeries($r, $includeHome);
 
@@ -169,6 +183,7 @@ final class ResultPresenter
 
         $rows = array_map(fn (array $y): array => [
             'year' => $y['calendarYear'],
+            'ages' => $ageByYear[$y['calendarYear']] ?? null,
             'p10' => $y['p10']->format(),
             'p25' => $y['p25']->format(),
             'p50' => $y['p50']->format(),
@@ -195,6 +210,10 @@ final class ResultPresenter
             // zero?" honest; forceNiceScale stops the big upside tail from squashing the
             // body of the data into a flat-looking band near the bottom (the old complaint).
             'moneyAxis' => true,
+            // ageByYear: charts.js turns the calendar-year axis into a two-line label (year +
+            // the people's ages that year). A plain map (year keys -> "82 / 84"), not an
+            // ApexCharts option; year keys aren't zero-sequential so @js encodes it as an object.
+            'ageByYear' => $ageByYear === [] ? null : $ageByYear,
             'xaxis' => ['type' => 'numeric', 'tickAmount' => 8, 'decimalsInFloat' => 0, 'title' => ['text' => 'Calendar year']],
             'yaxis' => ['min' => 0, 'forceNiceScale' => true, 'title' => ['text' => $basisLabel.' (real £)']],
             'legend' => ['position' => 'top'],
@@ -249,7 +268,7 @@ final class ResultPresenter
      * @param  Collection<string, Result>  $resultsByVariant
      * @return array{options: array<string, mixed>, rows: list<array<string, mixed>>, years: list<int>, lineRows: list<array{year: int, cells: array<string, ?string>}>, strategies: list<array{key: string, label: string}>, usableBasis: bool, basisLabel: string}
      */
-    private static function comparison(Collection $resultsByVariant, bool $includeHome): array
+    private static function comparison(Collection $resultsByVariant, bool $includeHome, array $ageByYear = []): array
     {
         $rows = [];
         $yearsSet = [];
@@ -310,7 +329,7 @@ final class ResultPresenter
             foreach (array_keys($byVariant) as $key) {
                 $cells[$key] = $byVariant[$key][$year]['text'] ?? null;
             }
-            $lineRows[] = ['year' => $year, 'cells' => $cells];
+            $lineRows[] = ['year' => $year, 'ages' => $ageByYear[$year] ?? null, 'cells' => $cells];
         }
 
         $basisLabel = $usableBasis ? 'Median spendable money, excl. home' : 'Median total wealth, incl. home';
@@ -323,6 +342,7 @@ final class ResultPresenter
             'dataLabels' => ['enabled' => false],
             'markers' => ['size' => 0],
             'moneyAxis' => true,
+            'ageByYear' => $ageByYear === [] ? null : $ageByYear,
             'xaxis' => ['type' => 'numeric', 'tickAmount' => 8, 'decimalsInFloat' => 0, 'title' => ['text' => 'Calendar year']],
             'yaxis' => ['min' => 0, 'forceNiceScale' => true, 'title' => ['text' => $basisLabel.' (real £)']],
             'legend' => ['position' => 'top'],
@@ -668,6 +688,34 @@ final class ResultPresenter
     private static function pounds(Money $money): int
     {
         return intdiv($money->pence, 100);
+    }
+
+    /**
+     * Each person's age in each calendar year, e.g. `2040 => "82 / 84"`, in household order.
+     * Age = calendarYear - birthYear, which is exactly the engine's own per-year age
+     * (`YearResult::ages` = baseAge + yearIndex = (baseYear - birthYear) + yearIndex), so the
+     * chart axis + tables read the same age the cashflow ladder does (one definition; the
+     * reconciliation is asserted in a test). Ages are derived from DOB, never stored.
+     *
+     * @param  list<int>  $years
+     * @return array<int, string>
+     */
+    private static function agesByYear(Household $household, array $years): array
+    {
+        $birthYears = array_map(
+            fn (Person $p): int => (int) $p->dob->format('Y'),
+            $household->persons,
+        );
+
+        $map = [];
+        foreach ($years as $year) {
+            $map[$year] = implode(' / ', array_map(
+                fn (int $birthYear): string => (string) ($year - $birthYear),
+                $birthYears,
+            ));
+        }
+
+        return $map;
     }
 
     /**

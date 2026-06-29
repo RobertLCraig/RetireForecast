@@ -140,6 +140,28 @@ final class DisplayedFigureProvenanceTest extends TestCase
         $this->assertStringContainsString(number_format($data['mcRun']['paths']), $html);
     }
 
+    public function test_the_chart_axis_ages_match_the_cashflow_ladder_ages(): void
+    {
+        [$instance, , $resultsByVariant] = $this->completedRun();
+        $scenario = $instance->scenario;
+
+        // The cashflow ladder's ages come from the engine (YearResult::ages = baseAge +
+        // yearIndex); the chart axis derives age = calendarYear - birthYear. Same definition,
+        // so they must read identically for every overlapping year (no second age rule).
+        $ladder = ResultPresenter::ladder(app(ScenarioForecaster::class)->deterministic($scenario));
+        $presented = ResultPresenter::build($resultsByVariant, $scenario->variant->value, false, $scenario->toHousehold());
+
+        $fanAges = [];
+        foreach ($presented['fan']['rows'] as $row) {
+            $fanAges[$row['year']] = $row['ages'];
+        }
+
+        $this->assertNotEmpty($ladder['rows']);
+        foreach ($ladder['rows'] as $row) {
+            $this->assertSame($row['ages'], $fanAges[$row['year']] ?? null, "ages in {$row['year']}");
+        }
+    }
+
     /**
      * Run a synchronous preview and return the live component instance, the presenter's
      * panel output, and the per-variant results it was built from.

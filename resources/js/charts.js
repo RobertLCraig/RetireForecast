@@ -62,6 +62,25 @@ function chart(options) {
             }
             delete merged.moneyAxis
 
+            // ageByYear is our flag, not an ApexCharts option: relabel the calendar-year axis
+            // as two lines — the year, then the people's ages that year (e.g. "2040" / "age
+            // 82 / 84"). Returning an array makes ApexCharts stack the lines. Drop the flag.
+            const ageByYear = merged.ageByYear
+            delete merged.ageByYear
+            if (ageByYear) {
+                merged.xaxis = {
+                    ...(merged.xaxis ?? {}),
+                    labels: {
+                        ...((merged.xaxis ?? {}).labels ?? {}),
+                        formatter: (value) => {
+                            const year = Math.round(Number(value))
+                            const ages = ageByYear[year]
+                            return ages ? [String(year), 'age ' + ages] : String(year)
+                        },
+                    },
+                }
+            }
+
             // The chart is a progressive enhancement: every figure it plots is also in the
             // accessible table beside it. So if a chart ever fails to render, fail loud in the
             // console and degrade gracefully rather than leaving a silent blank box.

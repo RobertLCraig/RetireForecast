@@ -6,9 +6,17 @@ namespace Tests\Feature\Forecast;
 
 use App\Forecast\ResultPresenter;
 use App\Models\Result;
+use DateTimeImmutable;
 use Illuminate\Support\Collection;
+use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
+use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
+use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\Person;
+use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
+use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use Tests\TestCase;
 
 /**
@@ -74,6 +82,43 @@ final class ResultPresenterChartsTest extends TestCase
         $this->assertSame(Money::fromPounds(500_000)->format(), $incl['lineRows'][0]['cells']['stay_put']);
     }
 
+    public function test_person_ages_label_the_axis_and_the_chart_tables(): void
+    {
+        // age = calendarYear - birthYear (the engine's own per-year definition): 2026 -> 68 / 66.
+        $household = new Household('h', RegionProfile::EnglandWalesNi, [
+            new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired),
+            new Person('p2', new DateTimeImmutable('1960-09-01'), Sex::Male, EmploymentStatus::Retired),
+        ], new ExpenseProfile(Money::fromPounds(20_000), Money::zero(), Percent::fromPercent(70)));
+
+        $built = ResultPresenter::build($this->threeStrategies(), 'buy_outright', includeHome: false, household: $household);
+
+        $this->assertSame('68 / 66', $built['fan']['rows'][0]['ages']);
+        $this->assertSame('68 / 66', $built['comparison']['lineRows'][0]['ages']);
+        // The axis label map is attached for charts.js (year keys -> ages label).
+        $this->assertSame('68 / 66', $built['fan']['options']['ageByYear'][2026]);
+        $this->assertSame('69 / 67', $built['fan']['options']['ageByYear'][2027]);
+
+        // Without a household, ages are absent and the axis stays year-only.
+        $noAges = ResultPresenter::build($this->threeStrategies(), 'buy_outright');
+        $this->assertNull($noAges['fan']['rows'][0]['ages']);
+        $this->assertNull($noAges['fan']['options']['ageByYear']);
+    }
+
+    public function test_build_flags_when_a_run_predates_the_usable_fan(): void
+    {
+        // A fresh run carries the per-year usable fan -> the spendable view is available.
+        $this->assertTrue(ResultPresenter::build($this->threeStrategies(), 'buy_outright')['usableFanAvailable']);
+
+        // A run persisted before it -> flagged so the page can prompt a re-run instead of
+        // silently drawing total wealth as spendable.
+        $stale = collect([
+            'stay_put' => $this->makeResult('stay_put', 500_000, 300_000, 0.04, usableFan: false),
+            'buy_outright' => $this->makeResult('buy_outright', 520_000, 400_000, 0.01, usableFan: false),
+            'rent' => $this->makeResult('rent', 540_000, 540_000, 0.55, usableFan: false),
+        ]);
+        $this->assertFalse(ResultPresenter::build($stale, 'buy_outright')['usableFanAvailable']);
+    }
+
     /**
      * Three strategies with deliberately distinct total vs usable medians so the toggle and
      * the per-strategy lines are unambiguous. Keyed by variant value, as build() expects.
@@ -90,7 +135,7 @@ final class ResultPresenterChartsTest extends TestCase
         ]);
     }
 
-    private function makeResult(string $variant, int $total, int $usable, float $depletion): Result
+    private function makeResult(string $variant, int $total, int $usable, float $depletion, bool $usableFan = true): Result
     {
         $sim = new SimulationResult(
             nPaths: 100,
@@ -102,7 +147,8 @@ final class ResultPresenterChartsTest extends TestCase
             terminalWealthPercentiles: $this->band($total),
             fanChart: $this->fan([2026 => $total, 2027 => $total - 10_000]),
             usableWealthPercentiles: $this->band($usable),
-            usableFanChart: $this->fan([2026 => $usable, 2027 => $usable - 10_000]),
+            // A run from before the per-year usable fan landed has none.
+            usableFanChart: $usableFan ? $this->fan([2026 => $usable, 2027 => $usable - 10_000]) : [],
         );
 
         return (new Result(['variant' => $variant]))->setSimulationResult($sim);

@@ -54,7 +54,7 @@ See [DECISIONS.md](DECISIONS.md) for the full append-only log + rationale. The l
 
 ## What's next (in order)
 The go-live critical path — what stands between here and "done". Longer-tail and parked work is under Open items, not repeated here.
-1. **Real-browser verification pass** (the one remaining go-live activity): with the app served (`npm run build` then `php artisan serve`), eyeball that the ApexCharts fan + ladder canvases render under the CSP, that the 2FA QR scans with an authenticator app, and that the PDF layout looks right; run the accessibility sweep via in-browser axe DevTools / Lighthouse (the authoritative check — see docs/A11Y.md). **Now also re-verify the reworked results charts** (DECISIONS 2026-06-29): the fan + strategy-comparison default to spendable money (excl. home); the **"Include home value" toggle** swaps both charts (confirm the canvas actually re-renders on toggle, not just the tables); the comparison reads as one line per strategy over time; the £-abbreviated y-axis looks right.
+1. **Real-browser verification pass** (the one remaining go-live activity): with the app served (`npm run build` then `php artisan serve`), eyeball that the ApexCharts fan + ladder canvases render under the CSP, that the 2FA QR scans with an authenticator app, and that the PDF layout looks right; run the accessibility sweep via in-browser axe DevTools / Lighthouse (the authoritative check — see docs/A11Y.md). **Now also re-verify the reworked results charts** (DECISIONS 2026-06-29): the fan + strategy-comparison default to spendable money (excl. home); the **"Include home value" toggle** swaps both charts (confirm the canvas actually re-renders on toggle, not just the tables); the comparison reads as one line per strategy over time; the £-abbreviated y-axis looks right; the calendar-year axis shows the people's ages on a second line. **Re-run any pre-existing forecast** first — older stored runs lack the per-year usable fan and the page will show a re-run prompt (the spendable view + toggle only work on a fresh run).
 2. **Optional:** tighten the CSP `script-src` to nonces (Alpine CSP build) — needs the browser.
 
 ## Open items
@@ -123,7 +123,13 @@ re-inits it). Then, on Rob's follow-up ("why does it shoot up at 2068–2070?"),
 explainer under both charts: the rise is two real effects, **verified against the engine** (per-year `paths`
 collapses ~1,700 → single digits over the last decade; the median drifts up, total £1.05M→£1.22M / usable
 £510k→£644k) — the sample thins to a handful of very-long-lived futures, and a long survivor's guaranteed income
-covers their reduced spending so the remaining pot compounds. Suite stays green at 372 (one assertion added).
+covers their reduced spending so the remaining pot compounds. Then two more follow-ups: (a) the calendar-year
+axis + both chart tables now show each **person's age** that year (age = `calendarYear − birthYear`, the engine's
+own `YearResult::ages` definition, reconciled to the cashflow ladder in a test; axis formatter in `charts.js`),
+and (b) a **stale-run prompt** — a run computed before this change has no `usableFanChart`, so instead of
+silently drawing total wealth as spendable (which reads as "toggle does nothing / title stuck on Total wealth"),
+the page shows a neutral re-run note via a `usableFanAvailable` flag. **Existing runs must be re-run** to get the
+spendable view. Suite 372 → 375 green. Commits `6283b86` (charts + worker hint) then the ages/stale-run follow-up.
 
 _2026-06-29 (queued-run "waiting for a worker" hint — no silent failure)_ — Closed the go-live UX gap the
 2026-06-28 browser pass surfaced: clicking *Run the full 10,000-path forecast* with no `php artisan queue:work`
