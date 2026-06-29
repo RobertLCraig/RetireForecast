@@ -3,6 +3,23 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-29 — Adviser-legibility: input-sanity notes (explain a "wild numbers" result back to its input)
+**Decision:** Added **input-sanity notes** on the results page — a neutral "A note on your inputs" heads-up, placed
+above the figures it affects, explaining when an entered value produced a drastic modelling consequence, so a
+surprising result is understood rather than collapsing silently. Two cases, both live-edit foot-guns from Rob's
+walkthrough: (a) an **employed** person whose **retirement age is at/below their current age** → no salary is
+modelled (the note states both ages); (b) a person **modelled to die in the base year**, which a longevity/health
+age below the current age produces (the engine floors a death age at the current age) — read from the new
+single-source `ForecastResult::deathCalendarYears`. Factual and lint-safe; empty when nothing is amiss (no noise).
+**Why:** the "wild numbers" that triggered this workstream were Rob's own live edits doing exactly these two things
+with **no on-screen feedback** — the trust-killer. A note at the point of surprise closes that gap.
+`ResultPresenter::inputNotes` + a presenter test (each case fires; a sensible household raises nothing). **Still
+open (the rate/£ half of the plan's input-sanity item):** a live £-for-a-rate readout and out-of-range flagging in
+the builder (the sale waterfall already shows the selling-cost rate beside its £, so the 20% case is at least
+visible on the results page).
+[[2026-06-29 — Adviser-legibility: life-event milestones ("when does each event happen")]]
+**Status:** active (built, suite green; pending Rob's browser sign-off).
+
 ## 2026-06-29 — Adviser-legibility: life-event milestones ("when does each event happen")
 **Decision:** Built the life-event **milestones** timeline on the results page — a dated, aged list of *when* the
 major events happen across the projection: each person retires, takes their first planned pension withdrawal, their

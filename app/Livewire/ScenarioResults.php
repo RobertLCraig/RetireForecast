@@ -211,6 +211,9 @@ class ScenarioResults extends Component
             // Life-event milestones (when each person retires / SP starts / takes a pension /
             // dies), so the year-by-year cashflow is legible — what drives each step change.
             'milestones' => ResultPresenter::milestones($household, $forecast),
+            // Input-sanity heads-up where an entered value did something drastic (no salary
+            // because retirement age <= current age; a death floored to the base year).
+            'inputNotes' => ResultPresenter::inputNotes($household, $forecast),
             // Show-your-working: the assumptions every figure rests on, and (if a sale is
             // configured) where the sale proceeds come from and go. Both deterministic.
             'assumptions' => ResultPresenter::assumptionsPanel($assumptions, $action, $allocation),

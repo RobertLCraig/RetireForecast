@@ -63,6 +63,20 @@
         @endif
     </div>
 
+    {{-- Input-sanity heads-up: a neutral note where an entered value produced a drastic
+         modelling consequence, so a surprising result is understood, not silently wrong.
+         Placed high, before the figures it affects. --}}
+    @if ($inputNotes)
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4" role="note" aria-label="Notes about your inputs">
+            <h2 class="text-sm font-semibold text-amber-900">A note on your inputs</h2>
+            <ul class="mt-2 space-y-1 text-sm text-amber-800">
+                @foreach ($inputNotes as $note)
+                    <li>{{ $note['text'] }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     {{-- Headline output #1: the lump-sum tax shock. Deterministic, so it shows as soon as
          a withdrawal is planned, before (and independent of) any Monte Carlo run. --}}
     @if ($shock)

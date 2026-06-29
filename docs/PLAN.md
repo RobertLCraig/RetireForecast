@@ -472,7 +472,13 @@ how the proceeds are invested, so a user can see *why* a balance moves. Concrete
 sell-&-rent showed £72k net proceeds draining to £0 in ~4 years with no on-screen reason (see #1 + #4 for the two
 causes).
 
-**4. [LEGIBILITY] Input-sanity explanations where an entry silently does something drastic.** Retirement age
+**4. [LEGIBILITY] Input-sanity explanations where an entry silently does something drastic.** 🟡 **Partly built
+(2026-06-29, results-page notes; DECISIONS 2026-06-29 "input-sanity notes"):** `ResultPresenter::inputNotes` shows an
+"A note on your inputs" heads-up for the two life-event foot-guns — a retirement age at/below the current age (no
+salary modelled) and a death floored to the base year (a longevity/health age below the current age, via the new
+`ForecastResult::deathCalendarYears`). **Still to do:** the **rate/£ validation** half — a live £-for-a-rate readout
+and an out-of-range flag in the **builder** (the sale waterfall already shows the selling-cost rate beside its £, so
+the 20% case is visible on the results page). The original spec follows. Retirement age
 **≤** the person's current age → no earnings modelled at all (P1, born 1960, retire-age 66 in base-year 2026 →
 £30,000 salary dropped from year one). Longevity **offset** landing below current age → floored at current age =
 "dies within the year" (P2, median 88, −15 → 73 → clamped to 80). Surface a neutral note at the input and/or on

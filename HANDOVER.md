@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** Phase D go-live. Rebuild + Tier-1/Tier-2 + the results-chart rework are all built and signed off. A new **adviser-legibility workstream** is now the priority, opened from Rob's 2026-06-29 browser walkthrough: one **correctness** fix (housing + commute costs leak across the buy-vs-rent variants) plus four legibility gaps (life-event milestones, house-sale explainer, input-sanity notes, per-option "why"). See What's next + docs/PLAN.md + DECISIONS 2026-06-29.
-_Last updated: 2026-06-29 (adviser-legibility: explainer/show-your-working layer + life-event milestones built — sale waterfall, assumptions panel, itemised spend, milestones timeline; pending Rob's browser sign-off)._
+_Last updated: 2026-06-29 (adviser-legibility presentation layer built — sale waterfall, assumptions panel, itemised spend, life-event milestones, input-sanity notes; pending Rob's browser sign-off. Correctness fix #1 + per-variant ladder remain)._
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -54,10 +54,10 @@ See [DECISIONS.md](DECISIONS.md) for the full append-only log + rationale. The l
 
 ## What's next (in order)
 The go-live critical path. Longer-tail and parked work is under Open items, not repeated here.
-1. **Adviser-legibility workstream** — the priority from Rob's 2026-06-29 browser walkthrough (full detail: docs/PLAN.md "Adviser-legibility workstream (2026-06-29)"; decisions: DECISIONS 2026-06-29). None of it is an engine bug (determinism + mortality re-verified); it is cost placement + missing explanation. **Guiding principle (Rob): trust comes from explanation — every headline figure must be traceable on screen to its inputs/assumptions, so this sits above remaining go-live polish.** The **explainer / show-your-working layer is built (2026-06-29, pending Rob's browser sign-off):** the house-sale waterfall (proceeds decomposition + per-option destination, selling-cost rate shown beside the £), the assumptions panel (real-vs-nominal labelled, single-source blended return), itemised per-year spend (essential/discretionary), and the **life-event milestones** timeline (when each person retires / their State Pension starts / takes a pension / dies — death from a new single-source engine field `ForecastResult::deathCalendarYears`; the house-sale marker waits for the per-variant ladder) on the results page — see DECISIONS. Remaining, in order:
+1. **Adviser-legibility workstream** — the priority from Rob's 2026-06-29 browser walkthrough (full detail: docs/PLAN.md "Adviser-legibility workstream (2026-06-29)"; decisions: DECISIONS 2026-06-29). None of it is an engine bug (determinism + mortality re-verified); it is cost placement + missing explanation. **Guiding principle (Rob): trust comes from explanation — every headline figure must be traceable on screen to its inputs/assumptions, so this sits above remaining go-live polish.** The **explainer / show-your-working layer is built (2026-06-29, pending Rob's browser sign-off):** the house-sale waterfall (proceeds decomposition + per-option destination, selling-cost rate shown beside the £), the assumptions panel (real-vs-nominal labelled, single-source blended return), itemised per-year spend (essential/discretionary), the **life-event milestones** timeline (when each person retires / their State Pension starts / takes a pension / dies — death from a new single-source engine field `ForecastResult::deathCalendarYears`; the house-sale marker waits for the per-variant ladder), and **input-sanity notes** (a heads-up when an input did something drastic — no salary from a retirement age at/below current age; a death floored to the base year) on the results page — see DECISIONS. Remaining, in order:
    1. **[correctness] Contingent-cost placement.** Housing costs (mortgage payment, service charge, owner maintenance) and status costs (commute fuel) currently sit in shared `expenseProfile`, so they're charged in *every* buy-vs-rent variant — phantom mortgage + service charge in *sell & rent* and *buy outright*, commute that never stops at retirement. Give each cost one home tied to what it depends on (property/decision, or employment status), charged only while its condition holds; guard with reconciliation tests (property costs in zero post-sale years; commute zero from the retirement year).
    2. **Per-strategy cashflow ladder** — the year-by-year cashflow must show the differences *by housing strategy* (it is currently a single projection of the raw household that ignores the variant transforms). Needs a deterministic per-variant projection; pairs with step 1.
-   3. **Input-sanity** notes — retirement age ≤ current age (salary dropped); longevity offset below current age (death within the year); **rate/£ validation** (the real couple's selling-cost rate applied as 20% = £70k vs ~2%, rent as £1,650/yr ≈ £137/mo likely monthly, both with no on-screen feedback). *(The sale waterfall now shows the selling-cost rate beside its £, so the 20% case is at least visible; active validation still to do.)*
+   3. **Input-sanity — the rate/£ validation half.** **rate/£ validation** (the real couple's selling-cost rate applied as 20% = £70k vs ~2%, rent as £1,650/yr ≈ £137/mo likely monthly, both with no on-screen feedback): a live £-for-a-rate readout + an out-of-range flag in the builder. *(The results-page notes for retirement-age-≤-current-age and immediate-death are built; the sale waterfall shows the selling-cost rate beside its £, so the 20% case is visible — the active builder-side validation is what remains.)*
    4. Per-option plain-English **"why"** narrative, milestone-anchored, lint-safe. *(The milestones layer it anchors to is now built; markers on the ladder/charts still to add.)*
    5. **Real-time cost toggles** — switch individual cost lines (mortgage / service charge / commute) on/off and see the forecast move live.
 2. **Finish the real-browser verification pass.** The a11y axe/Lighthouse sweep is underway — one finding fixed (the scrollable data-table wrappers are now keyboard-focusable via `tabindex="0"`; see docs/A11Y.md sweep log). PDF layout looked right to Rob; **2FA QR scan deferred by Rob**. NB the local DB has **0 completed runs**, so re-run a forecast before checking the Monte Carlo charts / PDF.
@@ -110,6 +110,19 @@ On `master`, local repo only (no remote, no PR) — personal local-first project
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-06-29 (adviser-legibility: input-sanity notes built)_ — Rounded out the legibility *presentation* layer with
+**input-sanity notes** on the results page (`ResultPresenter::inputNotes` + an "A note on your inputs" box, placed
+above the figures it affects): a neutral heads-up where an entered value did something drastic — (a) an employed
+person whose **retirement age is at/below their current age**, so no salary is modelled; (b) a person **modelled to
+die in the base year** (a longevity/health age below the current age, which the engine floors at the current age),
+read from the new `ForecastResult::deathCalendarYears`. These are exactly the two live-edit foot-guns behind the
+"wild numbers" Rob saw, now explained at the point of surprise. Factual/lint-safe; no notes when nothing is amiss.
+Presenter test covers both cases + the no-noise case. **Still open from the plan's input-sanity item:** the rate/£
+*builder-side* validation (live £-for-a-rate, out-of-range flag). This is the **third committed increment** of the
+session (after the explainer layer and milestones); all three are local-only, pending Rob's browser pass. Next: the
+correctness fix **#1 (contingent-cost placement)** + the **per-variant ladder (#6)** — bigger, engine + data-model
+work that also needs Rob's input on the builder UX for tagging a cost's condition.
 
 _2026-06-29 (adviser-legibility: life-event milestones built)_ — Continued the explainer layer with a **life-event
 milestones** timeline on the results page (`ResultPresenter::milestones` + a "When the big events happen" section): a

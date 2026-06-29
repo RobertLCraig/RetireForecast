@@ -557,6 +557,51 @@ final class ResultPresenter
         return $events;
     }
 
+    /**
+     * Input-sanity notes: a neutral heads-up where an entered value produced a drastic
+     * modelling consequence the user might not have intended — surfaced so a surprising
+     * result is understood, not silently wrong (the "wild numbers" a live edit can cause).
+     * Each is a factual statement of what the forecast modelled and which input drove it,
+     * never a recommendation. Empty when nothing is notable.
+     *
+     * Covered: (a) an employed person whose retirement age is at/below their current age, so
+     * no salary is modelled; (b) a person modelled to die in the base year, which a
+     * longevity/health setting below their current age produces (the engine floors a death
+     * age at the current age). Both were live-edit foot-guns in Rob's 2026-06-29 walkthrough.
+     *
+     * @return list<array{kind: string, text: string}>
+     */
+    public static function inputNotes(Household $household, ForecastResult $forecast): array
+    {
+        if ($forecast->years === []) {
+            return [];
+        }
+
+        $baseYear = $forecast->years[0]->calendarYear;
+
+        $notes = [];
+        foreach ($household->persons as $i => $person) {
+            $name = self::personLabel($person, $i);
+            $currentAge = $baseYear - (int) $person->dob->format('Y');
+
+            // (a) Earnings dropped because the retirement age is at/below the current age.
+            $working = in_array($person->employmentStatus, [EmploymentStatus::Employed, EmploymentStatus::SelfEmployed], true);
+            if ($working && $person->grossSalary !== null && $person->grossSalary->isPositive()
+                && $person->plannedRetirementAge !== null && $person->plannedRetirementAge <= $currentAge) {
+                $notes[] = ['kind' => 'no_salary', 'text' => "No earnings are modelled for {$name}: their retirement age ({$person->plannedRetirementAge}) is at or below their current age ({$currentAge}), so the forecast includes no salary from them."];
+            }
+
+            // (b) Modelled to die in the base year — what a longevity/health age below the
+            // current age produces, since the engine floors a death age at the current age.
+            $deathYear = $forecast->deathCalendarYears[$person->id] ?? null;
+            if ($deathYear !== null && $deathYear <= $baseYear) {
+                $notes[] = ['kind' => 'early_death', 'text' => "{$name} is modelled to die in {$deathYear} (age {$currentAge}), the very start of the forecast. If that isn't intended, check their longevity or health setting — a value below the current age is treated as the current age."];
+            }
+        }
+
+        return $notes;
+    }
+
     /** A person's display name if set, else "Person N" in household order. */
     private static function personLabel(Person $person, int $index): string
     {
