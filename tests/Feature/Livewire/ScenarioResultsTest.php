@@ -281,6 +281,38 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('php artisan queue:work');
     }
 
+    public function test_the_results_page_shows_the_assumptions_panel_and_sale_explainer_before_any_run(): void
+    {
+        // The show-your-working layer is deterministic, so it renders immediately. The rich
+        // fixture configures a sale (£525k) and a cheaper home (£320k), so both the proceeds
+        // waterfall and the buy destination appear.
+        $this->get(route('scenarios.results', $this->scenario()))
+            ->assertOk()
+            ->assertSee('The assumptions behind these figures')
+            ->assertSee('Investment growth (blended, real)')
+            ->assertSee('Investment income yield (nominal)')
+            ->assertSee('If you sell: where the money comes from and goes')
+            ->assertSee('Net proceeds')
+            ->assertSee('If you sell & buy cheaper')
+            ->assertSee('Surplus invested')
+            // The ladder spend is itemised into its essential floor and discretionary remainder.
+            ->assertSee('split into its essential floor and discretionary remainder');
+    }
+
+    public function test_the_cashflow_ladder_csv_carries_the_essential_and_discretionary_split(): void
+    {
+        /** @var ScenarioResults $instance */
+        $instance = Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])->instance();
+        $response = $instance->downloadLadderCsv();
+
+        ob_start();
+        $response->sendContent();
+        $csv = ob_get_clean();
+
+        $this->assertStringContainsString('Essential spend', $csv);
+        $this->assertStringContainsString('Discretionary spend', $csv);
+    }
+
     private function scenario(): Scenario
     {
         return $this->scenarioFor($this->user);

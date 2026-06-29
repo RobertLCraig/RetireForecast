@@ -75,7 +75,7 @@ final class HousingComparison
         $stayPut = $simulator->run($household, $settings, $assumptions, $this->lifeTable, $nPaths, $seed, $variantProgress(0));
 
         $buyResult = $simulator->run(
-            $this->buyVariant($household, $action, $netProceeds),
+            $this->buyVariant($household, $action),
             $settings,
             $assumptions,
             $this->lifeTable,
@@ -114,22 +114,35 @@ final class HousingComparison
         return new HousingProceeds($action->salePrice, $mortgage, $sellingCosts, $cgt, $netProceeds);
     }
 
-    private function buyVariant(Household $household, HousingAction $action, Money $netProceeds): Household
+    /**
+     * Decompose the buy-cheaper leg into the surplus that ends up invested (single source —
+     * {@see HousingPurchase}). Public so the figure can be surfaced and reconciled rather
+     * than recomputed: {@see buyVariant} reads it, and so does any UI breakdown.
+     */
+    public function buyOutcome(Household $household, HousingAction $action): HousingPurchase
     {
+        $netProceeds = $this->saleProceeds($household, $action)->netProceeds;
         $buyPrice = $action->buyPrice ?? Money::zero();
         $sdlt = (new SdltCalculator($this->config))->compute($buyPrice)->total;
         $moving = $action->movingCosts ?? Money::fromPence(self::DEFAULT_MOVING_COSTS_PENCE);
 
         $surplus = $netProceeds->minus($buyPrice)->minus($sdlt)->minus($moving)->minZero();
 
+        return new HousingPurchase($netProceeds, $buyPrice, $sdlt, $moving, $surplus);
+    }
+
+    private function buyVariant(Household $household, HousingAction $action): Household
+    {
+        $outcome = $this->buyOutcome($household, $action);
+
         $newProperty = new Property(
-            currentValue: $buyPrice,
+            currentValue: $outcome->buyPrice,
             ownership: OwnershipType::Outright,
             isPrimaryResidence: true,
-            runningCosts: $this->scaledRunningCosts($household, $action, $buyPrice),
+            runningCosts: $this->scaledRunningCosts($household, $action, $outcome->buyPrice),
         );
 
-        return $this->withHousing($household, $newProperty, $surplus);
+        return $this->withHousing($household, $newProperty, $outcome->surplus);
     }
 
     private function rentVariant(Household $household, Money $netProceeds): Household

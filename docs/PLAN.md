@@ -445,7 +445,15 @@ cashflow ladder + charts ("2027 · P2 dies", "2027 · P1's State Pension starts"
 figures the engine already produces (`YearResult::ages`, SPA year, withdrawal ages, death ages); read-only
 presentation.
 
-**3. [LEGIBILITY] House-sale explainer — show the decomposition and the destination.** "Sell gives us ~£80k?"
+**3. [LEGIBILITY] House-sale explainer — show the decomposition and the destination.** ✅ **Built (2026-06-29,
+results page; DECISIONS 2026-06-29 "explainer / show-your-working layer"):** `ResultPresenter::saleExplainer` shows
+the proceeds waterfall + per-option destination (the selling-cost **rate** beside the £, so the 20% case is
+visible), reading the engine's single-source `HousingProceeds` + a new reconciled `HousingPurchase` for the
+buy-side surplus; an `assumptionsPanel` states the blended **real** return (single-source) and the other
+assumptions, each labelled real-vs-nominal; and the cashflow ladder itemises spend into essential/discretionary.
+Reconciliation + labelling guards added. **Still to do:** surface it on the **PDF** too (currently results-page
+only), and the per-year *drawdown narrative* ("what was spent when and why") lands with the milestones (#2) and the
+per-strategy ladder (#6). The original spec follows. "Sell gives us ~£80k?"
 must be auditable: sale price − outstanding mortgage − selling costs (2%) − CGT (£0, PRR v1) = **net proceeds**;
 for buy-cheaper, − buy price − SDLT − moving = **surplus**; then **where the money goes** — it is invested into a
 GIA following the chosen assumption set's **blended real return** (state the %, and that it is *real*, i.e. after

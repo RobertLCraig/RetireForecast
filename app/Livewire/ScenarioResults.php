@@ -134,7 +134,7 @@ class ScenarioResults extends Component
             foreach ($ladder['sources'] as $source) {
                 $header[] = $ladder['sourceLabels'][$source];
             }
-            $header = [...$header, 'Tax', 'Spend', 'Unmet spend', 'Usable wealth (excl. home)', 'Total wealth (incl. home)'];
+            $header = [...$header, 'Tax', 'Spend', 'Essential spend', 'Discretionary spend', 'Unmet spend', 'Usable wealth (excl. home)', 'Total wealth (incl. home)'];
             fputcsv($out, $header);
 
             foreach ($ladder['rows'] as $row) {
@@ -142,7 +142,7 @@ class ScenarioResults extends Component
                 foreach ($ladder['sources'] as $source) {
                     $line[] = $row['income'][$source];
                 }
-                $line = [...$line, $row['tax'], $row['spend'], $row['shortfall'] ?? '', $row['usableWealth'], $row['totalWealth']];
+                $line = [...$line, $row['tax'], $row['spend'], $row['essentialSpend'], $row['discretionarySpend'], $row['shortfall'] ?? '', $row['usableWealth'], $row['totalWealth']];
                 fputcsv($out, $line);
             }
             fclose($out);
@@ -172,9 +172,20 @@ class ScenarioResults extends Component
             }
         }
 
+        $forecaster = app(ScenarioForecaster::class);
+
         // One deterministic central projection feeds both the cashflow ladder and the
         // income-floor readout, so they read the same single source (no second run).
-        $forecast = app(ScenarioForecaster::class)->deterministic($this->scenario);
+        $forecast = $forecaster->deterministic($this->scenario);
+
+        // The deterministic home-sale decomposition + the assumptions behind it, so every
+        // headline figure traces to its inputs (show-your-working). Single-sourced from the
+        // engine (HousingProceeds / HousingPurchase) and reconciled to the forecast.
+        $household = $this->scenario->toHousehold();
+        $action = $this->scenario->toHousingAction();
+        $assumptions = $forecaster->assumptions($this->scenario);
+        $allocation = $forecaster->settings($this->scenario)->allocation();
+        $housing = $forecaster->housingComparison($this->scenario);
 
         return view('livewire.scenario-results', [
             'run' => $run,
@@ -197,6 +208,16 @@ class ScenarioResults extends Component
             // Deterministic year-by-year cashflow ladder (income by source -> tax -> spend
             // -> wealth). Shows immediately, before any Monte Carlo run.
             'ladder' => ResultPresenter::ladder($forecast),
+            // Show-your-working: the assumptions every figure rests on, and (if a sale is
+            // configured) where the sale proceeds come from and go. Both deterministic.
+            'assumptions' => ResultPresenter::assumptionsPanel($assumptions, $action, $allocation),
+            'saleExplainer' => ResultPresenter::saleExplainer(
+                $housing->saleProceeds($household, $action),
+                $housing->buyOutcome($household, $action),
+                $action,
+                $allocation->blendedRealReturn($assumptions),
+                $assumptions->investmentIncomeYield->asFraction(),
+            ),
         ])->title('Forecast results');
     }
 

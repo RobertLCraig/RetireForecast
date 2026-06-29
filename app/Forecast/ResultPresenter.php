@@ -9,10 +9,15 @@ use App\Import\MoneyText;
 use App\Models\Result;
 use Illuminate\Support\Collection;
 use RetireForecast\FinanceEngine\Benchmark\RetirementLivingStandards;
+use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
+use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Forecast\YearResult;
+use RetireForecast\FinanceEngine\Housing\HousingProceeds;
+use RetireForecast\FinanceEngine\Housing\HousingPurchase;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 
@@ -443,12 +448,19 @@ final class ResultPresenter
             foreach ($active as $source) {
                 $income[$source] = ($year->incomeBySource[$source] ?? Money::zero())->format();
             }
+            // Itemise the year's spend into its essential floor and the discretionary
+            // remainder (discretionary = target − essential, floored at zero), so the spend
+            // is traceable rather than a single opaque number. The two reconcile to the
+            // target by construction (asserted in the ladder reconciliation test).
+            $discretionary = $year->spendTarget->minus($year->essentialSpend)->minZero();
             $rows[] = [
                 'year' => $year->calendarYear,
                 'ages' => implode(' / ', $year->ages),
                 'income' => $income,
                 'tax' => $year->totalTax->format(),
                 'spend' => $year->spendTarget->format(),
+                'essentialSpend' => $year->essentialSpend->format(),
+                'discretionarySpend' => $discretionary->format(),
                 'shortfall' => $year->unmetSpend->isZero() ? null : $year->unmetSpend->format(),
                 'usableWealth' => $year->liquidWealth->plus($year->pensionWealth)->format(),
                 'totalWealth' => $year->totalWealth->format(),
@@ -663,6 +675,137 @@ final class ResultPresenter
             'total' => $spending->plus($saving)->format(),
             'hasSaving' => $saving->isPositive(),
         ];
+    }
+
+    /**
+     * The house-sale explainer: a plain decomposition of what selling the current home
+     * actually yields, and where the money goes. It surfaces the engine's single-source
+     * breakdown objects so the headline "we'd get ~£X" traces to its parts and reconciles:
+     *
+     *  - the proceeds waterfall: sale price − outstanding mortgage − selling costs − CGT
+     *    (£0 on a main home via PRR in v1) = net proceeds;
+     *  - if selling and renting: the full net proceeds are invested;
+     *  - if selling and buying cheaper: net − buy price − SDLT − moving = the surplus invested;
+     *  - and the assumption the invested money then grows at (the blended real return), with
+     *    a share paid out each year as taxable income (the income yield) rather than sitting idle.
+     *
+     * The selling-cost percentage is shown beside the £ figure so an out-of-range rate is
+     * visible (e.g. a 20% entry showing as 20% of the sale price), not buried.
+     *
+     * Returns null when no sale is configured (sale price zero) — e.g. a stay-put plan — so
+     * the section simply does not render. Factual throughout, never a recommendation.
+     *
+     * @return array{sellingRatePct: string, sellingRateIsDefault: bool, proceeds: array{salePrice: string, mortgage: string, hasMortgage: bool, sellingCosts: string, cgt: string, netProceeds: string, clearsCosts: bool}, rent: array{invested: string, annualRent: ?string}, buy: ?array{netProceeds: string, buyPrice: string, sdlt: string, movingCosts: string, surplus: string, coversPurchase: bool}, blendedReturnPct: string, incomeYieldPct: string}|null
+     */
+    public static function saleExplainer(
+        HousingProceeds $proceeds,
+        HousingPurchase $purchase,
+        HousingAction $action,
+        float $blendedRealReturn,
+        float $investmentIncomeYield,
+    ): ?array {
+        if (! $proceeds->salePrice->isPositive()) {
+            return null;
+        }
+
+        return [
+            'sellingRatePct' => self::ratePct($action->sellingCostRate?->asPercent() ?? 2.0),
+            'sellingRateIsDefault' => $action->sellingCostRate === null,
+            'proceeds' => [
+                'salePrice' => $proceeds->salePrice->format(),
+                'mortgage' => $proceeds->outstandingMortgage->format(),
+                'hasMortgage' => $proceeds->outstandingMortgage->isPositive(),
+                'sellingCosts' => $proceeds->sellingCosts->format(),
+                'cgt' => $proceeds->capitalGainsTax->format(),
+                'netProceeds' => $proceeds->netProceeds->format(),
+                'clearsCosts' => $proceeds->clearsCosts(),
+            ],
+            // Sell & rent: the full net proceeds are invested; rent is then paid from income.
+            'rent' => [
+                'invested' => $proceeds->netProceeds->format(),
+                'annualRent' => $action->annualRent !== null && $action->annualRent->isPositive() ? $action->annualRent->format() : null,
+            ],
+            // Sell & buy cheaper: only when a buy price is set (otherwise the plan is rent-only).
+            'buy' => $purchase->buyPrice->isPositive() ? [
+                'netProceeds' => $purchase->netProceeds->format(),
+                'buyPrice' => $purchase->buyPrice->format(),
+                'sdlt' => $purchase->stampDuty->format(),
+                'movingCosts' => $purchase->movingCosts->format(),
+                'surplus' => $purchase->surplus->format(),
+                'coversPurchase' => $purchase->coversPurchase(),
+            ] : null,
+            'blendedReturnPct' => self::ratePct($blendedRealReturn * 100),
+            'incomeYieldPct' => self::ratePct($investmentIncomeYield * 100),
+        ];
+    }
+
+    /**
+     * The assumptions panel: the economic assumptions and housing-decision inputs the
+     * forecast actually runs on, surfaced so every figure on the page traces to a stated
+     * basis (show-your-working). Reports the figures as facts — no judgement, no
+     * recommendation.
+     *
+     * Investment growth is the allocation-weighted blended REAL return (above inflation),
+     * read from the single source ({@see PortfolioAllocation::blendedRealReturn}); the asset
+     * mix it is blended from is described so the figure is not a black box. House, rent and
+     * salary growth are also REAL (above inflation); inflation itself is the CPI assumption;
+     * the investment income yield is NOMINAL (the share of the return paid out and taxed each
+     * year). Each row says which it is, so a real and a nominal figure are never confused.
+     *
+     * @return array{setName: string, sourceNote: string, mix: string, economic: list<array{label: string, value: string, note: string}>, housing: list<array{label: string, value: string}>}
+     */
+    public static function assumptionsPanel(AssumptionSet $set, HousingAction $action, PortfolioAllocation $allocation): array
+    {
+        $blended = $allocation->blendedRealReturn($set);
+
+        // Describe the mix the blended return is weighted from, straight from the weights +
+        // asset-class names, so it can never drift from the figure it explains.
+        $mixParts = [];
+        foreach ($set->assetClasses as $i => $assetClass) {
+            $weight = $allocation->weights[$i] ?? 0.0;
+            if ($weight > 0.0) {
+                $mixParts[] = self::ratePct($weight * 100).' '.lcfirst($assetClass->name);
+            }
+        }
+
+        $economic = [
+            ['label' => 'Investment growth (blended, real)', 'value' => self::ratePct($blended * 100), 'note' => 'a year above inflation, for invested pots and proceeds'],
+            ['label' => 'Inflation (CPI)', 'value' => self::ratePct($set->inflationMean->asPercent()), 'note' => 'figures on this page are shown in today\'s money'],
+            ['label' => 'House price growth (real)', 'value' => self::ratePct($set->houseGrowth->asPercent()), 'note' => 'a year above inflation'],
+            ['label' => 'Rent growth (real)', 'value' => self::ratePct($set->rentInflation->asPercent()), 'note' => 'a year above inflation'],
+            ['label' => 'Salary growth (real)', 'value' => self::ratePct($set->salaryGrowth->asPercent()), 'note' => 'a year above inflation'],
+            ['label' => 'Investment income yield (nominal)', 'value' => self::ratePct($set->investmentIncomeYield->asPercent()), 'note' => 'the part of the return paid out and taxed each year; the rest is capital growth'],
+        ];
+
+        $housing = [
+            ['label' => 'Selling costs', 'value' => self::ratePct($action->sellingCostRate?->asPercent() ?? 2.0).' of the sale price'],
+        ];
+        if ($action->movingCosts !== null) {
+            $housing[] = ['label' => 'Moving costs', 'value' => $action->movingCosts->format()];
+        }
+        if ($action->buyPrice !== null && $action->buyPrice->isPositive()) {
+            $housing[] = ['label' => 'Cheaper home to buy', 'value' => $action->buyPrice->format()];
+        }
+        if ($action->annualRent !== null && $action->annualRent->isPositive()) {
+            $housing[] = ['label' => 'Rent (if renting)', 'value' => $action->annualRent->format().' a year'];
+        }
+
+        return [
+            'setName' => $set->name,
+            'sourceNote' => $set->sourceNote,
+            'mix' => implode(' / ', $mixParts),
+            'economic' => $economic,
+            'housing' => $housing,
+        ];
+    }
+
+    /**
+     * A rate as a trimmed percentage string: 2 -> "2%", 1.76 -> "1.76%", 8.75 -> "8.75%".
+     * Rounds to two decimals (basis-point figures never need more) and drops trailing zeros.
+     */
+    private static function ratePct(float $percent): string
+    {
+        return rtrim(rtrim(number_format(round($percent, 2), 2, '.', ''), '0'), '.').'%';
     }
 
     /**

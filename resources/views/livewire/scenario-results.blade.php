@@ -322,6 +322,92 @@
         </section>
     @endif
 
+    {{-- Show-your-working: the assumptions every figure on this page rests on, surfaced so a
+         headline figure can be traced to its basis. Factual, never a recommendation. --}}
+    <section aria-labelledby="assumptions-heading" class="{{ $card }}">
+        <h2 id="assumptions-heading" class="text-xl font-semibold text-gray-900">The assumptions behind these figures</h2>
+        <p class="mt-1 text-sm text-gray-600">
+            Every figure on this page rests on these assumptions. Returns and growth are <strong>real</strong> — they are above inflation, so amounts stay in today's money. The "How sensitive is this?" section above shows how much the answer changes under different sets.
+        </p>
+        <dl class="mt-4 grid gap-3 sm:grid-cols-2">
+            @foreach ($assumptions['economic'] as $row)
+                <div class="rounded-md border border-gray-200 p-3">
+                    <div class="flex items-baseline justify-between gap-3">
+                        <dt class="text-sm text-gray-700">{{ $row['label'] }}</dt>
+                        <dd class="text-sm font-semibold text-gray-900 tabular-nums">{{ $row['value'] }}</dd>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">{{ $row['note'] }}</p>
+                </div>
+            @endforeach
+        </dl>
+        <p class="mt-3 text-xs text-gray-500">
+            Investment growth blends {{ $assumptions['mix'] }}. Assumption set: <strong>{{ $assumptions['setName'] }}</strong>. {{ $assumptions['sourceNote'] }}
+        </p>
+        @if ($assumptions['housing'])
+            <h3 class="mt-5 text-sm font-semibold text-gray-900">Housing-decision inputs</h3>
+            <dl class="mt-2 flex flex-wrap gap-x-8 gap-y-1 text-sm">
+                @foreach ($assumptions['housing'] as $row)
+                    <div class="flex gap-2"><dt class="text-gray-600">{{ $row['label'] }}</dt><dd class="font-medium text-gray-900">{{ $row['value'] }}</dd></div>
+                @endforeach
+            </dl>
+        @endif
+    </section>
+
+    {{-- House-sale explainer: the proceeds waterfall (sale − mortgage − selling costs − CGT
+         = net) and where the money goes for each option, single-sourced from the engine and
+         reconciled. Shows only when a sale is configured. Factual, never a recommendation. --}}
+    @if ($saleExplainer)
+        @php $se = $saleExplainer; @endphp
+        <section aria-labelledby="sale-heading" class="{{ $card }}">
+            <h2 id="sale-heading" class="text-xl font-semibold text-gray-900">If you sell: where the money comes from and goes</h2>
+            <p class="mt-1 text-sm text-gray-600">
+                Selling the current home is assumed at {{ $se['proceeds']['salePrice'] }}. After the costs of selling, this is what is left to invest — and, if buying a cheaper home, what is left over after that purchase. Figures are in today's money.
+            </p>
+
+            <div class="mt-4 overflow-x-auto" tabindex="0">
+                <table class="w-full text-sm">
+                    <caption class="sr-only">How the sale price becomes net proceeds</caption>
+                    <tbody>
+                        <tr><th scope="row" class="{{ $td }} text-left font-medium">Sale price</th><td class="{{ $td }} text-right tabular-nums">{{ $se['proceeds']['salePrice'] }}</td></tr>
+                        @if ($se['proceeds']['hasMortgage'])
+                            <tr><th scope="row" class="{{ $td }} text-left">less outstanding mortgage</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['mortgage'] }}</td></tr>
+                        @endif
+                        <tr><th scope="row" class="{{ $td }} text-left">less selling costs ({{ $se['sellingRatePct'] }} of the sale price@if ($se['sellingRateIsDefault']), assumed@endif)</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['sellingCosts'] }}</td></tr>
+                        <tr><th scope="row" class="{{ $td }} text-left">less capital gains tax (main home, fully relieved)</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['cgt'] }}</td></tr>
+                        <tr class="bg-blue-50"><th scope="row" class="{{ $td }} text-left font-semibold">Net proceeds</th><td class="{{ $td }} text-right font-semibold tabular-nums">{{ $se['proceeds']['netProceeds'] }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            @unless ($se['proceeds']['clearsCosts'])
+                <p role="status" class="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">On these figures the sale does not cover the mortgage and selling costs, so there are no net proceeds to invest.</p>
+            @endunless
+
+            <div class="mt-4 grid gap-4 @if ($se['buy']) md:grid-cols-2 @endif">
+                <div class="rounded-md border border-gray-200 p-4">
+                    <h3 class="font-medium text-gray-900">If you sell &amp; rent</h3>
+                    <p class="mt-1 text-sm text-gray-700">All {{ $se['rent']['invested'] }} of the net proceeds is invested.@if ($se['rent']['annualRent']) Rent of {{ $se['rent']['annualRent'] }} a year is then paid from income.@endif</p>
+                </div>
+                @if ($se['buy'])
+                    <div class="rounded-md border border-gray-200 p-4">
+                        <h3 class="font-medium text-gray-900">If you sell &amp; buy cheaper</h3>
+                        <dl class="mt-2 space-y-1 text-sm text-gray-700">
+                            <div class="flex justify-between gap-3"><dt>Net proceeds</dt><dd class="tabular-nums">{{ $se['buy']['netProceeds'] }}</dd></div>
+                            <div class="flex justify-between gap-3"><dt>less the cheaper home</dt><dd class="tabular-nums">−{{ $se['buy']['buyPrice'] }}</dd></div>
+                            <div class="flex justify-between gap-3"><dt>less stamp duty</dt><dd class="tabular-nums">−{{ $se['buy']['sdlt'] }}</dd></div>
+                            <div class="flex justify-between gap-3"><dt>less moving costs</dt><dd class="tabular-nums">−{{ $se['buy']['movingCosts'] }}</dd></div>
+                            <div class="flex justify-between gap-3 border-t border-gray-200 pt-1 font-semibold text-gray-900"><dt>Surplus invested</dt><dd class="tabular-nums">{{ $se['buy']['surplus'] }}</dd></div>
+                        </dl>
+                    </div>
+                @endif
+            </div>
+
+            <p class="mt-4 text-sm text-gray-700">
+                Invested money is not left idle: it goes into an investment account growing at the blended real return of <strong>{{ $se['blendedReturnPct'] }}</strong> a year (above inflation). About {{ $se['incomeYieldPct'] }} of the value is paid out each year as taxable income; the rest is capital growth. The year-by-year cashflow below shows how that balance is drawn on.
+            </p>
+            <x-signpost class="mt-4" />
+        </section>
+    @endif
+
     {{-- Year-by-year cashflow ladder. The deterministic central projection, so it shows
          immediately: where income comes from each year, the tax on it, the spend it must
          meet, and the usable (excl. home) vs total (incl. home) wealth carried forward. --}}
@@ -332,7 +418,7 @@
                 <button type="button" wire:click="downloadLadderCsv" class="text-sm text-blue-700 underline">Download CSV</button>
             </div>
             <p class="mt-1 text-sm text-gray-600">
-                The central best-estimate projection, year by year: where income comes from, the tax on it, the spend it has to meet, and the usable (excl. home) and total (incl. home) wealth carried forward. Figures are in today's money. This is one illustrative path, not a probability.
+                The central best-estimate projection, year by year: where income comes from, the tax on it, the spend it has to meet (split into its essential floor and discretionary remainder), and the usable (excl. home) and total (incl. home) wealth carried forward. Figures are in today's money. This is one illustrative path, not a probability.
             </p>
             <div class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-sm whitespace-nowrap">
@@ -361,6 +447,7 @@
                                 <td class="{{ $td }} text-right">{{ $row['tax'] }}</td>
                                 <td class="{{ $td }} text-right">
                                     {{ $row['spend'] }}
+                                    <span class="block text-xs text-gray-500">ess {{ $row['essentialSpend'] }} · disc {{ $row['discretionarySpend'] }}</span>
                                     @if ($row['shortfall'])<span class="block text-xs text-amber-700">unmet {{ $row['shortfall'] }}</span>@endif
                                 </td>
                                 <td class="{{ $td }} text-right">{{ $row['usableWealth'] }}</td>

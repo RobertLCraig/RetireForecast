@@ -3,6 +3,37 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-29 — Adviser-legibility: the explainer / show-your-working layer (sale waterfall, assumptions panel, itemised spend)
+**Decision:** Built the first slice of the adviser-legibility workstream — the **explainer / show-your-working
+layer** (the option Rob chose over starting with the correctness fix), all deterministic so it renders before any
+Monte Carlo run, all factual and lint-safe:
+(1) **House-sale waterfall** (`ResultPresenter::saleExplainer`): the proceeds decomposition (sale − mortgage −
+selling costs − CGT = net) and where the money goes per option (sell & rent: the full net invested; sell & buy
+cheaper: net − buy − SDLT − moving = surplus invested). The selling-cost **rate** is shown beside the £ figure so
+an out-of-range entry is visible on screen (the real couple's 20% = £70k vs the ~2% typical). It reads the engine's
+single-source `HousingProceeds` plus a new reconciled **`HousingPurchase`** value object for the buy-side surplus;
+`HousingComparison::buyVariant` now reads `buyOutcome()` so that figure has one home (behaviour-preserving — the
+surplus is identical, the Monte Carlo tests are unchanged-green).
+(2) **Assumptions panel** (`ResultPresenter::assumptionsPanel`): the economic assumptions every figure rests on —
+the blended **real** investment return (the engine's own `PortfolioAllocation::blendedRealReturn`, with the asset
+mix described from the weights so the figure can't become a black box), CPI inflation, house/rent/salary growth
+(each **real**, above inflation) and the investment income yield (**nominal**) — each row labelled real-vs-nominal
+so the two are never confused, plus the housing-decision inputs and the set's name + sourcing.
+(3) **Itemised per-year spend**: the cashflow ladder now splits each year's spend into its essential floor and the
+discretionary remainder (= `spendTarget − essentialSpend`), so the spend is traceable rather than one opaque
+number; the CSV carries the two new columns.
+**Why:** Rob's guiding principle — *trust comes from explanation*; every headline figure must trace on screen to
+its inputs. The sale waterfall makes the three compounding trust-killers (the 20% selling cost, the phantom
+housing costs, the under-stated rent) self-evident, and the assumptions panel states the basis so a figure is never
+unexplained. Each new figure carries a **reconciliation guard** (sale parts sum to the total; ladder split sums to
+the spend) and a **real-vs-nominal labelling guard**, per the data-layer integrity rule; the displayed-figure
+provenance test was extended to the two new CSV columns (panel == CSV, one figure one home). This is the
+low-risk, presentation-only slice that makes the current problems visible and every later fix verifiable.
+[[2026-06-29 — Contingent costs have one home tied to what they depend on (housing costs belong with the decision, not shared spending)]] [[2026-06-25 — Data-layer integrity: single-definition + reconciliation invariants + real-file golden fixtures]]
+**Status:** active (built, suite green, Pint clean; pending Rob's in-browser visual sign-off). Next in the
+workstream: the **per-strategy cashflow ladder** (the ladder still runs the raw household, so it does not yet
+reflect the sale/rent legs) paired with the **contingent-cost placement** correctness fix it acts on.
+
 ## 2026-06-29 — Contingent costs have one home tied to what they depend on (housing costs belong with the decision, not shared spending)
 **Decision:** From Rob's browser walkthrough of a real couple, a cost belongs **wherever the thing it depends on
 lives**, and is charged **only while that thing holds** — not as a flat lifelong line in shared `expenseProfile`:

@@ -71,7 +71,7 @@ final class ScenarioForecaster
      */
     public function compareHousing(Scenario $scenario, int $nPaths, int $seed, ?callable $onProgress = null): array
     {
-        return (new HousingComparison($this->config($scenario), new CohortLifeTable))->compare(
+        return $this->housingComparison($scenario)->compare(
             $this->household($scenario),
             $this->settings($scenario),
             $this->assumptions($scenario),
@@ -80,6 +80,16 @@ final class ScenarioForecaster
             $seed,
             $onProgress,
         );
+    }
+
+    /**
+     * The housing-comparison engine for this scenario. Exposed so the deterministic sale
+     * decomposition ({@see HousingComparison::saleProceeds} / {@see HousingComparison::buyOutcome})
+     * can be surfaced on the results page and reconciled, rather than recomputed in the app.
+     */
+    public function housingComparison(Scenario $scenario): HousingComparison
+    {
+        return new HousingComparison($this->config($scenario), new CohortLifeTable);
     }
 
     public function config(Scenario $scenario): TaxYearConfig
@@ -102,7 +112,12 @@ final class ScenarioForecaster
         return $scenario->toHousingAction();
     }
 
-    private function settings(Scenario $scenario): ForecastSettings
+    /**
+     * The run settings (start year, allocation, drawdown strategy, freeze-end year). Public
+     * so the results page can read the blended real return the invested proceeds grow at
+     * (`settings()->allocation()->blendedRealReturn($assumptions)`) for the assumptions panel.
+     */
+    public function settings(Scenario $scenario): ForecastSettings
     {
         return new ForecastSettings(
             baseYear: (int) substr($scenario->base_tax_year, 0, 4),

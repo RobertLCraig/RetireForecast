@@ -99,4 +99,35 @@ final class HousingProceedsReconciliationTest extends TestCase
         $this->assertSame(0, $proceeds->netProceeds->pence);
         $this->assertFalse($proceeds->clearsCosts());
     }
+
+    public function test_buy_outcome_reconciles_net_proceeds_to_purchase_plus_surplus(): void
+    {
+        // Sell £400k (no mortgage) → net £392k after 2% costs; buy a £200k home.
+        $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(200_000));
+        $outcome = $this->comparison()->buyOutcome($this->household(), $action);
+
+        // The net proceeds are exactly the purchase, its costs and the invested surplus — no
+        // pence created or lost. This is the buy-side half of the housing-boundary identity.
+        $this->assertSame(
+            $outcome->netProceeds->pence,
+            $outcome->buyPrice->pence
+                + $outcome->stampDuty->pence
+                + $outcome->movingCosts->pence
+                + $outcome->surplus->pence,
+        );
+        $this->assertTrue($outcome->coversPurchase());
+        // Default moving costs are £2,000; SDLT on a £200k home (England, 2025/26 bands) is £1,500.
+        $this->assertSame(Money::fromPounds(2_000)->pence, $outcome->movingCosts->pence);
+        $this->assertSame(Money::fromPounds(1_500)->pence, $outcome->stampDuty->pence);
+    }
+
+    public function test_buy_surplus_floors_at_zero_when_the_cheaper_home_costs_more_than_the_proceeds(): void
+    {
+        // Buying dearer than the net proceeds leaves nothing to invest, never a negative surplus.
+        $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(500_000));
+        $outcome = $this->comparison()->buyOutcome($this->household(), $action);
+
+        $this->assertSame(0, $outcome->surplus->pence);
+        $this->assertFalse($outcome->coversPurchase());
+    }
 }

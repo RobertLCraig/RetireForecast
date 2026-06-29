@@ -1,0 +1,131 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit\Forecast;
+
+use App\Forecast\ResultPresenter;
+use DateTimeImmutable;
+use PHPUnit\Framework\TestCase;
+use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
+use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
+use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\HousingAction;
+use RetireForecast\FinanceEngine\Dto\OwnershipType;
+use RetireForecast\FinanceEngine\Dto\Person;
+use RetireForecast\FinanceEngine\Dto\Property;
+use RetireForecast\FinanceEngine\Dto\Sex;
+use RetireForecast\FinanceEngine\Housing\HousingComparison;
+use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
+use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
+use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
+
+/**
+ * The house-sale explainer on the results page (the show-your-working layer). It must read
+ * the engine's single-source decomposition and surface it faithfully: the figures it shows
+ * are exactly the ones the forecast acts on, so the headline "we'd get ~£X" traces to its
+ * parts. The trust-critical properties: it reconciles (parts sum to the total), it shows the
+ * selling-cost percentage beside the £ figure so an out-of-range rate is visible, and it
+ * does not invent a sale where there is none.
+ */
+final class SaleExplainerTest extends TestCase
+{
+    private function comparison(): HousingComparison
+    {
+        return new HousingComparison(TaxYearRegistry::for('2026-27'), new CohortLifeTable);
+    }
+
+    private function household(?Money $mortgage = null): Household
+    {
+        return new Household(
+            'Sale',
+            RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(20_000), Money::fromPounds(2_000), Percent::fromPercent(70)),
+            primaryResidence: new Property(
+                currentValue: Money::fromPounds(400_000),
+                ownership: OwnershipType::Outright,
+                outstandingMortgage: $mortgage,
+            ),
+        );
+    }
+
+    /** @return array<string, mixed>|null */
+    private function explainer(HousingAction $action, ?Money $mortgage = null): ?array
+    {
+        $comparison = $this->comparison();
+        $household = $this->household($mortgage);
+
+        return ResultPresenter::saleExplainer(
+            $comparison->saleProceeds($household, $action),
+            $comparison->buyOutcome($household, $action),
+            $action,
+            blendedRealReturn: 0.0176,
+            investmentIncomeYield: 0.02,
+        );
+    }
+
+    public function test_no_sale_configured_returns_null(): void
+    {
+        // A stay-put plan with no sale price has nothing to explain.
+        $this->assertNull($this->explainer(new HousingAction(salePrice: Money::zero())));
+    }
+
+    public function test_the_waterfall_reconciles_and_shows_the_selling_rate_beside_the_figure(): void
+    {
+        // A 20% selling rate (~10x typical) must be visible as 20%, not buried in the £ figure.
+        $action = new HousingAction(salePrice: Money::fromPounds(400_000), sellingCostRate: Percent::fromPercent(20));
+        $se = $this->explainer($action, Money::fromPounds(50_000));
+
+        $this->assertNotNull($se);
+        $this->assertSame('20%', $se['sellingRatePct']);
+        $this->assertFalse($se['sellingRateIsDefault']);
+        $this->assertTrue($se['proceeds']['hasMortgage']);
+        // 20% of £400k = £80,000 costs; net = 400,000 − 50,000 (mortgage) − 80,000 = £270,000.
+        $this->assertSame(Money::fromPounds(80_000)->format(), $se['proceeds']['sellingCosts']);
+        $this->assertSame(Money::fromPounds(270_000)->format(), $se['proceeds']['netProceeds']);
+    }
+
+    public function test_a_default_selling_rate_is_shown_as_two_percent_and_flagged_assumed(): void
+    {
+        $se = $this->explainer(new HousingAction(salePrice: Money::fromPounds(400_000)));
+
+        $this->assertSame('2%', $se['sellingRatePct']);
+        $this->assertTrue($se['sellingRateIsDefault']);
+    }
+
+    public function test_the_rent_destination_invests_the_full_net_proceeds(): void
+    {
+        $action = new HousingAction(salePrice: Money::fromPounds(400_000), annualRent: Money::fromPounds(14_000));
+        $se = $this->explainer($action);
+
+        // No mortgage, 2% costs: net = 400,000 − 8,000 = £392,000 — all of it invested.
+        $this->assertSame(Money::fromPounds(392_000)->format(), $se['rent']['invested']);
+        $this->assertSame($se['proceeds']['netProceeds'], $se['rent']['invested']);
+        $this->assertSame(Money::fromPounds(14_000)->format(), $se['rent']['annualRent']);
+    }
+
+    public function test_the_buy_destination_shows_only_with_a_buy_price_and_reconciles(): void
+    {
+        // Rent-only plan: no buy block.
+        $this->assertNull($this->explainer(new HousingAction(salePrice: Money::fromPounds(400_000)))['buy']);
+
+        $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(200_000));
+        $se = $this->explainer($action);
+
+        $this->assertNotNull($se['buy']);
+        // Net £392,000 − buy £200,000 − SDLT £1,500 − moving £2,000 = surplus £188,500.
+        $this->assertSame(Money::fromPounds(188_500)->format(), $se['buy']['surplus']);
+        $this->assertTrue($se['buy']['coversPurchase']);
+    }
+
+    public function test_the_blended_return_and_income_yield_are_shown_as_percentages(): void
+    {
+        $se = $this->explainer(new HousingAction(salePrice: Money::fromPounds(400_000)));
+
+        $this->assertSame('1.76%', $se['blendedReturnPct']);
+        $this->assertSame('2%', $se['incomeYieldPct']);
+    }
+}

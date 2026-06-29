@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** Phase D go-live. Rebuild + Tier-1/Tier-2 + the results-chart rework are all built and signed off. A new **adviser-legibility workstream** is now the priority, opened from Rob's 2026-06-29 browser walkthrough: one **correctness** fix (housing + commute costs leak across the buy-vs-rent variants) plus four legibility gaps (life-event milestones, house-sale explainer, input-sanity notes, per-option "why"). See What's next + docs/PLAN.md + DECISIONS 2026-06-29.
-_Last updated: 2026-06-29 (browser walkthrough → adviser-legibility workstream added; docs updated)._
+_Last updated: 2026-06-29 (adviser-legibility: the explainer / show-your-working layer built — sale waterfall, assumptions panel, itemised spend; pending Rob's browser sign-off)._
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -54,14 +54,13 @@ See [DECISIONS.md](DECISIONS.md) for the full append-only log + rationale. The l
 
 ## What's next (in order)
 The go-live critical path. Longer-tail and parked work is under Open items, not repeated here.
-1. **Adviser-legibility workstream** — the priority from Rob's 2026-06-29 browser walkthrough (full detail: docs/PLAN.md "Adviser-legibility workstream (2026-06-29)"; decision: DECISIONS 2026-06-29). None of it is an engine bug (determinism + mortality re-verified); it is cost placement + missing explanation. **Guiding principle (Rob): trust comes from explanation — every headline figure must be traceable on screen to its inputs/assumptions, so this sits above remaining go-live polish.** In order:
+1. **Adviser-legibility workstream** — the priority from Rob's 2026-06-29 browser walkthrough (full detail: docs/PLAN.md "Adviser-legibility workstream (2026-06-29)"; decisions: DECISIONS 2026-06-29). None of it is an engine bug (determinism + mortality re-verified); it is cost placement + missing explanation. **Guiding principle (Rob): trust comes from explanation — every headline figure must be traceable on screen to its inputs/assumptions, so this sits above remaining go-live polish.** The **explainer / show-your-working layer is built (2026-06-29, pending Rob's browser sign-off):** the house-sale waterfall (proceeds decomposition + per-option destination, selling-cost rate shown beside the £), the assumptions panel (real-vs-nominal labelled, single-source blended return), and itemised per-year spend (essential/discretionary) on the results page — see DECISIONS. Remaining, in order:
    1. **[correctness] Contingent-cost placement.** Housing costs (mortgage payment, service charge, owner maintenance) and status costs (commute fuel) currently sit in shared `expenseProfile`, so they're charged in *every* buy-vs-rent variant — phantom mortgage + service charge in *sell & rent* and *buy outright*, commute that never stops at retirement. Give each cost one home tied to what it depends on (property/decision, or employment status), charged only while its condition holds; guard with reconciliation tests (property costs in zero post-sale years; commute zero from the retirement year).
    2. **Per-strategy cashflow ladder** — the year-by-year cashflow must show the differences *by housing strategy* (it is currently a single projection of the raw household that ignores the variant transforms). Needs a deterministic per-variant projection; pairs with step 1.
    3. Life-event **milestones** — show *when* retire / SPA start / pension access / house sale / each death happen (list + markers on the ladder and charts), from figures the engine already produces.
-   4. House-**sale explainer** — a plain-text block: proceeds decomposition (sale − mortgage − selling costs − CGT = net; − buy − SDLT − moving = surplus), the assumptions used, where the money goes (invested in a GIA at the assumption set's blended real return) and the year-by-year drawdown reason, reconciled.
-   5. **Input-sanity** notes — retirement age ≤ current age (salary dropped); longevity offset below current age (death within the year); **rate/£ validation** (the real couple's selling-cost rate applied as 20% = £70k vs ~2%, rent as £1,650/yr ≈ £137/mo likely monthly, both with no on-screen feedback).
-   6. Per-option plain-English **"why"** narrative, milestone-anchored, lint-safe.
-   7. **Real-time cost toggles** — switch individual cost lines (mortgage / service charge / commute) on/off and see the forecast move live.
+   4. **Input-sanity** notes — retirement age ≤ current age (salary dropped); longevity offset below current age (death within the year); **rate/£ validation** (the real couple's selling-cost rate applied as 20% = £70k vs ~2%, rent as £1,650/yr ≈ £137/mo likely monthly, both with no on-screen feedback). *(The sale waterfall now shows the selling-cost rate beside its £, so the 20% case is at least visible; active validation still to do.)*
+   5. Per-option plain-English **"why"** narrative, milestone-anchored, lint-safe.
+   6. **Real-time cost toggles** — switch individual cost lines (mortgage / service charge / commute) on/off and see the forecast move live.
 2. **Finish the real-browser verification pass.** The a11y axe/Lighthouse sweep is underway — one finding fixed (the scrollable data-table wrappers are now keyboard-focusable via `tabindex="0"`; see docs/A11Y.md sweep log). PDF layout looked right to Rob; **2FA QR scan deferred by Rob**. NB the local DB has **0 completed runs**, so re-run a forecast before checking the Monte Carlo charts / PDF.
 3. **Optional:** tighten the CSP `script-src` to nonces (Alpine CSP build) — needs the browser.
 
@@ -112,6 +111,22 @@ On `master`, local repo only (no remote, no PR) — personal local-first project
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-06-29 (adviser-legibility: explainer / show-your-working layer built)_ — From Rob's choice to start the
+workstream with the explainer layer (over the correctness fix first), built three deterministic results-page
+additions, all factual/lint-safe: (1) a **house-sale waterfall** (`ResultPresenter::saleExplainer`) — sale −
+mortgage − selling costs − CGT = net, then per-option destinations (rent: full net invested; buy cheaper: net −
+buy − SDLT − moving = surplus), with the **selling-cost rate shown beside the £** so the real couple's 20% = £70k
+is glaring; backed by a new reconciled engine value object **`HousingPurchase`** (buy-side surplus, single source —
+`HousingComparison::buyVariant` now reads `buyOutcome()`, behaviour-preserving). (2) an **assumptions panel**
+(`assumptionsPanel`) surfacing the blended **real** return (engine single-source, asset mix described) + CPI +
+house/rent/salary growth (real) + income yield (nominal), each labelled so real/nominal can't be confused. (3)
+**itemised per-year spend** in the cashflow ladder (essential / discretionary, reconciling to the total) + the two
+new CSV columns. Reconciliation + real-vs-nominal labelling guards added; the displayed-figure provenance test was
+extended to the new CSV columns. Assets rebuilt; **pending Rob's in-browser visual sign-off**. NB a **second Claude
+session** was concurrently active in this working tree on the CI a11y fix (commits `60d7da9`, `bb4d8ef`, not yet
+pushed); this session owns the adviser-legibility workstream, that one owns the CI push (Rob's call 2026-06-29).
+Next: the per-strategy cashflow ladder + the contingent-cost placement correctness fix (#1) it acts on.
 
 _2026-06-29 (browser walkthrough → adviser-legibility workstream; no engine bug)_ — Rob walked the rendered
 results for the real "FR + YC" couple and raised: missing adviser-style explanations, an odd 2040 "shortfall then
