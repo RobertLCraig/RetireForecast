@@ -831,7 +831,7 @@ final class ResultPresenter
      * Returns null when no sale is configured (sale price zero) — e.g. a stay-put plan — so
      * the section simply does not render. Factual throughout, never a recommendation.
      *
-     * @return array{sellingRatePct: string, sellingRateIsDefault: bool, proceeds: array{salePrice: string, mortgage: string, hasMortgage: bool, sellingCosts: string, cgt: string, netProceeds: string, clearsCosts: bool}, rent: array{invested: string, annualRent: ?string}, buy: ?array{netProceeds: string, buyPrice: string, sdlt: string, movingCosts: string, surplus: string, coversPurchase: bool}, blendedReturnPct: string, incomeYieldPct: string}|null
+     * @return array{sellingRatePct: string, sellingRateIsDefault: bool, sellingCostsLabel: string, proceeds: array{salePrice: string, mortgage: string, hasMortgage: bool, sellingCosts: string, cgt: string, netProceeds: string, clearsCosts: bool}, rent: array{invested: string, annualRent: ?string}, buy: ?array{netProceeds: string, buyPrice: string, sdlt: string, movingCosts: string, surplus: string, coversPurchase: bool}, blendedReturnPct: string, incomeYieldPct: string}|null
      */
     public static function saleExplainer(
         HousingProceeds $proceeds,
@@ -844,9 +844,15 @@ final class ResultPresenter
             return null;
         }
 
+        $ratePct = self::ratePct($action->sellingCostRate?->asPercent() ?? 2.0);
+        $rateIsDefault = $action->sellingCostRate === null;
+
         return [
-            'sellingRatePct' => self::ratePct($action->sellingCostRate?->asPercent() ?? 2.0),
-            'sellingRateIsDefault' => $action->sellingCostRate === null,
+            'sellingRatePct' => $ratePct,
+            'sellingRateIsDefault' => $rateIsDefault,
+            // One clean label (built here, not with an inline Blade @if glued to a word, which
+            // Blade does not compile). Names what the rate covers, so the cost is not a black box.
+            'sellingCostsLabel' => $ratePct.' of the sale price'.($rateIsDefault ? ', assumed' : '').' — estate agent + legal/conveyancing',
             'proceeds' => [
                 'salePrice' => $proceeds->salePrice->format(),
                 'mortgage' => $proceeds->outstandingMortgage->format(),
@@ -923,7 +929,7 @@ final class ResultPresenter
             $housing[] = ['label' => 'Cheaper home to buy', 'value' => $action->buyPrice->format()];
         }
         if ($action->annualRent !== null && $action->annualRent->isPositive()) {
-            $housing[] = ['label' => 'Rent (if renting)', 'value' => $action->annualRent->format().' a year'];
+            $housing[] = ['label' => 'Rent if you sell & rent', 'value' => $action->annualRent->format().' a year (projected renting cost, not current)'];
         }
 
         return [

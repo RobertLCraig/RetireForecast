@@ -96,6 +96,18 @@ final class SaleExplainerTest extends TestCase
         $this->assertTrue($se['sellingRateIsDefault']);
     }
 
+    public function test_the_selling_costs_label_is_a_prebuilt_string_not_a_blade_conditional(): void
+    {
+        // The label is composed in the presenter (a stray inline Blade @if glued to a word
+        // did not compile and leaked into the page — guard the clean string here).
+        $assumed = $this->explainer(new HousingAction(salePrice: Money::fromPounds(400_000)));
+        $this->assertSame('2% of the sale price, assumed — estate agent + legal/conveyancing', $assumed['sellingCostsLabel']);
+        $this->assertStringNotContainsString('@if', $assumed['sellingCostsLabel']);
+
+        $custom = $this->explainer(new HousingAction(salePrice: Money::fromPounds(400_000), sellingCostRate: Percent::fromPercent(1.5)));
+        $this->assertSame('1.5% of the sale price — estate agent + legal/conveyancing', $custom['sellingCostsLabel']);
+    }
+
     public function test_the_rent_destination_invests_the_full_net_proceeds(): void
     {
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), annualRent: Money::fromPounds(14_000));

@@ -114,7 +114,7 @@ final class AssumptionsPanelTest extends TestCase
         ));
         $fullLabels = array_column($full['housing'], 'label');
         $this->assertContains('Cheaper home to buy', $fullLabels);
-        $this->assertContains('Rent (if renting)', $fullLabels);
+        $this->assertContains('Rent if you sell & rent', $fullLabels);
         $this->assertContains('Moving costs', $fullLabels);
         $this->assertSame('1.5% of the sale price', $this->valueOf($full['housing'], 'Selling costs'));
     }

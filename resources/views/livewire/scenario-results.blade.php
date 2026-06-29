@@ -386,7 +386,7 @@
                         @if ($se['proceeds']['hasMortgage'])
                             <tr><th scope="row" class="{{ $td }} text-left">less outstanding mortgage</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['mortgage'] }}</td></tr>
                         @endif
-                        <tr><th scope="row" class="{{ $td }} text-left">less selling costs ({{ $se['sellingRatePct'] }} of the sale price@if ($se['sellingRateIsDefault']), assumed@endif)</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['sellingCosts'] }}</td></tr>
+                        <tr><th scope="row" class="{{ $td }} text-left">less selling costs ({{ $se['sellingCostsLabel'] }})</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['sellingCosts'] }}</td></tr>
                         <tr><th scope="row" class="{{ $td }} text-left">less capital gains tax (main home, fully relieved)</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['cgt'] }}</td></tr>
                         <tr class="bg-blue-50"><th scope="row" class="{{ $td }} text-left font-semibold">Net proceeds</th><td class="{{ $td }} text-right font-semibold tabular-nums">{{ $se['proceeds']['netProceeds'] }}</td></tr>
                     </tbody>
@@ -399,7 +399,7 @@
             <div class="mt-4 grid gap-4 @if ($se['buy']) md:grid-cols-2 @endif">
                 <div class="rounded-md border border-gray-200 p-4">
                     <h3 class="font-medium text-gray-900">If you sell &amp; rent</h3>
-                    <p class="mt-1 text-sm text-gray-700">All {{ $se['rent']['invested'] }} of the net proceeds is invested.@if ($se['rent']['annualRent']) Rent of {{ $se['rent']['annualRent'] }} a year is then paid from income.@endif</p>
+                    <p class="mt-1 text-sm text-gray-700">All {{ $se['rent']['invested'] }} of the net proceeds is invested.@if ($se['rent']['annualRent']) The rent for a home to rent instead — {{ $se['rent']['annualRent'] }} a year, in today's money — is then paid from income. (This is the projected cost of renting after selling, not a cost you pay now.)@endif</p>
                 </div>
                 @if ($se['buy'])
                     <div class="rounded-md border border-gray-200 p-4">
