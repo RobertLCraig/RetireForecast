@@ -53,6 +53,9 @@ jobs:
           touch database/database.sqlite
           php artisan migrate:fresh --seed --force
           php artisan db:seed --class="Database\\Seeders\\DemoScenarioSeeder" --force
+          # The sweep scans the first-run disclaimer page (/welcome). The demo seeder marks it
+          # already accepted, which makes /welcome redirect away, so reset that for the scan.
+          php artisan tinker --execute="App\Models\User::where('email','demo@example.com')->update(['disclaimer_acknowledged_at' => null]);"
 
       - name: Serve the app
         run: php artisan serve --host=127.0.0.1 --port=8000 &
