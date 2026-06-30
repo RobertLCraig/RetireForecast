@@ -3,6 +3,18 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-30 — Per-year surplus/shortfall + a configurable usable-money safety floor
+**Decision:** The cashflow ladder classifies each year as **surplus** (regular income covers spend), **drawing** (dipping
+into savings to meet spend) or **shortfall** (spend not met) — on **usable money** — and flags any year usable funds fall
+below a **safety buffer** (default **2 months of essentials**, user-configurable in the Spending step via
+`Scenario::safetyBufferMonths()`, passed to `ResultPresenter::ladder`). A headline says whether usable money stays above
+the buffer, dips below it (year), or runs out (year); rows are tinted by status. This **replaces** the academic "neutral
+diagnostics" (withdrawal/critical-yield/replacement-rate) backlog idea, which Rob found unhelpful.
+**Why (Rob):** "highlight years where they have a shortfall and years where they have a surplus … I'm more interested in
+usable money than total net worth … they HAVE to pick a path that never drops below [a floor of] usable funds (2×
+monthly essentials in my view)." The buffer is configurable because the right reserve is personal.
+**Status:** built, suite green, pending Rob's browser sign-off.
+
 ## 2026-06-30 — Source-freshness guardrail for the verified_on discipline
 **Decision:** A **`figures:freshness`** command (over a pure, unit-tested `App\Finance\FigureFreshness`) reports each
 supported tax year's gov.uk verification date and **flags any verified more than `--months` ago (default 12)**, exiting
