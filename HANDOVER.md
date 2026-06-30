@@ -24,6 +24,12 @@ commit; never push without Rob's explicit go-ahead.)
   **(B) a mortgage-redemption event** (`Property` maturity year + action; projector tracks the balance),
   **(C) feasibility flags**, **(D) input-expectation clarity** (pay-frequency selector, tax-free-benefit income
   type, retirement-age / one-off-scope prompts). Full detail: DECISIONS/PLAN 2026-06-30 — not re-transcribed here.
+- **Lane C — competitive gap analysis + decumulation specs (docs-only, no code; complete).** A third session ran a
+  full-market competitive scan and wrote two **standalone** docs: `docs/RESEARCH-competitive-gap-analysis.md` (where
+  the engine leads vs the gaps) and the decision-ready spec **`docs/PLAN-withdrawal-sequencing.md`** (tax-efficient
+  ISA/SIPP/GIA withdrawal ordering + "fill the band", with the lifetime-tax £-delta). **No app code, no Lane-A/B
+  files touched** — only HANDOVER + its own new docs. The spec ends with 5 open questions awaiting Rob's answers
+  before any build; it builds on the existing `Forecast/DrawdownStrategy` (already a generalisation, not greenfield).
 
 **Commit rule while both lanes are live:** commit only the files in your own lane (no blanket `git add -A`).
 Engine overlap to watch: both lanes touch `PathProjector` — coordinate before large refactors there.
@@ -136,6 +142,7 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 | docs/RESEARCH-editable-assumptions-ux.md | How free consumer tools (Boldin, ProjectionLab, NYT rent-vs-buy, Guiide, Actuaries Longevity Illustrator) handle editable assumptions, buy-vs-rent and cost breakdowns — what we adopt (2026-06-29). |
 | docs/RESEARCH-document-import.md | PARKED post-v1 feature: statement-driven onboarding + document import (sector evidence, document→builder-field map, gotchas). |
 | docs/RESEARCH-competitive-gap-analysis.md | Full-market competitive scan (2026-06-30): where the engine already leads vs where the gaps are (decumulation policy + framing). Net-new backlog items folded into docs/PLAN.md "Competitive gap analysis". |
+| docs/PLAN-withdrawal-sequencing.md | DRAFT spec (2026-06-30): tax-efficient withdrawal sequencing across wrappers (ISA/SIPP/GIA) + "fill the band", surfacing the lifetime-tax £-delta. Generalises the existing `DrawdownStrategy`; 5 open questions for Rob. |
 | PRD.md | Goal, success criteria, scope, non-goals, open questions. |
 | DATA-MODEL.md | Canonical data shape; what is materialised in code today vs planned. |
 | DECISIONS.md | Append-only decision log with rationale. |
