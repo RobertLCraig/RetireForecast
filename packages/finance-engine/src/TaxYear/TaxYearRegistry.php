@@ -20,6 +20,9 @@ use RuntimeException;
  */
 final class TaxYearRegistry
 {
+    /** The tax years the registry has a configuration for — the single source of the set. */
+    public const SUPPORTED_TAX_YEARS = ['2025-26', '2026-27'];
+
     public static function for(string $taxYear, RegionProfile $region = RegionProfile::EnglandWalesNi): TaxYearConfig
     {
         if ($region === RegionProfile::Scotland) {
