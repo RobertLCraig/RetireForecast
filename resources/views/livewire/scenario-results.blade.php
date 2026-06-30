@@ -160,6 +160,20 @@
         </div>
     @endif
 
+    {{-- "New in this build" review marker: the recent additions are mostly new rows / notes
+         inside existing cards, easy to miss — so point to them. Temporary; prune entries as
+         they stop being new (the $whatsNew list is built in ScenarioResults::render). --}}
+    @if (! empty($whatsNew))
+        <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm" aria-label="New in this build">
+            <p class="font-semibold text-blue-900">New in this build</p>
+            <ul class="mt-2 space-y-1 text-blue-800">
+                @foreach ($whatsNew as $item)
+                    <li>&bull; {!! $item !!}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     {{-- Headline output #1: the lump-sum tax shock. Deterministic, so it shows as soon as
          a withdrawal is planned, before (and independent of) any Monte Carlo run. --}}
     @if ($shock)

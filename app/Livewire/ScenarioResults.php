@@ -381,6 +381,13 @@ class ScenarioResults extends Component
             // Input-sanity heads-up where an entered value did something drastic (no salary
             // because retirement age <= current age; a death floored to the base year).
             'inputNotes' => ResultPresenter::inputNotes($household, $forecast),
+            // Temporary "new in this build" review markers — the recent additions are mostly
+            // new rows / notes inside existing cards, so point at where each one shows. Prune
+            // these as they stop being new.
+            'whatsNew' => [
+                '<strong>Pension Credit</strong> is now modelled — see the <a href="#sec-ladder" class="font-medium underline">year-by-year cashflow</a> and the <a href="#sec-income-floor" class="font-medium underline">secure-income floor</a>.',
+                '<strong>Feasibility &amp; input-sanity flags</strong> (mortgage due for redemption, no retirement age) — see <a href="#sec-input-notes" class="font-medium underline">the notes above</a>.',
+            ],
             // Show-your-working: the assumptions every figure rests on, and (if a sale is
             // configured) where the sale proceeds come from and go. Both deterministic.
             'assumptions' => ResultPresenter::assumptionsPanel(
