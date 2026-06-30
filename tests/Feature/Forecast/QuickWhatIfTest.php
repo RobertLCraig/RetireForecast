@@ -49,6 +49,29 @@ class QuickWhatIfTest extends TestCase
         $this->assertSame('10', $built['overrides']['people.p2.longevityValue']);
     }
 
+    public function test_let_out_and_rent_keeps_the_home_and_adds_rental_income_and_rent(): void
+    {
+        $base = ScenarioFixture::rich(User::factory()->create());
+
+        $built = QuickWhatIf::build($base, 'let_out_and_rent');
+
+        $this->assertSame('Let out & rent elsewhere', $built['name']);
+        $overrides = $built['overrides'];
+
+        // Keep the flat (do not sell).
+        $this->assertSame('stay_put', $overrides['variant']);
+
+        // A taxable rental income stream is added, plus a "Rent (our home)" essential cost.
+        $addedRows = array_filter($overrides, 'is_array');
+        $rental = array_filter($addedRows, fn ($v): bool => ($v['type'] ?? null) === 'rental');
+        $rent = array_filter($addedRows, fn ($v): bool => ($v['label'] ?? null) === 'Rent (our home)');
+
+        $this->assertCount(1, $rental);
+        $this->assertTrue((bool) reset($rental)['taxable']);
+        $this->assertCount(1, $rent);
+        $this->assertSame('essential', reset($rent)['category']);
+    }
+
     public function test_a_preset_that_would_change_nothing_builds_nothing(): void
     {
         // A lone retired person with no retirement age: "retire later" has nothing to move.

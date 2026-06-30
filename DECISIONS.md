@@ -3,6 +3,34 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-01 — What-ifs are the only way to express a variation; the individual report is single-strategy
+**Decision:** An **individual forecast report = one scenario, one strategy**, read top to bottom. Every *variation*
+— a different housing strategy (stay / buy / rent / let-out), a lever change (retire / spend / return / longevity)
+— is a **specialised what-if scenario** (a delta-child of the base) that lives under the base and is compared on the
+**Compare** page. The results page no longer bakes variations in:
+- the **3-way headline cards** become a single card for the scenario's own strategy;
+- the **"By housing strategy" comparison chart** + its table are **removed from the report** — the comparison is on
+  Compare, across what-if scenarios, and the Compare burndown gains the same **milestone annotations** the
+  single-scenario charts carry (so the comparison graph has the event context);
+- the **cashflow-ladder strategy switcher** is gone — the ladder shows the scenario's own strategy, labelled;
+- the **"Explore the levers" live sliders** (a throwaway, unsaved what-if baked into the page) become a
+  **"Build a what-if"** control: set the levers, then **save** them as a delta-child (the QuickWhatIf pattern), to
+  compare on Compare. The two charts were also moved to the **top** of the report and annotated with the milestones.
+**Why (Rob):** "part of the reason the UI is so confusing is the conflation between partial what-ifs being built into
+an individual forecast, where those should be specialised What-IF scenarios." A report doing double duty — *this
+forecast* and *explore variations* — is the confusion; separating them (one clean report; variations as nameable,
+saved, comparable scenarios) resolves it, and the delta-child + Compare machinery already existed to express it.
+**Supersedes (for the report only):** the in-report 3-way comparison of
+[[2026-06-30 — One-click "compare buy vs rent" (delta-child what-ifs + per-variant Compare)]] and the per-variant
+ladder of [[2026-06-29 — Built #6: per-variant deterministic cashflow ladder + a results-page "on this page" nav]] —
+the per-variant *engine* projection still exists and now drives Compare; only the report stops showing the 3-way
+comparison. The what-if sliders of [[2026-06-30 — What-if sliders (explore the levers) on the results page]] are
+superseded by the save-as-a-what-if control (no throwaway live preview).
+**Also (Rob's ask):** a **"Let out & rent elsewhere"** strategy is added as a generated what-if (keep the flat, let
+it, rent somewhere cheaper) — see its own entry.
+**Status:** report strip + Compare annotations + sliders→make-a-what-if built, suite green; pending Rob's browser
+sign-off. The let-out what-if + the engine treatment of a let home as assessable capital follow.
+
 ## 2026-06-30 — Input-expectation / guided-entry clarity (surfaced by the V2 pressure-test)
 **Decision:** The V2 data foot-guns the pressure-test exposed are less user error than **UI-communication gaps**
 (Rob: "these flags show where the input hasn't matched the expectation of usage, and where the UI needs to

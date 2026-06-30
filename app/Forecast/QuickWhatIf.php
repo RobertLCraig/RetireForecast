@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Forecast;
 
 use App\Models\Scenario;
+use Illuminate\Support\Str;
 
 /**
  * One-click what-ifs for the common questions a reader asks of a forecast ("what if I
@@ -23,6 +24,7 @@ final class QuickWhatIf
     public const PRESETS = [
         'retire_2_years_later' => 'Retire 2 years later',
         'live_10_years_longer' => 'Live 10 years longer',
+        'let_out_and_rent' => 'Let out & rent elsewhere',
     ];
 
     /**
@@ -40,11 +42,15 @@ final class QuickWhatIf
         $baseState = $base->effectiveBuilderState();
         $people = is_array($baseState['people'] ?? null) ? $baseState['people'] : [];
 
-        $edited = $baseState;
-        $edited['people'] = match ($preset) {
-            'retire_2_years_later' => self::retireLater($people, 2),
-            'live_10_years_longer' => self::liveLonger($people, 10),
+        $edited = match ($preset) {
+            'retire_2_years_later' => ['people' => self::retireLater($people, 2)] + $baseState,
+            'live_10_years_longer' => ['people' => self::liveLonger($people, 10)] + $baseState,
+            'let_out_and_rent' => self::letOutAndRent($baseState),
         };
+
+        if ($edited === null) {
+            return null; // nothing to model (e.g. the let-out what-if on a household with no property)
+        }
 
         $overrides = BuilderStateDelta::diff($baseState, $edited);
         if ($overrides === []) {
@@ -99,5 +105,62 @@ final class QuickWhatIf
 
             return $person;
         }, $people);
+    }
+
+    /**
+     * "Let out & rent elsewhere": keep the home but stop living in it — let it to a tenant (so a
+     * buy-to-let mortgage is no longer in breach and continues, hence the maturity action becomes
+     * refinance) and rent a cheaper place. Keeps the flat (variant stay_put), adds a taxable
+     * rental income (a default 5% gross yield on the home's value, editable) and a "Rent (our
+     * home)" essential cost (the rent-leg figure if set, else ~4% of value). Returns null with no
+     * property to let.
+     *
+     * v1 caveats (a proper let-to-let needs an engine change — see DECISIONS 2026-07-01): the let
+     * home is still modelled as the exempt main residence, so its equity is NOT yet counted as
+     * assessable capital — Pension Credit is not docked the way letting it out really would; BTL
+     * mortgage-interest tax relief and letting voids/costs are not modelled.
+     *
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>|null
+     */
+    private static function letOutAndRent(array $state): ?array
+    {
+        $property = is_array($state['property'] ?? null) ? $state['property'] : [];
+        $value = $property['currentValue'] ?? null;
+        if (! ($state['hasProperty'] ?? false) || ! is_numeric($value) || (float) $value <= 0) {
+            return null;
+        }
+
+        $housing = is_array($state['housing'] ?? null) ? $state['housing'] : [];
+        $rent = (is_numeric($housing['annualRent'] ?? null) && (float) $housing['annualRent'] > 0)
+            ? (string) $housing['annualRent']
+            : (string) round((float) $value * 0.04);
+        $letIncome = (string) round((float) $value * 0.05); // 5% gross yield, editable
+
+        $owner = (string) ($state['people'][0]['id'] ?? 'p1');
+
+        $edited = $state;
+        $edited['variant'] = 'stay_put';                             // keep the flat (do not sell)
+        $edited['property']['mortgageMaturityAction'] = 'refinance';  // let → the BTL is legit and continues
+        $edited['incomeStreams'] = array_merge($state['incomeStreams'] ?? [], [[
+            'id' => (string) Str::uuid(),
+            'ownerId' => $owner,
+            'type' => 'rental',
+            'grossAnnual' => $letIncome,
+            'frequency' => 'annual',
+            'taxable' => true,
+            'inflationLinked' => true,
+            'startAge' => '0',
+            'endAge' => '',
+        ]]);
+        $edited['expenseLines'] = array_merge($state['expenseLines'] ?? [], [[
+            'id' => (string) Str::uuid(),
+            'label' => 'Rent (our home)',
+            'amount' => $rent,
+            'category' => 'essential',
+            'savedAsAsset' => false,
+        ]]);
+
+        return $edited;
     }
 }
