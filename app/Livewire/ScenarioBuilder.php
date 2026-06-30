@@ -731,10 +731,12 @@ class ScenarioBuilder extends Component
     }
 
     /**
-     * Walk $current against $base by position, collecting each scalar leaf that differs as
-     * `dot-path => base value` (a value the base lacks counts as different, base value null).
-     * List rows are walked by index, matching the inputs' `wire:model` paths — a what-if child
-     * cannot reorder, add or remove rows, so positions align with the base.
+     * Walk $current against $base, collecting each scalar leaf that differs as `dot-path =>
+     * base value` (a value the base lacks counts as different, base value null). The output
+     * path uses the current index for a list row, because that is what each input's `wire:model`
+     * uses — but the BASE row it compares against is matched by **id**, not by index: a what-if
+     * may now add, remove or reorder rows, so a positional pairing would mis-highlight every row
+     * after an inserted or removed one. An added row (no base row of that id) highlights whole.
      *
      * @param  array<string, mixed>  $changes
      */
@@ -748,8 +750,21 @@ class ScenarioBuilder extends Component
             return;
         }
 
+        // A list of id-carrying rows: pair each current row with the base row of the same id.
+        $isRowList = array_is_list($current) && isset($current[0]) && is_array($current[0]) && array_key_exists('id', $current[0]);
+        $baseById = [];
+        if ($isRowList) {
+            foreach (is_array($base) ? $base : [] as $row) {
+                if (is_array($row) && isset($row['id'])) {
+                    $baseById[(string) $row['id']] = $row;
+                }
+            }
+        }
+
         foreach ($current as $key => $value) {
-            $baseValue = is_array($base) ? ($base[$key] ?? null) : null;
+            $baseValue = $isRowList && is_array($value) && isset($value['id'])
+                ? ($baseById[(string) $value['id']] ?? null)
+                : (is_array($base) ? ($base[$key] ?? null) : null);
             $path = $prefix === '' ? (string) $key : "{$prefix}.{$key}";
             self::collectChangedLeaves($baseValue, $value, $path, $changes);
         }
@@ -1061,9 +1076,7 @@ class ScenarioBuilder extends Component
         $scenario->status = ScenarioStatus::Ready;
 
         if ($this->childMode) {
-            if (! $this->persistAsChild($scenario)) {
-                return; // a structural change cannot be stored as a delta; stay put
-            }
+            $this->persistAsChild($scenario);
         } else {
             $scenario->fillFromBuilderState($this->builderState());
             $scenario->save();
@@ -1090,11 +1103,12 @@ class ScenarioBuilder extends Component
 
     /**
      * Persist $scenario as a delta-child of its base: store only the overrides (the
-     * leaves the user changed against the base's effective inputs), never a full copy.
-     * Returns false — leaving the form intact with an error — when the user added or
-     * removed a list row, which a delta cannot represent without forking the base.
+     * leaves the user changed against the base's effective inputs), never a full copy. A
+     * what-if may also add a list row (e.g. a one-off cost) or remove one — the delta stores
+     * an added row whole and a removed one as a sentinel ({@see BuilderStateDelta}), so any
+     * change the builder allows can be saved as a child; nothing is refused.
      */
-    private function persistAsChild(Scenario $scenario): bool
+    private function persistAsChild(Scenario $scenario): void
     {
         $base = Scenario::where('user_id', auth()->id())->findOrFail($this->parentScenarioId);
         // The step is UI position only — never part of a what-if's delta, so strip it
@@ -1102,20 +1116,11 @@ class ScenarioBuilder extends Component
         $effectiveBase = $this->withoutEphemeral($base->effectiveBuilderState());
         $edited = $this->withoutEphemeral($this->builderState());
 
-        if (BuilderStateDelta::structurallyDiffers($effectiveBase, $edited)) {
-            $this->addError('childStructure', 'A what-if only changes values on your base plan. To add or remove a person, pension, account or income, edit the base plan itself or start a new forecast.');
-            $this->dispatch('validation-failed');
-
-            return false;
-        }
-
         $scenario->parent_scenario_id = $base->id;
         $scenario->overrides = BuilderStateDelta::diff($effectiveBase, $edited);
         $scenario->builder_state = [];
         $scenario->projectFrom($edited);
         $scenario->save();
-
-        return true;
     }
 
     /** Refresh each child's projected columns from its (now-changed) effective state and drop its stale runs. */

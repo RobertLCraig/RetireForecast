@@ -74,21 +74,45 @@ class BuilderStateDeltaTest extends TestCase
         $this->assertNull(BuilderStateDelta::valueAt($base, 'nope.not.here'));
     }
 
-    public function test_structural_add_or_remove_is_detected(): void
+    public function test_an_added_row_round_trips_through_diff_and_merge(): void
+    {
+        // A what-if that adds a one-off cost (e.g. a mortgage deposit) stores the row whole at
+        // its id path, and merge rebuilds it — so the round trip restores the edited state.
+        $base = BuilderStateFixture::full();
+        $edited = $base;
+        $edited['oneOffCosts'][] = ['id' => 'oneoff9', 'atAge' => '70', 'amount' => '40000', 'label' => 'Mortgage deposit'];
+
+        $overrides = BuilderStateDelta::diff($base, $edited);
+        $this->assertArrayHasKey('oneOffCosts.oneoff9', $overrides);
+        $this->assertSame(['id' => 'oneoff9', 'atAge' => '70', 'amount' => '40000', 'label' => 'Mortgage deposit'], $overrides['oneOffCosts.oneoff9']);
+
+        $merged = BuilderStateDelta::merge($base, $overrides);
+        $this->assertEquals($edited['oneOffCosts'], $merged['oneOffCosts']);
+    }
+
+    public function test_a_removed_row_round_trips_through_diff_and_merge(): void
     {
         $base = BuilderStateFixture::full();
+        $edited = $base;
+        array_pop($edited['accounts']); // drop the last account (acc3)
 
-        $sameValuesEdited = $base;
-        $sameValuesEdited['expense']['essential'] = '40000';
-        $this->assertFalse(BuilderStateDelta::structurallyDiffers($base, $sameValuesEdited));
+        $overrides = BuilderStateDelta::diff($base, $edited);
+        $this->assertSame(BuilderStateDelta::REMOVED, $overrides['accounts.acc3']);
 
-        $rowAdded = $base;
-        $rowAdded['accounts'][] = ['id' => 'acc9', 'ownerId' => 'p1', 'type' => 'cash', 'balance' => '5000'];
-        $this->assertTrue(BuilderStateDelta::structurallyDiffers($base, $rowAdded));
+        $merged = BuilderStateDelta::merge($base, $overrides);
+        $this->assertSame(['acc1', 'acc2'], array_column($merged['accounts'], 'id'));
+    }
 
-        $rowRemoved = $base;
-        array_pop($rowRemoved['accounts']);
-        $this->assertTrue(BuilderStateDelta::structurallyDiffers($base, $rowRemoved));
+    public function test_a_value_override_for_a_deleted_row_stays_an_orphan_not_an_add(): void
+    {
+        // The add/remove support must not resurrect a leaf override whose row the base deleted:
+        // only a whole-row value is an add; a leaf override with no row remains a flagged orphan.
+        $base = BuilderStateFixture::full();
+
+        $this->assertSame(
+            ['pensions.gone1.currentValue'],
+            BuilderStateDelta::orphans($base, ['pensions.gone1.currentValue' => '999']),
+        );
     }
 
     public function test_an_override_orphaned_by_a_base_change_is_surfaced(): void

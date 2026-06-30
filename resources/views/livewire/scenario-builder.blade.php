@@ -27,12 +27,6 @@
         </p>
     </div>
 
-    @error('childStructure')
-        <div role="alert" class="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            {{ $message }}
-        </div>
-    @enderror
-
     {{-- Optional: pre-fill from a budget spreadsheet. Sits outside the form so the file
          input never triggers a save; the file is read once and not stored. Only for a
          fresh forecast — a what-if or an edit starts from existing inputs. --}}

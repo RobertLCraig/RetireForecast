@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Livewire;
 
 use App\Enums\ScenarioStatus;
+use App\Forecast\BuilderStateDelta;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
 use App\Livewire\ScenarioBuilder;
@@ -127,20 +128,49 @@ class ScenarioChildTest extends TestCase
         $this->assertSame(3_300_000, $child->fresh()->toHousehold()->expenseProfile->essentialAnnualSpend->pence);
     }
 
-    public function test_a_structural_change_in_a_child_is_refused(): void
+    public function test_a_child_can_add_a_row_stored_as_a_whole_row_delta(): void
     {
+        // A what-if may add a list item (here an account; the real case was a one-off cost) —
+        // it is stored as a sparse whole-row delta on the base, not refused and not a full copy.
         $user = User::factory()->create();
         $this->actingAs($user);
-        $base = ScenarioFixture::rich($user);
+        $base = ScenarioFixture::rich($user); // 3 accounts
 
         Livewire::test(ScenarioBuilder::class, ['scenario' => $base, 'asChild' => true])
             ->call('addAccount')
+            ->set('accounts.3.type', 'cash')
             ->set('accounts.3.balance', '5000')
             ->call('save')
-            ->assertHasErrors('childStructure')
-            ->assertNoRedirect();
+            ->assertHasNoErrors()
+            ->assertRedirect();
 
-        $this->assertSame(0, Scenario::where('parent_scenario_id', $base->id)->count());
+        $child = Scenario::where('parent_scenario_id', $base->id)->firstOrFail();
+        $this->assertSame([], $child->builder_state);                                    // a delta, not a full copy
+        $this->assertCount(4, $child->effectiveBuilderState()['accounts']);              // base's 3 + the added one
+        $this->assertCount(3, $base->effectiveBuilderState()['accounts']);               // the base is untouched
+
+        // The added account is stored whole at its id path (one add entry, value is the row).
+        $addedKeys = array_values(array_filter(array_keys($child->overrides), fn (string $k): bool => str_starts_with($k, 'accounts.')));
+        $this->assertCount(1, $addedKeys);
+        $this->assertIsArray($child->overrides[$addedKeys[0]]);
+        $this->assertSame('5000', $child->overrides[$addedKeys[0]]['balance']);
+    }
+
+    public function test_a_child_can_remove_a_base_row_stored_as_a_removal_delta(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user); // 3 accounts
+
+        Livewire::test(ScenarioBuilder::class, ['scenario' => $base, 'asChild' => true])
+            ->call('removeAccount', 2) // drop the third account
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertRedirect();
+
+        $child = Scenario::where('parent_scenario_id', $base->id)->firstOrFail();
+        $this->assertCount(2, $child->effectiveBuilderState()['accounts']);
+        $this->assertContains(BuilderStateDelta::REMOVED, $child->overrides);
     }
 
     public function test_a_user_cannot_create_a_child_of_another_users_base(): void

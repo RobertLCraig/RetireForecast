@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Forecast;
 
+use App\Forecast\BuilderStateDelta;
 use App\Forecast\WhatIfChanges;
 use PHPUnit\Framework\TestCase;
 use Tests\Support\ScenarioFixture;
@@ -77,5 +78,26 @@ final class WhatIfChangesTest extends TestCase
     public function test_no_overrides_is_no_changes(): void
     {
         $this->assertSame([], WhatIfChanges::compute(ScenarioFixture::richState(), []));
+    }
+
+    public function test_an_added_row_reads_as_a_single_added_line(): void
+    {
+        // diff() stores an added row whole at its id path; it should read as one "added" line
+        // named by the row, not a noisy per-leaf diff. (The real case: a one-off mortgage deposit.)
+        $changes = $this->byLabel([
+            'oneOffCosts.new1' => ['id' => 'new1', 'atAge' => '70', 'amount' => '40000', 'label' => 'Mortgage deposit'],
+        ]);
+
+        $this->assertSame(['label' => 'One-off cost added', 'from' => '—', 'to' => 'Mortgage deposit'], $changes['One-off cost added']);
+    }
+
+    public function test_a_removed_row_reads_as_a_single_removed_line_named_from_the_base(): void
+    {
+        // A removal is the sentinel; the row is named from the base (acc1 is the ISA account).
+        $changes = $this->byLabel([
+            'accounts.acc1' => BuilderStateDelta::REMOVED,
+        ]);
+
+        $this->assertSame(['label' => 'Account removed', 'from' => 'ISA account', 'to' => '—'], $changes['Account removed']);
     }
 }

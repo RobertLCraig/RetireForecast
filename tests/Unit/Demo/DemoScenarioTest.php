@@ -64,10 +64,13 @@ class DemoScenarioTest extends TestCase
         $base = DemoScenario::baseState();
         $edited = DemoScenario::retireEarlyState();
 
-        // A delta-child changes values only — it must not add or remove a list row.
-        $this->assertFalse(BuilderStateDelta::structurallyDiffers($base, $edited));
-
+        // This what-if changes values only — no rows added (a whole-row array value) or removed
+        // (the REMOVED sentinel); the retirement age is among the changed leaves.
         $overrides = BuilderStateDelta::diff($base, $edited);
+        foreach ($overrides as $value) {
+            $this->assertIsNotArray($value);
+            $this->assertNotSame(BuilderStateDelta::REMOVED, $value);
+        }
         $this->assertSame('64', $overrides['people.p1.plannedRetirementAge']);
         $this->assertSame('66', $base['people'][0]['plannedRetirementAge']); // the base is unchanged
     }

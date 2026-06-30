@@ -24,12 +24,18 @@ namespace App\Forecast;
  *   overrides = effective  −  base      {@see diff()}
  *
  * and {@see merge()} ∘ {@see diff()} is the identity over a shared form-state shape
- * (proved by the round-trip test). Overrides only *change* existing leaves: adding or
- * removing a list row is a structural change a delta cannot represent without forking,
- * caught up front by {@see structurallyDiffers()} rather than silently dropped.
+ * (proved by the round-trip test). A child may also **add** a list row (stored whole at
+ * its id path, e.g. `oneOffCosts.<id>` => the row map) or **remove** one (stored as
+ * `oneOffCosts.<id>` => {@see REMOVED}); {@see merge()} appends the adds and drops the
+ * removals. An add is kept distinct from an *orphaned* value override (a leaf whose row
+ * the base later deleted, surfaced by {@see orphans()}) because an add carries the whole
+ * row while a value override is a leaf path — so orphan detection still works.
  */
 final class BuilderStateDelta
 {
+    /** Sentinel override value marking a base list row the child removed. */
+    public const REMOVED = '__removed__';
+
     /**
      * The sparse override map of everything in $effective that differs from $base.
      * Only leaves present in $effective are considered, so a child never removes a
@@ -103,19 +109,6 @@ final class BuilderStateDelta
     }
 
     /**
-     * True if $effective adds or removes a list row relative to $base (the id-set of
-     * any row-list differs at any depth). Such a change cannot be stored as a leaf
-     * delta, so the child save is refused with guidance rather than forking the base.
-     *
-     * @param  array<string, mixed>  $base
-     * @param  array<string, mixed>  $effective
-     */
-    public static function structurallyDiffers(array $base, array $effective): bool
-    {
-        return self::walkStructural($base, $effective);
-    }
-
-    /**
      * @param  array<string, mixed>  $out
      */
     private static function walkDiff(mixed $base, mixed $effective, string $prefix, array &$out): void
@@ -131,12 +124,27 @@ final class BuilderStateDelta
 
         if (is_array($effective) && self::isRowList($effective)) {
             $baseById = self::byId(is_array($base) ? $base : []);
+            $seen = [];
             foreach ($effective as $row) {
                 $id = (string) ($row['id'] ?? '');
                 if ($id === '') {
                     continue; // unkeyed row — only happens pre-normalise; nothing to target
                 }
-                self::walkDiff($baseById[$id] ?? null, $row, self::join($prefix, $id), $out);
+                $seen[$id] = true;
+                if (! isset($baseById[$id])) {
+                    // A row the base does not have: an ADDED row. Store it whole at its id path
+                    // (not as separate leaves), so merge can rebuild it and it reads as one add.
+                    $out[self::join($prefix, $id)] = $row;
+
+                    continue;
+                }
+                self::walkDiff($baseById[$id], $row, self::join($prefix, $id), $out);
+            }
+            // A row the base had but the child dropped: a REMOVED row, marked by the sentinel.
+            foreach ($baseById as $id => $row) {
+                if (! isset($seen[$id])) {
+                    $out[self::join($prefix, (string) $id)] = self::REMOVED;
+                }
             }
 
             return;
@@ -164,6 +172,11 @@ final class BuilderStateDelta
             foreach ($node as $i => $row) {
                 if ((string) ($row['id'] ?? '') === $segment) {
                     if ($rest === []) {
+                        if ($value === self::REMOVED) {
+                            array_splice($node, $i, 1); // a removed row: drop it
+
+                            return true;
+                        }
                         $node[$i] = $value;
 
                         return true;
@@ -176,7 +189,19 @@ final class BuilderStateDelta
                 }
             }
 
-            return false; // orphan: no row carries this id
+            // No row carries this id. Removing an already-absent row is a no-op success; an
+            // ADDED row (the whole row addressed at its id path) is appended; but a *leaf*
+            // override whose row the base no longer has is a genuine orphan (false).
+            if ($value === self::REMOVED) {
+                return true;
+            }
+            if ($rest === [] && is_array($value)) {
+                $node[] = $value;
+
+                return true;
+            }
+
+            return false; // orphan: a leaf override with no row to target
         }
 
         if ($rest === []) {
@@ -225,36 +250,6 @@ final class BuilderStateDelta
         return $rest === [] ? $node[$segment] : self::getPath($node[$segment], $rest);
     }
 
-    private static function walkStructural(mixed $base, mixed $effective): bool
-    {
-        if (is_array($effective) && self::isRowList($effective)) {
-            $baseIds = self::ids(is_array($base) ? $base : []);
-            $effectiveIds = self::ids($effective);
-            if ($baseIds !== $effectiveIds) {
-                return true;
-            }
-            $baseById = self::byId(is_array($base) ? $base : []);
-            foreach ($effective as $row) {
-                if (self::walkStructural($baseById[(string) ($row['id'] ?? '')] ?? null, $row)) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        if (is_array($effective) && self::isMap($effective)) {
-            foreach ($effective as $key => $value) {
-                $baseValue = is_array($base) ? ($base[$key] ?? null) : null;
-                if (self::walkStructural($baseValue, $value)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
     /** A non-empty associative array (an object-shaped node, not a positional list). */
     private static function isMap(array $value): bool
     {
@@ -291,23 +286,6 @@ final class BuilderStateDelta
         }
 
         return $byId;
-    }
-
-    /**
-     * @param  list<mixed>  $rows
-     * @return list<string> the row ids, sorted, so set comparison ignores order
-     */
-    private static function ids(array $rows): array
-    {
-        $ids = [];
-        foreach ($rows as $row) {
-            if (is_array($row) && array_key_exists('id', $row)) {
-                $ids[] = (string) $row['id'];
-            }
-        }
-        sort($ids);
-
-        return $ids;
     }
 
     private static function join(string $prefix, string $segment): string

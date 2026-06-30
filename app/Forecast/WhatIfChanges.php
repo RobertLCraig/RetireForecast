@@ -80,6 +80,19 @@ final class WhatIfChanges
                 continue;
             }
 
+            // A whole-row ADD (the value is the row map) or a REMOVE (the sentinel): present as a
+            // single "… added" / "… removed" line, not a noisy per-leaf diff.
+            if ($value === BuilderStateDelta::REMOVED) {
+                $changes[] = self::rowChange($path, $baseState, removed: true);
+
+                continue;
+            }
+            if (is_array($value)) {
+                $changes[] = self::rowChange($path, $baseState, removed: false, addedRow: $value);
+
+                continue;
+            }
+
             $leaf = self::leaf($path);
             $changes[] = [
                 'label' => self::label($path, $baseState),
@@ -89,6 +102,38 @@ final class WhatIfChanges
         }
 
         return $changes;
+    }
+
+    /** The display type for each list row, used to name an added/removed row. */
+    private const ROW_TYPE = [
+        'people' => 'Person', 'pensions' => 'Pension', 'accounts' => 'Account',
+        'incomeStreams' => 'Income', 'oneOffCosts' => 'One-off cost', 'expenseLines' => 'Spending line',
+        'withdrawals' => 'Pension withdrawal',
+    ];
+
+    /**
+     * A change line for a whole row the what-if added to, or removed from, the base. The row
+     * id is the last path segment and its collection the one before it (so a nested pension
+     * withdrawal reads as a withdrawal, not a pension).
+     *
+     * @param  array<string, mixed>  $baseState
+     * @param  array<string, mixed>  $addedRow
+     * @return array{label: string, from: string, to: string}
+     */
+    private static function rowChange(string $path, array $baseState, bool $removed, array $addedRow = []): array
+    {
+        $segments = explode('.', $path);
+        $rowId = (string) array_pop($segments);
+        $collection = (string) (end($segments) ?: '');
+        $type = self::ROW_TYPE[$collection] ?? Str::headline(Str::singular($collection));
+
+        if ($removed) {
+            $baseRow = BuilderStateDelta::valueAt($baseState, $path);
+
+            return ['label' => "{$type} removed", 'from' => self::rowLabel($collection, is_array($baseRow) ? $baseRow : null, $rowId), 'to' => '—'];
+        }
+
+        return ['label' => "{$type} added", 'from' => '—', 'to' => self::rowLabel($collection, $addedRow, $rowId)];
     }
 
     /** The last path segment, the field whose type drives formatting. */
@@ -169,12 +214,20 @@ final class WhatIfChanges
             }
         }
 
-        $fallback = [
-            'people' => 'Person', 'pensions' => 'Pension', 'accounts' => 'Account',
-            'incomeStreams' => 'Income', 'oneOffCosts' => 'One-off cost', 'expenseLines' => 'Spending line',
-        ][$collection] ?? Str::headline(Str::singular($collection));
+        return self::rowLabel($collection, is_array($row) ? $row : null, $rowId);
+    }
 
-        if (! is_array($row)) {
+    /**
+     * A display name for a list row from the row map itself (so an added row, which the base
+     * does not hold, can still be named), falling back to the row type when the row or its
+     * identifying field is absent.
+     *
+     * @param  array<string, mixed>|null  $row
+     */
+    private static function rowLabel(string $collection, ?array $row, string $rowId): string
+    {
+        $fallback = self::ROW_TYPE[$collection] ?? Str::headline(Str::singular($collection));
+        if ($row === null) {
             return $fallback;
         }
 
