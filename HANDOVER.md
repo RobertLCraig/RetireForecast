@@ -4,12 +4,13 @@
 
 **Stage:** active
 **Status:** Phase D go-live, **feature-complete for personal use**. The adviser-legibility workstream is complete (editable assumptions, buy-vs-rent compare + "why" advice narrative, partial-PRR CGT, add/remove-in-what-ifs); the tool runs in **personal-use advice mode** (`config('compliance.personal_use')` = the flagged regulatory line — set false before any public release). What remains is Rob's **browser verification / sign-off** (testing deferred by Rob) and an optional **post-v1 enhancement backlog**. See What's next + Current state + docs/PLAN.md + DECISIONS 2026-06-29/30.
-_Last updated: 2026-06-30 (post-v1 backlog progressing — built longevity distribution, source-freshness check, surplus/shortfall + safety floor, **what-if sliders**, and **retirement-year salary proration**. Remaining approved builds: v2 annuitisation, the stress-test panel (gated on sourced historical data), the ONS-refresh script, care-cost assumptions. Feature work pending Rob's browser sign-off. **⚠️ Two concurrent sessions are live — read the next section before you commit.**)_
+_Last updated: 2026-06-30 (post-v1 backlog progressing — built longevity distribution, source-freshness check, surplus/shortfall + safety floor, **what-if sliders**, and **retirement-year salary proration**. Remaining approved builds: v2 annuitisation, the stress-test panel (gated on sourced historical data), the ONS-refresh script, care-cost assumptions. Feature work pending Rob's browser sign-off. **⚠️ Concurrent agent sessions are live (lanes A/B/C below) — read the next section before you commit.**)_
 
 ## ⚠️ Multi-agent coordination (READ FIRST — 2026-06-30)
-**This tree currently has two concurrent agent sessions. Claim your lane here before you start, and do not commit
-over the other lane's files.** (Per [[concurrent-session-split]]: re-check `git status` + `git log` before any
-commit; never push without Rob's explicit go-ahead.)
+**This tree currently has concurrent agent sessions across three lanes (A/B/C below): two active code lanes plus a
+completed docs-only lane. Claim your lane here before you start, and do not commit over another lane's files.** (Per
+[[concurrent-session-split]]: re-check `git status` + `git log` before any commit; never push without Rob's explicit
+go-ahead.)
 
 - **Lane A — post-v1 enhancement backlog (this handover's "What's next #2").** Built + committed this session:
   **what-if sliders** + **retirement-year salary proration** (HEAD `47d56ef`). Next candidate: **v2 annuitisation**.
@@ -24,15 +25,17 @@ commit; never push without Rob's explicit go-ahead.)
   **(B) a mortgage-redemption event** (`Property` maturity year + action; projector tracks the balance),
   **(C) feasibility flags**, **(D) input-expectation clarity** (pay-frequency selector, tax-free-benefit income
   type, retirement-age / one-off-scope prompts). Full detail: DECISIONS/PLAN 2026-06-30 — not re-transcribed here.
-- **Lane C — competitive gap analysis + decumulation specs (docs-only, no code; complete).** A third session ran a
+- **Lane C — competitive gap analysis + decumulation specs (docs-only, no code; complete + committed, nothing dirty).** A third session ran a
   full-market competitive scan and wrote two **standalone** docs: `docs/RESEARCH-competitive-gap-analysis.md` (where
   the engine leads vs the gaps) and the decision-ready spec **`docs/PLAN-withdrawal-sequencing.md`** (tax-efficient
   ISA/SIPP/GIA withdrawal ordering + "fill the band", with the lifetime-tax £-delta). **No app code, no Lane-A/B
   files touched** — only HANDOVER + its own new docs. The spec ends with 5 open questions awaiting Rob's answers
   before any build; it builds on the existing `Forecast/DrawdownStrategy` (already a generalisation, not greenfield).
 
-**Commit rule while both lanes are live:** commit only the files in your own lane (no blanket `git add -A`).
-Engine overlap to watch: both lanes touch `PathProjector` — coordinate before large refactors there.
+**Commit rule while lanes are live:** commit only the files in your own lane (no blanket `git add -A`).
+Engine overlap to watch: **`PathProjector` is the contention point** — Lane A (proration/sliders, done) and Lane B
+(benefits + mortgage-redemption, active) both touch it, and Lane C's withdrawal-sequencing spec, **when built**,
+centers on it too (`fundShortfall` / `DrawdownStrategy`). Coordinate before any large refactor there.
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
