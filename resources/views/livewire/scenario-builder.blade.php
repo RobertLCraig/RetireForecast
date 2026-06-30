@@ -668,7 +668,7 @@
 
                 <div class="mt-4 space-y-2">
                     @foreach ($expenseLines as $i => $line)
-                        <div wire:key="expline-{{ $line['id'] ?? $i }}" class="grid items-end gap-2 sm:grid-cols-12">
+                        <div wire:key="expline-{{ $line['id'] ?? $i }}" class="grid items-end gap-2 sm:grid-cols-12 {{ ($line['included'] ?? true) === false ? 'opacity-60' : '' }}">
                             <div class="sm:col-span-5">
                                 <label for="expenseLines-{{ $i }}-label" class="text-xs text-gray-600">Description</label>
                                 <input id="expenseLines-{{ $i }}-label" type="text" wire:model="expenseLines.{{ $i }}.label" placeholder="e.g. Council tax" class="{{ $field }}">
@@ -687,6 +687,17 @@
                                 </select>
                             </div>
                             <button type="button" wire:click="removeExpenseLine({{ $i }})" class="mb-2 text-sm text-red-700 underline sm:col-span-1">Remove</button>
+
+                            {{-- Include/exclude toggle: switch a cost off to see the effect (the live
+                                 preview moves) without losing it — it stays here, but counts £0 until
+                                 switched back on. Live so the preview recomputes on toggle. --}}
+                            <label class="flex items-center gap-2 text-xs text-gray-700 sm:col-span-12">
+                                <input type="checkbox" wire:model.live="expenseLines.{{ $i }}.included">
+                                Include this cost in the forecast
+                                @if (($line['included'] ?? true) === false)
+                                    <span class="rounded bg-gray-200 px-1 text-gray-600">excluded — kept but not counted</span>
+                                @endif
+                            </label>
 
                             @if (($line['category'] ?? '') === 'self_investment')
                                 <label class="flex items-center gap-2 text-xs text-gray-700 sm:col-span-12">

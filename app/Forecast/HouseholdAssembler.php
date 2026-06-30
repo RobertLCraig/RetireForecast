@@ -57,6 +57,15 @@ final class HouseholdAssembler
 
     public function household(array $state): Household
     {
+        // A spend line switched off in the builder (included === false) is kept in the form-state
+        // so it can be switched back on, but must contribute nothing to the forecast. Drop the
+        // excluded lines once here so every downstream total (essential, discretionary, contingent
+        // costs, saved self-investment) excludes them uniformly. Absent flag = included (back-compat).
+        $state['expenseLines'] = array_values(array_filter(
+            $state['expenseLines'] ?? [],
+            static fn (array $line): bool => ($line['included'] ?? true) !== false,
+        ));
+
         return new Household(
             name: (string) $state['householdName'],
             region: RegionProfile::from($state['region']),

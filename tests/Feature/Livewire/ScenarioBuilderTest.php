@@ -278,6 +278,19 @@ class ScenarioBuilderTest extends TestCase
             ->assertSee('charged only while you own this home'); // the Auto hint inferred from "Mortgage"
     }
 
+    public function test_a_spend_line_can_be_excluded_from_the_forecast_without_being_deleted(): void
+    {
+        // Switching a line off keeps it but marks it excluded; the live subtotals drop it.
+        Livewire::test(ScenarioBuilder::class)
+            ->set('step', 4)
+            ->set('expenseLines', [
+                ['id' => 'a', 'label' => 'Food', 'amount' => '10000', 'category' => 'essential', 'savedAsAsset' => false, 'condition' => '', 'included' => true],
+                ['id' => 'b', 'label' => 'Holidays', 'amount' => '6000', 'category' => 'discretionary', 'savedAsAsset' => false, 'condition' => '', 'included' => false],
+            ])
+            ->assertSee('Include this cost in the forecast')
+            ->assertSee('excluded — kept but not counted'); // the off line is retained, flagged
+    }
+
     /** @param array<string, mixed> $state */
     private function fill(array $state): Testable
     {

@@ -245,6 +245,8 @@ class ScenarioBuilder extends Component
             'expenseLines.*.savedAsAsset' => ['boolean'],
             // The per-line cost condition: blank = auto-classify by label, else an explicit override.
             'expenseLines.*.condition' => ['nullable', Rule::in(['', 'always', 'while_owning_home', 'while_working'])],
+            // A line switched off is excluded from the forecast but kept so it can be switched back on.
+            'expenseLines.*.included' => ['boolean'],
 
             'oneOffCosts.*.atAge' => ['required', 'integer', 'min:0', 'max:110'],
             'oneOffCosts.*.amount' => $moneyReq,
@@ -423,6 +425,7 @@ class ScenarioBuilder extends Component
                 'amount' => (string) ($l['amount'] ?? ''),
                 'category' => (string) ($l['category'] ?? 'essential'),
                 'savedAsAsset' => (bool) ($l['savedAsAsset'] ?? false),
+                'included' => true,
             ], $result->expenseLines);
         } elseif ($result->expense !== []) {
             // Only category totals: seed the 3-tier editor with two generic lines from them.
@@ -550,6 +553,12 @@ class ScenarioBuilder extends Component
         $this->normaliseRowIds();
         $this->seedExpenseLinesFromFlat();
         $this->seedSellingCostsFromRate();
+
+        // Every spend line carries an explicit `included` flag so its on/off checkbox binds to a
+        // real boolean; a line saved before the toggle existed (no flag) defaults to included.
+        foreach ($this->expenseLines as $i => $line) {
+            $this->expenseLines[$i]['included'] = ($line['included'] ?? true) !== false;
+        }
     }
 
     /**
@@ -591,7 +600,7 @@ class ScenarioBuilder extends Component
         foreach (['essential' => 'Essential spending', 'discretionary' => 'Discretionary spending'] as $category => $label) {
             $amount = $this->expense[$category] ?? '';
             if ($amount !== '' && $amount !== null) {
-                $seeded[] = ['id' => $this->newRowId(), 'label' => $label, 'amount' => (string) $amount, 'category' => $category, 'savedAsAsset' => false];
+                $seeded[] = ['id' => $this->newRowId(), 'label' => $label, 'amount' => (string) $amount, 'category' => $category, 'savedAsAsset' => false, 'included' => true];
             }
         }
 
@@ -647,6 +656,17 @@ class ScenarioBuilder extends Component
             unset($housing['sellingCostRate']);
         }
 
+        // Store a line's `included` flag only when it is switched OFF (false); an included line
+        // (the default) omits the flag, so a scenario predating the toggle and a what-if that
+        // changes nothing record no spurious delta — sparse, mirroring assumptionOverrides.
+        $expenseLines = array_map(static function (array $line): array {
+            if (($line['included'] ?? true) !== false) {
+                unset($line['included']);
+            }
+
+            return $line;
+        }, $this->expenseLines);
+
         $state = [
             'step' => $this->step,
             'name' => $this->name,
@@ -658,7 +678,7 @@ class ScenarioBuilder extends Component
             'assumptionSetId' => $this->assumptionSetId,
             'people' => $this->people,
             'expense' => $expense,
-            'expenseLines' => $this->expenseLines,
+            'expenseLines' => $expenseLines,
             'oneOffCosts' => $this->oneOffCosts,
             'pensions' => $this->pensions,
             'accounts' => $this->accounts,
@@ -965,6 +985,9 @@ class ScenarioBuilder extends Component
         $sum = function (string $category, ?bool $saved = null): float {
             $total = 0.0;
             foreach ($this->expenseLines as $line) {
+                if (($line['included'] ?? true) === false) {
+                    continue; // a switched-off line is excluded from the forecast, so from the totals too
+                }
                 if (($line['category'] ?? '') !== $category) {
                     continue;
                 }
@@ -993,7 +1016,7 @@ class ScenarioBuilder extends Component
         $this->expenseLines[] = [
             'id' => $this->newRowId(), 'label' => '', 'amount' => '',
             'category' => in_array($category, ['essential', 'discretionary', 'self_investment'], true) ? $category : 'essential',
-            'savedAsAsset' => false, 'condition' => '',
+            'savedAsAsset' => false, 'condition' => '', 'included' => true,
         ];
     }
 

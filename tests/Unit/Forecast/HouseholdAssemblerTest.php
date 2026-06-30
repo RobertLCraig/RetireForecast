@@ -72,6 +72,43 @@ class HouseholdAssemblerTest extends TestCase
         ])->sellingCosts);
     }
 
+    public function test_an_excluded_spend_line_is_dropped_from_every_total(): void
+    {
+        // A line switched off (included === false) is kept in the form-state but must not reach
+        // any forecast total — essential, discretionary or the contingent (property) cost subset.
+        $household = (new HouseholdAssembler)->household([
+            'householdName' => 'X',
+            'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1960-01-01', 'sex' => 'male', 'employmentStatus' => 'retired']],
+            'expenseLines' => [
+                ['id' => 'a', 'label' => 'Food', 'amount' => '10000', 'category' => 'essential', 'savedAsAsset' => false, 'included' => true],
+                ['id' => 'b', 'label' => 'Holidays', 'amount' => '6000', 'category' => 'discretionary', 'savedAsAsset' => false, 'included' => false],
+                ['id' => 'c', 'label' => 'Mortgage', 'amount' => '12000', 'category' => 'essential', 'savedAsAsset' => false, 'included' => false],
+            ],
+        ]);
+
+        // Only the included Food line counts; the excluded discretionary and the excluded
+        // (auto-classified property) mortgage contribute nothing.
+        $this->assertSame(Money::fromPounds(10_000)->pence, $household->expenseProfile->essentialAnnualSpend->pence);
+        $this->assertSame(0, $household->expenseProfile->discretionaryAnnualSpend->pence);
+        $this->assertNull($household->expenseProfile->propertyCosts);
+    }
+
+    public function test_a_line_with_no_included_flag_counts_as_included(): void
+    {
+        // Back-compat: a line saved before the toggle existed has no flag and must still count.
+        $household = (new HouseholdAssembler)->household([
+            'householdName' => 'X',
+            'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1960-01-01', 'sex' => 'male', 'employmentStatus' => 'retired']],
+            'expenseLines' => [
+                ['id' => 'a', 'label' => 'Food', 'amount' => '10000', 'category' => 'essential', 'savedAsAsset' => false],
+            ],
+        ]);
+
+        $this->assertSame(Money::fromPounds(10_000)->pence, $household->expenseProfile->essentialAnnualSpend->pence);
+    }
+
     public function test_pounds_and_pence_parse_to_exact_pence(): void
     {
         $household = (new HouseholdAssembler)->household([
