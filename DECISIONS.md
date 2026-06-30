@@ -3,6 +3,16 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-30 — Source-freshness guardrail for the verified_on discipline
+**Decision:** A **`figures:freshness`** command (over a pure, unit-tested `App\Finance\FigureFreshness`) reports each
+supported tax year's gov.uk verification date and **flags any verified more than `--months` ago (default 12)**, exiting
+non-zero so CI or a periodic run catches aging statutory figures. `TaxYearRegistry::SUPPORTED_TAX_YEARS` is the single
+source of the year set.
+**Why:** the project's trust spine is "every figure cites a source + verified_on"; this extends the one-off gov.uk
+verification pass into an ongoing guardrail ("verified once" → "noticed when it ages"). Built as a **command, not a
+phpunit test**, so the check is not date-dependent/flaky; the date arithmetic is unit-tested against a fixed reference.
+**Status:** built, suite green.
+
 ## 2026-06-30 — Longevity distribution surfaced from the Monte Carlo (first post-v1 backlog item)
 **Decision:** The Monte Carlo now surfaces a **longevity distribution** (a `LongevityDistribution` on `SimulationResult`),
 read off the **same joint-life mortality sampler** the wealth paths already run, framed around the **last survivor** (how
