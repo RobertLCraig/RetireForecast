@@ -477,7 +477,18 @@
                         @if ($se['proceeds']['hasMortgage'])
                             <tr><th scope="row" class="{{ $td }} text-left">less outstanding mortgage</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['mortgage'] }}</td></tr>
                         @endif
-                        <tr><th scope="row" class="{{ $td }} text-left">less selling costs ({{ $se['sellingCostsLabel'] }})</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['sellingCosts'] }}</td></tr>
+                        <tr><th scope="row" class="{{ $td }} text-left">less selling costs{{ $se['sellingCostsAssumed'] ? ' (assumed)' : '' }}</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['sellingCosts'] }}</td></tr>
+                        @unless ($se['sellingCostsAssumed'])
+                            @foreach ($se['sellingCostBreakdown'] as $line)
+                                <tr class="text-gray-500">
+                                    <th scope="row" class="{{ $td }} pl-6 text-left font-normal">
+                                        {{ $line['label'] }}
+                                        @if ($line['detail']) <span class="text-xs text-gray-400">({{ $line['detail'] }})</span> @endif
+                                    </th>
+                                    <td class="{{ $td }} text-right text-xs tabular-nums">−{{ $line['value'] }}</td>
+                                </tr>
+                            @endforeach
+                        @endunless
                         <tr><th scope="row" class="{{ $td }} text-left">less capital gains tax (main home, fully relieved)</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['cgt'] }}</td></tr>
                         <tr class="bg-blue-50"><th scope="row" class="{{ $td }} text-left font-semibold">Net proceeds</th><td class="{{ $td }} text-right font-semibold tabular-nums">{{ $se['proceeds']['netProceeds'] }}</td></tr>
                     </tbody>

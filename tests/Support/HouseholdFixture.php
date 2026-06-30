@@ -22,6 +22,7 @@ use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
+use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Pension\WithdrawalKind;
@@ -139,7 +140,7 @@ final class HouseholdFixture
             annualRent: Money::fromPounds(18_000),
             rentInflationReal: Percent::fromPercent(0.5),
             movingCosts: Money::fromPounds(9_500),
-            sellingCostRate: Percent::fromPercent(1.5),
+            sellingCosts: [new SellingCostComponent('Estate agent', Percent::fromPercent(1.5))],
         );
     }
 }

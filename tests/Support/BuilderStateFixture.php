@@ -58,7 +58,8 @@ final class BuilderStateFixture
             'property' => ['currentValue' => '525000', 'ownership' => 'mortgaged', 'everLet' => false,
                 'outstandingMortgage' => '48000', 'runningCosts' => '6400', 'growthAssumptionOverride' => '1', 'ownershipShare' => '100'],
             'housing' => ['salePrice' => '525000', 'buyPrice' => '320000', 'annualRent' => '18000',
-                'rentInflationReal' => '0.5', 'movingCosts' => '9500', 'sellingCostRate' => '1.5'],
+                'rentInflationReal' => '0.5', 'movingCosts' => '9500',
+                'sellingCosts' => ['estate_agent' => ['label' => 'Estate agent', 'basis' => 'percent', 'value' => '1.5']]],
         ];
     }
 
@@ -80,7 +81,7 @@ final class BuilderStateFixture
                 ['id' => 'ess1', 'label' => 'Essentials', 'amount' => '20000', 'category' => 'essential', 'savedAsAsset' => false],
             ],
             'hasProperty' => false,
-            'housing' => ['salePrice' => '300000', 'buyPrice' => '', 'annualRent' => '', 'rentInflationReal' => '', 'movingCosts' => '', 'sellingCostRate' => ''],
+            'housing' => ['salePrice' => '300000', 'buyPrice' => '', 'annualRent' => '', 'rentInflationReal' => '', 'movingCosts' => '', 'sellingCosts' => []],
         ];
     }
 }

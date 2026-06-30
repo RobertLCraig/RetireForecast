@@ -19,15 +19,23 @@ use RetireForecast\FinanceEngine\Money\Money;
  * relieved by Private Residence Relief. This is the single source for the proceeds figure:
  * the buy/rent variants and any UI breakdown read it, so the parts can never drift from
  * the total they sum to.
+ *
+ * $sellingCostBreakdown decomposes $sellingCosts into its named components (estate agent,
+ * legal/conveyancing, ...), each already resolved to £; their amounts sum to $sellingCosts
+ * exactly, so a UI can show the breakdown and it reconciles to the total by construction.
  */
 final class HousingProceeds
 {
+    /**
+     * @param  list<array{label: string, amount: Money}>  $sellingCostBreakdown
+     */
     public function __construct(
         public readonly Money $salePrice,
         public readonly Money $outstandingMortgage,
         public readonly Money $sellingCosts,
         public readonly Money $capitalGainsTax,
         public readonly Money $netProceeds,
+        public readonly array $sellingCostBreakdown = [],
     ) {}
 
     /** True when the sale cleared its costs, so the parts sum exactly to the sale price. */

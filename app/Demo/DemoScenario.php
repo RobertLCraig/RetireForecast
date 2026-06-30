@@ -88,7 +88,12 @@ final class DemoScenario
             'property' => ['currentValue' => '450000', 'ownership' => 'mortgaged', 'everLet' => false,
                 'outstandingMortgage' => '30000', 'runningCosts' => '5000', 'growthAssumptionOverride' => '', 'ownershipShare' => '100'],
             'housing' => ['salePrice' => '450000', 'buyPrice' => '280000', 'annualRent' => '15000',
-                'rentInflationReal' => '0.5', 'movingCosts' => '8000', 'sellingCostRate' => '1.5'],
+                'rentInflationReal' => '0.5', 'movingCosts' => '8000',
+                'sellingCosts' => [
+                    'estate_agent' => ['label' => 'Estate agent', 'basis' => 'percent', 'value' => '1.25'],
+                    'legal' => ['label' => 'Legal / conveyancing', 'basis' => 'fixed', 'value' => '1500'],
+                    'epc_removals' => ['label' => 'EPC & removals', 'basis' => 'fixed', 'value' => '800'],
+                ]],
         ];
     }
 

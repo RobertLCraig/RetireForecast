@@ -286,7 +286,12 @@ class ScenarioBuilder extends Component
             'housing.annualRent' => $money,
             'housing.rentInflationReal' => $rate,
             'housing.movingCosts' => $money,
-            'housing.sellingCostRate' => ['nullable', 'numeric', 'min:0'],
+            // Selling costs are a set of named components, each entered as a % of the sale
+            // (basis "percent") or a flat £ (basis "fixed"). A blank line just costs nothing.
+            'housing.sellingCosts' => ['nullable', 'array'],
+            'housing.sellingCosts.*.label' => ['nullable', 'string', 'max:255'],
+            'housing.sellingCosts.*.basis' => ['nullable', Rule::in(['percent', 'fixed'])],
+            'housing.sellingCosts.*.value' => ['nullable', 'numeric', 'min:0'],
         ];
 
         if ($this->hasProperty) {
@@ -541,6 +546,31 @@ class ScenarioBuilder extends Component
 
         $this->normaliseRowIds();
         $this->seedExpenseLinesFromFlat();
+        $this->seedSellingCostsFromRate();
+    }
+
+    /**
+     * Backfill the selling-cost components for a scenario saved before the breakdown existed
+     * (it carried only the old single `sellingCostRate`), so it opens in the new editor with
+     * its total preserved: the old rate becomes the estate-agent component (defaulting to the
+     * old 2% when none was set), the other components start empty (they cost nothing, so the
+     * total is unchanged). No-op once components exist, and skipped for a what-if child (its
+     * selling costs come from its base's effective state). One home per figure — the stale
+     * `sellingCostRate` is dropped so the two shapes never coexist.
+     */
+    private function seedSellingCostsFromRate(): void
+    {
+        if ($this->childMode || ! empty($this->housing['sellingCosts'])) {
+            return;
+        }
+
+        $oldRate = trim((string) ($this->housing['sellingCostRate'] ?? ''));
+        $this->housing['sellingCosts'] = [
+            'estate_agent' => ['label' => 'Estate agent', 'basis' => 'percent', 'value' => $oldRate === '' ? '2' : $oldRate],
+            'legal' => ['label' => 'Legal / conveyancing', 'basis' => 'fixed', 'value' => ''],
+            'epc_removals' => ['label' => 'EPC & removals', 'basis' => 'fixed', 'value' => ''],
+        ];
+        unset($this->housing['sellingCostRate']);
     }
 
     /**
@@ -607,6 +637,13 @@ class ScenarioBuilder extends Component
             $expense['discretionary'] = '';
         }
 
+        // Selling costs are the component breakdown now; never store the legacy single rate
+        // beside it, so the two shapes can't coexist and drift (one home per figure).
+        $housing = $this->housing;
+        if (! empty($housing['sellingCosts'])) {
+            unset($housing['sellingCostRate']);
+        }
+
         $state = [
             'step' => $this->step,
             'name' => $this->name,
@@ -625,7 +662,7 @@ class ScenarioBuilder extends Component
             'incomeStreams' => $this->incomeStreams,
             'hasProperty' => $this->hasProperty,
             'property' => $this->property,
-            'housing' => $this->housing,
+            'housing' => $housing,
         ];
 
         // Carry the edited assumptions only when the user actually changed one — an untouched
@@ -1192,7 +1229,25 @@ class ScenarioBuilder extends Component
     {
         return [
             'salePrice' => '', 'buyPrice' => '', 'annualRent' => '',
-            'rentInflationReal' => '', 'movingCosts' => '', 'sellingCostRate' => '',
+            'rentInflationReal' => '', 'movingCosts' => '',
+            'sellingCosts' => self::defaultSellingCosts(),
+        ];
+    }
+
+    /**
+     * The default selling-cost breakdown for a new forecast: an estate-agent fee on a % of
+     * the sale (how agents quote) plus flat legal/conveyancing and EPC/removals fees (how
+     * those quote). Sensible UK assumptions, all editable; each is the value the user starts
+     * from and can change, or switch its basis between % and £.
+     *
+     * @return array<string, array{label: string, basis: string, value: string}>
+     */
+    private static function defaultSellingCosts(): array
+    {
+        return [
+            'estate_agent' => ['label' => 'Estate agent', 'basis' => 'percent', 'value' => '1.25'],
+            'legal' => ['label' => 'Legal / conveyancing', 'basis' => 'fixed', 'value' => '1500'],
+            'epc_removals' => ['label' => 'EPC & removals', 'basis' => 'fixed', 'value' => '800'],
         ];
     }
 }

@@ -116,14 +116,25 @@ final class HousingComparison
      */
     public function saleProceeds(Household $household, HousingAction $action): HousingProceeds
     {
-        $sellingRate = $action->sellingCostRate ?? Percent::fromBasisPoints(self::DEFAULT_SELLING_COST_RATE_BP);
-        $sellingCosts = $action->salePrice->applyRate($sellingRate);
+        // Each selling-cost component resolves to £ against the sale price (a % of it, or a
+        // flat fee). The total is their sum; the breakdown is carried so a UI can show it and
+        // it reconciles to the total by construction. No components → the engine default rate.
+        $components = $action->sellingCosts ?? [new SellingCostComponent('Selling costs', Percent::fromBasisPoints(self::DEFAULT_SELLING_COST_RATE_BP))];
+
+        $sellingCosts = Money::zero();
+        $breakdown = [];
+        foreach ($components as $component) {
+            $amount = $component->amount($action->salePrice);
+            $sellingCosts = $sellingCosts->plus($amount);
+            $breakdown[] = ['label' => $component->label, 'amount' => $amount];
+        }
+
         $mortgage = $household->primaryResidence?->outstandingMortgage ?? Money::zero();
         $cgt = Money::zero(); // CGT on a main home is fully relieved by PRR in v1.
 
         $netProceeds = $action->salePrice->minus($mortgage)->minus($sellingCosts)->minus($cgt)->minZero();
 
-        return new HousingProceeds($action->salePrice, $mortgage, $sellingCosts, $cgt, $netProceeds);
+        return new HousingProceeds($action->salePrice, $mortgage, $sellingCosts, $cgt, $netProceeds, $breakdown);
     }
 
     /**

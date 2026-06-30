@@ -230,6 +230,40 @@ class ScenarioBuilderTest extends TestCase
             ->assertDontSee('On these figures, the money');
     }
 
+    public function test_the_housing_step_renders_editable_selling_cost_components_with_defaults(): void
+    {
+        Livewire::test(ScenarioBuilder::class)
+            ->set('step', 5)
+            ->assertSee('Selling costs')
+            ->assertSee('Estate agent')
+            ->assertSee('Legal / conveyancing')
+            ->assertSee('EPC & removals')
+            // The default estate-agent line is a % of the sale; the flat fees are £.
+            ->assertSet('housing.sellingCosts.estate_agent.value', '1.25')
+            ->assertSet('housing.sellingCosts.estate_agent.basis', 'percent')
+            ->assertSet('housing.sellingCosts.legal.basis', 'fixed');
+    }
+
+    public function test_an_old_scenario_seeds_editable_selling_cost_components_from_its_rate(): void
+    {
+        // A scenario saved before the breakdown carried only the single rate; editing it must
+        // open with that rate as the estate-agent component (total preserved), the rest empty.
+        $state = BuilderStateFixture::minimalValid();
+        unset($state['housing']['sellingCosts']);
+        $state['housing']['sellingCostRate'] = '1.5';
+
+        $scenario = new Scenario;
+        $scenario->user_id = auth()->id();
+        $scenario->fillFromBuilderState($state);
+        $scenario->status = ScenarioStatus::Ready;
+        $scenario->save();
+
+        Livewire::test(ScenarioBuilder::class, ['scenario' => $scenario])
+            ->assertSet('housing.sellingCosts.estate_agent.value', '1.5')
+            ->assertSet('housing.sellingCosts.estate_agent.basis', 'percent')
+            ->assertSet('housing.sellingCosts.legal.value', '');
+    }
+
     /** @param array<string, mixed> $state */
     private function fill(array $state): Testable
     {

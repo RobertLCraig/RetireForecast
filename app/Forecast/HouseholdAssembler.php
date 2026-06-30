@@ -24,6 +24,7 @@ use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
+use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Pension\WithdrawalKind;
@@ -76,8 +77,49 @@ final class HouseholdAssembler
             annualRent: $this->money($h['annualRent'] ?? null),
             rentInflationReal: $this->percent($h['rentInflationReal'] ?? null),
             movingCosts: $this->money($h['movingCosts'] ?? null),
-            sellingCostRate: $this->percent($h['sellingCostRate'] ?? null),
+            sellingCosts: $this->sellingCosts($h),
         );
+    }
+
+    /**
+     * The selling-cost components, each entered on its own basis — a % of the sale price
+     * (how agents quote) or a flat £ (how conveyancing quotes), the basis being the value's
+     * type. A blank component contributes nothing and is dropped; all-blank yields null, so
+     * the engine applies its own default rate (matching the old empty-rate behaviour).
+     *
+     * Back-compat: a scenario saved before the breakdown existed carries only the old single
+     * `sellingCostRate`. It maps to one estate-agent component on that %, preserving the old
+     * total exactly (the other components default to nothing); a blank old rate yields null,
+     * so the engine default still applies. One home per figure — never both shapes at once.
+     *
+     * @param  array<string, mixed>  $h  the housing form-state
+     * @return list<SellingCostComponent>|null
+     */
+    private function sellingCosts(array $h): ?array
+    {
+        if (isset($h['sellingCosts']) && is_array($h['sellingCosts'])) {
+            $components = [];
+            foreach ($h['sellingCosts'] as $line) {
+                $value = (string) ($line['value'] ?? '');
+                if (trim($value) === '') {
+                    continue; // an empty line costs nothing
+                }
+
+                $components[] = new SellingCostComponent(
+                    (string) ($line['label'] ?? 'Selling cost'),
+                    ($line['basis'] ?? 'percent') === 'fixed'
+                        ? Money::fromPence($this->toPence($value))
+                        : Percent::fromPercent((float) $value),
+                );
+            }
+
+            return $components === [] ? null : $components;
+        }
+
+        // Back-compat: the old single rate becomes one estate-agent component on that %.
+        $rate = $this->percent($h['sellingCostRate'] ?? null);
+
+        return $rate === null ? null : [new SellingCostComponent('Estate agent', $rate)];
     }
 
     private function person(array $p): Person

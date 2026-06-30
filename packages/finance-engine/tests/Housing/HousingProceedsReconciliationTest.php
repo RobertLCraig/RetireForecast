@@ -15,6 +15,7 @@ use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
+use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -82,12 +83,42 @@ final class HousingProceedsReconciliationTest extends TestCase
         $this->assertSame(Money::fromPounds(392_000)->pence, $proceeds->netProceeds->pence);
     }
 
-    public function test_a_custom_selling_cost_rate_is_honoured(): void
+    public function test_a_single_percent_selling_cost_component_is_honoured(): void
     {
-        $action = new HousingAction(salePrice: Money::fromPounds(400_000), sellingCostRate: Percent::fromPercent(3));
+        $action = new HousingAction(salePrice: Money::fromPounds(400_000), sellingCosts: [
+            new SellingCostComponent('Estate agent', Percent::fromPercent(3)),
+        ]);
         $proceeds = $this->comparison()->saleProceeds($this->household(), $action);
 
         $this->assertSame(Money::fromPounds(12_000)->pence, $proceeds->sellingCosts->pence);
+    }
+
+    public function test_mixed_percent_and_flat_fee_components_sum_to_the_total_selling_cost(): void
+    {
+        // The real-world mix: an agent on a % of the sale, plus flat conveyancing and EPC fees.
+        $action = new HousingAction(salePrice: Money::fromPounds(400_000), sellingCosts: [
+            new SellingCostComponent('Estate agent', Percent::fromPercent(1.25)),  // £5,000
+            new SellingCostComponent('Legal / conveyancing', Money::fromPounds(1_500)),
+            new SellingCostComponent('EPC & removals', Money::fromPounds(800)),
+        ]);
+        $proceeds = $this->comparison()->saleProceeds($this->household(), $action);
+
+        $this->assertSame(Money::fromPounds(7_300)->pence, $proceeds->sellingCosts->pence);
+    }
+
+    public function test_the_selling_cost_breakdown_reconciles_to_the_total(): void
+    {
+        $action = new HousingAction(salePrice: Money::fromPounds(400_000), sellingCosts: [
+            new SellingCostComponent('Estate agent', Percent::fromPercent(1.25)),
+            new SellingCostComponent('Legal / conveyancing', Money::fromPounds(1_500)),
+            new SellingCostComponent('EPC & removals', Money::fromPounds(800)),
+        ]);
+        $proceeds = $this->comparison()->saleProceeds($this->household(), $action);
+
+        // Each line is labelled and resolved to £; the breakdown sums to the total exactly.
+        $this->assertSame(['Estate agent', 'Legal / conveyancing', 'EPC & removals'], array_column($proceeds->sellingCostBreakdown, 'label'));
+        $summed = array_sum(array_map(static fn (array $line): int => $line['amount']->pence, $proceeds->sellingCostBreakdown));
+        $this->assertSame($proceeds->sellingCosts->pence, $summed);
     }
 
     public function test_negative_equity_floors_net_proceeds_at_zero(): void

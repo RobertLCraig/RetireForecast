@@ -10,6 +10,8 @@ use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
@@ -30,6 +32,44 @@ class HouseholdAssemblerTest extends TestCase
 
         $this->assertEquals(HouseholdFixture::household(), $assembled['household']);
         $this->assertEquals(HouseholdFixture::housingAction(), $assembled['housingAction']);
+    }
+
+    public function test_selling_costs_assemble_each_component_on_its_own_basis(): void
+    {
+        $action = (new HouseholdAssembler)->housingAction([
+            'salePrice' => '400000',
+            'sellingCosts' => [
+                'estate_agent' => ['label' => 'Estate agent', 'basis' => 'percent', 'value' => '1.25'],
+                'legal' => ['label' => 'Legal / conveyancing', 'basis' => 'fixed', 'value' => '1500'],
+                'blank' => ['label' => 'Unused', 'basis' => 'fixed', 'value' => ''], // blank line costs nothing → dropped
+            ],
+        ]);
+
+        $this->assertCount(2, $action->sellingCosts);
+        $this->assertInstanceOf(Percent::class, $action->sellingCosts[0]->value);
+        $this->assertSame(125, $action->sellingCosts[0]->value->basisPoints);
+        $this->assertInstanceOf(Money::class, $action->sellingCosts[1]->value);
+        $this->assertSame(150_000, $action->sellingCosts[1]->value->pence);
+    }
+
+    public function test_an_old_single_selling_cost_rate_maps_to_one_estate_agent_component(): void
+    {
+        // Back-compat: a scenario saved before the breakdown carried only the single rate.
+        $action = (new HouseholdAssembler)->housingAction(['salePrice' => '400000', 'sellingCostRate' => '1.5']);
+
+        $this->assertCount(1, $action->sellingCosts);
+        $this->assertSame('Estate agent', $action->sellingCosts[0]->label);
+        $this->assertSame(150, $action->sellingCosts[0]->value->basisPoints);
+    }
+
+    public function test_no_selling_cost_input_leaves_the_engine_default_to_apply(): void
+    {
+        // Absent or all-blank → null, so the engine applies its own default (the old behaviour).
+        $this->assertNull((new HouseholdAssembler)->housingAction(['salePrice' => '400000'])->sellingCosts);
+        $this->assertNull((new HouseholdAssembler)->housingAction([
+            'salePrice' => '400000',
+            'sellingCosts' => ['estate_agent' => ['label' => 'Estate agent', 'basis' => 'percent', 'value' => '']],
+        ])->sellingCosts);
     }
 
     public function test_pounds_and_pence_parse_to_exact_pence(): void

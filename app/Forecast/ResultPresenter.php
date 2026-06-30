@@ -21,6 +21,7 @@ use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\HousingPurchase;
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
 
@@ -843,7 +844,7 @@ final class ResultPresenter
      * Returns null when no sale is configured (sale price zero) — e.g. a stay-put plan — so
      * the section simply does not render. Factual throughout, never a recommendation.
      *
-     * @return array{sellingRatePct: string, sellingRateIsDefault: bool, sellingCostsLabel: string, proceeds: array{salePrice: string, mortgage: string, hasMortgage: bool, sellingCosts: string, cgt: string, netProceeds: string, clearsCosts: bool}, rent: array{invested: string, annualRent: ?string}, buy: ?array{netProceeds: string, buyPrice: string, sdlt: string, movingCosts: string, surplus: string, coversPurchase: bool}, blendedReturnPct: string, incomeYieldPct: string}|null
+     * @return array{sellingCostsAssumed: bool, sellingCostBreakdown: list<array{label: string, value: string, detail: ?string}>, proceeds: array{salePrice: string, mortgage: string, hasMortgage: bool, sellingCosts: string, cgt: string, netProceeds: string, clearsCosts: bool}, rent: array{invested: string, annualRent: ?string}, buy: ?array{netProceeds: string, buyPrice: string, sdlt: string, movingCosts: string, surplus: string, coversPurchase: bool}, blendedReturnPct: string, incomeYieldPct: string}|null
      */
     public static function saleExplainer(
         HousingProceeds $proceeds,
@@ -856,15 +857,23 @@ final class ResultPresenter
             return null;
         }
 
-        $ratePct = self::ratePct($action->sellingCostRate?->asPercent() ?? 2.0);
-        $rateIsDefault = $action->sellingCostRate === null;
+        // The selling cost is no longer a single rate but a set of components, each a % of the
+        // sale or a flat fee. Show each line resolved to £ (from the reconciled breakdown) with
+        // the basis it was entered on, so the total is not a black box. `assumed` = the engine
+        // default applied because no components were entered.
+        $assumed = $action->sellingCosts === null;
+        $breakdown = [];
+        foreach ($proceeds->sellingCostBreakdown as $i => $line) {
+            $component = $action->sellingCosts[$i] ?? null;
+            $detail = $component !== null && $component->value instanceof Percent
+                ? self::ratePct($component->value->asPercent()).' of the sale price'
+                : null;
+            $breakdown[] = ['label' => $line['label'], 'value' => $line['amount']->format(), 'detail' => $detail];
+        }
 
         return [
-            'sellingRatePct' => $ratePct,
-            'sellingRateIsDefault' => $rateIsDefault,
-            // One clean label (built here, not with an inline Blade @if glued to a word, which
-            // Blade does not compile). Names what the rate covers, so the cost is not a black box.
-            'sellingCostsLabel' => $ratePct.' of the sale price'.($rateIsDefault ? ', assumed' : '').' — estate agent + legal/conveyancing',
+            'sellingCostsAssumed' => $assumed,
+            'sellingCostBreakdown' => $breakdown,
             'proceeds' => [
                 'salePrice' => $proceeds->salePrice->format(),
                 'mortgage' => $proceeds->outstandingMortgage->format(),
@@ -942,9 +951,20 @@ final class ResultPresenter
             $economic,
         );
 
-        $housing = [
-            ['label' => 'Selling costs', 'value' => self::ratePct($action->sellingCostRate?->asPercent() ?? 2.0).' of the sale price'],
-        ];
+        // Selling costs: each component resolved to £ on its own basis (% of sale or flat fee),
+        // or the engine's assumed default when none was entered. One row per component so the
+        // total on the sale waterfall traces to a stated basis here.
+        $housing = [];
+        if ($action->sellingCosts === null) {
+            $housing[] = ['label' => 'Selling costs', 'value' => self::ratePct(2.0).' of the sale price (assumed)'];
+        } else {
+            foreach ($action->sellingCosts as $component) {
+                $basis = $component->value instanceof Percent
+                    ? self::ratePct($component->value->asPercent()).' of sale'
+                    : 'flat fee';
+                $housing[] = ['label' => 'Selling cost — '.$component->label, 'value' => $component->amount($action->salePrice)->format().' ('.$basis.')'];
+            }
+        }
         if ($action->movingCosts !== null) {
             $housing[] = ['label' => 'Moving costs', 'value' => $action->movingCosts->format()];
         }

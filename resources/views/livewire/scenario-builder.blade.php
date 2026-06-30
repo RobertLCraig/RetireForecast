@@ -767,9 +767,31 @@
                         <label for="housing-movingCosts" class="{{ $label }}">Moving costs (£)</label>
                         <input id="housing-movingCosts" type="text" inputmode="decimal" wire:model="housing.movingCosts" class="{{ $field }}">
                     </div>
-                    <div>
-                        <label for="housing-sellingCostRate" class="{{ $label }}">Selling cost (% of sale)</label>
-                        <input id="housing-sellingCostRate" type="text" inputmode="decimal" wire:model="housing.sellingCostRate" class="{{ $field }}">
+                </div>
+
+                {{-- Selling costs: a breakdown, each line entered on the basis its quote uses —
+                     a % of the sale price (how agents quote) or a flat £ (how conveyancing quotes).
+                     The sum is netted off the sale proceeds (shown on the results page). --}}
+                <div class="mt-6">
+                    <p class="{{ $label }}">Selling costs</p>
+                    <p class="mt-1 text-xs text-gray-500">Enter each on the basis it is quoted — a % of the sale price, or a flat fee in £. The total is taken off your sale proceeds.</p>
+                    <div class="mt-2 space-y-3">
+                        @foreach ($housing['sellingCosts'] ?? [] as $key => $cost)
+                            <div wire:key="sellcost-{{ $key }}" class="grid items-end gap-2 sm:grid-cols-12">
+                                <div class="sm:col-span-7">
+                                    <label for="sellcost-{{ $key }}-value" class="{{ $label }}">{{ $cost['label'] ?? 'Selling cost' }} {{ ($cost['basis'] ?? 'percent') === 'fixed' ? '(£)' : '(% of sale)' }}</label>
+                                    <input id="sellcost-{{ $key }}-value" type="text" inputmode="decimal" wire:model="housing.sellingCosts.{{ $key }}.value" class="{{ $field }}" @error('housing.sellingCosts.'.$key.'.value') aria-invalid="true" @enderror>
+                                    @error('housing.sellingCosts.'.$key.'.value') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                </div>
+                                <div class="sm:col-span-5">
+                                    <label for="sellcost-{{ $key }}-basis" class="{{ $label }}">Basis</label>
+                                    <select id="sellcost-{{ $key }}-basis" wire:model.live="housing.sellingCosts.{{ $key }}.basis" class="{{ $field }}">
+                                        <option value="percent">% of sale price</option>
+                                        <option value="fixed">Flat fee (£)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
                 <p class="mt-4 text-sm text-gray-600">When you save, all three options are run and compared on the results page. You can come back and change any step.</p>

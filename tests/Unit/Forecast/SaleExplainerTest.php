@@ -16,6 +16,7 @@ use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
+use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -73,39 +74,49 @@ final class SaleExplainerTest extends TestCase
         $this->assertNull($this->explainer(new HousingAction(salePrice: Money::zero())));
     }
 
-    public function test_the_waterfall_reconciles_and_shows_the_selling_rate_beside_the_figure(): void
+    public function test_the_waterfall_reconciles_and_shows_each_component_beside_the_figure(): void
     {
-        // A 20% selling rate (~10x typical) must be visible as 20%, not buried in the £ figure.
-        $action = new HousingAction(salePrice: Money::fromPounds(400_000), sellingCostRate: Percent::fromPercent(20));
+        // A 20% agent rate (~10x typical) must be visible as 20% of the sale, not buried in £.
+        $action = new HousingAction(salePrice: Money::fromPounds(400_000), sellingCosts: [
+            new SellingCostComponent('Estate agent', Percent::fromPercent(20)),
+        ]);
         $se = $this->explainer($action, Money::fromPounds(50_000));
 
         $this->assertNotNull($se);
-        $this->assertSame('20%', $se['sellingRatePct']);
-        $this->assertFalse($se['sellingRateIsDefault']);
+        $this->assertFalse($se['sellingCostsAssumed']);
+        $this->assertSame('Estate agent', $se['sellingCostBreakdown'][0]['label']);
+        $this->assertSame('20% of the sale price', $se['sellingCostBreakdown'][0]['detail']);
+        $this->assertSame(Money::fromPounds(80_000)->format(), $se['sellingCostBreakdown'][0]['value']);
         $this->assertTrue($se['proceeds']['hasMortgage']);
         // 20% of £400k = £80,000 costs; net = 400,000 − 50,000 (mortgage) − 80,000 = £270,000.
         $this->assertSame(Money::fromPounds(80_000)->format(), $se['proceeds']['sellingCosts']);
         $this->assertSame(Money::fromPounds(270_000)->format(), $se['proceeds']['netProceeds']);
     }
 
-    public function test_a_default_selling_rate_is_shown_as_two_percent_and_flagged_assumed(): void
+    public function test_a_default_selling_cost_is_flagged_assumed(): void
     {
         $se = $this->explainer(new HousingAction(salePrice: Money::fromPounds(400_000)));
 
-        $this->assertSame('2%', $se['sellingRatePct']);
-        $this->assertTrue($se['sellingRateIsDefault']);
+        $this->assertTrue($se['sellingCostsAssumed']);
+        // The default applies the engine's 2% → £8,000 on £400k.
+        $this->assertSame(Money::fromPounds(8_000)->format(), $se['proceeds']['sellingCosts']);
     }
 
-    public function test_the_selling_costs_label_is_a_prebuilt_string_not_a_blade_conditional(): void
+    public function test_a_flat_fee_component_shows_no_percentage_detail(): void
     {
-        // The label is composed in the presenter (a stray inline Blade @if glued to a word
-        // did not compile and leaked into the page — guard the clean string here).
-        $assumed = $this->explainer(new HousingAction(salePrice: Money::fromPounds(400_000)));
-        $this->assertSame('2% of the sale price, assumed — estate agent + legal/conveyancing', $assumed['sellingCostsLabel']);
-        $this->assertStringNotContainsString('@if', $assumed['sellingCostsLabel']);
+        // A flat fee is not a % of the sale, so it carries no "% of the sale price" detail.
+        $action = new HousingAction(salePrice: Money::fromPounds(400_000), sellingCosts: [
+            new SellingCostComponent('Estate agent', Percent::fromPercent(1.25)),
+            new SellingCostComponent('Legal / conveyancing', Money::fromPounds(1_500)),
+        ]);
+        $se = $this->explainer($action);
 
-        $custom = $this->explainer(new HousingAction(salePrice: Money::fromPounds(400_000), sellingCostRate: Percent::fromPercent(1.5)));
-        $this->assertSame('1.5% of the sale price — estate agent + legal/conveyancing', $custom['sellingCostsLabel']);
+        $this->assertFalse($se['sellingCostsAssumed']);
+        $this->assertSame('1.25% of the sale price', $se['sellingCostBreakdown'][0]['detail']);
+        $this->assertNull($se['sellingCostBreakdown'][1]['detail']);
+        $this->assertSame(Money::fromPounds(1_500)->format(), $se['sellingCostBreakdown'][1]['value']);
+        // £5,000 agent + £1,500 legal = £6,500 total.
+        $this->assertSame(Money::fromPounds(6_500)->format(), $se['proceeds']['sellingCosts']);
     }
 
     public function test_the_rent_destination_invests_the_full_net_proceeds(): void

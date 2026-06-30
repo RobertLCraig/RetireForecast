@@ -119,6 +119,15 @@ final class WhatIfChanges
             return $topLevel[$head] ?? Str::headline($head);
         }
 
+        // Selling-cost components live at housing.sellingCosts.<key>.<value|basis>; name the
+        // line by its own label read from the base, so an override reads "Selling cost — Estate agent".
+        if ($head === 'housing' && ($segments[1] ?? '') === 'sellingCosts') {
+            $key = $segments[2] ?? '';
+            $componentLabel = (string) ($baseState['housing']['sellingCosts'][$key]['label'] ?? Str::headline($key));
+
+            return 'Selling cost — '.$componentLabel.(self::leaf($path) === 'basis' ? ' (basis)' : '');
+        }
+
         $sectionLabels = [
             'assumptionOverrides' => [
                 'investmentGrowth' => 'Investment growth', 'inflation' => 'Inflation (CPI)',
@@ -193,6 +202,9 @@ final class WhatIfChanges
         }
         if (is_bool($value)) {
             return $value ? 'yes' : 'no';
+        }
+        if ($leaf === 'basis') {
+            return $value === 'fixed' ? 'flat fee' : 'percentage of sale';
         }
 
         if ($leaf === 'assumptionSetId') {

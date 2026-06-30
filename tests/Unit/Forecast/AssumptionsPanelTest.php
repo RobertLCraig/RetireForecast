@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
+use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 
@@ -104,31 +105,23 @@ final class AssumptionsPanelTest extends TestCase
         $this->assertNotContains('Cheaper home to buy', $bareLabels);
         $this->assertNotContains('Rent (if renting)', $bareLabels);
 
-        // A full housing action surfaces the buy price, rent and moving costs too.
+        // A full housing action surfaces the buy price, rent and moving costs too, and each
+        // selling-cost component on its own basis (% of sale or flat fee).
         $full = $this->panel(new HousingAction(
             salePrice: Money::fromPounds(300_000),
             buyPrice: Money::fromPounds(200_000),
             annualRent: Money::fromPounds(14_000),
             movingCosts: Money::fromPounds(2_000),
-            sellingCostRate: Percent::fromPercent(1.5),
+            sellingCosts: [new SellingCostComponent('Estate agent', Percent::fromPercent(1.5))],
         ));
         $fullLabels = array_column($full['housing'], 'label');
         $this->assertContains('Cheaper home to buy', $fullLabels);
         $this->assertContains('Rent if you sell & rent', $fullLabels);
         $this->assertContains('Moving costs', $fullLabels);
-        $this->assertSame('1.5% of the sale price', $this->valueOf($full['housing'], 'Selling costs'));
-    }
-
-    /** @param  list<array{label: string, value: string}>  $rows */
-    private function valueOf(array $rows, string $labelFragment): string
-    {
-        foreach ($rows as $row) {
-            if (str_contains($row['label'], $labelFragment)) {
-                return $row['value'];
-            }
-        }
-
-        return '';
+        $this->assertContains('Selling cost — Estate agent', $fullLabels);
+        // 1.5% of £300,000 = £4,500, shown with its basis.
+        $this->assertStringContainsString('1.5% of sale', $this->value($full['housing'], 'Selling cost — Estate agent'));
+        $this->assertStringContainsString(Money::fromPounds(4_500)->format(), $this->value($full['housing'], 'Selling cost — Estate agent'));
     }
 
     public function test_with_no_overrides_the_panel_is_not_customised_and_no_row_is_edited(): void
