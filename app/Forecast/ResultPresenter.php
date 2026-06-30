@@ -55,6 +55,7 @@ final class ResultPresenter
         'other_taxable' => 'Annuity / other',
         'investment_income' => 'Investment income',
         'tax_free_income' => 'Tax-free income',
+        'means_tested_benefit' => 'Pension Credit',
         'pension_lump_sum' => 'Pension tax-free cash',
         'pension_drawdown' => 'Pension drawdown',
         'asset_drawdown' => 'Savings drawn',
@@ -63,12 +64,13 @@ final class ResultPresenter
     /**
      * The income sources that count as a secure floor: income that lasts for life and
      * does not depend on a pot lasting or on investment returns — guaranteed pensions
-     * (DB, State Pension), purchased annuities, and any tax-free income (e.g. DLA, which
-     * must NOT be dropped — see the completeness rule). Salary is excluded (it is earned
-     * and stops at retirement); pension lump sums and drawdown, and savings drawn, are
+     * (DB, State Pension), purchased annuities, any tax-free income (e.g. DLA, which must
+     * NOT be dropped — see the completeness rule), and the means-tested Pension Credit
+     * top-up (a guaranteed floor in its own right). Salary is excluded (it is earned and
+     * stops at retirement); pension lump sums and drawdown, and savings drawn, are
      * excluded (they deplete the pot).
      */
-    private const SECURE_SOURCES = ['defined_benefit', 'state_pension', 'other_taxable', 'tax_free_income'];
+    private const SECURE_SOURCES = ['defined_benefit', 'state_pension', 'other_taxable', 'tax_free_income', 'means_tested_benefit'];
 
     /** The 3-tier budget categories, in display order, with their labels. */
     private const EXPENSE_TIERS = [
