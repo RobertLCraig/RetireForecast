@@ -414,7 +414,7 @@ final class ResultPresenter
      * @param  list<array{name: string, forecast: ForecastResult}>  $plans
      * @return array{options: array<string, mixed>, years: list<int>, rows: list<array{name: string, cells: array<int, ?string>}>}
      */
-    public static function burndown(array $plans): array
+    public static function burndown(array $plans, array $annotations = []): array
     {
         // Union of calendar years across the plans, ascending.
         $yearsSet = [];
@@ -456,6 +456,13 @@ final class ResultPresenter
             'yaxis' => ['title' => ['text' => 'Usable wealth, excl. home (real £)']],
             'legend' => ['position' => 'top'],
         ];
+
+        // Mark the big life events (deaths, retirements, State Pension starts, the home sale) on
+        // the comparison, the same annotations the single-scenario charts use ({@see
+        // milestoneAnnotations}) — person-based events are shared across the compared plans.
+        if ($annotations !== []) {
+            $options['annotations'] = ['xaxis' => $annotations];
+        }
 
         return ['options' => $options, 'years' => $years, 'rows' => $rows];
     }

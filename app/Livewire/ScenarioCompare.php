@@ -58,8 +58,19 @@ class ScenarioCompare extends Component
 
         $plans = $forecasts->map(fn (array $pf): array => $this->summarise($pf['scenario'], $pf['forecast']));
 
+        // Mark the big life events on the comparison chart, from the base plan's timeline (deaths,
+        // retirements, State Pension starts are shared across the compared plans; the home sale is
+        // the base's). The same annotations the single-scenario charts carry.
+        $baseForecast = $forecasts->first()['forecast'];
+        $annotations = ResultPresenter::milestoneAnnotations(ResultPresenter::milestones(
+            $this->base->toHousehold(),
+            $baseForecast,
+            in_array($this->base->variant->value, ['buy_outright', 'rent'], true),
+        ));
+
         $burndown = ResultPresenter::burndown(
             $forecasts->map(fn (array $pf): array => ['name' => $pf['scenario']->name, 'forecast' => $pf['forecast']])->all(),
+            $annotations,
         );
 
         // Advice-style "why" narrative ranking the compared plans (the buy-vs-rent recommendation).
