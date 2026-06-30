@@ -81,6 +81,25 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('Sam is modelled to die in 2026', $early[0]['text']);
     }
 
+    public function test_an_employed_person_with_no_retirement_age_is_flagged(): void
+    {
+        // Employed with a blank retirement age ⇒ modelled as earning for life (the V2 foot-gun).
+        $notes = $this->notes([
+            'householdName' => 'Forever', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Chris', 'dob' => '1960-01-01', 'sex' => 'female', 'employmentStatus' => 'employed',
+                    'grossSalary' => '30000', 'plannedRetirementAge' => ''],
+            ],
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]);
+
+        $kinds = array_column($notes, 'kind');
+        $this->assertContains('no_retirement_age', $kinds);
+        $this->assertStringContainsString('earning their salary indefinitely', $notes[array_search('no_retirement_age', $kinds, true)]['text']);
+    }
+
     public function test_a_mortgage_due_for_redemption_is_flagged(): void
     {
         // The current home's mortgage is called for redemption within the plan — the forecast

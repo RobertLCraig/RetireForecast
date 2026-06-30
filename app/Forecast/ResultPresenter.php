@@ -658,6 +658,11 @@ final class ResultPresenter
             if ($working && $person->grossSalary !== null && $person->grossSalary->isPositive()
                 && $person->plannedRetirementAge !== null && $person->plannedRetirementAge <= $currentAge) {
                 $notes[] = ['kind' => 'no_salary', 'text' => "No earnings are modelled for {$name}: their retirement age ({$person->plannedRetirementAge}) is at or below their current age ({$currentAge}), so the forecast includes no salary from them."];
+            } elseif ($working && $person->grossSalary !== null && $person->grossSalary->isPositive()
+                && $person->plannedRetirementAge === null) {
+                // No retirement age on an earner — modelled as working indefinitely (the foot-gun
+                // when a retirement age is simply left blank, e.g. V2's YCC earning for life).
+                $notes[] = ['kind' => 'no_retirement_age', 'text' => "{$name} has no retirement age set, so the forecast models them earning their salary indefinitely. Set a retirement age if their pay will stop."];
             }
 
             // (b) Modelled to die in the base year — what a longevity/health age below the
