@@ -107,7 +107,7 @@ See [DECISIONS.md](DECISIONS.md) for the full append-only log + rationale. The l
 - **Done — source-freshness guardrail (2026-06-30):** a `figures:freshness` command (pure, unit-tested `App\Finance\FigureFreshness`) reports each supported tax year's gov.uk `verifiedOn` and flags any older than `--months` (default 12), exiting non-zero so CI/a periodic run catches aging statutory figures. `TaxYearRegistry::SUPPORTED_TAX_YEARS` is the single source of the year set. A command (not a date-dependent phpunit test). See DECISIONS 2026-06-30.
 - **Done — per-year surplus/shortfall + configurable safety floor (2026-06-30):** the cashflow ladder classifies each year **surplus / drawing / shortfall** on usable money and flags years usable funds fall below a **safety buffer** (default 2 months of essentials, set in the Spending step, read via `Scenario::safetyBufferMonths()` → `ResultPresenter::ladder`), with a headline (stays above / dips below in YYYY / runs out in YYYY) and status-tinted rows. Replaces the academic "neutral diagnostics" idea (Rob's reframe). See DECISIONS 2026-06-30.
 - **Done — what-if sliders + retirement-year proration (2026-06-30):** an **"Explore the levers"** results-page panel (live sliders: retire ± yrs / spend ± % / return ± pts / live ± yrs) re-runs a throwaway deterministic forecast and shows the outcome — exploratory, never saved (`ScenarioResults::sliderForecast`/`applySliders`, transient scenario). And the engine now **prorates salary in the retirement year** (birth-month ÷ 12) instead of dropping the whole year (`PathProjector::workFraction`). See DECISIONS 2026-06-30.
-- **In progress (concurrent — see Multi-agent coordination):** Lane B's **forced-housing-event workstream** — its planning is recorded but **uncommitted** in `DECISIONS.md` / `docs/PLAN.md` / `PRD.md` / `DATA-MODEL.md` (2026-06-30 "forced-mortgage pressure-test" + "input-expectation clarity"); the code build (A→C→B + D) is starting. Lane A (this session) has nothing mid-edit; its commits are in `git log`.
+- **In progress:** nothing mid-edit. Lane B's **forced-housing-event workstream (A/B/C/D) is built + committed** this session — the four planning docs, means-tested benefits in the forecast (`Benefits\PensionCreditCalculator` → `PathProjector`, new `means_tested_benefit` source), the `MortgageMaturityAction` redemption event + feasibility note, and the input-clarity builder fields (pay-frequency selector, disability-benefit flag) + input-sanity notes. **The `Property` + `PathProjector` changes are committed — concurrent lanes rebase on top.** See `git log` + Session log; deferred refinements are flagged in the commits.
 - **Known bugs / broken:** none open (the five 2026-06-28 re-review findings are all resolved — see Session log + docs/PLAN.md "Review findings"). Documented v1 scope limits, all flagged in code: income tax England/Wales/NI only (Scotland throws); emergency tax models the over-deduction magnitude, not PAYE-table pennies; mortality grid ages 50–100 / years 2025–2074 with clamping + a non-ONS tail above 100 (cap 110); forecast taxes GIA dividends + cash interest annually AND realises CGT on GIA disposal (ISA tax-free; GIA/cash grow at capital only; v1 omits capital-loss relief + judges the CGT band on non-savings income); income-tax thresholds frozen until 2031, then indexed with inflation; DB escalation + triple lock as smooth growth factors; selling a **let** former home is charged **partial-PRR CGT** (occupation-driven, joint-owner split, gov.uk HS283 — see DECISIONS 2026-06-30), with deemed-occupation absences entered by hand and one rate per owner; a home lived in throughout stays full-PRR / £0; no SDLT surcharge on the replacement; house/salary growth deterministic inside the Monte Carlo.
 
 ## What's next (in order)
@@ -167,6 +167,19 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-06-30 (Lane B — forced-housing-event workstream A/B/C/D built + committed)_ — On Rob's "do all of it", built the
+four-track workstream from the V2 pressure-test, each slice green + committed: **(A)** Pension Credit Guarantee Credit
+credited live in `PathProjector` (sourced SMG + severe-disability/carer figures, capital tariff via `CapitalAssessment`,
+a `Person::receivesDisabilityBenefit` flag; new `means_tested_benefit` income source) — on V2 it quantifies the
+downsizing trap (stay keeps ~£41k of Pension Credit; selling-and-holding-the-cash loses most of it to the capital
+tariff); **(B)** a `MortgageMaturityAction` redemption event on `Property` (refinance / repay-from-capital / forced-sale)
+so a mortgage is no longer assumed to roll on for life; **(C)** a feasibility note flagging a mortgage due for
+redemption; **(D)** a pay-frequency selector (the 4-weekly-DLA / monthly-rent fix) + a disability-benefit checkbox + a
+no-retirement-age note. Also fully corrected the local V2 scenario against Rob's real DWP figures (not committed — his
+data). Suite green; assets rebuilt. **Deferred** (flagged in the commits): stop the bundled mortgage payment after
+a repay, the in-place forced-sale model, income-ends-on-sale, the buy-price-over-proceeds note, a dedicated
+tax-free-benefit income type.
 
 _2026-06-30 (multi-agent coordination — two concurrent sessions)_ — Spotted that this tree has a **second active
 session**: uncommitted edits to `DECISIONS.md` / `docs/PLAN.md` / `PRD.md` / `DATA-MODEL.md` recorded a new
