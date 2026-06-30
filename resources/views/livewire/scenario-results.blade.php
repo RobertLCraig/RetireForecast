@@ -17,6 +17,7 @@
         ['id' => 'sec-sale', 'label' => 'If you sell', 'show' => (bool) $saleExplainer],
         ['id' => 'sec-milestones', 'label' => 'Life events', 'show' => (bool) $milestones],
         ['id' => 'sec-ladder', 'label' => 'Year-by-year cashflow', 'show' => ! empty($ladder['rows'])],
+        ['id' => 'sec-explore', 'label' => 'Explore the levers', 'show' => (bool) $slider],
         ['id' => 'sec-headline', 'label' => 'Will the money last?', 'show' => (bool) $presented],
         ['id' => 'sec-longevity', 'label' => 'How long it may need to last', 'show' => ! empty($presented['longevity'])],
         ['id' => 'sec-fan', 'label' => 'Outlook over time', 'show' => (bool) $presented],
@@ -657,6 +658,48 @@
                 </table>
             </div>
             <x-signpost class="mt-4" />
+        </section>
+    @endif
+
+    {{-- Explore the levers: live what-if sliders (exploratory, never saved). Each drag re-runs a
+         throwaway deterministic forecast with the adjustment applied, so the reader feels how
+         sensitive the outcome is to retiring later, spending more, returns and longevity. --}}
+    @if ($slider)
+        <section id="sec-explore" aria-labelledby="explore-heading" class="{{ $card }} scroll-mt-6">
+            <div class="flex items-center justify-between">
+                <h2 id="explore-heading" class="text-xl font-semibold text-gray-900">Explore the levers</h2>
+                <button type="button" wire:click="resetSliders" class="text-sm text-blue-700 underline">Reset</button>
+            </div>
+            <p class="mt-1 text-sm text-gray-600">Drag to see how the outcome moves. These adjustments are temporary and never saved — to keep one, build a what-if.</p>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700">Retire: {{ $slideRetire === 0 ? 'as planned' : ($slideRetire > 0 ? $slideRetire.' yr later' : abs($slideRetire).' yr earlier') }}</span>
+                    <input type="range" min="-5" max="10" step="1" wire:model.live="slideRetire" class="mt-1 w-full">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700">Spend: {{ $slideSpend === 0 ? 'as planned' : ($slideSpend > 0 ? '+'.$slideSpend.'%' : $slideSpend.'%') }}</span>
+                    <input type="range" min="-30" max="30" step="5" wire:model.live="slideSpend" class="mt-1 w-full">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700">Investment return: {{ $slideReturn === 0 ? 'as assumed' : ($slideReturn > 0 ? '+'.$slideReturn.' pts' : $slideReturn.' pts') }}</span>
+                    <input type="range" min="-3" max="3" step="1" wire:model.live="slideReturn" class="mt-1 w-full">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700">Live: {{ $slideLongevity === 0 ? 'as modelled' : ($slideLongevity > 0 ? $slideLongevity.' yr longer' : abs($slideLongevity).' yr shorter') }}</span>
+                    <input type="range" min="-10" max="15" step="1" wire:model.live="slideLongevity" class="mt-1 w-full">
+                </label>
+            </div>
+            <div class="mt-4 rounded-md border p-4 {{ $slider['moneyLasts'] && $slider['essentialsMet'] ? 'border-green-300 bg-green-50' : 'border-amber-300 bg-amber-50' }}" aria-live="polite">
+                <p class="font-medium {{ $slider['moneyLasts'] && $slider['essentialsMet'] ? 'text-green-900' : 'text-amber-900' }}">
+                    {{ $slider['moneyLasts'] ? '✓ On these settings, the money lasts to '.$slider['finalYear'].'.' : '⚠ On these settings, the money runs short in '.$slider['depletionYear'].'.' }}
+                </p>
+                <p class="mt-0.5 text-sm text-gray-700">
+                    Spendable wealth at the end (today's money): <strong>{{ $slider['usableEnd'] }}</strong>.
+                    {{ $slider['fullSpendMet'] ? 'Essential and discretionary spending met every year.' : ($slider['essentialsMet'] ? 'Essentials met every year; discretionary not always.' : 'Essential spending falls short in some years.') }}
+                </p>
+                @unless ($slider['changed'])<p class="mt-1 text-xs text-gray-500">This is your plan as it stands — move a slider to explore.</p>@endunless
+            </div>
+            <p class="mt-2 text-xs text-gray-500">A single best-estimate (deterministic) projection in today's money, for sensitivity only; run the full forecast for the range of futures. This illustrates consequences; it does not recommend a course of action.</p>
         </section>
     @endif
 

@@ -59,6 +59,103 @@ class ScenarioResults extends Component
      */
     public string $ladderVariant = 'stay_put';
 
+    /**
+     * Live what-if sliders (exploratory, never saved): adjustments applied on top of this
+     * scenario's inputs to a throwaway deterministic re-forecast, so the reader can feel how
+     * sensitive the outcome is to each lever without building a what-if. All zero = the scenario
+     * as it stands. Retirement is ± years on each working person; spend is ± % on every line;
+     * return is ± percentage points on the blended real return; longevity is ± years of life.
+     */
+    public int $slideRetire = 0;
+
+    public int $slideSpend = 0;
+
+    public int $slideReturn = 0;
+
+    public int $slideLongevity = 0;
+
+    public function resetSliders(): void
+    {
+        $this->slideRetire = 0;
+        $this->slideSpend = 0;
+        $this->slideReturn = 0;
+        $this->slideLongevity = 0;
+    }
+
+    /**
+     * A throwaway deterministic re-forecast with the what-if sliders applied on top of this
+     * scenario's inputs, summarised for the explore panel. Single-sourced from the same
+     * {@see ScenarioForecaster::deterministic()} the page builds on, run on a transient (never
+     * saved) scenario, so it cannot drift; null when the inputs are not forecastable.
+     *
+     * @return array{changed: bool, moneyLasts: bool, depletionYear: int|null, finalYear: int, usableEnd: string, essentialsMet: bool, fullSpendMet: bool}|null
+     */
+    private function sliderForecast(): ?array
+    {
+        try {
+            $scenario = (new Scenario)->fillFromBuilderState($this->applySliders($this->scenario->effectiveBuilderState()));
+            $result = app(ScenarioForecaster::class)->deterministic($scenario);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return [
+            'changed' => $this->slideRetire !== 0 || $this->slideSpend !== 0 || $this->slideReturn !== 0 || $this->slideLongevity !== 0,
+            'moneyLasts' => $result->depletionCalendarYear === null,
+            'depletionYear' => $result->depletionCalendarYear,
+            'finalYear' => $result->finalCalendarYear,
+            'usableEnd' => $result->terminalUsableWealth->format(),
+            'essentialsMet' => $result->essentialsAlwaysMet,
+            'fullSpendMet' => $result->fullSpendAlwaysMet,
+        ];
+    }
+
+    /**
+     * Apply the what-if sliders to a copy of the effective form-state: ± retirement years on
+     * each working person, ± years of life (the offset lever), ± % on every spend line, and a
+     * shift of the blended real return by the slider's percentage points (an investmentGrowth
+     * override on top of the scenario's current blend). The same levers the quick what-ifs and
+     * editable assumptions use, so a slider and a saved what-if move the forecast identically.
+     *
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>
+     */
+    private function applySliders(array $state): array
+    {
+        foreach ($state['people'] ?? [] as $i => $person) {
+            if ($this->slideRetire !== 0
+                && in_array($person['employmentStatus'] ?? '', ['employed', 'self_employed'], true)
+                && is_numeric($person['plannedRetirementAge'] ?? '')) {
+                $state['people'][$i]['plannedRetirementAge'] = (string) max(50, min(80, (int) $person['plannedRetirementAge'] + $this->slideRetire));
+            }
+
+            if ($this->slideLongevity !== 0) {
+                $current = is_numeric($person['longevityValue'] ?? '') ? (int) $person['longevityValue'] : 0;
+                $state['people'][$i]['longevityMode'] = ($person['longevityMode'] ?? 'peer') === 'fixed_age' ? 'fixed_age' : 'offset_years';
+                $state['people'][$i]['longevityValue'] = (string) ($current + $this->slideLongevity);
+            }
+        }
+
+        if ($this->slideSpend !== 0) {
+            $factor = 1 + $this->slideSpend / 100;
+            foreach ($state['expenseLines'] ?? [] as $i => $line) {
+                if (is_numeric($line['amount'] ?? '')) {
+                    $state['expenseLines'][$i]['amount'] = (string) round(((float) $line['amount']) * $factor, 2);
+                }
+            }
+        }
+
+        if ($this->slideReturn !== 0) {
+            $forecaster = app(ScenarioForecaster::class);
+            $baseBlended = $forecaster->settings($this->scenario)->allocation()
+                ->blendedRealReturn($forecaster->assumptions($this->scenario)) * 100;
+            $state['assumptionOverrides'] = $state['assumptionOverrides'] ?? [];
+            $state['assumptionOverrides']['investmentGrowth'] = (string) round($baseBlended + $this->slideReturn, 2);
+        }
+
+        return $state;
+    }
+
     /** Prepended to every CSV export so a downloaded figure never travels without its disclaimer. */
     private const EXPORT_DISCLAIMER = [
         'RetireForecast — guidance only, not financial advice.',
@@ -271,6 +368,8 @@ class ScenarioResults extends Component
             // Deterministic year-by-year cashflow ladder (income by source -> tax -> spend
             // -> wealth) for the selected housing strategy. Shows immediately, before any run.
             'ladder' => ResultPresenter::ladder($ladderForecast, $this->scenario->safetyBufferMonths()),
+            // Live what-if sliders: a throwaway deterministic re-forecast with the adjustments applied.
+            'slider' => $this->sliderForecast(),
             // The housing strategies worth offering + which is selected, for the ladder picker.
             'ladderStrategies' => $ladderContext['strategies'],
             'ladderSelected' => $selectedStrategy,

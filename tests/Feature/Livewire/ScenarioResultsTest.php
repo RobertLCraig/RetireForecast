@@ -368,6 +368,26 @@ class ScenarioResultsTest extends TestCase
             ->assertDontSee('Quick what-if:');
     }
 
+    public function test_the_explore_sliders_re_forecast_live(): void
+    {
+        $component = Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()]);
+
+        // At rest the panel shows the plan as it stands — no adjustment applied.
+        $this->assertNotNull($component->viewData('slider'));
+        $this->assertFalse($component->viewData('slider')['changed']);
+        $baseEnd = $component->viewData('slider')['usableEnd'];
+
+        // Spending 30% more is an adjustment, and it moves the end-wealth figure.
+        $component->set('slideSpend', 30);
+        $this->assertTrue($component->viewData('slider')['changed']);
+        $this->assertNotSame($baseEnd, $component->viewData('slider')['usableEnd']);
+
+        // Reset returns to the base position.
+        $component->call('resetSliders');
+        $this->assertFalse($component->viewData('slider')['changed']);
+        $this->assertSame($baseEnd, $component->viewData('slider')['usableEnd']);
+    }
+
     private function scenario(): Scenario
     {
         return $this->scenarioFor($this->user);
