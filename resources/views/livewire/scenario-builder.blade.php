@@ -694,6 +694,27 @@
                                     This is <strong>saved</strong> (builds your net worth) rather than spent — counted as a contribution, not as spending.
                                 </label>
                             @endif
+
+                            {{-- Per-line cost condition: a contingent cost (a mortgage that ends with the
+                                 home, a commute that ends at retirement) shouldn't be charged in every
+                                 housing variant or for life. Auto-classified by label, overridable here.
+                                 Not shown for saved self-investment (never a contingent cost). --}}
+                            @unless (($line['category'] ?? '') === 'self_investment' && ($line['savedAsAsset'] ?? false))
+                                <div class="sm:col-span-12">
+                                    <label for="expenseLines-{{ $i }}-condition" class="text-xs text-gray-600">Applies</label>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <select id="expenseLines-{{ $i }}-condition" wire:model.live="expenseLines.{{ $i }}.condition" class="{{ $field }} sm:max-w-xs">
+                                            <option value="">Auto (by description)</option>
+                                            <option value="always">Always</option>
+                                            <option value="while_owning_home">Only while you own this home</option>
+                                            <option value="while_working">Only while you are working</option>
+                                        </select>
+                                        @if (($line['condition'] ?? '') === '')
+                                            <span class="text-xs text-gray-500">{{ $conditionHints[$i] ?? '' }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endunless
                         </div>
                     @endforeach
                 </div>

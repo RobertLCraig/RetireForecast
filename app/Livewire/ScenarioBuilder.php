@@ -7,6 +7,7 @@ namespace App\Livewire;
 use App\Enums\ScenarioStatus;
 use App\Forecast\AssumptionOverrides;
 use App\Forecast\BuilderStateDelta;
+use App\Forecast\HouseholdAssembler;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\WhatIfChanges;
 use App\Import\ImportException;
@@ -242,6 +243,8 @@ class ScenarioBuilder extends Component
             'expenseLines.*.amount' => $moneyReq,
             'expenseLines.*.category' => ['required', Rule::in(['essential', 'discretionary', 'self_investment'])],
             'expenseLines.*.savedAsAsset' => ['boolean'],
+            // The per-line cost condition: blank = auto-classify by label, else an explicit override.
+            'expenseLines.*.condition' => ['nullable', Rule::in(['', 'always', 'while_owning_home', 'while_working'])],
 
             'oneOffCosts.*.atAge' => ['required', 'integer', 'min:0', 'max:110'],
             'oneOffCosts.*.amount' => $moneyReq,
@@ -926,6 +929,30 @@ class ScenarioBuilder extends Component
     }
 
     /**
+     * For each spend line, a plain-English description of the condition it would auto-classify
+     * to from its label (when "Applies" is left on Auto), so the inferred behaviour is visible
+     * before the user overrides it. Single source: the same {@see HouseholdAssembler::autoCondition}
+     * the forecast uses. Keyed by line index to match the inputs' wire:model.
+     *
+     * @return array<int, string>
+     */
+    private function conditionHints(): array
+    {
+        $labels = [
+            'always' => 'charged every year',
+            'while_owning_home' => 'charged only while you own this home',
+            'while_working' => 'charged only while you are working',
+        ];
+
+        $hints = [];
+        foreach ($this->expenseLines as $i => $line) {
+            $hints[$i] = $labels[HouseholdAssembler::autoCondition($line)] ?? '';
+        }
+
+        return $hints;
+    }
+
+    /**
      * Live tier subtotals for the Spending step, derived from the lines for display
      * (the authoritative exact-pence derivation lives in {@see HouseholdAssembler}).
      * Essential = essential lines; discretionary = discretionary + *spent* self-
@@ -966,7 +993,7 @@ class ScenarioBuilder extends Component
         $this->expenseLines[] = [
             'id' => $this->newRowId(), 'label' => '', 'amount' => '',
             'category' => in_array($category, ['essential', 'discretionary', 'self_investment'], true) ? $category : 'essential',
-            'savedAsAsset' => false,
+            'savedAsAsset' => false, 'condition' => '',
         ];
     }
 
@@ -1133,6 +1160,8 @@ class ScenarioBuilder extends Component
             'modelledDeaths' => $this->modelledDeaths($previewForecast),
             'steps' => self::STEPS,
             'expenseTotals' => $this->expenseTotals(),
+            // What each spend line's "Applies" Auto setting infers from its label, shown beside it.
+            'conditionHints' => $this->conditionHints(),
             'importProfiles' => array_map(static fn ($p): array => [
                 'key' => $p->key(),
                 'label' => $p->label(),

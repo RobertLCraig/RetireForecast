@@ -264,6 +264,20 @@ class ScenarioBuilderTest extends TestCase
             ->assertSet('housing.sellingCosts.legal.value', '');
     }
 
+    public function test_expense_lines_offer_a_per_line_cost_condition_with_an_auto_hint(): void
+    {
+        // A "Mortgage" line left on Auto shows what it infers (while-owning), and the override
+        // options are present so the user can pin it to always / while-working instead.
+        Livewire::test(ScenarioBuilder::class)
+            ->set('step', 4)
+            ->set('expenseLines', [
+                ['id' => 'm1', 'label' => 'Mortgage', 'amount' => '12000', 'category' => 'essential', 'savedAsAsset' => false, 'condition' => ''],
+            ])
+            ->assertSee('Applies')
+            ->assertSee('Only while you own this home')         // an override option is offered
+            ->assertSee('charged only while you own this home'); // the Auto hint inferred from "Mortgage"
+    }
+
     /** @param array<string, mixed> $state */
     private function fill(array $state): Testable
     {

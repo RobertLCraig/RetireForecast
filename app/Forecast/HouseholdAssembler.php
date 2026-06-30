@@ -212,6 +212,19 @@ final class HouseholdAssembler
             return $explicit;
         }
 
+        return self::autoCondition($line);
+    }
+
+    /**
+     * The condition a line auto-classifies to from its label alone (ignoring any explicit
+     * override): housing-linked labels (mortgage, service charge, ground rent, factor fee)
+     * are charged only *while owning* the current home; commuting only *while working*;
+     * everything else *always*. Public so the builder can show what "Auto" would infer.
+     *
+     * @param  array<string, mixed>  $line
+     */
+    public static function autoCondition(array $line): string
+    {
         $label = strtolower((string) ($line['label'] ?? ''));
         foreach (['mortgage', 'service charge', 'ground rent', 'factor fee'] as $keyword) {
             if (str_contains($label, $keyword)) {

@@ -206,6 +206,14 @@ final class WhatIfChanges
         if ($leaf === 'basis') {
             return $value === 'fixed' ? 'flat fee' : 'percentage of sale';
         }
+        if ($leaf === 'condition') {
+            return match ($value) {
+                'while_owning_home' => 'only while owning the home',
+                'while_working' => 'only while working',
+                'always' => 'always',
+                default => (string) $value,
+            };
+        }
 
         if ($leaf === 'assumptionSetId') {
             return AssumptionSet::find($value)?->name ?? 'set #'.$value;
