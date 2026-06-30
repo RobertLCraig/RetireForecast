@@ -3,6 +3,28 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-30 — Partial Private Residence Relief CGT on selling a let former home
+**Decision:** Capital Gains Tax on selling a former main home that was also let is now modelled (it was hard-coded to
+£0). It is driven by **occupation, not the mortgage type** (gov.uk HS283): relief = gain × (main-residence months +
+final 9 months) ÷ months owned; the remainder is chargeable, less **each owner's £3,000 annual allowance**, at **18%**
+(basic band) / **24%** (higher). Lettings relief is **shared-occupancy only since 6 April 2020**, so a moved-out
+whole-property BTL gets none. CGT is **per-individual**, so a jointly-owned home **splits the gain across the owners**
+(two allowances + each their own rate). A `CgtHistory` on the engine `Property` (null = full PRR / £0, the common case)
+carries it; the builder captures it via a **"Capital gains on sale" wizard** (purchase price, year bought, buying/
+improvement costs, jointly-owned + higher-rate toggles, a lived-in vs let **period timeline**) with a live readout, and
+the sale waterfall shows the working. Supersedes the "main-home CGT taken as £0" v1 simplification of
+[[2026-06-24 — Modelling depth and scope (from approved plan)]].
+**Why (Rob):** for a couple selling a former-BTL, £0 CGT is wrong and overstates the proceeds. What determines the
+relief is whether they **lived in it as their main home** (occupation), not the mortgage — so living in a home on a BTL
+mortgage still counts as main-residence for those months.
+**Sources (links):** gov.uk **HS283** (Private Residence Relief); **/tax-sell-home** (+ /absence-from-home,
+/let-out-part-of-home); **/capital-gains-tax/rates** (rates + £3,000 AEA, already in the engine, verified 2026-06-27).
+**Caveats (flagged in code):** deemed-occupation absences are entered by hand (mark a qualifying absence as "main home"),
+not auto-computed; one 18%/24% rate per owner (not a split of a single owner's gain across the band boundary from exact
+income); shared-occupancy lettings relief not modelled; the timeline is year-granular (the final 9-month exemption is
+still applied exactly).
+**Status:** built, suite green, pending Rob's browser sign-off.
+
 ## 2026-06-30 — What-ifs can add and remove items (delta represents structural changes)
 **Decision:** A delta-child what-if may now **add or remove a list row** (a person, pension, account, income,
 one-off cost or pension withdrawal), not only change existing values. The delta stores an **added row whole** at its id
