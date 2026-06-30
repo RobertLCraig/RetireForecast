@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\Compliance\Interpretation;
 use App\Enums\ScenarioStatus;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
@@ -11,6 +12,7 @@ use App\Forecast\WhatIfChanges;
 use App\Models\Scenario;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
@@ -22,8 +24,10 @@ use RetireForecast\FinanceEngine\Forecast\ForecastResult;
  * accessible table: housing choice, whether essentials are covered every year, whether
  * the money lasts, and the usable / total wealth left.
  *
- * Nothing here ranks the what-ifs or names a "best" one: the figures are shown per
- * plan and the reader draws their own conclusion (guidance only).
+ * The neutral table never ranks the plans — the figures are shown per plan for the reader
+ * to draw their own conclusion. A directive "which to lean towards" narrative is added only
+ * behind the walled-off `interpret` ability (on in personal-use mode), produced by
+ * {@see Interpretation::compareNarrative()}, so the guidance-only partition holds otherwise.
  */
 #[Layout('components.layouts.app')]
 class ScenarioCompare extends Component
@@ -58,10 +62,20 @@ class ScenarioCompare extends Component
             $forecasts->map(fn (array $pf): array => ['name' => $pf['scenario']->name, 'forecast' => $pf['forecast']])->all(),
         );
 
+        // Advice-style "why" narrative ranking the compared plans (the buy-vs-rent recommendation).
+        // Walled off behind the `interpret` ability — on for everyone in personal-use mode
+        // (config/compliance.php), the per-user grant otherwise. Empty = neutral guidance only.
+        $narrative = Gate::allows('interpret')
+            ? Interpretation::compareNarrative(
+                $forecasts->map(fn (array $pf): array => ['name' => $pf['scenario']->name, 'forecast' => $pf['forecast']])->all(),
+            )
+            : [];
+
         return view('livewire.scenario-compare', [
             'base' => $this->base,
             'plans' => $plans,
             'burndown' => $burndown,
+            'narrative' => $narrative,
         ])->title('Compare what-ifs');
     }
 

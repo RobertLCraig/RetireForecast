@@ -3,6 +3,25 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-30 — Personal-use advice mode (the education/guidance line, flagged for later)
+**Decision:** While RetireForecast remains a **private, local-first tool for the owner's own use** (not a public
+release), the education/guidance-only posture is **relaxed** so it can give the best possible *direct* advice (Rob:
+"flag the education line in the code so we can come back to it later; for now focus on giving the best possible
+experience and advice for personal use, not public"). The single switch is **`config('compliance.personal_use')`**
+(default **true**): when true the `interpret` Gate allows everyone (no admin grant) and the walled-off
+`App\Compliance\Interpretation` layer's advice-style readouts show — including the new buy-vs-rent **"why" narrative**
+({@see Interpretation::compareNarrative}) that ranks the compared plans and says which to lean towards. This
+**supersedes, for personal use only**, the public guidance-only stance of [[2026-06-24 — Regulatory posture: guidance only]]
+and [[2026-06-25 — banned-phrasing partition]] — it does not remove them.
+**Why:** personal pension/drawdown advice is FCA-regulated, so the guidance-only posture is right for a public release;
+but for the owner's own decision-support there is no regulatory bar, and a tool that won't say which option is stronger
+is needlessly coy. Keeping it behind ONE documented config key (the "flagged line") makes the relaxation reversible and
+auditable: flip `personal_use` to false and the full partition (banned-phrasing lint + per-user `can_interpret` grant)
+re-applies. **The suite runs with the flag false** (the public posture stays the tested default); personal-use mode is
+exercised by opt-in tests. **Before any public release: set `COMPLIANCE_PERSONAL_USE=false`.**
+**Status:** active (personal-use mode on). Marked in code: config/compliance.php, the `interpret` Gate in
+AppServiceProvider, CLAUDE.md.
+
 ## 2026-06-30 — One-click "compare buy vs rent" (delta-child what-ifs + per-variant Compare)
 **Decision:** A **"Compare buy vs rent"** button generates the alternative housing strategies for a base as ordinary
 **delta-child what-ifs** (variant-only overrides via `BuyVsRentCompare` + `BuilderStateDelta::diff`, the QuickWhatIf

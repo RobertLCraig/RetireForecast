@@ -13,8 +13,17 @@
     <p class="mt-4 max-w-3xl text-sm text-gray-600">
         Each plan below is shown using its central (best-estimate) projection, so the figures appear without
         running a full simulation. A what-if changes one or more values on the base plan; everything it does not
-        change tracks the base. The figures are shown side by side for you to read, not ranked.
+        change tracks the base.
     </p>
+
+    {{-- Walled-off, advice-style "why" narrative ranking the plans. Built only when the
+         `interpret` ability allows (on in personal-use mode); every directive sentence
+         originates in App\Compliance\Interpretation. --}}
+    @if (! empty($narrative))
+        <div class="mt-6">
+            @include('livewire.partials.interpretation', ['interpretation' => $narrative])
+        </div>
+    @endif
 
     <div class="mt-6 overflow-x-auto rounded-lg border border-gray-200 bg-white" tabindex="0">
         <table class="min-w-full divide-y divide-gray-200 text-sm">

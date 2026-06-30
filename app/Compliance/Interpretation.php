@@ -7,6 +7,7 @@ namespace App\Compliance;
 use App\Forecast\ResultPresenter;
 use App\Models\Result;
 use Illuminate\Support\Collection;
+use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 
 /**
  * The single, walled-off home for advice-style "what this suggests" readouts.
@@ -73,5 +74,62 @@ final class Interpretation
             "If making the money last is your priority, you should lean towards {$bestLabel} — it runs out of money in {$bestDeplete} of futures, compared with {$worstDeplete} for {$worstLabel}.",
             'Remember these are still only consequences of your inputs under one set of assumptions; revisit them if your spending, returns or longevity differ.',
         ];
+    }
+
+    /**
+     * A directive "why" narrative for the Compare view: ranks the compared plans (a base and
+     * its what-ifs, e.g. the buy / stay / rent strategies) by their central deterministic
+     * outcome and says which to lean towards and why. Used for the buy-vs-rent comparison so
+     * the reader gets a plain-English recommendation, not just a table. Like the rest of this
+     * class it is reachable only behind the `interpret` ability; the directive wording lives
+     * here (the exempt layer), never in the neutral templates.
+     *
+     * @param  list<array{name: string, forecast: ForecastResult}>  $plans
+     * @return list<string>
+     */
+    public static function compareNarrative(array $plans): array
+    {
+        $plans = array_values(array_filter($plans, static fn (array $p): bool => ($p['forecast'] ?? null) instanceof ForecastResult));
+        if (count($plans) < 2) {
+            return [];
+        }
+
+        // Rank: the money lasting beats not lasting; then more spendable wealth left.
+        usort($plans, static fn (array $a, array $b): int => [self::lasts($b['forecast']), $b['forecast']->terminalUsableWealth->pence]
+            <=> [self::lasts($a['forecast']), $a['forecast']->terminalUsableWealth->pence]);
+
+        $best = $plans[0];
+        $worst = $plans[count($plans) - 1];
+
+        $lines = [
+            "On these figures, {$best['name']} is the strongest plan — ".self::outcome($best['forecast']).'. It is the one to lean towards.',
+        ];
+        if ($worst['name'] !== $best['name']) {
+            $lines[] = "{$worst['name']} is the weakest — ".self::outcome($worst['forecast']).'.';
+        }
+        $lines[] = 'This is one central projection on your current assumptions; run the full simulation for the range of futures, and revisit it if your spending, returns or longevity differ.';
+
+        return $lines;
+    }
+
+    private static function lasts(ForecastResult $f): int
+    {
+        return $f->depletionCalendarYear === null ? 1 : 0;
+    }
+
+    /** The plain-English outcome of one plan's central projection: does the money last, and is spending funded. */
+    private static function outcome(ForecastResult $f): string
+    {
+        $spend = match (true) {
+            $f->fullSpendAlwaysMet => 'your full spending is funded every year',
+            $f->essentialsAlwaysMet => 'essentials are funded every year, though not always the full spend',
+            default => 'even essentials fall short in some years',
+        };
+
+        $lasts = $f->depletionCalendarYear === null
+            ? "the money lasts to {$f->finalCalendarYear} with ".$f->terminalUsableWealth->format().' of spendable wealth left'
+            : "the money runs short in {$f->depletionCalendarYear}";
+
+        return "{$lasts}, and {$spend}";
     }
 }

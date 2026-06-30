@@ -23,6 +23,9 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- Run the suite in the PUBLIC guidance-only posture, so the regulatory guard stays
+             tested by default; personal-use advice mode is exercised by tests that opt in. -->
+        <env name="COMPLIANCE_PERSONAL_USE" value="false"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

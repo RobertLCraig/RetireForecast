@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
+use App\Livewire\ScenarioCompare;
 use App\Livewire\ScenarioResults;
 use App\Models\Scenario;
 use App\Models\User;
@@ -35,6 +36,45 @@ class InterpretationTest extends TestCase
         $user = User::factory()->canInterpret()->create();
 
         $this->assertTrue(Gate::forUser($user)->allows('interpret'));
+    }
+
+    public function test_personal_use_mode_opens_the_capability_to_everyone(): void
+    {
+        // The single regulatory-line switch (config/compliance.php): in personal-use mode the
+        // advice capability is on without an admin grant. (The suite default is the public
+        // posture, so the tests above still exercise the off-by-default guidance behaviour.)
+        config()->set('compliance.personal_use', true);
+        $user = User::factory()->create();
+
+        $this->assertFalse($user->can_interpret);
+        $this->assertTrue(Gate::forUser($user)->allows('interpret'));
+    }
+
+    public function test_personal_use_mode_shows_the_advice_narrative_in_compare(): void
+    {
+        config()->set('compliance.personal_use', true);
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $base = ScenarioFixture::rich($user, ['variant' => 'stay_put']);
+        $this->post(route('scenarios.compare.housing', $base)); // generate buy + rent strategy children
+
+        Livewire::test(ScenarioCompare::class, ['scenario' => $base])
+            ->assertSee('What this suggests')        // the walled-off advice section
+            ->assertSee('is the strongest plan');    // a directive recommendation
+    }
+
+    public function test_compare_stays_neutral_in_the_public_posture(): void
+    {
+        // With personal-use off (the suite default) and no per-user grant, Compare shows no advice.
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user, ['variant' => 'stay_put']);
+        $this->post(route('scenarios.compare.housing', $base));
+
+        Livewire::test(ScenarioCompare::class, ['scenario' => $base])
+            ->assertDontSee('What this suggests')
+            ->assertDontSee('is the strongest plan');
     }
 
     public function test_results_stay_neutral_without_the_capability(): void

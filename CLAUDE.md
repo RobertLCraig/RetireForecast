@@ -43,8 +43,14 @@ read. This follows the global project documentation standard.
   summed. Every input that should affect a result must reach it — guard with a **per-source
   completeness test** (e.g. salary, DB, State Pension, taxable + tax-free income, DC withdrawals,
   asset drawdown each demonstrably contribute to the forecast).
-- **Education/guidance only**, never a personal recommendation. A build-time test must fail
-  if any result template contains banned recommendation phrasing.
+- **Education/guidance only** is the *public* posture (never a personal recommendation; a
+  build-time test fails if any result template contains banned recommendation phrasing). **But
+  this is currently a private personal-use tool, so advice mode is ON** via the single switch
+  `config('compliance.personal_use')` (default true) — the `interpret` Gate then allows everyone
+  and the walled-off `App\Compliance\Interpretation` layer gives direct advice. **That config key
+  is the flagged "regulatory line": set it false before any public release** and the guidance-only
+  partition (lint + per-user `can_interpret` grant) re-applies. The suite runs with it **false**
+  (public posture) so the guard stays tested. See DECISIONS 2026-06-30.
 - **Doc hygiene — the handover is a cache, not a diary.** One home per fact; don't transcribe what
   a tool already owns — test counts (run the suite), commits (`git log`), the file tree (browse it),
   "is it green" (the invariant above). Report *exceptions*, not invariants: a known bug is status,
