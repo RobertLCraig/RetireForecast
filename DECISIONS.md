@@ -3,6 +3,42 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-30 — Per-line cost-condition override exposed in the builder (completes option b)
+**Decision:** Each spend line in the builder gains an **"Applies"** control — *Auto* (classify by description),
+*Always*, *Only while you own this home*, *Only while you are working* — the per-line override that option (b) of the
+contingent-cost fix had specified but not yet surfaced (the engine already read `condition` from the form-state; only
+the control was missing). On *Auto* a hint shows what the label infers, single-sourced from the same
+`HouseholdAssembler::autoCondition()` the forecast uses. Hidden for saved self-investment (never a contingent cost).
+**Why:** auto-classification handled the common labels, but a user must be able to pin an unusual line (e.g. a mortgage
+they will keep, a cost that ends at retirement) without renaming it to trip the classifier.
+**Status:** built, suite green, pending Rob's browser sign-off.
+
+## 2026-06-30 — Selling costs are a per-component breakdown, each on a %/£ basis
+**Decision:** The single "selling cost %" is replaced by a breakdown of named components — **estate agent**,
+**legal/conveyancing**, **EPC & removals** — each entered on the basis its real-world quote uses: a **% of the sale
+price** or a **flat £**. The basis is the value's type in the engine (`SellingCostComponent` holds a `Percent|Money`,
+resolved against the sale price); their sum is the total netted off the proceeds, and `HousingProceeds` carries a
+**reconciled breakdown** (sum of components == total, asserted). No components → the engine's existing 2% default, so
+untouched scenarios are unchanged; the legacy single `sellingCostRate` maps back-compat to one estate-agent component
+(total preserved), and the two shapes never co-persist (one home per figure). Defaults: agent 1.25%, legal £1,500,
+EPC & removals £800 — editable assumptions, not statutory figures.
+**Why (Rob):** "does it have to be fixed as % or £? Some scenarios will be % and some will be flat fee — that's just
+how the world works." Estate agents quote a percentage, conveyancing quotes a flat fee; forcing a single basis
+misstates one of them and was a foot-gun in the browser walkthrough (a 20%-not-2% entry).
+**Status:** built, suite green, pending Rob's browser sign-off.
+
+## 2026-06-30 — Live in-builder preview (verdict + end wealth) and the modelled age at death
+**Decision:** The builder gained a sticky **live preview** — one cheap deterministic forecast run on a transient
+scenario assembled from the current form-state (never saved), recomputed each round-trip — headlining the
+does-the-money-last **verdict** plus **spendable / total wealth at end** (Rob chose verdict + end wealth over either
+alone). It invites completion while the inputs are too incomplete to forecast. The same forecast drives a per-person
+**modelled age at death** shown beside each lifespan lever (from `ForecastResult::deathCalendarYears`), so a
+"peer / +10 years" setting resolves to a visible age and year.
+**Why:** the wizard gave no feedback before a full Monte Carlo run; ProjectionLab's "edit and watch it move" is the
+free-tool pattern (docs/RESEARCH-editable-assumptions-ux.md). Single-sourced from `ScenarioForecaster::deterministic()`
+so the preview can never drift from the full run; pure server render (no JS), so it is CSP-safe and progressive.
+**Status:** built, suite green, pending Rob's browser sign-off.
+
 ## 2026-06-30 — The builder highlights a what-if's inputs that differ from the base (and shows the base value)
 **Decision:** When editing a what-if in the builder, each input whose value differs from the base plan is **ringed in
 amber** *and shows the base value it diverged from* ("was £18,000"), with a one-line "fields you change from the base
