@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\BuyVsRentController;
 use App\Http\Controllers\DisclaimerController;
 use App\Http\Controllers\QuickWhatIfController;
 use App\Http\Controllers\ScenarioPdfController;
@@ -47,6 +48,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/scenarios/{scenario}/edit', ScenarioBuilder::class)->name('scenarios.edit');
         Route::get('/scenarios/{scenario}/child', ScenarioBuilder::class)->name('scenarios.child');
         Route::post('/scenarios/{scenario}/what-if/quick', [QuickWhatIfController::class, 'store'])->name('scenarios.whatif.quick');
+        Route::post('/scenarios/{scenario}/compare/housing', [BuyVsRentController::class, 'store'])->name('scenarios.compare.housing');
         Route::get('/scenarios/{scenario}/compare', ScenarioCompare::class)->name('scenarios.compare');
         Route::get('/scenarios/{scenario}/results', ScenarioResults::class)->name('scenarios.results');
         Route::get('/scenarios/{scenario}/results/pdf', [ScenarioPdfController::class, 'download'])->name('scenarios.results.pdf');

@@ -43,10 +43,13 @@ class ScenarioCompare extends Component
         $forecaster = app(ScenarioForecaster::class);
 
         // One deterministic projection per plan, reused for both the summary table and the
-        // wealth-over-time burndown overlay (so the chart can't drift from the table).
+        // wealth-over-time burndown overlay (so the chart can't drift from the table). Each
+        // plan is projected on ITS OWN housing strategy (not the raw stay-put basis), so a
+        // buy-vs-rent comparison's columns actually differ — the same per-variant single source
+        // the results-page cashflow ladder uses (#6), keyed by the plan's chosen variant.
         $forecasts = $this->plans()->map(fn (Scenario $plan): array => [
             'scenario' => $plan,
-            'forecast' => $forecaster->deterministic($plan),
+            'forecast' => $forecaster->deterministicVariants($plan)[$plan->variant->value],
         ]);
 
         $plans = $forecasts->map(fn (array $pf): array => $this->summarise($pf['scenario'], $pf['forecast']));
