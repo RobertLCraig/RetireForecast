@@ -3,6 +3,19 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-30 — Longevity distribution surfaced from the Monte Carlo (first post-v1 backlog item)
+**Decision:** The Monte Carlo now surfaces a **longevity distribution** (a `LongevityDistribution` on `SimulationResult`),
+read off the **same joint-life mortality sampler** the wealth paths already run, framed around the **last survivor** (how
+long the money must last for a couple): last-survivor age p10/p50/p90, the planning horizon in years (p50 + p90, the
+"plan to roughly here" figure), and the probability at least one of the household reaches **95 / 100**. Shown as a neutral
+**"How long the money may need to last"** results-page panel (descriptive, not a recommendation). Nullable on
+`SimulationResult` so runs persisted before it rehydrate as null (mapper back-compat).
+**Why:** the engine already sampled per-path death ages but only used them for cashflow; surfacing the spread is the
+cheapest high-value output (it answers "how long might we live / how long must the money stretch", and pairs with the
+longevity lever + the deterministic modelled-death age). First of the post-v1 "outputs that exploit results we already
+compute" backlog (docs/PLAN.md "External review triage").
+**Status:** built, suite green, pending Rob's browser sign-off (needs a completed run — local DB has 0).
+
 ## 2026-06-30 — Partial Private Residence Relief CGT on selling a let former home
 **Decision:** Capital Gains Tax on selling a former main home that was also let is now modelled (it was hard-coded to
 £0). It is driven by **occupation, not the mortgage type** (gov.uk HS283): relief = gain × (main-residence months +
