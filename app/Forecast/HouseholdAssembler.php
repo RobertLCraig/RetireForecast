@@ -18,6 +18,7 @@ use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\IncomeStream;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
+use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
@@ -412,6 +413,8 @@ final class HouseholdAssembler
             growthAssumptionOverride: $this->percent($p['growthAssumptionOverride'] ?? null),
             ownershipShare: $this->percent($p['ownershipShare'] ?? null),
             cgtHistory: $this->cgtHistoryFrom($p, $saleYear),
+            mortgageRedemptionYear: $this->intOrNull($p['mortgageRedemptionYear'] ?? null),
+            mortgageMaturityAction: MortgageMaturityAction::from($p['mortgageMaturityAction'] ?? 'refinance'),
         );
     }
 

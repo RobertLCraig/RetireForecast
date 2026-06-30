@@ -19,6 +19,12 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * $cgtHistory, when set, drives the Capital Gains Tax on selling a home whose Private
  * Residence Relief is only partial (it was let / not the main home for part of ownership);
  * null is the common full-relief case (main home throughout) — no CGT on sale.
+ *
+ * $mortgageRedemptionYear is the calendar year the current mortgage term ends / it is called
+ * for redemption (an interest-only or fixed-term loan that cannot simply roll on). Null means
+ * no scheduled event — the mortgage is assumed to continue, the existing behaviour.
+ * $mortgageMaturityAction says what happens then ({@see MortgageMaturityAction}); the default
+ * Refinance rolls it over, so a property without a redemption year is unaffected.
  */
 final class Property
 {
@@ -32,5 +38,7 @@ final class Property
         public readonly ?Percent $growthAssumptionOverride = null,
         public readonly ?Percent $ownershipShare = null,
         public readonly ?CgtHistory $cgtHistory = null,
+        public readonly ?int $mortgageRedemptionYear = null,
+        public readonly MortgageMaturityAction $mortgageMaturityAction = MortgageMaturityAction::Refinance,
     ) {}
 }

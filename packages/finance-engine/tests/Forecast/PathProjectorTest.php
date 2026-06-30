@@ -19,6 +19,7 @@ use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\IncomeStream;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
+use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Pension;
 use RetireForecast\FinanceEngine\Dto\Person;
@@ -171,6 +172,93 @@ final class PathProjectorTest extends TestCase
         $withSdp = $this->couple($expense, $pensions, override1: $disabledP1);
         $this->assertSame(4_330 * 52, $this->forecaster()->forecast($withSdp, $this->flatAssumptions(), $this->settings())
             ->years[0]->incomeBySource['means_tested_benefit']->pence);
+    }
+
+    /**
+     * @param  list<\RetireForecast\FinanceEngine\Dto\Pension>  $pensions
+     */
+    private function homeownerCouple(Property $home, array $accounts = [], int $essential = 20_000): Household
+    {
+        return new Household(
+            'Redeem',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired),
+            ],
+            new ExpenseProfile(Money::fromPounds($essential), Money::zero(), Percent::fromPercent(70)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+            ],
+            $accounts,
+            primaryResidence: $home,
+        );
+    }
+
+    public function test_mortgage_redemption_repays_the_balance_from_capital_once_in_the_redemption_year(): void
+    {
+        $home = new Property(
+            currentValue: Money::fromPounds(300_000),
+            ownership: OwnershipType::Mortgaged,
+            outstandingMortgage: Money::fromPounds(100_000),
+            mortgageRedemptionYear: 2030,
+            mortgageMaturityAction: MortgageMaturityAction::RepayFromCapital,
+        );
+        $household = $this->homeownerCouple($home, [new Account('p1', AccountType::Cash, Money::fromPounds(150_000))]);
+
+        $byYear = [];
+        foreach ($this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings())->years as $y) {
+            $byYear[$y->calendarYear] = $y;
+        }
+
+        // The £100k repayment lands once, in 2030: spend that year is ~£100k above the year before,
+        // funded from the cash, and 2031 returns to the baseline (it is a one-off, not recurring).
+        $jump = $byYear[2030]->spendTarget->pence - $byYear[2029]->spendTarget->pence;
+        $this->assertEqualsWithDelta(Money::fromPounds(100_000)->pence, $jump, Money::fromPounds(500)->pence);
+        $this->assertEqualsWithDelta($byYear[2029]->spendTarget->pence, $byYear[2031]->spendTarget->pence, Money::fromPounds(500)->pence);
+        $this->assertTrue($byYear[2030]->incomeBySource['asset_drawdown']->isPositive(), 'the repayment is funded from savings');
+    }
+
+    public function test_a_repay_from_capital_redemption_the_household_cannot_afford_shows_a_shortfall(): void
+    {
+        // £200k due to redeem but only £20k of savings → the keep-the-home option is unaffordable,
+        // so the year the mortgage falls due leaves spend unmet (the feasibility signal).
+        $home = new Property(
+            currentValue: Money::fromPounds(300_000),
+            ownership: OwnershipType::Mortgaged,
+            outstandingMortgage: Money::fromPounds(200_000),
+            mortgageRedemptionYear: 2030,
+            mortgageMaturityAction: MortgageMaturityAction::RepayFromCapital,
+        );
+        $household = $this->homeownerCouple($home, [new Account('p1', AccountType::Cash, Money::fromPounds(20_000))]);
+
+        $byYear = [];
+        foreach ($this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings())->years as $y) {
+            $byYear[$y->calendarYear] = $y;
+        }
+
+        $this->assertTrue($byYear[2030]->unmetSpend->isPositive(), 'a redemption that cannot be met surfaces as unmet spend');
+    }
+
+    public function test_a_refinanced_mortgage_has_no_redemption_spike(): void
+    {
+        $home = new Property(
+            currentValue: Money::fromPounds(300_000),
+            ownership: OwnershipType::Mortgaged,
+            outstandingMortgage: Money::fromPounds(100_000),
+            mortgageRedemptionYear: 2030,
+            mortgageMaturityAction: MortgageMaturityAction::Refinance,
+        );
+        $household = $this->homeownerCouple($home, [new Account('p1', AccountType::Cash, Money::fromPounds(150_000))]);
+
+        $byYear = [];
+        foreach ($this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings())->years as $y) {
+            $byYear[$y->calendarYear] = $y;
+        }
+
+        // Refinance rolls the loan over — no capital event, so 2030 matches its neighbours.
+        $this->assertEqualsWithDelta($byYear[2029]->spendTarget->pence, $byYear[2030]->spendTarget->pence, Money::fromPounds(500)->pence);
     }
 
     public function test_comfortable_household_never_runs_out(): void

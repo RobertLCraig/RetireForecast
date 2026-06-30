@@ -10,6 +10,7 @@ use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
@@ -198,6 +199,8 @@ final class PathProjector
             'pots' => $pots,
             'lsaUsed' => $lsaUsed,
             'property' => $household->primaryResidence?->currentValue->pence ?? 0,
+            'mortgageOutstanding' => $household->primaryResidence?->outstandingMortgage?->pence ?? 0,
+            'mortgageRepaid' => false,
             // Running nominal growth factors (1.0 in the base year).
             'salaryFactor' => 1.0,
             'dbFactor' => 1.0,
@@ -334,8 +337,28 @@ final class PathProjector
             $essentialPence = max(0, $essentialPence - $employment);
         }
 
+        // Mortgage redemption: when the current home's mortgage term ends and the chosen action
+        // is to repay it from capital, the outstanding balance is a one-off outflow that year
+        // (funded from assets, like any one-off). A fixed-£ debt, so it is already nominal. If the
+        // assets are not there the shortfall surfaces, flagging the keep-the-home option as
+        // unaffordable. Refinance rolls the loan over (no event); a forced sale is modelled by the
+        // sell variants. v1 simplification: the ongoing mortgage payment in the spend is not
+        // separately stopped after repayment (it is bundled with the other property costs).
+        $repayOneOff = 0;
+        $home = $household->primaryResidence;
+        if ($home?->mortgageRedemptionYear !== null
+            && $home->mortgageMaturityAction === MortgageMaturityAction::RepayFromCapital
+            && ! $state['mortgageRepaid']
+            && $state['mortgageOutstanding'] > 0
+            && $calendarYear >= $home->mortgageRedemptionYear) {
+            $repayOneOff = $state['mortgageOutstanding'];
+            $state['mortgageOutstanding'] = 0;
+            $state['mortgageRepaid'] = true;
+        }
+
         $spendNominal = (int) round($targetPence * $state['spendFactor'] * $survivor)
-            + $this->oneOffCostsNominal($household, $ages, $cumInflation);
+            + $this->oneOffCostsNominal($household, $ages, $cumInflation)
+            + $repayOneOff;
         $essentialNominal = (int) round($essentialPence * $state['spendFactor'] * $survivor);
 
         // Rent (the "sell and rent" leg) is an essential cost with its own inflation.
