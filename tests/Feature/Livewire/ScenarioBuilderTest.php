@@ -304,6 +304,24 @@ class ScenarioBuilderTest extends TestCase
             ->assertSet('property.cgtHistory.periods.0.use', 'let');
     }
 
+    public function test_the_safety_buffer_months_is_captured_and_read_back(): void
+    {
+        $state = BuilderStateFixture::minimalValid();
+        $state['expense']['safetyBufferMonths'] = '4';
+
+        $this->fill($state)->call('save')->assertHasNoErrors();
+
+        $this->assertSame(4, Scenario::where('user_id', auth()->id())->firstOrFail()->safetyBufferMonths());
+    }
+
+    public function test_the_safety_buffer_defaults_to_two_months_when_unset(): void
+    {
+        // The minimal fixture sets no buffer, so the scenario falls back to the 2-month default.
+        $this->fill(BuilderStateFixture::minimalValid())->call('save');
+
+        $this->assertSame(2, Scenario::where('user_id', auth()->id())->firstOrFail()->safetyBufferMonths());
+    }
+
     /** @param array<string, mixed> $state */
     private function fill(array $state): Testable
     {

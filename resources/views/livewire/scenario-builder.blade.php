@@ -813,9 +813,17 @@
                     <div><dt class="text-gray-500">Total spend / yr</dt><dd class="font-semibold tabular-nums">£{{ number_format($expenseTotals['total']) }}</dd></div>
                 </dl>
 
-                <div class="mt-5 sm:max-w-xs">
-                    <label for="expense-survivorFactor" class="{{ $label }}">Survivor spend (% of couple's)</label>
-                    <input id="expense-survivorFactor" type="text" inputmode="decimal" wire:model="expense.survivorFactor" class="{{ $field }}">
+                <div class="mt-5 grid gap-4 sm:grid-cols-2 sm:max-w-2xl">
+                    <div>
+                        <label for="expense-survivorFactor" class="{{ $label }}">Survivor spend (% of couple's)</label>
+                        <input id="expense-survivorFactor" type="text" inputmode="decimal" wire:model="expense.survivorFactor" class="{{ $field }}">
+                    </div>
+                    <div>
+                        <label for="expense-safetyBufferMonths" class="{{ $label }}">Safety buffer (months of essentials)</label>
+                        <input id="expense-safetyBufferMonths" type="number" wire:model="expense.safetyBufferMonths" class="{{ $field }}" @error('expense.safetyBufferMonths') aria-invalid="true" @enderror>
+                        <p class="mt-1 text-xs text-gray-500">The cashflow ladder flags any year usable money falls below this many months of essential spending. 0 = only flag running out entirely.</p>
+                        @error('expense.safetyBufferMonths') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                    </div>
                 </div>
 
                 <p class="{{ $label }} mt-5 mb-2">One-off costs</p>

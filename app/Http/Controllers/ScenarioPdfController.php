@@ -60,7 +60,7 @@ class ScenarioPdfController extends Controller
             'budget' => ResultPresenter::expenseBreakdown($scenario->effectiveBuilderState()),
             'plsa' => ResultPresenter::plsaBenchmark($scenario->toHousehold()),
             'incomeFloor' => ResultPresenter::incomeFloor($forecast),
-            'ladder' => ResultPresenter::ladder($ladderForecast),
+            'ladder' => ResultPresenter::ladder($ladderForecast, $scenario->safetyBufferMonths()),
             // Monte Carlo headline summary + the run's provenance, only if a completed run
             // exists, so a 1,000-path preview can't masquerade as the 10k report.
             'presented' => $presented,

@@ -110,6 +110,7 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 | docs/RESEARCH-cashflow-modelling.md | How the sector (Voyant/Timeline/CashCalc, PLSA/SMPI) solves edit/clone/compare, line-item expenditure, drill-down — what we adopt + the gaps it surfaced. |
 | docs/RESEARCH-editable-assumptions-ux.md | How free consumer tools (Boldin, ProjectionLab, NYT rent-vs-buy, Guiide, Actuaries Longevity Illustrator) handle editable assumptions, buy-vs-rent and cost breakdowns — what we adopt (2026-06-29). |
 | docs/RESEARCH-document-import.md | PARKED post-v1 feature: statement-driven onboarding + document import (sector evidence, document→builder-field map, gotchas). |
+| docs/RESEARCH-competitive-gap-analysis.md | Full-market competitive scan (2026-06-30): where the engine already leads vs where the gaps are (decumulation policy + framing). Net-new backlog items folded into docs/PLAN.md "Competitive gap analysis". |
 | PRD.md | Goal, success criteria, scope, non-goals, open questions. |
 | DATA-MODEL.md | Canonical data shape; what is materialised in code today vs planned. |
 | DECISIONS.md | Append-only decision log with rationale. |

@@ -70,6 +70,35 @@ final class LadderSpendSplitTest extends TestCase
         }
     }
 
+    public function test_each_year_is_classified_surplus_drawing_or_shortfall(): void
+    {
+        $ladder = ResultPresenter::ladder($this->forecast());
+
+        foreach ($ladder['rows'] as $row) {
+            $this->assertContains($row['status'], ['surplus', 'drawing', 'shortfall'], "year {$row['year']}");
+            $this->assertIsBool($row['belowFloor']);
+        }
+
+        // This couple's State Pension alone doesn't meet their £28k spend, so they draw on the ISA.
+        $this->assertContains('drawing', array_column($ladder['rows'], 'status'));
+    }
+
+    public function test_the_safety_buffer_is_configurable_and_flags_below_buffer_years(): void
+    {
+        $forecast = $this->forecast();
+
+        // A huge buffer (50 years of essentials) puts even the first year below it.
+        $tight = ResultPresenter::ladder($forecast, bufferMonths: 600);
+        $this->assertSame(600, $tight['bufferMonths']);
+        $this->assertTrue($tight['rows'][0]['belowFloor']);
+        $this->assertSame($tight['rows'][0]['year'], $tight['floorBreachYear']);
+
+        // A zero buffer flags only actually running out — a funded year is never "below £0".
+        $none = ResultPresenter::ladder($forecast, bufferMonths: 0);
+        $this->assertSame(0, $none['bufferMonths']);
+        $this->assertFalse($none['rows'][0]['belowFloor']);
+    }
+
     public function test_the_split_is_non_trivial_at_least_once_so_the_columns_earn_their_place(): void
     {
         $ladder = ResultPresenter::ladder($this->forecast());

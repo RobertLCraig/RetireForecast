@@ -113,7 +113,7 @@ class ScenarioBuilder extends Component
     public array $people = [];
 
     /** @var array<string, mixed> Holds the survivor factor; essential/discretionary are derived from the lines now. */
-    public array $expense = ['essential' => '', 'discretionary' => '', 'survivorFactor' => '70'];
+    public array $expense = ['essential' => '', 'discretionary' => '', 'survivorFactor' => '70', 'safetyBufferMonths' => '2'];
 
     /**
      * The 3-tier spending lines — the source of truth for spend (Phase C1). Each:
@@ -237,6 +237,7 @@ class ScenarioBuilder extends Component
             'people.*.longevityValue' => ['nullable', 'integer', 'min:-25', 'max:110', 'required_if:people.*.longevityMode,fixed_age,offset_years'],
 
             'expense.survivorFactor' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'expense.safetyBufferMonths' => ['nullable', 'integer', 'min:0', 'max:60'],
 
             // Spending is entered as 3-tier line items (the source of truth); the
             // essential/discretionary totals are derived from them, never stored apart.

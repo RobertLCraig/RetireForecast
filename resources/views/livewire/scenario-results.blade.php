@@ -599,6 +599,19 @@
             <p class="mt-1 text-sm text-gray-600">
                 The central best-estimate projection, year by year: where income comes from, the tax on it, the spend it has to meet (split into its essential floor and discretionary remainder), and the usable (excl. home) and total (incl. home) wealth carried forward. Figures are in today's money. This is one illustrative path, not a probability.
             </p>
+
+            {{-- Safety-floor headline: does usable money stay above the user's buffer, dip below it,
+                 or run out entirely? The buffer (months of essentials) is set in the Spending step. --}}
+            @if ($ladder['depletionYear'])
+                <p class="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-900">⚠ On this strategy, usable money runs out in {{ $ladder['depletionYear'] }}.</p>
+            @elseif ($ladder['floorBreachYear'])
+                <p class="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">⚠ Usable money dips below your safety buffer ({{ $ladder['bufferMonths'] }} {{ \Illuminate\Support\Str::plural('month', $ladder['bufferMonths']) }}' essentials) in {{ $ladder['floorBreachYear'] }}, though it does not run out entirely.</p>
+            @elseif ($ladder['bufferMonths'] > 0)
+                <p class="mt-3 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm font-medium text-green-900">✓ Usable money stays above your safety buffer ({{ $ladder['bufferMonths'] }} {{ \Illuminate\Support\Str::plural('month', $ladder['bufferMonths']) }}' essentials) every year.</p>
+            @else
+                <p class="mt-3 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm font-medium text-green-900">✓ Usable money never runs out on this strategy.</p>
+            @endif
+            <p class="mt-1 text-xs text-gray-500">Rows are tinted: <span class="rounded bg-green-50 px-1">surplus</span> (income covers spend), plain (drawing on savings), <span class="rounded bg-amber-50 px-1">shortfall</span> (spend not fully met), <span class="rounded bg-red-50 px-1">below buffer</span>.</p>
             <div class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-sm whitespace-nowrap">
                     <caption class="sr-only">Deterministic year-by-year cashflow: income by source, tax, spend and wealth, in real pounds</caption>
@@ -617,7 +630,11 @@
                     </thead>
                     <tbody>
                         @foreach ($ladder['rows'] as $row)
-                            <tr @class(['bg-amber-50' => $row['shortfall']])>
+                            <tr @class([
+                                'bg-red-50' => $row['belowFloor'],
+                                'bg-amber-50' => $row['shortfall'] && ! $row['belowFloor'],
+                                'bg-green-50' => $row['status'] === 'surplus' && ! $row['belowFloor'],
+                            ])>
                                 <th scope="row" class="{{ $td }} font-medium">{{ $row['year'] }}</th>
                                 <td class="{{ $td }}">{{ $row['ages'] }}</td>
                                 @foreach ($ladder['sources'] as $source)
@@ -629,7 +646,10 @@
                                     <span class="block text-xs text-gray-500">ess {{ $row['essentialSpend'] }} · disc {{ $row['discretionarySpend'] }}</span>
                                     @if ($row['shortfall'])<span class="block text-xs text-amber-700">unmet {{ $row['shortfall'] }}</span>@endif
                                 </td>
-                                <td class="{{ $td }} text-right">{{ $row['usableWealth'] }}</td>
+                                <td class="{{ $td }} text-right">
+                                    {{ $row['usableWealth'] }}
+                                    @if ($row['belowFloor'])<span class="block text-xs font-medium text-red-700">below buffer</span>@endif
+                                </td>
                                 <td class="{{ $td }} text-right">{{ $row['totalWealth'] }}</td>
                             </tr>
                         @endforeach

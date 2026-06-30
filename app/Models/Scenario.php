@@ -189,6 +189,17 @@ class Scenario extends Model
         return (string) ($this->effectiveBuilderState()['householdName'] ?? '');
     }
 
+    /**
+     * The usable-money safety buffer the cashflow ladder flags against, in months of essential
+     * spending (a user-set analysis threshold, not a forecast input). Default 2 months.
+     */
+    public function safetyBufferMonths(): int
+    {
+        $value = $this->effectiveBuilderState()['expense']['safetyBufferMonths'] ?? null;
+
+        return is_numeric($value) ? max(0, (int) $value) : 2;
+    }
+
     /** The engine Household DTO, derived from the effective (base ⊕ overrides) form-state. */
     public function toHousehold(): Household
     {

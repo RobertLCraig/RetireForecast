@@ -236,6 +236,47 @@ the planned compliance step). The genuinely new, aligned items, kept as a post-v
 per-row/envelope encryption, a native (Rust/WASM/SIMD) Monte Carlo accelerator, and automated gov.uk
 scraping.
 
+### Competitive gap analysis (2026-06-30) — post-v1 backlog additions
+A full-market scan (UK providers, robo/aggregator apps, independent consumer tools, prosumer/FIRE tools,
+UK adviser cashflow software, and the FCA framing) is captured in
+**[docs/RESEARCH-competitive-gap-analysis.md](RESEARCH-competitive-gap-analysis.md)**. Conclusion: the engine
+already matches/beats the field (only Timeline also has stochastic mortality; no UK consumer tool combines a
+stochastic engine + HMRC tax + housing). The gaps are a **decumulation-policy + framing layer**. The genuinely
+**new, aligned** items (the existing triage above already covers the historical stress-test panel, what-if
+sliders, annuitisation, care-cost stochasticity and the neutral diagnostics — this study **validates and
+sharpens** them; the items below are the net-new ones), ranked by impact × on-brand fit:
+
+- **Tax-efficient withdrawal sequencing across wrappers (highest value, most on-brand).** Optimise the draw
+  order across **ISA vs SIPP/DC pension vs GIA** (+ CGT-aware GIA disposals, the 25% PCLS) and a **"fill the
+  band"** lever (draw to the personal-allowance / basic-rate ceiling; realise gains to the CGT AEA; steer
+  around the £100k–£125,140 PA taper). **Show the lifetime-tax £ delta** of the choice (RightCapital/Timeline
+  pattern). Even pro tools mostly let the adviser *specify* the order; optimising + quantifying it is white
+  space. Uses the HMRC engine we already have.
+- **Dynamic / guardrail withdrawal strategies.** Add Guyton-Klinger (±20% bands → ±10% adjustments) and a
+  Vanguard-style +5%/−2.5% collar; ideally **Income Lab's risk-based guardrail** (target spend = a percentile
+  of *our own* Monte-Carlo sustainable-spend distribution; recompute yearly; asymmetric raise-fast/cut-slow) —
+  a natural extension of the income-floor readout + longevity distribution. The single biggest sustainability
+  lever (Okusanya/Morningstar: lifts the UK safe rate from ~3.9% fixed-real toward ~5%+). Pairs with a
+  **VPW/amortisation** mode using our ONS cohort survival curve as the divisor.
+- **Equity release as a 4th housing strategy.** Put stay-put / downsize / rent / **lifetime mortgage** on
+  identical Monte-Carlo paths — compounding fixed-for-life roll-up interest, a No-Negative-Equity-Guarantee
+  cap, LTV-by-age gates, drawdown reserve vs lump sum, **with the IHT-estate interaction**. No holistic tool
+  integrates equity release; clearest unoccupied position in the market. Builds on the existing
+  buy/rent/stay machinery + IHT engine.
+- **Sharpen the planned stress-test panel** to the FCA TR24/1 **four named tests** (start-of-retirement crash,
+  reduced real returns, lower-percentile path, higher withdrawals) and a UK **"retire into a bad year"**
+  historical-sequence mode (block-bootstrap MC as a refinement); make care-cost stochasticity
+  longevity-correlated (+ an NHS Continuing Healthcare branch, the spousal home-disregard).
+- **Framing/legibility on output we already compute:** a single **success-probability gauge** (+ first
+  shortfall year + a Timeline-style **longevity-adjusted success rate** blending survival × sustainability),
+  a **Sankey** income→tax→wrappers→spend, **reverse goal-solving** ("what pot/age/contributions hit £X for
+  life?"), and a free-form spending-curve editor (hand-draw the smile). Confirm an explicit per-pot
+  ongoing-charges drag is modelled.
+- **Deliberate non-goal (recorded):** live account/property **aggregation** (Open Banking / Zoopla) — both
+  consumer aggregators (Moneyhub, Multiply) exited that market and ProjectionLab omits it on privacy grounds;
+  it conflicts with the local-first posture. A **deep-link to the gov.uk State Pension forecast** and a future
+  **Pensions Dashboard** import (consumer launch ~2027) are the pragmatic substitutes.
+
 ### Sector-informed build plan (2026-06-25) — edit/clone/compare, line-item expenditure, drill-down
 Research into how the cashflow-modelling sector solves these (Voyant/Timeline/CashCalc + PLSA/SMPI)
 is captured in **[docs/RESEARCH-cashflow-modelling.md](RESEARCH-cashflow-modelling.md)**. These are

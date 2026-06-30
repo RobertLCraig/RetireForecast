@@ -466,8 +466,10 @@ final class ResultPresenter
      *
      * @return array{sources: list<string>, sourceLabels: array<string, string>, rows: list<array<string, mixed>>, finalYear: int}
      */
-    public static function ladder(ForecastResult $forecast): array
+    public static function ladder(ForecastResult $forecast, int $bufferMonths = 2): array
     {
+        $bufferMonths = max(0, $bufferMonths);
+
         // Drop columns for sources that never occur, so the table stays readable.
         $active = array_values(array_filter(
             YearResult::INCOME_SOURCES,
@@ -475,6 +477,7 @@ final class ResultPresenter
         ));
 
         $rows = [];
+        $floorBreachYear = null;
         foreach ($forecast->years as $year) {
             $income = [];
             foreach ($active as $source) {
@@ -485,6 +488,25 @@ final class ResultPresenter
             // is traceable rather than a single opaque number. The two reconcile to the
             // target by construction (asserted in the ladder reconciliation test).
             $discretionary = $year->spendTarget->minus($year->essentialSpend)->minZero();
+
+            // Surplus / drawing-down / shortfall, on usable money — the year's actual position.
+            // Drawing from savings = the pension-lump-sum + drawdown + asset-drawdown sources;
+            // a shortfall is spend that wasn't met even after drawing everything available.
+            $savingsDraw = ($year->incomeBySource['pension_lump_sum'] ?? Money::zero())
+                ->plus($year->incomeBySource['pension_drawdown'] ?? Money::zero())
+                ->plus($year->incomeBySource['asset_drawdown'] ?? Money::zero());
+            $status = ! $year->unmetSpend->isZero() ? 'shortfall'
+                : ($savingsDraw->isPositive() ? 'drawing' : 'surplus');
+
+            // Safety floor: usable money should stay above the user's buffer (default ~2 months
+            // of that year's essentials), not just above zero. Flag the year it first dips below.
+            $usable = $year->liquidWealth->plus($year->pensionWealth);
+            $floor = $bufferMonths > 0 ? $year->essentialSpend->times($bufferMonths)->dividedBy(12) : Money::zero();
+            $belowFloor = $usable->pence < $floor->pence;
+            if ($belowFloor && $floorBreachYear === null) {
+                $floorBreachYear = $year->calendarYear;
+            }
+
             $rows[] = [
                 'year' => $year->calendarYear,
                 'ages' => implode(' / ', $year->ages),
@@ -494,8 +516,10 @@ final class ResultPresenter
                 'essentialSpend' => $year->essentialSpend->format(),
                 'discretionarySpend' => $discretionary->format(),
                 'shortfall' => $year->unmetSpend->isZero() ? null : $year->unmetSpend->format(),
-                'usableWealth' => $year->liquidWealth->plus($year->pensionWealth)->format(),
+                'usableWealth' => $usable->format(),
                 'totalWealth' => $year->totalWealth->format(),
+                'status' => $status,
+                'belowFloor' => $belowFloor,
             ];
         }
 
@@ -504,6 +528,11 @@ final class ResultPresenter
             'sourceLabels' => self::SOURCE_LABELS,
             'rows' => $rows,
             'finalYear' => $forecast->finalCalendarYear,
+            // The safety-floor headline: the buffer (in months of essentials), the first year
+            // usable money drops below it (null = never), and the first year it runs out entirely.
+            'bufferMonths' => $bufferMonths,
+            'floorBreachYear' => $floorBreachYear,
+            'depletionYear' => $forecast->depletionCalendarYear,
         ];
     }
 

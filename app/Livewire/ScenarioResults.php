@@ -169,7 +169,7 @@ class ScenarioResults extends Component
     {
         $ctx = $this->ladderContext();
         $selected = $ctx['selected'];
-        $ladder = ResultPresenter::ladder($ctx['forecasts'][$selected]);
+        $ladder = ResultPresenter::ladder($ctx['forecasts'][$selected], $this->scenario->safetyBufferMonths());
 
         return response()->streamDownload(function () use ($ladder): void {
             $out = fopen('php://output', 'wb');
@@ -270,7 +270,7 @@ class ScenarioResults extends Component
             'incomeFloor' => ResultPresenter::incomeFloor($forecast),
             // Deterministic year-by-year cashflow ladder (income by source -> tax -> spend
             // -> wealth) for the selected housing strategy. Shows immediately, before any run.
-            'ladder' => ResultPresenter::ladder($ladderForecast),
+            'ladder' => ResultPresenter::ladder($ladderForecast, $this->scenario->safetyBufferMonths()),
             // The housing strategies worth offering + which is selected, for the ladder picker.
             'ladderStrategies' => $ladderContext['strategies'],
             'ladderSelected' => $selectedStrategy,
