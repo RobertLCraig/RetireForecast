@@ -3,6 +3,22 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-30 — One-click "compare buy vs rent" (delta-child what-ifs + per-variant Compare)
+**Decision:** A **"Compare buy vs rent"** button generates the alternative housing strategies for a base as ordinary
+**delta-child what-ifs** (variant-only overrides via `BuyVsRentCompare` + `BuilderStateDelta::diff`, the QuickWhatIf
+pattern) and opens Compare. Only **meaningful** strategies are offered (buy needs a buy price, rent needs an annual
+rent; the base's own strategy is skipped), and a strategy that already has its generated child is not recreated (no
+duplicates on repeat clicks). **`ScenarioCompare` now projects each plan on its OWN variant** via the #6 single source
+`deterministicVariants($plan)[$plan->variant->value]` (was the raw stay-put `deterministic()` basis), so the
+buy / stay / rent columns actually differ instead of showing identical numbers under different labels.
+**Why (Rob):** chose one-click compare over leaving the always-on 3-way comparison, or fully focusing the report on one
+strategy. The results page already compared the three strategies, but baking them into every report is what the plan
+moves away from; as deliberate what-ifs they are nameable, independently editable (e.g. a different rent assumption)
+and read via the existing Compare infra. The Compare-basis fix was required for correctness — without it the
+comparison was a mirage (identical figures under different labels).
+**Status:** mechanism built, suite green, pending Rob's browser sign-off. **Next decision:** the per-option
+plain-English **"why"** narrative (rule-based from the figures/milestones, lint-safe / guidance-only).
+
 ## 2026-06-30 — Per-line include/exclude toggle for spend lines (real-time cost toggles, #7)
 **Decision:** Each spend line gains an **"Include this cost in the forecast"** checkbox. Switching it off keeps the
 line in the form-state (so it can be switched back on) but excludes it from **every** forecast total — the assembler
