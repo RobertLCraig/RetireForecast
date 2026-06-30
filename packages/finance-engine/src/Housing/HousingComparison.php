@@ -7,6 +7,7 @@ namespace RetireForecast\FinanceEngine\Housing;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
+use RetireForecast\FinanceEngine\Dto\CgtHistory;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
@@ -32,7 +33,7 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  * Net sale proceeds = sale price − outstanding mortgage − selling costs − CGT.
  * CGT is £0 on a main home owned and lived in throughout (full Private Residence
  * Relief); when the home was let / not the main residence for part of ownership, a
- * {@see \RetireForecast\FinanceEngine\Dto\CgtHistory} drives a partial-PRR charge
+ * {@see CgtHistory} drives a partial-PRR charge
  * ({@see CgtPrivateResidenceCalculator}). Buying nets off SDLT and moving costs; the
  * surplus (or full proceeds when renting) goes into an invested account that then
  * follows the chosen allocation.

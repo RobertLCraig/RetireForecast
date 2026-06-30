@@ -22,6 +22,7 @@ use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\HousingPurchase;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\MonteCarlo\LongevityDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
 
@@ -118,6 +119,33 @@ final class ResultPresenter
             'usableFanAvailable' => $primarySim->usableFanChart !== [],
             'fan' => self::fan($primary, $primarySim, $includeHome, $ageByYear),
             'comparison' => self::comparison($resultsByVariant, $includeHome, $ageByYear),
+            // How long the household may last, from the joint-life sampler (same across variants —
+            // mortality does not depend on the housing choice). Null for a run predating the field.
+            'longevity' => self::longevityPanel($primarySim->longevity),
+        ];
+    }
+
+    /**
+     * The longevity distribution for display: the last-survivor age spread, the planning
+     * horizon in years, and the tail probabilities of reaching 95 / 100. Descriptive only —
+     * a spread of outcomes, never a recommendation. Null when the run predates the field.
+     *
+     * @return array{ageP10: int, ageP50: int, ageP90: int, planYearsP50: int, planYearsP90: int, reaches95: string, reaches100: string}|null
+     */
+    public static function longevityPanel(?LongevityDistribution $l): ?array
+    {
+        if ($l === null) {
+            return null;
+        }
+
+        return [
+            'ageP10' => $l->lastSurvivorAgeP10,
+            'ageP50' => $l->lastSurvivorAgeP50,
+            'ageP90' => $l->lastSurvivorAgeP90,
+            'planYearsP50' => $l->planYearsP50,
+            'planYearsP90' => $l->planYearsP90,
+            'reaches95' => self::formatPercent($l->reaches95),
+            'reaches100' => self::formatPercent($l->reaches100),
         ];
     }
 

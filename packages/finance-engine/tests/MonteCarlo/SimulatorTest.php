@@ -15,6 +15,7 @@ use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
@@ -168,6 +169,34 @@ final class SimulatorTest extends TestCase
         }
 
         $this->assertGreaterThan(0, $separatedYears, 'the home should pull usable below total in at least one year');
+    }
+
+    public function test_longevity_distribution_reads_the_last_survivor_from_the_sampler(): void
+    {
+        // Pin both lifespans (fixed-age longevity), so every path samples the same deaths and the
+        // distribution collapses to known values. Both born 1958 (age 68 at 2026): p1 dies at 90
+        // (2048), p2 at 95 (2053) — the last survivor is p2 at 95, so the money must last to 2053.
+        $household = new Household(
+            'Fixed-lifespan couple',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(90)),
+                new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(95)),
+            ],
+            new ExpenseProfile(Money::fromPounds(18_000), Money::fromPounds(4_000), Percent::fromPercent(70)),
+            [new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30))],
+        );
+
+        $lg = $this->simulator()->run($household, $this->settings(), AssumptionSetLibrary::default(), new CohortLifeTable, 50, seed: 3)->longevity;
+
+        $this->assertNotNull($lg);
+        $this->assertSame(95, $lg->lastSurvivorAgeP50);    // p2 is the last survivor, dying at 95
+        $this->assertSame(95, $lg->lastSurvivorAgeP10);
+        $this->assertSame(95, $lg->lastSurvivorAgeP90);
+        $this->assertSame(27, $lg->planYearsP50);          // 2053 − 2026
+        $this->assertSame(27, $lg->planYearsP90);
+        $this->assertSame(1.0, $lg->reaches95);            // p2 reaches exactly 95
+        $this->assertSame(0.0, $lg->reaches100);
     }
 
     public function test_zero_volatility_returns_collapse_to_the_mean(): void

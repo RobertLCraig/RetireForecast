@@ -64,6 +64,8 @@ final class Simulator
         $depletionYears = [];
         $terminalWealth = [];
         $terminalUsable = [];
+        $lastSurvivorAges = [];   // per path: the age the longest-living person reaches
+        $lastSurvivorYears = [];  // per path: the calendar year the household ends
         $wealthByYearIndex = [];       // yearIndex => list<int pence> total wealth (incl. home)
         $usableByYearIndex = [];       // yearIndex => list<int pence> usable wealth (excl. home)
 
@@ -73,6 +75,21 @@ final class Simulator
             $draws = new SampledPathDraws($path, $assumptions, $deathAges);
 
             $result = $projector->project($household, $settings, $draws);
+
+            // The last survivor (the person who lives longest) sets how long the money must
+            // last. Death year = base year + (death age − current age); the latest is the household's end.
+            $lastYear = PHP_INT_MIN;
+            $lastAge = 0;
+            foreach ($people as $person) {
+                $deathAge = $deathAges[$person['id']] ?? CohortLifeTable::MAX_AGE;
+                $deathYear = $settings->baseYear + ($deathAge - $person['currentAge']);
+                if ($deathYear > $lastYear) {
+                    $lastYear = $deathYear;
+                    $lastAge = $deathAge;
+                }
+            }
+            $lastSurvivorAges[] = $lastAge;
+            $lastSurvivorYears[] = $lastYear;
 
             $essentials += $result->essentialsAlwaysMet ? 1 : 0;
             $fullSpend += $result->fullSpendAlwaysMet ? 1 : 0;
@@ -109,6 +126,30 @@ final class Simulator
             fanChart: $this->fanChart($wealthByYearIndex, $settings->baseYear),
             usableWealthPercentiles: $this->moneyPercentiles($terminalUsable),
             usableFanChart: $this->fanChart($usableByYearIndex, $settings->baseYear),
+            longevity: $this->longevityDistribution($lastSurvivorAges, $lastSurvivorYears, $settings->baseYear),
+        );
+    }
+
+    /**
+     * The spread of how long the household lasts, from the sampled last-survivor ages/years.
+     *
+     * @param  list<int>  $ages  per-path age the longest-living person reaches
+     * @param  list<int>  $years  per-path calendar year the household ends
+     */
+    private function longevityDistribution(array $ages, array $years, int $baseYear): LongevityDistribution
+    {
+        $n = max(1, count($ages));
+        $planYears = array_map(static fn (int $y): int => $y - $baseYear, $years);
+        $reaches = static fn (int $age): float => count(array_filter($ages, static fn (int $a): bool => $a >= $age)) / $n;
+
+        return new LongevityDistribution(
+            lastSurvivorAgeP10: (int) round($this->percentile($ages, 0.10)),
+            lastSurvivorAgeP50: (int) round($this->percentile($ages, 0.50)),
+            lastSurvivorAgeP90: (int) round($this->percentile($ages, 0.90)),
+            planYearsP50: (int) round($this->percentile($planYears, 0.50)),
+            planYearsP90: (int) round($this->percentile($planYears, 0.90)),
+            reaches95: $reaches(95),
+            reaches100: $reaches(100),
         );
     }
 

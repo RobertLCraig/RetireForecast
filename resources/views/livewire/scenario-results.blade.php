@@ -18,6 +18,7 @@
         ['id' => 'sec-milestones', 'label' => 'Life events', 'show' => (bool) $milestones],
         ['id' => 'sec-ladder', 'label' => 'Year-by-year cashflow', 'show' => ! empty($ladder['rows'])],
         ['id' => 'sec-headline', 'label' => 'Will the money last?', 'show' => (bool) $presented],
+        ['id' => 'sec-longevity', 'label' => 'How long it may need to last', 'show' => ! empty($presented['longevity'])],
         ['id' => 'sec-fan', 'label' => 'Outlook over time', 'show' => (bool) $presented],
         ['id' => 'sec-comparison', 'label' => 'By housing strategy', 'show' => (bool) $presented],
     ], fn ($s) => $s['show']));
@@ -690,6 +691,33 @@
             </div>
             <p class="mt-3 text-xs text-gray-500">"Chance of running out" counts the simulated futures with at least one year your essential spending isn't fully covered by income and savings — a shortfall a future may later recover from as guaranteed income catches up. "Wealth left" is the median amount at the very end. So an option can leave money at the end yet still have run short along the way — and "total wealth left" includes any home you would still own, which stays high even when the usable cash for day-to-day spending has run out.</p>
         </section>
+
+        {{-- Longevity: how long the money may need to last, read off the joint-life mortality
+             sampler the Monte Carlo already runs. Descriptive (a spread of outcomes), not advice. --}}
+        @if (! empty($presented['longevity']))
+            @php $lg = $presented['longevity']; @endphp
+            <section id="sec-longevity" aria-labelledby="longevity-heading" class="{{ $card }} scroll-mt-6">
+                <h2 id="longevity-heading" class="text-xl font-semibold text-gray-900">How long the money may need to last</h2>
+                <p class="mt-1 text-sm text-gray-600">From the same joint-life mortality model the simulation runs, framed around the <strong>last survivor</strong> (how long the money has to stretch for a couple). A spread of possibilities, not a prediction.</p>
+                <dl class="mt-4 grid gap-4 sm:grid-cols-3">
+                    <div class="rounded-md bg-gray-50 p-4">
+                        <dt class="text-sm text-gray-500">Plan to roughly</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">{{ $lg['planYearsP90'] }} years</dd>
+                        <dd class="mt-1 text-xs text-gray-500">a prudent horizon (1 in 10 last this long or longer); median is {{ $lg['planYearsP50'] }} years.</dd>
+                    </div>
+                    <div class="rounded-md bg-gray-50 p-4">
+                        <dt class="text-sm text-gray-500">Last survivor reaches</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">age {{ $lg['ageP50'] }}</dd>
+                        <dd class="mt-1 text-xs text-gray-500">typically; a low-to-high range of {{ $lg['ageP10'] }}–{{ $lg['ageP90'] }}.</dd>
+                    </div>
+                    <div class="rounded-md bg-gray-50 p-4">
+                        <dt class="text-sm text-gray-500">Chance one of you reaches</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">{{ $lg['reaches95'] }} to 95</dd>
+                        <dd class="mt-1 text-xs text-gray-500">and {{ $lg['reaches100'] }} to 100 — the tail the median hides.</dd>
+                    </div>
+                </dl>
+            </section>
+        @endif
 
         {{-- A run computed before the spendable-money view existed can't show it: say so and
              point at the re-run buttons, rather than silently drawing total wealth as if it

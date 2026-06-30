@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Finance\Mapping;
 
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\MonteCarlo\LongevityDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 
 /**
@@ -33,6 +34,7 @@ final class SimulationResultMapper
                 : self::penceBands($result->usableWealthPercentiles),
             'fanChart' => self::penceFan($result->fanChart),
             'usableFanChart' => self::penceFan($result->usableFanChart),
+            'longevity' => self::longevityToArray($result->longevity),
         ];
     }
 
@@ -52,6 +54,36 @@ final class SimulationResultMapper
             fanChart: self::moneyFan($data['fanChart']),
             // Runs persisted before the per-year usable fan landed have no key — default to empty.
             usableFanChart: self::moneyFan($data['usableFanChart'] ?? []),
+            // Runs persisted before the longevity distribution landed have no key — default to null.
+            longevity: self::longevityFromArray($data['longevity'] ?? null),
+        );
+    }
+
+    /** @return array<string, int|float>|null */
+    private static function longevityToArray(?LongevityDistribution $l): ?array
+    {
+        return $l === null ? null : [
+            'lastSurvivorAgeP10' => $l->lastSurvivorAgeP10,
+            'lastSurvivorAgeP50' => $l->lastSurvivorAgeP50,
+            'lastSurvivorAgeP90' => $l->lastSurvivorAgeP90,
+            'planYearsP50' => $l->planYearsP50,
+            'planYearsP90' => $l->planYearsP90,
+            'reaches95' => $l->reaches95,
+            'reaches100' => $l->reaches100,
+        ];
+    }
+
+    /** @param  array<string, mixed>|null  $data */
+    private static function longevityFromArray(?array $data): ?LongevityDistribution
+    {
+        return $data === null ? null : new LongevityDistribution(
+            lastSurvivorAgeP10: (int) $data['lastSurvivorAgeP10'],
+            lastSurvivorAgeP50: (int) $data['lastSurvivorAgeP50'],
+            lastSurvivorAgeP90: (int) $data['lastSurvivorAgeP90'],
+            planYearsP50: (int) $data['planYearsP50'],
+            planYearsP90: (int) $data['planYearsP90'],
+            reaches95: (float) $data['reaches95'],
+            reaches100: (float) $data['reaches100'],
         );
     }
 
