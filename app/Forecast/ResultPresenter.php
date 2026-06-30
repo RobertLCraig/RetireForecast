@@ -844,7 +844,7 @@ final class ResultPresenter
      * Returns null when no sale is configured (sale price zero) — e.g. a stay-put plan — so
      * the section simply does not render. Factual throughout, never a recommendation.
      *
-     * @return array{sellingCostsAssumed: bool, sellingCostBreakdown: list<array{label: string, value: string, detail: ?string}>, proceeds: array{salePrice: string, mortgage: string, hasMortgage: bool, sellingCosts: string, cgt: string, netProceeds: string, clearsCosts: bool}, rent: array{invested: string, annualRent: ?string}, buy: ?array{netProceeds: string, buyPrice: string, sdlt: string, movingCosts: string, surplus: string, coversPurchase: bool}, blendedReturnPct: string, incomeYieldPct: string}|null
+     * @return array{sellingCostsAssumed: bool, sellingCostBreakdown: list<array{label: string, value: string, detail: ?string}>, cgtDetail: ?array{gain: string, relievedGain: string, chargeableGain: string, allowanceUsed: string, taxableGain: string, ratePct: string}, proceeds: array{salePrice: string, mortgage: string, hasMortgage: bool, sellingCosts: string, cgt: string, cgtCharged: bool, netProceeds: string, clearsCosts: bool}, rent: array{invested: string, annualRent: ?string}, buy: ?array{netProceeds: string, buyPrice: string, sdlt: string, movingCosts: string, surplus: string, coversPurchase: bool}, blendedReturnPct: string, incomeYieldPct: string}|null
      */
     public static function saleExplainer(
         HousingProceeds $proceeds,
@@ -871,15 +871,32 @@ final class ResultPresenter
             $breakdown[] = ['label' => $line['label'], 'value' => $line['amount']->format(), 'detail' => $detail];
         }
 
+        // CGT working when the gain is only partly relieved (the home was let / not always the
+        // main residence). Null = fully relieved (main home throughout), the reassuring £0 case.
+        $cgtDetail = null;
+        $d = $proceeds->capitalGainsDetail;
+        if ($d !== null && $proceeds->capitalGainsTax->isPositive()) {
+            $cgtDetail = [
+                'gain' => $d->gain->format(),
+                'relievedGain' => $d->privateResidenceReliefGain->format(),
+                'chargeableGain' => $d->chargeableGain->format(),
+                'allowanceUsed' => $d->annualExemptAmountUsed->format(),
+                'taxableGain' => $d->taxableGain->format(),
+                'ratePct' => self::ratePct($d->rate->asPercent()),
+            ];
+        }
+
         return [
             'sellingCostsAssumed' => $assumed,
             'sellingCostBreakdown' => $breakdown,
+            'cgtDetail' => $cgtDetail,
             'proceeds' => [
                 'salePrice' => $proceeds->salePrice->format(),
                 'mortgage' => $proceeds->outstandingMortgage->format(),
                 'hasMortgage' => $proceeds->outstandingMortgage->isPositive(),
                 'sellingCosts' => $proceeds->sellingCosts->format(),
                 'cgt' => $proceeds->capitalGainsTax->format(),
+                'cgtCharged' => $proceeds->capitalGainsTax->isPositive(),
                 'netProceeds' => $proceeds->netProceeds->format(),
                 'clearsCosts' => $proceeds->clearsCosts(),
             ],

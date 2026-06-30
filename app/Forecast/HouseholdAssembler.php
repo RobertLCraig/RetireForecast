@@ -8,6 +8,7 @@ use App\Finance\Mapping\Codec;
 use DateTimeImmutable;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
+use RetireForecast\FinanceEngine\Dto\CgtHistory;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
@@ -74,7 +75,9 @@ final class HouseholdAssembler
             pensions: array_map($this->pension(...), $state['pensions'] ?? []),
             accounts: $this->accounts($state),
             incomeStreams: array_map($this->incomeStream(...), $state['incomeStreams'] ?? []),
-            primaryResidence: ($state['hasProperty'] ?? false) ? $this->property($state['property'] ?? []) : null,
+            primaryResidence: ($state['hasProperty'] ?? false)
+                ? $this->property($state['property'] ?? [], (int) substr((string) ($state['baseTaxYear'] ?? '2026-27'), 0, 4))
+                : null,
         );
     }
 
@@ -397,7 +400,7 @@ final class HouseholdAssembler
         );
     }
 
-    private function property(array $p): Property
+    private function property(array $p, int $saleYear): Property
     {
         return new Property(
             currentValue: $this->moneyRequired($p['currentValue'] ?? null),
@@ -408,6 +411,62 @@ final class HouseholdAssembler
             runningCosts: $this->money($p['runningCosts'] ?? null),
             growthAssumptionOverride: $this->percent($p['growthAssumptionOverride'] ?? null),
             ownershipShare: $this->percent($p['ownershipShare'] ?? null),
+            cgtHistory: $this->cgtHistoryFrom($p, $saleYear),
+        );
+    }
+
+    /**
+     * The Capital Gains Tax history for a home that was let / not always the main residence,
+     * reduced from the wizard's occupation timeline to the months the engine needs. Returns
+     * null (full Private Residence Relief, no CGT — the common case) unless the home is flagged
+     * as ever-let AND a purchase price is given (without which there is no gain to tax).
+     *
+     * Each period in the timeline runs from its start year to the next period's start (the last
+     * to the sale year); the months a period was the main residence count towards relief, a let
+     * period does not. Occupation is what matters, not the mortgage (gov.uk HS283). Public so the
+     * builder's live CGT readout reduces the timeline through the same one source.
+     *
+     * @param  array<string, mixed>  $p  the property form-state
+     */
+    public function cgtHistoryFrom(array $p, int $saleYear): ?CgtHistory
+    {
+        $h = $p['cgtHistory'] ?? null;
+        if (! ($p['everLet'] ?? false) || ! is_array($h)) {
+            return null;
+        }
+
+        $purchase = $this->money($h['purchasePrice'] ?? null);
+        if ($purchase === null) {
+            return null; // no purchase price → no gain to compute; leave full PRR (£0)
+        }
+
+        $acquisitionYear = (int) ($h['acquisitionYear'] ?? $saleYear);
+        $ownershipMonths = max(0, ($saleYear - $acquisitionYear) * 12);
+
+        // Sum the months each timeline period was the main residence; a period runs to the next
+        // period's start year, the last to the sale year. Sorted defensively by start year.
+        $periods = array_values(array_filter(
+            is_array($h['periods'] ?? null) ? $h['periods'] : [],
+            static fn ($period): bool => is_array($period) && ($period['fromYear'] ?? '') !== '',
+        ));
+        usort($periods, static fn (array $a, array $b): int => (int) $a['fromYear'] <=> (int) $b['fromYear']);
+
+        $mainResidenceMonths = 0;
+        foreach ($periods as $i => $period) {
+            $from = (int) $period['fromYear'];
+            $to = isset($periods[$i + 1]) ? (int) $periods[$i + 1]['fromYear'] : $saleYear;
+            if (($period['use'] ?? 'main_home') === 'main_home') {
+                $mainResidenceMonths += max(0, ($to - $from) * 12);
+            }
+        }
+
+        return new CgtHistory(
+            purchasePrice: $purchase,
+            improvementCosts: $this->money($h['improvementCosts'] ?? null) ?? Money::zero(),
+            ownershipMonths: $ownershipMonths,
+            mainResidenceMonths: min($mainResidenceMonths, $ownershipMonths),
+            higherRateOnSale: (bool) ($h['higherRateOnSale'] ?? false),
+            owners: ($h['jointlyOwned'] ?? false) ? 2 : 1,
         );
     }
 

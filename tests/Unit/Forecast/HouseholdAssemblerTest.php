@@ -109,6 +109,43 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertSame(Money::fromPounds(10_000)->pence, $household->expenseProfile->essentialAnnualSpend->pence);
     }
 
+    public function test_cgt_history_reduces_the_occupation_timeline_to_months(): void
+    {
+        // Lived in 2006–2014 (main home), then let to the 2026 sale; jointly owned.
+        $history = (new HouseholdAssembler)->cgtHistoryFrom([
+            'everLet' => true,
+            'cgtHistory' => [
+                'purchasePrice' => '150000', 'improvementCosts' => '5000', 'acquisitionYear' => '2006',
+                'jointlyOwned' => true, 'higherRateOnSale' => false,
+                'periods' => [
+                    ['fromYear' => '2006', 'use' => 'main_home'],
+                    ['fromYear' => '2014', 'use' => 'let'],
+                ],
+            ],
+        ], 2026);
+
+        $this->assertNotNull($history);
+        $this->assertSame((2026 - 2006) * 12, $history->ownershipMonths);   // 240
+        $this->assertSame((2014 - 2006) * 12, $history->mainResidenceMonths); // 96 main-home months
+        $this->assertSame(Money::fromPounds(150_000)->pence, $history->purchasePrice->pence);
+        $this->assertSame(Money::fromPounds(5_000)->pence, $history->improvementCosts->pence);
+        $this->assertSame(2, $history->owners);
+        $this->assertFalse($history->higherRateOnSale);
+    }
+
+    public function test_cgt_history_is_null_without_letting_or_a_purchase_price(): void
+    {
+        // Not let → full PRR, no CGT history.
+        $this->assertNull((new HouseholdAssembler)->cgtHistoryFrom([
+            'everLet' => false, 'cgtHistory' => ['purchasePrice' => '150000'],
+        ], 2026));
+
+        // Let, but no purchase price → no gain to compute.
+        $this->assertNull((new HouseholdAssembler)->cgtHistoryFrom([
+            'everLet' => true, 'cgtHistory' => ['purchasePrice' => ''],
+        ], 2026));
+    }
+
     public function test_pounds_and_pence_parse_to_exact_pence(): void
     {
         $household = (new HouseholdAssembler)->household([

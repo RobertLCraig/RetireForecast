@@ -50,6 +50,25 @@ final class CgtPrivateResidenceCalculatorTest extends TestCase
         $this->assertSame(438_000, $result->tax->pence);
     }
 
+    public function test_joint_owners_each_get_their_own_allowance(): void
+    {
+        // Same gain as the let-period case, but owned jointly: the £21,250 chargeable splits
+        // £10,625 each, less £3,000 allowance EACH = £7,625 each @ 24% = £1,830 each = £3,660.
+        // Two allowances (£6,000) vs one, so less tax than the £4,380 single-owner figure.
+        $result = $this->calculator()->compute(
+            gain: Money::fromPounds(100_000),
+            totalOwnershipMonths: 240,
+            mainResidenceMonths: 180,
+            higherRate: true,
+            owners: 2,
+        );
+
+        $this->assertSame(2_125_000, $result->chargeableGain->pence);   // unchanged total chargeable
+        $this->assertSame(600_000, $result->annualExemptAmountUsed->pence); // £3,000 × 2
+        $this->assertSame(1_525_000, $result->taxableGain->pence);      // £7,625 × 2
+        $this->assertSame(366_000, $result->tax->pence);               // £1,830 × 2
+    }
+
     public function test_property_never_a_main_residence_gets_no_relief(): void
     {
         // A pure investment property: no PRR, no final-period exemption.

@@ -15,6 +15,10 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * $everLet flags a past letting period that restricts PRR. $runningCosts is the
  * annual maintenance + insurance + council tax used in the buy-vs-rent comparison.
  * $ownershipShare null means wholly owned (100%).
+ *
+ * $cgtHistory, when set, drives the Capital Gains Tax on selling a home whose Private
+ * Residence Relief is only partial (it was let / not the main home for part of ownership);
+ * null is the common full-relief case (main home throughout) — no CGT on sale.
  */
 final class Property
 {
@@ -27,5 +31,6 @@ final class Property
         public readonly ?Money $runningCosts = null,
         public readonly ?Percent $growthAssumptionOverride = null,
         public readonly ?Percent $ownershipShare = null,
+        public readonly ?CgtHistory $cgtHistory = null,
     ) {}
 }

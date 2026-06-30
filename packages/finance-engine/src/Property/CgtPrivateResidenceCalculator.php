@@ -20,6 +20,12 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  * Residence Relief), so a period of letting (other than the final 9 months) is treated
  * here as chargeable rather than relieved. Scope caveat: the narrow shared-occupancy
  * lettings-relief case is not modelled.
+ *
+ * CGT is a per-individual tax, so a jointly-owned home ($owners = 2) splits the chargeable
+ * gain across the owners — each with their own annual exempt amount and rate — and sums the
+ * tax (gov.uk: each co-owner is taxed separately on their share). Scope caveat: one rate is
+ * applied per owner ($higherRate), not a split of a single owner's gain across the 18%/24%
+ * band boundary from their exact other income.
  */
 final class CgtPrivateResidenceCalculator
 {
@@ -30,8 +36,10 @@ final class CgtPrivateResidenceCalculator
         int $totalOwnershipMonths,
         int $mainResidenceMonths,
         bool $higherRate,
+        int $owners = 1,
     ): CgtResult {
         $params = $this->config->cgt;
+        $owners = max(1, $owners);
 
         $relievedMonths = $mainResidenceMonths > 0
             ? min($mainResidenceMonths + $params->privateResidenceFinalExemptionMonths, $totalOwnershipMonths)
@@ -42,20 +50,23 @@ final class CgtPrivateResidenceCalculator
             : Money::zero();
 
         $chargeableGain = $gain->minus($reliefGain)->minZero();
-        $aeaUsed = Money::min($chargeableGain, $params->annualExemptAmount);
-        $taxableGain = $chargeableGain->minus($aeaUsed)->minZero();
 
+        // Per owner: their share of the chargeable gain, less their own annual exempt amount,
+        // at their own rate. Summing gives a couple two allowances (and, often, the basic rate).
         $rate = $higherRate ? $params->residentialHigherRate : $params->residentialBasicRate;
-        $tax = $taxableGain->applyRate($rate);
+        $perOwnerChargeable = $chargeableGain->dividedBy($owners);
+        $perOwnerAea = Money::min($perOwnerChargeable, $params->annualExemptAmount);
+        $perOwnerTaxable = $perOwnerChargeable->minus($perOwnerAea)->minZero();
+        $perOwnerTax = $perOwnerTaxable->applyRate($rate);
 
         return new CgtResult(
             gain: $gain,
             privateResidenceReliefGain: $reliefGain,
             chargeableGain: $chargeableGain,
-            annualExemptAmountUsed: $aeaUsed,
-            taxableGain: $taxableGain,
+            annualExemptAmountUsed: $perOwnerAea->times($owners),
+            taxableGain: $perOwnerTaxable->times($owners),
             rate: $rate,
-            tax: $tax,
+            tax: $perOwnerTax->times($owners),
         );
     }
 }

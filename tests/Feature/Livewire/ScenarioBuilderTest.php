@@ -291,6 +291,19 @@ class ScenarioBuilderTest extends TestCase
             ->assertSee('excluded — kept but not counted'); // the off line is retained, flagged
     }
 
+    public function test_the_home_step_reveals_the_cgt_wizard_when_the_home_was_let(): void
+    {
+        // Flagging the home as let reveals the capital-gains wizard with its occupation timeline.
+        Livewire::test(ScenarioBuilder::class)
+            ->set('step', 3)
+            ->assertDontSee('Capital gains on sale')
+            ->set('property.everLet', true)
+            ->assertSee('Capital gains on sale')
+            ->assertSee('When it was your main home vs let out')
+            ->call('addCgtPeriod', 'let')
+            ->assertSet('property.cgtHistory.periods.0.use', 'let');
+    }
+
     /** @param array<string, mixed> $state */
     private function fill(array $state): Testable
     {

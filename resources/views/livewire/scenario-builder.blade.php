@@ -639,10 +639,86 @@
                         </div>
                         <div>
                             <label class="mt-7 flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" wire:model="property.everLet" class="rounded border-gray-300"> Ever let (restricts PRR)
+                                <input type="checkbox" wire:model.live="property.everLet" class="rounded border-gray-300"> Let out / not always my main home (affects CGT)
                             </label>
                         </div>
                     </div>
+
+                    {{-- Capital gains on sale: only part of the gain is relieved when the home was let
+                         or not always the main residence. Occupation drives the relief, not the mortgage
+                         type (gov.uk HS283), so this captures the lived-in vs let timeline. --}}
+                    @if ($property['everLet'] ?? false)
+                        <div class="mt-4 rounded-md border border-amber-200 bg-amber-50 p-4">
+                            <h3 class="font-medium text-gray-900">Capital gains on sale</h3>
+                            <p class="mt-1 text-xs text-gray-600">
+                                Because this home was let or wasn't always your main residence, only part of the gain is
+                                relieved (Private Residence Relief). Enter when you bought it, what it cost, and the periods
+                                you lived in it as your main home vs let it out. What matters is whether you
+                                <strong>lived in it as your home</strong>, not the mortgage type.
+                                <a href="https://www.gov.uk/tax-sell-home" target="_blank" rel="noopener" class="underline">gov.uk: Private Residence Relief</a>.
+                            </p>
+                            <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                <div>
+                                    <label for="cgt-purchasePrice" class="{{ $label }}">Purchase price (£)</label>
+                                    <input id="cgt-purchasePrice" type="text" inputmode="decimal" wire:model.blur="property.cgtHistory.purchasePrice" class="{{ $field }}">
+                                </div>
+                                <div>
+                                    <label for="cgt-acquisitionYear" class="{{ $label }}">Year bought</label>
+                                    <input id="cgt-acquisitionYear" type="number" wire:model.blur="property.cgtHistory.acquisitionYear" class="{{ $field }}" placeholder="e.g. 2005">
+                                </div>
+                                <div>
+                                    <label for="cgt-improvementCosts" class="{{ $label }}">Buying &amp; improvement costs (£)</label>
+                                    <input id="cgt-improvementCosts" type="text" inputmode="decimal" wire:model.blur="property.cgtHistory.improvementCosts" class="{{ $field }}">
+                                    <p class="mt-1 text-xs text-gray-500">Legal, stamp duty, extensions — they reduce the gain.</p>
+                                </div>
+                            </div>
+                            <div class="mt-3 flex flex-wrap gap-4">
+                                <label class="flex items-center gap-2 text-sm text-gray-700">
+                                    <input type="checkbox" wire:model.live="property.cgtHistory.jointlyOwned" class="rounded border-gray-300"> Owned jointly (you + partner) — two allowances, split gain
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700">
+                                    <input type="checkbox" wire:model.live="property.cgtHistory.higherRateOnSale" class="rounded border-gray-300"> Higher-rate taxpayer in the sale year (24% not 18%)
+                                </label>
+                            </div>
+
+                            <div class="mt-4">
+                                <p class="{{ $label }}">When it was your main home vs let out</p>
+                                <p class="mt-1 text-xs text-gray-500">Add a row each time its use changed, in order from when you bought it; each runs until the next (the last until you sell). The final 9 months of ownership are always relieved.</p>
+                                <div class="mt-2 space-y-2">
+                                    @foreach ($property['cgtHistory']['periods'] ?? [] as $i => $period)
+                                        <div wire:key="cgtperiod-{{ $period['id'] ?? $i }}" class="grid items-end gap-2 sm:grid-cols-12">
+                                            <div class="sm:col-span-4">
+                                                <label for="cgt-period-{{ $i }}-from" class="text-xs text-gray-600">From year</label>
+                                                <input id="cgt-period-{{ $i }}-from" type="number" wire:model.live="property.cgtHistory.periods.{{ $i }}.fromYear" class="{{ $field }}" placeholder="e.g. 2012">
+                                            </div>
+                                            <div class="sm:col-span-6">
+                                                <label for="cgt-period-{{ $i }}-use" class="text-xs text-gray-600">Used as</label>
+                                                <select id="cgt-period-{{ $i }}-use" wire:model.live="property.cgtHistory.periods.{{ $i }}.use" class="{{ $field }}">
+                                                    <option value="main_home">Lived in as main home</option>
+                                                    <option value="let">Let out / not main home</option>
+                                                </select>
+                                            </div>
+                                            <button type="button" wire:click="removeCgtPeriod({{ $i }})" class="mb-2 text-sm text-red-700 underline sm:col-span-2">Remove</button>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    <button type="button" wire:click="addCgtPeriod('main_home')" class="rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100">+ Main-home period</button>
+                                    <button type="button" wire:click="addCgtPeriod('let')" class="rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100">+ Let period</button>
+                                </div>
+                            </div>
+
+                            @if ($cgtPreview)
+                                <dl class="mt-4 grid gap-3 rounded-md bg-white p-3 text-sm sm:grid-cols-4" aria-live="polite">
+                                    <div><dt class="text-gray-500">Owned</dt><dd class="font-semibold">{{ $cgtPreview['ownedYears'] }} yrs</dd></div>
+                                    <div><dt class="text-gray-500">Lived in / let</dt><dd class="font-semibold">{{ $cgtPreview['livedInYears'] }} / {{ $cgtPreview['letYears'] }} yrs</dd></div>
+                                    <div><dt class="text-gray-500">Gain relieved</dt><dd class="font-semibold">{{ $cgtPreview['reliefPercent'] }}%</dd></div>
+                                    <div><dt class="text-gray-500">Estimated CGT{{ $cgtPreview['owners'] > 1 ? ' (2 owners)' : '' }}</dt><dd class="font-semibold tabular-nums">{{ $cgtPreview['estimatedCgt'] }}</dd></div>
+                                </dl>
+                                <p class="mt-1 text-xs text-gray-500">Indicative, on the home's current value (the forecast uses the sale price less selling costs). Allowed absences — e.g. up to 3 years for any reason, or time working away — can also count as living there; mark such a period as "main home". <a href="https://www.gov.uk/tax-sell-home/absence-from-home" target="_blank" rel="noopener" class="underline">gov.uk: living away</a>.</p>
+                            @endif
+                        </div>
+                    @endif
                 @endif
             </fieldset>
         @endif

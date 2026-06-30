@@ -27,6 +27,8 @@ use Livewire\WithFileUploads;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
+use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Property\CgtPrivateResidenceCalculator;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
@@ -306,6 +308,14 @@ class ScenarioBuilder extends Component
             $rules['property.runningCosts'] = $money;
             $rules['property.growthAssumptionOverride'] = $rate;
             $rules['property.ownershipShare'] = ['nullable', 'numeric', 'min:0', 'max:100'];
+            // Capital-gains history (only meaningful when the home was ever let — see the wizard).
+            $rules['property.cgtHistory.purchasePrice'] = $money;
+            $rules['property.cgtHistory.improvementCosts'] = $money;
+            $rules['property.cgtHistory.acquisitionYear'] = ['nullable', 'integer', 'min:1900', 'max:2100'];
+            $rules['property.cgtHistory.jointlyOwned'] = ['boolean'];
+            $rules['property.cgtHistory.higherRateOnSale'] = ['boolean'];
+            $rules['property.cgtHistory.periods.*.fromYear'] = ['nullable', 'integer', 'min:1900', 'max:2100'];
+            $rules['property.cgtHistory.periods.*.use'] = ['nullable', Rule::in(['main_home', 'let'])];
         }
 
         return $rules;
@@ -554,6 +564,12 @@ class ScenarioBuilder extends Component
         $this->seedExpenseLinesFromFlat();
         $this->seedSellingCostsFromRate();
 
+        // A property saved before the CGT wizard existed has no cgtHistory; give it the empty
+        // structure so the wizard's inputs bind (it stays hidden unless the home is ever-let).
+        if ($this->hasProperty && ! is_array($this->property['cgtHistory'] ?? null)) {
+            $this->property['cgtHistory'] = self::blankCgtHistory();
+        }
+
         // Every spend line carries an explicit `included` flag so its on/off checkbox binds to a
         // real boolean; a line saved before the toggle existed (no flag) defaults to included.
         foreach ($this->expenseLines as $i => $line) {
@@ -656,6 +672,14 @@ class ScenarioBuilder extends Component
             unset($housing['sellingCostRate']);
         }
 
+        // The CGT history is only meaningful when the home was ever let; drop the (empty) wizard
+        // structure otherwise, so a home that isn't let — and a what-if that changes nothing —
+        // records no spurious delta (sparse, like the include flag and selling costs).
+        $property = $this->property;
+        if (! ($property['everLet'] ?? false)) {
+            unset($property['cgtHistory']);
+        }
+
         // Store a line's `included` flag only when it is switched OFF (false); an included line
         // (the default) omits the flag, so a scenario predating the toggle and a what-if that
         // changes nothing record no spurious delta — sparse, mirroring assumptionOverrides.
@@ -684,7 +708,7 @@ class ScenarioBuilder extends Component
             'accounts' => $this->accounts,
             'incomeStreams' => $this->incomeStreams,
             'hasProperty' => $this->hasProperty,
-            'property' => $this->property,
+            'property' => $property,
             'housing' => $housing,
         ];
 
@@ -1190,6 +1214,8 @@ class ScenarioBuilder extends Component
             'expenseTotals' => $this->expenseTotals(),
             // What each spend line's "Applies" Auto setting infers from its label, shown beside it.
             'conditionHints' => $this->conditionHints(),
+            // Live, indicative CGT readout for the home's capital-gains wizard (null = not shown).
+            'cgtPreview' => $this->cgtPreview(),
             'importProfiles' => array_map(static fn ($p): array => [
                 'key' => $p->key(),
                 'label' => $p->label(),
@@ -1279,6 +1305,86 @@ class ScenarioBuilder extends Component
         return [
             'currentValue' => '', 'ownership' => 'outright', 'everLet' => false,
             'outstandingMortgage' => '', 'runningCosts' => '', 'growthAssumptionOverride' => '', 'ownershipShare' => '',
+            'cgtHistory' => self::blankCgtHistory(),
+        ];
+    }
+
+    /**
+     * The Capital Gains Tax history a let / not-always-main-home property needs to compute the
+     * tax on sale: what it cost, when bought, who owns it, and the occupation timeline (each
+     * period from a start year, marked as the main home or let). Empty until the home is flagged
+     * as ever-let. Occupation drives Private Residence Relief, not the mortgage type.
+     *
+     * @return array<string, mixed>
+     */
+    private static function blankCgtHistory(): array
+    {
+        return [
+            'purchasePrice' => '', 'improvementCosts' => '', 'acquisitionYear' => '',
+            'jointlyOwned' => false, 'higherRateOnSale' => false, 'periods' => [],
+        ];
+    }
+
+    public function addCgtPeriod(string $use = 'main_home'): void
+    {
+        $this->property['cgtHistory']['periods'][] = [
+            'id' => $this->newRowId(),
+            'fromYear' => '',
+            'use' => in_array($use, ['main_home', 'let'], true) ? $use : 'main_home',
+        ];
+    }
+
+    public function removeCgtPeriod(int $i): void
+    {
+        unset($this->property['cgtHistory']['periods'][$i]);
+        $this->property['cgtHistory']['periods'] = array_values($this->property['cgtHistory']['periods']);
+    }
+
+    /**
+     * A live, indicative CGT readout for the wizard: years owned / lived-in / let, the share of
+     * the gain relieved, and the estimated tax — so the apportionment is concrete as the user
+     * fills in the timeline. Reduces the timeline through the SAME source the forecast uses
+     * ({@see HouseholdAssembler::cgtHistoryFrom}) and runs the engine's calculator, so the readout
+     * cannot drift from the real figure. Indicative because it uses the home's current value as the
+     * sale value (the forecast nets selling costs off the sale price); null until it can estimate.
+     *
+     * @return array{ownedYears: float, livedInYears: float, letYears: float, reliefPercent: int, gain: string, estimatedCgt: string, owners: int}|null
+     */
+    public function cgtPreview(): ?array
+    {
+        if (! $this->hasProperty || ! ($this->property['everLet'] ?? false)) {
+            return null;
+        }
+
+        $saleYear = (int) substr($this->baseTaxYear, 0, 4);
+        $history = (new HouseholdAssembler)->cgtHistoryFrom($this->property, $saleYear);
+        $currentValue = (float) ($this->property['currentValue'] ?? 0);
+        if ($history === null || $currentValue <= 0 || $history->ownershipMonths <= 0) {
+            return null;
+        }
+
+        $saleValue = Money::fromPounds((int) round($currentValue));
+        $gain = $saleValue->minus($history->purchasePrice)->minus($history->improvementCosts)->minZero();
+        // CGT is UK-wide (region affects income tax, not these rates), so resolve under EnglandWalesNi.
+        $config = TaxYearRegistry::for($this->baseTaxYear, RegionProfile::EnglandWalesNi);
+        $result = (new CgtPrivateResidenceCalculator($config))->compute(
+            $gain,
+            $history->ownershipMonths,
+            $history->mainResidenceMonths,
+            $history->higherRateOnSale,
+            $history->owners,
+        );
+
+        return [
+            'ownedYears' => round($history->ownershipMonths / 12, 1),
+            'livedInYears' => round($history->mainResidenceMonths / 12, 1),
+            'letYears' => round(($history->ownershipMonths - $history->mainResidenceMonths) / 12, 1),
+            'reliefPercent' => $gain->isPositive()
+                ? (int) round(100 * $result->privateResidenceReliefGain->pence / $gain->pence)
+                : 0,
+            'gain' => $gain->format(),
+            'estimatedCgt' => $result->tax->format(),
+            'owners' => $history->owners,
         ];
     }
 

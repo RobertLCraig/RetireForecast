@@ -6,6 +6,7 @@ namespace RetireForecast\FinanceEngine\Tests\Housing;
 
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+use RetireForecast\FinanceEngine\Dto\CgtHistory;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
@@ -119,6 +120,42 @@ final class HousingProceedsReconciliationTest extends TestCase
         $this->assertSame(['Estate agent', 'Legal / conveyancing', 'EPC & removals'], array_column($proceeds->sellingCostBreakdown, 'label'));
         $summed = array_sum(array_map(static fn (array $line): int => $line['amount']->pence, $proceeds->sellingCostBreakdown));
         $this->assertSame($proceeds->sellingCosts->pence, $summed);
+    }
+
+    public function test_a_let_property_is_charged_partial_prr_cgt_and_still_reconciles(): void
+    {
+        // Bought £150k, sold £400k, lived in 120 of 240 months then let. Default 2% selling cost
+        // = £8,000, so gain = 400,000 − 150,000 − 8,000 = £242,000. Relief = (120+9)/240 × gain =
+        // £130,075; chargeable £111,925; less £3,000 = £108,925 @ 24% = £26,142.
+        $household = new Household(
+            'Let',
+            RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(20_000), Money::fromPounds(2_000), Percent::fromPercent(70)),
+            primaryResidence: new Property(
+                currentValue: Money::fromPounds(400_000),
+                ownership: OwnershipType::Outright,
+                cgtHistory: new CgtHistory(
+                    purchasePrice: Money::fromPounds(150_000),
+                    improvementCosts: Money::zero(),
+                    ownershipMonths: 240,
+                    mainResidenceMonths: 120,
+                    higherRateOnSale: true,
+                    owners: 1,
+                ),
+            ),
+        );
+
+        $proceeds = $this->comparison()->saleProceeds($household, new HousingAction(salePrice: Money::fromPounds(400_000)));
+
+        $this->assertSame(Money::fromPounds(26_142)->pence, $proceeds->capitalGainsTax->pence);
+        $this->assertNotNull($proceeds->capitalGainsDetail);
+        $this->assertSame(Money::fromPounds(111_925)->pence, $proceeds->capitalGainsDetail->chargeableGain->pence);
+        // The boundary identity still holds with a real CGT charge: sale = net + mortgage + costs + CGT.
+        $this->assertSame(
+            $proceeds->salePrice->pence,
+            $proceeds->netProceeds->pence + $proceeds->outstandingMortgage->pence + $proceeds->sellingCosts->pence + $proceeds->capitalGainsTax->pence,
+        );
     }
 
     public function test_negative_equity_floors_net_proceeds_at_zero(): void

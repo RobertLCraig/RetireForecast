@@ -17,6 +17,7 @@ use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\MonteCarlo\Simulator;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
+use RetireForecast\FinanceEngine\Property\CgtPrivateResidenceCalculator;
 use RetireForecast\FinanceEngine\Property\SdltCalculator;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
 
@@ -28,15 +29,17 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  *  - buy_outright: sell, buy a cheaper home, invest the surplus.
  *  - rent:         sell, invest all the proceeds, pay rent for life.
  *
- * Net sale proceeds = sale price − outstanding mortgage − selling costs − CGT
- * (usually £0 on a main home via Private Residence Relief). Buying nets off SDLT
- * and moving costs; the surplus (or full proceeds when renting) goes into an
- * invested account that then follows the chosen allocation.
+ * Net sale proceeds = sale price − outstanding mortgage − selling costs − CGT.
+ * CGT is £0 on a main home owned and lived in throughout (full Private Residence
+ * Relief); when the home was let / not the main residence for part of ownership, a
+ * {@see \RetireForecast\FinanceEngine\Dto\CgtHistory} drives a partial-PRR charge
+ * ({@see CgtPrivateResidenceCalculator}). Buying nets off SDLT and moving costs; the
+ * surplus (or full proceeds when renting) goes into an invested account that then
+ * follows the chosen allocation.
  *
- * v1 simplifications (documented): CGT on the main home is taken as £0 (PRR); the
- * additional-property SDLT surcharge is not applied (a straight replacement of the
- * main residence); a buy price above the net proceeds is not modelled (downsizing
- * is assumed). The let-property PRR edge is deferred.
+ * v1 simplifications (documented): the additional-property SDLT surcharge is not applied
+ * (a straight replacement of the main residence); a buy price above the net proceeds is
+ * not modelled (downsizing is assumed).
  */
 final class HousingComparison
 {
@@ -130,11 +133,34 @@ final class HousingComparison
         }
 
         $mortgage = $household->primaryResidence?->outstandingMortgage ?? Money::zero();
-        $cgt = Money::zero(); // CGT on a main home is fully relieved by PRR in v1.
+
+        // CGT: £0 for a main home owned and lived in throughout (full Private Residence Relief —
+        // the common case, and the default when no CGT history is given). When the home was let
+        // or not the main residence for part of ownership, the gain (sale less purchase, less
+        // improvement/acquisition costs, less the allowable selling costs) is taxed after partial
+        // PRR by {@see CgtPrivateResidenceCalculator}, split across the owners.
+        $history = $household->primaryResidence?->cgtHistory;
+        $cgtResult = null;
+        $cgt = Money::zero();
+        if ($history !== null) {
+            $gain = $action->salePrice
+                ->minus($history->purchasePrice)
+                ->minus($history->improvementCosts)
+                ->minus($sellingCosts)
+                ->minZero();
+            $cgtResult = (new CgtPrivateResidenceCalculator($this->config))->compute(
+                $gain,
+                $history->ownershipMonths,
+                $history->mainResidenceMonths,
+                $history->higherRateOnSale,
+                $history->owners,
+            );
+            $cgt = $cgtResult->tax;
+        }
 
         $netProceeds = $action->salePrice->minus($mortgage)->minus($sellingCosts)->minus($cgt)->minZero();
 
-        return new HousingProceeds($action->salePrice, $mortgage, $sellingCosts, $cgt, $netProceeds, $breakdown);
+        return new HousingProceeds($action->salePrice, $mortgage, $sellingCosts, $cgt, $netProceeds, $breakdown, $cgtResult);
     }
 
     /**

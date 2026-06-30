@@ -489,7 +489,14 @@
                                 </tr>
                             @endforeach
                         @endunless
-                        <tr><th scope="row" class="{{ $td }} text-left">less capital gains tax (main home, fully relieved)</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['cgt'] }}</td></tr>
+                        <tr><th scope="row" class="{{ $td }} text-left">less capital gains tax{{ $se['proceeds']['cgtCharged'] ? '' : ' (main home, fully relieved)' }}</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['cgt'] }}</td></tr>
+                        @if ($se['cgtDetail'])
+                            <tr class="text-gray-500">
+                                <th scope="row" colspan="2" class="{{ $td }} pl-6 text-left text-xs font-normal">
+                                    Gain {{ $se['cgtDetail']['gain'] }}, less {{ $se['cgtDetail']['relievedGain'] }} private-residence relief = {{ $se['cgtDetail']['chargeableGain'] }} chargeable; less {{ $se['cgtDetail']['allowanceUsed'] }} allowance = {{ $se['cgtDetail']['taxableGain'] }} taxed at {{ $se['cgtDetail']['ratePct'] }}.
+                                </th>
+                            </tr>
+                        @endif
                         <tr class="bg-blue-50"><th scope="row" class="{{ $td }} text-left font-semibold">Net proceeds</th><td class="{{ $td }} text-right font-semibold tabular-nums">{{ $se['proceeds']['netProceeds'] }}</td></tr>
                     </tbody>
                 </table>

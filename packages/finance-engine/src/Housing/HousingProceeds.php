@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Housing;
 
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Property\CgtResult;
 
 /**
  * The decomposition of a home sale into the cash the household actually keeps. Net
@@ -36,6 +37,7 @@ final class HousingProceeds
         public readonly Money $capitalGainsTax,
         public readonly Money $netProceeds,
         public readonly array $sellingCostBreakdown = [],
+        public readonly ?CgtResult $capitalGainsDetail = null,
     ) {}
 
     /** True when the sale cleared its costs, so the parts sum exactly to the sale price. */
