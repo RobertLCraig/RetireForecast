@@ -174,6 +174,25 @@
         </div>
     @endif
 
+    {{-- "Since your last run": how the headline figures moved vs the previous completed run.
+         The snapshots survive an input edit (which deletes the runs themselves), so this shows
+         what a change did, not just Monte-Carlo seed noise on identical inputs. --}}
+    @if (! empty($runDiff))
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm" aria-label="Since your last run">
+            <p class="font-semibold text-gray-900">Since your last run</p>
+            <ul class="mt-2 space-y-1">
+                @foreach ($runDiff as $row)
+                    <li class="flex flex-wrap items-baseline gap-x-2">
+                        <span class="text-gray-700">{{ $row['label'] }}:</span>
+                        <span class="text-gray-500 line-through">{{ $row['from'] }}</span>
+                        <span aria-hidden="true" class="text-gray-400">&rarr;</span>
+                        <span class="font-semibold {{ $row['better'] === true ? 'text-green-700' : ($row['better'] === false ? 'text-red-700' : 'text-gray-900') }}">{{ $row['to'] }}</span>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     {{-- Headline output #1: the lump-sum tax shock. Deterministic, so it shows as soon as
          a withdrawal is planned, before (and independent of) any Monte Carlo run. --}}
     @if ($shock)

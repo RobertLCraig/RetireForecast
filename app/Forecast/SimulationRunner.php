@@ -10,6 +10,7 @@ use App\Jobs\RunScenarioSimulation;
 use App\Models\Result;
 use App\Models\Scenario;
 use App\Models\SimulationRun;
+use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -101,6 +102,16 @@ final class SimulationRunner
             }
 
             $run->update(['status' => SimulationStatus::Done, 'progress_pct' => 100, 'finished_at' => now()]);
+
+            // Snapshot this run's headline figures for the chosen strategy, so the next run can
+            // be diffed against it. The snapshot lives on the scenario, which survives the run
+            // deletion an input edit triggers — so the diff works across an edit, not just two
+            // runs on identical inputs ({@see ResultPresenter::runDiff}).
+            $scenario = $run->scenario;
+            $primarySim = $comparison[$scenario->variant->value] ?? reset($comparison);
+            if ($primarySim instanceof SimulationResult) {
+                $scenario->recordResultSnapshot($primarySim);
+            }
         });
     }
 

@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
+use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 
 /**
  * A saved forecast: a household and a housing decision the user built. The raw builder
@@ -39,6 +40,7 @@ use RetireForecast\FinanceEngine\Dto\HousingAction;
  * @property ScenarioStatus $status
  * @property array $builder_state
  * @property array|null $overrides
+ * @property array|null $result_snapshots
  * @property int|null $user_id
  * @property int|null $parent_scenario_id
  * @property int|null $assumption_set_id
@@ -47,7 +49,7 @@ class Scenario extends Model
 {
     protected $fillable = [
         'user_id', 'parent_scenario_id', 'assumption_set_id',
-        'name', 'variant', 'base_tax_year', 'iht_modelled', 'status', 'builder_state', 'overrides',
+        'name', 'variant', 'base_tax_year', 'iht_modelled', 'status', 'builder_state', 'overrides', 'result_snapshots',
     ];
 
     protected function casts(): array
@@ -58,7 +60,31 @@ class Scenario extends Model
             'iht_modelled' => 'boolean',
             'builder_state' => 'encrypted:array',
             'overrides' => 'encrypted:array',
+            'result_snapshots' => 'encrypted:array',
         ];
+    }
+
+    /**
+     * Append a completed run's headline figures (for the chosen strategy) to the
+     * edit-surviving snapshot history, keeping only the last two (current + previous), so
+     * the results page can diff a run against the one before — even across an input edit
+     * (which deletes the runs themselves). {@see \App\Forecast\ResultPresenter::runDiff()}.
+     */
+    public function recordResultSnapshot(SimulationResult $sim): void
+    {
+        $endWealth = $sim->usableWealthPercentiles['p50'] ?? $sim->terminalWealthPercentiles['p50'] ?? null;
+
+        $history = $this->result_snapshots ?? [];
+        $history[] = [
+            'variant' => $this->variant->value,
+            'successEssentials' => $sim->successProbabilityEssentials,
+            'successFullSpend' => $sim->successProbabilityFullSpend,
+            'endWealthPence' => $endWealth?->pence,
+            'medianDepletionYear' => $sim->medianDepletionYear,
+        ];
+
+        $this->result_snapshots = array_slice($history, -2);
+        $this->save();
     }
 
     public function user(): BelongsTo

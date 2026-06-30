@@ -339,9 +339,22 @@ class ScenarioResults extends Component
         $allocation = $forecaster->settings($this->scenario)->allocation();
         $housing = $forecaster->housingComparison($this->scenario);
 
+        // "Since your last run": diff the two most recent completed-run snapshots (they survive
+        // an input edit, so this shows what a change did, not seed noise) — same strategy only.
+        $snapshots = $this->scenario->result_snapshots ?? [];
+        $runDiff = [];
+        if (count($snapshots) >= 2) {
+            $latest = $snapshots[count($snapshots) - 1];
+            $prior = $snapshots[count($snapshots) - 2];
+            if (($latest['variant'] ?? null) === ($prior['variant'] ?? null)) {
+                $runDiff = ResultPresenter::runDiff($latest, $prior);
+            }
+        }
+
         return view('livewire.scenario-results', [
             'run' => $run,
             'resultsRun' => $resultsRun,
+            'runDiff' => $runDiff,
             'presented' => $presented,
             'interpretation' => $interpretation,
             // For a what-if (delta-child): what it changed from its base, so the page reads

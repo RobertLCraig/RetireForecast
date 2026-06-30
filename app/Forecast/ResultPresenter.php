@@ -627,6 +627,66 @@ final class ResultPresenter
     }
 
     /**
+     * "Since your last run": how the headline figures moved between the two most recent
+     * completed-run snapshots (which survive an input edit, so this shows what a change did,
+     * not just Monte-Carlo seed noise). Each row is a figure whose displayed value changed;
+     * `better` is true (green) / false (red) / null. Higher success and end wealth are better;
+     * a later — or "never" — run-short year is better.
+     * {@see \App\Models\Scenario::recordResultSnapshot()}.
+     *
+     * @param  array<string, mixed>  $current
+     * @param  array<string, mixed>  $previous
+     * @return list<array{label: string, from: string, to: string, better: ?bool}>
+     */
+    public static function runDiff(array $current, array $previous): array
+    {
+        $rows = array_filter([
+            self::diffFigure('Chance essentials are always met', $previous['successEssentials'] ?? null, $current['successEssentials'] ?? null, fn ($v): string => self::formatPercent((float) $v)),
+            self::diffFigure('Chance the full budget is always met', $previous['successFullSpend'] ?? null, $current['successFullSpend'] ?? null, fn ($v): string => self::formatPercent((float) $v)),
+            self::diffFigure('Spendable wealth at the end (median)', $previous['endWealthPence'] ?? null, $current['endWealthPence'] ?? null, fn ($v): string => Money::fromPence((int) $v)->format()),
+            self::diffDepletion($previous['medianDepletionYear'] ?? null, $current['medianDepletionYear'] ?? null),
+        ]);
+
+        return array_values($rows);
+    }
+
+    /**
+     * One diff row for a higher-is-better numeric figure — null if either side is absent or
+     * the displayed value did not change.
+     *
+     * @return array{label: string, from: string, to: string, better: ?bool}|null
+     */
+    private static function diffFigure(string $label, mixed $from, mixed $to, callable $format): ?array
+    {
+        if ($from === null || $to === null) {
+            return null;
+        }
+        $fromText = $format($from);
+        $toText = $format($to);
+        if ($fromText === $toText) {
+            return null;
+        }
+
+        return ['label' => $label, 'from' => $fromText, 'to' => $toText, 'better' => $to > $from];
+    }
+
+    /**
+     * The run-short-year row: a later year — or "never" (null) — is better.
+     *
+     * @return array{label: string, from: string, to: string, better: ?bool}|null
+     */
+    private static function diffDepletion(?int $from, ?int $to): ?array
+    {
+        if ($from === $to) {
+            return null;
+        }
+        $text = fn (?int $year): string => $year === null ? 'never' : (string) $year;
+        $rank = fn (?int $year): int => $year ?? PHP_INT_MAX;
+
+        return ['label' => 'Median year the money runs short', 'from' => $text($from), 'to' => $text($to), 'better' => $rank($to) > $rank($from)];
+    }
+
+    /**
      * Input-sanity notes: a neutral heads-up where an entered value produced a drastic
      * modelling consequence the user might not have intended — surfaced so a surprising
      * result is understood, not silently wrong (the "wild numbers" a live edit can cause).
