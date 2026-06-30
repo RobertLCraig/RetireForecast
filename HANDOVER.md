@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** Phase D go-live. The **adviser-legibility workstream** is the active priority (from Rob's 2026-06-29 browser walkthrough). Built so far: the legibility **presentation layer** (house-sale waterfall, assumptions panel, itemised per-year spend, life-event milestones, input-sanity notes), the **contingent-cost correctness fix (#1, option b)**, the **per-variant deterministic cashflow ladder (#6)**, the **editable-assumptions layer's *core*** (the six economic assumptions editable on builder step 1, deriving a user-tweakable **custom set** stored as a sparse `assumptionOverrides` delta, applied once in `ScenarioForecaster::assumptions()`), and a **what-if legibility cluster** (a what-if highlights what it changed vs its base on the results page + dashboard tags + Compare chips; one-click **quick what-ifs**; the builder **rings + shows the base value** of each changed input). The **editable-assumptions workstream is complete (slices a–e)** and **buy-vs-rent's one-click compare mechanism is built**: live preview (verdict + end wealth), longevity-lever UX (modelled age at death), selling costs as per-component %/£ lines, per-line cost-condition override, per-line include/exclude toggle (#7), and a **"Compare buy vs rent"** button generating the strategies as delta-child what-ifs into a per-variant Compare, with a per-option **"why" advice narrative**. **The adviser-legibility workstream is complete.** Per Rob, the tool now runs in **personal-use advice mode** (`config('compliance.personal_use')` = the flagged regulatory line; advice on, set false before any public release). **Next:** Rob's **browser review** of the whole cluster (all pending sign-off) + the go-live verification pass. See What's next + docs/PLAN.md + DECISIONS 2026-06-29/30 + docs/RESEARCH-editable-assumptions-ux.md.
-_Last updated: 2026-06-30 (built the buy-vs-rent "why" advice narrative and switched on **personal-use advice mode** behind the flagged `config('compliance.personal_use')` line; adviser-legibility workstream complete. All pending Rob's browser sign-off.)_
+_Last updated: 2026-06-30 (adviser-legibility workstream complete + **personal-use advice mode** on behind the flagged `config('compliance.personal_use')` line; latest: **what-ifs can now add/remove items** (delta represents structural changes), fixing the "a what-if only changes values" refusal. All pending Rob's browser sign-off.)_
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -19,7 +19,7 @@ The single source of truth for the domain shape is the engine's readonly DTOs un
 
 - **Money = integer pence**, never a float. Held by `Money` value object (GBP only). Rates = `Percent` (integer basis points). Dates = ISO `Y-m-d`. **Ages are derived from DOB + a reference date, never stored.**
 - Entities — all coded as readonly DTOs under `src/Dto/` and persisted as encrypted payloads: Household, Person, Pension (subtype dc|db|state), Property, Account (isa|gia|cash|premium_bonds), IncomeStream, ExpenseProfile, Scenario (variant buy_outright|rent|stay_put), AssumptionSet, SimulationRun, Result. Sensitive money/DOB/salary/pot/balance fields are encrypted at rest.
-- **Storage inversion (Phase B):** a scenario stores the raw builder **form-state** (`builder_state`, one `encrypted:array`) as the single source of truth; the engine `Household` + `HousingAction` DTOs are **derived** from it (`Scenario::toHousehold()`/`toHousingAction()` via `HouseholdAssembler`, no reverse-mapper). A what-if **child** (Phase C2) holds no `builder_state` — only `parent_scenario_id` + a sparse encrypted `overrides` delta; `effectiveBuilderState()` = base ⊕ overrides via `App\Forecast\BuilderStateDelta`. Clear columns are a projection. (The pre-rebuild `households`/`scenario_drafts` tables were dropped.)
+- **Storage inversion (Phase B):** a scenario stores the raw builder **form-state** (`builder_state`, one `encrypted:array`) as the single source of truth; the engine `Household` + `HousingAction` DTOs are **derived** from it (`Scenario::toHousehold()`/`toHousingAction()` via `HouseholdAssembler`, no reverse-mapper). A what-if **child** (Phase C2) holds no `builder_state` — only `parent_scenario_id` + a sparse encrypted `overrides` delta; `effectiveBuilderState()` = base ⊕ overrides via `App\Forecast\BuilderStateDelta`. The delta carries **value overrides, added rows (stored whole at their id path) and removed rows (a `REMOVED` sentinel)**, so a what-if can add/remove items, not only change values (DECISIONS 2026-06-30). Clear columns are a projection. (The pre-rebuild `households`/`scenario_drafts` tables were dropped.)
 
 ## Architecture / stack
 - **Laravel 13.17** app at the repo root (SQLite locally). **Fortify** (auth) and **Filament 5** admin (which pulled **Livewire 4** — a bump from the plan's stated Livewire 3). Fortify views are on; `FortifyServiceProvider` points each view route at a Blade screen (incl. the 2FA challenge + password-confirmation).
@@ -117,6 +117,19 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-06-30 (what-ifs can add & remove items; personal-use advice mode + buy-vs-rent narrative; whole adviser-legibility build)_ —
+A long build session resumed from the handover. Built the editable-assumptions UI (live preview, modelled death age,
+selling-cost %/£ breakdown, per-line cost-condition override, per-line include/exclude toggle), the **one-click
+buy-vs-rent compare** (delta-child strategy what-ifs + per-variant Compare projection + a walled-off advice "why"
+narrative), and switched on **personal-use advice mode** behind the flagged `config('compliance.personal_use')` line.
+Then, on Rob's report that the "a what-if only changes values" refusal "made no sense" (it blocked adding a one-off
+**mortgage-deposit** cost to a stay what-if), **lifted the value-only restriction**: `BuilderStateDelta` now represents
+**added rows** (stored whole at the id path) and **removed rows** (a `REMOVED` sentinel); `merge`/`setPath` append adds
+and splice removals while a *leaf* override to a deleted row stays a flagged orphan (so orphan detection holds); dropped
+`structurallyDiffers` + the save refusal; `WhatIfChanges` shows an add/remove as one line; the builder highlight pairs
+base rows by id (not index) so add/remove/reorder no longer mis-highlights. Suite green throughout; assets rebuilt.
+**All pending Rob's browser sign-off.**
 
 _2026-06-30 (built the editable-assumptions UI: live preview, longevity readout, selling-cost %/£ breakdown, cost-condition override)_ —
 Resumed from the handover and built the planned editable-assumptions slices in order, committing each green. **(a) Live

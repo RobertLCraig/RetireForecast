@@ -3,6 +3,23 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-30 — What-ifs can add and remove items (delta represents structural changes)
+**Decision:** A delta-child what-if may now **add or remove a list row** (a person, pension, account, income,
+one-off cost or pension withdrawal), not only change existing values. The delta stores an **added row whole** at its id
+path (`oneOffCosts.<id>` => the row map) and a **removed row** as a sentinel (`accounts.<id>` => `BuilderStateDelta::REMOVED`);
+`merge()` appends the adds and drops the removals. An add is kept distinct from an **orphaned value override** (a leaf
+whose row the base later deleted) because an add carries the whole row while a value override is a leaf path — so
+orphan detection (`orphans()`) still works. The old `structurallyDiffers()` guard and the "A what-if only changes
+values…" save refusal are **removed**. The builder's change-highlight now pairs base rows by **id** (not index), so
+add/remove/reorder no longer mis-highlights. This **supersedes** the value-only constraint of
+[[2026-06-25 — Phase C2 delta-child what-ifs]] (the storage limitation, not the single-source principle).
+**Why (Rob):** the refusal "made no sense" — it blocked a legitimate what-if (add a one-off **mortgage deposit** to
+model converting a buy-to-let to a repayment mortgage and stay). The block was a storage limitation leaking to the user
+as a rule; a what-if is exactly where you explore "what if we also had / dropped this". The base stays the single
+source (the child is still a sparse delta, edits flow through), so the C2 principle holds — only the artificial
+value-only restriction is lifted.
+**Status:** built, suite green, pending Rob's browser sign-off.
+
 ## 2026-06-30 — Personal-use advice mode (the education/guidance line, flagged for later)
 **Decision:** While RetireForecast remains a **private, local-first tool for the owner's own use** (not a public
 release), the education/guidance-only posture is **relaxed** so it can give the best possible *direct* advice (Rob:
