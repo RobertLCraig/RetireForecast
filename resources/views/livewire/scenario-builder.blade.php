@@ -345,6 +345,13 @@
                                     @error('people.'.$i.'.longevityValue') <p id="people-{{ $i }}-longevityValue-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                                 </div>
                             @endif
+                            <div class="col-span-full">
+                                <label class="flex items-center gap-2 text-sm text-gray-700">
+                                    <input type="checkbox" wire:model="people.{{ $i }}.receivesDisabilityBenefit" class="rounded border-gray-300">
+                                    Receives a disability benefit (DLA / Attendance Allowance / PIP)
+                                </label>
+                                <p class="mt-1 text-xs text-gray-500">Enter the benefit itself as a tax-free income stream below. This flag lets the forecast include the Pension Credit severe-disability top-up while they are alive.</p>
+                            </div>
                             {{-- What the lifespan lever resolves to: the modelled age/year of death from the
                                  same deterministic forecast as the live preview, so the setting is concrete. --}}
                             @if (! empty($modelledDeaths[$person['id']]))
@@ -544,8 +551,17 @@
                             </select>
                         </div>
                         <div>
-                            <label for="incomeStreams-{{ $i }}-grossAnnual" class="text-xs text-gray-600">Gross (£/yr)</label>
-                            <input id="incomeStreams-{{ $i }}-grossAnnual" type="text" inputmode="decimal" wire:model="incomeStreams.{{ $i }}.grossAnnual" class="{{ $field }}">
+                            <label for="incomeStreams-{{ $i }}-grossAnnual" class="text-xs text-gray-600">Amount</label>
+                            <div class="flex gap-1">
+                                <input id="incomeStreams-{{ $i }}-grossAnnual" type="text" inputmode="decimal" wire:model="incomeStreams.{{ $i }}.grossAnnual" class="{{ $field }}">
+                                <select aria-label="Pay frequency for this income" wire:model="incomeStreams.{{ $i }}.frequency" class="{{ $field }} w-20">
+                                    <option value="annual">/yr</option>
+                                    <option value="monthly">/mo</option>
+                                    <option value="four_weekly">/4wk</option>
+                                    <option value="weekly">/wk</option>
+                                </select>
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">DWP pays State Pension and DLA / AA every <strong>4 weeks</strong>.</p>
                             @error('incomeStreams.'.$i.'.grossAnnual') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
                         </div>
                         <div>

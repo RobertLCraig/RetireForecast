@@ -52,6 +52,44 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertSame(150_000, $action->sellingCosts[1]->value->pence);
     }
 
+    public function test_an_income_amount_is_annualised_by_its_pay_frequency(): void
+    {
+        $household = (new HouseholdAssembler)->household([
+            'householdName' => 'Freq', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '10000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'incomeStreams' => [
+                // DLA at the real DWP cadence: £600.00 every 4 weeks = £9,747.40 a year.
+                ['id' => 'i1', 'ownerId' => 'p1', 'type' => 'other', 'grossAnnual' => '600.00', 'frequency' => 'four_weekly', 'taxable' => false, 'inflationLinked' => true, 'startAge' => '0'],
+                // Rent quoted monthly: £1,650/mo = £19,800 a year.
+                ['id' => 'i2', 'ownerId' => 'p1', 'type' => 'rental', 'grossAnnual' => '1650', 'frequency' => 'monthly', 'taxable' => true, 'inflationLinked' => true, 'startAge' => '0'],
+                // No frequency = annual (back-compat): the figure is used as-is.
+                ['id' => 'i3', 'ownerId' => 'p1', 'type' => 'annuity', 'grossAnnual' => '5000', 'taxable' => true, 'inflationLinked' => false, 'startAge' => '0'],
+            ],
+        ]);
+
+        $this->assertSame(974_740, $household->incomeStreams[0]->grossAnnual->pence);   // £600.00 × 13
+        $this->assertSame(1_980_000, $household->incomeStreams[1]->grossAnnual->pence); // £1,650 × 12
+        $this->assertSame(500_000, $household->incomeStreams[2]->grossAnnual->pence);   // £5,000 × 1
+    }
+
+    public function test_the_disability_benefit_flag_is_carried_through_to_the_person(): void
+    {
+        $household = (new HouseholdAssembler)->household([
+            'householdName' => 'Disab', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired', 'receivesDisabilityBenefit' => true],
+                ['id' => 'p2', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+            ],
+            'expenseLines' => [['id' => 'e1', 'amount' => '10000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]);
+
+        $this->assertTrue($household->persons[0]->receivesDisabilityBenefit);
+        $this->assertFalse($household->persons[1]->receivesDisabilityBenefit); // absent flag = false
+    }
+
     public function test_an_old_single_selling_cost_rate_maps_to_one_estate_agent_component(): void
     {
         // Back-compat: a scenario saved before the breakdown carried only the single rate.

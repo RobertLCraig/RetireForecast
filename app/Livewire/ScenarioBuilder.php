@@ -230,6 +230,7 @@ class ScenarioBuilder extends Component
             'people.*.salaryGrowth' => $rate,
             'people.*.plannedRetirementAge' => ['nullable', 'integer', 'min:50', 'max:80'],
             'people.*.niCategory' => ['nullable', 'string', 'max:2'],
+            'people.*.receivesDisabilityBenefit' => ['nullable', 'boolean'],
             // Lifespan what-if (optional): peer = cohort-table average; fixed_age needs an
             // age, offset_years a ± year shift. The range spans both uses; the mortality
             // grid clamps anything extreme (ages 50–110), so a loose bound is safe.
@@ -286,6 +287,7 @@ class ScenarioBuilder extends Component
             'incomeStreams.*.ownerId' => ['required', Rule::in($ids)],
             'incomeStreams.*.type' => ['required', Rule::in(['rental', 'annuity', 'other'])],
             'incomeStreams.*.grossAnnual' => $moneyReq,
+            'incomeStreams.*.frequency' => ['nullable', Rule::in(['weekly', 'four_weekly', 'monthly', 'annual'])],
             'incomeStreams.*.startAge' => ['required', 'integer', 'min:0', 'max:110'],
             'incomeStreams.*.endAge' => ['nullable', 'integer', 'min:0', 'max:110', $this->endAfterStart(...)],
 
@@ -979,7 +981,7 @@ class ScenarioBuilder extends Component
 
     public function addIncome(): void
     {
-        $this->incomeStreams[] = ['id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'type' => 'rental', 'grossAnnual' => '', 'taxable' => true, 'inflationLinked' => true, 'startAge' => '', 'endAge' => ''];
+        $this->incomeStreams[] = ['id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'type' => 'rental', 'grossAnnual' => '', 'frequency' => 'annual', 'taxable' => true, 'inflationLinked' => true, 'startAge' => '', 'endAge' => ''];
     }
 
     public function removeIncome(int $i): void
@@ -1285,7 +1287,7 @@ class ScenarioBuilder extends Component
         return [
             'id' => $id, 'name' => '', 'dob' => '', 'sex' => 'female', 'employmentStatus' => 'retired',
             'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => '',
-            'longevityMode' => 'peer', 'longevityValue' => '',
+            'longevityMode' => 'peer', 'longevityValue' => '', 'receivesDisabilityBenefit' => false,
         ];
     }
 

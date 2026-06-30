@@ -148,6 +148,7 @@ final class HouseholdAssembler
             niCategory: $this->stringOrNull($p['niCategory'] ?? null),
             name: $this->stringOrNull($p['name'] ?? null),
             longevity: $this->longevity($p),
+            receivesDisabilityBenefit: (bool) ($p['receivesDisabilityBenefit'] ?? false),
         );
     }
 
@@ -393,12 +394,26 @@ final class HouseholdAssembler
         return new IncomeStream(
             ownerId: (string) $s['ownerId'],
             type: IncomeStreamType::from($s['type']),
-            grossAnnual: $this->moneyRequired($s['grossAnnual'] ?? null),
+            // The amount is entered per a chosen pay frequency (weekly / 4-weekly / monthly /
+            // annual) and annualised here — the single conversion boundary. 4-weekly matters:
+            // the DWP pays State Pension and DLA / AA every four weeks, not monthly.
+            grossAnnual: $this->annualised($this->moneyRequired($s['grossAnnual'] ?? null), (string) ($s['frequency'] ?? 'annual')),
             taxable: (bool) ($s['taxable'] ?? false),
             inflationLinked: (bool) ($s['inflationLinked'] ?? false),
             startAge: (int) $s['startAge'],
             endAge: $this->intOrNull($s['endAge'] ?? null),
         );
+    }
+
+    /** Convert a per-period amount to an annual figure (annual is the default / back-compat). */
+    private function annualised(Money $amount, string $frequency): Money
+    {
+        return $amount->times(match ($frequency) {
+            'weekly' => 52,
+            'four_weekly' => 13,
+            'monthly' => 12,
+            default => 1,
+        });
     }
 
     private function property(array $p, int $saleYear): Property
