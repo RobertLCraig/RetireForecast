@@ -9,6 +9,7 @@ use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -235,12 +236,12 @@ final class PathProjector
                 continue;
             }
 
-            // Employment earnings (until planned retirement age).
+            // Employment earnings, prorated in the retirement year (they stop part-way through it,
+            // so the final year is a fraction of full salary — not a whole year, and not zero).
             $earnings = 0;
-            if ($person->employmentStatus === EmploymentStatus::Employed
-                && $person->grossSalary !== null
-                && ($person->plannedRetirementAge === null || $age < $person->plannedRetirementAge)) {
-                $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor']);
+            if ($person->employmentStatus === EmploymentStatus::Employed && $person->grossSalary !== null) {
+                $fraction = self::workFraction($person, $age);
+                $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor'] * $fraction);
             }
 
             // Guaranteed pension / other income, kept split by source.
@@ -513,16 +514,37 @@ final class PathProjector
         }
 
         $age = $state['baseAge'][$pid] + $yearIndex;
-        if ($person->plannedRetirementAge !== null && $age >= $person->plannedRetirementAge) {
+        $fraction = self::workFraction($person, $age);
+        if ($fraction <= 0.0) {
             return 0;
         }
 
         $calendarYear = $state['baseYear'] + $yearIndex;
         $reachedSpa = $calendarYear >= $state['spaYear'][$pid];
 
-        $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor']);
+        // NI on the actual (prorated in the retirement year) earnings; it ends at State Pension age.
+        $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor'] * $fraction);
 
         return $this->ni->onEmploymentEarnings(Money::fromPence($earnings), hasReachedStatePensionAge: $reachedSpa)->total->pence;
+    }
+
+    /**
+     * The fraction of the calendar year a person works: a full year before their planned
+     * retirement age, zero after it, and a part-year in the year they reach it — they stop on
+     * their birthday (when they turn that age), so the fraction is their birth month ÷ 12. The
+     * final working year is therefore a real part-year of salary, not a dropped whole year.
+     */
+    private static function workFraction(Person $person, int $age): float
+    {
+        $retireAge = $person->plannedRetirementAge;
+        if ($retireAge === null || $age < $retireAge) {
+            return 1.0;
+        }
+        if ($age > $retireAge) {
+            return 0.0;
+        }
+
+        return ((int) $person->dob->format('n')) / 12.0;
     }
 
     /**

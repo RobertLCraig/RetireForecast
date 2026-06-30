@@ -9,6 +9,8 @@ use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
+use RetireForecast\FinanceEngine\Dto\AssetClassAssumption;
+use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
@@ -39,6 +41,46 @@ final class PathProjectorTest extends TestCase
     private function forecaster(): DeterministicForecaster
     {
         return new DeterministicForecaster(TaxYearRegistry::for('2026-27'), new CohortLifeTable);
+    }
+
+    /** Flat assumptions (no inflation, no growth) so a salary stays a clean nominal figure. */
+    private function flatAssumptions(): AssumptionSet
+    {
+        return new AssumptionSet(
+            name: 'flat', sourceNote: 'test',
+            assetClasses: [
+                new AssetClassAssumption('Equity', Percent::zero(), Percent::zero()),
+                new AssetClassAssumption('Bond', Percent::zero(), Percent::zero()),
+                new AssetClassAssumption('Cash', Percent::zero(), Percent::zero()),
+            ],
+            correlationMatrix: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            inflationMean: Percent::zero(), inflationVolatility: Percent::zero(),
+            houseGrowth: Percent::zero(), rentInflation: Percent::zero(),
+            salaryGrowth: Percent::zero(), investmentIncomeYield: Percent::zero(),
+        );
+    }
+
+    public function test_salary_is_prorated_in_the_retirement_year_not_dropped(): void
+    {
+        // Born July (month 7), retires at 66 (turns 66 in 2031). With flat assumptions the £60k
+        // salary is full while age < 66, 7/12 in the year they turn 66, and nil after.
+        $person = new Person('p1', new DateTimeImmutable('1965-07-15'), Sex::Male, EmploymentStatus::Employed,
+            grossSalary: Money::fromPounds(60_000), plannedRetirementAge: 66);
+        $household = new Household('Solo', RegionProfile::EnglandWalesNi, [$person],
+            new ExpenseProfile(Money::fromPounds(20_000), Money::zero(), Percent::fromPercent(70)),
+            [new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30))],
+        );
+
+        $result = $this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings());
+
+        $salary = [];
+        foreach ($result->years as $y) {
+            $salary[$y->calendarYear] = $y->incomeBySource['salary']->pence;
+        }
+
+        $this->assertSame(Money::fromPounds(60_000)->pence, $salary[2030]); // age 65 — full year
+        $this->assertSame(Money::fromPounds(35_000)->pence, $salary[2031]); // age 66 — 7/12 of £60k
+        $this->assertSame(0, $salary[2032]);                                // age 67 — retired
     }
 
     private function settings(DrawdownStrategy $strategy = DrawdownStrategy::TaxEfficient): ForecastSettings
