@@ -3,6 +3,21 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-30 — Per-line include/exclude toggle for spend lines (real-time cost toggles, #7)
+**Decision:** Each spend line gains an **"Include this cost in the forecast"** checkbox. Switching it off keeps the
+line in the form-state (so it can be switched back on) but excludes it from **every** forecast total — the assembler
+drops excluded lines once in `household()`, so essential, discretionary, contingent costs and saved self-investment all
+exclude them uniformly; the live preview moves as you toggle. An **absent flag means included** (back-compat); the flag
+is **stored only when a line is off** (sparse), so a scenario predating the toggle and a what-if that changes nothing
+record no spurious delta. Rob chose the **persisted** toggle (saved with the scenario) over an ephemeral preview-only
+mode. This is workstream item #7; "real-time" was already delivered by the live preview, so the toggle is the
+incremental affordance ("what if I drop this cost?" without deleting it).
+**Why:** a quick on/off is friendlier than zeroing or deleting a line (and reversible), and pairs with the live
+preview for instant feedback. Filtering once at the assembler boundary keeps the exclusion from leaking into one total
+but not another (completeness — the sibling of reconciliation).
+**Status:** built, suite green, pending Rob's browser sign-off. **Completes the editable-assumptions workstream
+(slices a–e).** Next: buy-vs-rent as a deliberate what-if/Compare.
+
 ## 2026-06-30 — Per-line cost-condition override exposed in the builder (completes option b)
 **Decision:** Each spend line in the builder gains an **"Applies"** control — *Auto* (classify by description),
 *Always*, *Only while you own this home*, *Only while you are working* — the per-line override that option (b) of the
