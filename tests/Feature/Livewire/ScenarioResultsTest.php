@@ -39,8 +39,10 @@ class ScenarioResultsTest extends TestCase
             ->call('preview')
             ->assertSee('Will the money last?')
             ->assertSee('Essentials always met')
+            // Single-strategy report: only the scenario's own strategy is shown (others are
+            // separate what-ifs); the cross-strategy comparison lives on the Compare page now.
             ->assertSee('Sell & rent')
-            ->assertSee('Stay put')
+            ->assertDontSee('Stay put')
             ->assertSee('%');
     }
 
@@ -214,18 +216,16 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('Total wealth left (incl. home)');
     }
 
-    public function test_the_cashflow_ladder_switches_by_housing_strategy_and_shows_the_home_sale(): void
+    public function test_the_cashflow_ladder_shows_the_scenarios_own_strategy_and_home_sale(): void
     {
-        // The rich fixture configures a sale (£525k) + a cheaper home (£320k), variant 'rent',
-        // so all three strategies are offered and the ladder opens on the scenario's own
-        // (sell-&-rent) strategy — a sell strategy, so the home-sale milestone is shown.
-        $component = Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
-            ->assertSee('The year-by-year picture, by housing strategy')
-            ->assertSee('The home is sold');
-
-        // Switch to staying put: no sale happens, so that milestone disappears.
-        $component->set('ladderVariant', 'stay_put')
-            ->assertDontSee('The home is sold');
+        // Single-strategy report: the ladder opens on the scenario's own (sell-&-rent) strategy,
+        // labelled as such — a sell strategy, so the home-sale milestone shows. There is no
+        // in-report strategy switcher anymore (strategies are separate what-ifs, on Compare).
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->assertSee('Year-by-year cashflow')
+            ->assertSee('Sell & rent')
+            ->assertSee('The home is sold')
+            ->assertDontSee('The year-by-year picture, by housing strategy');
     }
 
     public function test_the_cashflow_ladder_csv_export_is_prefixed_with_a_disclaimer(): void
@@ -278,17 +278,16 @@ class ScenarioResultsTest extends TestCase
             ->set('previewPaths', 30)
             ->call('preview');
 
-        // Default: the spendable (excl-home) basis leads on both the fan and the comparison,
-        // and a fresh run carries the usable fan so no "re-run" prompt shows.
+        // Default: the spendable (excl-home) basis leads the fan chart, and a fresh run carries
+        // the usable fan so no "re-run" prompt shows. (The cross-strategy comparison chart is on
+        // the Compare page now, not in this single-strategy report.)
         $component
             ->assertSee('Projected spendable money over time')
-            ->assertSee('Spendable money over time, by housing strategy')
             ->assertDontSee('These results were calculated before');
 
-        // Toggle the home back in -> both charts switch to the total-wealth basis.
+        // Toggle the home back in -> the fan chart switches to the total-wealth basis.
         $component->set('includeHome', true)
             ->assertSee('Projected total wealth over time')
-            ->assertSee('Total wealth over time, by housing strategy')
             ->assertDontSee('Projected spendable money over time');
     }
 

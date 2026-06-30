@@ -11,7 +11,6 @@
         ['id' => 'sec-headline', 'label' => 'Will the money last?', 'show' => (bool) $presented],
         ['id' => 'sec-longevity', 'label' => 'How long it may need to last', 'show' => ! empty($presented['longevity'])],
         ['id' => 'sec-fan', 'label' => 'Outlook over time', 'show' => (bool) $presented],
-        ['id' => 'sec-comparison', 'label' => 'By housing strategy', 'show' => (bool) $presented],
         ['id' => 'sec-shock', 'label' => 'Pension lump-sum tax shock', 'show' => (bool) $shock],
         ['id' => 'sec-sensitivity', 'label' => 'Assumption sensitivity', 'show' => (bool) $sensitivity],
         ['id' => 'sec-budget', 'label' => 'Your spending plan', 'show' => ! empty($budget['tiers'])],
@@ -216,31 +215,30 @@
                 Under this run's assumptions, across {{ $resultsRun->n_paths }} simulated futures
                 ({{ $resultsRun->mode->value }} run, seed {{ $resultsRun->seed }}).
             </p>
-            <div class="grid gap-4 md:grid-cols-3">
-                @foreach ($variants as $key => $v)
-                    @php
-                        $verdictStyle = [
-                            'none' => 'bg-green-50 text-green-800',
-                            'low' => 'bg-green-50 text-green-800',
-                            'medium' => 'bg-amber-50 text-amber-800',
-                            'high' => 'bg-red-50 text-red-800',
-                        ][$v['verdict']['level']];
-                    @endphp
-                    <div class="{{ $card }} {{ $key === $primary ? 'ring-2 ring-blue-500' : '' }}">
-                        <h3 class="font-semibold text-gray-900">{{ $v['label'] }}@if ($key === $primary)<span class="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">primary</span>@endif</h3>
-                        <p class="mt-2 rounded-md px-3 py-2 text-sm font-medium {{ $verdictStyle }}" @if ($v['verdict']['level'] === 'high') role="alert" @endif>{{ $v['verdict']['text'] }}</p>
-                        <dl class="mt-3 space-y-1 text-sm">
-                            <div class="flex justify-between"><dt class="text-gray-600">Essentials always met</dt><dd class="font-medium">{{ $v['successEssentials'] }}</dd></div>
-                            <div class="flex justify-between"><dt class="text-gray-600">Full spending met</dt><dd class="font-medium">{{ $v['successFullSpend'] }}</dd></div>
-                            <div class="flex justify-between"><dt class="text-gray-600">Chance of running out</dt><dd class="font-medium">{{ $v['depletionRate'] }}</dd></div>
-                            <div class="flex justify-between"><dt class="text-gray-600">If so, typically by</dt><dd class="font-medium">{{ $v['medianDepletionYear'] ?? '—' }}</dd></div>
-                            @if ($v['usableP50'])
-                                <div class="flex justify-between"><dt class="text-gray-600">Usable wealth left (excl. home)</dt><dd class="font-medium">{{ $v['usableP50'] }}</dd></div>
-                            @endif
-                            <div class="flex justify-between"><dt class="text-gray-600">Total wealth left (incl. home)</dt><dd class="font-medium">{{ $v['terminalP50'] }}</dd></div>
-                        </dl>
-                    </div>
-                @endforeach
+            @php
+                $v = $variants[$primary];
+                $verdictStyle = [
+                    'none' => 'bg-green-50 text-green-800',
+                    'low' => 'bg-green-50 text-green-800',
+                    'medium' => 'bg-amber-50 text-amber-800',
+                    'high' => 'bg-red-50 text-red-800',
+                ][$v['verdict']['level']];
+            @endphp
+            {{-- One scenario, one strategy: this report shows the chosen strategy only. Other
+                 strategies (buy / rent / let-out) live as separate what-ifs, compared on Compare. --}}
+            <div class="{{ $card }}">
+                <h3 class="font-semibold text-gray-900">{{ $v['label'] }}</h3>
+                <p class="mt-2 rounded-md px-3 py-2 text-sm font-medium {{ $verdictStyle }}" @if ($v['verdict']['level'] === 'high') role="alert" @endif>{{ $v['verdict']['text'] }}</p>
+                <dl class="mt-3 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
+                    <div class="flex justify-between"><dt class="text-gray-600">Essentials always met</dt><dd class="font-medium">{{ $v['successEssentials'] }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-600">Full spending met</dt><dd class="font-medium">{{ $v['successFullSpend'] }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-600">Chance of running out</dt><dd class="font-medium">{{ $v['depletionRate'] }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-600">If so, typically by</dt><dd class="font-medium">{{ $v['medianDepletionYear'] ?? '—' }}</dd></div>
+                    @if ($v['usableP50'])
+                        <div class="flex justify-between"><dt class="text-gray-600">Usable wealth left (excl. home)</dt><dd class="font-medium">{{ $v['usableP50'] }}</dd></div>
+                    @endif
+                    <div class="flex justify-between"><dt class="text-gray-600">Total wealth left (incl. home)</dt><dd class="font-medium">{{ $v['terminalP50'] }}</dd></div>
+                </dl>
             </div>
             <p class="mt-3 text-xs text-gray-500">"Chance of running out" counts the simulated futures with at least one year your essential spending isn't fully covered by income and savings — a shortfall a future may later recover from as guaranteed income catches up. "Wealth left" is the median amount at the very end. So an option can leave money at the end yet still have run short along the way — and "total wealth left" includes any home you would still own, which stays high even when the usable cash for day-to-day spending has run out.</p>
         </section>
@@ -349,96 +347,6 @@
             </details>
         </section>
 
-        {{-- Strategy comparison OVER TIME: which keeps the most spendable money for longest --}}
-        @php $comparison = $presented['comparison']; @endphp
-        <section id="sec-comparison" aria-labelledby="compare-heading" class="{{ $card }} scroll-mt-6">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <h2 id="compare-heading" class="text-xl font-semibold text-gray-900">{{ $comparison['usableBasis'] ? 'Spendable money' : 'Total wealth' }} over time, by housing strategy</h2>
-                <label class="flex items-center gap-2 text-sm text-gray-600">
-                    <input type="checkbox" wire:model.live="includeHome" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                    Include home value
-                </label>
-            </div>
-            <p class="mt-1 text-sm text-gray-600">
-                Each line is one housing strategy's median {{ $comparison['usableBasis'] ? 'spendable money (excl. home)' : 'total wealth (incl. home)' }}, year by year — all run on identical simulated futures, so the difference is the housing choice alone. A line that stays higher keeps more usable money available as you age; a line reaching £0 is where the typical future runs dry. A strategy can sit higher here yet still carry a greater chance of a shortfall year, so read it alongside the table below. These are consequences, not a recommendation.
-            </p>
-
-            <div class="mt-4" wire:key="compare-chart-{{ $includeHome ? 'incl' : 'excl' }}">
-                <div wire:ignore>
-                    <div x-data="chart(@js($comparison['options']))" role="img"
-                        aria-label="Line chart of median {{ $comparison['usableBasis'] ? 'spendable money excluding the home' : 'total wealth including the home' }} over time for each housing strategy. The full figures are in the data tables below."></div>
-                </div>
-            </div>
-
-            @include('livewire.partials.tail-note')
-
-            <details class="mt-4">
-                <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the year-by-year figures behind this chart</summary>
-                <div class="mt-2 overflow-x-auto" tabindex="0">
-                    <table class="w-full text-sm">
-                        <caption class="sr-only">Median {{ $comparison['usableBasis'] ? 'spendable money (excl. home)' : 'total wealth (incl. home)' }} by calendar year and housing strategy</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col" class="{{ $th }}">Year</th>
-                                <th scope="col" class="{{ $th }}">Age(s)</th>
-                                @foreach ($comparison['strategies'] as $strategy)
-                                    <th scope="col" class="{{ $th }}">{{ $strategy['label'] }}</th>
-                                @endforeach
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($comparison['lineRows'] as $row)
-                                <tr>
-                                    <th scope="row" class="{{ $td }} font-medium">{{ $row['year'] }}</th>
-                                    <td class="{{ $td }}">{{ $row['ages'] ?? '—' }}</td>
-                                    @foreach ($comparison['strategies'] as $strategy)
-                                        <td class="{{ $td }}">{{ $row['cells'][$strategy['key']] ?? '—' }}</td>
-                                    @endforeach
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </details>
-
-            {{-- Per-strategy summary: the run-out risk and end figures the lines don't show,
-                 so a high line never hides a high risk. --}}
-            <div class="mt-6">
-                <h3 class="text-sm font-semibold text-gray-900">How each strategy ends up</h3>
-                <p class="mt-1 text-xs text-gray-500">"Chance of running short" is the share of futures with at least one year your essential spending wasn't fully covered (a future may recover later). "Median … left" is the typical amount at the very end.</p>
-                <div class="mt-2 overflow-x-auto" tabindex="0">
-                    <table class="w-full text-sm">
-                        <caption class="sr-only">Run-out risk and median wealth left by housing strategy</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col" class="{{ $th }}">Strategy</th>
-                                <th scope="col" class="{{ $th }}">Essentials always met</th>
-                                <th scope="col" class="{{ $th }}">Full lifestyle met</th>
-                                <th scope="col" class="{{ $th }}">Chance of running short</th>
-                                <th scope="col" class="{{ $th }}">Typically short by</th>
-                                <th scope="col" class="{{ $th }}">Median spendable left (excl. home)</th>
-                                <th scope="col" class="{{ $th }}">Median total left (incl. home)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($comparison['rows'] as $row)
-                                <tr>
-                                    <th scope="row" class="{{ $td }} font-medium">{{ $row['label'] }}</th>
-                                    <td class="{{ $td }}">{{ $row['successEssentials'] }}</td>
-                                    <td class="{{ $td }}">{{ $row['successFullSpend'] }}</td>
-                                    <td class="{{ $td }}">{{ $row['depletionRate'] }}</td>
-                                    <td class="{{ $td }}">{{ $row['medianDepletionYear'] ?? '—' }}</td>
-                                    <td class="{{ $td }}">{{ $row['medianUsable'] ?? '—' }}</td>
-                                    <td class="{{ $td }}">{{ $row['medianTerminal'] }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <x-signpost class="mt-4" />
-        </section>
 
         {{-- Walled-off, admin-granted interpretation. Built only when the gate allows;
              the directive wording lives in App\Compliance\Interpretation, never here. --}}
@@ -819,29 +727,6 @@
         </section>
     @endif
 
-    {{-- Per-strategy cashflow picker: the milestones + year-by-year cashflow below describe
-         the SELECTED housing strategy (the raw ladder used to ignore the sale entirely). Only
-         shown when the inputs configure more than one strategy. Consequences, not a recommendation. --}}
-    @if (count($ladderStrategies) > 1)
-        <section aria-labelledby="strategy-heading" class="{{ $card }}">
-            <h2 id="strategy-heading" class="text-xl font-semibold text-gray-900">The year-by-year picture, by housing strategy</h2>
-            <p class="mt-1 text-sm text-gray-600">
-                Choose a housing strategy to see its life-event milestones and year-by-year cashflow below. Selling frees the home's value into investments and stops the mortgage and service charge from the year of sale; renting then pays rent from that year. These are the consequences of each strategy, not a recommendation of one.
-            </p>
-            <div role="group" aria-label="Housing strategy" class="mt-4 flex flex-wrap gap-2">
-                @foreach ($ladderStrategies as $s)
-                    <button type="button" wire:click="$set('ladderVariant', '{{ $s['key'] }}')"
-                        aria-pressed="{{ $s['key'] === $ladderSelected ? 'true' : 'false' }}"
-                        @class([
-                            'rounded-md border px-3 py-1.5 text-sm font-medium transition',
-                            'border-blue-600 bg-blue-600 text-white' => $s['key'] === $ladderSelected,
-                            'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' => $s['key'] !== $ladderSelected,
-                        ])>{{ $s['label'] }}</button>
-                @endforeach
-            </div>
-        </section>
-    @endif
-
     {{-- Life-event milestones: WHEN the major events happen, so the year-by-year cashflow
          below is legible — what drives each step change. Deterministic; read-only facts. --}}
     @if ($milestones)
@@ -879,7 +764,7 @@
             <div class="flex items-center justify-between">
                 <h2 id="ladder-heading" class="text-xl font-semibold text-gray-900">
                     Year-by-year cashflow
-                    @if (count($ladderStrategies) > 1)<span class="ml-2 align-middle rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">{{ $ladderSelectedLabel }}</span>@endif
+                    <span class="ml-2 align-middle rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">{{ $ladderSelectedLabel }}</span>
                 </h2>
                 <button type="button" wire:click="downloadLadderCsv" class="text-sm text-blue-700 underline">Download CSV</button>
             </div>

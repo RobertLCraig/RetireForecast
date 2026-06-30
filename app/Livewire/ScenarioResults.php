@@ -346,9 +346,7 @@ class ScenarioResults extends Component
             $primaryVariant = $this->scenario->variant->value;
             $primaryForecast = $ladderContext['forecasts'][$primaryVariant] ?? $forecast;
             $chartMilestones = ResultPresenter::milestones($household, $primaryForecast, in_array($primaryVariant, ['buy_outright', 'rent'], true));
-            $annotations = ['xaxis' => ResultPresenter::milestoneAnnotations($chartMilestones)];
-            $presented['fan']['options']['annotations'] = $annotations;
-            $presented['comparison']['options']['annotations'] = $annotations;
+            $presented['fan']['options']['annotations'] = ['xaxis' => ResultPresenter::milestoneAnnotations($chartMilestones)];
         }
 
         // "Since your last run": diff the two most recent completed-run snapshots (they survive
