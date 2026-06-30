@@ -347,9 +347,17 @@
                                     <label for="people-{{ $i }}-longevityValue" class="{{ $label }}">
                                         {{ ($person['longevityMode'] ?? '') === 'fixed_age' ? 'Assumed age at death' : 'Years vs average (+ longer, − shorter)' }}
                                     </label>
-                                    <input id="people-{{ $i }}-longevityValue" type="number" wire:model="people.{{ $i }}.longevityValue" class="{{ $field }}" @error('people.'.$i.'.longevityValue') aria-invalid="true" aria-describedby="people-{{ $i }}-longevityValue-error" @enderror>
+                                    <input id="people-{{ $i }}-longevityValue" type="number" wire:model.blur="people.{{ $i }}.longevityValue" class="{{ $field }}" @error('people.'.$i.'.longevityValue') aria-invalid="true" aria-describedby="people-{{ $i }}-longevityValue-error" @enderror>
                                     @error('people.'.$i.'.longevityValue') <p id="people-{{ $i }}-longevityValue-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                                 </div>
+                            @endif
+                            {{-- What the lifespan lever resolves to: the modelled age/year of death from the
+                                 same deterministic forecast as the live preview, so the setting is concrete. --}}
+                            @if (! empty($modelledDeaths[$person['id']]))
+                                <p class="col-span-full text-sm text-gray-600" aria-live="polite">
+                                    On the current lifespan setting, {{ $personName($person, $i) }} is modelled to live to
+                                    <strong>age {{ $modelledDeaths[$person['id']]['age'] }}</strong> (year {{ $modelledDeaths[$person['id']]['year'] }}).
+                                </p>
                             @endif
                         </div>
                     </div>

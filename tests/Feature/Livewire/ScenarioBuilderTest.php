@@ -211,6 +211,15 @@ class ScenarioBuilderTest extends TestCase
             ->assertSee('Total wealth at end');
     }
 
+    public function test_the_lifespan_lever_shows_the_modelled_age_at_death(): void
+    {
+        // The plan's "surface the lever and show the resulting age": each person's modelled
+        // death age/year (from the same deterministic forecast as the preview) shows on step 1.
+        $this->fill(BuilderStateFixture::full())
+            ->assertSet('step', 1)
+            ->assertSee('is modelled to live to');
+    }
+
     public function test_the_live_preview_invites_completion_while_the_inputs_are_incomplete(): void
     {
         // A half-filled wizard (no valid people yet) cannot be forecast: that is not an error,

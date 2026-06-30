@@ -24,6 +24,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
@@ -695,26 +696,39 @@ class ScenarioBuilder extends Component
     }
 
     /**
-     * A cheap one-path deterministic readout of the forecast as the inputs stand right now,
-     * recomputed on every round-trip so changing any input — an assumption, a salary, a
-     * spend line — updates it live (the ProjectionLab "edit and watch it move" pattern; the
-     * wizard's only on-the-spot feedback before a full Monte Carlo run). Single-sourced from
-     * the same {@see ScenarioForecaster::deterministic()} the results page and Monte Carlo
-     * build on, run against a transient {@see Scenario} assembled from the current form-state
-     * and never saved (in childMode the component already holds the full effective inputs, so
-     * a plain base scenario is the right thing to forecast either way). Returns null while the
-     * inputs are too incomplete to forecast — a half-filled wizard is not a failure — so the
-     * panel invites the user to finish rather than show a misleading figure.
-     *
-     * @return array{lasts: bool, depletionYear: int|null, finalYear: int, essentialsMet: bool, fullSpendMet: bool, usable: string, total: string, level: string, verdict: string, spendNote: string}|null
+     * A cheap one-path deterministic forecast of the inputs as they stand right now, run
+     * against a transient {@see Scenario} assembled from the current form-state and never
+     * saved (in childMode the component already holds the full effective inputs, so a plain
+     * base scenario is the right thing to forecast either way). Single-sourced from the same
+     * {@see ScenarioForecaster::deterministic()} the results page and Monte Carlo build on,
+     * so the live readouts cannot drift from the full run. Returns null while the inputs are
+     * too incomplete to forecast — a half-filled wizard is not a failure. Computed once in
+     * {@see render()} and fed to both the live-preview panel and the modelled-death readout.
      */
-    public function livePreview(): ?array
+    private function previewForecast(): ?ForecastResult
     {
         try {
             $scenario = (new Scenario)->fillFromBuilderState($this->builderState());
-            $result = (new ScenarioForecaster)->deterministic($scenario);
+
+            return (new ScenarioForecaster)->deterministic($scenario);
         } catch (\Throwable) {
             return null; // not enough valid input yet to forecast — the panel shows the finish-the-fields note
+        }
+    }
+
+    /**
+     * The verdict + end-wealth readout for the live-preview panel, recomputed on every
+     * round-trip so changing any input — an assumption, a salary, a spend line — updates it
+     * live (the ProjectionLab "edit and watch it move" pattern; the wizard's only on-the-spot
+     * feedback before a full Monte Carlo run). Null when the inputs are not yet forecastable,
+     * so the panel invites the user to finish rather than show a misleading figure.
+     *
+     * @return array{lasts: bool, depletionYear: int|null, finalYear: int, essentialsMet: bool, fullSpendMet: bool, usable: string, total: string, level: string, verdict: string, spendNote: string}|null
+     */
+    private function previewReadout(?ForecastResult $result): ?array
+    {
+        if ($result === null) {
+            return null;
         }
 
         $lasts = $result->depletionCalendarYear === null;
@@ -739,6 +753,37 @@ class ScenarioBuilder extends Component
                 default => 'Essential spending falls short in some years.',
             },
         ];
+    }
+
+    /**
+     * The modelled calendar year and age at death for each person under the current lifespan
+     * levers, so the builder can show what "peer" / "+10 years" actually resolves to (the
+     * plan's "surface the lever and show the resulting age"). Keyed by person id, read from
+     * the same forecast as the panel ({@see ForecastResult::$deathCalendarYears}, which the
+     * engine keys by the same person id the form-state uses); age = death year − birth year.
+     * Empty while the inputs are not forecastable. Education only, never a recommendation.
+     *
+     * @return array<string, array{age: int, year: int}>
+     */
+    private function modelledDeaths(?ForecastResult $result): array
+    {
+        if ($result === null) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($this->people as $person) {
+            $id = $person['id'] ?? null;
+            $dob = (string) ($person['dob'] ?? '');
+            $deathYear = $id !== null ? ($result->deathCalendarYears[$id] ?? null) : null;
+            if ($deathYear === null || strlen($dob) < 4) {
+                continue;
+            }
+
+            $out[$id] = ['age' => $deathYear - (int) substr($dob, 0, 4), 'year' => $deathYear];
+        }
+
+        return $out;
     }
 
     public function nextStep(): void
@@ -1017,6 +1062,10 @@ class ScenarioBuilder extends Component
 
     public function render(): View
     {
+        // One cheap deterministic forecast per round-trip, feeding both the live-preview panel
+        // and the per-person modelled-death readout (so the lifespan lever shows what it resolves to).
+        $previewForecast = $this->previewForecast();
+
         return view('livewire.scenario-builder', [
             'assumptionSets' => AssumptionSet::orderByDesc('is_default')->orderBy('name')->get(['id', 'name']),
             // The editable economic assumptions, in {@see AssumptionOverrides::KEYS} order:
@@ -1041,8 +1090,10 @@ class ScenarioBuilder extends Component
             // (matched to inputs by their wire:model path, client-side). Empty for a base.
             'changedFromBase' => $this->changedFromBase(),
             // A cheap one-path deterministic readout of the forecast as it stands, so editing
-            // any input updates a live verdict + end-wealth panel before the full run.
-            'livePreview' => $this->livePreview(),
+            // any input updates a live verdict + end-wealth panel before the full run, and the
+            // per-person modelled death age/year so the lifespan lever shows what it resolves to.
+            'livePreview' => $this->previewReadout($previewForecast),
+            'modelledDeaths' => $this->modelledDeaths($previewForecast),
             'steps' => self::STEPS,
             'expenseTotals' => $this->expenseTotals(),
             'importProfiles' => array_map(static fn ($p): array => [
