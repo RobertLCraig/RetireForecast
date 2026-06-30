@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Forecast;
 
+use RetireForecast\FinanceEngine\Benefits\PensionCreditCalculator;
 use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
@@ -54,11 +55,14 @@ final class PathProjector
 
     private readonly StatePensionCalculator $statePension;
 
+    private readonly PensionCreditCalculator $pensionCredit;
+
     public function __construct(private readonly TaxYearConfig $config)
     {
         $this->incomeTax = new IncomeTaxCalculator($config);
         $this->ni = new NationalInsuranceCalculator($config);
         $this->statePension = new StatePensionCalculator($config);
+        $this->pensionCredit = new PensionCreditCalculator($config);
     }
 
     public function project(Household $household, ForecastSettings $settings, PathDraws $draws): ForecastResult
@@ -307,6 +311,16 @@ final class PathProjector
 
         // Household spend (nominal), with the survivor factor when only one remains.
         $aliveCount = count(array_filter($alive));
+
+        // Means-tested benefit (Pension Credit Guarantee Credit): a tax-free top-up to the
+        // household's appropriate minimum guarantee, credited as income before any shortfall
+        // is funded — so a sale that turns the exempt home into assessable capital (raising the
+        // tariff income) erodes it in-projection, the downsizing trap made visible.
+        $benefitNominal = $this->meansTestedBenefitNominal($household, $state, $alive, $calendarYear, $taxablePerPerson, $aliveCount);
+        $netCashNominal += $benefitNominal;
+        $grossIncomeNominal += $benefitNominal;
+        $src['means_tested_benefit'] += $benefitNominal;
+
         $survivor = $aliveCount === 1 ? $household->expenseProfile->survivorSpendFactor->asFraction() : 1.0;
 
         // Employment-linked costs (e.g. commuting) are charged only while someone is still
@@ -398,6 +412,50 @@ final class PathProjector
             totalWealth: $liquidReal->plus($pensionReal)->plus($propertyReal),
             incomeBySource: array_map($r, $src),
         );
+    }
+
+    /**
+     * Pension Credit Guarantee Credit for the household this year, as annual nominal pence.
+     * It tops the household's assessable income up to the appropriate minimum guarantee
+     * (single or couple, plus the severe-disability addition when a living member receives a
+     * disability benefit), paid only once every living member has reached State Pension age
+     * (the qualifying-age / mixed-age-couple gate). Assessable income is the household's
+     * taxable income (State Pension, pensions, earnings, drawdown); disability benefits and
+     * actual investment income are disregarded — capital is assessed via the tariff instead,
+     * on liquid wealth only (the home and, v1, pension pots are excluded). The guarantee is
+     * uprated by the same triple-lock proxy as the State Pension; the capital thresholds stay
+     * frozen, so over time a fixed disregard captures more capital in real terms (as in life).
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     * @param  array<string, int>  $taxablePerPerson
+     */
+    private function meansTestedBenefitNominal(Household $household, array $state, array $alive, int $calendarYear, array $taxablePerPerson, int $aliveCount): int
+    {
+        $weeksPerYear = $this->config->statePension->weeksPerYear;
+
+        // Qualifying-age gate: every living member must be at/over State Pension age.
+        $assessableAnnual = 0;
+        $disabled = false;
+        foreach ($household->persons as $person) {
+            if (! ($alive[$person->id] ?? false)) {
+                continue;
+            }
+            if ($calendarYear < $state['spaYear'][$person->id]) {
+                return 0;
+            }
+            $assessableAnnual += $taxablePerPerson[$person->id];
+            $disabled = $disabled || $person->receivesDisabilityBenefit;
+        }
+
+        $assessableIncomeWeekly = Money::fromPence((int) round($assessableAnnual / $weeksPerYear));
+        $capital = Money::fromPence($this->sum($state['cash']) + $this->sum($state['gia']) + $this->sum($state['isa']));
+
+        $applicableBase = $this->pensionCredit->applicableAmountWeekly($aliveCount === 2, $disabled);
+        $applicableWeekly = Money::fromPence((int) round($applicableBase->pence * $state['spFactor']));
+
+        return $this->pensionCredit->award($applicableWeekly, $assessableIncomeWeekly, $capital)
+            ->guaranteeCreditWeekly->pence * $weeksPerYear;
     }
 
     private function dbIncome(Household $household, string $pid, int $age, float $dbFactor): int

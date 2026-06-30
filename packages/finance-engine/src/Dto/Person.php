@@ -31,5 +31,13 @@ final class Person
         public readonly ?string $name = null,
         /** Optional lifespan what-if; null = cohort-table peer average. */
         public readonly ?LongevityAdjustment $longevity = null,
+        /**
+         * Whether this person receives a qualifying disability benefit (DLA / Attendance
+         * Allowance / PIP). The benefit income itself is entered as a tax-free
+         * {@see IncomeStream}; this flag drives the means-tested-benefit treatment that the
+         * income amount cannot convey — the Pension Credit severe-disability addition while
+         * they are alive, and (the passport to) higher entitlement. Default false.
+         */
+        public readonly bool $receivesDisabilityBenefit = false,
     ) {}
 }

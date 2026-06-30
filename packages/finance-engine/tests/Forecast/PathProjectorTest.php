@@ -101,6 +101,78 @@ final class PathProjectorTest extends TestCase
         return new Household('Test', RegionProfile::EnglandWalesNi, [$p1, $p2], $expense, $pensions, $accounts, $incomeStreams);
     }
 
+    public function test_pension_credit_tops_up_a_low_income_pensioner_couple(): void
+    {
+        $household = $this->couple(
+            new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(120, 0)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(120, 0)),
+            ],
+        );
+
+        $year0 = $this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings())->years[0];
+
+        // Couple guarantee £363.25/wk − £240/wk of State Pension = £123.25/wk = £6,409.00 a year.
+        $this->assertSame(640_900, $year0->incomeBySource['means_tested_benefit']->pence);
+        $this->assertGreaterThan(0, $year0->netIncome->pence); // it reaches spendable cash, tax-free
+    }
+
+    public function test_pension_credit_is_zero_when_income_exceeds_the_guarantee(): void
+    {
+        $household = $this->couple(
+            new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+            ],
+        );
+
+        $year0 = $this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings())->years[0];
+
+        $this->assertSame(0, $year0->incomeBySource['means_tested_benefit']->pence);
+    }
+
+    public function test_capital_from_a_sale_erodes_pension_credit_in_the_forecast(): void
+    {
+        // The downsizing trap, modelled in-projection: a couple eligible for £123.25/wk of
+        // Guarantee Credit who hold £130,000 (e.g. from selling the home) have it wiped — the
+        // capital deems (£130k − £10k) / £500 = £240/wk of tariff income, above the award.
+        $household = $this->couple(
+            new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(120, 0)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(120, 0)),
+            ],
+            [new Account('p1', AccountType::Cash, Money::fromPounds(130_000))],
+        );
+
+        $year0 = $this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings())->years[0];
+
+        $this->assertSame(0, $year0->incomeBySource['means_tested_benefit']->pence);
+    }
+
+    public function test_the_disability_flag_unlocks_the_severe_disability_addition(): void
+    {
+        $expense = new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70));
+        $pensions = [
+            new StatePensionEntitlement('p1', weeklyForecast: Money::of(203, 0)),
+            new StatePensionEntitlement('p2', weeklyForecast: Money::of(203, 0)),
+        ];
+
+        // £406/wk exceeds the plain £363.25 couple guarantee → no Pension Credit.
+        $able = $this->couple($expense, $pensions);
+        $this->assertSame(0, $this->forecaster()->forecast($able, $this->flatAssumptions(), $this->settings())
+            ->years[0]->incomeBySource['means_tested_benefit']->pence);
+
+        // Flagging one partner as receiving a disability benefit adds the £86.05/wk severe-
+        // disability addition, lifting the guarantee to £449.30 → £43.30/wk = £2,251.60 a year.
+        $disabledP1 = new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired, receivesDisabilityBenefit: true);
+        $withSdp = $this->couple($expense, $pensions, override1: $disabledP1);
+        $this->assertSame(4_330 * 52, $this->forecaster()->forecast($withSdp, $this->flatAssumptions(), $this->settings())
+            ->years[0]->incomeBySource['means_tested_benefit']->pence);
+    }
+
     public function test_comfortable_household_never_runs_out(): void
     {
         $household = $this->couple(
@@ -360,7 +432,8 @@ final class PathProjectorTest extends TestCase
 
     public function test_income_by_source_records_drawdown_when_funding_a_shortfall(): void
     {
-        // No guaranteed income, high spend -> the shortfall is funded from savings then the pension.
+        // No private income and high spend: Pension Credit tops up part of the gap, but the
+        // shortfall still exhausts the small cash buffer and then draws the pension.
         $household = new Household(
             'Drawdown',
             RegionProfile::EnglandWalesNi,
@@ -370,7 +443,7 @@ final class PathProjectorTest extends TestCase
             ],
             new ExpenseProfile(Money::fromPounds(40_000), Money::zero(), Percent::fromPercent(70)),
             [new DcPension('p2', Money::fromPounds(300_000), Money::zero(), Money::zero(), 55)],
-            [new Account('p1', AccountType::Cash, Money::fromPounds(30_000))],
+            [new Account('p1', AccountType::Cash, Money::fromPounds(5_000))],
         );
 
         $income = $this->forecaster()->forecast($household, AssumptionSetLibrary::default(), $this->settings())->years[0]->incomeBySource;

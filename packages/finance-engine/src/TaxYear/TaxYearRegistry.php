@@ -85,7 +85,13 @@ final class TaxYearRegistry
             ),
             sdlt: self::sdltParameters(),
             cgt: self::cgtParameters(),
-            benefits: self::benefitsParameters(),
+            // Pension Credit Guarantee Credit 2025/26 (gov.uk Benefit and pension rates 2025-26).
+            benefits: self::benefitsParameters(
+                standardMinimumGuaranteeSingleWeekly: Money::of(227, 10),
+                standardMinimumGuaranteeCoupleWeekly: Money::of(346, 60),
+                severeDisabilityAdditionWeekly: Money::of(82, 90),
+                carerAdditionWeekly: Money::of(46, 40),
+            ),
             iht: self::ihtParameters(),
             care: self::careParameters(),
             sources: [
@@ -154,7 +160,13 @@ final class TaxYearRegistry
             ),
             sdlt: self::sdltParameters(),
             cgt: self::cgtParameters(),
-            benefits: self::benefitsParameters(),
+            // Pension Credit Guarantee Credit 2026/27 (gov.uk Benefit and pension rates 2026-27).
+            benefits: self::benefitsParameters(
+                standardMinimumGuaranteeSingleWeekly: Money::of(238, 0),
+                standardMinimumGuaranteeCoupleWeekly: Money::of(363, 25),
+                severeDisabilityAdditionWeekly: Money::of(86, 5),
+                carerAdditionWeekly: Money::of(48, 15),
+            ),
             iht: self::ihtParameters(),
             care: self::careParameters(),
             sources: [
@@ -234,20 +246,28 @@ final class TaxYearRegistry
     }
 
     /**
-     * Pension-age means-tested benefit capital rules. These figures have been static
-     * for years; the same object serves both tax years modelled here. Verified against
-     * gov.uk/pension-credit/eligibility on 2026-06-27: the first £10,000 of capital is
-     * disregarded and every £500 above it counts as £1 a week of tariff income; the
-     * £16,000 upper limit applies to Housing Benefit / Council Tax Support (Pension
-     * Credit itself has no upper capital limit).
+     * Pension-age means-tested benefit parameters. The capital rules are static (the same
+     * for both tax years); the Guarantee Credit figures (the appropriate minimum guarantee
+     * + the severe-disability / carer additions) are uprated each year and passed in.
+     * Verified against gov.uk on 2026-06-27 (capital rules: £10,000 disregarded, £1/week
+     * per £500 above, £16,000 cap for Housing Benefit / Council Tax Support) and 2026-06-30
+     * (Guarantee Credit figures — see the per-year call sites + {@see BenefitsParameters}).
      */
-    private static function benefitsParameters(): BenefitsParameters
-    {
+    private static function benefitsParameters(
+        Money $standardMinimumGuaranteeSingleWeekly,
+        Money $standardMinimumGuaranteeCoupleWeekly,
+        Money $severeDisabilityAdditionWeekly,
+        Money $carerAdditionWeekly,
+    ): BenefitsParameters {
         return new BenefitsParameters(
             capitalDisregard: Money::fromPounds(10_000),
             tariffStep: Money::fromPounds(500),
             tariffIncomePerStepWeekly: Money::fromPounds(1),
             housingSupportUpperCapitalLimit: Money::fromPounds(16_000),
+            standardMinimumGuaranteeSingleWeekly: $standardMinimumGuaranteeSingleWeekly,
+            standardMinimumGuaranteeCoupleWeekly: $standardMinimumGuaranteeCoupleWeekly,
+            severeDisabilityAdditionWeekly: $severeDisabilityAdditionWeekly,
+            carerAdditionWeekly: $carerAdditionWeekly,
         );
     }
 

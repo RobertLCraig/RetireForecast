@@ -31,8 +31,9 @@ final class YearResult
      * The canonical income-source keys, in display order: earned salary; defined
      * benefit; State Pension; other taxable income (annuity, rental); taxable
      * investment income (GIA dividends + cash interest paid out, A5); tax-free
-     * income (e.g. DLA); pension tax-free lump sums; taxable pension drawdown
-     * (planned + drawn to meet a shortfall); and capital drawn from savings/ISA/GIA.
+     * income (e.g. DLA); means-tested benefit (Pension Credit Guarantee Credit);
+     * pension tax-free lump sums; taxable pension drawdown (planned + drawn to meet a
+     * shortfall); and capital drawn from savings/ISA/GIA.
      */
     public const INCOME_SOURCES = [
         'salary',
@@ -41,6 +42,7 @@ final class YearResult
         'other_taxable',
         'investment_income',
         'tax_free_income',
+        'means_tested_benefit',
         'pension_lump_sum',
         'pension_drawdown',
         'asset_drawdown',
