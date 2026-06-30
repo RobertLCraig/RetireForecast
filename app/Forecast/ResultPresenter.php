@@ -627,6 +627,40 @@ final class ResultPresenter
     }
 
     /**
+     * Milestone events ({@see milestones}) as ApexCharts x-axis annotations — a dated vertical
+     * line per "big event" (retirement, State Pension start, first pension drawdown, death, the
+     * home sale), so a chart shows *when* each step change happens, not just the curve. Colour-
+     * coded by kind; the label is rotated vertical to stay legible when events fall in nearby
+     * years. Plain JSON (no functions), so it travels through @js into the chart options.
+     *
+     * @param  list<array{year: int, age: int|null, label: string, kind: string}>  $milestones
+     * @return list<array<string, mixed>>
+     */
+    public static function milestoneAnnotations(array $milestones): array
+    {
+        $colour = [
+            'retirement' => '#0284c7',
+            'state_pension' => '#16a34a',
+            'pension_access' => '#9333ea',
+            'death' => '#dc2626',
+            'house_sale' => '#d97706',
+        ];
+
+        return array_map(fn (array $m): array => [
+            'x' => $m['year'],
+            'borderColor' => $colour[$m['kind']] ?? '#94a3b8',
+            'strokeDashArray' => 4,
+            'label' => [
+                'text' => $m['label'],
+                'orientation' => 'vertical',
+                'position' => 'top',
+                'borderColor' => $colour[$m['kind']] ?? '#94a3b8',
+                'style' => ['fontSize' => '9px', 'color' => '#ffffff', 'background' => $colour[$m['kind']] ?? '#94a3b8'],
+            ],
+        ], $milestones);
+    }
+
+    /**
      * "Since your last run": how the headline figures moved between the two most recent
      * completed-run snapshots (which survive an input edit, so this shows what a change did,
      * not just Monte-Carlo seed noise). Each row is a figure whose displayed value changed;

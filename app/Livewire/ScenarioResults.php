@@ -339,6 +339,18 @@ class ScenarioResults extends Component
         $allocation = $forecaster->settings($this->scenario)->allocation();
         $housing = $forecaster->housingComparison($this->scenario);
 
+        // Mark the big life events on the charts: a vertical annotation at each milestone year
+        // for the chosen strategy (deaths / retirements are person-based; the home sale is
+        // variant-specific), so the curves show *when* each step change happens.
+        if ($presented !== null) {
+            $primaryVariant = $this->scenario->variant->value;
+            $primaryForecast = $ladderContext['forecasts'][$primaryVariant] ?? $forecast;
+            $chartMilestones = ResultPresenter::milestones($household, $primaryForecast, in_array($primaryVariant, ['buy_outright', 'rent'], true));
+            $annotations = ['xaxis' => ResultPresenter::milestoneAnnotations($chartMilestones)];
+            $presented['fan']['options']['annotations'] = $annotations;
+            $presented['comparison']['options']['annotations'] = $annotations;
+        }
+
         // "Since your last run": diff the two most recent completed-run snapshots (they survive
         // an input edit, so this shows what a change did, not seed noise) — same strategy only.
         $snapshots = $this->scenario->result_snapshots ?? [];
