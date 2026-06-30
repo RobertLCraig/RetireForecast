@@ -367,24 +367,23 @@ class ScenarioResultsTest extends TestCase
             ->assertDontSee('Quick what-if:');
     }
 
-    public function test_the_explore_sliders_re_forecast_live(): void
+    public function test_the_explore_levers_save_a_what_if_from_the_adjustments(): void
     {
-        $component = Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()]);
+        // The levers no longer run a throwaway live preview: they build a proper, saved what-if
+        // (a delta-child of the base), so a lever change is always a real, comparable scenario.
+        $base = $this->scenario();
+        $component = Livewire::test(ScenarioResults::class, ['scenario' => $base]);
 
-        // At rest the panel shows the plan as it stands — no adjustment applied.
-        $this->assertNotNull($component->viewData('slider'));
-        $this->assertFalse($component->viewData('slider')['changed']);
-        $baseEnd = $component->viewData('slider')['usableEnd'];
+        // No adjustment: "create" saves nothing (no empty what-if).
+        $component->call('makeWhatIf');
+        $this->assertSame(0, $base->children()->count());
 
-        // Spending 30% more is an adjustment, and it moves the end-wealth figure.
-        $component->set('slideSpend', 30);
-        $this->assertTrue($component->viewData('slider')['changed']);
-        $this->assertNotSame($baseEnd, $component->viewData('slider')['usableEnd']);
-
-        // Reset returns to the base position.
-        $component->call('resetSliders');
-        $this->assertFalse($component->viewData('slider')['changed']);
-        $this->assertSame($baseEnd, $component->viewData('slider')['usableEnd']);
+        // Set a lever, then save it → a delta-child of the base is created from the adjustment.
+        $component->set('slideSpend', 30)->call('makeWhatIf');
+        $child = $base->children()->latest()->first();
+        $this->assertNotNull($child);
+        $this->assertSame($base->id, $child->parent_scenario_id);
+        $this->assertStringContainsString('Spend +30%', $child->overrides['name']);
     }
 
     private function scenario(): Scenario

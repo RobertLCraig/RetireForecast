@@ -20,7 +20,7 @@
         ['id' => 'sec-sale', 'label' => 'If you sell', 'show' => (bool) $saleExplainer],
         ['id' => 'sec-milestones', 'label' => 'Life events', 'show' => (bool) $milestones],
         ['id' => 'sec-ladder', 'label' => 'Year-by-year cashflow', 'show' => ! empty($ladder['rows'])],
-        ['id' => 'sec-explore', 'label' => 'Explore the levers', 'show' => (bool) $slider],
+        ['id' => 'sec-explore', 'label' => 'Build a what-if', 'show' => $canMakeWhatIf],
     ], fn ($s) => $s['show']));
 @endphp
 
@@ -832,16 +832,17 @@
         </section>
     @endif
 
-    {{-- Explore the levers: live what-if sliders (exploratory, never saved). Each drag re-runs a
-         throwaway deterministic forecast with the adjustment applied, so the reader feels how
-         sensitive the outcome is to retiring later, spending more, returns and longevity. --}}
-    @if ($slider)
+    {{-- Build a what-if: set the levers, then SAVE them as a proper what-if scenario (a
+         delta-child of the base) — it appears under this plan and is compared on the Compare
+         page. Replaces the old throwaway live-slider preview, so a lever change is always a
+         real, comparable scenario rather than an unsaved exploration baked into the report. --}}
+    @if ($canMakeWhatIf)
         <section id="sec-explore" aria-labelledby="explore-heading" class="{{ $card }} scroll-mt-6">
             <div class="flex items-center justify-between">
-                <h2 id="explore-heading" class="text-xl font-semibold text-gray-900">Explore the levers</h2>
+                <h2 id="explore-heading" class="text-xl font-semibold text-gray-900">Build a what-if</h2>
                 <button type="button" wire:click="resetSliders" class="text-sm text-blue-700 underline">Reset</button>
             </div>
-            <p class="mt-1 text-sm text-gray-600">Drag to see how the outcome moves. These adjustments are temporary and never saved — to keep one, build a what-if.</p>
+            <p class="mt-1 text-sm text-gray-600">Set the levers, then save them as a what-if scenario to compare against this plan.</p>
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
                 <label class="block">
                     <span class="text-sm font-medium text-gray-700">Retire: {{ $slideRetire === 0 ? 'as planned' : ($slideRetire > 0 ? $slideRetire.' yr later' : abs($slideRetire).' yr earlier') }}</span>
@@ -860,17 +861,11 @@
                     <input type="range" min="-10" max="15" step="1" wire:model.live="slideLongevity" class="mt-1 w-full">
                 </label>
             </div>
-            <div class="mt-4 rounded-md border p-4 {{ $slider['moneyLasts'] && $slider['essentialsMet'] ? 'border-green-300 bg-green-50' : 'border-amber-300 bg-amber-50' }}" aria-live="polite">
-                <p class="font-medium {{ $slider['moneyLasts'] && $slider['essentialsMet'] ? 'text-green-900' : 'text-amber-900' }}">
-                    {{ $slider['moneyLasts'] ? '✓ On these settings, the money lasts to '.$slider['finalYear'].'.' : '⚠ On these settings, the money runs short in '.$slider['depletionYear'].'.' }}
-                </p>
-                <p class="mt-0.5 text-sm text-gray-700">
-                    Spendable wealth at the end (today's money): <strong>{{ $slider['usableEnd'] }}</strong>.
-                    {{ $slider['fullSpendMet'] ? 'Essential and discretionary spending met every year.' : ($slider['essentialsMet'] ? 'Essentials met every year; discretionary not always.' : 'Essential spending falls short in some years.') }}
-                </p>
-                @unless ($slider['changed'])<p class="mt-1 text-xs text-gray-500">This is your plan as it stands — move a slider to explore.</p>@endunless
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p class="text-sm text-gray-600" aria-live="polite">{{ $sliderSummary }}</p>
+                <button type="button" wire:click="makeWhatIf" class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Create this what-if</button>
             </div>
-            <p class="mt-2 text-xs text-gray-500">A single best-estimate (deterministic) projection in today's money, for sensitivity only; run the full forecast for the range of futures. This illustrates consequences; it does not recommend a course of action.</p>
+            <p class="mt-2 text-xs text-gray-500">Saved as a separate scenario; this report is unchanged. Compare them on the Compare page.</p>
         </section>
     @endif
 

@@ -7,6 +7,7 @@ namespace App\Livewire;
 use App\Compliance\Interpretation;
 use App\Enums\ScenarioStatus;
 use App\Forecast\AssumptionComparison;
+use App\Forecast\BuilderStateDelta;
 use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
@@ -83,31 +84,71 @@ class ScenarioResults extends Component
     }
 
     /**
-     * A throwaway deterministic re-forecast with the what-if sliders applied on top of this
-     * scenario's inputs, summarised for the explore panel. Single-sourced from the same
-     * {@see ScenarioForecaster::deterministic()} the page builds on, run on a transient (never
-     * saved) scenario, so it cannot drift; null when the inputs are not forecastable.
-     *
-     * @return array{changed: bool, moneyLasts: bool, depletionYear: int|null, finalYear: int, usableEnd: string, essentialsMet: bool, fullSpendMet: bool}|null
+     * Save the current lever settings as a proper what-if: apply them to the base plan's
+     * form-state, diff to a sparse override delta ({@see BuilderStateDelta}), and store it as an
+     * ordinary delta-child (the same shape a hand-built or quick what-if is), then open it.
+     * Replaces the old throwaway live-slider preview — a lever change is now always a real,
+     * comparable scenario. Levers that change nothing save nothing (no empty what-if).
      */
-    private function sliderForecast(): ?array
+    public function makeWhatIf(): mixed
     {
-        try {
-            $scenario = (new Scenario)->fillFromBuilderState($this->applySliders($this->scenario->effectiveBuilderState()));
-            $result = app(ScenarioForecaster::class)->deterministic($scenario);
-        } catch (\Throwable) {
+        $base = $this->scenario->baseScenario();
+        $baseState = $base->effectiveBuilderState();
+        $overrides = BuilderStateDelta::diff($baseState, $this->applySliders($baseState, $base));
+
+        if ($overrides === []) {
+            session()->flash('status', 'Move a lever first — there is nothing to save yet.');
+
             return null;
         }
 
-        return [
-            'changed' => $this->slideRetire !== 0 || $this->slideSpend !== 0 || $this->slideReturn !== 0 || $this->slideLongevity !== 0,
-            'moneyLasts' => $result->depletionCalendarYear === null,
-            'depletionYear' => $result->depletionCalendarYear,
-            'finalYear' => $result->finalCalendarYear,
-            'usableEnd' => $result->terminalUsableWealth->format(),
-            'essentialsMet' => $result->essentialsAlwaysMet,
-            'fullSpendMet' => $result->fullSpendAlwaysMet,
-        ];
+        $child = new Scenario;
+        $child->user_id = auth()->id();
+        $child->parent_scenario_id = $base->id;
+        $child->setRelation('parent', $base);
+        $child->overrides = ['name' => $this->uniqueWhatIfName($base, $this->sliderSummary())] + $overrides;
+        $child->builder_state = [];
+        $child->status = ScenarioStatus::Ready;
+        $child->projectFrom($child->effectiveBuilderState());
+        $child->save();
+
+        return redirect()->route('scenarios.results', $child)
+            ->with('status', 'What-if created from your adjustments. Compare it with the base.');
+    }
+
+    /** A short description of the current lever settings — the what-if's name and on-screen summary. */
+    private function sliderSummary(): string
+    {
+        $parts = [];
+        if ($this->slideRetire !== 0) {
+            $parts[] = 'retire '.($this->slideRetire > 0 ? '+'.$this->slideRetire : (string) $this->slideRetire).' yr';
+        }
+        if ($this->slideSpend !== 0) {
+            $parts[] = 'spend '.($this->slideSpend > 0 ? '+' : '').$this->slideSpend.'%';
+        }
+        if ($this->slideReturn !== 0) {
+            $parts[] = 'return '.($this->slideReturn > 0 ? '+' : '').$this->slideReturn.' pts';
+        }
+        if ($this->slideLongevity !== 0) {
+            $parts[] = 'live '.($this->slideLongevity > 0 ? '+' : '').$this->slideLongevity.' yr';
+        }
+
+        return $parts === [] ? 'No adjustment yet — move a lever to build a what-if.' : ucfirst(implode(', ', $parts));
+    }
+
+    /** Keep repeated lever what-ifs distinct: "Retire +2 yr", then "… (2)", "… (3)". */
+    private function uniqueWhatIfName(Scenario $base, string $name): string
+    {
+        $existing = $base->children()->pluck('name')->all();
+        if (! in_array($name, $existing, true)) {
+            return $name;
+        }
+        $n = 2;
+        while (in_array("{$name} ({$n})", $existing, true)) {
+            $n++;
+        }
+
+        return "{$name} ({$n})";
     }
 
     /**
@@ -120,7 +161,7 @@ class ScenarioResults extends Component
      * @param  array<string, mixed>  $state
      * @return array<string, mixed>
      */
-    private function applySliders(array $state): array
+    private function applySliders(array $state, Scenario $forBlend): array
     {
         foreach ($state['people'] ?? [] as $i => $person) {
             if ($this->slideRetire !== 0
@@ -147,8 +188,8 @@ class ScenarioResults extends Component
 
         if ($this->slideReturn !== 0) {
             $forecaster = app(ScenarioForecaster::class);
-            $baseBlended = $forecaster->settings($this->scenario)->allocation()
-                ->blendedRealReturn($forecaster->assumptions($this->scenario)) * 100;
+            $baseBlended = $forecaster->settings($forBlend)->allocation()
+                ->blendedRealReturn($forecaster->assumptions($forBlend)) * 100;
             $state['assumptionOverrides'] = $state['assumptionOverrides'] ?? [];
             $state['assumptionOverrides']['investmentGrowth'] = (string) round($baseBlended + $this->slideReturn, 2);
         }
@@ -392,7 +433,8 @@ class ScenarioResults extends Component
             // -> wealth) for the selected housing strategy. Shows immediately, before any run.
             'ladder' => ResultPresenter::ladder($ladderForecast, $this->scenario->safetyBufferMonths()),
             // Live what-if sliders: a throwaway deterministic re-forecast with the adjustments applied.
-            'slider' => $this->sliderForecast(),
+            'canMakeWhatIf' => ! $this->scenario->isChild(),
+            'sliderSummary' => $this->sliderSummary(),
             // The housing strategies worth offering + which is selected, for the ladder picker.
             'ladderStrategies' => $ladderContext['strategies'],
             'ladderSelected' => $selectedStrategy,
