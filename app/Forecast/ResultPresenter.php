@@ -14,6 +14,7 @@ use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
+use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
@@ -665,6 +666,22 @@ final class ResultPresenter
             if ($deathYear !== null && $deathYear <= $baseYear) {
                 $notes[] = ['kind' => 'early_death', 'text' => "{$name} is modelled to die in {$deathYear} (age {$currentAge}), the very start of the forecast. If that isn't intended, check their longevity or health setting — a value below the current age is treated as the current age."];
             }
+        }
+
+        // (c) The current home's mortgage is due for redemption within the plan — a forced
+        // decision the "stay put" projection rests on. State the assumption + its consequence so
+        // an impossible "keep paying forever" path is never left implied (factual, not advice).
+        $home = $household->primaryResidence;
+        $mortgage = $home?->outstandingMortgage;
+        if ($home !== null && $home->mortgageRedemptionYear !== null && $mortgage !== null && $mortgage->isPositive()) {
+            $year = $home->mortgageRedemptionYear;
+            $amount = $mortgage->format();
+            $text = match ($home->mortgageMaturityAction) {
+                MortgageMaturityAction::Refinance => "This home's mortgage of {$amount} is due for redemption in {$year}; the forecast assumes it is refinanced (rolled into a new mortgage). If refinancing isn't available it would have to be repaid from savings or the home sold.",
+                MortgageMaturityAction::RepayFromCapital => "This home's mortgage of {$amount} is due for redemption in {$year}; the forecast repays it from savings that year (a {$amount} one-off). If that capital isn't there, the year shows a shortfall — keeping the home is unaffordable.",
+                MortgageMaturityAction::ForcedSale => "This home's mortgage of {$amount} is due for redemption in {$year} and is modelled as not refinanceable, so keeping the home is not an option; the sell-and-rent and buy-cheaper strategies show the alternatives.",
+            };
+            $notes[] = ['kind' => 'mortgage_redemption', 'text' => $text];
         }
 
         return $notes;

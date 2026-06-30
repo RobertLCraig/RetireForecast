@@ -81,6 +81,35 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('Sam is modelled to die in 2026', $early[0]['text']);
     }
 
+    public function test_a_mortgage_due_for_redemption_is_flagged(): void
+    {
+        // The current home's mortgage is called for redemption within the plan — the forecast
+        // must say so, not leave a "keep paying forever" path implied (the V2 forced-sale case).
+        $notes = $this->notes([
+            'householdName' => 'Redeem', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Pat', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'name' => 'Lee', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230'],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '230'],
+            ],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => [
+                'currentValue' => '350000', 'ownership' => 'mortgaged', 'outstandingMortgage' => '208000',
+                'mortgageRedemptionYear' => '2026', 'mortgageMaturityAction' => 'forced_sale',
+            ],
+        ]);
+
+        $flag = array_values(array_filter($notes, fn (array $n): bool => $n['kind'] === 'mortgage_redemption'));
+        $this->assertCount(1, $flag);
+        $this->assertStringContainsString('due for redemption in 2026', $flag[0]['text']);
+        $this->assertStringContainsString('£208,000', $flag[0]['text']);
+    }
+
     public function test_a_sensible_household_raises_no_notes(): void
     {
         // Employed retiring in the future, normal longevity ⇒ nothing to flag (no noise).
