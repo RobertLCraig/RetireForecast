@@ -3,6 +3,26 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-30 — What-if sliders (explore the levers) on the results page
+**Decision:** An "Explore the levers" panel with live sliders — retire ± years, spend ± %, investment return ±
+percentage points, live ± years — runs a **throwaway deterministic re-forecast** with the adjustment applied and shows
+the outcome (money lasts / runs short, spendable wealth at end, spending met). Exploratory and **never saved** (build a
+what-if to keep one). Applied via the same levers the quick what-ifs + editable assumptions use (on a transient
+scenario through `ScenarioForecaster::deterministic`), so a slider and a saved what-if move the forecast identically.
+**Why (Rob):** "err on the side of more flexibility to change values; rebuilds are okay." Sliders make sensitivity
+tangible without committing a what-if.
+**Status:** built, suite green, pending Rob's browser sign-off.
+
+## 2026-06-30 — Salary is prorated in the retirement year, not dropped
+**Decision:** The engine paid full salary while `age < plannedRetirementAge` and **nothing** from the year the person
+reached that age — dropping the whole final year's earnings. It now **prorates** the retirement year: the person stops
+on their birthday (when they turn the age), so salary (and its NI) is **birth-month ÷ 12** of the year. Uses the DOB
+already captured — no new input.
+**Why (Rob):** "salary stops at the point of retirement, so would not be paid for a full calendar year if you leave in
+July." The old whole-year drop was conservative but wrong; true month-level proration needs the retirement month, which
+the birthday approximates from existing data. An explicit retirement-*month* override remains a possible refinement.
+**Status:** built, suite green.
+
 ## 2026-06-30 — Per-year surplus/shortfall + a configurable usable-money safety floor
 **Decision:** The cashflow ladder classifies each year as **surplus** (regular income covers spend), **drawing** (dipping
 into savings to meet spend) or **shortfall** (spend not met) — on **usable money** — and flags any year usable funds fall
