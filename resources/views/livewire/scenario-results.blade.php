@@ -8,6 +8,10 @@
     // section to the page and its nav entry here together.
     $toc = array_values(array_filter([
         ['id' => 'sec-input-notes', 'label' => 'A note on your inputs', 'show' => (bool) $inputNotes],
+        ['id' => 'sec-headline', 'label' => 'Will the money last?', 'show' => (bool) $presented],
+        ['id' => 'sec-longevity', 'label' => 'How long it may need to last', 'show' => ! empty($presented['longevity'])],
+        ['id' => 'sec-fan', 'label' => 'Outlook over time', 'show' => (bool) $presented],
+        ['id' => 'sec-comparison', 'label' => 'By housing strategy', 'show' => (bool) $presented],
         ['id' => 'sec-shock', 'label' => 'Pension lump-sum tax shock', 'show' => (bool) $shock],
         ['id' => 'sec-sensitivity', 'label' => 'Assumption sensitivity', 'show' => (bool) $sensitivity],
         ['id' => 'sec-budget', 'label' => 'Your spending plan', 'show' => ! empty($budget['tiers'])],
@@ -18,10 +22,6 @@
         ['id' => 'sec-milestones', 'label' => 'Life events', 'show' => (bool) $milestones],
         ['id' => 'sec-ladder', 'label' => 'Year-by-year cashflow', 'show' => ! empty($ladder['rows'])],
         ['id' => 'sec-explore', 'label' => 'Explore the levers', 'show' => (bool) $slider],
-        ['id' => 'sec-headline', 'label' => 'Will the money last?', 'show' => (bool) $presented],
-        ['id' => 'sec-longevity', 'label' => 'How long it may need to last', 'show' => ! empty($presented['longevity'])],
-        ['id' => 'sec-fan', 'label' => 'Outlook over time', 'show' => (bool) $presented],
-        ['id' => 'sec-comparison', 'label' => 'By housing strategy', 'show' => (bool) $presented],
     ], fn ($s) => $s['show']));
 @endphp
 
@@ -193,6 +193,259 @@
         </div>
     @endif
 
+    @if (! $presented)
+        <div class="{{ $card }} text-sm text-gray-600">
+            <p>No completed run yet. Run a preview to see headline figures, then the full forecast for the precise picture.</p>
+        </div>
+    @else
+        @php $variants = $presented['variants']; $primary = $presented['primary']; @endphp
+
+        {{-- Per-result disclaimer travels with the figures (plan: every Result render). --}}
+        <x-disclaimer.result />
+
+        {{-- Every output is labelled with the mode that produced it (DECISIONS 2026-06-25). --}}
+        <p class="text-xs text-gray-500">
+            Output mode:
+            <span class="font-medium text-gray-700">{{ $interpretation ? 'Interpretation (advice-style, enabled for your account)' : 'Neutral guidance' }}</span>
+        </p>
+
+        {{-- Headline numbers as text (never only in a chart) ----------------------- --}}
+        <section id="sec-headline" aria-labelledby="headline-heading" class="scroll-mt-6 space-y-3">
+            <h2 id="headline-heading" class="text-xl font-semibold text-gray-900">Will the money last?</h2>
+            <p class="text-sm text-gray-600">
+                Under this run's assumptions, across {{ $resultsRun->n_paths }} simulated futures
+                ({{ $resultsRun->mode->value }} run, seed {{ $resultsRun->seed }}).
+            </p>
+            <div class="grid gap-4 md:grid-cols-3">
+                @foreach ($variants as $key => $v)
+                    @php
+                        $verdictStyle = [
+                            'none' => 'bg-green-50 text-green-800',
+                            'low' => 'bg-green-50 text-green-800',
+                            'medium' => 'bg-amber-50 text-amber-800',
+                            'high' => 'bg-red-50 text-red-800',
+                        ][$v['verdict']['level']];
+                    @endphp
+                    <div class="{{ $card }} {{ $key === $primary ? 'ring-2 ring-blue-500' : '' }}">
+                        <h3 class="font-semibold text-gray-900">{{ $v['label'] }}@if ($key === $primary)<span class="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">primary</span>@endif</h3>
+                        <p class="mt-2 rounded-md px-3 py-2 text-sm font-medium {{ $verdictStyle }}" @if ($v['verdict']['level'] === 'high') role="alert" @endif>{{ $v['verdict']['text'] }}</p>
+                        <dl class="mt-3 space-y-1 text-sm">
+                            <div class="flex justify-between"><dt class="text-gray-600">Essentials always met</dt><dd class="font-medium">{{ $v['successEssentials'] }}</dd></div>
+                            <div class="flex justify-between"><dt class="text-gray-600">Full spending met</dt><dd class="font-medium">{{ $v['successFullSpend'] }}</dd></div>
+                            <div class="flex justify-between"><dt class="text-gray-600">Chance of running out</dt><dd class="font-medium">{{ $v['depletionRate'] }}</dd></div>
+                            <div class="flex justify-between"><dt class="text-gray-600">If so, typically by</dt><dd class="font-medium">{{ $v['medianDepletionYear'] ?? '—' }}</dd></div>
+                            @if ($v['usableP50'])
+                                <div class="flex justify-between"><dt class="text-gray-600">Usable wealth left (excl. home)</dt><dd class="font-medium">{{ $v['usableP50'] }}</dd></div>
+                            @endif
+                            <div class="flex justify-between"><dt class="text-gray-600">Total wealth left (incl. home)</dt><dd class="font-medium">{{ $v['terminalP50'] }}</dd></div>
+                        </dl>
+                    </div>
+                @endforeach
+            </div>
+            <p class="mt-3 text-xs text-gray-500">"Chance of running out" counts the simulated futures with at least one year your essential spending isn't fully covered by income and savings — a shortfall a future may later recover from as guaranteed income catches up. "Wealth left" is the median amount at the very end. So an option can leave money at the end yet still have run short along the way — and "total wealth left" includes any home you would still own, which stays high even when the usable cash for day-to-day spending has run out.</p>
+        </section>
+
+        {{-- Longevity: how long the money may need to last, read off the joint-life mortality
+             sampler the Monte Carlo already runs. Descriptive (a spread of outcomes), not advice. --}}
+        @if (! empty($presented['longevity']))
+            @php $lg = $presented['longevity']; @endphp
+            <section id="sec-longevity" aria-labelledby="longevity-heading" class="{{ $card }} scroll-mt-6">
+                <h2 id="longevity-heading" class="text-xl font-semibold text-gray-900">How long the money may need to last</h2>
+                <p class="mt-1 text-sm text-gray-600">From the same joint-life mortality model the simulation runs, framed around the <strong>last survivor</strong> (how long the money has to stretch for a couple). A spread of possibilities, not a prediction.</p>
+                <dl class="mt-4 grid gap-4 sm:grid-cols-3">
+                    <div class="rounded-md bg-gray-50 p-4">
+                        <dt class="text-sm text-gray-500">Plan to roughly</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">{{ $lg['planYearsP90'] }} years</dd>
+                        <dd class="mt-1 text-xs text-gray-500">a prudent horizon (1 in 10 last this long or longer); median is {{ $lg['planYearsP50'] }} years.</dd>
+                    </div>
+                    <div class="rounded-md bg-gray-50 p-4">
+                        <dt class="text-sm text-gray-500">Last survivor reaches</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">age {{ $lg['ageP50'] }}</dd>
+                        <dd class="mt-1 text-xs text-gray-500">typically; a low-to-high range of {{ $lg['ageP10'] }}–{{ $lg['ageP90'] }}.</dd>
+                    </div>
+                    <div class="rounded-md bg-gray-50 p-4">
+                        <dt class="text-sm text-gray-500">Chance one of you reaches</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">{{ $lg['reaches95'] }} to 95</dd>
+                        <dd class="mt-1 text-xs text-gray-500">and {{ $lg['reaches100'] }} to 100 — the tail the median hides.</dd>
+                    </div>
+                </dl>
+            </section>
+        @endif
+
+        {{-- A run computed before the spendable-money view existed can't show it: say so and
+             point at the re-run buttons, rather than silently drawing total wealth as if it
+             were spendable money (no silent failure). --}}
+        @unless ($presented['usableFanAvailable'])
+            <div role="status" class="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                These results were calculated before the spendable-money (excluding home) view was added, so the charts below show total wealth only and the <strong>Include home value</strong> toggle has nothing to switch to. Run the forecast again (the buttons above) to see your spendable money over time.
+            </div>
+        @endunless
+
+        {{-- Fan chart: the chosen strategy's outcome spread over time --------------- --}}
+        @php $fan = $presented['fan']; @endphp
+        <section id="sec-fan" aria-labelledby="fan-heading" class="{{ $card }} scroll-mt-6">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h2 id="fan-heading" class="text-xl font-semibold text-gray-900">Projected {{ $fan['usableBasis'] ? 'spendable money' : 'total wealth' }} over time — {{ $fan['label'] }}</h2>
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 text-sm text-gray-600">
+                        <input type="checkbox" wire:model.live="includeHome" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        Include home value
+                    </label>
+                    <button type="button" wire:click="downloadFanCsv" class="text-sm text-blue-700 underline">Download CSV</button>
+                </div>
+            </div>
+            <p class="mt-1 text-sm text-gray-600">
+                The shaded bands are the range across thousands of simulated futures (10th–90th and 25th–75th percentiles); the solid line is the median, with half of futures above it and half below. Figures are in today's money.
+                @if ($fan['usableBasis'])
+                    This is your <strong>spendable</strong> money — it excludes your home, which can't pay day-to-day bills unless you sell. Watch the lower edge: where the bottom band trends toward £0, a meaningful share of futures have run short.
+                @else
+                    This <strong>includes your home's value</strong> — a net-worth view. The home can't cover day-to-day spending unless sold, so the spendable (excl-home) view is the honest "will it last" picture.
+                @endif
+            </p>
+
+            {{-- Key on the (non-ignored) outer div so a basis toggle replaces the subtree and
+                 re-inits the chart with the new options; wire:ignore inside keeps every other
+                 poll from disturbing the live canvas. --}}
+            <div class="mt-4" wire:key="fan-chart-{{ $includeHome ? 'incl' : 'excl' }}">
+                <div wire:ignore>
+                    <div x-data="chart(@js($fan['options']))" role="img"
+                        aria-label="Fan chart of projected {{ $fan['usableBasis'] ? 'spendable money excluding the home' : 'total wealth including the home' }} by year for {{ $fan['label'] }}. The full figures are in the data table below."></div>
+                </div>
+            </div>
+
+            @include('livewire.partials.tail-note')
+
+            <details class="mt-4">
+                <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers behind this chart</summary>
+                <div class="mt-2 overflow-x-auto" tabindex="0">
+                    <table class="w-full text-sm">
+                        <caption class="sr-only">Projected {{ $fan['usableBasis'] ? 'spendable money (excl. home)' : 'total wealth (incl. home)' }} (real pounds) by calendar year and percentile for {{ $fan['label'] }}</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col" class="{{ $th }}">Year</th>
+                                <th scope="col" class="{{ $th }}">Age(s)</th>
+                                <th scope="col" class="{{ $th }}">10th</th>
+                                <th scope="col" class="{{ $th }}">25th</th>
+                                <th scope="col" class="{{ $th }}">Median</th>
+                                <th scope="col" class="{{ $th }}">75th</th>
+                                <th scope="col" class="{{ $th }}">90th</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($fan['rows'] as $row)
+                                <tr>
+                                    <th scope="row" class="{{ $td }} font-medium">{{ $row['year'] }}</th>
+                                    <td class="{{ $td }}">{{ $row['ages'] ?? '—' }}</td>
+                                    <td class="{{ $td }}">{{ $row['p10'] }}</td>
+                                    <td class="{{ $td }}">{{ $row['p25'] }}</td>
+                                    <td class="{{ $td }}">{{ $row['p50'] }}</td>
+                                    <td class="{{ $td }}">{{ $row['p75'] }}</td>
+                                    <td class="{{ $td }}">{{ $row['p90'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        </section>
+
+        {{-- Strategy comparison OVER TIME: which keeps the most spendable money for longest --}}
+        @php $comparison = $presented['comparison']; @endphp
+        <section id="sec-comparison" aria-labelledby="compare-heading" class="{{ $card }} scroll-mt-6">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h2 id="compare-heading" class="text-xl font-semibold text-gray-900">{{ $comparison['usableBasis'] ? 'Spendable money' : 'Total wealth' }} over time, by housing strategy</h2>
+                <label class="flex items-center gap-2 text-sm text-gray-600">
+                    <input type="checkbox" wire:model.live="includeHome" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    Include home value
+                </label>
+            </div>
+            <p class="mt-1 text-sm text-gray-600">
+                Each line is one housing strategy's median {{ $comparison['usableBasis'] ? 'spendable money (excl. home)' : 'total wealth (incl. home)' }}, year by year — all run on identical simulated futures, so the difference is the housing choice alone. A line that stays higher keeps more usable money available as you age; a line reaching £0 is where the typical future runs dry. A strategy can sit higher here yet still carry a greater chance of a shortfall year, so read it alongside the table below. These are consequences, not a recommendation.
+            </p>
+
+            <div class="mt-4" wire:key="compare-chart-{{ $includeHome ? 'incl' : 'excl' }}">
+                <div wire:ignore>
+                    <div x-data="chart(@js($comparison['options']))" role="img"
+                        aria-label="Line chart of median {{ $comparison['usableBasis'] ? 'spendable money excluding the home' : 'total wealth including the home' }} over time for each housing strategy. The full figures are in the data tables below."></div>
+                </div>
+            </div>
+
+            @include('livewire.partials.tail-note')
+
+            <details class="mt-4">
+                <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the year-by-year figures behind this chart</summary>
+                <div class="mt-2 overflow-x-auto" tabindex="0">
+                    <table class="w-full text-sm">
+                        <caption class="sr-only">Median {{ $comparison['usableBasis'] ? 'spendable money (excl. home)' : 'total wealth (incl. home)' }} by calendar year and housing strategy</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col" class="{{ $th }}">Year</th>
+                                <th scope="col" class="{{ $th }}">Age(s)</th>
+                                @foreach ($comparison['strategies'] as $strategy)
+                                    <th scope="col" class="{{ $th }}">{{ $strategy['label'] }}</th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($comparison['lineRows'] as $row)
+                                <tr>
+                                    <th scope="row" class="{{ $td }} font-medium">{{ $row['year'] }}</th>
+                                    <td class="{{ $td }}">{{ $row['ages'] ?? '—' }}</td>
+                                    @foreach ($comparison['strategies'] as $strategy)
+                                        <td class="{{ $td }}">{{ $row['cells'][$strategy['key']] ?? '—' }}</td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+
+            {{-- Per-strategy summary: the run-out risk and end figures the lines don't show,
+                 so a high line never hides a high risk. --}}
+            <div class="mt-6">
+                <h3 class="text-sm font-semibold text-gray-900">How each strategy ends up</h3>
+                <p class="mt-1 text-xs text-gray-500">"Chance of running short" is the share of futures with at least one year your essential spending wasn't fully covered (a future may recover later). "Median … left" is the typical amount at the very end.</p>
+                <div class="mt-2 overflow-x-auto" tabindex="0">
+                    <table class="w-full text-sm">
+                        <caption class="sr-only">Run-out risk and median wealth left by housing strategy</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col" class="{{ $th }}">Strategy</th>
+                                <th scope="col" class="{{ $th }}">Essentials always met</th>
+                                <th scope="col" class="{{ $th }}">Full lifestyle met</th>
+                                <th scope="col" class="{{ $th }}">Chance of running short</th>
+                                <th scope="col" class="{{ $th }}">Typically short by</th>
+                                <th scope="col" class="{{ $th }}">Median spendable left (excl. home)</th>
+                                <th scope="col" class="{{ $th }}">Median total left (incl. home)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($comparison['rows'] as $row)
+                                <tr>
+                                    <th scope="row" class="{{ $td }} font-medium">{{ $row['label'] }}</th>
+                                    <td class="{{ $td }}">{{ $row['successEssentials'] }}</td>
+                                    <td class="{{ $td }}">{{ $row['successFullSpend'] }}</td>
+                                    <td class="{{ $td }}">{{ $row['depletionRate'] }}</td>
+                                    <td class="{{ $td }}">{{ $row['medianDepletionYear'] ?? '—' }}</td>
+                                    <td class="{{ $td }}">{{ $row['medianUsable'] ?? '—' }}</td>
+                                    <td class="{{ $td }}">{{ $row['medianTerminal'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <x-signpost class="mt-4" />
+        </section>
+
+        {{-- Walled-off, admin-granted interpretation. Built only when the gate allows;
+             the directive wording lives in App\Compliance\Interpretation, never here. --}}
+        @if ($interpretation)
+            @include('livewire.partials.interpretation', ['interpretation' => $interpretation])
+        @endif
+    @endif
     {{-- Headline output #1: the lump-sum tax shock. Deterministic, so it shows as soon as
          a withdrawal is planned, before (and independent of) any Monte Carlo run. --}}
     @if ($shock)
@@ -736,258 +989,5 @@
         </section>
     @endif
 
-    @if (! $presented)
-        <div class="{{ $card }} text-sm text-gray-600">
-            <p>No completed run yet. Run a preview to see headline figures, then the full forecast for the precise picture.</p>
-        </div>
-    @else
-        @php $variants = $presented['variants']; $primary = $presented['primary']; @endphp
-
-        {{-- Per-result disclaimer travels with the figures (plan: every Result render). --}}
-        <x-disclaimer.result />
-
-        {{-- Every output is labelled with the mode that produced it (DECISIONS 2026-06-25). --}}
-        <p class="text-xs text-gray-500">
-            Output mode:
-            <span class="font-medium text-gray-700">{{ $interpretation ? 'Interpretation (advice-style, enabled for your account)' : 'Neutral guidance' }}</span>
-        </p>
-
-        {{-- Headline numbers as text (never only in a chart) ----------------------- --}}
-        <section id="sec-headline" aria-labelledby="headline-heading" class="scroll-mt-6 space-y-3">
-            <h2 id="headline-heading" class="text-xl font-semibold text-gray-900">Will the money last?</h2>
-            <p class="text-sm text-gray-600">
-                Under this run's assumptions, across {{ $resultsRun->n_paths }} simulated futures
-                ({{ $resultsRun->mode->value }} run, seed {{ $resultsRun->seed }}).
-            </p>
-            <div class="grid gap-4 md:grid-cols-3">
-                @foreach ($variants as $key => $v)
-                    @php
-                        $verdictStyle = [
-                            'none' => 'bg-green-50 text-green-800',
-                            'low' => 'bg-green-50 text-green-800',
-                            'medium' => 'bg-amber-50 text-amber-800',
-                            'high' => 'bg-red-50 text-red-800',
-                        ][$v['verdict']['level']];
-                    @endphp
-                    <div class="{{ $card }} {{ $key === $primary ? 'ring-2 ring-blue-500' : '' }}">
-                        <h3 class="font-semibold text-gray-900">{{ $v['label'] }}@if ($key === $primary)<span class="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">primary</span>@endif</h3>
-                        <p class="mt-2 rounded-md px-3 py-2 text-sm font-medium {{ $verdictStyle }}" @if ($v['verdict']['level'] === 'high') role="alert" @endif>{{ $v['verdict']['text'] }}</p>
-                        <dl class="mt-3 space-y-1 text-sm">
-                            <div class="flex justify-between"><dt class="text-gray-600">Essentials always met</dt><dd class="font-medium">{{ $v['successEssentials'] }}</dd></div>
-                            <div class="flex justify-between"><dt class="text-gray-600">Full spending met</dt><dd class="font-medium">{{ $v['successFullSpend'] }}</dd></div>
-                            <div class="flex justify-between"><dt class="text-gray-600">Chance of running out</dt><dd class="font-medium">{{ $v['depletionRate'] }}</dd></div>
-                            <div class="flex justify-between"><dt class="text-gray-600">If so, typically by</dt><dd class="font-medium">{{ $v['medianDepletionYear'] ?? '—' }}</dd></div>
-                            @if ($v['usableP50'])
-                                <div class="flex justify-between"><dt class="text-gray-600">Usable wealth left (excl. home)</dt><dd class="font-medium">{{ $v['usableP50'] }}</dd></div>
-                            @endif
-                            <div class="flex justify-between"><dt class="text-gray-600">Total wealth left (incl. home)</dt><dd class="font-medium">{{ $v['terminalP50'] }}</dd></div>
-                        </dl>
-                    </div>
-                @endforeach
-            </div>
-            <p class="mt-3 text-xs text-gray-500">"Chance of running out" counts the simulated futures with at least one year your essential spending isn't fully covered by income and savings — a shortfall a future may later recover from as guaranteed income catches up. "Wealth left" is the median amount at the very end. So an option can leave money at the end yet still have run short along the way — and "total wealth left" includes any home you would still own, which stays high even when the usable cash for day-to-day spending has run out.</p>
-        </section>
-
-        {{-- Longevity: how long the money may need to last, read off the joint-life mortality
-             sampler the Monte Carlo already runs. Descriptive (a spread of outcomes), not advice. --}}
-        @if (! empty($presented['longevity']))
-            @php $lg = $presented['longevity']; @endphp
-            <section id="sec-longevity" aria-labelledby="longevity-heading" class="{{ $card }} scroll-mt-6">
-                <h2 id="longevity-heading" class="text-xl font-semibold text-gray-900">How long the money may need to last</h2>
-                <p class="mt-1 text-sm text-gray-600">From the same joint-life mortality model the simulation runs, framed around the <strong>last survivor</strong> (how long the money has to stretch for a couple). A spread of possibilities, not a prediction.</p>
-                <dl class="mt-4 grid gap-4 sm:grid-cols-3">
-                    <div class="rounded-md bg-gray-50 p-4">
-                        <dt class="text-sm text-gray-500">Plan to roughly</dt>
-                        <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">{{ $lg['planYearsP90'] }} years</dd>
-                        <dd class="mt-1 text-xs text-gray-500">a prudent horizon (1 in 10 last this long or longer); median is {{ $lg['planYearsP50'] }} years.</dd>
-                    </div>
-                    <div class="rounded-md bg-gray-50 p-4">
-                        <dt class="text-sm text-gray-500">Last survivor reaches</dt>
-                        <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">age {{ $lg['ageP50'] }}</dd>
-                        <dd class="mt-1 text-xs text-gray-500">typically; a low-to-high range of {{ $lg['ageP10'] }}–{{ $lg['ageP90'] }}.</dd>
-                    </div>
-                    <div class="rounded-md bg-gray-50 p-4">
-                        <dt class="text-sm text-gray-500">Chance one of you reaches</dt>
-                        <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">{{ $lg['reaches95'] }} to 95</dd>
-                        <dd class="mt-1 text-xs text-gray-500">and {{ $lg['reaches100'] }} to 100 — the tail the median hides.</dd>
-                    </div>
-                </dl>
-            </section>
-        @endif
-
-        {{-- A run computed before the spendable-money view existed can't show it: say so and
-             point at the re-run buttons, rather than silently drawing total wealth as if it
-             were spendable money (no silent failure). --}}
-        @unless ($presented['usableFanAvailable'])
-            <div role="status" class="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                These results were calculated before the spendable-money (excluding home) view was added, so the charts below show total wealth only and the <strong>Include home value</strong> toggle has nothing to switch to. Run the forecast again (the buttons above) to see your spendable money over time.
-            </div>
-        @endunless
-
-        {{-- Fan chart: the chosen strategy's outcome spread over time --------------- --}}
-        @php $fan = $presented['fan']; @endphp
-        <section id="sec-fan" aria-labelledby="fan-heading" class="{{ $card }} scroll-mt-6">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <h2 id="fan-heading" class="text-xl font-semibold text-gray-900">Projected {{ $fan['usableBasis'] ? 'spendable money' : 'total wealth' }} over time — {{ $fan['label'] }}</h2>
-                <div class="flex items-center gap-4">
-                    <label class="flex items-center gap-2 text-sm text-gray-600">
-                        <input type="checkbox" wire:model.live="includeHome" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                        Include home value
-                    </label>
-                    <button type="button" wire:click="downloadFanCsv" class="text-sm text-blue-700 underline">Download CSV</button>
-                </div>
-            </div>
-            <p class="mt-1 text-sm text-gray-600">
-                The shaded bands are the range across thousands of simulated futures (10th–90th and 25th–75th percentiles); the solid line is the median, with half of futures above it and half below. Figures are in today's money.
-                @if ($fan['usableBasis'])
-                    This is your <strong>spendable</strong> money — it excludes your home, which can't pay day-to-day bills unless you sell. Watch the lower edge: where the bottom band trends toward £0, a meaningful share of futures have run short.
-                @else
-                    This <strong>includes your home's value</strong> — a net-worth view. The home can't cover day-to-day spending unless sold, so the spendable (excl-home) view is the honest "will it last" picture.
-                @endif
-            </p>
-
-            {{-- Key on the (non-ignored) outer div so a basis toggle replaces the subtree and
-                 re-inits the chart with the new options; wire:ignore inside keeps every other
-                 poll from disturbing the live canvas. --}}
-            <div class="mt-4" wire:key="fan-chart-{{ $includeHome ? 'incl' : 'excl' }}">
-                <div wire:ignore>
-                    <div x-data="chart(@js($fan['options']))" role="img"
-                        aria-label="Fan chart of projected {{ $fan['usableBasis'] ? 'spendable money excluding the home' : 'total wealth including the home' }} by year for {{ $fan['label'] }}. The full figures are in the data table below."></div>
-                </div>
-            </div>
-
-            @include('livewire.partials.tail-note')
-
-            <details class="mt-4">
-                <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers behind this chart</summary>
-                <div class="mt-2 overflow-x-auto" tabindex="0">
-                    <table class="w-full text-sm">
-                        <caption class="sr-only">Projected {{ $fan['usableBasis'] ? 'spendable money (excl. home)' : 'total wealth (incl. home)' }} (real pounds) by calendar year and percentile for {{ $fan['label'] }}</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col" class="{{ $th }}">Year</th>
-                                <th scope="col" class="{{ $th }}">Age(s)</th>
-                                <th scope="col" class="{{ $th }}">10th</th>
-                                <th scope="col" class="{{ $th }}">25th</th>
-                                <th scope="col" class="{{ $th }}">Median</th>
-                                <th scope="col" class="{{ $th }}">75th</th>
-                                <th scope="col" class="{{ $th }}">90th</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($fan['rows'] as $row)
-                                <tr>
-                                    <th scope="row" class="{{ $td }} font-medium">{{ $row['year'] }}</th>
-                                    <td class="{{ $td }}">{{ $row['ages'] ?? '—' }}</td>
-                                    <td class="{{ $td }}">{{ $row['p10'] }}</td>
-                                    <td class="{{ $td }}">{{ $row['p25'] }}</td>
-                                    <td class="{{ $td }}">{{ $row['p50'] }}</td>
-                                    <td class="{{ $td }}">{{ $row['p75'] }}</td>
-                                    <td class="{{ $td }}">{{ $row['p90'] }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </details>
-        </section>
-
-        {{-- Strategy comparison OVER TIME: which keeps the most spendable money for longest --}}
-        @php $comparison = $presented['comparison']; @endphp
-        <section id="sec-comparison" aria-labelledby="compare-heading" class="{{ $card }} scroll-mt-6">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <h2 id="compare-heading" class="text-xl font-semibold text-gray-900">{{ $comparison['usableBasis'] ? 'Spendable money' : 'Total wealth' }} over time, by housing strategy</h2>
-                <label class="flex items-center gap-2 text-sm text-gray-600">
-                    <input type="checkbox" wire:model.live="includeHome" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                    Include home value
-                </label>
-            </div>
-            <p class="mt-1 text-sm text-gray-600">
-                Each line is one housing strategy's median {{ $comparison['usableBasis'] ? 'spendable money (excl. home)' : 'total wealth (incl. home)' }}, year by year — all run on identical simulated futures, so the difference is the housing choice alone. A line that stays higher keeps more usable money available as you age; a line reaching £0 is where the typical future runs dry. A strategy can sit higher here yet still carry a greater chance of a shortfall year, so read it alongside the table below. These are consequences, not a recommendation.
-            </p>
-
-            <div class="mt-4" wire:key="compare-chart-{{ $includeHome ? 'incl' : 'excl' }}">
-                <div wire:ignore>
-                    <div x-data="chart(@js($comparison['options']))" role="img"
-                        aria-label="Line chart of median {{ $comparison['usableBasis'] ? 'spendable money excluding the home' : 'total wealth including the home' }} over time for each housing strategy. The full figures are in the data tables below."></div>
-                </div>
-            </div>
-
-            @include('livewire.partials.tail-note')
-
-            <details class="mt-4">
-                <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the year-by-year figures behind this chart</summary>
-                <div class="mt-2 overflow-x-auto" tabindex="0">
-                    <table class="w-full text-sm">
-                        <caption class="sr-only">Median {{ $comparison['usableBasis'] ? 'spendable money (excl. home)' : 'total wealth (incl. home)' }} by calendar year and housing strategy</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col" class="{{ $th }}">Year</th>
-                                <th scope="col" class="{{ $th }}">Age(s)</th>
-                                @foreach ($comparison['strategies'] as $strategy)
-                                    <th scope="col" class="{{ $th }}">{{ $strategy['label'] }}</th>
-                                @endforeach
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($comparison['lineRows'] as $row)
-                                <tr>
-                                    <th scope="row" class="{{ $td }} font-medium">{{ $row['year'] }}</th>
-                                    <td class="{{ $td }}">{{ $row['ages'] ?? '—' }}</td>
-                                    @foreach ($comparison['strategies'] as $strategy)
-                                        <td class="{{ $td }}">{{ $row['cells'][$strategy['key']] ?? '—' }}</td>
-                                    @endforeach
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </details>
-
-            {{-- Per-strategy summary: the run-out risk and end figures the lines don't show,
-                 so a high line never hides a high risk. --}}
-            <div class="mt-6">
-                <h3 class="text-sm font-semibold text-gray-900">How each strategy ends up</h3>
-                <p class="mt-1 text-xs text-gray-500">"Chance of running short" is the share of futures with at least one year your essential spending wasn't fully covered (a future may recover later). "Median … left" is the typical amount at the very end.</p>
-                <div class="mt-2 overflow-x-auto" tabindex="0">
-                    <table class="w-full text-sm">
-                        <caption class="sr-only">Run-out risk and median wealth left by housing strategy</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col" class="{{ $th }}">Strategy</th>
-                                <th scope="col" class="{{ $th }}">Essentials always met</th>
-                                <th scope="col" class="{{ $th }}">Full lifestyle met</th>
-                                <th scope="col" class="{{ $th }}">Chance of running short</th>
-                                <th scope="col" class="{{ $th }}">Typically short by</th>
-                                <th scope="col" class="{{ $th }}">Median spendable left (excl. home)</th>
-                                <th scope="col" class="{{ $th }}">Median total left (incl. home)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($comparison['rows'] as $row)
-                                <tr>
-                                    <th scope="row" class="{{ $td }} font-medium">{{ $row['label'] }}</th>
-                                    <td class="{{ $td }}">{{ $row['successEssentials'] }}</td>
-                                    <td class="{{ $td }}">{{ $row['successFullSpend'] }}</td>
-                                    <td class="{{ $td }}">{{ $row['depletionRate'] }}</td>
-                                    <td class="{{ $td }}">{{ $row['medianDepletionYear'] ?? '—' }}</td>
-                                    <td class="{{ $td }}">{{ $row['medianUsable'] ?? '—' }}</td>
-                                    <td class="{{ $td }}">{{ $row['medianTerminal'] }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <x-signpost class="mt-4" />
-        </section>
-
-        {{-- Walled-off, admin-granted interpretation. Built only when the gate allows;
-             the directive wording lives in App\Compliance\Interpretation, never here. --}}
-        @if ($interpretation)
-            @include('livewire.partials.interpretation', ['interpretation' => $interpretation])
-        @endif
-    @endif
     </div>{{-- /content column --}}
 </div>{{-- /on-this-page grid --}}
