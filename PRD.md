@@ -86,3 +86,15 @@ lump-sum question and longevity risk made explicit.
       presets as starting points that derive a tweakable custom set + live preview; and **buy-vs-rent becomes a
       deliberate what-if/Compare** rather than baked into every report. Sequenced after the #1 contingent-cost fix
       (option b). See DECISIONS 2026-06-29 "everything user-editable" + docs/RESEARCH-editable-assumptions-ux.md.
+- [ ] **Forced-housing-event workstream (2026-06-30)** — pressure-testing the engine on a real forced-mortgage
+      couple (a buy-to-let they live in, redeemed Dec 2026, can't refinance) set four improvements now in build:
+      **(A) means-tested benefits in the live forecast** (Pension Credit Guarantee Credit + the £16k capital cliff +
+      disability additions / DLA passport — today `Benefits\CapitalAssessment` is a standalone snapshot, never wired
+      into `PathProjector`, so the forecast neither credits nor erodes them); **(B) a mortgage-redemption event** (a
+      maturity year + action — refinance / repay-from-capital / forced sale — so "stay put" can't model an
+      impossible perpetual BTL); **(C) feasibility flags** (a buy price above net proceeds is silently floored
+      today; an option needing capital the household lacks should be flagged, not modelled away); and **(D)
+      input-expectation clarity** (a pay-frequency selector, a tax-free-benefit income type, and retirement-age /
+      one-off-scope prompts — the V2 case mis-entered 4-weekly DLA as monthly taxable rental, and monthly rent as
+      annual, inflating the result ~£700k). See DECISIONS 2026-06-30 (forced-mortgage pressure-test;
+      input-expectation clarity).

@@ -277,6 +277,42 @@ sharpens** them; the items below are the net-new ones), ranked by impact × on-b
   it conflicts with the local-first posture. A **deep-link to the gov.uk State Pension forecast** and a future
   **Pensions Dashboard** import (consumer launch ~2027) are the pragmatic substitutes.
 
+### Forced-housing-event workstream (2026-06-30) — from the V2 real-couple pressure-test
+Driving the engine against a real forced-mortgage couple (a BTL they live in, redeemed Dec 2026, can't refinance;
+income ≈ two State Pensions + DLA + one £[redacted] pot) found the *core* already answered (buy-vs-rent on identical seeds,
+partial-PRR CGT, income-floor + safety floor, longevity) but four decision-critical gaps. Rationale +
+the couple's figures: DECISIONS 2026-06-30 (forced-mortgage pressure-test; input-expectation clarity). Build order
+(value-first); each lands green with its own DECISIONS + DATA-MODEL note:
+
+- **(A) Means-tested benefits in the live forecast.** Today `Benefits\CapitalAssessment` (capital tariff + £16k
+  cliff, verified 2026-06-27) is a standalone snapshot, **never wired into `PathProjector`**. Build a sourced
+  `Benefits\PensionCreditCalculator` (Guarantee Credit = top assessable income up to the Standard Minimum Guarantee;
+  + **Severe Disability / Carer additions**; tariff income from capital reuses `CapitalAssessment`); add it to the
+  per-year net-cash assembly as a new `YearResult` income source **`means_tested_benefit`**, recomputed each year as
+  capital/income change, firing the £16k cliff in-projection. Add a household/person **disability flag** (drives the
+  SDP + the DLA/AA passport). **Council Tax Reduction is locally set** → v1 models the £16k cliff / PC-passport, not
+  a precise CTR award (flagged). Guards: per-source **completeness** (benefit demonstrably reaches the result) +
+  **reconciliation** (award + tariff). *Why first:* the V2 survivor-cliff (widow drops to ~£11k vs ~£26k need from
+  the first death) is where this changes the recommendation. Figures to verify against gov.uk on build:
+  /pension-credit (SMG single/couple; SDP; Carer), /attendance-allowance, /disability-living-allowance-adults.
+- **(B) Mortgage-redemption event.** `Property` gains a **redemption/maturity year** + a **maturity action**
+  {refinance at a rate · repay-from-capital · forced sale}; `PathProjector` tracks the mortgage balance and applies
+  the action at maturity (inject capital / switch to a repayment cost / transition to the sell transform). Stops
+  "stay put" silently paying a perpetual BTL that must legally be redeemed. Generalises to interest-only maturities
+  and fixed-term ends. (Pairs with: a one-off cost that declares **which path(s)** it applies to — the £[redacted] convert
+  deposit.)
+- **(C) Feasibility flags.** `HousingComparison` currently floors a buy price above net proceeds ("downsizing
+  assumed") — surface it as an **input-sanity note** ("buying at £X needs £Y more than the sale frees"); likewise
+  flag a "stay/convert" needing capital the household lacks. No silent infeasible model.
+- **(D) Input-expectation clarity.** A **pay-frequency selector** (weekly / 4-weekly / monthly / annual → stored
+  annual; 4-weekly because DWP pays that way) on every per-period money input; a **"tax-free benefit (DLA/AA/PIP)"**
+  income type (sets `taxable=false`, means-test-exempt); and **input-sanity prompts** for a blank retirement age
+  (modelled as working for life) and a one-off charged to every variant. Catches the exact V2 mis-entries at the
+  point of entry. **Also surfaced:** income tied to a property should **end when that property is sold** (the
+  rental on a sold flat) — fold into (B)/(C).
+- **Validation:** a **synthetic** forced-mortgage engine fixture exercises (A)–(C); the real couple's figures stay
+  local-only (the V2 scenario + throwaway runs), never committed.
+
 ### Sector-informed build plan (2026-06-25) — edit/clone/compare, line-item expenditure, drill-down
 Research into how the cashflow-modelling sector solves these (Voyant/Timeline/CashCalc + PLSA/SMPI)
 is captured in **[docs/RESEARCH-cashflow-modelling.md](RESEARCH-cashflow-modelling.md)**. These are

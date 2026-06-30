@@ -3,6 +3,93 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-06-30 — Input-expectation / guided-entry clarity (surfaced by the V2 pressure-test)
+**Decision:** The V2 data foot-guns the pressure-test exposed are less user error than **UI-communication gaps**
+(Rob: "these flags show where the input hasn't matched the expectation of usage, and where the UI needs to
+communicate how to use it"). Each mis-entry maps to a concrete builder improvement:
+- **Income pay-frequency.** DLA was entered as "£749/month" when the DWP pays **£600.00 per 4 weeks** (the real
+  figure ≈ £9,747–£10,119/yr), and the rent reads £1,650/yr (almost certainly a monthly figure typed as annual).
+  → a **pay-frequency selector** (weekly / 4-weekly / monthly / annual) on every per-period money input, converting
+  to the stored annual figure. **4-weekly matters** specifically because DWP (State Pension, DLA/AA/PIP) pays that way.
+- **Income type vs taxability.** DLA was entered as a **taxable "rental"** stream (double-counting, and taxed). →
+  offer a **"tax-free benefit (DLA / AA / PIP)"** income type that sets `taxable = false`, with examples, so a
+  disability benefit can't be mis-typed as taxable rental.
+- **Missing retirement age.** An employed person with a blank `plannedRetirementAge` is modelled **earning for
+  life** (here, +£30,000/yr forever → a ~£700k overstatement). → flag it in the builder / input-sanity notes.
+- **One-off cost scope.** A one-off (the £[redacted] convert-to-residential deposit) was charged across **all** housing
+  variants, including sell/rent. → let a one-off declare **which path(s)** it applies to (pairs with the
+  feasibility-flag + mortgage-redemption work).
+These extend the existing input-sanity notes [[2026-06-29 — Adviser-legibility: input-sanity notes (explain a "wild numbers" result back to its input)]]
+and the feasibility flags of [[2026-06-30 — Forced-mortgage pressure-test → a 3-feature workstream (benefits-in-forecast, mortgage-redemption event, feasibility flags)]].
+**Why:** the engine is only as trustworthy as its inputs, so the project's single-definition / no-silent-failure
+discipline (applied so far to *outputs*) must reach *inputs* — a mis-entry should be caught and explained **at
+entry**, not silently produce a plausible-but-wrong forecast. The V2 case is the proof: four ordinary-looking
+entries inflated the result to ~£700k+ until corrected against the real DWP figures.
+**Status:** recorded; build folds into the feature workstream (input-clarity track).
+
+## 2026-06-30 — Forced-mortgage pressure-test → a 3-feature workstream (benefits-in-forecast, mortgage-redemption event, feasibility flags)
+**Decision:** Pressure-testing the engine against a **real forced-housing case** (the "V2" couple Rob has been
+building) set the next workstream. The case: both about to be retired (one retired on **DLA**, one in her final
+working year); they **live in a flat that is on a buy-to-let mortgage** — the occupation is itself the breach, so
+the BTL cannot continue, and a residential remortgage fails on age + income; the BTL is **due for redemption
+December 2026** with no extension, and converting to residential needs **~£100k** they don't have, so the realistic
+outcome is sell-or-repossession. Equity ≈ £[redacted] (a stale £[redacted] valuation, 13+ weeks unsold) − £[redacted] ≈ **£[redacted] gross
+/ ~£[redacted] net** ([redacted]-yr lease, ~£4k to extend; **partial PRR** — secondary then **primary ~4–5 yrs**, joint names).
+Guaranteed income floor ≈ **£[redacted]/yr** (State Pension ~£230/wk + ~£188/wk + **DLA £749/mo, tax-free**), plus one
+**£[redacted]** DC pot. **Finding:** the engine already answers the *core* — buy-cheaper-outright vs sell-and-rent on
+identical seeds, partial-PRR CGT (occupation-driven, joint owners — near purpose-built for this flat), the
+income-floor + per-year surplus/shortfall + safety floor, and the longevity horizon. But the **lump-sum tax shock,
+the flagship output, barely applies** (a £[redacted] pot is inside the personal allowance), while the three things that
+actually decide this couple's path are **not modelled in the forecast**:
+1. **Means-tested benefits are a standalone snapshot, not in the cashflow.** {@see Benefits\CapitalAssessment}
+   correctly models the pensioner capital tariff (£10k disregard, £1/wk per £500, the £16k Council Tax / Housing
+   Support cliff) but is referenced **only inside `Benefits/` + an audit page** — never by `PathProjector` /
+   `app/Forecast`. So the forecast does not **credit** Pension Credit Guarantee Credit / Council Tax Support as
+   income, does not **erode** it year-by-year as capital or income change, does not fire the **£16k cliff**
+   dynamically, and models no **disability addition** or **DLA/AA passporting**. For an asset-poor, low-income,
+   disabled household this interaction is *the* decision: sell → hold ~£130k → lose Council Tax Support + most
+   Pension Credit; keep / buy-cheaper → little assessable capital → keep them. **DLA income itself already reaches
+   the forecast** as a tax-free `IncomeStream` (the completeness rule, {@see PathProjector} L250-251); the gap is
+   the *award* + the capital cliff.
+2. **No mortgage maturity / redemption / refinance concept.** A mortgage is a perpetual `outstandingMortgage` that
+   surfaces only as a lump at sale, plus an ongoing `while_owning_home` cost charged **forever**. So the engine will
+   happily project a **"stay put" path that is physically impossible** here (a BTL that must be redeemed in months),
+   and never flag it — exactly the plausible-but-wrong failure the project guards against. Today the real choice can
+   only be faked by hand-adding a one-off cost in a what-if (the £100k convert-to-repayment what-if Rob already hit
+   in [[2026-06-30 — What-ifs can add and remove items (delta represents structural changes)]]).
+3. **No feasibility flags.** {@see Housing\HousingComparison} silently **floors a buy price above net proceeds**
+   ("downsizing is assumed") — but ~£130k may not buy a mortgage-free replacement, and "stay" needs £100k they
+   don't have. These impossibilities should surface as **input-sanity notes**, not be modelled away.
+
+**The workstream (Rob: "do all of it; I care about the final result, not the order"):**
+- **(A) Means-tested benefits in the live forecast.** A sourced engine `PensionCreditCalculator` (Guarantee Credit
+  tops assessable income up to the Standard Minimum Guarantee; + Severe Disability / Carer additions; tariff income
+  from capital reuses `CapitalAssessment`), wired into `PathProjector` as a **household-level income source each
+  year** (new `YearResult` income source `means_tested_benefit`), eroding as capital/income change and firing the
+  £16k cliff in-projection. Per-source **completeness** test (the benefit demonstrably reaches the result) +
+  **reconciliation** (award + tariff math). Council Tax Reduction is locally-set, so v1 models the **£16k cliff /
+  Pension-Credit passport** rather than a precise CTR award (flagged). A **disability flag** is added to drive the
+  Severe Disability addition + the DLA/AA passport.
+- **(B) Mortgage-redemption event** as first-class state: a redemption/maturity **year** on the home + a
+  **maturity action** {refinance at a rate · repay from capital · forced sale}, handled in `PathProjector`
+  (track the mortgage balance; at maturity apply the action — inject capital, switch to a repayment cost, or
+  transition to the sell transform). Generalises to interest-only maturities and fixed-term ends.
+- **(C) Feasibility flags:** when buy price > net proceeds, or "stay" needs capital not held, raise an input-sanity
+  note instead of silently flooring.
+- **Validation:** a runnable forced-mortgage scenario exercises A–C. The committed test fixture is **synthetic**
+  (the "no hardcoded client data" rule); the couple's real figures are run only locally (throwaway), never committed.
+
+**Why:** the project exists for exactly this "older couple, forced housing decision" problem (PRD flagship), and
+pressure-testing it on a real case is the intended way to find where it's thin. All three gaps are **general**
+(the downsizing benefit-trap, interest-only maturities, infeasible-option flags), not one-off hacks. Recording the
+direction now (Rob's ask to update the docs) so the multi-step build stays anchored; each feature lands green with
+its own DECISIONS entry + PLAN/DATA-MODEL update.
+**Sources (benefits figures — to verify against gov.uk on build, per the verified_on discipline):** gov.uk
+**/pension-credit** (Standard Minimum Guarantee single/couple; Severe Disability & Carer additions),
+**/council-tax-reduction**, **/disability-living-allowance-adults** & **/attendance-allowance** (tax-free, not
+means-tested; the passport). Capital rules already verified 2026-06-27 ({@see TaxYear\BenefitsParameters}).
+**Status:** direction recorded; build sequenced next (A → C → B, value-first), each green. **Supersedes nothing.**
+
 ## 2026-06-30 — What-if sliders (explore the levers) on the results page
 **Decision:** An "Explore the levers" panel with live sliders — retire ± years, spend ± %, investment return ±
 percentage points, live ± years — runs a **throwaway deterministic re-forecast** with the adjustment applied and shows
