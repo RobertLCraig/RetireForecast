@@ -200,6 +200,27 @@ class ScenarioBuilderTest extends TestCase
         $this->assertSame(0, Scenario::count());
     }
 
+    public function test_a_complete_forecast_shows_a_live_deterministic_preview(): void
+    {
+        // A forecastable set of inputs renders the verdict + end-wealth readout (one cheap
+        // deterministic path), so the user sees the effect of an edit before the full run.
+        $this->fill(BuilderStateFixture::full())
+            ->assertSee('Live preview')
+            ->assertSee('On these figures, the money') // the verdict line (lasts / runs short)
+            ->assertSee('Spendable at end (excl. home)')
+            ->assertSee('Total wealth at end');
+    }
+
+    public function test_the_live_preview_invites_completion_while_the_inputs_are_incomplete(): void
+    {
+        // A half-filled wizard (no valid people yet) cannot be forecast: that is not an error,
+        // so the panel asks the user to finish rather than showing a misleading figure.
+        Livewire::test(ScenarioBuilder::class)
+            ->assertSee('Live preview')
+            ->assertSee('Fill in the required fields')
+            ->assertDontSee('On these figures, the money');
+    }
+
     /** @param array<string, mixed> $state */
     private function fill(array $state): Testable
     {

@@ -166,6 +166,35 @@
         </p>
     @endif
 
+    {{-- Live preview: a cheap one-path deterministic readout that updates on each round-trip,
+         so editing any input shows its effect before running the full forecast (the
+         ProjectionLab pattern). Server-rendered, no JS; sticky so it stays in view while you
+         scroll the form. Null while the inputs are too incomplete to forecast. --}}
+    <div aria-live="polite"
+        class="z-10 rounded-lg border p-4 shadow-sm lg:sticky lg:top-4
+            {{ ! $livePreview ? 'border-gray-200 bg-gray-50' : ($livePreview['level'] === 'good' ? 'border-green-300 bg-green-50' : 'border-amber-300 bg-amber-50') }}">
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Live preview</p>
+        @if ($livePreview)
+            <div class="mt-1 flex flex-wrap items-start justify-between gap-4">
+                <div class="min-w-0">
+                    <p class="font-medium {{ $livePreview['level'] === 'good' ? 'text-green-900' : 'text-amber-900' }}">
+                        {{ $livePreview['lasts'] ? '✓' : '⚠' }} {{ $livePreview['verdict'] }}
+                    </p>
+                    <p class="mt-0.5 text-sm text-gray-700">{{ $livePreview['spendNote'] }}</p>
+                </div>
+                <dl class="shrink-0 text-right text-sm">
+                    <dt class="text-xs text-gray-500">Spendable at end (excl. home)</dt>
+                    <dd class="font-semibold text-gray-900">{{ $livePreview['usable'] }}</dd>
+                    <dt class="mt-1 text-xs text-gray-500">Total wealth at end</dt>
+                    <dd class="font-semibold text-gray-900">{{ $livePreview['total'] }}</dd>
+                </dl>
+            </div>
+            <p class="mt-2 text-xs text-gray-500">A single best-estimate projection in today's money, for a quick check as you edit. Save and run for the full range of futures and the run-out risk. This illustrates consequences; it does not recommend a course of action.</p>
+        @else
+            <p class="mt-1 text-sm text-gray-600">Fill in the required fields (the people, the spending and the housing figures) to see a live forecast here.</p>
+        @endif
+    </div>
+
     <form wire:submit="save" class="space-y-6"
         @if ($childMode) data-builder-diff data-changes="{{ json_encode($changedFromBase) }}" @endif>
         <div role="group" aria-labelledby="step-heading" class="space-y-6">

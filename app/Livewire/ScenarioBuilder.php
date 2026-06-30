@@ -7,6 +7,7 @@ namespace App\Livewire;
 use App\Enums\ScenarioStatus;
 use App\Forecast\AssumptionOverrides;
 use App\Forecast\BuilderStateDelta;
+use App\Forecast\ScenarioForecaster;
 use App\Forecast\WhatIfChanges;
 use App\Import\ImportException;
 use App\Import\ImportRegistry;
@@ -693,6 +694,53 @@ class ScenarioBuilder extends Component
         }
     }
 
+    /**
+     * A cheap one-path deterministic readout of the forecast as the inputs stand right now,
+     * recomputed on every round-trip so changing any input — an assumption, a salary, a
+     * spend line — updates it live (the ProjectionLab "edit and watch it move" pattern; the
+     * wizard's only on-the-spot feedback before a full Monte Carlo run). Single-sourced from
+     * the same {@see ScenarioForecaster::deterministic()} the results page and Monte Carlo
+     * build on, run against a transient {@see Scenario} assembled from the current form-state
+     * and never saved (in childMode the component already holds the full effective inputs, so
+     * a plain base scenario is the right thing to forecast either way). Returns null while the
+     * inputs are too incomplete to forecast — a half-filled wizard is not a failure — so the
+     * panel invites the user to finish rather than show a misleading figure.
+     *
+     * @return array{lasts: bool, depletionYear: int|null, finalYear: int, essentialsMet: bool, fullSpendMet: bool, usable: string, total: string, level: string, verdict: string, spendNote: string}|null
+     */
+    public function livePreview(): ?array
+    {
+        try {
+            $scenario = (new Scenario)->fillFromBuilderState($this->builderState());
+            $result = (new ScenarioForecaster)->deterministic($scenario);
+        } catch (\Throwable) {
+            return null; // not enough valid input yet to forecast — the panel shows the finish-the-fields note
+        }
+
+        $lasts = $result->depletionCalendarYear === null;
+        $essentialsMet = $result->essentialsAlwaysMet;
+        $fullSpendMet = $result->fullSpendAlwaysMet;
+
+        return [
+            'lasts' => $lasts,
+            'depletionYear' => $result->depletionCalendarYear,
+            'finalYear' => $result->finalCalendarYear,
+            'essentialsMet' => $essentialsMet,
+            'fullSpendMet' => $fullSpendMet,
+            'usable' => $result->terminalUsableWealth->format(),
+            'total' => $result->terminalTotalWealth->format(),
+            'level' => $lasts && $essentialsMet ? 'good' : 'warn',
+            'verdict' => $lasts
+                ? "On these figures, the money lasts to {$result->finalCalendarYear}."
+                : "On these figures, the money runs short in {$result->depletionCalendarYear}.",
+            'spendNote' => match (true) {
+                $fullSpendMet => 'Essential and discretionary spending met every year.',
+                $essentialsMet => 'Essentials met every year; discretionary spending falls short in some years.',
+                default => 'Essential spending falls short in some years.',
+            },
+        ];
+    }
+
     public function nextStep(): void
     {
         $this->goToStep($this->step + 1);
@@ -992,6 +1040,9 @@ class ScenarioBuilder extends Component
             // value they diverged from, so each can be highlighted and show its base value
             // (matched to inputs by their wire:model path, client-side). Empty for a base.
             'changedFromBase' => $this->changedFromBase(),
+            // A cheap one-path deterministic readout of the forecast as it stands, so editing
+            // any input updates a live verdict + end-wealth panel before the full run.
+            'livePreview' => $this->livePreview(),
             'steps' => self::STEPS,
             'expenseTotals' => $this->expenseTotals(),
             'importProfiles' => array_map(static fn ($p): array => [
