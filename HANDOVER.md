@@ -7,8 +7,8 @@
 _Last updated: 2026-06-30 (post-v1 backlog progressing — built longevity distribution, source-freshness check, surplus/shortfall + safety floor, **what-if sliders**, and **retirement-year salary proration**. Remaining approved builds: v2 annuitisation, the stress-test panel (gated on sourced historical data), the ONS-refresh script, care-cost assumptions. Feature work pending Rob's browser sign-off. **⚠️ Concurrent agent sessions are live (lanes A/B/C below) — read the next section before you commit.**)_
 
 ## ⚠️ Multi-agent coordination (READ FIRST — 2026-06-30)
-**This tree currently has concurrent agent sessions across three lanes (A/B/C below): two active code lanes plus a
-completed docs-only lane. Claim your lane here before you start, and do not commit over another lane's files.** (Per
+**This tree currently has concurrent agent sessions across four lanes (A/B/C/D below): two active code lanes plus two
+docs-only lanes (one complete, one draft). Claim your lane here before you start, and do not commit over another lane's files.** (Per
 [[concurrent-session-split]]: re-check `git status` + `git log` before any commit; never push without Rob's explicit
 go-ahead.)
 
@@ -31,11 +31,22 @@ go-ahead.)
   ISA/SIPP/GIA withdrawal ordering + "fill the band", with the lifetime-tax £-delta). **No app code, no Lane-A/B
   files touched** — only HANDOVER + its own new docs. The spec ends with 5 open questions awaiting Rob's answers
   before any build; it builds on the existing `Forecast/DrawdownStrategy` (already a generalisation, not greenfield).
+- **Lane D — multiple-properties data-model plan (docs-only, DRAFT; awaiting Rob's review).** A fourth session drafted
+  **`docs/PLAN-multi-property.md`** — a DRAFT *proposal, not a decision*: hold **an arbitrary number** of additional
+  properties (buy-to-let / second home / inherited-and-let) as first-class assets (capital growth, taxable net rent,
+  mortgage, optional planned disposal + CGT, IHT estate inclusion, no RNRB). Prompted by an "inherited then let"
+  property the single-residence model can't represent. **No app code.** ⚠️ **Shares surface with Lane B:** it proposes
+  extending the **`Property` DTO** (rent/disposal fields) and generalising **`PathProjector`** property handling — the
+  same files Lane B is changing (mortgage-redemption maturity year + action). Any future build must land **on top of**
+  Lane B's `Property` / `PathProjector` work. The draft ends with 5 open questions for Rob. **NB the draft was
+  accidentally committed inside `5a6688f` (a Lane A cashflow commit) by a blanket add — content intact, just mis-homed
+  in history; not worth a history rewrite on a live shared tree.**
 
 **Commit rule while lanes are live:** commit only the files in your own lane (no blanket `git add -A`).
 Engine overlap to watch: **`PathProjector` is the contention point** — Lane A (proration/sliders, done) and Lane B
 (benefits + mortgage-redemption, active) both touch it, and Lane C's withdrawal-sequencing spec, **when built**,
-centers on it too (`fundShortfall` / `DrawdownStrategy`). Coordinate before any large refactor there.
+centers on it too (`fundShortfall` / `DrawdownStrategy`). **Lane D's multi-property plan, when built, also extends the
+`Property` DTO + `PathProjector` — overlapping Lane B's `Property` changes directly.** Coordinate before any large refactor there.
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
