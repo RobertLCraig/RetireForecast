@@ -29,3 +29,6 @@ Thumbs.db
 # Real financial sample/template spreadsheets — contain personal data, never commit.
 /docs/*.xlsx
 /storage/app/import-samples/
+
+# Local scenario captures — real people's data to re-model from, never commit.
+/docs/*.local.md

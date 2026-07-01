@@ -5,10 +5,17 @@
 > Read `HANDOVER.md` (orient) then this. Follows the doc standard + `CLAUDE.md` engine rules
 > (framework-free engine, integer pence, reconciliation invariants, tests green on every commit).
 
-**Stage:** design-spec (not built) — **has open decisions for Rob (do not build past them without answers).**
+**Stage:** design-spec — **decisions resolved by Rob 2026-07-01, ready to build** (not yet built).
 **Owner lane:** B (forced-housing-event workstream). The last open Lane-B item after the
 mortgage-payment-stop shipped ([docs/PLAN-mortgage-payment-stop.md](PLAN-mortgage-payment-stop.md)).
-_Last updated: 2026-07-01_
+The real couple this models is captured in `docs/SCENARIO-V2.local.md` (gitignored, private).
+_Last updated: 2026-07-01 (Rob's decisions folded in)_
+
+> **Framing (Rob's decision 2):** the **base scenario is "stay put"** — the couple **find ~£100k to pay
+> down the capital and stay** (that is `RepayFromCapital`, already built). The forced sale is therefore a
+> **what-if**, not base behaviour: a child scenario with `mortgageMaturityAction = ForcedSale`. The
+> projector event below fires for that what-if; the base is unchanged. So this is additive — it makes the
+> `ForcedSale` *what-if* realistic, and the "weigh the alternatives on Compare" note on the base stays.
 
 ## What this is, and the gap it closes
 `MortgageMaturityAction::ForcedSale` means "the home cannot be kept — it must be sold" (BTL breach,
@@ -66,23 +73,29 @@ From the sale year on (gate on `state['homeSold']`):
    ([PathProjector.php:619](../packages/finance-engine/src/Forecast/PathProjector.php#L619)); extend
    that condition to `|| homeSold`.
 
-## Open questions (decisions for Rob — resolve before building)
-1. **Rent after a forced sale.** What rent does the household pay once forced out? Options: (a) the
-   scenario's `HousingAction::annualRent` if set, else a **% of the sale price** (a sourced gross-yield
-   proxy, e.g. the ~5% the "let out & rent" preset uses); (b) require the user to enter it, and flag if
-   missing. Recommendation: (a) with the entered rent taking precedence, a sourced default otherwise,
-   surfaced in the assumptions/input notes.
-2. **Base behaviour vs a generated what-if.** Should a `ForcedSale` scenario model the sale **in the
-   base projection** (the base becomes realistic on its own), or should it keep directing to a
-   **generated "forced sale → rent" what-if** (like the buy-vs-rent / let-out presets), leaving the
-   base as-is? Recommendation: make the base realistic (the whole point of `ForcedSale` is that staying
-   is impossible), and drop / soften the "weigh the alternatives on Compare" note accordingly.
-3. **CGT on the grown value.** Confirm CGT is computed on the **sale-year** value (grown), with the
-   `CgtHistory` occupation split as today. For a main residence lived in throughout it is £0, so this
-   only bites for an ever-let home — acceptable to reuse the existing calculator on the grown gain?
-4. **Where the proceeds land + running costs of renting.** GIA (taxable dividends/CGT) vs cash
-   (interest)? And do we add a renter's running costs, or is rent-only sufficient (council tax etc.
-   already sit in the spend lines)?
+## Decisions (resolved by Rob, 2026-07-01)
+1. **Rent after a forced sale is a USER INPUT, and its variations are separate what-ifs.** Use the
+   scenario's entered `HousingAction::annualRent` (+ `rentInflationReal`); do **not** invent a default —
+   rent is highly variable and the user drives it. The point of running several (e.g. £950/mo vs
+   £1,700/mo, or rent +4%/yr) is exactly what the **what-if** machinery is for, so no special handling is
+   needed beyond starting the entered rent at the sale year. If no rent is entered on a `ForcedSale`
+   what-if, treat it as £0 and **surface an input-sanity note** ("a forced sale needs a rent to be
+   meaningful") rather than guessing.
+2. **This is a WHAT-IF, not base behaviour.** The base is "stay put — find £100k, pay down, stay"
+   (`RepayFromCapital`). So the forced-sale event fires only for a **child scenario** with
+   `mortgageMaturityAction = ForcedSale`; the base projection is untouched and its Compare note stays.
+   (See the Framing note at the top.)
+3. **CGT is computed on the grown, sale-year value** — reuse `CgtPrivateResidenceCalculator` on the
+   sale-year gain with the `CgtHistory` occupation split (Rob: "yes, unless you have a better
+   suggestion" — no better one; this matches how a real disposal is taxed). £0 for a lived-in-throughout
+   home; partial-PRR for an ever-let one (the V2 flat).
+4. **The freed proceeds are investable liquid wealth — modelling where they go and how they grow/shrink
+   IS the point of the tool.** Put the net proceeds into an **investable account** (default GIA, invested
+   per the run's assumptions, drawn per the drawdown strategy), so the forecast then shows how that money
+   is stored, invested, grows and is drawn down. Let the user steer the wrapper (ISA/GIA/cash) through
+   the scenario's accounts where possible; GIA is the sensible default (taxable dividends + CGT on
+   disposal, like any unwrapped investment). Renter's council tax / bills already sit in the spend lines,
+   so add **rent only**, not a second running-costs bucket.
 
 ## Touch-points (once the decisions are made)
 - **State** — add `state['homeSold'] = false` in `initialState()`
@@ -132,8 +145,8 @@ From the sale year on (gate on `state['homeSold']`):
 
 ## Out of scope (leave deferred, flag if tempted)
 - **Sale-and-rent-back / equity release** (sell but keep living in the *same* home as a tenant) — a
-  different product; not this. If Rob's "in place" meant *that*, stop and re-spec (Open question 2 is
-  the fork).
+  different product; not this. **Confirmed with Rob 2026-07-01:** "in place" means modelled *within the
+  projection timeline* (sell at the redemption year, then rent a new home), not staying in the same home.
 - Repossession-specific costs (forced-sale discount, fees) beyond ordinary selling costs — model as a
   higher selling-cost rate if needed, don't hard-code.
 - Multi-property forced sales — Lane D territory (`docs/PLAN-multi-property.md`).
