@@ -429,6 +429,12 @@ class ScenarioResults extends Component
             'plsa' => ResultPresenter::plsaBenchmark($this->scenario->toHousehold()),
             // Essential spending vs secure (guaranteed-for-life) income at the mature point.
             'incomeFloor' => ResultPresenter::incomeFloor($forecast),
+            // Historical sequence-of-returns stress test: how the plan would have fared starting
+            // into each past year (1929 / 1973-74 / 2000 / 2007). Deterministic, shows pre-run.
+            'stressTest' => ResultPresenter::historicalStressTest(
+                $forecaster->historicalBacktest($this->scenario),
+                $forecaster->settings($this->scenario)->baseYear,
+            ),
             // How to claim the Pension Credit the forecast models (only when it credits any) —
             // it is means-tested, so it has to be applied for, and is heavily under-claimed.
             'pensionCredit' => ResultPresenter::pensionCreditGuidance($forecast),

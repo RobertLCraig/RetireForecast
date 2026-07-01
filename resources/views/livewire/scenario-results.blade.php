@@ -16,6 +16,7 @@
         ['id' => 'sec-budget', 'label' => 'Your spending plan', 'show' => ! empty($budget['tiers'])],
         ['id' => 'sec-plsa', 'label' => 'PLSA living standards', 'show' => (bool) $plsa],
         ['id' => 'sec-income-floor', 'label' => 'Spending vs secure income', 'show' => (bool) $incomeFloor],
+        ['id' => 'sec-stress', 'label' => 'Stress test: past crises', 'show' => (bool) $stressTest],
         ['id' => 'sec-assumptions', 'label' => 'Assumptions used', 'show' => true],
         ['id' => 'sec-sale', 'label' => 'If you sell', 'show' => (bool) $saleExplainer],
         ['id' => 'sec-milestones', 'label' => 'Life events', 'show' => (bool) $milestones],
@@ -625,6 +626,64 @@
             @endif
 
             <x-signpost class="mt-4" />
+        </section>
+    @endif
+
+    {{-- Historical stress test: replay real past return + inflation sequences over this exact
+         plan, so "will it last" is tested against the worst starts in living memory, not just
+         the average. Deterministic; shows before any Monte Carlo run. --}}
+    @if ($stressTest)
+        <section id="sec-stress" aria-labelledby="stress-heading" class="{{ $card }} scroll-mt-6">
+            <h2 id="stress-heading" class="text-xl font-semibold text-gray-900">Stress test: how it would have handled past crises</h2>
+            <p class="mt-1 text-sm text-gray-600">We replayed this plan through every year from {{ $stressTest['fromYear'] }} to {{ $stressTest['toYear'] }} as if you had started then, using the <strong>actual</strong> returns and inflation that followed. This is <strong>sequence-of-returns risk</strong>: a bad first decade while you are drawing an income does far more damage than the same slump later.</p>
+
+            <dl class="mt-4 grid gap-4 sm:grid-cols-2">
+                <div class="rounded-md bg-gray-50 p-4">
+                    <dt class="text-sm text-gray-500">Historical starts survived</dt>
+                    <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">{{ $stressTest['survivalPct'] }}%</dd>
+                    <dd class="mt-1 text-xs text-gray-500">essentials met every year in {{ $stressTest['survivedCount'] }} of {{ $stressTest['tested'] }} historical starting years.</dd>
+                </div>
+                @if ($stressTest['worst'])
+                    <div class="rounded-md bg-gray-50 p-4">
+                        <dt class="text-sm text-gray-500">Worst start ({{ $stressTest['worst']['startYear'] }})</dt>
+                        @if ($stressTest['worst']['ranOut'])
+                            <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">ran short after {{ $stressTest['worst']['yearsLasted'] }} yrs</dd>
+                            <dd class="mt-1 text-xs text-gray-500">the harshest sequence on record for this plan.</dd>
+                        @else
+                            <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">£{{ number_format($stressTest['worst']['terminalUsable']) }} left</dd>
+                            <dd class="mt-1 text-xs text-gray-500">the least left at the end across every historical start — it still lasted.</dd>
+                        @endif
+                    </div>
+                @endif
+            </dl>
+
+            @if ($stressTest['crises'])
+                <table class="mt-4 w-full border-collapse text-sm">
+                    <caption class="sr-only">Outcome if the plan had started at the onset of each historical crisis</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col" class="{{ $th }}">Retiring into…</th>
+                            <th scope="col" class="{{ $th }}">Outcome</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($stressTest['crises'] as $c)
+                            <tr>
+                                <td class="{{ $td }}">{{ $c['label'] }}</td>
+                                <td class="{{ $td }}">
+                                    @if ($c['ranOut'])
+                                        <span class="font-medium text-red-700">Ran short after {{ $c['yearsLasted'] }} years</span>
+                                    @else
+                                        <span class="font-medium text-green-700">Lasted</span><span class="text-gray-500"> — £{{ number_format($c['terminalUsable']) }} spendable left at the end</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+
+            <p class="mt-3 text-xs text-gray-500">Real UK asset returns and inflation, 1871–2020, from the Jordà–Schularick–Taylor Macrohistory database (<em>The Rate of Return on Everything</em>). A plan that survives the 1970s and 2008 starts is robust to sequence risk; past performance is not a guarantee of the future.</p>
         </section>
     @endif
 

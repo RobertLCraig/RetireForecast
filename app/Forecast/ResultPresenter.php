@@ -18,6 +18,8 @@ use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
+use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestOutcome;
+use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Housing\HousingProceeds;
@@ -150,6 +152,61 @@ final class ResultPresenter
             'planYearsP90' => $l->planYearsP90,
             'reaches95' => self::formatPercent($l->reaches95),
             'reaches100' => self::formatPercent($l->reaches100),
+        ];
+    }
+
+    /**
+     * The historical sequence-of-returns stress test, shaped for the panel: how many of the
+     * tested past start years the plan survived, the single worst start, and a few named
+     * crises. "Years lasted" for a start that ran out is depletionYear - baseYear; a start
+     * that survived shows how many years it was projected for. Every figure is the engine's.
+     *
+     * @return array<string, mixed>|null null when nothing was tested
+     */
+    public static function historicalStressTest(HistoricalBacktestResult $result, int $baseYear): ?array
+    {
+        if ($result->count() === 0) {
+            return null;
+        }
+
+        $shape = function (?HistoricalBacktestOutcome $o) use ($baseYear): ?array {
+            if ($o === null) {
+                return null;
+            }
+            $ranOut = $o->depletionCalendarYear !== null;
+
+            return [
+                'startYear' => $o->startYear,
+                'survived' => $o->essentialsAlwaysMet,
+                'ranOut' => $ranOut,
+                'yearsLasted' => $ranOut ? max(0, $o->depletionCalendarYear - $baseYear) : $o->planYears,
+                'terminalUsable' => self::pounds($o->terminalUsableWealth),
+            ];
+        };
+
+        // The canonical "retire just before the crash" start years (all within the tested range).
+        $crisisLabels = [
+            1929 => 'Wall Street Crash & Depression (1929)',
+            1973 => 'Oil crisis & UK crash (1973–74)',
+            2000 => 'Dot-com crash (2000)',
+            2007 => 'Global financial crisis (2007–08)',
+        ];
+        $crises = [];
+        foreach ($crisisLabels as $year => $label) {
+            $outcome = $result->forStartYear($year);
+            if ($outcome !== null) {
+                $crises[] = ['label' => $label] + $shape($outcome);
+            }
+        }
+
+        return [
+            'tested' => $result->count(),
+            'fromYear' => $result->outcomes[0]->startYear,
+            'toYear' => $result->outcomes[$result->count() - 1]->startYear,
+            'survivedCount' => $result->survivedCount(),
+            'survivalPct' => (int) round($result->survivalRate() * 100),
+            'worst' => $shape($result->worst()),
+            'crises' => $crises,
         ];
     }
 

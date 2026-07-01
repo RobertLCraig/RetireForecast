@@ -109,6 +109,17 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('emergency (Month-1) basis');
     }
 
+    public function test_the_results_page_shows_the_historical_stress_test_before_any_run(): void
+    {
+        // The backtest is deterministic, so it renders immediately (no Monte Carlo needed).
+        $this->get(route('scenarios.results', $this->scenario()))
+            ->assertOk()
+            ->assertSee('Stress test: how it would have handled past crises')
+            ->assertSee('Historical starts survived')
+            ->assertSee('Oil crisis & UK crash (1973–74)')
+            ->assertSee('Rate of Return on Everything');
+    }
+
     public function test_the_results_page_shows_the_assumption_sensitivity_overlay(): void
     {
         // Also deterministic: the compare-assumptions table shows before any run.

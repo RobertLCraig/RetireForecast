@@ -12,6 +12,8 @@ use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Forecast\HistoricalBacktester;
+use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestResult;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\MonteCarlo\Simulator;
@@ -77,6 +79,18 @@ final class ScenarioForecaster
             fn (array $variant): ForecastResult => $forecaster->forecast($variant['household'], $assumptions, $variant['settings']),
             $variants,
         );
+    }
+
+    /**
+     * The historical sequence-of-returns stress test: run the plan through every eligible
+     * past starting year (replaying that year's real UK returns + inflation), so the results
+     * page can show how it would have fared starting into 1929 / 1973-74 / 2000 / 2007.
+     * Deterministic (no Monte Carlo run needed), so it shows immediately like the ladder.
+     */
+    public function historicalBacktest(Scenario $scenario): HistoricalBacktestResult
+    {
+        return (new HistoricalBacktester($this->config($scenario), new CohortLifeTable))
+            ->backtest($this->household($scenario), $this->assumptions($scenario), $this->settings($scenario));
     }
 
     /** One variant's Monte Carlo run (the scenario's household as it stands). */
