@@ -29,12 +29,14 @@ go-ahead.)
   **(B) a mortgage-redemption event** (`Property` maturity year + action; projector tracks the balance),
   **(C) feasibility flags**, **(D) input-expectation clarity** (pay-frequency selector, tax-free-benefit income
   type, retirement-age / one-off-scope prompts). Full detail: DECISIONS/PLAN 2026-06-30 — not re-transcribed here.
-- **Lane C — competitive gap analysis + decumulation specs (docs-only, no code; complete + committed, nothing dirty).** A third session ran a
-  full-market competitive scan and wrote two **standalone** docs: `docs/RESEARCH-competitive-gap-analysis.md` (where
-  the engine leads vs the gaps) and the decision-ready spec **`docs/PLAN-withdrawal-sequencing.md`** (tax-efficient
-  ISA/SIPP/GIA withdrawal ordering + "fill the band", with the lifetime-tax £-delta). **No app code, no Lane-A/B
-  files touched** — only HANDOVER + its own new docs. The spec ends with 5 open questions awaiting Rob's answers
-  before any build; it builds on the existing `Forecast/DrawdownStrategy` (already a generalisation, not greenfield).
+- **Lane C — decumulation: withdrawal sequencing (docs done; CODE BUILD STARTING 2026-07-01).** A third session ran the
+  full-market competitive scan (`docs/RESEARCH-competitive-gap-analysis.md`) and wrote the now decision-ready spec
+  **`docs/PLAN-withdrawal-sequencing.md`** (tax-efficient ISA/SIPP/GIA "fill the band" ordering + the lifetime-tax
+  £-delta). **Rob approved the full-capability build (2026-07-01)** — building it now, **additively**, on
+  `Forecast/DrawdownStrategy` + `PathProjector::fundShortfall` (a new **`FillBands`** strategy, Pension-Credit-aware),
+  then the £-delta in **Compare** (`ScenarioForecaster` / `ResultPresenter`). ⚠️ **Shares the `PathProjector` +
+  `ScenarioForecaster` / `ResultPresenter` surface with Lanes A/B** — additive-only, re-checking `git` before each edit,
+  committing engine slices green. Build order + decisions: the spec's "Build order" section.
 - **Lane D — multiple-properties data-model plan (docs-only, DRAFT; awaiting Rob's review).** A fourth session drafted
   **`docs/PLAN-multi-property.md`** — a DRAFT *proposal, not a decision*: hold **an arbitrary number** of additional
   properties (buy-to-let / second home / inherited-and-let) as first-class assets (capital growth, taxable net rent,
@@ -48,8 +50,7 @@ go-ahead.)
 
 **Commit rule while lanes are live:** commit only the files in your own lane (no blanket `git add -A`).
 Engine overlap to watch: **`PathProjector` is the contention point** — Lane A (proration/sliders, done) and Lane B
-(benefits + mortgage-redemption, active) both touch it, and Lane C's withdrawal-sequencing spec, **when built**,
-centers on it too (`fundShortfall` / `DrawdownStrategy`). **Lane D's multi-property plan, when built, also extends the
+(benefits + mortgage-redemption, active) both touch it, and Lane C is **now building** withdrawal sequencing on it (`fundShortfall` / `DrawdownStrategy`, additive `FillBands` strategy). **Lane D's multi-property plan, when built, also extends the
 `Property` DTO + `PathProjector` — overlapping Lane B's `Property` changes directly.** Coordinate before any large refactor there.
 
 ## Goal & success criteria
