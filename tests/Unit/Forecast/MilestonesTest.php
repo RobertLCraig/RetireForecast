@@ -144,4 +144,27 @@ final class MilestonesTest extends TestCase
 
         $this->assertSame([], ResultPresenter::milestones($household, $empty));
     }
+
+    public function test_annotations_dodge_labels_that_fall_in_the_same_year(): void
+    {
+        // Two events in one year would otherwise stack their vertical labels on the same spot and
+        // smear together. The second is dodged to the bottom of the plot, a third nudged deeper —
+        // while an event in a year of its own stays at the top with no offset.
+        $annotations = ResultPresenter::milestoneAnnotations([
+            ['year' => 2026, 'age' => null, 'label' => 'The home is sold', 'kind' => 'house_sale'],
+            ['year' => 2026, 'age' => 66, 'label' => "Sam's State Pension starts", 'kind' => 'state_pension'],
+            ['year' => 2026, 'age' => 66, 'label' => 'Sam retires', 'kind' => 'retirement'],
+            ['year' => 2030, 'age' => 70, 'label' => 'Alex dies', 'kind' => 'death'],
+        ]);
+
+        // 2026: top (0) → bottom (0) → top nudged deeper (+14); the lone 2030 event is not dodged.
+        $this->assertSame(['top', 0], [$annotations[0]['label']['position'], $annotations[0]['label']['offsetY']]);
+        $this->assertSame(['bottom', 0], [$annotations[1]['label']['position'], $annotations[1]['label']['offsetY']]);
+        $this->assertSame(['top', 14], [$annotations[2]['label']['position'], $annotations[2]['label']['offsetY']]);
+        $this->assertSame(['top', 0], [$annotations[3]['label']['position'], $annotations[3]['label']['offsetY']]);
+
+        // The vertical line still lands on the event's year, colour-coded by kind (house_sale amber).
+        $this->assertSame(2026, $annotations[0]['x']);
+        $this->assertSame('#d97706', $annotations[0]['borderColor']);
+    }
 }

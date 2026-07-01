@@ -7,6 +7,7 @@ namespace App\Forecast;
 use App\Enums\ScenarioVariant;
 use App\Import\MoneyText;
 use App\Models\Result;
+use App\Models\Scenario;
 use Illuminate\Support\Collection;
 use RetireForecast\FinanceEngine\Benchmark\RetirementLivingStandards;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
@@ -638,7 +639,9 @@ final class ResultPresenter
      * line per "big event" (retirement, State Pension start, first pension drawdown, death, the
      * home sale), so a chart shows *when* each step change happens, not just the curve. Colour-
      * coded by kind; the label is rotated vertical to stay legible when events fall in nearby
-     * years. Plain JSON (no functions), so it travels through @js into the chart options.
+     * years. When two events fall in the *same* year their vertical labels are dodged (first at
+     * the top, second at the bottom, further collisions nudged deeper) so they don't overlap into
+     * an unreadable smear. Plain JSON (no functions), so it travels through @js into the options.
      *
      * @param  list<array{year: int, age: int|null, label: string, kind: string}>  $milestones
      * @return list<array<string, mixed>>
@@ -653,18 +656,34 @@ final class ResultPresenter
             'house_sale' => '#d97706',
         ];
 
-        return array_map(fn (array $m): array => [
-            'x' => $m['year'],
-            'borderColor' => $colour[$m['kind']] ?? '#94a3b8',
-            'strokeDashArray' => 4,
-            'label' => [
-                'text' => $m['label'],
-                'orientation' => 'vertical',
-                'position' => 'top',
-                'borderColor' => $colour[$m['kind']] ?? '#94a3b8',
-                'style' => ['fontSize' => '9px', 'color' => '#ffffff', 'background' => $colour[$m['kind']] ?? '#94a3b8'],
-            ],
-        ], $milestones);
+        // Dodge same-year collisions: the vertical labels would otherwise stack on one spot.
+        // Alternate top/bottom of the plot, then push any further same-year label deeper in.
+        $seenInYear = [];
+        $annotations = [];
+        foreach ($milestones as $m) {
+            $n = $seenInYear[$m['year']] ?? 0;
+            $seenInYear[$m['year']] = $n + 1;
+
+            $position = $n % 2 === 0 ? 'top' : 'bottom';
+            $offsetY = intdiv($n, 2) * ($position === 'top' ? 14 : -14);
+
+            $c = $colour[$m['kind']] ?? '#94a3b8';
+            $annotations[] = [
+                'x' => $m['year'],
+                'borderColor' => $c,
+                'strokeDashArray' => 4,
+                'label' => [
+                    'text' => $m['label'],
+                    'orientation' => 'vertical',
+                    'position' => $position,
+                    'offsetY' => $offsetY,
+                    'borderColor' => $c,
+                    'style' => ['fontSize' => '9px', 'color' => '#ffffff', 'background' => $c],
+                ],
+            ];
+        }
+
+        return $annotations;
     }
 
     /**
@@ -673,7 +692,7 @@ final class ResultPresenter
      * not just Monte-Carlo seed noise). Each row is a figure whose displayed value changed;
      * `better` is true (green) / false (red) / null. Higher success and end wealth are better;
      * a later — or "never" — run-short year is better.
-     * {@see \App\Models\Scenario::recordResultSnapshot()}.
+     * {@see Scenario::recordResultSnapshot()}.
      *
      * @param  array<string, mixed>  $current
      * @param  array<string, mixed>  $previous
@@ -785,7 +804,7 @@ final class ResultPresenter
             $text = match ($home->mortgageMaturityAction) {
                 MortgageMaturityAction::Refinance => "This home's mortgage of {$amount} is due for redemption in {$year}; the forecast assumes it is refinanced (rolled into a new mortgage). If refinancing isn't available it would have to be repaid from savings or the home sold.",
                 MortgageMaturityAction::RepayFromCapital => "This home's mortgage of {$amount} is due for redemption in {$year}; the forecast repays it from savings that year (a {$amount} one-off). If that capital isn't there, the year shows a shortfall — keeping the home is unaffordable.",
-                MortgageMaturityAction::ForcedSale => "This home's mortgage of {$amount} is due for redemption in {$year} and is modelled as not refinanceable, so keeping the home is not an option; the sell-and-rent and buy-cheaper strategies show the alternatives.",
+                MortgageMaturityAction::ForcedSale => "This home's mortgage of {$amount} is due for redemption in {$year} and is modelled as not refinanceable, so keeping the home is not an option. This report shows one strategy — weigh the realistic alternatives (sell-and-rent, buy somewhere cheaper, or let it out and rent elsewhere) as what-if scenarios on the Compare page.",
             };
             $notes[] = ['kind' => 'mortgage_redemption', 'text' => $text];
         }
