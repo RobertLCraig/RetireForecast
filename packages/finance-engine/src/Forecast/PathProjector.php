@@ -489,7 +489,7 @@ final class PathProjector
         $shortfall = $spendNominal - $netCashNominal;
         $fundedNominal = 0;
         if ($shortfall > 0) {
-            $funded = $this->fundShortfall($household, $settings, $state, $alive, $taxablePerPerson, $shortfall, $thresholdFactor);
+            $funded = $this->fundShortfall($household, $settings, $state, $alive, $taxablePerPerson, $shortfall, $thresholdFactor, $benefitNominal > 0);
             $fundedNominal = $funded['funded'];
             $totalTaxNominal += $funded['extraTax'];
             $src['pension_drawdown'] += $funded['fromPension'];
@@ -846,7 +846,7 @@ final class PathProjector
      * @param  array<string, int>  $taxablePerPerson
      * @return array{funded: int, extraTax: int, fromPension: int, fromAssets: int}
      */
-    private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $taxablePerPerson, int $shortfall, float $thresholdFactor = 1.0): array
+    private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $taxablePerPerson, int $shortfall, float $thresholdFactor = 1.0, bool $onGuaranteeCredit = false): array
     {
         $remaining = $shortfall;
         $funded = 0;
@@ -856,7 +856,10 @@ final class PathProjector
         // GIA gains realised this year by disposals, per person (feeds CGT below).
         $realisedGain = array_fill_keys(array_map(fn ($p): string => $p->id, $household->persons), 0);
 
-        $pensionFirst = $settings->drawdownStrategy === DrawdownStrategy::PensionAware;
+        $strategy = $settings->drawdownStrategy;
+        $params = $this->config->incomeTax;
+        $paLimit = $params->personalAllowance->pence;
+        $basicLimit = $paLimit + $params->basicRateBand->pence;
 
         $drawNonPension = function () use (&$state, &$remaining, &$funded, &$fromAssets, &$realisedGain, $alive, $household): void {
             foreach (['cash', 'gia', 'isa'] as $bucket) {
@@ -889,10 +892,64 @@ final class PathProjector
             }
         };
 
-        $drawPension = function (bool $capToBasicRate) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, $alive, $household, $taxablePerPerson, $thresholdFactor): void {
-            $params = $this->config->incomeTax;
-            $basicLimit = $params->personalAllowance->pence + $params->basicRateBand->pence;
+        // Draw cash + ISA only (tax-free capital), skipping the GIA (which can realise CGT).
+        $drawTaxFreeCapital = function () use (&$state, &$remaining, &$funded, &$fromAssets, $alive, $household): void {
+            foreach (['cash', 'isa'] as $bucket) {
+                foreach ($household->persons as $person) {
+                    if ($remaining <= 0) {
+                        return;
+                    }
+                    if (! $alive[$person->id]) {
+                        continue;
+                    }
+                    $take = min($remaining, $state[$bucket][$person->id]);
+                    if ($take > 0) {
+                        $state[$bucket][$person->id] -= $take;
+                        $remaining -= $take;
+                        $funded += $take;
+                        $fromAssets += $take;
+                    }
+                }
+            }
+        };
 
+        // Draw GIA only up to the point each person's realised gain reaches the CGT annual
+        // exempt amount, so no CGT is due on this tranche (the free-gains band).
+        $drawGiaToAea = function () use (&$state, &$remaining, &$funded, &$fromAssets, &$realisedGain, $alive, $household): void {
+            $aea = $this->config->cgt->annualExemptAmount->pence;
+            foreach ($household->persons as $person) {
+                if ($remaining <= 0) {
+                    return;
+                }
+                if (! $alive[$person->id]) {
+                    continue;
+                }
+                $bal = $state['gia'][$person->id];
+                $basis = $state['giaBasis'][$person->id];
+                if ($bal <= 0) {
+                    continue;
+                }
+                $headroom = max(0, $aea - $realisedGain[$person->id]);
+                // The largest disposal whose realised gain stays within the headroom; a holding
+                // with no gain (balance <= basis) can be drawn freely (no CGT either way).
+                $maxTake = $bal > $basis ? (int) floor($headroom * $bal / ($bal - $basis)) : $bal;
+                $take = min($remaining, $bal, $maxTake);
+                if ($take > 0) {
+                    [$gainSlice, $basisConsumed] = self::disposeGiaSlice($bal, $basis, $take);
+                    $realisedGain[$person->id] += $gainSlice;
+                    $state['giaBasis'][$person->id] -= $basisConsumed;
+                    $state['gia'][$person->id] -= $take;
+                    $remaining -= $take;
+                    $funded += $take;
+                    $fromAssets += $take;
+                }
+            }
+        };
+
+        // Draw taxable pension income, per person, capped so the person's taxable income does
+        // not exceed $taxableLimit (null = uncapped). Grosses up so the after-tax cash meets
+        // the remaining need.
+        $drawPension = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, $alive, $household, $taxablePerPerson, $thresholdFactor): void {
             foreach ($household->persons as $person) {
                 if ($remaining <= 0) {
                     return;
@@ -906,8 +963,8 @@ final class PathProjector
                         continue;
                     }
                     $cap = $pot['value'];
-                    if ($capToBasicRate) {
-                        $cap = min($cap, max(0, $basicLimit - $alreadyTaxable));
+                    if ($taxableLimit !== null) {
+                        $cap = min($cap, max(0, $taxableLimit - $alreadyTaxable));
                     }
                     if ($cap <= 0) {
                         continue;
@@ -929,13 +986,27 @@ final class PathProjector
             }
         };
 
-        if ($pensionFirst) {
-            $drawPension(true);   // pension up to the basic-rate band first
+        if ($strategy === DrawdownStrategy::FillBands) {
+            // Fill each tax-free band before a taxed pound. A household on Guarantee Credit is
+            // the exception: any pension income claws the credit back £-for-£, so for them draw
+            // capital first and leave the pension (and the credit) intact.
+            if (! $onGuaranteeCredit) {
+                $drawPension($paLimit);    // pension within the personal allowance (0% income tax)
+            }
+            $drawGiaToAea();               // GIA gains within the CGT annual exempt amount (0% CGT)
+            $drawTaxFreeCapital();         // cash + ISA (tax-free capital)
+            if (! $onGuaranteeCredit) {
+                $drawPension($basicLimit); // pension within the basic-rate band (20%)
+            }
+            $drawNonPension();             // remaining GIA (CGT on gains beyond the AEA)
+            $drawPension(null);            // remaining pension (higher rate) - last resort
+        } elseif ($strategy === DrawdownStrategy::PensionAware) {
+            $drawPension($basicLimit);   // pension up to the basic-rate band first
             $drawNonPension();
-            $drawPension(false);  // then any remaining pension
+            $drawPension(null);          // then any remaining pension
         } else {
             $drawNonPension();
-            $drawPension(false);  // pension only as a last resort
+            $drawPension(null);          // pension only as a last resort
         }
 
         // CGT on the GIA gains realised funding this year's spend (computed before any
@@ -948,7 +1019,7 @@ final class PathProjector
             $remaining = $cgt;
             $fundedBeforeCgt = $funded;
             $drawNonPension();
-            $drawPension(false);
+            $drawPension(null);
             $funded = $fundedBeforeCgt;
         }
 

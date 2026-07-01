@@ -373,6 +373,64 @@ final class PathProjectorTest extends TestCase
         );
     }
 
+    public function test_fill_bands_draws_pension_within_the_free_bands_before_taxed_capital(): void
+    {
+        // p1 is 58 (below State Pension age), so the couple is a mixed-age household with no
+        // Pension Credit and, with no State Pension income yet, a full personal allowance of
+        // headroom. FillBands should draw the pension within that free band (0% tax) before
+        // spending the tax-free cash; TaxEfficient spends the cash first.
+        $p1 = new Person('p1', new DateTimeImmutable('1968-04-01'), Sex::Female, EmploymentStatus::Retired);
+        $build = fn () => $this->couple(
+            new ExpenseProfile(Money::fromPounds(30_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [new DcPension('p1', Money::fromPounds(200_000), Money::zero(), Money::zero(), 55)],
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(80_000))],
+            override1: $p1,
+        );
+
+        $taxEfficient = $this->forecaster()->forecast($build(), $this->flatAssumptions(), $this->settings(DrawdownStrategy::TaxEfficient));
+        $fillBands = $this->forecaster()->forecast($build(), $this->flatAssumptions(), $this->settings(DrawdownStrategy::FillBands));
+
+        // FillBands has drawn the pension pot down (used the free band); TaxEfficient has not.
+        $this->assertLessThan(
+            $taxEfficient->years[1]->pensionWealth->pence,
+            $fillBands->years[1]->pensionWealth->pence,
+        );
+        // ...and conversely preserved more of the tax-free cash.
+        $this->assertGreaterThan(
+            $taxEfficient->years[1]->liquidWealth->pence,
+            $fillBands->years[1]->liquidWealth->pence,
+        );
+    }
+
+    public function test_fill_bands_is_pension_credit_aware_and_leaves_the_pension_intact(): void
+    {
+        // A low-income couple over State Pension age on Guarantee Credit. Any taxable pension
+        // income would claw the credit back £-for-£, so FillBands draws the tax-free cash first
+        // and leaves the pension untouched, where PensionAware would draw the pension.
+        $build = fn () => $this->couple(
+            new ExpenseProfile(Money::fromPounds(30_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(120, 0)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(120, 0)),
+                new DcPension('p1', Money::fromPounds(100_000), Money::zero(), Money::zero(), 55),
+            ],
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(60_000))],
+        );
+
+        // Premise check: the household is actually on Guarantee Credit.
+        $year0 = $this->forecaster()->forecast($build(), $this->flatAssumptions(), $this->settings(DrawdownStrategy::FillBands))->years[0];
+        $this->assertGreaterThan(0, $year0->incomeBySource['means_tested_benefit']->pence);
+
+        $pensionAware = $this->forecaster()->forecast($build(), $this->flatAssumptions(), $this->settings(DrawdownStrategy::PensionAware));
+        $fillBands = $this->forecaster()->forecast($build(), $this->flatAssumptions(), $this->settings(DrawdownStrategy::FillBands));
+
+        // FillBands (Pension-Credit-aware) has left more pension intact than PensionAware.
+        $this->assertGreaterThan(
+            $pensionAware->years[1]->pensionWealth->pence,
+            $fillBands->years[1]->pensionWealth->pence,
+        );
+    }
+
     public function test_dc_contributions_funded_from_surplus_grow_the_pot(): void
     {
         // A still-working person (salary well above spend) paying into a DC pot.
