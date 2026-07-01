@@ -10,6 +10,7 @@ use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
+use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\HistoricalBacktester;
@@ -171,11 +172,23 @@ final class ScenarioForecaster
      * so the results page can read the blended real return the invested proceeds grow at
      * (`settings()->allocation()->blendedRealReturn($assumptions)`) for the assumptions panel.
      */
-    public function settings(Scenario $scenario): ForecastSettings
+    public function settings(Scenario $scenario, ?DrawdownStrategy $strategy = null): ForecastSettings
     {
         return new ForecastSettings(
             baseYear: (int) substr($scenario->base_tax_year, 0, 4),
             baseTaxYear: $scenario->base_tax_year,
+            drawdownStrategy: $strategy ?? DrawdownStrategy::TaxEfficient,
         );
+    }
+
+    /**
+     * The central deterministic forecast run under a specific withdrawal (drawdown) strategy,
+     * on the same household + assumptions as {@see deterministic()}, so the withdrawal-sequencing
+     * comparison can price each strategy on an identical basis. {@see WithdrawalStrategyComparison}.
+     */
+    public function deterministicUnderStrategy(Scenario $scenario, DrawdownStrategy $strategy): ForecastResult
+    {
+        return (new DeterministicForecaster($this->config($scenario), new CohortLifeTable))
+            ->forecast($this->household($scenario), $this->assumptions($scenario), $this->settings($scenario, $strategy));
     }
 }

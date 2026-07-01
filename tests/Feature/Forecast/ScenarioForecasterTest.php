@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Forecast;
 
 use App\Forecast\ScenarioForecaster;
+use App\Forecast\WithdrawalStrategyComparison;
 use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,6 +27,18 @@ class ScenarioForecasterTest extends TestCase
 
         $this->assertNotEmpty($result->years);
         $this->assertGreaterThanOrEqual(2026, $result->finalCalendarYear);
+    }
+
+    public function test_the_withdrawal_strategy_comparison_prices_each_strategy_and_reconciles(): void
+    {
+        $comparison = WithdrawalStrategyComparison::for(new ScenarioForecaster, $this->scenario());
+
+        // A rich household pays tax over the plan under either withdrawal strategy.
+        $this->assertGreaterThan(0, $comparison->baselineTaxPence);
+        $this->assertGreaterThan(0, $comparison->fillBandsTaxPence);
+        // The saving is EXACTLY the difference of the two engine-computed lifetime-tax totals
+        // (one figure, one home - never re-derived from something else).
+        $this->assertSame($comparison->baselineTaxPence - $comparison->fillBandsTaxPence, $comparison->savingPence);
     }
 
     public function test_the_monte_carlo_run_records_its_seed_and_bounded_probabilities(): void
