@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Livewire;
 
 use App\Enums\ScenarioStatus;
+use App\Enums\SimulationMode;
 use App\Enums\SimulationStatus;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
@@ -384,6 +385,68 @@ class ScenarioResultsTest extends TestCase
         $this->assertNotNull($child);
         $this->assertSame($base->id, $child->parent_scenario_id);
         $this->assertStringContainsString('Spend +30%', $child->overrides['name']);
+    }
+
+    public function test_re_run_all_queues_a_full_run_for_the_base_and_every_what_if(): void
+    {
+        Queue::fake();
+        $base = $this->scenario();
+        $this->makeChild($base, 'What-if A');
+        $this->makeChild($base, 'What-if B');
+
+        $component = Livewire::test(ScenarioResults::class, ['scenario' => $base])
+            ->call('runFullFamily');
+
+        // Base + 2 what-ifs = 3 full runs queued, one per plan.
+        Queue::assertPushed(RunScenarioSimulation::class, 3);
+        $this->assertSame(3, SimulationRun::where('mode', SimulationMode::Full)->count());
+        $component->assertSet('familyQueued', 3);
+
+        // This plan's (the base's) run is the one tracked on the page.
+        $run = SimulationRun::findOrFail($component->get('runId'));
+        $this->assertSame($base->id, $run->scenario_id);
+        $this->assertSame(SimulationStatus::Queued, $run->status);
+    }
+
+    public function test_re_run_all_from_a_what_if_still_refreshes_the_whole_family(): void
+    {
+        Queue::fake();
+        $base = $this->scenario();
+        $childA = $this->makeChild($base, 'What-if A');
+        $this->makeChild($base, 'What-if B');
+
+        // Launched from a child, it walks up to the base and runs the base + all its children.
+        $component = Livewire::test(ScenarioResults::class, ['scenario' => $childA])
+            ->call('runFullFamily');
+
+        Queue::assertPushed(RunScenarioSimulation::class, 3);
+        $component->assertSet('familyQueued', 3);
+        // The current plan (the child) is the one whose run is tracked on the page.
+        $this->assertSame($childA->id, SimulationRun::findOrFail($component->get('runId'))->scenario_id);
+    }
+
+    public function test_the_re_run_all_button_shows_only_when_the_base_has_what_ifs(): void
+    {
+        $base = $this->scenario();
+        // No what-ifs yet → nothing to re-run as a family, so no button.
+        Livewire::test(ScenarioResults::class, ['scenario' => $base])->assertDontSee('Re-run all');
+
+        $this->makeChild($base, 'What-if A');
+        Livewire::test(ScenarioResults::class, ['scenario' => $base])->assertSee('Re-run all 2 plans');
+    }
+
+    private function makeChild(Scenario $base, string $name): Scenario
+    {
+        $child = new Scenario;
+        $child->user_id = $this->user->id;
+        $child->parent_scenario_id = $base->id;
+        $child->overrides = ['name' => $name, 'expenseLines.ess1.amount' => '31000'];
+        $child->builder_state = [];
+        $child->status = ScenarioStatus::Ready;
+        $child->projectFrom($child->effectiveBuilderState());
+        $child->save();
+
+        return $child;
     }
 
     private function scenario(): Scenario
