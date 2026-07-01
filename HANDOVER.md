@@ -3,7 +3,7 @@
 > A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue building the calculation engine and then the app around it. Read `docs/PLAN.md` first: it is the full approved plan and the source of truth for scope.
 
 **Stage:** active
-**Status:** Phase D go-live, **feature-complete for personal use**. The adviser-legibility workstream is complete (editable assumptions, buy-vs-rent compare + "why" advice narrative, partial-PRR CGT, add/remove-in-what-ifs); the tool runs in **personal-use advice mode** (`config('compliance.personal_use')` = the flagged regulatory line — set false before any public release). What remains is Rob's **browser verification / sign-off** (testing deferred by Rob) and an optional **post-v1 enhancement backlog**. See What's next + Current state + docs/PLAN.md + DECISIONS 2026-06-29/30.
+**Status:** Phase D go-live, **feature-complete for personal use**; the adviser-legibility workstream and the whole **post-v1 enhancement backlog are built** (annuitisation, historical stress-test, ONS mortality-refresh guardrail, care-cost risk — plus Lane B forced-housing + Lane C withdrawal-sequencing). The tool runs in **personal-use advice mode** (`config('compliance.personal_use')` = the flagged regulatory line — set false before any public release). What remains is Rob's **browser verification / sign-off**, the **public-release blockers**, and **optional refinements** — all enumerated in [docs/PLAN-remaining-work.md](docs/PLAN-remaining-work.md). See What's next + Current state.
 _Last updated: 2026-07-01 (Lane A **post-v1 backlog COMPLETE** — annuitisation, historical stress-test (JST, flagged public-release blocker), ONS mortality-refresh guardrail, and care-cost stochasticity all built. No open Lane A items; only Rob's browser sign-off + optional refinements (What's next #3) remain. Lane C shipped withdrawal-sequencing; Lane B's forced-housing workstream is built. **⚠️ Concurrent sessions may be live (lanes A/B/C/D) — read the next section before you commit.** Narrative in the session log.)_
 
 ## ⚠️ Multi-agent coordination (READ FIRST — 2026-06-30)
@@ -21,8 +21,10 @@ go-ahead.)
   session built and committed the whole A/B/C/D workstream (planning committed in `DECISIONS.md` / `docs/PLAN.md` /
   `PRD.md` / `DATA-MODEL.md` — the 2026-06-30 "forced-mortgage pressure-test" + "input-expectation clarity" entries;
   the code in `git log`). Those four append-only docs are Lane B's content area — **don't rewrite its entries from
-  another lane.** **Deferred (may still be active):** a `while_mortgaged` expense condition (stop the bundled mortgage
-  payment after a repay) + the in-place forced-sale model. Scope (built):
+  another lane.** **Deferred:** a `while_mortgaged` expense condition (stop the bundled mortgage payment after a
+  repay) — **now specced ready-to-build in [docs/PLAN-mortgage-payment-stop.md](docs/PLAN-mortgage-payment-stop.md)**
+  (a fresh agent can pick it up; touches `PathProjector` + `ExpenseProfile` + `HouseholdAssembler`, so coordinate
+  with the active PathProjector lanes) + the in-place forced-sale model. Scope (built):
   **(A) means-tested benefits in the live forecast** (`Benefits\PensionCreditCalculator` wired into `PathProjector`;
   new `YearResult` source `means_tested_benefit` — completeness/reconciliation guards; the source list grows 8→9),
   **(B) a mortgage-redemption event** (`Property` maturity year + action; projector tracks the balance),
@@ -163,12 +165,14 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 | Doc | Purpose |
 |-----|---------|
 | docs/PLAN.md | The full approved implementation plan. Source of truth for scope, data model, tax rules, Monte Carlo design, phasing. Holds the "Sector-informed build plan (2026-06-25)". |
+| docs/PLAN-remaining-work.md | Pick-up plan for a fresh agent (2026-07-01): the prioritised, executable backlog after Lane A's post-v1 work completed — go-live verification (P0), public-release blockers (P1), optional refinements (P2), CI hygiene (P3), plus cross-lane in-flight + open decisions for Rob. |
 | docs/RESEARCH-cashflow-modelling.md | How the sector (Voyant/Timeline/CashCalc, PLSA/SMPI) solves edit/clone/compare, line-item expenditure, drill-down — what we adopt + the gaps it surfaced. |
 | docs/RESEARCH-editable-assumptions-ux.md | How free consumer tools (Boldin, ProjectionLab, NYT rent-vs-buy, Guiide, Actuaries Longevity Illustrator) handle editable assumptions, buy-vs-rent and cost breakdowns — what we adopt (2026-06-29). |
 | docs/RESEARCH-document-import.md | PARKED post-v1 feature: statement-driven onboarding + document import (sector evidence, document→builder-field map, gotchas). |
 | docs/RESEARCH-competitive-gap-analysis.md | Full-market competitive scan (2026-06-30): where the engine already leads vs where the gaps are (decumulation policy + framing). Net-new backlog items folded into docs/PLAN.md "Competitive gap analysis". |
 | docs/RESEARCH-stress-test-and-official-sources.md | Stress-test industry standards + official UK data sources (2026-07-01): historical sequence backtesting; BoE has no equity total return, so the source is the JST Macrohistory dataset (CC BY-NC-SA); care-cost = LaingBuisson/PSSRU + ONS timing; ONS-refresh = fully ONS. Source decisions resolved + built. |
 | docs/PLAN-withdrawal-sequencing.md | DRAFT spec (2026-06-30): tax-efficient withdrawal sequencing across wrappers (ISA/SIPP/GIA) + "fill the band", surfacing the lifetime-tax £-delta. Generalises the existing `DrawdownStrategy`; 5 open questions for Rob. |
+| docs/PLAN-mortgage-payment-stop.md | Ready-to-build spec (2026-07-01): stop the bundled mortgage *payment* after a repay-from-capital redemption via a new `while_mortgaged` expense condition + `ExpenseProfile::mortgageCosts`. The last open Lane-B correctness item; self-contained for a fresh agent. |
 | PRD.md | Goal, success criteria, scope, non-goals, open questions. |
 | DATA-MODEL.md | Canonical data shape; what is materialised in code today vs planned. |
 | DECISIONS.md | Append-only decision log with rationale. |
