@@ -156,7 +156,11 @@ before each engine edit, and claim the lane in HANDOVER.
    (pension→PA, GIA gains→CGT AEA, ISA, pension→basic-rate ceiling, then the rest), **Pension-Credit-aware**
    (skip the free-band pension draw when it would claw back Guarantee Credit; prefer ISA/PCLS). + engine tests
    (band-fill stops at the exact thresholds; the PC-aware path; per-source completeness).
-2. **PA-taper.** The fill logic steps around the 60% £100k–£125,140 band.
+2. **PA-taper — resolved by the ordering (no code change, 2026-07-01).** The engine already taxes the 60%
+   £100k–£125,140 band (`IncomeTaxParameters::taperThreshold`/`taperRate`), so this is a sequencing concern only.
+   The FillBands order already draws **all** capital (cash, ISA, GIA) before any higher-rate/taper pension, so taxable
+   income is minimised and the 60% band is only ever entered when pension is the sole remaining source — unavoidable,
+   nothing cheaper to substitute. So the fill order is inherently taper-optimal; no extra step needed.
 3. **£-delta in Compare.** "Strategy X pays £Y less lifetime tax" (neutral, always) + the advice-gated steer
    (`personal_use`). Reuses Compare's identical-seed runs; reconciliation test (delta == tax(A) − tax(B)).
 4. **PCLS timing.** Let the planner choose when to take the 25% tax-free cash (vs user-specified).
