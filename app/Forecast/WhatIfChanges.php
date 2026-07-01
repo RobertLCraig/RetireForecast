@@ -47,7 +47,7 @@ final class WhatIfChanges
         'employed' => 'Employed', 'self_employed' => 'Self-employed', 'retired' => 'Retired', 'not_working' => 'Not working',
         'outright' => 'Owned outright', 'mortgaged' => 'Mortgaged',
         'isa' => 'ISA', 'gia' => 'GIA', 'cash' => 'Cash', 'premium_bonds' => 'Premium Bonds',
-        'rental' => 'Rental', 'annuity' => 'Annuity', 'other' => 'Other',
+        'rental' => 'Rental', 'annuity' => 'Annuity', 'disability_benefit' => 'Disability benefit', 'other' => 'Other',
         'essential' => 'Essential', 'discretionary' => 'Discretionary', 'self_investment' => 'Self-investment',
     ];
 

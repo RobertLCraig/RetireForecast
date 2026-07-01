@@ -533,7 +533,7 @@
 
             <fieldset class="{{ $section }}">
                 <legend class="{{ $legend }}">Other income</legend>
-                <p class="mt-1 text-sm text-gray-600">Rent, annuities or anything else not already captured as a pension.</p>
+                <p class="mt-1 text-sm text-gray-600">Rent, annuities, disability benefits or anything else not already captured as a pension. Pick <strong>Disability benefit</strong> for DLA / AA / PIP — it's always treated as tax-free and left out of the Pension Credit income test, so it can't be mis-taxed.</p>
                 @foreach ($incomeStreams as $i => $stream)
                     <div wire:key="income-{{ $i }}" class="mt-4 grid items-end gap-3 sm:grid-cols-6">
                         <div>
@@ -547,6 +547,7 @@
                             <select id="incomeStreams-{{ $i }}-type" wire:model="incomeStreams.{{ $i }}.type" class="{{ $field }}">
                                 <option value="rental">Rental</option>
                                 <option value="annuity">Annuity</option>
+                                <option value="disability_benefit">Disability benefit (tax-free)</option>
                                 <option value="other">Other</option>
                             </select>
                         </div>

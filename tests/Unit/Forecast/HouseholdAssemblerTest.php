@@ -7,6 +7,7 @@ namespace Tests\Unit\Forecast;
 use App\Forecast\HouseholdAssembler;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
@@ -72,6 +73,28 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertSame(974_740, $household->incomeStreams[0]->grossAnnual->pence);   // £600.00 × 13
         $this->assertSame(1_980_000, $household->incomeStreams[1]->grossAnnual->pence); // £1,650 × 12
         $this->assertSame(500_000, $household->incomeStreams[2]->grossAnnual->pence);   // £5,000 × 1
+    }
+
+    public function test_a_disability_benefit_income_is_forced_tax_free_whatever_the_flag_says(): void
+    {
+        // The type is the single source of truth for a tax-free benefit: DLA / AA / PIP are
+        // disregarded from income tax AND the Pension Credit means test. So even a stale
+        // taxable=true flag (e.g. copied from a rental row) must not tax it or dock benefit.
+        $household = (new HouseholdAssembler)->household([
+            'householdName' => 'DLA', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '10000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'incomeStreams' => [
+                ['id' => 'i1', 'ownerId' => 'p1', 'type' => 'disability_benefit', 'grossAnnual' => '600.00', 'frequency' => 'four_weekly', 'taxable' => true, 'inflationLinked' => true, 'startAge' => '0'],
+            ],
+        ]);
+
+        $stream = $household->incomeStreams[0];
+        $this->assertSame(IncomeStreamType::DisabilityBenefit, $stream->type);
+        $this->assertFalse($stream->taxable); // the type overrides the taxable=true flag
+        $this->assertTrue($stream->type->isTaxFreeBenefit());
+        $this->assertSame(974_740, $stream->grossAnnual->pence); // £600.00 × 13 — still annualised
     }
 
     public function test_the_disability_benefit_flag_is_carried_through_to_the_person(): void

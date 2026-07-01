@@ -391,14 +391,18 @@ final class HouseholdAssembler
 
     private function incomeStream(array $s): IncomeStream
     {
+        $type = IncomeStreamType::from($s['type']);
+
         return new IncomeStream(
             ownerId: (string) $s['ownerId'],
-            type: IncomeStreamType::from($s['type']),
+            type: $type,
             // The amount is entered per a chosen pay frequency (weekly / 4-weekly / monthly /
             // annual) and annualised here — the single conversion boundary. 4-weekly matters:
             // the DWP pays State Pension and DLA / AA every four weeks, not monthly.
             grossAnnual: $this->annualised($this->moneyRequired($s['grossAnnual'] ?? null), (string) ($s['frequency'] ?? 'annual')),
-            taxable: (bool) ($s['taxable'] ?? false),
+            // A tax-free benefit (DLA / AA / PIP) is structurally tax-free — the type overrides any
+            // stale "taxable" flag, so it can never be income-taxed or counted in the means test.
+            taxable: $type->isTaxFreeBenefit() ? false : (bool) ($s['taxable'] ?? false),
             inflationLinked: (bool) ($s['inflationLinked'] ?? false),
             startAge: (int) $s['startAge'],
             endAge: $this->intOrNull($s['endAge'] ?? null),
