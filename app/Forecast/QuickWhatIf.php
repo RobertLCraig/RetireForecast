@@ -115,10 +115,11 @@ final class QuickWhatIf
      * home)" essential cost (the rent-leg figure if set, else ~4% of value). Returns null with no
      * property to let.
      *
-     * v1 caveats (a proper let-to-let needs an engine change — see DECISIONS 2026-07-01): the let
-     * home is still modelled as the exempt main residence, so its equity is NOT yet counted as
-     * assessable capital — Pension Credit is not docked the way letting it out really would; BTL
-     * mortgage-interest tax relief and letting voids/costs are not modelled.
+     * The let home is flagged {@see \RetireForecast\FinanceEngine\Dto\Property::$isLet}, so its
+     * equity counts as assessable capital in the pension-age means test — letting it out erodes
+     * Pension Credit and can cross the £16k cliff, as in life. v1 caveats still flagged: BTL
+     * mortgage-interest tax relief and letting voids/costs are not modelled, and the retained
+     * mortgage is not netted off displayed wealth.
      *
      * @param  array<string, mixed>  $state
      * @return array<string, mixed>|null
@@ -142,6 +143,7 @@ final class QuickWhatIf
         $edited = $state;
         $edited['variant'] = 'stay_put';                             // keep the flat (do not sell)
         $edited['property']['mortgageMaturityAction'] = 'refinance';  // let → the BTL is legit and continues
+        $edited['property']['isLet'] = true;                         // let out → its equity is assessable capital
         $edited['incomeStreams'] = array_merge($state['incomeStreams'] ?? [], [[
             'id' => (string) Str::uuid(),
             'ownerId' => $owner,

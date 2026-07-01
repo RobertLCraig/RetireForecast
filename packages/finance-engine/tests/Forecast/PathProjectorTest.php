@@ -174,6 +174,34 @@ final class PathProjectorTest extends TestCase
             ->years[0]->incomeBySource['means_tested_benefit']->pence);
     }
 
+    public function test_a_let_home_counts_as_assessable_capital_and_erodes_pension_credit(): void
+    {
+        // A low-income couple who qualify for Pension Credit — but they LET their home and live
+        // elsewhere. Its equity (£300k − £100k = £200k) becomes assessable capital, whose tariff
+        // income wipes the Guarantee Credit, exactly as selling the home would (the let-to-let trap).
+        $make = fn (bool $isLet): Household => new Household(
+            'Let', RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired),
+            ],
+            new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(120, 0)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(120, 0)),
+            ],
+            primaryResidence: new Property(Money::fromPounds(300_000), OwnershipType::Mortgaged, outstandingMortgage: Money::fromPounds(100_000), isLet: $isLet),
+        );
+
+        $pc = fn (Household $h): int => $this->forecaster()->forecast($h, $this->flatAssumptions(), $this->settings())
+            ->years[0]->incomeBySource['means_tested_benefit']->pence;
+
+        // Occupied: the home is the exempt main residence → Pension Credit is paid.
+        $this->assertGreaterThan(0, $pc($make(false)));
+        // Let out: £200k of equity is assessable capital → the tariff wipes the award.
+        $this->assertSame(0, $pc($make(true)));
+    }
+
     /**
      * @param  list<\RetireForecast\FinanceEngine\Dto\Pension>  $pensions
      */

@@ -430,6 +430,7 @@ final class HouseholdAssembler
             cgtHistory: $this->cgtHistoryFrom($p, $saleYear),
             mortgageRedemptionYear: $this->intOrNull($p['mortgageRedemptionYear'] ?? null),
             mortgageMaturityAction: MortgageMaturityAction::from($p['mortgageMaturityAction'] ?? 'refinance'),
+            isLet: (bool) ($p['isLet'] ?? false),
         );
     }
 

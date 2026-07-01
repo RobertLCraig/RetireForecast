@@ -472,7 +472,15 @@ final class PathProjector
         }
 
         $assessableIncomeWeekly = Money::fromPence((int) round($assessableAnnual / $weeksPerYear));
-        $capital = Money::fromPence($this->sum($state['cash']) + $this->sum($state['gia']) + $this->sum($state['isa']));
+
+        // Assessable capital = liquid wealth, plus — when the home is LET (the household lives
+        // elsewhere) — its equity, because a let property is not the exempt main residence. So
+        // letting it out erodes Pension Credit and can cross the £16k cliff, just as selling does.
+        $capitalPence = $this->sum($state['cash']) + $this->sum($state['gia']) + $this->sum($state['isa']);
+        if ($household->primaryResidence?->isLet) {
+            $capitalPence += max(0, $state['property'] - $state['mortgageOutstanding']);
+        }
+        $capital = Money::fromPence($capitalPence);
 
         $applicableBase = $this->pensionCredit->applicableAmountWeekly($aliveCount === 2, $disabled);
         $applicableWeekly = Money::fromPence((int) round($applicableBase->pence * $state['spFactor']));

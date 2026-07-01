@@ -25,6 +25,12 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * no scheduled event — the mortgage is assumed to continue, the existing behaviour.
  * $mortgageMaturityAction says what happens then ({@see MortgageMaturityAction}); the default
  * Refinance rolls it over, so a property without a redemption year is unaffected.
+ *
+ * $isLet flags that the household lets this property out and lives elsewhere (the "let-to-let"
+ * strategy) rather than occupying it. It is then no longer the exempt main residence for the
+ * pension-age means test: its equity (value − outstanding mortgage) counts as ASSESSABLE
+ * capital, so — like selling — letting it out erodes Pension Credit and can cross the £16,000
+ * Housing/Council-Tax-support cliff. Default false = they occupy it (exempt, the common case).
  */
 final class Property
 {
@@ -40,5 +46,6 @@ final class Property
         public readonly ?CgtHistory $cgtHistory = null,
         public readonly ?int $mortgageRedemptionYear = null,
         public readonly MortgageMaturityAction $mortgageMaturityAction = MortgageMaturityAction::Refinance,
+        public readonly bool $isLet = false,
     ) {}
 }
