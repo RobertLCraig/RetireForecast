@@ -178,6 +178,7 @@ final class ScenarioForecaster
             baseYear: (int) substr($scenario->base_tax_year, 0, 4),
             baseTaxYear: $scenario->base_tax_year,
             drawdownStrategy: $strategy ?? DrawdownStrategy::TaxEfficient,
+            modelCareCost: (bool) ($scenario->effectiveBuilderState()['modelCareCost'] ?? false),
         );
     }
 

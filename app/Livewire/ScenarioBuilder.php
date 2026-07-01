@@ -97,6 +97,13 @@ class ScenarioBuilder extends Component
 
     public bool $ihtModelled = false;
 
+    /**
+     * Model the risk of late-life residential/nursing care fees in the Monte Carlo (off by
+     * default). When on, each simulated future may include a sampled care spell (sourced
+     * probability / duration / self-funder fee), so the success rate reflects that fat tail.
+     */
+    public bool $modelCareCost = false;
+
     public ?int $assumptionSetId = null;
 
     /**
@@ -761,6 +768,13 @@ class ScenarioBuilder extends Component
         $assumptionOverrides = AssumptionOverrides::sparse($this->assumptionOverrides);
         if ($assumptionOverrides !== []) {
             $state['assumptionOverrides'] = $assumptionOverrides;
+        }
+
+        // Store the care-cost toggle only when ON (sparse), so a scenario predating it — and a
+        // what-if that changes nothing — records no spurious delta (mirrors the include flag /
+        // assumptionOverrides). Absent = off, which ScenarioForecaster::settings() reads as false.
+        if ($this->modelCareCost) {
+            $state['modelCareCost'] = true;
         }
 
         return $state;

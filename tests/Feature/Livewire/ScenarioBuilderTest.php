@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Livewire;
 
 use App\Enums\ScenarioStatus;
+use App\Forecast\ScenarioForecaster;
 use App\Livewire\ScenarioBuilder;
 use App\Models\Scenario;
 use App\Models\User;
@@ -70,6 +71,19 @@ class ScenarioBuilderTest extends TestCase
         $this->assertSame(720, $dc->annuityPurchase->rate->basisPoints);
         $this->assertSame(PensionEscalationBasis::Rpi, $dc->annuityPurchase->escalation);
         $this->assertSame(5000, $dc->annuityPurchase->survivorFraction->basisPoints);
+    }
+
+    public function test_the_care_cost_toggle_flows_through_to_the_forecast_settings(): void
+    {
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component->set('modelCareCost', true)->call('save')->assertHasNoErrors();
+
+        $scenario = Scenario::firstOrFail();
+        $this->assertTrue($scenario->effectiveBuilderState()['modelCareCost']);
+        $this->assertTrue(app(ScenarioForecaster::class)->settings($scenario)->modelCareCost);
     }
 
     public function test_an_unannuitised_pot_stores_no_annuity_fields(): void

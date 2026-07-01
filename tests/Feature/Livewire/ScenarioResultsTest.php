@@ -130,6 +130,19 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('Rate of Return on Everything');
     }
 
+    public function test_the_care_cost_panel_shows_after_a_run_when_care_is_modelled(): void
+    {
+        // A scenario with the care-risk toggle on: a completed run reports the care impact,
+        // which the results page surfaces as its own panel.
+        $scenario = ScenarioFixture::rich($this->user, ['modelCareCost' => true]);
+
+        Livewire::test(ScenarioResults::class, ['scenario' => $scenario])
+            ->set('previewPaths', 40)
+            ->call('preview')
+            ->assertSee('The risk of late-life care costs')
+            ->assertSee('Chance of needing care');
+    }
+
     public function test_the_results_page_shows_the_assumption_sensitivity_overlay(): void
     {
         // Also deterministic: the compare-assumptions table shows before any run.

@@ -10,6 +10,7 @@
         ['id' => 'sec-input-notes', 'label' => 'A note on your inputs', 'show' => (bool) $inputNotes],
         ['id' => 'sec-headline', 'label' => 'Will the money last?', 'show' => (bool) $presented],
         ['id' => 'sec-longevity', 'label' => 'How long it may need to last', 'show' => ! empty($presented['longevity'])],
+        ['id' => 'sec-care', 'label' => 'Care-cost risk', 'show' => ! empty($presented['careImpact'])],
         ['id' => 'sec-fan', 'label' => 'Outlook over time', 'show' => (bool) $presented],
         ['id' => 'sec-shock', 'label' => 'Pension lump-sum tax shock', 'show' => (bool) $shock],
         ['id' => 'sec-sensitivity', 'label' => 'Assumption sensitivity', 'show' => (bool) $sensitivity],
@@ -269,6 +270,33 @@
                         <dd class="mt-1 text-xs text-gray-500">and {{ $lg['reaches100'] }} to 100 — the tail the median hides.</dd>
                     </div>
                 </dl>
+            </section>
+        @endif
+
+        {{-- Care-cost risk: shown only when the run modelled it (the builder toggle). --}}
+        @if (! empty($presented['careImpact']))
+            @php $care = $presented['careImpact']; @endphp
+            <section id="sec-care" aria-labelledby="care-heading" class="{{ $card }} scroll-mt-6">
+                <h2 id="care-heading" class="text-xl font-semibold text-gray-900">The risk of late-life care costs</h2>
+                <p class="mt-1 text-sm text-gray-600">These projections include the chance of needing residential or nursing care in later life. Most people pay nothing, but a minority face very large bills — so this is a <strong>fat tail</strong>, shown as a risk rather than a single expected figure.</p>
+                <dl class="mt-4 grid gap-4 sm:grid-cols-3">
+                    <div class="rounded-md bg-gray-50 p-4">
+                        <dt class="text-sm text-gray-500">Chance of needing care</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">{{ $care['sharePct'] }}</dd>
+                        <dd class="mt-1 text-xs text-gray-500">of simulated futures included a care spell for at least one of you.</dd>
+                    </div>
+                    <div class="rounded-md bg-gray-50 p-4">
+                        <dt class="text-sm text-gray-500">Typical bill, if it happens</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">£{{ number_format($care['medianCost']) }}</dd>
+                        <dd class="mt-1 text-xs text-gray-500">median total cost across the futures with care (today's money).</dd>
+                    </div>
+                    <div class="rounded-md bg-gray-50 p-4">
+                        <dt class="text-sm text-gray-500">A high-end bill</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">£{{ number_format($care['p90Cost']) }}</dd>
+                        <dd class="mt-1 text-xs text-gray-500">1 in 10 of the with-care futures cost this much or more.</dd>
+                    </div>
+                </dl>
+                <p class="mt-3 text-xs text-gray-500">Sourced from LaingBuisson self-funder fees (~£1,300–£1,600/week), PSSRU length-of-stay, and the Dilnot Commission ~1-in-4 lifetime risk. The full self-funder cost is charged; once your assets fall below the means-test threshold a local authority contributes, which this does not yet model (so the figure is conservative).</p>
             </section>
         @endif
 

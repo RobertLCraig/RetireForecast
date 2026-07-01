@@ -26,6 +26,7 @@ use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\HousingPurchase;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\MonteCarlo\CareImpact;
 use RetireForecast\FinanceEngine\MonteCarlo\LongevityDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
@@ -128,6 +129,24 @@ final class ResultPresenter
             // How long the household may last, from the joint-life sampler (same across variants —
             // mortality does not depend on the housing choice). Null for a run predating the field.
             'longevity' => self::longevityPanel($primarySim->longevity),
+            // The modelled late-life care-cost risk (null unless the run modelled care).
+            'careImpact' => self::careImpactPanel($primarySim->careImpact),
+        ];
+    }
+
+    /**
+     * The modelled care-cost risk for display: the chance a path needed care and, among those,
+     * the typical and high-end lifetime bill. Descriptive, never a recommendation. Null when the
+     * run did not model care.
+     *
+     * @return array{sharePct: string, medianCost: int, p90Cost: int}|null
+     */
+    public static function careImpactPanel(?CareImpact $c): ?array
+    {
+        return $c === null ? null : [
+            'sharePct' => self::formatPercent($c->shareOfPathsWithCare),
+            'medianCost' => self::pounds($c->medianCareCost),
+            'p90Cost' => self::pounds($c->p90CareCost),
         ];
     }
 

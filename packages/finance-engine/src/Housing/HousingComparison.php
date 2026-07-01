@@ -211,6 +211,7 @@ final class HousingComparison
             freezeEndYear: $settings->freezeEndYear,
             annualRent: $action->annualRent ?? Money::zero(),
             rentInflationReal: $action->rentInflationReal ?? $assumptions->rentInflation,
+            modelCareCost: $settings->modelCareCost,
         );
     }
 

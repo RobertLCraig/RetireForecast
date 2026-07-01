@@ -248,6 +248,13 @@
                             Model inheritance tax (estate &amp; legacy)
                         </label>
                     </div>
+                    <div class="sm:col-span-2">
+                        <label class="flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" wire:model="modelCareCost" class="rounded border-gray-300">
+                            Model the risk of late-life care costs
+                        </label>
+                        <p class="mt-1 text-xs text-gray-500">Adds the chance of residential/nursing care fees to the simulated futures (around a 1-in-4 risk; self-funder fees ~£1,300–£1,600/week). Lowers the success rate to reflect this real tail risk.</p>
+                    </div>
                 </div>
             </fieldset>
 
