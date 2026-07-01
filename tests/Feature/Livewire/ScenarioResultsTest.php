@@ -46,6 +46,16 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('%');
     }
 
+    public function test_the_results_page_shows_the_withdrawal_sequencing_panel(): void
+    {
+        // The deterministic "how you draw your money" panel renders without a completed run:
+        // the current draw order's lifetime tax vs filling the tax-free bands first.
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->assertSee('How you draw your money down')
+            ->assertSee('Filling your tax-free allowances first')
+            ->assertSee('tax paid across the plan');
+    }
+
     public function test_the_fan_chart_ships_with_an_accessible_data_table(): void
     {
         Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])

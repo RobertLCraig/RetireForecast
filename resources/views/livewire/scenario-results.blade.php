@@ -16,6 +16,7 @@
         ['id' => 'sec-budget', 'label' => 'Your spending plan', 'show' => ! empty($budget['tiers'])],
         ['id' => 'sec-plsa', 'label' => 'PLSA living standards', 'show' => (bool) $plsa],
         ['id' => 'sec-income-floor', 'label' => 'Spending vs secure income', 'show' => (bool) $incomeFloor],
+        ['id' => 'sec-withdrawal-sequencing', 'label' => 'How you draw your money', 'show' => (bool) $withdrawal],
         ['id' => 'sec-stress', 'label' => 'Stress test: past crises', 'show' => (bool) $stressTest],
         ['id' => 'sec-assumptions', 'label' => 'Assumptions used', 'show' => true],
         ['id' => 'sec-sale', 'label' => 'If you sell', 'show' => (bool) $saleExplainer],
@@ -627,6 +628,12 @@
 
             <x-signpost class="mt-4" />
         </section>
+    @endif
+
+    {{-- How you draw your money: lifetime tax under the current draw order vs filling the
+         tax-free bands first. Neutral figures; the directive steer is behind the interpret gate. --}}
+    @if ($withdrawal)
+        @include('livewire.partials.withdrawal-sequencing')
     @endif
 
     {{-- Historical stress test: replay real past return + inflation sequences over this exact

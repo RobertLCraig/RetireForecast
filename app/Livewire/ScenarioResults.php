@@ -13,6 +13,7 @@ use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
 use App\Forecast\WhatIfChanges;
+use App\Forecast\WithdrawalStrategyComparison;
 use App\Models\Result;
 use App\Models\Scenario;
 use App\Models\SimulationRun;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
+use RetireForecast\FinanceEngine\Money\Money;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -359,6 +361,19 @@ class ScenarioResults extends Component
 
         $forecaster = app(ScenarioForecaster::class);
 
+        // Withdrawal sequencing: what the household's draw order costs in lifetime tax vs filling
+        // the tax-free bands first (on the base household). Neutral figures always; the directive
+        // steer only behind the interpret gate.
+        $comparison = WithdrawalStrategyComparison::for($forecaster, $this->scenario);
+        $withdrawal = $comparison->baselineTaxPence > 0 ? [
+            'baseline' => Money::fromPence($comparison->baselineTaxPence)->format(),
+            'fillBands' => Money::fromPence($comparison->fillBandsTaxPence)->format(),
+            'difference' => Money::fromPence(abs($comparison->savingPence))->format(),
+            'fillBandsSaves' => $comparison->fillBandsSaves(),
+            'differs' => $comparison->savingPence !== 0,
+            'steer' => Gate::allows('interpret') ? Interpretation::withdrawalSequencingNarrative($comparison) : null,
+        ] : null;
+
         // Per-strategy cashflow: a deterministic forecast for each housing strategy (single
         // source — the same variant households the Monte Carlo comparison runs). The ladder +
         // its milestones follow the selected strategy; the income-floor / input-sanity notes
@@ -408,6 +423,7 @@ class ScenarioResults extends Component
             'runDiff' => $runDiff,
             'presented' => $presented,
             'interpretation' => $interpretation,
+            'withdrawal' => $withdrawal,
             // For a what-if (delta-child): what it changed from its base, so the page reads
             // as a variation of the base rather than an independent plan. Null for a base.
             'whatIf' => $this->scenario->isChild() ? [

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Compliance;
 
 use App\Forecast\ResultPresenter;
+use App\Forecast\WithdrawalStrategyComparison;
 use App\Models\Result;
 use Illuminate\Support\Collection;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
+use RetireForecast\FinanceEngine\Money\Money;
 
 /**
  * The single, walled-off home for advice-style "what this suggests" readouts.
@@ -110,6 +112,36 @@ final class Interpretation
         $lines[] = 'This is one central projection on your current assumptions; run the full simulation for the range of futures, and revisit it if your spending, returns or longevity differ.';
 
         return $lines;
+    }
+
+    /**
+     * A directive steer on withdrawal sequencing: which draw order pays less lifetime tax,
+     * from the neutral {@see WithdrawalStrategyComparison}. Reachable only behind the
+     * `interpret` ability; the figures themselves stay on the neutral results panel.
+     *
+     * @return list<string>
+     */
+    public static function withdrawalSequencingNarrative(WithdrawalStrategyComparison $comparison): array
+    {
+        if ($comparison->savingPence === 0) {
+            return ['On these figures the order you draw your money makes no difference to the tax you pay, so there is nothing to choose between them here.'];
+        }
+
+        if ($comparison->fillBandsSaves()) {
+            $amount = Money::fromPence($comparison->savingPence)->format();
+
+            return [
+                "Filling your tax-free allowances first would pay {$amount} less tax across your plan; on these figures it is the order to lean towards for tax.",
+                'This is one central projection on your current assumptions; revisit it if your spending, income or returns differ.',
+            ];
+        }
+
+        $amount = Money::fromPence(-$comparison->savingPence)->format();
+
+        return [
+            "Your current order, spending your savings first, already pays {$amount} less tax than filling the bands, so on these figures it is the one to lean towards.",
+            'This is one central projection on your current assumptions; revisit it if your spending, income or returns differ.',
+        ];
     }
 
     private static function lasts(ForecastResult $f): int
