@@ -29,13 +29,15 @@ go-ahead.)
   **(B) a mortgage-redemption event** (`Property` maturity year + action; projector tracks the balance),
   **(C) feasibility flags**, **(D) input-expectation clarity** (pay-frequency selector, tax-free-benefit income
   type, retirement-age / one-off-scope prompts). Full detail: DECISIONS/PLAN 2026-06-30 — not re-transcribed here.
-- **Lane C — decumulation: withdrawal sequencing (docs done; CODE BUILD STARTING 2026-07-01).** A third session ran the
-  full-market competitive scan (`docs/RESEARCH-competitive-gap-analysis.md`) and wrote the now decision-ready spec
-  **`docs/PLAN-withdrawal-sequencing.md`** (tax-efficient ISA/SIPP/GIA "fill the band" ordering + the lifetime-tax
-  £-delta). **Rob approved the full-capability build (2026-07-01)**; decisions + build order are in the spec. **Next
-  step (NOT yet started): the engine core** — a new **`FillBands`** `DrawdownStrategy` + its fill-order in
-  `PathProjector::fundShortfall`, Pension-Credit-aware, additive; then the £-delta in **Compare**
-  (`ScenarioForecaster` / `ResultPresenter`). ⚠️ **Shares the `PathProjector` +
+- **Lane C — decumulation: withdrawal sequencing (CODE BUILD IN PROGRESS 2026-07-01).** A third session ran the
+  full-market competitive scan (`docs/RESEARCH-competitive-gap-analysis.md`) and wrote the decision-ready spec
+  **`docs/PLAN-withdrawal-sequencing.md`**; **Rob approved the full-capability build**. **Built + committed (green):**
+  the engine core (`FillBands` `DrawdownStrategy` + its Pension-Credit-aware fill-order in
+  `PathProjector::fundShortfall`, 2 engine tests), the PA-taper (resolved by the ordering, no code), and the **£-delta
+  computation** (`ScenarioForecaster::deterministicUnderStrategy` + `App\Forecast\WithdrawalStrategyComparison`,
+  reconciliation-tested). **Next (4b):** the results-page panel showing the £-delta (neutral) + the advice-gated steer
+  (`Interpretation` behind `personal_use`); then PCLS timing, then the optimiser. Status: the spec's "Build order" +
+  DECISIONS 2026-07-01 (Lane C). ⚠️ **Shares the `PathProjector` +
   `ScenarioForecaster` / `ResultPresenter` surface with Lanes A/B** — additive-only, re-checking `git` before each edit,
   committing engine slices green. Build order + decisions: the spec's "Build order" section.
 - **Lane D — multiple-properties data-model plan (docs-only, DRAFT; awaiting Rob's review).** A fourth session drafted
@@ -176,6 +178,19 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-07-01 (Lane C — withdrawal sequencing: engine core + £-delta computation built)_ — On Rob's go-aheads, built the
+approved feature in green committed slices. **Engine:** a `FillBands` `DrawdownStrategy` + its fill-order in
+`PathProjector::fundShortfall` (pension within the personal allowance → GIA gains within the CGT allowance → cash + ISA
+→ basic-rate pension → the rest), made **Pension-Credit-aware** (a Guarantee-Credit household draws capital first, since
+any pension income claws the credit back £-for-£; the year loop passes the award through). `TaxEfficient`/`PensionAware`
+stay byte-identical (the pension-draw primitive generalised from a basic-rate-cap boolean to a taxable-income limit).
+**PA-taper:** resolved by the ordering (all capital is drawn before any higher-rate/taper pension, so the 60% band is
+only entered when pension is the sole source, unavoidable, no code). **£-delta (4a):**
+`ScenarioForecaster::deterministicUnderStrategy` + `App\Forecast\WithdrawalStrategyComparison` sum each strategy's
+lifetime tax (`YearResult::totalTax`) and the difference, reconciliation-tested, neutral by construction. **Next (4b):**
+the results-page panel + the advice-gated steer (`Interpretation` behind `personal_use`), then PCLS timing, then the
+optimiser. Suite green throughout; commits lane-clean (my files only).
 
 _2026-07-01 (Lane C — withdrawal sequencing: reviewed vs the parallel work, folded Rob's decisions, claimed the lane)_ —
 On Rob's steer, reviewed the project + docs against the fast-moving parallel lanes, then advanced the Lane C
