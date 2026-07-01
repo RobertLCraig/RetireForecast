@@ -285,9 +285,13 @@ Recorded here so the rebuild does not fork the model:
   carries a **per-year** usable fan (`usableFanChart`) beside the total `fanChart` — same `liquid + pension`
   definition as the ladder, with a `usable ≤ total` per-year invariant — so the over-time charts can default to
   spendable (excl-home) money, the honest "will it last" series (gotcha P), with an include-home toggle. Also added **`YearResult::incomeBySource`** (the
-  canonical 8 sources) powering the deterministic cashflow ladder + the per-source completeness guard. Phase
-  C1 added **`YearResult::essentialSpend`** (real terms — the essential floor incl. rent/running costs and the
-  survivor factor) so the income-floor readout reads one definition. **Still app-side (not yet built):** the
+  canonical sources — now 10, incl. `means_tested_benefit`) powering the deterministic cashflow ladder + the
+  per-source completeness guard. Phase C1 added **`YearResult::essentialSpend`** (real terms — the essential
+  floor incl. rent/running costs and the survivor factor) so the income-floor readout reads one definition.
+  **2026-07-01** added **`YearResult::investmentGrowth`** (nullable Money, real terms) — the year's CAPITAL
+  appreciation left in the pots (share/fund growth; separate from the taxed `investment_income` paid out), so
+  the ladder can show where wealth grows beyond income; `growState` returns it, deflated by next year's price
+  level for the real purchasing-power gain (DECISIONS 2026-07-01). **Still app-side (not yet built):** the
   **PLSA benchmark** (→ C4).
 - ✅ **BUILT (2026-06-29, adviser-legibility presentation layer).** Two small **additive engine** outputs feed the
   legibility layer, each a single source the app only reads: (1) **`ForecastResult::deathCalendarYears`**

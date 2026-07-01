@@ -3,6 +3,23 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-01 — Surface investment (capital) growth separately from investment income
+**Decision:** The cashflow ladder now shows the year's **capital growth** (share/fund appreciation left inside the
+pots) as its own figure, beside the existing **investment income** (interest + dividends paid out and taxed each
+year). New `YearResult::investmentGrowth` (nullable Money, real terms); `PathProjector::growState` returns the
+year's nominal capital growth and the projection loop attaches it **deflated by NEXT year's price level**, so it is
+the real purchasing-power gain that matches the real wealth line's progression (not the inflated nominal figure).
+The ladder column shows only when growth occurs, with a note distinguishing the two, and the CSV carries it.
+**Why (Rob):** "surface where the gains come from (interest / share growth)". The ladder already showed investment
+income, but the larger part of a real return — capital growth in ISAs / pensions / GIA — was invisible: it silently
+raised the wealth line, so a reader couldn't see why wealth grew (or held) in a drawdown year. Surfacing it closes
+the explainability gap and lets income + growth reconcile to the wealth change. Engine-tested that it is honest: an
+ISA shows real capital growth while the same cash shows ~none (cash's return is paid out as interest income, not
+capital — no double count). Also this session (a feature, no separate decision): **how-to-claim Pension Credit**
+guidance on the results page (`ResultPresenter::pensionCreditGuidance`, gov.uk-sourced, shown only when the forecast
+credits Pension Credit), because it is means-tested (must be applied for) and heavily under-claimed.
+**Status:** active.
+
 ## 2026-07-01 — A surviving partner inherits the deceased's assets (the stranded-wealth bug)
 **Decision:** On a death, the surviving partner **inherits** the deceased's assets; the projection
 transfers them so they stay drawable. **Model:** spouses inherit IHT-free and a DC pot passes to the
