@@ -3,6 +3,36 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-01 — Annuitisation: convert part of a DC pot into a lifetime income (Lane A)
+**Decision:** A DC pension can buy a **lifetime annuity** with part of its pot at a chosen age: the pot falls by the
+purchase amount and, from that age, pays a guaranteed income = **amount × rate** for life. A new `AnnuityPurchase`
+DTO (`atAge`, `amount`, `rate`, `escalation`, optional `survivorFraction`) hangs off `DcPension` (null = keep in
+drawdown); `PathProjector` buys it once (reducing the pot) and pays the income each year. **Level** (escalation
+`None`) is a flat nominal income (falls in real terms); any other basis **escalates with inflation** from purchase —
+the same proxy the engine already uses for DB escalation in payment. A **joint-life** annuity (`survivorFraction`
+set) continues to the surviving partner at that fraction after the annuitant dies; **single-life** stops. The income
+is taxable and counts as assessable income for the Pension Credit test, so it stacks correctly with the rest of the
+forecast.
+**Key choices:**
+- **The rate is a user input** (builder default a sourced **~7.2%**, a rough level joint-life-at-65 guide), so **no
+  fabricated age/rate/health table lives in the engine** — it only multiplies the pot by the rate. This is the same
+  discipline as every other figure carrying a source; a real quote is age/health-specific and belongs to the user.
+- **Income maps to the existing `other_taxable` source**, which the `YearResult` doc already names as covering
+  annuity income — so **no change to `INCOME_SOURCES`** (avoiding churn on the source list Lane B had just grown to 9,
+  and any mapper/UI change). Completeness is still guarded (a test shows an annuity demonstrably reaches the forecast).
+- **The purchase amount is treated as nominal at the purchase age**, matching how planned withdrawals already work
+  (a v1 simplification, flagged). **Buying is not a taxable event** (the income is taxed as it arrives). The pot loses
+  drawable value on purchase — economically correct (capital exchanged for income), and consistent with DB (an income,
+  not a pot); the annuity's longevity value is not capitalised into wealth (v1, flagged).
+- **Builder storage is sparse** (annuity fields stored only when annuitising), mirroring the include-flag / selling-costs
+  pattern, so a scenario predating the feature and a no-op what-if record no delta. See [[2026-06-30 — What-if sliders (explore the levers) on the results page]] for the sibling "explore levers" path; annuitisation is a saved plan input, not a throwaway lever.
+**Why:** annuitisation is the one remaining decumulation policy the engine could not express — a household choosing
+certainty (a guaranteed floor) over flexibility (drawdown) is a core retirement decision, and the buy-vs-drawdown
+trade-off is exactly what this tool exists to show. Built engine-first (framework-free, tested to the penny), then
+the builder, each committed green.
+**Status:** built (engine + builder). Remaining Lane A backlog: the stress-test panel (gated on authoritative sourced
+historical sequences), the ONS-refresh script, care-cost assumptions.
+
 ## 2026-07-01 — Surface investment (capital) growth separately from investment income
 **Decision:** The cashflow ladder now shows the year's **capital growth** (share/fund appreciation left inside the
 pots) as its own figure, beside the existing **investment income** (interest + dividends paid out and taxed each

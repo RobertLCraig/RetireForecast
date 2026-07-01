@@ -217,9 +217,11 @@ the planned compliance step). The genuinely new, aligned items, kept as a post-v
   joint-life sampler); a **stress-test panel** feeding historical sequences (1973–74, dot-com, GFC,
   1970s inflation) through the deterministic engine; **what-if sliders** (±retirement age, ±spend,
   year-1 market shock, longevity shock).
-- **Modelling depth (v2 scope):** an **annuitisation option** (partial/level/escalating, joint-vs-single
-  — priced off the mortality tables we already have) and **care-cost stochasticity** (uncertain entry
-  age / duration / weekly cost) for a more realistic tail.
+- **Modelling depth (v2 scope):** ✅ **an annuitisation option — DONE (2026-07-01).** Partial / level /
+  escalating (RPI/CPI), single- or joint-life, priced off a **user-input rate** (default a sourced ~7.2%),
+  not the mortality tables — a real quote is age/health-specific and belongs to the user, so no fabricated
+  rate table lives in the engine (DECISIONS 2026-07-01). Still v2: **care-cost stochasticity** (uncertain
+  entry age / duration / weekly cost) for a more realistic tail.
 - **Neutral diagnostics — adopt ONLY behind the `OutputPhrasing` lint:** implied per-year withdrawal
   rate (as a fact, **not** "compare to a safe 3–4% range" — that reads as a target), critical yield,
   replacement rate, a neutral narrative-report generator, a capacity-for-loss *definitions* panel.

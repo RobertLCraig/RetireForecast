@@ -202,7 +202,10 @@ on the DC pension inside the `builder_state` form-state, not separately on the s
   all per-calculator result objects.
 - The domain DTOs under `src/Dto/` (Household, Person, DcPension, DbPension,
   StatePensionEntitlement, Property, Account, IncomeStream, ExpenseProfile, HousingAction,
-  AssumptionSet + enums).
+  AssumptionSet + enums). `DcPension` carries an optional **`AnnuityPurchase`** (`atAge`, `amount`,
+  `rate` as a user-input Percent, `escalation` PensionEscalationBasis where `None` = level, optional
+  `survivorFraction` for a joint-life annuity; null = stay in drawdown) — the pot converts to a
+  guaranteed lifetime income at that age, mapped to the `other_taxable` income source (DECISIONS 2026-07-01).
 - **App persistence:** Eloquent `Scenario` (a base holds the encrypted `builder_state`, the source of
   truth; a Phase-C2 child instead holds `parent_scenario_id` + an encrypted `overrides` delta and resolves
   `effectiveBuilderState()` = base ⊕ overrides; both derive the engine DTOs). The child's `overrides` is also
