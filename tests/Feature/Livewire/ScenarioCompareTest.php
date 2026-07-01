@@ -170,6 +170,36 @@ class ScenarioCompareTest extends TestCase
             ->assertSee('Re-run all 2 (full 10k)');
     }
 
+    public function test_an_unaffordable_buy_cheaper_plan_is_flagged_on_compare(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user);
+        // A "sell & buy cheaper" what-if whose buy price dwarfs the sale proceeds — the engine
+        // would floor the surplus at £0 and "buy" anyway, so Compare must flag the shortfall
+        // rather than let an unaffordable plan sit in the comparison unmarked.
+        $this->childOf($base, $user, ['variant' => 'buy_outright', 'housing.buyPrice' => '5000000'], 'Buy a mansion');
+
+        Livewire::test(ScenarioCompare::class, ['scenario' => $base])
+            ->assertViewHas('plans', function ($plans): bool {
+                $row = $plans->firstWhere('name', 'Buy a mansion');
+
+                return $row !== null && $row['buyShortfall'] !== null;
+            })
+            ->assertSee('more than the sale frees');
+    }
+
+    public function test_a_plan_within_its_means_carries_no_buy_shortfall_flag(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user); // no unaffordable buy plan → nothing to flag
+
+        Livewire::test(ScenarioCompare::class, ['scenario' => $base])
+            ->assertViewHas('plans', fn ($plans): bool => $plans->every(fn (array $p): bool => $p['buyShortfall'] === null))
+            ->assertDontSee('more than the sale frees');
+    }
+
     public function test_compare_is_owner_scoped(): void
     {
         $owner = User::factory()->create();

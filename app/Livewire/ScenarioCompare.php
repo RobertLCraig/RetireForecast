@@ -78,7 +78,7 @@ class ScenarioCompare extends Component
             'forecast' => $forecaster->deterministicVariants($plan)[$plan->variant->value],
         ]);
 
-        $plans = $forecasts->map(fn (array $pf): array => $this->summarise($pf['scenario'], $pf['forecast']));
+        $plans = $forecasts->map(fn (array $pf): array => $this->summarise($pf['scenario'], $pf['forecast'], $forecaster));
 
         // Mark the big life events on the comparison chart, from the base plan's timeline (deaths,
         // retirements, State Pension starts are shared across the compared plans; the home sale is
@@ -125,7 +125,7 @@ class ScenarioCompare extends Component
      *
      * @return array<string, mixed>
      */
-    private function summarise(Scenario $plan, ForecastResult $forecast): array
+    private function summarise(Scenario $plan, ForecastResult $forecast, ScenarioForecaster $forecaster): array
     {
         return [
             'name' => $plan->name,
@@ -134,6 +134,11 @@ class ScenarioCompare extends Component
             // comparison says not just how each plan turns out but what makes it different.
             'changes' => WhatIfChanges::of($plan),
             'variant' => ResultPresenter::variantLabel($plan->variant),
+            // Buy-cheaper affordability: when a "sell & buy" plan's purchase costs more than the
+            // sale frees, the engine floors the surplus at £0 and buys anyway — so surface the
+            // shortfall here, or the comparison could crown a plan the household can't actually
+            // afford (only the buy-cheaper variant buys; rent / stay never do). Null when covered.
+            'buyShortfall' => $this->buyShortfall($plan, $forecaster),
             'essentialsMet' => $forecast->essentialsAlwaysMet,
             'fullSpendMet' => $forecast->fullSpendAlwaysMet,
             'moneyLasts' => $forecast->depletionCalendarYear === null,
@@ -145,5 +150,25 @@ class ScenarioCompare extends Component
             'editUrl' => route('scenarios.edit', $plan),
             'resultsUrl' => route('scenarios.results', $plan),
         ];
+    }
+
+    /**
+     * For a "sell & buy cheaper" plan, how much the purchase (buy price + SDLT + moving) exceeds
+     * the net sale proceeds — the extra capital the household would need from elsewhere, which the
+     * engine otherwise assumes away by flooring the surplus at £0. Null when the plan is not a buy,
+     * or the sale covers it. Read from the single engine source ({@see HousingComparison::buyOutcome}).
+     */
+    private function buyShortfall(Scenario $plan, ScenarioForecaster $forecaster): ?string
+    {
+        if ($plan->variant->value !== 'buy_outright') {
+            return null;
+        }
+
+        $outcome = $forecaster->housingComparison($plan)->buyOutcome($plan->toHousehold(), $plan->toHousingAction());
+        if ($outcome->coversPurchase()) {
+            return null;
+        }
+
+        return $outcome->buyPrice->plus($outcome->stampDuty)->plus($outcome->movingCosts)->minus($outcome->netProceeds)->format();
     }
 }

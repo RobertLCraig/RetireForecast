@@ -70,7 +70,12 @@
                                 <span class="mt-1 block text-xs font-normal text-amber-700">Some of this what-if's changes no longer apply because the base plan changed. Re-open it to review.</span>
                             @endif
                         </th>
-                        <td class="px-4 py-3 text-gray-700">{{ $plan['variant'] }}</td>
+                        <td class="px-4 py-3 text-gray-700">
+                            {{ $plan['variant'] }}
+                            @if ($plan['buyShortfall'])
+                                <span class="mt-1 block text-xs font-medium text-amber-700">⚠ Buying needs {{ $plan['buyShortfall'] }} more than the sale frees — not affordable from the sale alone.</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-gray-700">{{ $plan['essentialsMet'] ? 'Yes' : 'No' }}</td>
                         <td class="px-4 py-3 text-gray-700">
                             @if ($plan['moneyLasts'])
