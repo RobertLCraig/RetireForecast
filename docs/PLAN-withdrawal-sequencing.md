@@ -184,3 +184,105 @@ Each slice ships alone; stopping after 1–3 already delivers the headline value
    cheapest ordering. The named strategy + refinements land first.
 
 Rob chose the **full capability**, so v1 is the whole feature, delivered in the build order below, each slice green.
+
+## Implementation plan for a fresh agent — remaining slices #5 (PCLS timing) + #6 (optimiser)
+
+> Handoff written 2026-07-01. Slices 1–4 are **built + committed + green**; #5 and #6 remain. This section is a
+> ready-to-execute plan. Read the whole spec above first (especially Decisions + "Already built"), then this.
+
+### Where things stand (start here)
+- **Built + committed (green):**
+  - Engine: `Forecast\DrawdownStrategy::FillBands` + its **Pension-Credit-aware** fill-order in
+    `PathProjector::fundShortfall` (commit `7e79b22`). The pension-draw primitive was generalised from a
+    basic-rate-cap boolean to `$drawPension(?int $taxableLimit)`; `TaxEfficient`/`PensionAware` are byte-identical.
+  - PA-taper: resolved by the ordering, **no code** (see Build order #2).
+  - £-delta: `ScenarioForecaster::deterministicUnderStrategy()` + `App\Forecast\WithdrawalStrategyComparison`
+    (commit `c598381`); the results-page **"How you draw your money down"** panel + advice-gated steer in
+    `App\Compliance\Interpretation::withdrawalSequencingNarrative()` (commit `39db68c`).
+- **Tests:** `PathProjectorTest` (the two FillBands tests), `ScenarioForecasterTest` (the £-delta reconciliation),
+  `ScenarioResultsTest` (the panel renders). All green; `BannedPhrasingTest` partition intact.
+
+### Coordination (READ before touching PathProjector)
+`PathProjector` is the shared hot file — as of this writing **Lane A is mid-build on it** (care-cost stochasticity:
+dirty `PathProjector` + the `PathDraws` family + new `Care/` classes). Per HANDOVER "Multi-agent coordination":
+re-check `git status`/`git log` first, **rebase your work on top of Lane A's committed changes**, commit **only your
+own files** (no `git add -A`), and keep every change **additive** so `TaxEfficient`/`PensionAware` + the HMRC
+worked-example tests stay byte-identical (they are the trust guard).
+
+### Model facts you need (verified 2026-07-01 — re-confirm against the current file first)
+- Pot state: `$state['pots'][$personId]` is a list; each pot is
+  `['value' => int pence, 'plan' => WithdrawalInstruction[], 'firstAccessDone' => bool, 'contribution' => int]`.
+- LSA accounting: `$state['lsaUsed'][$personId]` (pence), seeded from `pclsTakenToDate` + planned PCLS/UFPLS.
+  Headroom = `$this->config->pension->lumpSumAllowance->pence - $state['lsaUsed'][$pid]`.
+- The existing UFPLS split lives in `plannedWithdrawals()`: `taxFree = min((int) floor($amount * $pclsRate), max(0, $lsaRemaining))`,
+  `taxable = $amount - $taxFree`, then `$state['lsaUsed'][$pid] += $taxFree`. `$pclsRate = $this->config->pension->pclsRate->asFraction()` (0.25).
+  **Reuse this exact split** so the ad-hoc draw and the planned instruction can't diverge (one home per rule).
+- FillBands order (in `fundShortfall`, non-PC): `$drawPension($paLimit)` → `$drawGiaToAea()` → `$drawTaxFreeCapital()`
+  → `$drawPension($basicLimit)` → `$drawNonPension()` → `$drawPension(null)`. PC-aware households draw capital first
+  and only `$drawPension(null)` last. `$drawPension(?int $taxableLimit)` currently models the draw as **fully-taxable
+  drawdown** (`grossUpPension` → `marginalTax`) — it does **not** take PCLS. That is the conservative baseline #5 improves.
+
+### #5 — planner-timed PCLS (make FillBands draws UFPLS-style)
+**Goal:** a FillBands shortfall-funding pension draw takes the **25% tax-free** portion (up to LSA headroom) + the
+taxable remainder, instead of fully-taxable drawdown — so the free-band draw is ~33% larger (the tax-free 25% on top of
+the personal-allowance-filling taxable portion), lowering lifetime tax. Everything else (the £-delta, the panel) then
+reflects it automatically.
+
+**FIRST: confirm the modelling call with Rob** (it is a "how should the tool model this", not a detail): treat an
+ad-hoc FillBands pension draw as **UFPLS from uncrystallised funds** (25% tax-free up to LSA, 75% taxable — the
+recommended default) vs keeping PCLS strictly user-specified via the withdrawal plan. Do not silently pick this on
+trust-critical tax code.
+
+**Approach (additive, FillBands-only):**
+1. Add a `$drawPensionUfpls(?int $taxableLimit)` closure in `fundShortfall` (do **not** change `$drawPension` —
+   `TaxEfficient`/`PensionAware` must stay byte-identical). For each alive person's pots with value and LSA headroom:
+   draw a gross `G` whose **taxable** portion fills the person's income up to `$taxableLimit` (given `$alreadyTaxable`),
+   with the **25% tax-free** portion (capped by LSA headroom) on top, all capped by pot value and `$remaining` (net need).
+   Split via the `plannedWithdrawals` UFPLS rule; income tax on the taxable portion via `marginalTax`; update
+   `pot['value'] -= G`, `lsaUsed += taxFree`, `remaining -= net`, `fromPension += G`.
+2. The gross-up is iterative (the net cash depends on the tax on the taxable part) — model it on `grossUpPension`
+   (which already iterates to convergence); or write a small UFPLS gross-up. **Watch the two caps interacting**: the
+   taxable-limit cap and the LSA cap both bind; solve for `G` respecting both.
+3. **Graceful degradation:** when LSA headroom is 0, `taxFree = 0` and `$drawPensionUfpls` must equal the old
+   fully-taxable draw. Pin this in a test.
+4. In the FillBands branch (and the PC-aware branch's final pension step), swap `$drawPension(...)` → `$drawPensionUfpls(...)`.
+5. **MPAA:** UFPLS triggers the MPAA (£10k) on future contributions. In retiree decumulation there usually are none,
+   but check whether the projector applies contributions anywhere this would touch, and flag the simplification.
+
+**Tests (in `PathProjectorTest`, the reconciliation/completeness bar):**
+- A FillBands household **with** LSA headroom pays **less** lifetime tax than the same household under PensionAware
+  (or a pinned pre-#5 figure) — the 25% tax-free is demonstrably applied.
+- The **total tax-free cash** taken never exceeds the LSA across explicit PCLS instructions + ad-hoc UFPLS (the
+  double-count guard — the shared `lsaUsed` is the single home).
+- A person who has already used their full LSA gets a fully-taxable FillBands draw (`$drawPensionUfpls` == old draw).
+- `TaxEfficient`/`PensionAware` + the **HMRC worked examples** are unchanged (they never call `$drawPensionUfpls`).
+
+**Then:** no app change needed — `WithdrawalStrategyComparison` and the panel reflect the better FillBands
+automatically. Update the panel copy only if the framing shifts. Update Build order #4 + a DECISIONS entry.
+
+### #6 — search-optimiser (bounded, last)
+**Goal:** search a **bounded** set of draw orderings for the cheapest lifetime tax, beyond the three named strategies.
+Keep it small (even professional tools mostly stop short of a full search).
+
+**FIRST: confirm the candidate set with Rob** (the size + whether a "manage taxable income to £X" target lever is in
+scope). Recommended default: a fixed handful of candidates, no combinatorial explosion.
+
+**Approach:**
+1. Candidates = the named strategies (`TaxEfficient`, `PensionAware`, `FillBands`) plus, optionally, a small grid of a
+   "manage-to-£X-taxable" target (a few X values, e.g. the personal-allowance and basic-rate ceilings). Each candidate
+   is one `ScenarioForecaster::deterministicUnderStrategy`-style run (deterministic, cheap).
+2. Extend `App\Forecast\WithdrawalStrategyComparison` (or a sibling `WithdrawalStrategyOptimiser`) to run the candidate
+   set, sum each one's lifetime tax (`YearResult::totalTax`), and return the **min** + its £ saving vs the user's
+   current order. Neutral by construction (figures only); the "the cheapest order we found is X" steer goes in
+   `Interpretation` behind the gate, mirroring #4.
+3. Surface on the results panel: "The cheapest draw order we tried saves £X vs your current." Bound the candidate
+   count (~4–6) — flag that each candidate is a forecast; consider the input-hash forecast-cache backlog item if it
+   becomes a perf concern on the results page.
+
+**Tests:** the optimiser returns the min-lifetime-tax candidate (reconciliation); it never reports a saving for a
+strategy that pays more than the user's current; the candidate set is bounded.
+
+### Done-when (each slice)
+- `php artisan test --testsuite=Engine` and `php artisan test` green; `vendor/bin/pint` clean on changed files.
+- Additive only; `TaxEfficient`/`PensionAware`/HMRC examples unchanged; commit **only your files** (no `git add -A`).
+- Update this spec's "Build order" (mark the slice done) + append a DECISIONS entry; refresh the HANDOVER Lane C bullet.
