@@ -40,9 +40,6 @@ class ScenarioResults extends Component
 
     public ?int $runId = null;
 
-    /** How many plans the last "re-run all what-ifs" click queued (0 = none yet); shown as a note. */
-    public int $familyQueued = 0;
-
     /** Paths for the synchronous preview (the full queued run uses the engine's 10,000). */
     public int $previewPaths = 1000;
 
@@ -236,39 +233,6 @@ class ScenarioResults extends Component
         $this->runId = $this->runner()->dispatch($this->scenario)->id;
     }
 
-    /**
-     * Queue a fresh full run for this plan AND every what-if in its family (the base plus all
-     * its delta-child what-ifs), so an engine change or a new assumption can be refreshed across
-     * the whole set in one click instead of opening each plan. This plan's run is tracked on the
-     * page (its progress shows here); the rest run in the background on the worker.
-     */
-    public function runFullFamily(): void
-    {
-        $runner = $this->runner();
-        $family = $this->family();
-        foreach ($family as $plan) {
-            $run = $runner->dispatch($plan);
-            if ($plan->is($this->scenario)) {
-                $this->runId = $run->id;
-            }
-        }
-        $this->familyQueued = $family->count();
-    }
-
-    /**
-     * This plan's family: the base (this plan, or its parent if this is a what-if) plus every
-     * what-if child of that base. Owner-scoped by construction (the children belong to the base,
-     * which the route already scopes to the signed-in user).
-     *
-     * @return Collection<int, Scenario>
-     */
-    private function family(): Collection
-    {
-        $base = $this->scenario->parent ?? $this->scenario;
-
-        return collect([$base])->concat($base->children()->get());
-    }
-
     public function cancel(): void
     {
         if ($run = $this->currentRun()) {
@@ -438,15 +402,9 @@ class ScenarioResults extends Component
             }
         }
 
-        // How many plans a "re-run all what-ifs" would queue (the base + its what-if children).
-        // Only offered when there is more than the plan itself, i.e. the base has what-ifs.
-        $base = $this->scenario->parent ?? $this->scenario;
-        $familyRunCount = 1 + $base->children()->count();
-
         return view('livewire.scenario-results', [
             'run' => $run,
             'resultsRun' => $resultsRun,
-            'familyRunCount' => $familyRunCount,
             'runDiff' => $runDiff,
             'presented' => $presented,
             'interpretation' => $interpretation,

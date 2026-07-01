@@ -5,6 +5,12 @@
             <p class="mt-1 text-sm text-gray-500">Base plan: {{ $base->name }}</p>
         </div>
         <div class="flex items-center gap-3">
+            <button type="button" wire:click="runFullFamily" wire:loading.attr="disabled" wire:target="runFullFamily"
+                class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50"
+                title="Queue a fresh 10,000-path Monte Carlo run for every plan here — handy after a model change so each plan's results page shows current figures.">
+                <span wire:loading.remove wire:target="runFullFamily">Re-run all {{ $plans->count() }} (full 10k)</span>
+                <span wire:loading wire:target="runFullFamily">Queuing…</span>
+            </button>
             <a href="{{ route('scenarios.child', $base) }}" class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Create a what-if</a>
             <a href="{{ route('dashboard') }}" class="text-sm font-medium text-blue-600 hover:text-blue-700">Back to forecasts</a>
         </div>
@@ -15,6 +21,10 @@
         running a full simulation. A what-if changes one or more values on the base plan; everything it does not
         change tracks the base.
     </p>
+
+    @if ($familyQueued > 0)
+        <p class="mt-3 max-w-3xl rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800" role="status">Queued a full 10,000-path run for {{ $familyQueued }} {{ $familyQueued === 1 ? 'plan' : 'plans' }}. They run in the background on the worker — open any plan's results to see its refreshed Monte Carlo (this comparison already reflects the current model).</p>
+    @endif
 
     {{-- Walled-off, advice-style "why" narrative ranking the plans. Built only when the
          `interpret` ability allows (on in personal-use mode); every directive sentence

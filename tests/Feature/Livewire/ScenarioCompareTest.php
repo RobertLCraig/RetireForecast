@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace Tests\Feature\Livewire;
 
 use App\Enums\ScenarioStatus;
+use App\Enums\SimulationMode;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
+use App\Jobs\RunScenarioSimulation;
 use App\Livewire\ScenarioCompare;
 use App\Models\Scenario;
+use App\Models\SimulationRun;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
@@ -118,6 +122,52 @@ class ScenarioCompareTest extends TestCase
         foreach ($ladder['rows'] as $row) {
             $this->assertSame($row['usableWealth'], $burndown['rows'][0]['cells'][$row['year']], "usable wealth in {$row['year']}");
         }
+    }
+
+    public function test_re_run_all_queues_a_full_run_for_every_plan_compared(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user);
+        $this->childOf($base, $user, ['expenseLines.ess1.amount' => '31000'], 'What-if A');
+        $this->childOf($base, $user, ['expenseLines.ess1.amount' => '32000'], 'What-if B');
+
+        $component = Livewire::test(ScenarioCompare::class, ['scenario' => $base])
+            ->call('runFullFamily');
+
+        // Base + 2 ready what-ifs = 3 full runs queued, one per compared plan.
+        Queue::assertPushed(RunScenarioSimulation::class, 3);
+        $this->assertSame(3, SimulationRun::where('mode', SimulationMode::Full)->count());
+        $component->assertSet('familyQueued', 3);
+    }
+
+    public function test_re_run_all_from_a_child_still_covers_the_whole_family(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user);
+        $child = $this->childOf($base, $user, ['expenseLines.ess1.amount' => '31000'], 'What-if A');
+        $this->childOf($base, $user, ['expenseLines.ess1.amount' => '32000'], 'What-if B');
+
+        // Compare is base-centric, so launched from a child it still runs the base + all children.
+        Livewire::test(ScenarioCompare::class, ['scenario' => $child])
+            ->call('runFullFamily')
+            ->assertSet('familyQueued', 3);
+        Queue::assertPushed(RunScenarioSimulation::class, 3);
+    }
+
+    public function test_the_re_run_all_button_reflects_the_plan_count(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user);
+        $this->childOf($base, $user, ['expenseLines.ess1.amount' => '31000'], 'What-if A');
+
+        // Base + 1 what-if = 2 plans on the page.
+        Livewire::test(ScenarioCompare::class, ['scenario' => $base])
+            ->assertSee('Re-run all 2 (full 10k)');
     }
 
     public function test_compare_is_owner_scoped(): void

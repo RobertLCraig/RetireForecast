@@ -116,19 +116,8 @@
                 class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100">
                 Run the full 10,000-path forecast
             </button>
-            @if ($familyRunCount > 1)
-                <button type="button" wire:click="runFullFamily" wire:loading.attr="disabled" wire:target="runFullFamily"
-                    class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50"
-                    title="Queue a fresh 10,000-path run for this plan and every what-if of its base — handy after a model change.">
-                    Re-run all {{ $familyRunCount }} plans (this + what-ifs)
-                </button>
-            @endif
             <p class="text-xs text-gray-500">A preview is fast and indicative; the full run is more precise and runs in the background.</p>
         </div>
-
-        @if ($familyQueued > 0)
-            <p class="mt-3 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800" role="status">Queued a full 10,000-path run for {{ $familyQueued }} {{ $familyQueued === 1 ? 'plan' : 'plans' }} (this plan and its what-ifs). This plan's progress shows below; the what-ifs refresh in the background on the worker — reopen each to see its updated result.</p>
-        @endif
 
         @if ($run && ! $run->status->isTerminal())
             <div wire:poll.1500ms="refreshRun" class="mt-4">

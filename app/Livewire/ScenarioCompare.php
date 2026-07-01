@@ -8,6 +8,7 @@ use App\Compliance\Interpretation;
 use App\Enums\ScenarioStatus;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
+use App\Forecast\SimulationRunner;
 use App\Forecast\WhatIfChanges;
 use App\Models\Scenario;
 use Illuminate\Contracts\View\View;
@@ -34,12 +35,33 @@ class ScenarioCompare extends Component
 {
     public Scenario $base;
 
+    /** How many plans the last "re-run all" click queued (0 = none yet); shown as a note. */
+    public int $familyQueued = 0;
+
     public function mount(Scenario $scenario): void
     {
         abort_unless($scenario->user_id === auth()->id(), 403);
 
         // Compare is base-centric: opening it on a what-if compares its base's family.
         $this->base = $scenario->isChild() ? $scenario->parent : $scenario;
+    }
+
+    /**
+     * Queue a fresh full (10,000-path) Monte Carlo run for every plan being compared — the base
+     * plus its ready what-if children. The comparison table itself is the live deterministic
+     * projection (already current), but each plan's own results page shows its stored Monte Carlo
+     * run; after a model change or a new assumption those go stale, so this refreshes the whole
+     * set in one click rather than opening each plan. The runs execute in the background on the
+     * worker; a queued-count note confirms.
+     */
+    public function runFullFamily(): void
+    {
+        $runner = app(SimulationRunner::class);
+        $plans = $this->plans();
+        foreach ($plans as $plan) {
+            $runner->dispatch($plan);
+        }
+        $this->familyQueued = $plans->count();
     }
 
     public function render(): View
