@@ -103,16 +103,13 @@ historical path** of returns/inflation into the same `PathProjector` (which alre
   the **fee level** and **need probability/duration** from LaingBuisson + PSSRU (each cited with `verified_on`).
   A strictly ONS-only care model would be materially incomplete. **Needs Rob's decision** (see below).
 
-## Open decisions (nothing built yet)
+## Decisions (resolved 2026-07-01)
 
-- [ ] **Stress-test data source (REOPENED after verifying the files — BoE has no equity total return).** Choose:
-      **(1)** JST macrohistory R6 (accurate total returns, free-for-personal, but CC BY-NC-SA → flag as a
-      public-release blocker) — recommended for the personal tool now; **(2)** BoE OGL, equity total return
-      approximated as price index + a documented dividend-yield assumption (fully shippable, less accurate);
-      **(3)** license DMS/Barclays; **(4)** PRIIPs-style synthetic stress instead of a real backtest.
-- [ ] **Care-cost sources** — ONS cannot supply care fees or need-probability/duration. Accept **LaingBuisson
-      (fees) + PSSRU (probability/duration)** as cited non-ONS sources (with ONS health-state life expectancy
-      for timing), or restrict care-cost to the ONS-only pieces (incomplete)?
+- [x] **Stress-test data source → JST macrohistory R6** (Rob, after the BoE-has-no-total-return correction).
+      Built: the historical sequence backtest (engine + results panel), data baked as the sourced
+      `HistoricalReturns` class, CC BY-NC-SA flagged as a public-release blocker. See DECISIONS 2026-07-01.
+- [x] **Care-cost sources → LaingBuisson (fees) + PSSRU (probability/duration) + ONS health-state life
+      expectancy (timing)** (Rob). Sources locked; the care-cost feature itself is not built yet.
 
 ## Sources
 - Bank of England research datasets ("A Millennium of Macroeconomic Data" v3.1, OGL v3.0): https://www.bankofengland.co.uk/statistics/research-datasets

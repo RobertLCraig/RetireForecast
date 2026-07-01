@@ -3,6 +3,47 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-01 — Stress-test panel: historical sequence-of-returns backtest (Lane A)
+**Decision:** The stress-test panel is **historical sequence backtesting** — replay each past year's
+*actual* UK returns + inflation over the current plan ("how would this plan have fared starting into 1929 /
+1973-74 / 2000 / 2007?"). This is the sector standard (Timeline, the 4% rule) and directly tests
+**sequence-of-returns risk**, which our Monte Carlo does not isolate. Engine: `HistoricalSequenceDraws` (a
+third `PathDraws` alongside deterministic + Monte Carlo) overlays a start year's real path onto the existing
+`PathProjector`, falling back to expected returns beyond the data tail; `HistoricalBacktester` runs every
+eligible start year and reports the survival rate + worst start; a results-page panel shows the % of ~140
+historical starts survived, the worst start, and named crises. `RepresentativeDeathAge` was extracted so the
+forecast and backtest share one median-lifespan rule. See [[2026-07-01 — What-if sliders (explore the levers) on the results page]] for the sibling exploratory path.
+
+**Data source (this was the whole gate — research in docs/RESEARCH-stress-test-and-official-sources.md):**
+- Rob's steer was "official source (ONS/FCA)". Finding: **there is no ONS/FCA historical asset-return series**
+  (ONS = inflation + demography; FCA = illustration/stress *methodology*, not data). I recommended the Bank of
+  England millennium dataset (OGL, shippable) and Rob picked it, but on **downloading and inspecting the actual
+  file** it holds only a share **price** index + bond **yields** — **no equity total return / dividends**, which
+  are ~half of long-run equity return. BoE alone cannot back a credible backtest. Correction surfaced to Rob.
+- **Chosen: Jordà–Schularick–Taylor Macrohistory database ("The Rate of Return on Everything", R6)** — measured
+  UK equity/bond/bill **total returns** + dividend yield + CPI, 1871–2020, peer-reviewed (QJE 2019). Baked as the
+  sourced `HistoricalReturns` engine data class (generated from the file, not hand-typed; real returns derived as
+  (1+nominal)/(1+inflation)−1), cited with `verified_on: 2026-07-01`.
+- **Licence is load-bearing:** JST is **CC BY-NC-SA 4.0 (non-commercial + ShareAlike)**. Fine for the current
+  **private, personal-use** tool; it is a **flagged PUBLIC-RELEASE BLOCKER** (documented in `HistoricalReturns`)
+  the same way `config('compliance.personal_use')` flags the regulatory line: before any public release the data
+  must be swapped for an OGL/commercially-licensed source (BoE prices + a licensed dividend series, or DMS) or
+  removed. This is why BoE (OGL, but no total returns) and DMS/Barclays (accurate, paid) were both set aside.
+
+**v1 simplifications (flagged):** house-price and salary growth stay at the assumption's expected real rates in a
+backtest (the stress is on market returns + inflation); a start year is eligible only with ≥10 years of real data
+after it (so the early, sequence-risk-critical window is always historical), the deep tail reverting to expected
+returns; the historical inflation path runs against the *current* frozen-to-2031 tax thresholds (realistic, but a
+1970s-inflation overlay drags hard early). **Status:** built (engine + panel), green. Panel pending Rob's browser sign-off.
+
+## 2026-07-01 — Care-cost + ONS-refresh data sources (Lane A; ONS-refresh built later)
+**Decision:** For Rob's "pull from ONS" on both: **ONS-refresh is fully ONS** (national + past/projected cohort
+life tables map onto `CohortLifeTable`; ready to build). **Care-cost is only partly ONS** — ONS gives self-funder
+stats + health-state life expectancy (care *entry timing*) but **not** weekly fees or the probability/duration of
+needing care. Rob agreed to source those from **LaingBuisson** (fees, ~£1,300/wk residential, £1,600/wk nursing)
+and **PSSRU/LSE** (probability + duration), each cited with `verified_on`, with ONS health-state life expectancy
+for timing. Neither is built yet; sources locked. See docs/RESEARCH-stress-test-and-official-sources.md.
+
 ## 2026-07-01 — Annuitisation: convert part of a DC pot into a lifetime income (Lane A)
 **Decision:** A DC pension can buy a **lifetime annuity** with part of its pot at a chosen age: the pot falls by the
 purchase amount and, from that age, pays a guaranteed income = **amount × rate** for life. A new `AnnuityPurchase`

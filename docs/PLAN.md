@@ -214,9 +214,9 @@ the planned compliance step). The genuinely new, aligned items, kept as a post-v
 - **Outputs that exploit engine results we already compute (cheap, high adviser-value):** a
   **cashflow timeline table** (income-by-source / spend / net / balance straight from `YearResult`);
   a **longevity distribution** visual (median / p10 / p90 last-survivor age, P(live past 95) from the
-  joint-life sampler); a **stress-test panel** feeding historical sequences (1973–74, dot-com, GFC,
-  1970s inflation) through the deterministic engine; **what-if sliders** (±retirement age, ±spend,
-  year-1 market shock, longevity shock).
+  joint-life sampler) ✅ **DONE**; a **stress-test panel** feeding historical sequences (1929, 1973–74,
+  dot-com, GFC) through the engine ✅ **DONE (2026-07-01** — historical sequence backtest on the JST
+  Macrohistory total-return data; DECISIONS 2026-07-01); **what-if sliders** ✅ **DONE**.
 - **Modelling depth (v2 scope):** ✅ **an annuitisation option — DONE (2026-07-01).** Partial / level /
   escalating (RPI/CPI), single- or joint-life, priced off a **user-input rate** (default a sourced ~7.2%),
   not the mortality tables — a real quote is age/health-specific and belongs to the user, so no fabricated
