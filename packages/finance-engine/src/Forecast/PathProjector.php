@@ -87,6 +87,12 @@ final class PathProjector
                 break; // last survivor has died
             }
 
+            // On a death, the surviving partner inherits the deceased's assets — without this
+            // a dead owner's money is stranded (counted as wealth but undrawable), which reads
+            // falsely as "running out" from the first death. Settle before projecting the year
+            // so the survivor can use the inherited money that year.
+            $this->settleEstates($state, $household, $alive);
+
             // Income-tax thresholds are frozen until freezeEndYear, then index with inflation.
             // $thresholdFactor is how far they have risen by this year: 1.0 during the freeze,
             // then the price level relative to the freeze-end year. (If the base year is past
@@ -201,6 +207,7 @@ final class PathProjector
             'property' => $household->primaryResidence?->currentValue->pence ?? 0,
             'mortgageOutstanding' => $household->primaryResidence?->outstandingMortgage?->pence ?? 0,
             'mortgageRepaid' => false,
+            'estateSettled' => [], // person ids whose assets have passed to the survivor (once each)
             // Running nominal growth factors (1.0 in the base year).
             'salaryFactor' => 1.0,
             'dbFactor' => 1.0,
@@ -209,6 +216,69 @@ final class PathProjector
             'rentFactor' => 1.0,
             'rentInflationReal' => $settings->rentInflationReal?->asFraction() ?? 0.0,
         ];
+    }
+
+    /**
+     * On a death, the surviving partner inherits the deceased's assets. Spouses inherit
+     * IHT-free, and a DC pot passes to the beneficiary — so without this the dead owner's
+     * savings, investments and pension are stranded: still summed into wealth but never
+     * drawable (the drawdown closures skip a dead owner), which falsely reads as "essentials
+     * not met / ran out of money" from the first death, even with a full pot sitting there.
+     *
+     * Each estate is settled once (tracked in `estateSettled`), transferring the deceased's
+     * cash / ISA / GIA — with a CGT base-cost uplift to the value at death, so the heir is
+     * taxed only on later gains — and the remaining pension pot value to the FIRST living
+     * person. The deceased's scheduled withdrawals and contributions do NOT carry (they were
+     * the deceased's decisions), so no schedule re-runs on the heir; and only the deceased's
+     * own assets move, so the heir's own pot is untouched — no double-count. On the last death
+     * there is no recipient, so nothing transfers (it stays as the terminal estate).
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     */
+    private function settleEstates(array &$state, Household $household, array $alive): void
+    {
+        $heir = null;
+        foreach ($household->persons as $person) {
+            if ($alive[$person->id]) {
+                $heir = $person->id; // the first living person inherits (respects death order)
+                break;
+            }
+        }
+        if ($heir === null) {
+            return; // no survivor to inherit
+        }
+
+        foreach ($household->persons as $person) {
+            $id = $person->id;
+            if ($alive[$id] || in_array($id, $state['estateSettled'], true)) {
+                continue; // still alive, or already settled
+            }
+            $state['estateSettled'][] = $id;
+
+            // Liquid assets pass to the heir. The GIA base cost uplifts to its value at death
+            // (no CGT on death), so the heir's later disposal is taxed only on gains since.
+            $state['cash'][$heir] += $state['cash'][$id];
+            $state['isa'][$heir] += $state['isa'][$id];
+            $state['gia'][$heir] += $state['gia'][$id];
+            $state['giaBasis'][$heir] += $state['gia'][$id];
+            $state['cash'][$id] = 0;
+            $state['isa'][$id] = 0;
+            $state['gia'][$id] = 0;
+            $state['giaBasis'][$id] = 0;
+
+            // The remaining pension value passes as inherited drawdown: drawable for shortfalls,
+            // but with no scheduled withdrawals or contributions of its own (those were the
+            // deceased's), so it neither re-runs a schedule on the heir nor double-dips their pot.
+            $inherited = 0;
+            foreach ($state['pots'][$id] as $pot) {
+                $inherited += $pot['value'];
+            }
+            if ($inherited > 0) {
+                $state['pots'][$heir][] = ['value' => $inherited, 'plan' => [], 'firstAccessDone' => true, 'contribution' => 0];
+            }
+            $state['pots'][$id] = [];
+        }
     }
 
     /**
