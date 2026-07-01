@@ -3,6 +3,32 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-01 — A surviving partner inherits the deceased's assets (the stranded-wealth bug)
+**Decision:** On a death, the surviving partner **inherits** the deceased's assets; the projection
+transfers them so they stay drawable. **Model:** spouses inherit IHT-free and a DC pot passes to the
+beneficiary, so `PathProjector::settleEstates()` moves the deceased's **cash / ISA / GIA** (with a
+**CGT base-cost uplift** to the value at death — the heir is taxed only on later gains) and the
+**remaining pension pot value** to the **first living person**, once each. The deceased's **scheduled
+withdrawals and contributions do not carry** (they were the deceased's decisions — no schedule re-runs
+on the heir), and **only the deceased's own assets move** (the survivor's own pot is never lost or
+double-counted — Rob's ownership / no-double-dip constraint). On the **last** death there is no
+recipient, so nothing transfers (terminal estate).
+**Why (the bug it fixes):** `fundShortfall`'s drawdown skips a dead owner's accounts (`if (! $alive)
+continue`), yet `liquidWealth` still **summed** them — so on the first death the deceased's savings,
+investments and (for sell variants) the **entire** invested sale proceeds (which
+{@see Housing\HousingComparison::withHousing} dumps into `persons[0]`) became **counted-but-undrawable**.
+The survivor couldn't reach the money, `essentialsMet` went false, and the run read as "ran out" at the
+first death with a full pot sitting idle. It hit **every couple forecast** — understating how long money
+lasts and inflating "chance of running out" (the flagship number). Surfaced by the V2 review: the Monte
+Carlo said "run out by 2032" while the deterministic Compare said 2044 (same variant, same projector) —
+the gap was just the older partner's sampled-vs-median death year, each stranding the proceeds. With the
+fix the two reconcile (both deplete 2039 on the repro household) and the proceeds are actually drawn
+down. Pinned by `EstateInheritanceTest` (survivor spends the inherited cash; the pot is conserved and
+ownership-respected). **v1 caveats (flagged):** inherited pension is drawn as taxable income (no
+pre-/post-75 beneficiary split); no IHT is charged at the second death; the transfer is annual-granular
+(the death year's partial income is not apportioned — the existing granularity).
+**Status:** active.
+
 ## 2026-07-01 — V2 pressure-test: deferred-refinement resolutions (let-home capital, first-class tax-free-benefit type, income-ends-on-sale declined)
 **Context:** working through the refinements deferred from the forced-housing-event workstream
 ([[2026-06-30 — Forced-mortgage pressure-test → a 3-feature workstream (benefits-in-forecast, mortgage-redemption event, feasibility flags)]]).
