@@ -16,10 +16,12 @@ go-ahead.)
   **what-if sliders** + **retirement-year salary proration** (HEAD `47d56ef`). Next candidate: **v2 annuitisation**.
   **Stress-test** stays gated on authoritative sourced historical sequences (no fabrication). Touches
   `ScenarioResults` / `PathProjector` / results-page presentation.
-- **Lane B — forced-housing-event workstream (the "V2" real-couple pressure-test), ACTIVE NOW.** A second session is
-  building this; its **planning is recorded but UNCOMMITTED** in `DECISIONS.md` / `docs/PLAN.md` / `PRD.md` /
-  `DATA-MODEL.md` (the 2026-06-30 "forced-mortgage pressure-test" + "input-expectation clarity" entries). **Do not
-  stage, commit, revert, or edit those four files from another lane** — they are Lane B's in-flight work. Scope:
+- **Lane B — forced-housing-event workstream (the "V2" real-couple pressure-test) — BUILT + COMMITTED.** A second
+  session built and committed the whole A/B/C/D workstream (planning committed in `DECISIONS.md` / `docs/PLAN.md` /
+  `PRD.md` / `DATA-MODEL.md` — the 2026-06-30 "forced-mortgage pressure-test" + "input-expectation clarity" entries;
+  the code in `git log`). Those four append-only docs are Lane B's content area — **don't rewrite its entries from
+  another lane.** **Deferred (may still be active):** a `while_mortgaged` expense condition (stop the bundled mortgage
+  payment after a repay) + the in-place forced-sale model. Scope (built):
   **(A) means-tested benefits in the live forecast** (`Benefits\PensionCreditCalculator` wired into `PathProjector`;
   new `YearResult` source `means_tested_benefit` — completeness/reconciliation guards; the source list grows 8→9),
   **(B) a mortgage-redemption event** (`Property` maturity year + action; projector tracks the balance),
@@ -163,7 +165,7 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 | CLAUDE.md | Root orient tripwire + build/test conventions + "Doc hygiene" rules. |
 
 ## Branch status
-On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/RetireForecast). As of this save local `master` is **ahead of `origin/master` by ~12 unpushed commits** — confirm with `git rev-list --count origin/master..master`. **Pushing to `master` is gated and needs Rob's explicit go-ahead — do not push unprompted.** Otherwise commit directly to `master` (personal local-first project; no PR flow). **Re-check `git status` / `git log` before any commit or push — a second Claude session is sharing this tree right now (see Multi-agent coordination); there are uncommitted Lane-B doc edits live. Commit only your own lane's files (no blanket `git add -A`).** The pre-rebuild prototype is tagged **`prototype-v1` (a8f1f68)**, the only recovery snapshot. For the commit history use **`git log`** (the source of truth — not restated here, where it would drift); the recent trajectory is in the Session log + DECISIONS.md.
+On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/RetireForecast). As of this save local `master` is **ahead of `origin/master` by ~12 unpushed commits** — confirm with `git rev-list --count origin/master..master`. **Pushing to `master` is gated and needs Rob's explicit go-ahead — do not push unprompted.** Otherwise commit directly to `master` (personal local-first project; no PR flow). **Re-check `git status` / `git log` before any commit or push — concurrent Claude sessions may be sharing this tree (see Multi-agent coordination). Commit only your own lane's files (no blanket `git add -A`).** The pre-rebuild prototype is tagged **`prototype-v1` (a8f1f68)**, the only recovery snapshot. For the commit history use **`git log`** (the source of truth — not restated here, where it would drift); the recent trajectory is in the Session log + DECISIONS.md.
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
