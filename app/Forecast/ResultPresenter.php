@@ -1088,6 +1088,9 @@ final class ResultPresenter
                 'annualRent' => $action->annualRent !== null && $action->annualRent->isPositive() ? $action->annualRent->format() : null,
             ],
             // Sell & buy cheaper: only when a buy price is set (otherwise the plan is rent-only).
+            // `shortfall` (feasibility flag) = how much the buy + its costs exceed the net proceeds
+            // when they don't cover it — the engine floors the surplus at £0 and buys anyway, so
+            // this makes an unaffordable "buy cheaper" visible rather than silently modelled.
             'buy' => $purchase->buyPrice->isPositive() ? [
                 'netProceeds' => $purchase->netProceeds->format(),
                 'buyPrice' => $purchase->buyPrice->format(),
@@ -1095,6 +1098,8 @@ final class ResultPresenter
                 'movingCosts' => $purchase->movingCosts->format(),
                 'surplus' => $purchase->surplus->format(),
                 'coversPurchase' => $purchase->coversPurchase(),
+                'shortfall' => $purchase->coversPurchase() ? null
+                    : $purchase->buyPrice->plus($purchase->stampDuty)->plus($purchase->movingCosts)->minus($purchase->netProceeds)->format(),
             ] : null,
             'blendedReturnPct' => self::ratePct($blendedRealReturn * 100),
             'incomeYieldPct' => self::ratePct($investmentIncomeYield * 100),

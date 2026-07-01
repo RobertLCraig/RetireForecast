@@ -142,6 +142,21 @@ final class SaleExplainerTest extends TestCase
         // Net £392,000 − buy £200,000 − SDLT £1,500 − moving £2,000 = surplus £188,500.
         $this->assertSame(Money::fromPounds(188_500)->format(), $se['buy']['surplus']);
         $this->assertTrue($se['buy']['coversPurchase']);
+        $this->assertNull($se['buy']['shortfall']); // covered → no feasibility flag
+    }
+
+    public function test_a_buy_price_above_the_net_proceeds_is_flagged_as_a_shortfall(): void
+    {
+        // A big mortgage leaves little net; the cheaper home still costs more than that frees.
+        // Net = 400,000 − 350,000 (mortgage) − 8,000 (2%) = £42,000. Buy £200k + £1,500 SDLT +
+        // £2,000 moving = £203,500 → £161,500 short. The surplus is floored at £0, so the plan
+        // must flag it rather than silently "buy" a home it cannot afford from the sale.
+        $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(200_000));
+        $se = $this->explainer($action, Money::fromPounds(350_000));
+
+        $this->assertFalse($se['buy']['coversPurchase']);
+        $this->assertSame(Money::fromPounds(0)->format(), $se['buy']['surplus']);
+        $this->assertSame(Money::fromPounds(161_500)->format(), $se['buy']['shortfall']);
     }
 
     public function test_the_blended_return_and_income_yield_are_shown_as_percentages(): void

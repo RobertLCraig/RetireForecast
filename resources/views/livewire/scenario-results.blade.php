@@ -716,6 +716,9 @@
                             <div class="flex justify-between gap-3"><dt>less moving costs</dt><dd class="tabular-nums">−{{ $se['buy']['movingCosts'] }}</dd></div>
                             <div class="flex justify-between gap-3 border-t border-gray-200 pt-1 font-semibold text-gray-900"><dt>Surplus invested</dt><dd class="tabular-nums">{{ $se['buy']['surplus'] }}</dd></div>
                         </dl>
+                        @unless ($se['buy']['coversPurchase'])
+                            <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800" role="note">Buying at {{ $se['buy']['buyPrice'] }} needs <strong>{{ $se['buy']['shortfall'] }} more</strong> than this sale frees — it isn't affordable from the sale alone. The forecast caps the surplus at £0 and buys anyway, so you'd need that extra capital from elsewhere.</p>
+                        @endunless
                     </div>
                 @endif
             </div>
