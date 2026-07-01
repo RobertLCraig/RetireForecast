@@ -11,6 +11,7 @@ use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
+use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
@@ -186,6 +187,7 @@ final class PathProjector
             }
         }
 
+        $annuities = [];
         foreach ($household->pensions as $pension) {
             if ($pension instanceof DcPension) {
                 $pots[$pension->ownerId][] = [
@@ -195,6 +197,24 @@ final class PathProjector
                     'contribution' => $pension->ongoingContribution->pence + $pension->employerContribution->pence,
                 ];
                 $lsaUsed[$pension->ownerId] += $pension->pclsTakenToDate?->pence ?? 0;
+
+                // A planned annuity purchase becomes a pending annuity, bought at its age
+                // from this owner's pots (see processAnnuityPurchases).
+                if ($pension->annuityPurchase !== null) {
+                    $a = $pension->annuityPurchase;
+                    $annuities[] = [
+                        'ownerId' => $pension->ownerId,
+                        'atAge' => $a->atAge,
+                        'amount' => $a->amount->pence,
+                        'rate' => $a->rate->asFraction(),
+                        'escalation' => $a->escalation,
+                        'survivorFraction' => $a->survivorFraction?->asFraction(),
+                        'purchased' => false,
+                        'active' => false,
+                        'baseIncomeNominal' => 0,
+                        'purchaseCumInflation' => 1.0,
+                    ];
+                }
             }
         }
 
@@ -211,6 +231,7 @@ final class PathProjector
             'property' => $household->primaryResidence?->currentValue->pence ?? 0,
             'mortgageOutstanding' => $household->primaryResidence?->outstandingMortgage?->pence ?? 0,
             'mortgageRepaid' => false,
+            'annuities' => $annuities, // planned/active lifetime annuities bought from DC pots
             'estateSettled' => [], // person ids whose assets have passed to the survivor (once each)
             // Running nominal growth factors (1.0 in the base year).
             'salaryFactor' => 1.0,
@@ -308,6 +329,11 @@ final class PathProjector
         // Nominal income split by canonical source (YearResult::INCOME_SOURCES).
         $src = array_fill_keys(YearResult::INCOME_SOURCES, 0);
 
+        // Any annuity purchases due this year convert part of a DC pot into a lifetime income
+        // before the year's income is assembled, so the pot is reduced and the annuity pays
+        // from its purchase year.
+        $this->processAnnuityPurchases($state, $yearIndex, $alive, $cumInflation);
+
         foreach ($household->persons as $person) {
             $age = $state['baseAge'][$person->id] + $yearIndex;
             $ages[$person->id] = $age;
@@ -345,6 +371,15 @@ final class PathProjector
             $src['tax_free_income'] += $taxFreeStream;
             $src['pension_lump_sum'] += $wd['taxFree'];
             $src['pension_drawdown'] += $wd['taxable'];
+        }
+
+        // Annuity income from any purchased annuities: a guaranteed lifetime income, taxable
+        // like other income, paid to the surviving partner at the joint fraction after the
+        // annuitant dies. Assigned before the tax pass so it is taxed and counts as assessable
+        // income for the Pension Credit test.
+        foreach ($this->annuityIncomeNominal($state, $household, $alive, $cumInflation) as $pid => $annuityAmount) {
+            $taxablePerPerson[$pid] += $annuityAmount;
+            $src['other_taxable'] += $annuityAmount;
         }
 
         // Taxable investment income from unwrapped assets, on opening balances (A5):
@@ -661,6 +696,96 @@ final class PathProjector
         }
 
         return ['taxable' => $taxable, 'taxFree' => $taxFree];
+    }
+
+    /**
+     * Buy any annuities due this year: for each planned purchase whose annuitant has reached
+     * its age and is alive, convert part of that person's DC pot(s) into a lifetime annuity.
+     * The pot is reduced by the purchase amount (capped at what is there, drawn across the
+     * owner's pots in order) and the annuity becomes active, paying baseIncome = amountBought
+     * × rate from now on. Buying is not itself a taxable event; the income it pays is taxed as
+     * it arrives (see annuityIncomeNominal). The purchase amount is treated as nominal at the
+     * purchase age, matching planned withdrawals (a v1 simplification, flagged). Each purchase
+     * fires once (the `purchased` flag), even if the pot cannot fund it — a dead annuitant, or
+     * an empty pot, simply means no income.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     */
+    private function processAnnuityPurchases(array &$state, int $yearIndex, array $alive, float $cumInflation): void
+    {
+        foreach ($state['annuities'] as &$annuity) {
+            if ($annuity['purchased']) {
+                continue;
+            }
+            $pid = $annuity['ownerId'];
+            $age = $state['baseAge'][$pid] + $yearIndex;
+            if ($age < $annuity['atAge'] || ! ($alive[$pid] ?? false)) {
+                continue;
+            }
+
+            $needed = $annuity['amount'];
+            $bought = 0;
+            foreach ($state['pots'][$pid] as &$pot) {
+                if ($needed <= 0) {
+                    break;
+                }
+                $take = min($needed, $pot['value']);
+                $pot['value'] -= $take;
+                $needed -= $take;
+                $bought += $take;
+            }
+            unset($pot);
+
+            $annuity['purchased'] = true;
+            if ($bought > 0) {
+                $annuity['active'] = true;
+                $annuity['baseIncomeNominal'] = (int) round($bought * $annuity['rate']);
+                $annuity['purchaseCumInflation'] = $cumInflation;
+            }
+        }
+        unset($annuity);
+    }
+
+    /**
+     * This year's annuity income, per person, in nominal pence. While the annuitant lives they
+     * receive the full income (taxed on them); after they die a joint annuity continues at its
+     * survivor fraction to the first living person (the surviving partner), while a single-life
+     * annuity stops. A level annuity (escalation None) pays a flat nominal income that falls in
+     * real terms; any other basis escalates the income with inflation since purchase — the same
+     * proxy the engine uses for DB escalation in payment.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     * @return array<string, int> personId => nominal taxable annuity income
+     */
+    private function annuityIncomeNominal(array $state, Household $household, array $alive, float $cumInflation): array
+    {
+        $income = [];
+        foreach ($state['annuities'] as $annuity) {
+            if (! $annuity['active']) {
+                continue;
+            }
+
+            $factor = $annuity['escalation'] === PensionEscalationBasis::None
+                ? 1.0
+                : $cumInflation / $annuity['purchaseCumInflation'];
+            $amount = (int) round($annuity['baseIncomeNominal'] * $factor);
+            if ($amount <= 0) {
+                continue;
+            }
+
+            if ($alive[$annuity['ownerId']] ?? false) {
+                $income[$annuity['ownerId']] = ($income[$annuity['ownerId']] ?? 0) + $amount;
+            } elseif ($annuity['survivorFraction'] !== null) {
+                $survivor = $this->firstLiving($household, $alive);
+                if ($survivor !== null) {
+                    $income[$survivor] = ($income[$survivor] ?? 0) + (int) round($amount * $annuity['survivorFraction']);
+                }
+            }
+        }
+
+        return $income;
     }
 
     /**

@@ -12,6 +12,9 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * investment returns and contributions, accessible flexibly from the earliest
  * access age. $pclsTakenToDate tracks Lump Sum Allowance use across all pensions
  * (null = none taken yet).
+ *
+ * $annuityPurchase (null = keep in drawdown) converts part of the pot into a lifetime
+ * annuity income at a chosen age — see {@see AnnuityPurchase}.
  */
 final class DcPension implements Pension
 {
@@ -27,6 +30,7 @@ final class DcPension implements Pension
         public readonly array $withdrawalPlan = [],
         public readonly ?Money $pclsTakenToDate = null,
         public readonly ?Percent $growthAssumptionOverride = null,
+        public readonly ?AnnuityPurchase $annuityPurchase = null,
     ) {}
 
     public function ownerId(): string

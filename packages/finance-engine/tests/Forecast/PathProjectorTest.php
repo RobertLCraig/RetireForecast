@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
+use RetireForecast\FinanceEngine\Dto\AnnuityPurchase;
 use RetireForecast\FinanceEngine\Dto\AssetClassAssumption;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DbPension;
@@ -22,6 +23,7 @@ use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Pension;
+use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
@@ -203,7 +205,7 @@ final class PathProjectorTest extends TestCase
     }
 
     /**
-     * @param  list<\RetireForecast\FinanceEngine\Dto\Pension>  $pensions
+     * @param  list<Pension>  $pensions
      */
     private function homeownerCouple(Property $home, array $accounts = [], int $essential = 20_000): Household
     {
@@ -582,5 +584,118 @@ final class PathProjectorTest extends TestCase
         // Aged 68 in 2026; median death in their mid-to-late 80s -> ~15-25 years.
         $this->assertGreaterThan(2026 + 10, $result->finalCalendarYear);
         $this->assertLessThan(2026 + 45, $result->finalCalendarYear);
+    }
+
+    /** Inflation but no real growth, so a nominal annuity's real value erodes at a clean rate. */
+    private function inflationOnlyAssumptions(float $inflationPercent): AssumptionSet
+    {
+        return new AssumptionSet(
+            name: 'inflation', sourceNote: 'test',
+            assetClasses: [
+                new AssetClassAssumption('Equity', Percent::zero(), Percent::zero()),
+                new AssetClassAssumption('Bond', Percent::zero(), Percent::zero()),
+                new AssetClassAssumption('Cash', Percent::zero(), Percent::zero()),
+            ],
+            correlationMatrix: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            inflationMean: Percent::fromPercent($inflationPercent), inflationVolatility: Percent::zero(),
+            houseGrowth: Percent::zero(), rentInflation: Percent::zero(),
+            salaryGrowth: Percent::zero(), investmentIncomeYield: Percent::zero(),
+        );
+    }
+
+    public function test_an_annuity_purchase_converts_the_pot_into_a_lifetime_income(): void
+    {
+        // p2 (68 in 2026) with a £100k pot. Two State Pensions cover the £15k essentials, so nothing
+        // is drawn and the control pot is left intact — isolating the effect of the annuity.
+        $pensions = fn (?AnnuityPurchase $annuity): array => [
+            new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+            new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+            new DcPension('p2', Money::fromPounds(100_000), Money::zero(), Money::zero(), 55, annuityPurchase: $annuity),
+        ];
+        $expense = new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70));
+
+        // Level annuity, 7.2%, bought at 68 (fires in the base year 2026).
+        $annuity = new AnnuityPurchase(atAge: 68, amount: Money::fromPounds(100_000), rate: Percent::fromPercent(7.2));
+
+        $control = $this->forecaster()->forecast($this->couple($expense, $pensions(null)), $this->flatAssumptions(), $this->settings())->years[0];
+        $withAnnuity = $this->forecaster()->forecast($this->couple($expense, $pensions($annuity)), $this->flatAssumptions(), $this->settings())->years[0];
+
+        // Control: no annuity income, the £100k pot intact.
+        $this->assertSame(0, $control->incomeBySource['other_taxable']->pence);
+        $this->assertSame(10_000_000, $control->pensionWealth->pence);
+
+        // With the annuity: the pot is converted (pension wealth gone), paying £100k × 7.2% = £7,200
+        // a year of taxable income — completeness: the annuity demonstrably reaches the forecast.
+        $this->assertSame(0, $withAnnuity->pensionWealth->pence, 'the pot is exchanged for the annuity, so holds no drawable value');
+        $this->assertSame(720_000, $withAnnuity->incomeBySource['other_taxable']->pence);
+    }
+
+    public function test_a_level_annuity_erodes_in_real_terms_while_an_escalating_one_holds(): void
+    {
+        $build = fn (PensionEscalationBasis $basis): Household => $this->couple(
+            new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+                new DcPension('p2', Money::fromPounds(100_000), Money::zero(), Money::zero(), 55,
+                    annuityPurchase: new AnnuityPurchase(68, Money::fromPounds(100_000), Percent::fromPercent(7.2), $basis)),
+            ],
+        );
+
+        $assume = $this->inflationOnlyAssumptions(3.0);
+        $level = $this->forecaster()->forecast($build(PensionEscalationBasis::None), $assume, $this->settings())->years;
+        $rpi = $this->forecaster()->forecast($build(PensionEscalationBasis::Rpi), $assume, $this->settings())->years;
+
+        $real = fn (array $years, int $i): int => $years[$i]->incomeBySource['other_taxable']->pence;
+
+        // Both start at the same £7,200 real in the purchase year.
+        $this->assertSame(720_000, $real($level, 0));
+        $this->assertSame(720_000, $real($rpi, 0));
+
+        // A level annuity pays a flat NOMINAL income, so its REAL value falls with inflation...
+        $this->assertLessThan($real($level, 0), $real($level, 5));
+        // ...while an RPI annuity escalates with inflation, holding its real value (± a rounding penny).
+        $this->assertEqualsWithDelta(720_000, $real($rpi, 5), 5);
+    }
+
+    public function test_a_joint_annuity_continues_to_the_survivor_but_a_single_life_one_stops(): void
+    {
+        // The annuitant (p2) dies at 70 (2028); the partner (p1) lives to 85. A level annuity of
+        // £7,200 is bought at 68. Flat assumptions, so nominal == real and the figures are exact.
+        $build = fn (?Percent $survivorFraction): Household => new Household(
+            'Joint annuity', RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(85)),
+                new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(70)),
+            ],
+            new ExpenseProfile(Money::fromPounds(12_000), Money::zero(), Percent::fromPercent(70)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+                new DcPension('p2', Money::fromPounds(100_000), Money::zero(), Money::zero(), 55,
+                    annuityPurchase: new AnnuityPurchase(68, Money::fromPounds(100_000), Percent::fromPercent(7.2), PensionEscalationBasis::None, $survivorFraction)),
+            ],
+        );
+
+        $byYear = function (Household $h): array {
+            $out = [];
+            foreach ($this->forecaster()->forecast($h, $this->flatAssumptions(), $this->settings())->years as $y) {
+                $out[$y->calendarYear] = $y->incomeBySource['other_taxable']->pence;
+            }
+
+            return $out;
+        };
+
+        $joint = $byYear($build(Percent::fromPercent(50)));
+        $single = $byYear($build(null));
+
+        // While the annuitant lives (2027), both pay the full £7,200.
+        $this->assertSame(720_000, $joint[2027]);
+        $this->assertSame(720_000, $single[2027]);
+
+        // After the annuitant dies (2029, aged 71): the joint annuity pays the survivor 50% = £3,600;
+        // the single-life annuity stops entirely.
+        $this->assertSame(360_000, $joint[2029]);
+        $this->assertSame(0, $single[2029]);
     }
 }
