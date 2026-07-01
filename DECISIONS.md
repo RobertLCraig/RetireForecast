@@ -3,6 +3,33 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-01 — V2 pressure-test: deferred-refinement resolutions (let-home capital, first-class tax-free-benefit type, income-ends-on-sale declined)
+**Context:** working through the refinements deferred from the forced-housing-event workstream
+([[2026-06-30 — Forced-mortgage pressure-test → a 3-feature workstream (benefits-in-forecast, mortgage-redemption event, feasibility flags)]]).
+Three resolutions, each committed green:
+- **A let home is assessable capital.** When the primary residence is **let** (the household lives elsewhere — the
+  "let out & rent" strategy), its equity is no longer the exempt main residence, so `PathProjector` adds it to the
+  Pension Credit **assessable capital**. Letting the flat therefore erodes benefit exactly as selling does (on V2:
+  £0 Pension Credit let-out vs ~£41k kept when they occupy it). A new `Property::isLet` flag drives it.
+- **The tax-free benefit is a first-class income type, not `type: other` + a flag.** The input-clarity plan
+  ([[2026-06-30 — Input-expectation clarity: the input layer must catch a mis-entry, not model it away]], and
+  DATA-MODEL's planned (D)) was to map a tax-free benefit to `IncomeStream{type: other, taxable: false}`. **Upgraded**
+  to a dedicated `IncomeStreamType::DisabilityBenefit` whose tax-free-ness is **structural**: the assembler (the single
+  conversion boundary) forces `taxable = false` regardless of the row's flag. Rationale: a mis-entered *taxable* DLA is
+  a **double** error — income-taxed **and** counted as Pension Credit assessable income (docking benefit) — so making
+  the type itself guarantee the disregard prevents both, where a mere default-untick could still be overridden. The PC
+  assessment already counts only taxable income, so the disregard needed no calc change.
+- **"Income ends when a named property is sold" (the planned `endsOnSale` flag) is declined.** DATA-MODEL's planned (D)
+  last clause proposed linking an `IncomeStream` to a property so a sold flat's rent stops in the sell variants. **Not
+  built:** the model has one property slot and income streams don't reference a property; rental income in a sell
+  variant is, by construction, from a *different* (unmodelled) property, and the "let out & rent" rent is from the flat
+  the household *keeps*. There is no "income tied to the sold home" case in the current single-property model, so the
+  flag would add structure to fix a case that can't arise. Revisit only if multi-property (Lane D) lands.
+**Still deferred (open):** stopping the bundled mortgage *payment* after a repay-from-capital redemption (the mortgage
+payment is a `while_owning_home` cost that today keeps charging after the balance is cleared — a genuine gap needing a
+`while_mortgaged` condition); the in-place forced-sale model. See HANDOVER "In progress".
+**Status:** active.
+
 ## 2026-07-01 — What-ifs are the only way to express a variation; the individual report is single-strategy
 **Decision:** An **individual forecast report = one scenario, one strategy**, read top to bottom. Every *variation*
 — a different housing strategy (stay / buy / rent / let-out), a lever change (retire / spend / return / longevity)

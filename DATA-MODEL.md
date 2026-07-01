@@ -88,8 +88,10 @@ spa_override (int?; normally computed from DOB), triple_lock_assumption (enum).
 | is_assessable_capital | bool (derived) | | no | home excluded |
 
 ### IncomeStream
-owner_person_id, type (rental \| annuity \| other), gross_amount (Money 🔒/yr), taxable (bool),
-inflation_linked (bool), start_age (int), end_age (int?).
+owner_person_id, type (rental \| annuity \| disability_benefit \| other), gross_amount (Money 🔒/yr), taxable (bool),
+inflation_linked (bool), start_age (int), end_age (int?). `disability_benefit` (DLA/AA/PIP) is **structurally tax-free**
+— the assembler forces `taxable = false` for it, so it is disregarded from income tax and the Pension Credit means test
+(DECISIONS 2026-07-01).
 
 ### ExpenseProfile
 target_annual_spend (Money 🔒/yr), essential_portion (Money 🔒 — the floor for "success"),
@@ -297,11 +299,12 @@ Recorded here so the rebuild does not fork the model:
   / `assumptionsPanel` / `milestones` / `inputNotes`, plus the ladder's essential/discretionary split) are app-side
   presentation derived from these + the household — they add **no** persisted entity and **no** canonical-shape change.
 
-## Planned shape changes (2026-06-30) — forced-housing-event workstream, authorised, not yet built
+## Forced-housing-event workstream (2026-06-30/07-01) — BUILT
 For the rationale + the real-couple case that surfaced these: DECISIONS 2026-06-30 (forced-mortgage pressure-test;
-input-expectation clarity) and docs/PLAN.md "Forced-housing-event workstream". Recorded here so the build does not
-fork the model:
-- 🔜 **(A) Means-tested benefits in the forecast.** New engine `Benefits\PensionCreditCalculator` (Guarantee Credit
+input-expectation clarity) + 2026-07-01 (deferred-refinement resolutions) and docs/PLAN.md "Forced-housing-event
+workstream". The canonical-shape additions below are now materialised (see `git log`); two details resolved differently
+from the original plan, flagged inline:
+- ✅ **(A) Means-tested benefits in the forecast.** Engine `Benefits\PensionCreditCalculator` (Guarantee Credit
   to the Standard Minimum Guarantee + Severe Disability / Carer additions; capital tariff via the existing
   `CapitalAssessment`). **`YearResult` gains an income source `means_tested_benefit`** (the canonical source list
   grows from 8 to 9 — update the completeness guard). A **disability flag** is added to `Person` (or `Household`):
@@ -309,18 +312,19 @@ fork the model:
   DLA/AA passport. The benefit is a **household-level** credit computed each projected year from that year's
   assessable income + assessable capital (liquid wealth, home excluded), so it erodes/restores dynamically and
   fires the £16k Housing/Council-Tax-Support cliff in-projection. CTR itself stays out (locally set) — modelled as
-  the cliff/passport, flagged.
-- 🔜 **(B) Mortgage redemption.** `Property` gains `mortgageRedemptionYear: int?` and `mortgageMaturityAction:
-  enum {refinance | repay_from_capital | forced_sale}` (+ a refinance rate/term when refinancing). The projector
-  tracks the mortgage **balance** (new state) and applies the action at maturity. A one-off cost gains an optional
-  **path scope** (which housing variant(s) it applies to) so the £[redacted] convert deposit isn't charged to sell/rent.
-- 🔜 **(C) Feasibility** is a **derived** result note (no stored field): `HousingComparison` exposes whether a buy
+  the cliff/passport, flagged. **Refinement (2026-07-01):** a `Property::isLet` flag means a **let** home's equity
+  joins assessable capital (it is no longer the exempt main residence) — so "let out & rent" erodes benefit like a sale.
+- ✅ **(B) Mortgage redemption.** `Property` gained `mortgageRedemptionYear: int?` and `mortgageMaturityAction:
+  enum {refinance | repay_from_capital | forced_sale}`. The projector tracks the mortgage **balance** (new state) and
+  applies the action at maturity. *Open:* the one-off **path scope** field, and stopping the bundled mortgage *payment*
+  after a repay (needs a `while_mortgaged` expense condition — DECISIONS 2026-07-01, still deferred).
+- ✅ **(C) Feasibility** is a **derived** result note (no stored field): `HousingComparison` exposes whether a buy
   price exceeds net proceeds (and the gap), surfaced by `ResultPresenter` as an input-sanity note.
-- 🔜 **(D) Input clarity** is mostly **builder-state / UI**, not canonical-shape: a per-input **pay frequency** is a
-  form concern (stored annual, so the DTO is unchanged); a **tax-free-benefit** income type maps to the existing
-  `IncomeStream{type: other, taxable: false}`. The one engine-shape touch: an `IncomeStream` may **end when a named
-  property is sold** (an optional property link / `endsOnSale` flag) so a sold flat's rental income stops in the
-  sell variants.
+- ✅ **(D) Input clarity** is mostly **builder-state / UI**, not canonical-shape: a per-input **pay frequency** is a
+  form concern (stored annual, so the DTO is unchanged). The tax-free-benefit type was **upgraded** from the planned
+  `IncomeStream{type: other, taxable: false}` to a first-class `IncomeStreamType::DisabilityBenefit` (structurally
+  tax-free — see IncomeStream above + DECISIONS 2026-07-01). The planned `endsOnSale` property-link is **declined**
+  (single-property model — DECISIONS 2026-07-01).
 
 ## Known divergences (to close)
 - The DTO carries withdrawals on the DC pension; the original Scenario sketch listed
