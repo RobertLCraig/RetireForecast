@@ -3,6 +3,22 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-01 — Tax-efficient withdrawal sequencing: full-capability build approved (Lane C)
+**Decision:** Build **tax-efficient withdrawal sequencing across wrappers** ("fill the band") — the top item from the
+2026-06-30 full-market competitive scan (docs/RESEARCH-competitive-gap-analysis.md, Cluster A). Rob approved the **full
+capability** (not a reduced slice): a new **`Forecast\DrawdownStrategy::FillBands`** (draw personal allowance → CGT
+annual-exempt-amount → ISA → basic-rate pension → rest), **Pension-Credit-aware** (never draw pension income that claws
+Guarantee Credit back £-for-£ — read `Benefits\PensionCreditCalculator`), stepping around the **60% PA-taper** band,
+with **planner-timed PCLS**, a **lifetime-tax £-delta** surfaced in Compare (a neutral number always + an advice-gated
+steer behind `personal_use`), and a **search-optimiser** sequenced last. Delivered additively on
+`PathProjector::fundShortfall`, each slice green. Full build order + rationale: **docs/PLAN-withdrawal-sequencing.md**.
+**Why:** RF already owns the penny-accurate HMRC engine, so sequencing is the highest-value, most on-brand net-new item
+— no UK consumer tool optimises the ISA/SIPP/GIA draw order and quantifies the £ saved (RightCapital-style). The
+now-live Pension Credit means-test makes the household-specific interaction a real correctness point: a naive
+band-filler would silently claw the benefit back (the completeness class of bug the project guards against).
+**Status:** decisions locked; the engine core (the `FillBands` fill-order) is the next build step, **not yet started**.
+Coordinate on the shared `PathProjector` (see HANDOVER "Multi-agent coordination").
+
 ## 2026-07-01 — Stress-test panel: historical sequence-of-returns backtest (Lane A)
 **Decision:** The stress-test panel is **historical sequence backtesting** — replay each past year's
 *actual* UK returns + inflation over the current plan ("how would this plan have fared starting into 1929 /

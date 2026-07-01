@@ -32,9 +32,10 @@ go-ahead.)
 - **Lane C — decumulation: withdrawal sequencing (docs done; CODE BUILD STARTING 2026-07-01).** A third session ran the
   full-market competitive scan (`docs/RESEARCH-competitive-gap-analysis.md`) and wrote the now decision-ready spec
   **`docs/PLAN-withdrawal-sequencing.md`** (tax-efficient ISA/SIPP/GIA "fill the band" ordering + the lifetime-tax
-  £-delta). **Rob approved the full-capability build (2026-07-01)** — building it now, **additively**, on
-  `Forecast/DrawdownStrategy` + `PathProjector::fundShortfall` (a new **`FillBands`** strategy, Pension-Credit-aware),
-  then the £-delta in **Compare** (`ScenarioForecaster` / `ResultPresenter`). ⚠️ **Shares the `PathProjector` +
+  £-delta). **Rob approved the full-capability build (2026-07-01)**; decisions + build order are in the spec. **Next
+  step (NOT yet started): the engine core** — a new **`FillBands`** `DrawdownStrategy` + its fill-order in
+  `PathProjector::fundShortfall`, Pension-Credit-aware, additive; then the £-delta in **Compare**
+  (`ScenarioForecaster` / `ResultPresenter`). ⚠️ **Shares the `PathProjector` +
   `ScenarioForecaster` / `ResultPresenter` surface with Lanes A/B** — additive-only, re-checking `git` before each edit,
   committing engine slices green. Build order + decisions: the spec's "Build order" section.
 - **Lane D — multiple-properties data-model plan (docs-only, DRAFT; awaiting Rob's review).** A fourth session drafted
@@ -175,6 +176,18 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-07-01 (Lane C — withdrawal sequencing: reviewed vs the parallel work, folded Rob's decisions, claimed the lane)_ —
+On Rob's steer, reviewed the project + docs against the fast-moving parallel lanes, then advanced the Lane C
+decumulation workstream. Refreshed **docs/PLAN-withdrawal-sequencing.md** for the now-live **Pension Credit** means-test
+(Guarantee Credit is income-tested £-for-£, so drawing taxable pension above the guarantee claws it back at a 100%
+effective rate — this **inverts** the "fill the free band with pension first" heuristic for a low-income household).
+Asked Rob the spec's open questions; he approved the **full-capability build** (see DECISIONS 2026-07-01 (Lane C) +
+the spec's "Decisions" / "Build order"). Claimed the `PathProjector` lane in the coordination section. Also de-staled
+the coordination section (Lane B was built+committed but still described as "uncommitted/in-flight"). **Stopped before
+the engine core** (the `FillBands` fill-order in `fundShortfall`): it needs finer draw primitives (pension-to-PA,
+GIA-gains-to-CGT-AEA) and reconciliation tests, and the Forecast layer was actively churning under other lanes — that
+core is the next action. Docs-only this session; my commits are in `git log` (competitive-scan + spec + coordination).
 
 _2026-07-01 (Lane B — Compare "re-run all" button; Pension Credit how-to-claim; investment-growth in the ladder)_ —
 Continuing Rob's V2 browser review. **(1)** A **"Re-run all N (full 10k)" button on Compare** (`ScenarioCompare::runFullFamily`)
