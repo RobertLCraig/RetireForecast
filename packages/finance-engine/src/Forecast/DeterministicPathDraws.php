@@ -78,4 +78,10 @@ final class DeterministicPathDraws implements PathDraws
     {
         return $this->deathAges[$personId] ?? CohortLifeTable::MAX_AGE;
     }
+
+    /** No care in the central best-estimate projection (care is a Monte Carlo risk). */
+    public function careAnnualCost(string $personId, int $age): int
+    {
+        return 0;
+    }
 }

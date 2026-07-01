@@ -108,4 +108,10 @@ final class HistoricalSequenceDraws implements PathDraws
     {
         return $this->deathAges[$personId] ?? CohortLifeTable::MAX_AGE;
     }
+
+    /** No care in the historical backtest (care is a Monte Carlo risk, not part of a return path). */
+    public function careAnnualCost(string $personId, int $age): int
+    {
+        return 0;
+    }
 }

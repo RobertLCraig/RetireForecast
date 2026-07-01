@@ -19,6 +19,11 @@ use RetireForecast\FinanceEngine\Money\Money;
  * (personId => birthYear + death age), so the "when does each life event happen"
  * layer can read it without re-deriving the death age. A person is modelled alive
  * through that year (their income is still counted) and gone the following year.
+ *
+ * $careCostReal is the total late-life care cost incurred on this path, in REAL
+ * (today's money); null when care is not modelled (the deterministic and historical
+ * views, and any Monte Carlo path with no sampled care spell), so the risk stays
+ * visible rather than buried in the success rate. See {@see careCostReal()}.
  */
 final class ForecastResult
 {
@@ -35,5 +40,12 @@ final class ForecastResult
         public readonly Money $terminalUsableWealth,
         public readonly int $finalCalendarYear,
         public readonly array $deathCalendarYears = [],
+        public readonly ?Money $careCostRealValue = null,
     ) {}
+
+    /** The real total care cost incurred on this path (zero if none was modelled). */
+    public function careCostReal(): Money
+    {
+        return $this->careCostRealValue ?? Money::zero();
+    }
 }

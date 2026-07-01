@@ -4,25 +4,28 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\MonteCarlo;
 
+use RetireForecast\FinanceEngine\Care\CareEpisode;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Forecast\PathDraws;
 
 /**
  * One Monte Carlo path's draws: pre-generated correlated return and inflation
- * sequences plus sampled death ages, fed to the same {@see PathProjector} the
- * deterministic forecast uses. House-price and salary growth use their expected
- * values in v1.
+ * sequences plus sampled death ages (and any sampled late-life care spells), fed to
+ * the same {@see PathProjector} the deterministic forecast uses. House-price and
+ * salary growth use their expected values in v1.
  */
 final class SampledPathDraws implements PathDraws
 {
     /**
      * @param  array{investment: list<float>, cash: list<float>, inflation: list<float>}  $path
      * @param  array<string, int>  $deathAges
+     * @param  array<string, CareEpisode>  $careEpisodes  person id => sampled care spell (empty = no care modelled)
      */
     public function __construct(
         private readonly array $path,
         AssumptionSet $set,
         private readonly array $deathAges,
+        private readonly array $careEpisodes = [],
     ) {
         $this->houseGrowth = $set->houseGrowth->asFraction();
         $this->salaryGrowth = $set->salaryGrowth->asFraction();
@@ -68,6 +71,11 @@ final class SampledPathDraws implements PathDraws
     public function deathAge(string $personId): int
     {
         return $this->deathAges[$personId] ?? 110;
+    }
+
+    public function careAnnualCost(string $personId, int $age): int
+    {
+        return isset($this->careEpisodes[$personId]) ? $this->careEpisodes[$personId]->annualCostAt($age) : 0;
     }
 
     /**

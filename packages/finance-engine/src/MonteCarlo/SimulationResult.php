@@ -42,5 +42,6 @@ final class SimulationResult
         public readonly array $usableWealthPercentiles = [],
         public readonly array $usableFanChart = [],
         public readonly ?LongevityDistribution $longevity = null,
+        public readonly ?CareImpact $careImpact = null,
     ) {}
 }

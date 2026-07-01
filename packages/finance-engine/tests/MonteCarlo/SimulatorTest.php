@@ -61,6 +61,42 @@ final class SimulatorTest extends TestCase
         );
     }
 
+    public function test_modelling_care_lowers_success_and_reports_the_care_impact(): void
+    {
+        $seed = 11;
+        $paths = 400;
+        $withoutCare = $this->settings();
+        $withCare = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelCareCost: true);
+
+        $without = $this->simulator()->run($this->comfortable(), $withoutCare, AssumptionSetLibrary::default(), new CohortLifeTable, $paths, $seed);
+        $with = $this->simulator()->run($this->comfortable(), $withCare, AssumptionSetLibrary::default(), new CohortLifeTable, $paths, $seed);
+
+        // Care off: no care impact reported. Care on: it is.
+        $this->assertNull($without->careImpact);
+        $this->assertNotNull($with->careImpact);
+
+        // Care is a cost, so modelling it can only lower (never raise) the chance the money lasts.
+        $this->assertLessThanOrEqual($without->successProbabilityFullSpend, $with->successProbabilityFullSpend);
+        $this->assertGreaterThanOrEqual($without->depletionRate, $with->depletionRate);
+
+        // Care demonstrably reaches the result: it occurs in some (not all) paths, with a real bill
+        // (median <= p90). Completeness — the risk is visible, not silently folded into the headline.
+        $this->assertGreaterThan(0.0, $with->careImpact->shareOfPathsWithCare);
+        $this->assertLessThan(1.0, $with->careImpact->shareOfPathsWithCare);
+        $this->assertTrue($with->careImpact->medianCareCost->isPositive());
+        $this->assertGreaterThanOrEqual($with->careImpact->medianCareCost->pence, $with->careImpact->p90CareCost->pence);
+    }
+
+    public function test_care_modelling_is_reproducible_under_a_fixed_seed(): void
+    {
+        $settings = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelCareCost: true);
+        $a = $this->simulator()->run($this->comfortable(), $settings, AssumptionSetLibrary::default(), new CohortLifeTable, 200, seed: 5);
+        $b = $this->simulator()->run($this->comfortable(), $settings, AssumptionSetLibrary::default(), new CohortLifeTable, 200, seed: 5);
+
+        $this->assertSame($a->careImpact->shareOfPathsWithCare, $b->careImpact->shareOfPathsWithCare);
+        $this->assertSame($a->careImpact->medianCareCost->pence, $b->careImpact->medianCareCost->pence);
+    }
+
     public function test_run_is_reproducible_under_a_fixed_seed(): void
     {
         $a = $this->simulator()->run($this->comfortable(), $this->settings(), AssumptionSetLibrary::default(), new CohortLifeTable, 200, seed: 7);

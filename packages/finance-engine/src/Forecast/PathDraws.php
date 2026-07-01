@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Forecast;
 
+use RetireForecast\FinanceEngine\Care\CareCostSampler;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 
 /**
@@ -39,4 +40,13 @@ interface PathDraws
 
     /** The age at which the given person dies on this path. */
     public function deathAge(string $personId): int;
+
+    /**
+     * The person's late-life care cost for the given age, in REAL (today's money) pence, or 0 if
+     * they are not in care that year. Non-zero only on Monte Carlo paths where a care spell was
+     * sampled (see {@see CareCostSampler}); the deterministic
+     * and historical drivers return 0, so care is a modelled risk in the distribution, not in the
+     * central estimate.
+     */
+    public function careAnnualCost(string $personId, int $age): int;
 }

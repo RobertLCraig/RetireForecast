@@ -141,6 +141,7 @@ final class PathProjector
             terminalUsableWealth: $terminal ? $terminal->liquidWealth->plus($terminal->pensionWealth) : Money::zero(),
             finalCalendarYear: $terminal ? $terminal->calendarYear : $settings->baseYear,
             deathCalendarYears: $deathCalendarYears,
+            careCostRealValue: $state['careRealTotal'] > 0 ? Money::fromPence($state['careRealTotal']) : null,
         );
     }
 
@@ -232,6 +233,7 @@ final class PathProjector
             'mortgageOutstanding' => $household->primaryResidence?->outstandingMortgage?->pence ?? 0,
             'mortgageRepaid' => false,
             'annuities' => $annuities, // planned/active lifetime annuities bought from DC pots
+            'careRealTotal' => 0, // accumulated real (today's money) care cost incurred on this path
             'estateSettled' => [], // person ids whose assets have passed to the survivor (once each)
             // Running nominal growth factors (1.0 in the base year).
             'salaryFactor' => 1.0,
@@ -483,6 +485,24 @@ final class PathProjector
             $runningNominal = (int) round($household->primaryResidence->runningCosts->pence * $state['spendFactor']);
             $spendNominal += $runningNominal;
             $essentialNominal += $runningNominal;
+        }
+
+        // Late-life care costs (a Monte Carlo risk; the draws return 0 for the deterministic and
+        // historical views). Care is an essential outflow, so it lifts both the target and the
+        // essential floor and is funded like any spend; the real total is accumulated for the
+        // result so the risk is visible, not silently buried in the success rate. careAnnualCost
+        // is in today's money, inflated by spendFactor like the rest of spend.
+        $careReal = 0;
+        foreach ($household->persons as $person) {
+            if ($alive[$person->id] ?? false) {
+                $careReal += $draws->careAnnualCost($person->id, $ages[$person->id]);
+            }
+        }
+        if ($careReal > 0) {
+            $careNominal = (int) round($careReal * $state['spendFactor']);
+            $spendNominal += $careNominal;
+            $essentialNominal += $careNominal;
+            $state['careRealTotal'] += $careReal;
         }
 
         // Fund any shortfall from assets per the drawdown strategy.

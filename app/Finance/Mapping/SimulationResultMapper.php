@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Finance\Mapping;
 
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\MonteCarlo\CareImpact;
 use RetireForecast\FinanceEngine\MonteCarlo\LongevityDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 
@@ -35,6 +36,7 @@ final class SimulationResultMapper
             'fanChart' => self::penceFan($result->fanChart),
             'usableFanChart' => self::penceFan($result->usableFanChart),
             'longevity' => self::longevityToArray($result->longevity),
+            'careImpact' => self::careImpactToArray($result->careImpact),
         ];
     }
 
@@ -56,6 +58,28 @@ final class SimulationResultMapper
             usableFanChart: self::moneyFan($data['usableFanChart'] ?? []),
             // Runs persisted before the longevity distribution landed have no key — default to null.
             longevity: self::longevityFromArray($data['longevity'] ?? null),
+            // Runs persisted before care-cost modelling (or with it off) have no key — default to null.
+            careImpact: self::careImpactFromArray($data['careImpact'] ?? null),
+        );
+    }
+
+    /** @return array<string, int|float>|null */
+    private static function careImpactToArray(?CareImpact $c): ?array
+    {
+        return $c === null ? null : [
+            'shareOfPathsWithCare' => $c->shareOfPathsWithCare,
+            'medianCareCost' => Codec::pence($c->medianCareCost),
+            'p90CareCost' => Codec::pence($c->p90CareCost),
+        ];
+    }
+
+    /** @param  array<string, mixed>|null  $data */
+    private static function careImpactFromArray(?array $data): ?CareImpact
+    {
+        return $data === null ? null : new CareImpact(
+            shareOfPathsWithCare: (float) $data['shareOfPathsWithCare'],
+            medianCareCost: Codec::money($data['medianCareCost']),
+            p90CareCost: Codec::money($data['p90CareCost']),
         );
     }
 

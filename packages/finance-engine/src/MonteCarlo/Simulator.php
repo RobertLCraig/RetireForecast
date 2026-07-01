@@ -6,6 +6,8 @@ namespace RetireForecast\FinanceEngine\MonteCarlo;
 
 use Random\Engine\Mt19937;
 use Random\Randomizer;
+use RetireForecast\FinanceEngine\Care\CareAssumptions;
+use RetireForecast\FinanceEngine\Care\CareCostSampler;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
@@ -47,6 +49,7 @@ final class Simulator
         $rng = new Randomizer(new Mt19937($seed));
         $returnModel = new ReturnModel($assumptions, $settings->allocation());
         $jointLife = new JointLifeSampler($lifeTable);
+        $careSampler = $settings->modelCareCost ? new CareCostSampler(CareAssumptions::default()) : null;
         $projector = new PathProjector($this->config);
 
         $people = [];
@@ -64,6 +67,7 @@ final class Simulator
         $depletionYears = [];
         $terminalWealth = [];
         $terminalUsable = [];
+        $careCosts = [];          // per path with care: total real care cost (pence)
         $lastSurvivorAges = [];   // per path: the age the longest-living person reaches
         $lastSurvivorYears = [];  // per path: the calendar year the household ends
         $wealthByYearIndex = [];       // yearIndex => list<int pence> total wealth (incl. home)
@@ -71,10 +75,23 @@ final class Simulator
 
         for ($p = 0; $p < $nPaths; $p++) {
             $deathAges = $jointLife->sampleHousehold($people, $settings->baseYear, $rng);
+            // Sample care spells after deaths (care sits at end of life) and before the return
+            // path, so the RNG stream is consistent for the seed. Empty unless care is modelled.
+            $careEpisodes = $careSampler?->sampleHousehold(
+                array_map(fn (array $person): array => [
+                    'id' => $person['id'],
+                    'currentAge' => $person['currentAge'],
+                    'deathAge' => $deathAges[$person['id']] ?? CohortLifeTable::MAX_AGE,
+                ], $people),
+                $rng,
+            ) ?? [];
             $path = $returnModel->generatePath($horizon, $rng);
-            $draws = new SampledPathDraws($path, $assumptions, $deathAges);
+            $draws = new SampledPathDraws($path, $assumptions, $deathAges, $careEpisodes);
 
             $result = $projector->project($household, $settings, $draws);
+            if ($result->careCostReal()->isPositive()) {
+                $careCosts[] = $result->careCostReal()->pence;
+            }
 
             // The last survivor (the person who lives longest) sets how long the money must
             // last. Death year = base year + (death age − current age); the latest is the household's end.
@@ -127,6 +144,22 @@ final class Simulator
             usableWealthPercentiles: $this->moneyPercentiles($terminalUsable),
             usableFanChart: $this->fanChart($usableByYearIndex, $settings->baseYear),
             longevity: $this->longevityDistribution($lastSurvivorAges, $lastSurvivorYears, $settings->baseYear),
+            careImpact: $settings->modelCareCost ? $this->careImpact($careCosts, $nPaths) : null,
+        );
+    }
+
+    /**
+     * The modelled care risk: the share of ALL paths in which care occurred, and the median / p90
+     * total care bill AMONG the paths that had care (the conditional cost a household would face).
+     *
+     * @param  list<int>  $careCosts  per-path total real care cost (pence), only for paths with care
+     */
+    private function careImpact(array $careCosts, int $nPaths): CareImpact
+    {
+        return new CareImpact(
+            shareOfPathsWithCare: $nPaths > 0 ? count($careCosts) / $nPaths : 0.0,
+            medianCareCost: Money::fromPence((int) round($this->percentile($careCosts, 0.50))),
+            p90CareCost: Money::fromPence((int) round($this->percentile($careCosts, 0.90))),
         );
     }
 

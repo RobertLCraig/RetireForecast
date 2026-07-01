@@ -51,4 +51,26 @@ class SimulationResultMappingTest extends TestCase
 
         $this->assertNull(SimulationResultMapper::fromArray($payload)->longevity);
     }
+
+    public function test_a_care_modelled_run_round_trips_the_care_impact(): void
+    {
+        $result = (new Simulator(TaxYearRegistry::for('2026-27')))->run(
+            HouseholdFixture::household(),
+            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelCareCost: true),
+            AssumptionSetLibrary::default(),
+            new CohortLifeTable,
+            nPaths: 60,
+            seed: 5,
+        );
+
+        $rebuilt = SimulationResultMapper::fromArray(json_decode(json_encode(SimulationResultMapper::toArray($result)), true));
+
+        $this->assertNotNull($rebuilt->careImpact);
+        $this->assertEquals($result, $rebuilt);
+
+        // A run persisted before care modelling existed has no key — it rehydrates to null.
+        $payload = SimulationResultMapper::toArray($result);
+        unset($payload['careImpact']);
+        $this->assertNull(SimulationResultMapper::fromArray($payload)->careImpact);
+    }
 }

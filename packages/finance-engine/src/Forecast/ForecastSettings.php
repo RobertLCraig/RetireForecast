@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Forecast;
 
+use RetireForecast\FinanceEngine\Care\CareCostSampler;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 
@@ -20,6 +21,11 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * $annualRent (with $rentInflationReal) models the rent leg of a "sell and rent"
  * scenario: an essential expense on top of the household's spend that grows at its
  * own real rate rather than CPI. Null means the household is not renting.
+ *
+ * $modelCareCost, when true, makes the Monte Carlo sample a late-life care spell per
+ * person (see {@see CareCostSampler}), so the
+ * distribution reflects the fat-tail risk of care fees. Default false, so existing
+ * runs are unchanged; the deterministic and historical views never model care.
  */
 final class ForecastSettings
 {
@@ -31,6 +37,7 @@ final class ForecastSettings
         public readonly int $freezeEndYear = 2031,
         public readonly ?Money $annualRent = null,
         public readonly ?Percent $rentInflationReal = null,
+        public readonly bool $modelCareCost = false,
     ) {}
 
     public function allocation(): PortfolioAllocation
