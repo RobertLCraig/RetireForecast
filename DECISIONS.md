@@ -3,6 +3,29 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-01 — ONS mortality refresh + integrity guardrail (Lane A)
+**Decision:** A `mortality:refresh` command is the ONS-refresh backlog item. The engine's
+`OnsPeriodMortalityData` is **generated from** a sourced JSON resource
+(`ons-2024-period-qx.json`, ONS 2024-based, verified 2026-06-24), but **nothing verified the two
+still agreed** — a hand-edit or a half-finished refresh could silently drift the class from its
+source. The command closes that gap and adds freshness + a refresh path:
+- **Integrity** — diff the embedded `OnsPeriodMortalityData::periodQx()` against the JSON cell for
+  cell (5100 cells); any drift is a non-zero exit. This is the mortality counterpart of the gov.uk
+  figure-verification pass, and the data-integrity rule applied to mortality (one home = the JSON;
+  the class is a projection of it).
+- **Freshness** — flag when the ONS data was verified more than `--months` ago (default 24, ONS
+  updates biennially), reusing the pure `FigureFreshness` date maths (the engine stays clock-free).
+- **Refresh/ingest** — `--against <newRelease.json>` diffs a freshly downloaded ONS release against
+  what we embed and shows the **cohort-life-expectancy impact** (via `CohortLifeTable` on each grid)
+  before adoption. Sits beside `figures:freshness` (the 2026-06-30 source-freshness guardrail).
+**Scope choice (flagged):** the command ingests the ONS data **as the JSON resource shape** (the
+existing sourced home), not the raw ONS xlsx — converting a new ONS "mortality rates qx (principal
+projection)" release into that JSON is the documented manual front step (source_url is in the file).
+Auto-parsing the xlsx (phpspreadsheet) is a later enhancement; the integrity + impact-diff value
+does not depend on it. Grid work is the pure, unit-tested `App\Finance\MortalityDataset`.
+**Status:** built + tested (incl. the retroactive in-sync guard proving the committed class matches
+its JSON). This leaves **care-cost stochasticity** as the last open Lane A backlog item.
+
 ## 2026-07-01 — Tax-efficient withdrawal sequencing: full-capability build approved (Lane C)
 **Decision:** Build **tax-efficient withdrawal sequencing across wrappers** ("fill the band") — the top item from the
 2026-06-30 full-market competitive scan (docs/RESEARCH-competitive-gap-analysis.md, Cluster A). Rob approved the **full
