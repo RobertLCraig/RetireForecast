@@ -30,14 +30,14 @@ go-ahead.)
   **(B) a mortgage-redemption event** (`Property` maturity year + action; projector tracks the balance),
   **(C) feasibility flags**, **(D) input-expectation clarity** (pay-frequency selector, tax-free-benefit income
   type, retirement-age / one-off-scope prompts). Full detail: DECISIONS/PLAN 2026-06-30 — not re-transcribed here.
-- **Lane C — decumulation: withdrawal sequencing (CODE BUILD IN PROGRESS 2026-07-01).** A third session ran the
-  full-market competitive scan (`docs/RESEARCH-competitive-gap-analysis.md`) and wrote the decision-ready spec
+- **Lane C — decumulation: withdrawal sequencing (CORE SHIPPED; #5/#6 HANDED OFF 2026-07-01).** A third session ran the
+  full-market competitive scan (`docs/RESEARCH-competitive-gap-analysis.md`) and wrote the spec
   **`docs/PLAN-withdrawal-sequencing.md`**; **Rob approved the full-capability build**. **Built + committed (green):**
-  the engine core (`FillBands` `DrawdownStrategy` + its Pension-Credit-aware fill-order in
-  `PathProjector::fundShortfall`, 2 engine tests), the PA-taper (resolved by the ordering, no code), and the **£-delta
-  computation** (`ScenarioForecaster::deterministicUnderStrategy` + `App\Forecast\WithdrawalStrategyComparison`,
-  reconciliation-tested). **Next (4b):** the results-page panel showing the £-delta (neutral) + the advice-gated steer
-  (`Interpretation` behind `personal_use`); then PCLS timing, then the optimiser. Status: the spec's "Build order" +
+  the `FillBands` `DrawdownStrategy` + its Pension-Credit-aware fill-order in `PathProjector::fundShortfall`, the
+  PA-taper (resolved by the ordering, no code), the **£-delta computation** (`WithdrawalStrategyComparison`), and the
+  **results-page panel + advice-gated steer** (`Interpretation` behind `personal_use`). **Handed off (not built):**
+  #5 PCLS-timing + #6 the optimiser — a ready-to-execute plan is in the spec's "Implementation plan for a fresh agent"
+  (gated on Rob's two modelling calls). Status: the spec's "Build order" +
   DECISIONS 2026-07-01 (Lane C). ⚠️ **Shares the `PathProjector` +
   `ScenarioForecaster` / `ResultPresenter` surface with Lanes A/B** — additive-only, re-checking `git` before each edit,
   committing engine slices green. Build order + decisions: the spec's "Build order" section.
@@ -184,6 +184,14 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-07-01 (Lane C — withdrawal sequencing: results panel shipped; #5/#6 handed off)_ — Built the **results-page
+"How you draw your money down" panel** (`ScenarioResults` computes `WithdrawalStrategyComparison`; a neutral partial
+shows current-order vs fill-the-bands lifetime tax + the difference) with the **advice-gated steer**
+(`Interpretation::withdrawalSequencingNarrative` behind `personal_use`, via the exempt interpretation partial;
+banned-phrasing partition intact) + a nav entry + a Livewire test (`39db68c`). Then wrote a **ready-to-execute plan
+for #5 (PCLS-timing) + #6 (the optimiser)** into the spec ("Implementation plan for a fresh agent"; `da0d14c`). The
+withdrawal-sequencing **core is shipped**; #5/#6 await a fresh agent. Suite green.
 
 _2026-07-01 (Lane C — withdrawal sequencing: engine core + £-delta computation built)_ — On Rob's go-aheads, built the
 approved feature in green committed slices. **Engine:** a `FillBands` `DrawdownStrategy` + its fill-order in
