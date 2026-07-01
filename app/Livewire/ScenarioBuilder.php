@@ -267,6 +267,15 @@ class ScenarioBuilder extends Component
             'pensions.*.withdrawals.*.kind' => ['required', Rule::in(['pcls', 'ufpls', 'drawdown'])],
             'pensions.*.withdrawals.*.amount' => $moneyReq,
             'pensions.*.withdrawals.*.atAge' => ['required', 'integer', 'min:55', 'max:110'],
+            // Annuitisation: buy a lifetime annuity with part of the DC pot at an age. The amount
+            // and age are required only when the toggle is on; the rate defaults to a sourced ~7.2%.
+            'pensions.*.annuitise' => ['boolean'],
+            'pensions.*.annuityAmount' => [...$money, 'required_if:pensions.*.annuitise,true'],
+            'pensions.*.annuityAtAge' => ['nullable', 'integer', 'min:55', 'max:110', 'required_if:pensions.*.annuitise,true'],
+            'pensions.*.annuityRate' => ['nullable', 'numeric', 'min:0', 'max:30'],
+            'pensions.*.annuityEscalation' => ['nullable', Rule::in(['none', 'rpi', 'cpi'])],
+            'pensions.*.annuityJoint' => ['boolean'],
+            'pensions.*.annuitySurvivorFraction' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'pensions.*.accruedAnnualPension' => [...$money, 'required_if:pensions.*.subtype,db'],
             'pensions.*.normalRetirementAge' => ['nullable', 'integer', 'min:50', 'max:75', 'required_if:pensions.*.subtype,db'],
             'pensions.*.revaluationBasis' => ['nullable', Rule::in(['none', 'cpi', 'rpi', 'cpi_capped_5', 'fixed'])],
@@ -647,7 +656,24 @@ class ScenarioBuilder extends Component
                     $this->pensions[$pi]['withdrawals'][$wi]['id'] = $this->newRowId();
                 }
             }
+
+            // Annuity fields are stored sparsely (only when annuitising), so a scenario predating
+            // the feature loads without them; union in the defaults so the sub-form has sensible
+            // values the moment it is switched on. `+=` keeps any stored values untouched.
+            if (($pension['subtype'] ?? '') === 'dc') {
+                $this->pensions[$pi] += $this->blankAnnuity();
+            }
         }
+    }
+
+    /** Default annuity sub-form fields for a DC pot (rate defaulted to a sourced ~7.2% joint level quote). */
+    private function blankAnnuity(): array
+    {
+        return [
+            'annuitise' => false, 'annuityAmount' => '', 'annuityAtAge' => '',
+            'annuityRate' => '7.2', 'annuityEscalation' => 'none',
+            'annuityJoint' => false, 'annuitySurvivorFraction' => '50',
+        ];
     }
 
     /** A stable, collision-free id for a freshly added list row. */
@@ -694,6 +720,20 @@ class ScenarioBuilder extends Component
             return $line;
         }, $this->expenseLines);
 
+        // Store the annuity sub-form only when a DC pot is actually being annuitised; otherwise
+        // drop the (default) fields, so a scenario predating the feature — and a what-if that
+        // changes nothing — records no spurious delta (sparse, like the include flag).
+        $pensions = array_map(static function (array $p): array {
+            if (empty($p['annuitise'])) {
+                unset(
+                    $p['annuitise'], $p['annuityAmount'], $p['annuityAtAge'], $p['annuityRate'],
+                    $p['annuityEscalation'], $p['annuityJoint'], $p['annuitySurvivorFraction'],
+                );
+            }
+
+            return $p;
+        }, $this->pensions);
+
         $state = [
             'step' => $this->step,
             'name' => $this->name,
@@ -707,7 +747,7 @@ class ScenarioBuilder extends Component
             'expense' => $expense,
             'expenseLines' => $expenseLines,
             'oneOffCosts' => $this->oneOffCosts,
-            'pensions' => $this->pensions,
+            'pensions' => $pensions,
             'accounts' => $this->accounts,
             'incomeStreams' => $this->incomeStreams,
             'hasProperty' => $this->hasProperty,
@@ -1300,6 +1340,7 @@ class ScenarioBuilder extends Component
             'accruedAnnualPension' => '', 'normalRetirementAge' => '65', 'revaluationBasis' => 'cpi',
             'escalationInPayment' => 'cpi', 'spousePensionFraction' => '', 'commutationLumpSum' => '', 'commutationFactor' => '',
             'weeklyForecast' => '', 'qualifyingYears' => '', 'deferralWeeks' => '0',
+            ...$this->blankAnnuity(),
         ];
     }
 

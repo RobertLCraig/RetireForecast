@@ -8,6 +8,7 @@ use App\Finance\Mapping\Codec;
 use DateTimeImmutable;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
+use RetireForecast\FinanceEngine\Dto\AnnuityPurchase;
 use RetireForecast\FinanceEngine\Dto\CgtHistory;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
@@ -345,6 +346,7 @@ final class HouseholdAssembler
                 withdrawalPlan: array_map($this->withdrawal(...), $p['withdrawals'] ?? []),
                 pclsTakenToDate: $this->money($p['pclsTakenToDate'] ?? null),
                 growthAssumptionOverride: $this->percent($p['growthAssumptionOverride'] ?? null),
+                annuityPurchase: $this->annuity($p),
             ),
             'db' => new DbPension(
                 ownerId: (string) $p['ownerId'],
@@ -375,6 +377,36 @@ final class HouseholdAssembler
             },
             amount: $this->moneyRequired($w['amount'] ?? null),
             atAge: (int) $w['atAge'],
+        );
+    }
+
+    /**
+     * The optional annuity purchase on a DC pot: null unless the annuitise toggle is on and the
+     * amount + age are set (so an incomplete toggle silently builds nothing). The rate defaults to
+     * a sourced ~7.2% (level joint-life at 65) and the survivor fraction to 50% for a joint annuity.
+     *
+     * @param  array<string, mixed>  $p
+     */
+    private function annuity(array $p): ?AnnuityPurchase
+    {
+        if (empty($p['annuitise'])) {
+            return null;
+        }
+
+        $amount = $this->money($p['annuityAmount'] ?? null);
+        $atAge = $this->intOrNull($p['annuityAtAge'] ?? null);
+        if ($amount === null || $atAge === null) {
+            return null;
+        }
+
+        return new AnnuityPurchase(
+            atAge: $atAge,
+            amount: $amount,
+            rate: $this->percent($p['annuityRate'] ?? null) ?? Percent::fromPercent(7.2),
+            escalation: PensionEscalationBasis::from($p['annuityEscalation'] ?? 'none'),
+            survivorFraction: empty($p['annuityJoint'])
+                ? null
+                : ($this->percent($p['annuitySurvivorFraction'] ?? null) ?? Percent::fromPercent(50)),
         );
     }
 

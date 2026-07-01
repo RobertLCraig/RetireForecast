@@ -11,7 +11,9 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
+use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\HouseholdFixture;
 use Tests\TestCase;
@@ -32,6 +34,62 @@ class ScenarioBuilderTest extends TestCase
 
         $this->assertSame(1, Scenario::count());
         $this->assertSame(ScenarioStatus::Ready, Scenario::firstOrFail()->status);
+    }
+
+    public function test_a_dc_annuity_purchase_round_trips_through_the_saved_scenario(): void
+    {
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+
+        $component->call('addPension', 'dc')
+            ->set('pensions.0.currentValue', '200000')
+            ->set('pensions.0.earliestAccessAge', '57')
+            ->set('pensions.0.annuitise', true)
+            ->set('pensions.0.annuityAmount', '120000')
+            ->set('pensions.0.annuityAtAge', '66')
+            ->set('pensions.0.annuityRate', '7.2')
+            ->set('pensions.0.annuityEscalation', 'rpi')
+            ->set('pensions.0.annuityJoint', true)
+            ->set('pensions.0.annuitySurvivorFraction', '50')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $dc = null;
+        foreach (Scenario::firstOrFail()->toHousehold()->pensions as $p) {
+            if ($p instanceof DcPension && $p->annuityPurchase !== null) {
+                $dc = $p;
+                break;
+            }
+        }
+
+        $this->assertNotNull($dc, 'the saved scenario should carry the DC annuity purchase');
+        $this->assertSame(66, $dc->annuityPurchase->atAge);
+        $this->assertSame(12_000_000, $dc->annuityPurchase->amount->pence);
+        $this->assertSame(720, $dc->annuityPurchase->rate->basisPoints);
+        $this->assertSame(PensionEscalationBasis::Rpi, $dc->annuityPurchase->escalation);
+        $this->assertSame(5000, $dc->annuityPurchase->survivorFraction->basisPoints);
+    }
+
+    public function test_an_unannuitised_pot_stores_no_annuity_fields(): void
+    {
+        // Sparse storage: a DC pot with the toggle off records none of the annuity keys, so a
+        // scenario predating the feature — and a what-if that changes nothing — shows no delta.
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component->call('addPension', 'dc')
+            ->set('pensions.0.currentValue', '200000')
+            ->set('pensions.0.earliestAccessAge', '57')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $pension = Scenario::firstOrFail()->builder_state['pensions'][0];
+        $this->assertArrayNotHasKey('annuitise', $pension);
+        $this->assertArrayNotHasKey('annuityAmount', $pension);
+        $this->assertArrayNotHasKey('annuityRate', $pension);
     }
 
     public function test_adding_a_state_pension_defaults_to_the_full_rate_and_renders_the_level_picker(): void

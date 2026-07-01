@@ -7,8 +7,10 @@ namespace Tests\Unit\Forecast;
 use App\Forecast\HouseholdAssembler;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
+use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -51,6 +53,47 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertSame(125, $action->sellingCosts[0]->value->basisPoints);
         $this->assertInstanceOf(Money::class, $action->sellingCosts[1]->value);
         $this->assertSame(150_000, $action->sellingCosts[1]->value->pence);
+    }
+
+    public function test_a_dc_annuity_purchase_maps_onto_the_pension(): void
+    {
+        $dc = fn (array $annuity): DcPension => (new HouseholdAssembler)->household([
+            'householdName' => 'Annuity', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '10000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'pensions' => [array_merge(
+                ['id' => 'pn1', 'subtype' => 'dc', 'ownerId' => 'p1', 'currentValue' => '200000', 'earliestAccessAge' => '57'],
+                $annuity,
+            )],
+        ])->pensions[0];
+
+        // No toggle, or toggle off, → no annuity even if the figures are present.
+        $this->assertNull($dc([])->annuityPurchase);
+        $this->assertNull($dc(['annuitise' => false, 'annuityAmount' => '100000', 'annuityAtAge' => '65'])->annuityPurchase);
+
+        // Toggled on → a joint RPI annuity with the entered figures.
+        $joint = $dc([
+            'annuitise' => true, 'annuityAmount' => '100000', 'annuityAtAge' => '65',
+            'annuityRate' => '7.2', 'annuityEscalation' => 'rpi', 'annuityJoint' => true, 'annuitySurvivorFraction' => '50',
+        ])->annuityPurchase;
+        $this->assertNotNull($joint);
+        $this->assertSame(65, $joint->atAge);
+        $this->assertSame(10_000_000, $joint->amount->pence);
+        $this->assertSame(720, $joint->rate->basisPoints);
+        $this->assertSame(PensionEscalationBasis::Rpi, $joint->escalation);
+        $this->assertSame(5000, $joint->survivorFraction->basisPoints);
+
+        // Single life → null survivor fraction; a blank rate defaults to the sourced ~7.2%.
+        $single = $dc([
+            'annuitise' => true, 'annuityAmount' => '50000', 'annuityAtAge' => '60', 'annuityRate' => '', 'annuityJoint' => false,
+        ])->annuityPurchase;
+        $this->assertNull($single->survivorFraction);
+        $this->assertSame(PensionEscalationBasis::None, $single->escalation);
+        $this->assertSame(720, $single->rate->basisPoints);
+
+        // Toggle on but the amount left blank → nothing built (no half-specified annuity).
+        $this->assertNull($dc(['annuitise' => true, 'annuityAtAge' => '65'])->annuityPurchase);
     }
 
     public function test_an_income_amount_is_annualised_by_its_pay_frequency(): void
