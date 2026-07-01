@@ -24,6 +24,14 @@ use RetireForecast\FinanceEngine\Support\Warning;
  * (real money) so the drill-down cashflow ladder can show where money came from and
  * how any shortfall was funded. Every source that should reach spendable cash appears
  * here, which is the visual guard against silently dropping one (e.g. tax-free DLA).
+ *
+ * $investmentGrowth is the year's CAPITAL appreciation left inside the invested pots —
+ * share/fund price growth (GIA at capital-only, ISA and pensions at the full return),
+ * over and above the {@see INCOME_SOURCES} `investment_income` (interest + dividends) paid
+ * out and taxed each year. It is not spendable cash this year (it compounds in the pot,
+ * taxed as CGT only on a later GIA disposal), so it is carried separately from income —
+ * it is the "where the rest of the gains come from" the wealth line reflects but the
+ * income breakdown otherwise would not. Can be negative in a down year.
  */
 final class YearResult
 {
@@ -72,11 +80,30 @@ final class YearResult
         public readonly Money $totalWealth,
         public readonly array $incomeBySource = [],
         public readonly array $warnings = [],
+        public readonly ?Money $investmentGrowth = null,
     ) {}
 
     /** The full target spend was met in this year (nothing went unfunded). */
     public function fullSpendMet(): bool
     {
         return $this->unmetSpend->isZero();
+    }
+
+    /** This year's capital growth left in the invested pots (zero if not tracked). */
+    public function investmentGrowth(): Money
+    {
+        return $this->investmentGrowth ?? Money::zero();
+    }
+
+    /** A copy of this year with its investment (capital) growth set — attached after growth is applied. */
+    public function withInvestmentGrowth(Money $investmentGrowth): self
+    {
+        return new self(
+            $this->yearIndex, $this->calendarYear, $this->ages, $this->aliveCount,
+            $this->grossIncome, $this->totalTax, $this->netIncome, $this->spendTarget,
+            $this->essentialSpend, $this->shortfallFunded, $this->unmetSpend, $this->essentialsMet,
+            $this->liquidWealth, $this->pensionWealth, $this->propertyWealth, $this->totalWealth,
+            $this->incomeBySource, $this->warnings, $investmentGrowth,
+        );
     }
 }

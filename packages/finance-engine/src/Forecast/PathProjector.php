@@ -103,15 +103,19 @@ final class PathProjector
             $thresholdFactor = $calendarYear <= $settings->freezeEndYear ? 1.0 : $cumInflation / $freezeRefInflation;
 
             $year = $this->projectYear($household, $settings, $draws, $state, $yearIndex, $calendarYear, $alive, $cumInflation, $thresholdFactor);
-            $years[] = $year;
 
             if ($depletionYear === null && ! $year->essentialsMet) {
                 $depletionYear = $calendarYear;
             }
 
-            // Advance growth factors and balances to the start of next year.
-            $this->growState($state, $draws, $yearIndex);
+            // Advance growth factors and balances to the start of next year. growState returns the
+            // year's nominal capital growth (untaxed appreciation left in the pots). It is a
+            // year N -> N+1 flow, so deflate it by NEXT year's price level to express the real
+            // (purchasing-power) gain — matching the real wealth line's progression — then attach
+            // it, so the ladder shows where the pot grows beyond the income it pays out.
+            $growthNominal = $this->growState($state, $draws, $yearIndex);
             $cumInflation *= (1.0 + $draws->inflation($yearIndex));
+            $years[] = $year->withInvestmentGrowth(Money::fromPence((int) round($growthNominal / $cumInflation)));
 
             if ($yearIndex > 200) {
                 break; // safety backstop; should never trigger (mortality caps at 110)
@@ -1050,7 +1054,10 @@ final class PathProjector
      *
      * @param  array<string, mixed>  $state
      */
-    private function growState(array &$state, PathDraws $draws, int $yearIndex): void
+    /** Advance balances and growth factors to the start of next year; returns the nominal capital
+     *  growth (share/fund appreciation) left in the invested pots this year — the untaxed part of
+     *  the return, separate from the interest/dividends projectYear pays out as income. */
+    private function growState(array &$state, PathDraws $draws, int $yearIndex): int
     {
         $infl = $draws->inflation($yearIndex);
         $investNominal = (1.0 + $draws->investmentRealReturn($yearIndex)) * (1.0 + $infl) - 1.0;
@@ -1065,14 +1072,24 @@ final class PathProjector
         $giaCapital = $investNominal - $draws->investmentIncomeYield();
         $cashCapital = $cashNominal - max(0.0, $cashNominal);
 
+        $growth = 0; // capital appreciation left in the pots (new balance − old), summed across all
         foreach ($state['cash'] as $pid => $v) {
+            $before = $v + $state['gia'][$pid] + $state['isa'][$pid];
+            foreach ($state['pots'][$pid] as $pot) {
+                $before += $pot['value'];
+            }
+
             $state['cash'][$pid] = (int) round($v * (1.0 + $cashCapital));
             $state['gia'][$pid] = (int) round($state['gia'][$pid] * (1.0 + $giaCapital));
             $state['isa'][$pid] = (int) round($state['isa'][$pid] * (1.0 + $investNominal));
+            $after = $state['cash'][$pid] + $state['gia'][$pid] + $state['isa'][$pid];
             foreach ($state['pots'][$pid] as &$pot) {
                 $pot['value'] = (int) round($pot['value'] * (1.0 + $investNominal));
+                $after += $pot['value'];
             }
             unset($pot);
+
+            $growth += $after - $before;
         }
 
         $state['property'] = (int) round($state['property'] * (1.0 + $houseNominal));
@@ -1084,6 +1101,8 @@ final class PathProjector
         $state['spFactor'] *= (1.0 + max($infl, 0.025)); // triple-lock proxy
         $state['spendFactor'] *= (1.0 + $infl);
         $state['rentFactor'] *= (1.0 + $rentNominal);
+
+        return $growth;
     }
 
     private function dbEscalation(float $inflation): float

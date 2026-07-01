@@ -319,7 +319,7 @@ class ScenarioResults extends Component
             foreach ($ladder['sources'] as $source) {
                 $header[] = $ladder['sourceLabels'][$source];
             }
-            $header = [...$header, 'Tax', 'Spend', 'Essential spend', 'Discretionary spend', 'Unmet spend', 'Usable wealth (excl. home)', 'Total wealth (incl. home)'];
+            $header = [...$header, 'Tax', 'Spend', 'Essential spend', 'Discretionary spend', 'Unmet spend', 'Investment growth (capital)', 'Usable wealth (excl. home)', 'Total wealth (incl. home)'];
             fputcsv($out, $header);
 
             foreach ($ladder['rows'] as $row) {
@@ -327,7 +327,7 @@ class ScenarioResults extends Component
                 foreach ($ladder['sources'] as $source) {
                     $line[] = $row['income'][$source];
                 }
-                $line = [...$line, $row['tax'], $row['spend'], $row['essentialSpend'], $row['discretionarySpend'], $row['shortfall'] ?? '', $row['usableWealth'], $row['totalWealth']];
+                $line = [...$line, $row['tax'], $row['spend'], $row['essentialSpend'], $row['discretionarySpend'], $row['shortfall'] ?? '', $row['investmentGrowth'], $row['usableWealth'], $row['totalWealth']];
                 fputcsv($out, $line);
             }
             fclose($out);
@@ -429,6 +429,9 @@ class ScenarioResults extends Component
             'plsa' => ResultPresenter::plsaBenchmark($this->scenario->toHousehold()),
             // Essential spending vs secure (guaranteed-for-life) income at the mature point.
             'incomeFloor' => ResultPresenter::incomeFloor($forecast),
+            // How to claim the Pension Credit the forecast models (only when it credits any) —
+            // it is means-tested, so it has to be applied for, and is heavily under-claimed.
+            'pensionCredit' => ResultPresenter::pensionCreditGuidance($forecast),
             // Deterministic year-by-year cashflow ladder (income by source -> tax -> spend
             // -> wealth) for the selected housing strategy. Shows immediately, before any run.
             'ladder' => ResultPresenter::ladder($ladderForecast, $this->scenario->safetyBufferMonths()),

@@ -83,15 +83,16 @@ final class DisplayedFigureProvenanceTest extends TestCase
                 $this->assertSame($expected['income'][$source], $cells[2 + $j], "income {$source} in {$expected['year']}");
             }
 
-            // Tax, Spend, Essential spend, Discretionary spend, Unmet spend, Usable wealth,
-            // Total wealth follow the income columns — each the panel's own figure, not re-derived.
+            // Tax, Spend, Essential spend, Discretionary spend, Unmet spend, Investment growth,
+            // Usable wealth, Total wealth follow the income columns — each the panel's own figure.
             $this->assertSame($expected['tax'], $cells[2 + $sourceCount]);
             $this->assertSame($expected['spend'], $cells[2 + $sourceCount + 1]);
             $this->assertSame($expected['essentialSpend'], $cells[2 + $sourceCount + 2]);
             $this->assertSame($expected['discretionarySpend'], $cells[2 + $sourceCount + 3]);
             $this->assertSame($expected['shortfall'] ?? '', $cells[2 + $sourceCount + 4]);
-            $this->assertSame($expected['usableWealth'], $cells[2 + $sourceCount + 5]);
-            $this->assertSame($expected['totalWealth'], $cells[2 + $sourceCount + 6]);
+            $this->assertSame($expected['investmentGrowth'], $cells[2 + $sourceCount + 5]);
+            $this->assertSame($expected['usableWealth'], $cells[2 + $sourceCount + 6]);
+            $this->assertSame($expected['totalWealth'], $cells[2 + $sourceCount + 7]);
         }
     }
 

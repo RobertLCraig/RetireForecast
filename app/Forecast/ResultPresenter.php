@@ -487,6 +487,16 @@ final class ResultPresenter
             fn (string $source): bool => self::sourceOccurs($forecast, $source),
         ));
 
+        // Show the capital-growth column only when the pots actually appreciate in some year
+        // (an all-cash or fully-drawn plan has none), so the table stays clean otherwise.
+        $showGrowth = false;
+        foreach ($forecast->years as $year) {
+            if (! $year->investmentGrowth()->isZero()) {
+                $showGrowth = true;
+                break;
+            }
+        }
+
         $rows = [];
         $floorBreachYear = null;
         foreach ($forecast->years as $year) {
@@ -527,6 +537,11 @@ final class ResultPresenter
                 'essentialSpend' => $year->essentialSpend->format(),
                 'discretionarySpend' => $discretionary->format(),
                 'shortfall' => $year->unmetSpend->isZero() ? null : $year->unmetSpend->format(),
+                // Capital growth left in the pots this year (share/fund appreciation, untaxed until
+                // a GIA disposal) — the part of the return that grows wealth without paying out as
+                // income. Sits beside "Investment income" (interest + dividends) to show the full
+                // return. Can be negative in a down year.
+                'investmentGrowth' => $year->investmentGrowth()->format(),
                 'usableWealth' => $usable->format(),
                 'totalWealth' => $year->totalWealth->format(),
                 'status' => $status,
@@ -538,6 +553,7 @@ final class ResultPresenter
             'sources' => $active,
             'sourceLabels' => self::SOURCE_LABELS,
             'rows' => $rows,
+            'showGrowth' => $showGrowth,
             'finalYear' => $forecast->finalCalendarYear,
             // The safety-floor headline: the buffer (in months of essentials), the first year
             // usable money drops below it (null = never), and the first year it runs out entirely.
@@ -876,6 +892,47 @@ final class ResultPresenter
             'surplus' => $surplus->isPositive() ? $surplus->format() : null,
             'gap' => $shortfall->isPositive() ? $shortfall->format() : null,
             'fullyCovered' => ! $shortfall->isPositive(),
+        ];
+    }
+
+    /**
+     * How to actually claim the Pension Credit the forecast models — surfaced only when the
+     * projection credits it in some year. Pension Credit is means-tested (so it has to be
+     * applied for, never automatic) and one of the most under-claimed benefits, so modelling
+     * it as income without saying how to get it would leave money on the table. Factual
+     * gov.uk signposting, not advice: the amount is means-tested and only the DWP can confirm
+     * entitlement. Returns null when no year receives Pension Credit (nothing to claim).
+     *
+     * @return array{howToClaim: list<string>, passports: list<string>, source: string, verifiedOn: string}|null
+     */
+    public static function pensionCreditGuidance(ForecastResult $forecast): ?array
+    {
+        $received = false;
+        foreach ($forecast->years as $year) {
+            if (($year->incomeBySource['means_tested_benefit'] ?? Money::zero())->isPositive()) {
+                $received = true;
+                break;
+            }
+        }
+        if (! $received) {
+            return null;
+        }
+
+        return [
+            'howToClaim' => [
+                'Apply online at gov.uk/pension-credit, or call the Pension Credit claim line on 0800 99 1234 (textphone 0800 169 0133), Monday to Friday, 8am to 6pm.',
+                'You can apply from 4 months before you reach State Pension age, and a claim can be backdated up to 3 months if you were already eligible — so claim as soon as you qualify.',
+                'Have your National Insurance number, details of income, savings and investments, and your bank details to hand.',
+            ],
+            'passports' => [
+                'Council Tax Reduction',
+                'Housing Benefit if you rent',
+                'a free TV licence if you are 75 or over',
+                'help with NHS dental and optical costs',
+                'Warm Home Discount and other cost-of-living help',
+            ],
+            'source' => 'https://www.gov.uk/pension-credit',
+            'verifiedOn' => '2026-07-01',
         ];
     }
 

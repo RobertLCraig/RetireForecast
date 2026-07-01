@@ -609,6 +609,21 @@
                     The rest of essential spending is met by drawing on your savings and pensions, so it depends on those lasting — which is what the forecast below tests.
                 @endif
             </p>
+
+            @if ($pensionCredit)
+                <div class="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm">
+                    <h3 class="font-semibold text-blue-900">How to claim your Pension Credit</h3>
+                    <p class="mt-1 text-blue-800">This forecast counts Pension Credit in your secure income above. It's <strong>means-tested, so it has to be claimed</strong> — it isn't paid automatically, and it's one of the most under-claimed benefits, so it's worth acting on.</p>
+                    <ul class="mt-2 list-disc space-y-1 pl-5 text-blue-800">
+                        @foreach ($pensionCredit['howToClaim'] as $step)
+                            <li>{{ $step }}</li>
+                        @endforeach
+                    </ul>
+                    <p class="mt-2 text-blue-800">Even a small award is worth claiming because it can passport you to other help: {{ implode(', ', $pensionCredit['passports']) }}.</p>
+                    <p class="mt-2 text-xs text-blue-700"><a href="{{ $pensionCredit['source'] }}" class="underline" rel="noopener">gov.uk/pension-credit</a> · checked {{ $pensionCredit['verifiedOn'] }}. The exact amount is means-tested — only the DWP can confirm what you'd get.</p>
+                </div>
+            @endif
+
             <x-signpost class="mt-4" />
         </section>
     @endif
@@ -787,6 +802,9 @@
                 <p class="mt-3 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm font-medium text-green-900">✓ Usable money never runs out on this strategy.</p>
             @endif
             <p class="mt-1 text-xs text-gray-500">Rows are tinted: <span class="rounded bg-green-50 px-1">surplus</span> (income covers spend), plain (drawing on savings), <span class="rounded bg-amber-50 px-1">shortfall</span> (spend not fully met), <span class="rounded bg-red-50 px-1">below buffer</span>.</p>
+            @if ($ladder['showGrowth'])
+                <p class="mt-1 text-xs text-gray-500">Your investments earn in two ways: <strong>Investment income</strong> (interest on cash and dividends from funds) is paid out and taxed each year, so it's part of the income columns; <strong>Investment growth</strong> is the rise in the value of your funds/shares — it stays invested (taxed only as capital gains if you later sell outside an ISA/pension), which is why wealth can grow even in a year you're drawing down.</p>
+            @endif
             <div class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-sm whitespace-nowrap">
                     <caption class="sr-only">Deterministic year-by-year cashflow: income by source, tax, spend and wealth, in real pounds</caption>
@@ -799,6 +817,9 @@
                             @endforeach
                             <th scope="col" class="{{ $th }} text-right">Tax</th>
                             <th scope="col" class="{{ $th }} text-right">Spend</th>
+                            @if ($ladder['showGrowth'])
+                                <th scope="col" class="{{ $th }} text-right">Investment growth</th>
+                            @endif
                             <th scope="col" class="{{ $th }} text-right">Usable (excl. home)</th>
                             <th scope="col" class="{{ $th }} text-right">Total (incl. home)</th>
                         </tr>
@@ -821,6 +842,9 @@
                                     <span class="block text-xs text-gray-500">ess {{ $row['essentialSpend'] }} · disc {{ $row['discretionarySpend'] }}</span>
                                     @if ($row['shortfall'])<span class="block text-xs text-amber-700">unmet {{ $row['shortfall'] }}</span>@endif
                                 </td>
+                                @if ($ladder['showGrowth'])
+                                    <td class="{{ $td }} text-right text-gray-600">{{ $row['investmentGrowth'] }}</td>
+                                @endif
                                 <td class="{{ $td }} text-right">
                                     {{ $row['usableWealth'] }}
                                     @if ($row['belowFloor'])<span class="block text-xs font-medium text-red-700">below buffer</span>@endif
