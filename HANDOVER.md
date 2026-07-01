@@ -25,7 +25,8 @@ go-ahead.)
   mortgage payment after a repay-from-capital redemption) is built per
   [docs/PLAN-mortgage-payment-stop.md](docs/PLAN-mortgage-payment-stop.md) — `ExpenseProfile::mortgageCosts`, the
   projector drop, PLSA exclusion, engine-tested (DECISIONS 2026-07-01). **Only the in-place forced-sale model remains
-  deferred** for Lane B. Scope (built):
+  deferred** for Lane B — **specced in [docs/PLAN-in-place-forced-sale.md](docs/PLAN-in-place-forced-sale.md)**, which
+  ends with open modelling decisions **[needs Rob]** before any build. Scope (built):
   **(A) means-tested benefits in the live forecast** (`Benefits\PensionCreditCalculator` wired into `PathProjector`;
   new `YearResult` source `means_tested_benefit` — completeness/reconciliation guards; the source list grows 8→9),
   **(B) a mortgage-redemption event** (`Property` maturity year + action; projector tracks the balance),
@@ -131,7 +132,7 @@ The adviser-legibility workstream and the whole post-v1 backlog are built (see C
 3. **Optional refinements to built features** (all flagged v1 limits; pick by value). **Care:** means-test the tail once assets fall below the threshold (`Care\CareMeansTest` is the hook), sex/age-split probability + HSLE timing, ONS-xlsx auto-parse for `mortality:refresh`. **CGT:** deemed-occupation absences, per-owner band-straddle from exact income, shared-occupancy lettings relief (DECISIONS 2026-06-30). **Monte Carlo:** stochastic house/salary growth (currently deterministic), post-2031 reindexing, per-scheme DB escalation. **Annuitisation:** explicit retirement-*month* override.
 4. **CI / data hygiene.** Wire the freshness guardrails (`figures:freshness`, `mortality:refresh`) into a scheduled/CI run so aging or drifted figures fail loudly. Low-value hardening (confirm worth it): tamper-evident run hash, forecast caching.
 
-**Cross-lane in-flight — coordinate, do not grab.** Lane B forced-housing deferred: the `while_mortgaged` mortgage-payment-stop is **built** (docs/PLAN-mortgage-payment-stop.md); only the in-place forced-sale model remains. Lane C withdrawal-sequencing next steps (docs/PLAN-withdrawal-sequencing.md). Lane D multi-property (docs/PLAN-multi-property.md, DRAFT, [needs Rob]).
+**Cross-lane in-flight — coordinate, do not grab.** Lane B forced-housing deferred: the `while_mortgaged` mortgage-payment-stop is **built** (docs/PLAN-mortgage-payment-stop.md); only the in-place forced-sale model remains, **specced in docs/PLAN-in-place-forced-sale.md ([needs Rob] on open decisions first)**. Lane C withdrawal-sequencing next steps (docs/PLAN-withdrawal-sequencing.md). Lane D multi-property (docs/PLAN-multi-property.md, DRAFT, [needs Rob]).
 
 ## Open items
 Open decisions and parked work, off the immediate go-live path (which is under What's next).
@@ -175,6 +176,7 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 | docs/RESEARCH-stress-test-and-official-sources.md | Stress-test industry standards + official UK data sources (2026-07-01): historical sequence backtesting; BoE has no equity total return, so the source is the JST Macrohistory dataset (CC BY-NC-SA); care-cost = LaingBuisson/PSSRU + ONS timing; ONS-refresh = fully ONS. Source decisions resolved + built. |
 | docs/PLAN-withdrawal-sequencing.md | DRAFT spec (2026-06-30): tax-efficient withdrawal sequencing across wrappers (ISA/SIPP/GIA) + "fill the band", surfacing the lifetime-tax £-delta. Generalises the existing `DrawdownStrategy`; 5 open questions for Rob. |
 | docs/PLAN-mortgage-payment-stop.md | Spec + **BUILT** (2026-07-01): stops the bundled mortgage *payment* after a repay-from-capital redemption via a `while_mortgaged` expense condition + `ExpenseProfile::mortgageCosts`. Kept as the build record; only the in-place forced-sale model remains deferred. |
+| docs/PLAN-in-place-forced-sale.md | DESIGN-SPEC (2026-07-01, [needs Rob]): model `ForcedSale` as a mid-projection sale at the redemption year (own+pay, then sell → clear mortgage, free equity, stop housing costs, rent, freed capital erodes Pension Credit). The last deferred Lane-B item; ends with 4 open modelling decisions for Rob. |
 | PRD.md | Goal, success criteria, scope, non-goals, open questions. |
 | DATA-MODEL.md | Canonical data shape; what is materialised in code today vs planned. |
 | DECISIONS.md | Append-only decision log with rationale. |
