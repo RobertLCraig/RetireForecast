@@ -5,6 +5,10 @@
 > Nothing here is built **beyond what the "Already built" section explicitly notes as existing.**
 > Motivated by the competitive scan ([docs/RESEARCH-competitive-gap-analysis.md](RESEARCH-competitive-gap-analysis.md),
 > Cluster A) — the highest-value, most on-brand net-new item, because RF already owns the HMRC engine.
+>
+> _Refreshed 2026-07-01: **Pension Credit (a means-tested benefit) is now live in the engine** (`PensionCreditCalculator`
+> wired into `PathProjector`), which adds a first-order means-tested-benefit interaction to sequencing — see "How it
+> relates" + "Tax nuances". The foundation this spec builds on (`Forecast/DrawdownStrategy`) is unchanged._
 
 ## Why / motivating case
 
@@ -92,6 +96,14 @@ all engine-side and framework-free.
   first.
 - **Multi-property** (the sibling draft) adds rental income that occupies tax bands — the band-fill
   planner must read it (and, with Section 24, flag the simplification).
+- **Means-tested benefits are now live** (`PensionCreditCalculator` in `PathProjector`, 2026-07-01) — and they
+  **invert the sequencing calculus for a low-income household**. Guarantee Credit = max(0, guarantee − (assessable
+  income + capital tariff)), so every £1 of *assessable income* (incl. taxable pension) above the guarantee claws
+  Pension Credit back **£-for-£ — a 100% effective rate**, on top of any income tax. So "fill the pension up to the
+  personal allowance for free" is **wrong** for a household on Guarantee Credit. ISA / 25% PCLS are **capital,
+  disregarded as income**, so they don't claw back the income side — and spending capital *down* can even *raise* the
+  award (a lower capital tariff). This is the strongest argument that sequencing must be **household-specific, not one
+  fixed order** — and it is now testable because the engine computes the award.
 
 ## UK thresholds the planner respects (all already in `TaxYearConfig`, sourced + dated)
 
@@ -114,6 +126,11 @@ all engine-side and framework-free.
   rental income occupies bands and must be in the already-taxable figure the planner reads.
 - **PCLS interaction**: taking tax-free cash changes the taxable balance available to fill bands;
   decide whether the planner times PCLS or leaves it user-specified (Open questions).
+- **Pension Credit (means-tested) interaction — now live** — for a Guarantee-Credit household, assessable income claws
+  the credit back **£-for-£** (a 100% effective marginal rate), *inverting* the "draw pension in the free band first"
+  heuristic (see "How it relates"). The engine now computes the award (`PensionCreditCalculator`), so a
+  Pension-Credit-aware planner can read it and avoid destroying it; a naive band-filler would silently claw the benefit
+  back — exactly the completeness class of bug the project guards against.
 
 ## Tests (the project's reconciliation / completeness bar)
 
