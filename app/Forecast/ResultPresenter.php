@@ -1052,11 +1052,14 @@ final class ResultPresenter
      */
     public static function plsaBenchmark(Household $household): ?array
     {
-        // PLSA assumes the home is owned outright, so its basis excludes any mortgage /
-        // service charge (the housing-linked *property costs*); everyday home running costs
-        // are included. Excluding them here keeps the benchmark on the same basis as the
-        // contingent-cost rule treats them (one definition — they belong with the home).
-        $spend = $household->expenseProfile->targetAnnualSpend()->minus($household->expenseProfile->propertyCosts())->minZero();
+        // PLSA assumes the home is owned outright, so its basis excludes the mortgage payment
+        // AND the ownership costs (service charge / ground rent) — the two housing-linked
+        // contingent subsets; everyday home running costs are included. Excluding them here keeps
+        // the benchmark on the same basis the contingent-cost rule treats them (one definition).
+        $spend = $household->expenseProfile->targetAnnualSpend()
+            ->minus($household->expenseProfile->propertyCosts())
+            ->minus($household->expenseProfile->mortgageCosts())
+            ->minZero();
         $runningCosts = $household->primaryResidence?->runningCosts;
         if ($runningCosts !== null) {
             $spend = $spend->plus($runningCosts);

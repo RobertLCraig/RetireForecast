@@ -453,8 +453,8 @@ final class PathProjector
         // (funded from assets, like any one-off). A fixed-£ debt, so it is already nominal. If the
         // assets are not there the shortfall surfaces, flagging the keep-the-home option as
         // unaffordable. Refinance rolls the loan over (no event); a forced sale is modelled by the
-        // sell variants. v1 simplification: the ongoing mortgage payment in the spend is not
-        // separately stopped after repayment (it is bundled with the other property costs).
+        // sell variants. Once redeemed, the ongoing mortgage *payment* stops too (dropped just
+        // below), so a repay-and-stay path is not charged both the repayment and the payment.
         $repayOneOff = 0;
         $home = $household->primaryResidence;
         if ($home?->mortgageRedemptionYear !== null
@@ -465,6 +465,15 @@ final class PathProjector
             $repayOneOff = $state['mortgageOutstanding'];
             $state['mortgageOutstanding'] = 0;
             $state['mortgageRepaid'] = true;
+        }
+
+        // Once the mortgage is redeemed its ongoing payment stops (unlike service charge / ground
+        // rent, which continue while the home is owned) — drop the while_mortgaged spend from the
+        // redemption year on. Sell variants already removed it via withoutPropertyCosts.
+        if ($state['mortgageRepaid']) {
+            $mortgagePay = $household->expenseProfile->mortgageCosts()->pence;
+            $targetPence = max(0, $targetPence - $mortgagePay);
+            $essentialPence = max(0, $essentialPence - $mortgagePay);
         }
 
         $spendNominal = (int) round($targetPence * $state['spendFactor'] * $survivor)

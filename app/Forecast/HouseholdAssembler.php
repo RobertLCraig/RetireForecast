@@ -195,6 +195,7 @@ final class HouseholdAssembler
         $lines = $state['expenseLines'] ?? [];
         $isSpend = fn (array $l): bool => ! (($l['category'] ?? '') === 'self_investment' && ($l['savedAsAsset'] ?? false));
         $propertyCosts = $this->sumLines($lines, fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_owning_home');
+        $mortgageCosts = $this->sumLines($lines, fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_mortgaged');
         $employmentCosts = $this->sumLines($lines, fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_working');
 
         return new ExpenseProfile(
@@ -208,6 +209,7 @@ final class HouseholdAssembler
             ], $state['oneOffCosts'] ?? []),
             propertyCosts: $propertyCosts->isPositive() ? $propertyCosts : null,
             employmentCosts: $employmentCosts->isPositive() ? $employmentCosts : null,
+            mortgageCosts: $mortgageCosts->isPositive() ? $mortgageCosts : null,
         );
     }
 
@@ -223,7 +225,7 @@ final class HouseholdAssembler
     private function lineCondition(array $line): string
     {
         $explicit = $line['condition'] ?? null;
-        if (is_string($explicit) && in_array($explicit, ['always', 'while_owning_home', 'while_working'], true)) {
+        if (is_string($explicit) && in_array($explicit, ['always', 'while_owning_home', 'while_mortgaged', 'while_working'], true)) {
             return $explicit;
         }
 
@@ -232,16 +234,21 @@ final class HouseholdAssembler
 
     /**
      * The condition a line auto-classifies to from its label alone (ignoring any explicit
-     * override): housing-linked labels (mortgage, service charge, ground rent, factor fee)
-     * are charged only *while owning* the current home; commuting only *while working*;
-     * everything else *always*. Public so the builder can show what "Auto" would infer.
+     * override): a **mortgage** is *while mortgaged* (its payment stops when the mortgage ends,
+     * by sale OR redemption); other housing-linked labels (service charge, ground rent, factor
+     * fee) are *while owning* the current home (they continue while it is owned, redemption or
+     * not); commuting is *while working*; everything else *always*. Public so the builder can
+     * show what "Auto" would infer.
      *
      * @param  array<string, mixed>  $line
      */
     public static function autoCondition(array $line): string
     {
         $label = strtolower((string) ($line['label'] ?? ''));
-        foreach (['mortgage', 'service charge', 'ground rent', 'factor fee'] as $keyword) {
+        if (str_contains($label, 'mortgage')) {
+            return 'while_mortgaged';
+        }
+        foreach (['service charge', 'ground rent', 'factor fee'] as $keyword) {
             if (str_contains($label, $keyword)) {
                 return 'while_owning_home';
             }

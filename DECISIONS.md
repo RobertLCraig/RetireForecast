@@ -3,6 +3,23 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-01 — Mortgage payment stops after a repay-from-capital redemption (built — the last Lane-B deferred item)
+**Decision:** Built the `while_mortgaged` expense condition per
+[docs/PLAN-mortgage-payment-stop.md](docs/PLAN-mortgage-payment-stop.md), removing the v1 simplification flagged in
+`PathProjector`. A mortgage payment line now auto-classifies to `while_mortgaged` (not `while_owning_home`), summed
+into a new `ExpenseProfile::mortgageCosts` marked subset; the projector **drops it once the mortgage is redeemed**
+(`RepayFromCapital`), so a repay-and-stay path is no longer charged both the one-off repayment **and** the ongoing
+payment. Service charge / ground rent stay `while_owning_home` (they continue while the home is owned); the sell
+variants strip both via `withoutPropertyCosts()` (widened to remove `mortgageCosts` too); `Refinance` / no-redemption
+paths keep paying (unchanged). PLSA comparable spend excludes `mortgageCosts` as well (outright-ownership basis).
+Resolves the "Still deferred" item noted in [[2026-07-01 — V2 pressure-test: deferred-refinement resolutions (let-home capital, first-class tax-free-benefit type, income-ends-on-sale declined)]].
+**Why:** without it, redeeming the mortgage from capital cleared the balance but the modelled monthly payment kept
+charging — a double-count that understated a keep-the-home plan. Occupation-vs-mortgage is a real distinction: you can
+own a flat mortgage-free (service charge continues, mortgage payment does not). Engine-tested (payment stops from the
+redemption year on `RepayFromCapital`, persists on `Refinance`, and is removed with the other housing costs on a sale).
+The **in-place forced-sale** model remains the one open Lane-B refinement.
+**Status:** active.
+
 ## 2026-07-01 — Care-cost stochasticity in the Monte Carlo (Lane A — last post-v1 backlog item)
 **Decision:** Model the fat-tail risk of late-life residential/nursing care fees as a sampled
 event in the Monte Carlo (not the deterministic central line — most people pay nothing, a minority

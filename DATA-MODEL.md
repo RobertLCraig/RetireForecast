@@ -97,12 +97,20 @@ inflation_linked (bool), start_age (int), end_age (int?). `disability_benefit` (
 target_annual_spend (Money 🔒/yr), essential_portion (Money 🔒 — the floor for "success"),
 discretionary_portion (Money 🔒), inflation_basis (enum), one_off_costs (OneOff[]:
 care/SDLT/etc.), survivor_spend_factor (Percent, spend change on first death, default ~70%).
-**Contingent costs (2026-06-29, #1):** `propertyCosts` (Money?) and `employmentCosts` (Money?)
-are the housing- and employment-linked portions of the spend, carried as a **marked subset** of
-essential (not a second total), so the engine can stop charging them when their condition no
-longer holds — the sell variants build with `withoutPropertyCosts()` (mortgage/service charge
-gone when the home is sold) and the projector drops `employmentCosts` (commute) in years no one
-earns. Aggregated by `HouseholdAssembler` from each line's condition (below).
+**Contingent costs (2026-06-29, #1; extended 2026-07-01):** `propertyCosts`, `mortgageCosts` and
+`employmentCosts` (all Money?) are the conditional portions of the spend, carried as **marked
+subsets** of essential (not second totals), so the engine can stop charging each when its
+condition no longer holds. Aggregated by `HouseholdAssembler` from each line's **condition**
+(`always` \| `while_owning_home` \| `while_mortgaged` \| `while_working`; auto-classified by label,
+explicit override wins):
+- `propertyCosts` (`while_owning_home`) — service charge / ground rent / factor fee; stop when the
+  home is **sold** (`withoutPropertyCosts()`), continue while it is owned.
+- `mortgageCosts` (`while_mortgaged`) — the ongoing mortgage **payment**; stops when the mortgage
+  ends by **sale** (also dropped by `withoutPropertyCosts()`) **or by redemption** while the home is
+  kept (the projector drops it once `RepayFromCapital` clears the balance — so a repay-and-stay path
+  is not charged both the repayment and the payment). Split out from `propertyCosts` because a
+  mortgage's stop condition is stricter than "while owning".
+- `employmentCosts` (`while_working`) — commuting; the projector drops it in years no one earns.
 
 ### Scenario
 household_id, name, variant (`buy_outright` \| `rent` \| `stay_put`),

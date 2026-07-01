@@ -860,6 +860,7 @@
                                             <option value="">Auto (by description)</option>
                                             <option value="always">Always</option>
                                             <option value="while_owning_home">Only while you own this home</option>
+                                            <option value="while_mortgaged">Only while the mortgage runs</option>
                                             <option value="while_working">Only while you are working</option>
                                         </select>
                                         @if (($line['condition'] ?? '') === '')

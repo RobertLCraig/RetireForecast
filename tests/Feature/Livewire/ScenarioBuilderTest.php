@@ -338,16 +338,18 @@ class ScenarioBuilderTest extends TestCase
 
     public function test_expense_lines_offer_a_per_line_cost_condition_with_an_auto_hint(): void
     {
-        // A "Mortgage" line left on Auto shows what it infers (while-owning), and the override
-        // options are present so the user can pin it to always / while-working instead.
+        // A "Mortgage" line left on Auto shows what it infers (while the mortgage runs — the
+        // payment stops at redemption or sale), and the override options are present so the user
+        // can pin it to always / while-owning / while-working instead.
         Livewire::test(ScenarioBuilder::class)
             ->set('step', 4)
             ->set('expenseLines', [
                 ['id' => 'm1', 'label' => 'Mortgage', 'amount' => '12000', 'category' => 'essential', 'savedAsAsset' => false, 'condition' => ''],
             ])
             ->assertSee('Applies')
-            ->assertSee('Only while you own this home')         // an override option is offered
-            ->assertSee('charged only while you own this home'); // the Auto hint inferred from "Mortgage"
+            ->assertSee('Only while the mortgage runs')          // the new override option is offered
+            ->assertSee('Only while you own this home')          // and the other housing option too
+            ->assertSee('charged only while the mortgage runs'); // the Auto hint inferred from "Mortgage"
     }
 
     public function test_a_spend_line_can_be_excluded_from_the_forecast_without_being_deleted(): void

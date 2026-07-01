@@ -21,10 +21,11 @@ go-ahead.)
   session built and committed the whole A/B/C/D workstream (planning committed in `DECISIONS.md` / `docs/PLAN.md` /
   `PRD.md` / `DATA-MODEL.md` — the 2026-06-30 "forced-mortgage pressure-test" + "input-expectation clarity" entries;
   the code in `git log`). Those four append-only docs are Lane B's content area — **don't rewrite its entries from
-  another lane.** **Deferred:** a `while_mortgaged` expense condition (stop the bundled mortgage payment after a
-  repay) — **now specced ready-to-build in [docs/PLAN-mortgage-payment-stop.md](docs/PLAN-mortgage-payment-stop.md)**
-  (a fresh agent can pick it up; touches `PathProjector` + `ExpenseProfile` + `HouseholdAssembler`, so coordinate
-  with the active PathProjector lanes) + the in-place forced-sale model. Scope (built):
+  another lane.** **Deferred → now BUILT (2026-07-01):** the `while_mortgaged` expense condition (stop the bundled
+  mortgage payment after a repay-from-capital redemption) is built per
+  [docs/PLAN-mortgage-payment-stop.md](docs/PLAN-mortgage-payment-stop.md) — `ExpenseProfile::mortgageCosts`, the
+  projector drop, PLSA exclusion, engine-tested (DECISIONS 2026-07-01). **Only the in-place forced-sale model remains
+  deferred** for Lane B. Scope (built):
   **(A) means-tested benefits in the live forecast** (`Benefits\PensionCreditCalculator` wired into `PathProjector`;
   new `YearResult` source `means_tested_benefit` — completeness/reconciliation guards; the source list grows 8→9),
   **(B) a mortgage-redemption event** (`Property` maturity year + action; projector tracks the balance),
@@ -130,7 +131,7 @@ The adviser-legibility workstream and the whole post-v1 backlog are built (see C
 3. **Optional refinements to built features** (all flagged v1 limits; pick by value). **Care:** means-test the tail once assets fall below the threshold (`Care\CareMeansTest` is the hook), sex/age-split probability + HSLE timing, ONS-xlsx auto-parse for `mortality:refresh`. **CGT:** deemed-occupation absences, per-owner band-straddle from exact income, shared-occupancy lettings relief (DECISIONS 2026-06-30). **Monte Carlo:** stochastic house/salary growth (currently deterministic), post-2031 reindexing, per-scheme DB escalation. **Annuitisation:** explicit retirement-*month* override.
 4. **CI / data hygiene.** Wire the freshness guardrails (`figures:freshness`, `mortality:refresh`) into a scheduled/CI run so aging or drifted figures fail loudly. Low-value hardening (confirm worth it): tamper-evident run hash, forecast caching.
 
-**Cross-lane in-flight — coordinate, do not grab.** Lane B forced-housing deferred: a `while_mortgaged` expense condition (stop the bundled mortgage payment after a repay-from-capital redemption) + the in-place forced-sale model (docs/PLAN-mortgage-payment-stop.md). Lane C withdrawal-sequencing next steps (docs/PLAN-withdrawal-sequencing.md). Lane D multi-property (docs/PLAN-multi-property.md, DRAFT, [needs Rob]).
+**Cross-lane in-flight — coordinate, do not grab.** Lane B forced-housing deferred: the `while_mortgaged` mortgage-payment-stop is **built** (docs/PLAN-mortgage-payment-stop.md); only the in-place forced-sale model remains. Lane C withdrawal-sequencing next steps (docs/PLAN-withdrawal-sequencing.md). Lane D multi-property (docs/PLAN-multi-property.md, DRAFT, [needs Rob]).
 
 ## Open items
 Open decisions and parked work, off the immediate go-live path (which is under What's next).
@@ -173,7 +174,7 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 | docs/RESEARCH-competitive-gap-analysis.md | Full-market competitive scan (2026-06-30): where the engine already leads vs where the gaps are (decumulation policy + framing). Net-new backlog items folded into docs/PLAN.md "Competitive gap analysis". |
 | docs/RESEARCH-stress-test-and-official-sources.md | Stress-test industry standards + official UK data sources (2026-07-01): historical sequence backtesting; BoE has no equity total return, so the source is the JST Macrohistory dataset (CC BY-NC-SA); care-cost = LaingBuisson/PSSRU + ONS timing; ONS-refresh = fully ONS. Source decisions resolved + built. |
 | docs/PLAN-withdrawal-sequencing.md | DRAFT spec (2026-06-30): tax-efficient withdrawal sequencing across wrappers (ISA/SIPP/GIA) + "fill the band", surfacing the lifetime-tax £-delta. Generalises the existing `DrawdownStrategy`; 5 open questions for Rob. |
-| docs/PLAN-mortgage-payment-stop.md | Ready-to-build spec (2026-07-01): stop the bundled mortgage *payment* after a repay-from-capital redemption via a new `while_mortgaged` expense condition + `ExpenseProfile::mortgageCosts`. The last open Lane-B correctness item; self-contained for a fresh agent. |
+| docs/PLAN-mortgage-payment-stop.md | Spec + **BUILT** (2026-07-01): stops the bundled mortgage *payment* after a repay-from-capital redemption via a `while_mortgaged` expense condition + `ExpenseProfile::mortgageCosts`. Kept as the build record; only the in-place forced-sale model remains deferred. |
 | PRD.md | Goal, success criteria, scope, non-goals, open questions. |
 | DATA-MODEL.md | Canonical data shape; what is materialised in code today vs planned. |
 | DECISIONS.md | Append-only decision log with rationale. |

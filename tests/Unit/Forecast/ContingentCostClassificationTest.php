@@ -13,10 +13,11 @@ use RetireForecast\FinanceEngine\Money\Money;
 /**
  * Option (b): the assembler auto-classifies each expense line's condition by label (with a
  * per-line override), and aggregates the contingent ones into the engine `ExpenseProfile`'s
- * propertyCosts / employmentCosts markers. The trust properties: housing/commute labels are
- * recognised, an explicit override wins over the auto-classification, the markers stay a
- * subset of the full essential total (no drift), and *saved* self-investment is never a
- * contingent cost (it is not spend).
+ * propertyCosts / mortgageCosts / employmentCosts markers. The trust properties: housing/commute
+ * labels are recognised (a mortgage splits out from the other property costs, since its payment
+ * stops at redemption), an explicit override wins over the auto-classification, the markers stay a
+ * subset of the full essential total (no drift), and *saved* self-investment is never a contingent
+ * cost (it is not spend).
  */
 final class ContingentCostClassificationTest extends TestCase
 {
@@ -31,7 +32,7 @@ final class ContingentCostClassificationTest extends TestCase
         ])->expenseProfile;
     }
 
-    public function test_labels_auto_classify_into_property_and_employment_costs(): void
+    public function test_labels_auto_classify_into_property_mortgage_and_employment_costs(): void
     {
         $p = $this->profile([
             ['id' => 'e1', 'label' => 'Food and bills', 'amount' => '12000', 'category' => 'essential'],
@@ -40,8 +41,10 @@ final class ContingentCostClassificationTest extends TestCase
             ['id' => 'e4', 'label' => 'Commuting / season ticket', 'amount' => '2000', 'category' => 'essential'],
         ]);
 
-        // Mortgage + service charge → while-owning (property); commute → while-working.
-        $this->assertSame(Money::fromPounds(17_000)->pence, $p->propertyCosts()->pence);
+        // Mortgage → while-mortgaged (stops at redemption or sale); service charge → while-owning
+        // (continues while owned); commute → while-working.
+        $this->assertSame(Money::fromPounds(14_000)->pence, $p->mortgageCosts()->pence);
+        $this->assertSame(Money::fromPounds(3_000)->pence, $p->propertyCosts()->pence);
         $this->assertSame(Money::fromPounds(2_000)->pence, $p->employmentCosts()->pence);
         // Still counted in the full essential total — a marked subset, not removed (no drift).
         $this->assertSame(Money::fromPounds(31_000)->pence, $p->essentialAnnualSpend->pence);
@@ -56,6 +59,7 @@ final class ContingentCostClassificationTest extends TestCase
         ]);
 
         $this->assertSame(0, $p->propertyCosts()->pence);
+        $this->assertSame(0, $p->mortgageCosts()->pence); // 'always' → neither a property nor a mortgage cost
     }
 
     public function test_saved_self_investment_is_never_a_contingent_cost(): void

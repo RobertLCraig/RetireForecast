@@ -255,7 +255,7 @@ class ScenarioBuilder extends Component
             'expenseLines.*.category' => ['required', Rule::in(['essential', 'discretionary', 'self_investment'])],
             'expenseLines.*.savedAsAsset' => ['boolean'],
             // The per-line cost condition: blank = auto-classify by label, else an explicit override.
-            'expenseLines.*.condition' => ['nullable', Rule::in(['', 'always', 'while_owning_home', 'while_working'])],
+            'expenseLines.*.condition' => ['nullable', Rule::in(['', 'always', 'while_owning_home', 'while_mortgaged', 'while_working'])],
             // A line switched off is excluded from the forecast but kept so it can be switched back on.
             'expenseLines.*.included' => ['boolean'],
 
@@ -1057,6 +1057,7 @@ class ScenarioBuilder extends Component
         $labels = [
             'always' => 'charged every year',
             'while_owning_home' => 'charged only while you own this home',
+            'while_mortgaged' => 'charged only while the mortgage runs (stops if repaid or the home is sold)',
             'while_working' => 'charged only while you are working',
         ];
 

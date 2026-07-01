@@ -5,9 +5,17 @@
 > standard and the engine rules in `CLAUDE.md` (framework-free engine, integer pence, reconciliation
 > invariants, tests green on every commit).
 
-**Stage:** design-spec (not yet built)
-**Owner lane:** B (forced-housing-event workstream). This is the last open Lane-B correctness item.
-_Last updated: 2026-07-01_
+**Stage:** ✅ BUILT (2026-07-01) — kept as the build record. See DECISIONS 2026-07-01
+("Mortgage payment stops after a repay-from-capital redemption").
+**Owner lane:** B (forced-housing-event workstream). This was the last open Lane-B correctness item;
+only the in-place forced-sale model now remains deferred.
+_Last updated: 2026-07-01 (built)_
+
+> **Built as specified**, with two integration points the build surfaced beyond the original spec:
+> (1) `ExpenseProfile::withoutPropertyCosts()` was widened to strip `mortgageCosts` too (kept the sell
+> variants correct); (2) `ResultPresenter::plsaBenchmark()` now excludes `mortgageCosts` as well as
+> `propertyCosts` (PLSA's outright-ownership basis). Drifted tests updated: `ContingentCostClassificationTest`
+> (mortgage → `while_mortgaged`) and `ScenarioBuilderTest` (the Auto hint). Suite green.
 
 ## Goal & the bug it fixes
 When a home's mortgage is **redeemed from capital** at maturity (`MortgageMaturityAction::RepayFromCapital`),
