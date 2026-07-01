@@ -3,6 +3,33 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-01 — Care-cost stochasticity in the Monte Carlo (Lane A — last post-v1 backlog item)
+**Decision:** Model the fat-tail risk of late-life residential/nursing care fees as a sampled
+event in the Monte Carlo (not the deterministic central line — most people pay nothing, a minority
+pay a great deal, so an "expected" figure would mislead). `CareCostSampler` draws a per-person
+spell — Bernoulli on the probability of ever needing care, an exponential duration, a residential
+vs nursing fee — placed at the end of life (care need concentrates near death, so it depends on the
+already-sampled death age). Wired through a new `PathDraws::careAnnualCost` (the deterministic and
+historical drivers return 0), charged as an essential outflow in `PathProjector`, and accumulated
+onto `ForecastResult::careCostReal`; `Simulator` aggregates a `CareImpact` (share of paths with
+care + median/p90 bill) onto `SimulationResult`. **Sourced `CareAssumptions`** (verified_on
+2026-07-01): probability ~1 in 4 (Dilnot Commission / PSSRU), duration mean ~2.5 yr from PSSRU/LSE
+length-of-stay, self-funder fees ~£1,300/wk residential and ~£1,600/wk nursing (LaingBuisson 35th
+ed. 2025). This resolves the [[2026-07-01 — Care-cost + ONS-refresh data sources (Lane A; ONS-refresh built later)]] source decision.
+**Key choices:**
+- **Opt-in, default OFF** (`ForecastSettings::modelCareCost`, a sparse builder toggle), so existing
+  runs/tests are unchanged; on a shared multi-lane tree this avoided shifting every stored MC result.
+  The rent variant's reconstructed settings propagate the flag, so buy-vs-rent models care on all legs.
+- **Made visible, not buried** (completeness): the risk surfaces as its own results panel (chance of
+  care + typical/high-end bill), not just a lower success rate — a per-source test proves it reaches
+  the result and is reported. The sparse storage mirrors the include-flag / assumptionOverrides pattern.
+- **v1 simplifications (flagged):** the GROSS self-funder cost is charged (the means-test LA
+  contribution once assets fall below the threshold is not modelled → conservative, and the existing
+  {@see Care\CareMeansTest} is the hook for the refinement); end-of-life timing rather than ONS
+  health-state life expectancy; a single probability (no sex/age split); annual granularity.
+**Status:** built (engine + Monte Carlo + builder toggle + results panel), suite green. **This was
+the last open Lane A post-v1 backlog item.**
+
 ## 2026-07-01 — ONS mortality refresh + integrity guardrail (Lane A)
 **Decision:** A `mortality:refresh` command is the ONS-refresh backlog item. The engine's
 `OnsPeriodMortalityData` is **generated from** a sourced JSON resource

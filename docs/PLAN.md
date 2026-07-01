@@ -220,8 +220,9 @@ the planned compliance step). The genuinely new, aligned items, kept as a post-v
 - **Modelling depth (v2 scope):** ✅ **an annuitisation option — DONE (2026-07-01).** Partial / level /
   escalating (RPI/CPI), single- or joint-life, priced off a **user-input rate** (default a sourced ~7.2%),
   not the mortality tables — a real quote is age/health-specific and belongs to the user, so no fabricated
-  rate table lives in the engine (DECISIONS 2026-07-01). Still v2: **care-cost stochasticity** (uncertain
-  entry age / duration / weekly cost) for a more realistic tail.
+  rate table lives in the engine (DECISIONS 2026-07-01). ✅ **care-cost stochasticity — DONE
+  (2026-07-01):** a sampled late-life care spell in the Monte Carlo (sourced probability / duration /
+  self-funder fee — Dilnot/PSSRU/LaingBuisson), opt-in, surfaced as a care-risk panel (DECISIONS 2026-07-01).
 - **Neutral diagnostics — adopt ONLY behind the `OutputPhrasing` lint:** implied per-year withdrawal
   rate (as a fact, **not** "compare to a safe 3–4% range" — that reads as a target), critical yield,
   replacement rate, a neutral narrative-report generator, a capacity-for-loss *definitions* panel.

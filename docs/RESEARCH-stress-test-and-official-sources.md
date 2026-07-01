@@ -108,8 +108,9 @@ historical path** of returns/inflation into the same `PathProjector` (which alre
 - [x] **Stress-test data source → JST macrohistory R6** (Rob, after the BoE-has-no-total-return correction).
       Built: the historical sequence backtest (engine + results panel), data baked as the sourced
       `HistoricalReturns` class, CC BY-NC-SA flagged as a public-release blocker. See DECISIONS 2026-07-01.
-- [x] **Care-cost sources → LaingBuisson (fees) + PSSRU (probability/duration) + ONS health-state life
-      expectancy (timing)** (Rob). Sources locked; the care-cost feature itself is not built yet.
+- [x] **Care-cost sources → LaingBuisson (fees) + PSSRU (probability/duration) + Dilnot (~1-in-4)** (Rob).
+      Built 2026-07-01: sampled care spell in the Monte Carlo, opt-in, with a care-risk results panel. See
+      DECISIONS 2026-07-01. (End-of-life timing used in v1; ONS health-state life expectancy is a flagged refinement.)
 
 ## Sources
 - Bank of England research datasets ("A Millennium of Macroeconomic Data" v3.1, OGL v3.0): https://www.bankofengland.co.uk/statistics/research-datasets
