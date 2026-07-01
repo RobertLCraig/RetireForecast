@@ -145,28 +145,38 @@ all engine-side and framework-free.
 - **Golden case**: a household where "Fill the bands" beats both presets, with the **£ saved asserted**.
 - **Engine isolation** stays intact (no `App\…` / `Illuminate\…` in the engine).
 
-## Phasing (trustworthy slices)
+## Build order (all-in v1, per Rob's decisions — each slice green + committed)
 
-- **Phase 1 (high-value core):** add **"Fill the bands"** as a third named `DrawdownStrategy`
-  (PA → CGT AEA → ISA → basic-rate pension → rest) and surface the **lifetime-tax £-delta** in Compare.
-  No optimiser search — three named, sourced strategies the user compares on identical seeds. Most of
-  the value, low risk, reuses Compare + the existing band-cap machinery.
-- **Phase 2:** a per-year threshold-aware planner that also steps around the 60% PA-taper band and can
-  time the PCLS; a **"manage taxable income to £X" target** lever (Conquest's funding-preference idea).
-- **Phase 3 (optional, heavy):** a bounded optimiser that *searches* orderings to minimise lifetime tax
-  (Pralana / Conquest territory). Flag the cost/benefit honestly — even pro tools mostly stop short of
-  a full search, and three good named strategies capture most of the gain.
+**Shared-file note:** every slice centers on `PathProjector::fundShortfall` + `DrawdownStrategy` — the engine
+hot file other lanes also touch (Lane A stress-test, Lane B forced-housing). Keep changes **additive** (a new
+enum case + new branches, not a refactor of the existing `TaxEfficient` / `PensionAware` logic), re-check `git`
+before each engine edit, and claim the lane in HANDOVER.
 
-## Open questions for Rob
+1. **Core — the `FillBands` strategy.** New `DrawdownStrategy::FillBands` + its draw order in `fundShortfall`
+   (pension→PA, GIA gains→CGT AEA, ISA, pension→basic-rate ceiling, then the rest), **Pension-Credit-aware**
+   (skip the free-band pension draw when it would claw back Guarantee Credit; prefer ISA/PCLS). + engine tests
+   (band-fill stops at the exact thresholds; the PC-aware path; per-source completeness).
+2. **PA-taper.** The fill logic steps around the 60% £100k–£125,140 band.
+3. **£-delta in Compare.** "Strategy X pays £Y less lifetime tax" (neutral, always) + the advice-gated steer
+   (`personal_use`). Reuses Compare's identical-seed runs; reconciliation test (delta == tax(A) − tax(B)).
+4. **PCLS timing.** Let the planner choose when to take the 25% tax-free cash (vs user-specified).
+5. **Search-optimiser (last).** A bounded search over orderings to minimise lifetime tax; flag cost/benefit.
 
-1. **Strategy set:** add **"Fill the bands"** as a third named strategy (recommended — reuses Compare
-   + the existing basic-rate-cap code), or build a general per-threshold planner straight away?
-2. **Optimiser:** do you want a search-for-the-cheapest-order (Phase 3), or are **named strategies +
-   the £-delta** enough for personal use? (Even pro tools mostly don't search.)
-3. **£-delta framing:** show it as a **neutral fact** ("Fill-the-bands pays £X less lifetime tax") in
-   the public posture, or as a **recommendation** ("lean towards this") behind the existing
-   `personal_use` / `interpret` advice gate (like the buy-vs-rent "why" narrative)?
-4. **PA-taper 60% band:** model the £100k–£125,140 trap in v1, or defer it (matters only for high
-   earners — likely out of scope for the target couple)?
-5. **PCLS timing:** should the planner decide *when* to take the 25% tax-free cash (phased vs upfront),
-   or keep that user-specified via `WithdrawalInstruction`?
+Each slice ships alone; stopping after 1–3 already delivers the headline value.
+
+## Decisions (Rob, 2026-07-01)
+
+1. **Strategy set → "Fill the bands" as a third named `DrawdownStrategy`** (not a general planner yet):
+   draw PA → CGT AEA → ISA → basic-rate pension → rest, compared on identical seeds via the existing Compare.
+2. **£-delta framing → both:** always show the **neutral number** ("Fill-the-bands pays £X less lifetime tax"),
+   and add the **directional steer** ("lean towards this") only when advice mode is on (behind `personal_use` /
+   the `interpret` gate, like the buy-vs-rent narrative). The neutral figure passes the banned-phrasing lint.
+3. **Pension-Credit-aware → yes** (the single biggest correctness point): for a household on Guarantee Credit
+   the fill order must NOT draw pension income that claws the credit back £-for-£ — read the engine's award
+   (`PensionCreditCalculator`) and prefer capital (ISA / PCLS, disregarded as income) in that case.
+4. **PA-taper 60% band → in v1:** the fill logic steps around £100k–£125,140.
+5. **PCLS timing → in v1:** the planner may decide *when* to take the 25% tax-free cash (vs user-specified).
+6. **Search-optimiser → in scope, sequenced LAST** (heaviest, least-certain payoff): a bounded search for the
+   cheapest ordering. The named strategy + refinements land first.
+
+Rob chose the **full capability**, so v1 is the whole feature, delivered in the build order below, each slice green.
