@@ -36,28 +36,44 @@ survived the worst real start in living memory." Recommendation: build the stres
 sequence backtesting**, and (optionally, later) expose a PRIIPs-style stressed-volatility scenario as a second
 lens. FCA supplies the *methodology/illustration rates*, not historical return *data*.
 
-## 2. The data problem — and the official options
+## 2. The data problem — and the options (updated after inspecting the actual files)
 
-Sequence backtesting needs annual UK **equity total returns**, **gilt/bond returns (or yields)**, and
-**inflation**, going back far enough to include 1937, the 1973–74 crash + 1970s stagflation (the UK worst case:
-equities circa −70% real across 1973–74), 2000 and 2008. **There is no ONS asset-return series** — ONS owns
-prices/inflation and demography, not market returns. So "official source" resolves differently per leg:
+Sequence backtesting needs annual UK **equity total returns** (dividends reinvested — roughly *half* of long-run
+UK equity return, so this is not optional), **gilt/bond total returns**, and **inflation**, going back far enough
+to include 1929/1937, the 1973–74 crash + 1970s stagflation (the UK worst case: equities circa −70% real across
+1973–74), 2000 and 2008. **There is no ONS asset-return series** — ONS owns prices/inflation and demography.
 
-| Source | What it gives | Official? | Free / licence | Covers the bad starts? |
+**Important correction (verified by downloading the files):** I originally recommended the Bank of England
+millennium dataset as the official, shippable source. I downloaded and inspected **BoE v3.1** (sheet "A31.
+Interest rates & asset ps", plus the datahub CSV mirror) and it **does not contain equity total returns or a
+dividend-yield series** — only a **share price index** (capital return) and **bond yields**. A price-only equity
+backtest would omit dividends and so materially understate returns / overstate the chance of ruin. **BoE alone
+cannot produce an accurate backtest.** The realistic sources:
+
+| Source | Equity **total** return? | Official? | Licence | Notes |
 |---|---|---|---|---|
-| **Bank of England, "A Millennium of Macroeconomic Data" v3.1** | Annual UK equity price index + dividend yield, consol/long-gilt yields, Bank Rate, composite CPI (inflation) — the "Financial Markets" + "Wages & Prices" tabs | **Yes** (UK central bank) | **Yes — Open Government Licence v3.0** (reuse with attribution) | **Yes** (1086–2016; all classic bad starts are pre-2016) |
-| **ONS** inflation (RPI 1947–, CPIH/CPI) + national/cohort life tables | Inflation leg to the present; mortality | Yes | Yes (OGL) | Inflation only |
-| **DMS Global Investment Returns Yearbook** (UBS) | Gold-standard long-run global real returns (what Timeline uses) | Academic/commercial | **No** (not freely redistributable) | Yes |
-| **Barclays Equity Gilt Study** | Long-run UK equity/gilt real returns | Commercial | **No** | Yes |
+| **BoE "Millennium of Macroeconomic Data" v3.1** | **No** — share *price* index + bond *yields* only | Yes (central bank) | **OGL v3.0** (fully shippable, incl. commercial) | Bond total return is reconstructable from yields; equity dividends are missing (verified). CPI to 2016. |
+| **Jordà–Schularick–Taylor Macrohistory ("Rate of Return on Everything") R6** | **Yes** — equity total return, capital gain, dividend yield; bond + bill total return; CPI; UK 1870–2020 | Academic (peer-reviewed, QJE 2019) | **CC BY-NC-SA 4.0 — NON-commercial + ShareAlike** | Free + accurate + citable. Fine for a **private** tool; **risky for a free *public* release** (NC forbids commercial-provider integration; ShareAlike is sticky). |
+| **ONS** inflation (RPI 1947–, CPIH/CPI) | n/a | Yes | OGL | Inflation leg to the present; cross-check / extend the CPI. |
+| **DMS Yearbook (UBS)** / **Barclays Equity Gilt Study** | Yes (gold standard; what Timeline uses) | Commercial | **Paid, not redistributable** | Best data, but licence-blocked for us. |
 
-**Recommendation:** use the **Bank of England millennium dataset** (official, free, OGL v3.0) for the equity /
-gilt / inflation sequences, cross-checked/extended for inflation with **ONS**. This is the honest reading of
-"official source": BoE is the UK official body for financial-market history (ONS has no return series), and the
-OGL licence means we can actually ship the numbers, unlike DMS/Barclays. Cite both with `verified_on`. The BoE
-series ends **2016**, which is fine for the classic sequence-risk windows; the 2022 gilt/inflation shock, if
-wanted, is appended from ONS inflation + a public index (flagged). **Build-time check:** confirm the exact
-column names and whether a ready-made *total-return* column exists vs deriving it from price index + dividend
-yield, against the downloaded spreadsheet (per the no-magic-numbers / verified_on rule).
+**The tension is three-way, not a clean win:** *official + fully-shippable* (BoE, but no equity total return),
+*accurate + free-for-personal* (JST macrohistory, but non-commercial so risky if the tool goes public), or
+*accurate + paid* (DMS/Barclays). Given the tool is **personal-use today** (the whole `compliance.personal_use`
+posture), the pragmatic recommendation is:
+
+- **Now (personal use): JST macrohistory R6** for UK equity/bond/bill **total returns** + dividend yield + CPI
+  (accurate, free for non-commercial use, peer-reviewed), extended for recent inflation with **ONS**. Cite both
+  with `verified_on`. **Flag the licence as a public-release blocker** the same way `compliance.personal_use`
+  flags the regulatory line: before any public release, swap the source to **BoE (bond TR from yields) + a
+  fully-licensed equity total-return / dividend series**, or license DMS, or drop the shipped historical numbers.
+- **Alternative if Rob wants strictly OGL even now:** BoE bond total return from yields + BoE equity *price*
+  index plus a **documented dividend-yield assumption** (an approximation, flagged) — fully shippable but less
+  accurate than JST's measured dividends.
+
+**Engine work (unchanged either way):** a new fixed-sequence `PathDraws` driver feeding a specific historical
+path of real returns/inflation into the existing `PathProjector`, plus the chosen dataset baked in as a **sourced
+PHP data class** (the engine is no-I/O, so no runtime file read — like the tax figures), each series cited.
 
 **Engine work required:** a new fixed-sequence entry point. The deterministic forecaster uses *expected*
 returns; the Monte Carlo draws *random* returns. Backtesting needs a third driver that feeds a **specific
@@ -89,9 +105,11 @@ historical path** of returns/inflation into the same `PathProjector` (which alre
 
 ## Open decisions (nothing built yet)
 
-- [ ] **Stress-test data source** — confirm **Bank of England millennium dataset (OGL) + ONS inflation** as the
-      official, shippable source (recommended), vs. holding out for DMS/Barclays (better data, not
-      redistributable), vs. a PRIIPs-style synthetic stressed-volatility scenario instead of a real backtest.
+- [ ] **Stress-test data source (REOPENED after verifying the files — BoE has no equity total return).** Choose:
+      **(1)** JST macrohistory R6 (accurate total returns, free-for-personal, but CC BY-NC-SA → flag as a
+      public-release blocker) — recommended for the personal tool now; **(2)** BoE OGL, equity total return
+      approximated as price index + a documented dividend-yield assumption (fully shippable, less accurate);
+      **(3)** license DMS/Barclays; **(4)** PRIIPs-style synthetic stress instead of a real backtest.
 - [ ] **Care-cost sources** — ONS cannot supply care fees or need-probability/duration. Accept **LaingBuisson
       (fees) + PSSRU (probability/duration)** as cited non-ONS sources (with ONS health-state life expectancy
       for timing), or restrict care-cost to the ONS-only pieces (incomplete)?
@@ -104,3 +122,4 @@ historical path** of returns/inflation into the same `PathProjector` (which alre
 - FCA COBS 13 Annex 2 (projections): https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html
 - FCA/PRIIPs RTS Annex IV (performance + stress scenarios): https://www.handbook.fca.org.uk/techstandards/PRIIPs/2017/reg_del_2017_653_oj/annex04.html
 - Timeline (historical backtesting; DMS Yearbook): https://timelineapp.co/authors/abraham-okusanya
+- Jordà–Schularick–Taylor Macrohistory database, "Rate of Return on Everything" R6 (CC BY-NC-SA 4.0): https://www.macrohistory.net/database/
