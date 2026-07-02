@@ -326,8 +326,9 @@
                                 @error('people.'.$i.'.grossSalary') <p id="people-{{ $i }}-grossSalary-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                             </div>
                             <div>
-                                <label for="people-{{ $i }}-salaryGrowth" class="{{ $label }}">Salary growth (%/yr)</label>
+                                <label for="people-{{ $i }}-salaryGrowth" class="{{ $label }}">Salary growth (%/yr, real)</label>
                                 <input id="people-{{ $i }}-salaryGrowth" type="text" inputmode="decimal" wire:model="people.{{ $i }}.salaryGrowth" class="{{ $field }}">
+                                <p class="mt-1 text-xs text-gray-500">Above inflation, for this person only. Leave blank to use the economy-wide salary-growth assumption.</p>
                             </div>
                             <div>
                                 <label for="people-{{ $i }}-plannedRetirementAge" class="{{ $label }}">Planned retirement age</label>

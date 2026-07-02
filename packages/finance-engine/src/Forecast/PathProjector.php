@@ -164,6 +164,8 @@ final class PathProjector
         $lsaUsed = [];
         $giaOverrideBal = [];       // per-person GIA balance carrying a yield override
         $giaOverrideYieldSum = [];  // per-person Σ(balance × override yield)
+        $salaryFactor = [];         // per-person running nominal salary factor (1.0 in the base year)
+        $salaryGrowthReal = [];     // per-person real salary-growth override (null = use the assumption set)
 
         foreach ($household->persons as $person) {
             $birthYear = (int) $person->dob->format('Y');
@@ -175,6 +177,8 @@ final class PathProjector
             $isa[$person->id] = 0;
             $pots[$person->id] = [];
             $lsaUsed[$person->id] = 0;
+            $salaryFactor[$person->id] = 1.0;
+            $salaryGrowthReal[$person->id] = $person->salaryGrowth?->asFraction();
         }
 
         foreach ($household->accounts as $account) {
@@ -260,8 +264,10 @@ final class PathProjector
             'annuities' => $annuities, // planned/active lifetime annuities bought from DC pots
             'careRealTotal' => 0, // accumulated real (today's money) care cost incurred on this path
             'estateSettled' => [], // person ids whose assets have passed to the survivor (once each)
-            // Running nominal growth factors (1.0 in the base year).
-            'salaryFactor' => 1.0,
+            // Running nominal growth factors (1.0 in the base year). salaryFactor is per-person so
+            // each person's pay can escalate at their own rate (Person::salaryGrowth override).
+            'salaryFactor' => $salaryFactor,
+            'salaryGrowthReal' => $salaryGrowthReal, // per-person real override (null = assumption set)
             'dbFactor' => 1.0,
             'spFactor' => 1.0,
             'spendFactor' => 1.0,
@@ -394,7 +400,7 @@ final class PathProjector
             $earnings = 0;
             if ($person->employmentStatus === EmploymentStatus::Employed && $person->grossSalary !== null) {
                 $fraction = self::workFraction($person, $age);
-                $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor'] * $fraction);
+                $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor'][$person->id] * $fraction);
             }
 
             // Guaranteed pension / other income, kept split by source.
@@ -929,7 +935,7 @@ final class PathProjector
         $reachedSpa = $calendarYear >= $state['spaYear'][$pid];
 
         // NI on the actual (prorated in the retirement year) earnings; it ends at State Pension age.
-        $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor'] * $fraction);
+        $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor'][$person->id] * $fraction);
 
         return $this->ni->onEmploymentEarnings(Money::fromPence($earnings), hasReachedStatePensionAge: $reachedSpa)->total->pence;
     }
@@ -1458,7 +1464,14 @@ final class PathProjector
 
         $rentNominal = (1.0 + $state['rentInflationReal']) * (1.0 + $infl) - 1.0;
 
-        $state['salaryFactor'] *= (1.0 + $salaryNominal);
+        // Each person's salary escalates at their own real growth override, else the assumption-set
+        // rate. (The override sets the trend, not risk — no volatility, mirroring the per-pot override.)
+        foreach ($state['salaryFactor'] as $pid => $factor) {
+            $personSalaryNominal = $state['salaryGrowthReal'][$pid] !== null
+                ? (1.0 + $state['salaryGrowthReal'][$pid]) * (1.0 + $infl) - 1.0
+                : $salaryNominal;
+            $state['salaryFactor'][$pid] = $factor * (1.0 + $personSalaryNominal);
+        }
         $state['dbFactor'] *= (1.0 + $this->dbEscalation($infl));
         $state['spFactor'] *= (1.0 + max($infl, 0.025)); // triple-lock proxy
         $state['spendFactor'] *= (1.0 + $infl);

@@ -43,7 +43,7 @@ parsed to exact pence), so a value entered, stored and re-read is identical.
 | dob | date | Y-m-d | no | ages derived, never stored |
 | employment_status | enum | | no | employed \| self_employed \| retired \| not_working |
 | gross_salary | Money | pence/yr | yes | working partner |
-| salary_growth | Percent | bps/yr | yes | ⚠️ **collected, not consumed (v1)** — the engine uses the assumption set's `salaryGrowth`; a per-person figure is silently ignored (2026-07-02 doc audit; backlog: wire as a per-person override like the per-asset overrides) |
+| salary_growth | Percent | bps/yr | yes | **consumed 2026-07-02** — a per-person **real** (above-inflation) salary-growth override; the projector escalates each person's salary at their own rate, falling back to the assumption set's `salaryGrowth` when null (`PerPersonSalaryGrowthTest`) |
 | ni_category | string | | yes | ⚠️ **collected, not consumed (v1)** — the NI calculator takes no category |
 | planned_retirement_age | int | years | yes | |
 | state_pension_deferral_weeks | int | weeks | no | default 0; **lives on the State pension subtype in code** (`StatePensionEntitlement::deferralWeeks`, consumed) |
@@ -359,12 +359,12 @@ from the original plan, flagged inline:
 ## Known divergences (to close)
 - **Collected-but-not-consumed fields (2026-07-02 doc audit).** Inputs that are validated,
   assembled into DTOs and documented above, but read by no engine code — a silent-drop class
-  (see the completeness rule in CLAUDE.md). **`DbPension::spousePensionFraction` — CLOSED
-  2026-07-02** (survivor DB income now paid; `SurvivorDbPensionTest`). Still open:
-  `Person::salaryGrowth` (**high** — a live builder input; the engine always uses the
-  assumption set's figure), `DbPension::commutationLumpSum`/`commutationFactor`,
-  `Property::ownershipShare`, `Person::niCategory`. Each open row above carries a ⚠️ caveat;
-  fixes are on the PLAN backlog (wire with a per-source completeness test, or remove the input).
+  (see the completeness rule in CLAUDE.md). **CLOSED 2026-07-02:**
+  `DbPension::spousePensionFraction` (survivor DB income now paid; `SurvivorDbPensionTest`) and
+  `Person::salaryGrowth` (per-person salary-growth override now consumed; `PerPersonSalaryGrowthTest`).
+  Still open: `DbPension::commutationLumpSum`/`commutationFactor`, `Property::ownershipShare`,
+  `Person::niCategory`. Each open row above carries a ⚠️ caveat; fixes are on the PLAN backlog
+  (wire with a per-source completeness test, or remove the input).
 - **Planned fields never materialised:** `DcPension::crystallisedValue`,
   `StatePensionEntitlement` `spa_override` + `triple_lock_assumption` (SPA computes from DOB;
   the triple-lock factor lives in the projector). Kept here rather than in the entity tables

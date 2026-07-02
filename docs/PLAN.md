@@ -305,9 +305,11 @@ forms behind `compliance.personal_use`.**
     `defined_benefit`. Pinned by `SurvivorDbPensionTest` (completeness: the fraction demonstrably reaches
     the forecast; a null fraction still stops on death). Builder "Survivor fraction (%)" field gained a
     hint; the `DbPension` docblock was already accurate.
-  - **Per-person salary growth.** `Person::salaryGrowth` is a live input; the engine always uses the
-    assumption set's figure. Wire as a per-person override (fall back to the set), like the 2026-07-02
-    per-asset overrides, + a completeness test — or remove the field.
+  - **Per-person salary growth. — DONE 2026-07-02.** `Person::salaryGrowth` is now a per-person **real**
+    override: the projector holds a per-person `salaryFactor` (replacing the single household factor) and
+    escalates each person's salary at their own rate, falling back to the assumption set when null (the
+    override sets the trend, not risk — no volatility, mirroring the per-asset overrides). `PerPersonSalaryGrowthTest`
+    pins the rate, per-person independence, and the null fall-back; builder field labelled "real" with a hint.
   - **Lower-impact:** `DbPension::commutationLumpSum`/`commutationFactor` (model the lump-sum-for-income
     trade-off, or remove); `Property::ownershipShare` and `Person::niCategory` (both idle). Decide
     wire-or-remove per field.

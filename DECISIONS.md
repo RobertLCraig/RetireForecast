@@ -3,6 +3,30 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-02 — Per-person salary growth: `Person::salaryGrowth` now consumed (second silent-drop backlog fix)
+**Decision:** Fixed the next data-integrity silent-drop after the survivor DB pension (below):
+`Person::salaryGrowth` was a live, validated, DTO-mapped builder input read by no engine code. The
+projector escalated a single household-wide `salaryFactor` off the assumption set's economy-wide salary
+growth, so a person's own entered figure silently vanished — and two earners could not grow their pay at
+different rates.
+
+**How:** the projector's `salaryFactor` became a **per-person map** (keyed by person id, 1.0 in the base
+year). Each year `growState` escalates each person's factor at their own **real** override
+(`Person::salaryGrowth`), falling back to the assumption-set `salaryGrowthReal` when null; both are
+compounded with that year's inflation to nominal. The override sets the trend, not risk (no added
+volatility — the same convention as the per-asset growth overrides). The two salary read points
+(earnings in `projectYear`, NI in `niForPerson`) now index the factor by person.
+
+**Semantics chosen:** the per-person figure is a **real** (above-inflation) rate, matching how the
+assumption-set salary growth is already framed and surfaced ("Salary growth (real)") — one definition, so
+a user's per-person entry and the economy-wide default mean the same thing. The builder field was relabelled
+"Salary growth (%/yr, real)" with a hint (it previously did nothing and was ambiguous about real-vs-nominal).
+
+**Tested:** `PerPersonSalaryGrowthTest` — the override reaches the forecast at the exact compounding rate
+(£50k at 5% → £52.5k → £55.125k), two workers with different growth diverge (proving per-person, not one
+shared factor), and a null override follows the assumption set's 3%. Suite green. Remaining silent-drop
+fixes (`DbPension` commutation, `Property::ownershipShare`, `Person::niCategory`) stay on the PLAN backlog.
+
 ## 2026-07-02 — Survivor DB pension: `spousePensionFraction` now paid (first silent-drop backlog fix)
 **Decision:** Fixed the top data-integrity silent-drop the 2026-07-02 doc audit re-found (see the docs-only
 entry below): `DbPension::spousePensionFraction` was collected, validated and mapped into the DTO but consumed
