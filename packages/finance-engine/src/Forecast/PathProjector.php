@@ -412,16 +412,20 @@ final class PathProjector
             // Planned DC withdrawals due at this age.
             $wd = $this->plannedWithdrawals($state, $person->id, $age);
 
+            // DB commutation: a tax-free lump sum taken at the member's retirement (the pension
+            // itself was reduced for it in dbIncome). Routed as pension tax-free cash, like a PCLS.
+            $commutationCash = $this->commutationLumpSumNominal($household, $person->id, $age, $state['dbFactor']);
+
             $taxablePerPerson[$person->id] += $earnings + $db + $sp + $otherTaxable + $wd['taxable'];
             $taxFreeIncomeNominal += $taxFreeStream;
-            $taxFreeCashNominal += $wd['taxFree'];
+            $taxFreeCashNominal += $wd['taxFree'] + $commutationCash;
 
             $src['salary'] += $earnings;
             $src['defined_benefit'] += $db;
             $src['state_pension'] += $sp;
             $src['other_taxable'] += $otherTaxable;
             $src['tax_free_income'] += $taxFreeStream;
-            $src['pension_lump_sum'] += $wd['taxFree'];
+            $src['pension_lump_sum'] += $wd['taxFree'] + $commutationCash;
             $src['pension_drawdown'] += $wd['taxable'];
         }
 
@@ -691,7 +695,49 @@ final class PathProjector
         $total = 0;
         foreach ($household->pensions as $pension) {
             if ($pension instanceof DbPension && $pension->ownerId === $pid && $age >= $pension->normalRetirementAge) {
-                $total += (int) round($pension->accruedAnnualPension->pence * $dbFactor);
+                $total += (int) round($this->commutedAnnualPence($pension) * $dbFactor);
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * The DB pension's annual amount in today's money after any commutation election. Taking a
+     * tax-free lump sum permanently reduces the pension by lumpSum ÷ factor (the scheme's
+     * £-per-£1-given-up ratio; null/≤0 defaults to 12). Used for both the member's own income and
+     * the survivor fraction, so the survivor inherits a fraction of the reduced pension.
+     */
+    private function commutedAnnualPence(DbPension $pension): int
+    {
+        $accrued = $pension->accruedAnnualPension->pence;
+        if ($pension->commutationLumpSum === null || $pension->commutationLumpSum->pence <= 0) {
+            return $accrued;
+        }
+        $factor = ($pension->commutationFactor !== null && $pension->commutationFactor > 0)
+            ? $pension->commutationFactor
+            : 12.0;
+
+        return max(0, $accrued - (int) round($pension->commutationLumpSum->pence / $factor));
+    }
+
+    /**
+     * The DB commutation tax-free lump sum due this year, nominal pence. Paid once, in the forecast
+     * year the member reaches normal retirement age while alive (age == NRA), escalated by dbFactor
+     * so the £-for-£ commutation relationship holds at the actual retirement date. A member already
+     * past NRA at the base year commuted before the forecast (their savings already reflect it), so
+     * it is not re-paid — age never equals NRA for them. Tax-free (PCLS); the LSA cap is a v1 limit.
+     */
+    private function commutationLumpSumNominal(Household $household, string $pid, int $age, float $dbFactor): int
+    {
+        $total = 0;
+        foreach ($household->pensions as $pension) {
+            if ($pension instanceof DbPension
+                && $pension->ownerId === $pid
+                && $pension->commutationLumpSum !== null
+                && $pension->commutationLumpSum->pence > 0
+                && $age === $pension->normalRetirementAge) {
+                $total += (int) round($pension->commutationLumpSum->pence * $dbFactor);
             }
         }
 
@@ -904,7 +950,7 @@ final class PathProjector
             if ($survivor === null) {
                 continue; // no surviving partner to inherit the income
             }
-            $full = (int) round($pension->accruedAnnualPension->pence * $dbFactor);
+            $full = (int) round($this->commutedAnnualPence($pension) * $dbFactor);
             $income[$survivor] = ($income[$survivor] ?? 0)
                 + (int) round($full * $pension->spousePensionFraction->asFraction());
         }

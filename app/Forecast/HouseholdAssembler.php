@@ -363,7 +363,7 @@ final class HouseholdAssembler
                 escalationInPayment: PensionEscalationBasis::from($p['escalationInPayment'] ?? 'cpi'),
                 spousePensionFraction: $this->percent($p['spousePensionFraction'] ?? null),
                 commutationLumpSum: $this->money($p['commutationLumpSum'] ?? null),
-                commutationFactor: $this->percent($p['commutationFactor'] ?? null),
+                commutationFactor: $this->floatOrNull($p['commutationFactor'] ?? null),
             ),
             'state' => new StatePensionEntitlement(
                 ownerId: (string) $p['ownerId'],
@@ -575,6 +575,11 @@ final class HouseholdAssembler
     private function intOrNull(mixed $value): ?int
     {
         return ($value === null || $value === '') ? null : (int) $value;
+    }
+
+    private function floatOrNull(mixed $value): ?float
+    {
+        return ($value === null || $value === '') ? null : (float) $value;
     }
 
     private function stringOrNull(mixed $value): ?string

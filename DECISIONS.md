@@ -3,6 +3,34 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-02 — DB commutation now modelled (third silent-drop backlog fix; Rob chose wire-not-remove)
+**Decision:** Wired `DbPension::commutationLumpSum`/`commutationFactor`, the next unconsumed silent-drop.
+Rob was asked wire-or-remove for the three remaining lower-impact fields and chose **wire all three**;
+commutation is the most on-brand (the tool's headline is the pension lump-sum decision). Commutation = take a
+tax-free lump sum at retirement in exchange for a permanently lower DB pension.
+
+**Type fix:** `commutationFactor` was mis-typed `?Percent` (a commutation factor is a ratio like 12:1, not a
+percentage — the fixtures worked around it by storing `Percent::fromPercent(1200)` so `asFraction()` == 12).
+Changed to a plain **`?float`** (the £-lump-sum-per-£1-pension-given-up ratio, e.g. 12). Ripple: DTO, the
+assembler (`floatOrNull`), both test fixtures (`12`, not `1200`/`Percent`), and `WhatIfChanges` (dropped from
+the RATE list so it renders as a plain number, not "12%"). No `commutationFactor` mapper exists (DB pensions
+derive from `builder_state`), so storage was unaffected.
+
+**Model (in `PathProjector`):** a shared `commutedAnnualPence(DbPension)` returns the annual pension after the
+election — `accrued − round(lumpSum ÷ factor)`, floored at 0, factor null/≤0 defaulting to 12 — used by both
+`dbIncome` and `survivorDbIncomeNominal` (so the survivor inherits a fraction of the *reduced* pension). The
+tax-free lump sum is paid once, in the year the member reaches NRA **while alive** (`age === NRA`, so a member
+already past NRA at the base year — who commuted pre-forecast — is not re-paid), escalated by `dbFactor` so the
+£-for-£ relationship holds at the retirement date, and routed through the same tax-free-cash path as a DC PCLS
+(`pension_lump_sum` source → net cash → wealth).
+
+**v1 limits (flagged in code):** the lump sum is treated as fully tax-free (the LSA cap is not enforced for DB
+commutation — it needs the DB capital value); a member who dies before NRA never takes the lump sum, and the
+survivor pension then uses the reduced base (a simplification). Builder gained a **commutation factor** input
+(placeholder 12) + hints on both commutation fields. `DbCommutationTest` pins the reduction, the one-off lump
+sum at retirement, the null-factor default of 12, and the no-commutation baseline. Suite green. Remaining
+silent-drops: `Person::niCategory`, `Property::ownershipShare` (Rob: wire both — next).
+
 ## 2026-07-02 — Per-person salary growth: `Person::salaryGrowth` now consumed (second silent-drop backlog fix)
 **Decision:** Fixed the next data-integrity silent-drop after the survivor DB pension (below):
 `Person::salaryGrowth` was a live, validated, DTO-mapped builder input read by no engine code. The

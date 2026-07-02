@@ -310,9 +310,12 @@ forms behind `compliance.personal_use`.**
     escalates each person's salary at their own rate, falling back to the assumption set when null (the
     override sets the trend, not risk — no volatility, mirroring the per-asset overrides). `PerPersonSalaryGrowthTest`
     pins the rate, per-person independence, and the null fall-back; builder field labelled "real" with a hint.
-  - **Lower-impact:** `DbPension::commutationLumpSum`/`commutationFactor` (model the lump-sum-for-income
-    trade-off, or remove); `Property::ownershipShare` and `Person::niCategory` (both idle). Decide
-    wire-or-remove per field.
+  - **DB commutation. — DONE 2026-07-02.** `commutationLumpSum`/`commutationFactor` now model the
+    lump-sum-for-income trade-off: the pension is permanently reduced by `lumpSum ÷ factor` (factor is now
+    a plain float ratio, was mis-typed `Percent`; null/≤0 defaults to 12) and the tax-free lump sum is paid
+    in the year the member reaches NRA (routed as PCLS-style tax-free cash; LSA cap a v1 limit). Applies to
+    the survivor fraction too. `DbCommutationTest`; builder gained a factor input + hints.
+  - **Idle fields (Rob: wire both).** `Person::niCategory` and `Property::ownershipShare` — to wire.
 - **User-facing copy fixes (cheap; the copy-audit cluster — trust depends on copy matching the engine).**
   The **"Survivor fraction" field** is resolved (2026-07-02 — it now works and has a hint). Still open: the
   **care-off silence** — care risk is opt-in/default-off, so by default nothing tells the user a ~1-in-4,

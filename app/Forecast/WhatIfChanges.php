@@ -36,7 +36,7 @@ final class WhatIfChanges
     /** Leaf field names whose value is a rate — shown with a % suffix. */
     private const RATE = [
         'salaryGrowth', 'growthAssumptionOverride', 'yield', 'sellingCostRate', 'rentInflationReal',
-        'spousePensionFraction', 'commutationFactor', 'survivorFactor', 'ownershipShare',
+        'spousePensionFraction', 'survivorFactor', 'ownershipShare',
         'investmentGrowth', 'inflation', 'houseGrowth', 'rentGrowth', 'incomeYield',
     ];
 

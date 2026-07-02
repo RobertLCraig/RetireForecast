@@ -64,8 +64,10 @@ never materialised — see Known divergences.)
 revaluation_basis (enum, pre-retirement), escalation_in_payment (enum, post-retirement,
 distinct from revaluation — ⚠️ both **collected but the engine applies one smooth inflation
 proxy** regardless; per-scheme bases are a flagged v1 limit), commutation_lump_sum (Money?),
-commutation_factor (ratio? — ⚠️ **both collected, not consumed (v1)**: the commutation
-trade-off is not yet modelled), spouse_pension_fraction (Percent?, survivor benefit —
+commutation_factor (**float ratio**, £ lump sum per £1/yr given up, e.g. 12; null/≤0 defaults
+to 12 — **consumed 2026-07-02**: the pension is permanently reduced by `lump_sum ÷ factor` and
+the lump sum is paid tax-free in the year the member reaches NRA; LSA cap not enforced, a v1
+limit), spouse_pension_fraction (Percent?, survivor benefit —
 **consumed 2026-07-02**: on the member's death the survivor keeps `accrued_annual_pension ×
 fraction` for life, escalated by the same in-payment factor; mirrors the annuity's
 `survivorFraction`. A scheme with no fraction still stops on death, as before).
@@ -360,11 +362,11 @@ from the original plan, flagged inline:
 - **Collected-but-not-consumed fields (2026-07-02 doc audit).** Inputs that are validated,
   assembled into DTOs and documented above, but read by no engine code — a silent-drop class
   (see the completeness rule in CLAUDE.md). **CLOSED 2026-07-02:**
-  `DbPension::spousePensionFraction` (survivor DB income now paid; `SurvivorDbPensionTest`) and
-  `Person::salaryGrowth` (per-person salary-growth override now consumed; `PerPersonSalaryGrowthTest`).
-  Still open: `DbPension::commutationLumpSum`/`commutationFactor`, `Property::ownershipShare`,
-  `Person::niCategory`. Each open row above carries a ⚠️ caveat; fixes are on the PLAN backlog
-  (wire with a per-source completeness test, or remove the input).
+  `DbPension::spousePensionFraction` (survivor DB income now paid; `SurvivorDbPensionTest`),
+  `Person::salaryGrowth` (per-person salary-growth override now consumed; `PerPersonSalaryGrowthTest`),
+  and `DbPension::commutationLumpSum`/`commutationFactor` (the commutation trade-off now modelled;
+  `DbCommutationTest`). Still open: `Property::ownershipShare`, `Person::niCategory` (Rob: wire both).
+  Each open row above carries a ⚠️ caveat.
 - **Planned fields never materialised:** `DcPension::crystallisedValue`,
   `StatePensionEntitlement` `spa_override` + `triple_lock_assumption` (SPA computes from DOB;
   the triple-lock factor lives in the projector). Kept here rather than in the entity tables

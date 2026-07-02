@@ -41,7 +41,7 @@ final class BuilderStateFixture
                     ]],
                 ['id' => 'db1', 'ownerId' => 'p2', 'subtype' => 'db', 'accruedAnnualPension' => '9200', 'normalRetirementAge' => '65',
                     'revaluationBasis' => 'cpi', 'escalationInPayment' => 'cpi_capped_5', 'spousePensionFraction' => '50',
-                    'commutationLumpSum' => '30000', 'commutationFactor' => '1200'],
+                    'commutationLumpSum' => '30000', 'commutationFactor' => '12'],
                 ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230.25', 'qualifyingYears' => '', 'deferralWeeks' => '0'],
                 ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '', 'qualifyingYears' => '34', 'deferralWeeks' => '8'],
             ],

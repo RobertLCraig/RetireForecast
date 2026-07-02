@@ -541,6 +541,12 @@
                                 <div>
                                     <label for="pensions-{{ $i }}-commutationLumpSum" class="{{ $label }}">Commutation lump sum (£, optional)</label>
                                     <input id="pensions-{{ $i }}-commutationLumpSum" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.commutationLumpSum" class="{{ $field }}">
+                                    <p class="mt-1 text-xs text-gray-500">A tax-free lump sum taken at retirement in exchange for a permanently lower pension.</p>
+                                </div>
+                                <div>
+                                    <label for="pensions-{{ $i }}-commutationFactor" class="{{ $label }}">Commutation factor (optional)</label>
+                                    <input id="pensions-{{ $i }}-commutationFactor" type="text" inputmode="decimal" placeholder="12" wire:model="pensions.{{ $i }}.commutationFactor" class="{{ $field }}">
+                                    <p class="mt-1 text-xs text-gray-500">£ of lump sum given per £1/yr of pension you give up (schemes are commonly 12). Only used if you take a lump sum.</p>
                                 </div>
                             @else
                                 @php($spLevel = $pension['level'] ?? 'amount')

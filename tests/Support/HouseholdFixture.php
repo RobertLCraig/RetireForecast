@@ -98,7 +98,7 @@ final class HouseholdFixture
                     escalationInPayment: PensionEscalationBasis::CpiCappedAt5,
                     spousePensionFraction: Percent::fromPercent(50),
                     commutationLumpSum: Money::fromPounds(30_000),
-                    commutationFactor: Percent::fromPercent(1_200),
+                    commutationFactor: 12.0,
                 ),
                 new StatePensionEntitlement(
                     ownerId: 'p1',
