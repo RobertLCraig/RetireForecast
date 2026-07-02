@@ -3,6 +3,29 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — Employee NI is now category-aware (`Person::niCategory` consumed; sourced B/E/I + D/J/L/Z rates)
+**Decision:** Wired `Person::niCategory`, the fourth silent-drop. Rob chose to **wire fully** (add the real
+per-category rate tables, not a minimal stub) — his standing steer that an accurate, true-to-life forecast beats
+less work. Employee (primary) Class 1 NI now varies by category letter instead of charging everyone the standard
+category-A rate.
+
+**Sourced rates (gov.uk `rates-and-thresholds-for-employers` category-letter tables, 2025-26 and 2026-27
+identical, verified 2026-07-03):** standard **8%** main / 2% upper (A, F, H, M, N, V); married-women's/widow's
+**reduced 1.85%** / 2% (B, E, I); **deferred 2%** / 2% (D, J, L, Z); **nil** employee NI (C, K, S, X). Only the
+main-band rate varies; the upper-band rate is 2% across all. `NationalInsuranceParameters` gained
+`reducedMainRate` + `deferredMainRate`; `NationalInsuranceCalculator::onEmploymentEarnings` takes the category
+letter (case/space-insensitive; null/unrecognised → standard) and picks the main-band rate, returning zero for the
+nil categories (alongside the existing over-SPA zero). The projector passes `Person::niCategory` through.
+
+**Scope note:** category C (over State Pension age) is redundant with the engine's existing SPA zeroing but is
+honoured for completeness. The builder gained a category **select** (Standard / B / C / J / X — the realistic
+choices; empty = standard) with a note that it only affects NI on earnings. Tested at both levels:
+`NationalInsuranceCalculatorTest` pins each rate to the penny on a £62,570 earner (clean £37,700 main band),
+`NiCategoryForecastTest` proves the category reaches the forecast (year-0 total tax falls by exactly the sourced
+band-rate delta for B/J, and by the whole NI for X). **Last silent-drop: `Property::ownershipShare`** — Rob asked
+me to research the correct convention (tenants-in-common beneficial-share apportionment of value/proceeds/gain);
+in progress.
+
 ## 2026-07-02 — DB commutation now modelled (third silent-drop backlog fix; Rob chose wire-not-remove)
 **Decision:** Wired `DbPension::commutationLumpSum`/`commutationFactor`, the next unconsumed silent-drop.
 Rob was asked wire-or-remove for the three remaining lower-impact fields and chose **wire all three**;

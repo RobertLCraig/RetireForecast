@@ -983,7 +983,7 @@ final class PathProjector
         // NI on the actual (prorated in the retirement year) earnings; it ends at State Pension age.
         $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor'][$person->id] * $fraction);
 
-        return $this->ni->onEmploymentEarnings(Money::fromPence($earnings), hasReachedStatePensionAge: $reachedSpa)->total->pence;
+        return $this->ni->onEmploymentEarnings(Money::fromPence($earnings), hasReachedStatePensionAge: $reachedSpa, category: $person->niCategory)->total->pence;
     }
 
     /**

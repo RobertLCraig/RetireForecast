@@ -44,7 +44,7 @@ parsed to exact pence), so a value entered, stored and re-read is identical.
 | employment_status | enum | | no | employed \| self_employed \| retired \| not_working |
 | gross_salary | Money | pence/yr | yes | working partner |
 | salary_growth | Percent | bps/yr | yes | **consumed 2026-07-02** — a per-person **real** (above-inflation) salary-growth override; the projector escalates each person's salary at their own rate, falling back to the assumption set's `salaryGrowth` when null (`PerPersonSalaryGrowthTest`) |
-| ni_category | string | | yes | ⚠️ **collected, not consumed (v1)** — the NI calculator takes no category |
+| ni_category | string | | yes | **consumed 2026-07-03** — selects the employee NI band rate: A/F/H/M/N/V standard 8%, B/E/I reduced 1.85%, D/J/L/Z deferred 2%, C/K/S/X nil (gov.uk category letters); empty/unknown = standard |
 | planned_retirement_age | int | years | yes | |
 | state_pension_deferral_weeks | int | weeks | no | default 0; **lives on the State pension subtype in code** (`StatePensionEntitlement::deferralWeeks`, consumed) |
 | sex_for_mortality | enum | | no | drives cohort life table |
@@ -364,9 +364,10 @@ from the original plan, flagged inline:
   (see the completeness rule in CLAUDE.md). **CLOSED 2026-07-02:**
   `DbPension::spousePensionFraction` (survivor DB income now paid; `SurvivorDbPensionTest`),
   `Person::salaryGrowth` (per-person salary-growth override now consumed; `PerPersonSalaryGrowthTest`),
-  and `DbPension::commutationLumpSum`/`commutationFactor` (the commutation trade-off now modelled;
-  `DbCommutationTest`). Still open: `Property::ownershipShare`, `Person::niCategory` (Rob: wire both).
-  Each open row above carries a ⚠️ caveat.
+  `DbPension::commutationLumpSum`/`commutationFactor` (the commutation trade-off now modelled;
+  `DbCommutationTest`), and `Person::niCategory` (employee NI now category-aware, sourced B/E/I reduced
+  + D/J/L/Z deferred + C/K/S/X nil rates; `NationalInsuranceCalculatorTest` / `NiCategoryForecastTest`).
+  Still open: `Property::ownershipShare` (Rob: wire, researching the tenants-in-common convention).
 - **Planned fields never materialised:** `DcPension::crystallisedValue`,
   `StatePensionEntitlement` `spa_override` + `triple_lock_assumption` (SPA computes from DOB;
   the triple-lock factor lives in the projector). Kept here rather than in the entity tables

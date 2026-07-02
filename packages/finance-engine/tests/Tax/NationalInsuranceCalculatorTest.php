@@ -48,4 +48,46 @@ final class NationalInsuranceCalculatorTest extends TestCase
         $this->assertSame(0, $result->total->pence);
         $this->assertSame([], $result->bands);
     }
+
+    /**
+     * £62,570 splits cleanly into a £37,700 main band (PT £12,570 → UEL £50,270) and £12,300 above
+     * the UEL, so each category's rate lands on a round figure. Category letters group by employee
+     * rate per gov.uk: A/F/H/M/N/V standard 8%, B/E/I reduced 1.85%, D/J/L/Z deferred 2%, C/K/S/X nil.
+     */
+    public function test_category_selects_the_employee_main_band_rate(): void
+    {
+        $earn = Money::fromPounds(62_570);
+        $ni = fn (?string $c): int => $this->calculator()->onEmploymentEarnings($earn, category: $c)->total->pence;
+
+        // Standard (A): £37,700 @ 8% (£3,016) + £12,300 @ 2% (£246) = £3,262.00.
+        $this->assertSame(326_200, $ni('A'));
+        $this->assertSame(326_200, $ni(null), 'null category defaults to the standard rate');
+        $this->assertSame(326_200, $ni('V'), 'other standard-rate letters match A');
+
+        // Reduced (B/E/I): £37,700 @ 1.85% (£697.45) + £12,300 @ 2% (£246) = £943.45.
+        $this->assertSame(94_345, $ni('B'));
+        $this->assertSame(94_345, $ni('I'));
+
+        // Deferred (D/J/L/Z): £37,700 @ 2% (£754) + £12,300 @ 2% (£246) = £1,000.00.
+        $this->assertSame(100_000, $ni('J'));
+        $this->assertSame(100_000, $ni('Z'));
+    }
+
+    public function test_no_liability_categories_pay_no_ni(): void
+    {
+        $earn = Money::fromPounds(62_570);
+
+        foreach (['C', 'K', 'S', 'X'] as $category) {
+            $result = $this->calculator()->onEmploymentEarnings($earn, category: $category);
+            $this->assertSame(0, $result->total->pence, "category {$category} carries no employee NI");
+            $this->assertSame([], $result->bands);
+        }
+    }
+
+    public function test_category_is_case_and_whitespace_insensitive(): void
+    {
+        $earn = Money::fromPounds(62_570);
+
+        $this->assertSame(94_345, $this->calculator()->onEmploymentEarnings($earn, category: ' b ')->total->pence);
+    }
 }

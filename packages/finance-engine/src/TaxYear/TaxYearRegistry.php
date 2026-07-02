@@ -72,6 +72,10 @@ final class TaxYearRegistry
                 upperEarningsLimit: Money::fromPounds(50_270),
                 mainRate: Percent::fromPercent(8),
                 upperRate: Percent::fromPercent(2),
+                // Category B/E/I reduced rate and D/J/L/Z deferred rate (gov.uk rates-and-thresholds-for-
+                // employers category-letter tables; unchanged 2025-26 & 2026-27; verified 2026-07-03).
+                reducedMainRate: Percent::fromPercent(1.85),
+                deferredMainRate: Percent::fromPercent(2),
             ),
             pension: self::pensionParameters(),
             statePension: new StatePensionParameters(
@@ -146,6 +150,10 @@ final class TaxYearRegistry
                 upperEarningsLimit: Money::fromPounds(50_270),
                 mainRate: Percent::fromPercent(8),
                 upperRate: Percent::fromPercent(2),
+                // Category B/E/I reduced rate and D/J/L/Z deferred rate (gov.uk rates-and-thresholds-for-
+                // employers category-letter tables; unchanged 2025-26 & 2026-27; verified 2026-07-03).
+                reducedMainRate: Percent::fromPercent(1.85),
+                deferredMainRate: Percent::fromPercent(2),
             ),
             pension: self::pensionParameters(),
             statePension: new StatePensionParameters(

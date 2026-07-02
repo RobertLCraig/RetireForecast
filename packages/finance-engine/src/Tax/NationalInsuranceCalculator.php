@@ -25,13 +25,26 @@ final class NationalInsuranceCalculator
 {
     public function __construct(private readonly TaxYearConfig $config) {}
 
+    /** Categories whose employee (primary) contribution is nil (C = over SPA, K/S/X = no liability). */
+    private const NO_PRIMARY_NI = ['C', 'K', 'S', 'X'];
+
+    /** Married-women's / widow's reduced-rate categories. */
+    private const REDUCED_RATE = ['B', 'E', 'I'];
+
+    /** Deferred categories (the earner pays maximum NI in another job): the reduced main-band rate. */
+    private const DEFERRED_RATE = ['D', 'J', 'L', 'Z'];
+
     /**
      * @param  bool  $hasReachedStatePensionAge  when true, no NI is due regardless of
      *                                           earnings (NI ends at State Pension age)
+     * @param  string|null  $category  the NI category letter; null/unrecognised = the standard
+     *                                 rate (category A). Selects the main-band rate.
      */
-    public function onEmploymentEarnings(Money $earnings, bool $hasReachedStatePensionAge = false): NationalInsuranceResult
+    public function onEmploymentEarnings(Money $earnings, bool $hasReachedStatePensionAge = false, ?string $category = null): NationalInsuranceResult
     {
-        if ($hasReachedStatePensionAge) {
+        $category = strtoupper(trim($category ?? ''));
+
+        if ($hasReachedStatePensionAge || in_array($category, self::NO_PRIMARY_NI, true)) {
             return new NationalInsuranceResult(total: Money::zero(), bands: []);
         }
 
@@ -40,16 +53,23 @@ final class NationalInsuranceCalculator
         $mainBandLower = $params->primaryThreshold;
         $mainBandUpper = $params->upperEarningsLimit;
 
+        // The main-band rate depends on the category; the upper-band rate is common to all of them.
+        $mainRate = match (true) {
+            in_array($category, self::REDUCED_RATE, true) => $params->reducedMainRate,
+            in_array($category, self::DEFERRED_RATE, true) => $params->deferredMainRate,
+            default => $params->mainRate, // A, F, H, M, N, V and any unrecognised letter
+        };
+
         $mainAmount = Money::min($earnings, $mainBandUpper)->minus($mainBandLower)->minZero();
         $upperAmount = $earnings->minus($mainBandUpper)->minZero();
 
-        $mainContribution = $mainAmount->applyRate($params->mainRate);
+        $mainContribution = $mainAmount->applyRate($mainRate);
         $upperContribution = $upperAmount->applyRate($params->upperRate);
 
         return new NationalInsuranceResult(
             total: $mainContribution->plus($upperContribution),
             bands: [
-                ['rate' => $params->mainRate, 'amount' => $mainAmount, 'contribution' => $mainContribution],
+                ['rate' => $mainRate, 'amount' => $mainAmount, 'contribution' => $mainContribution],
                 ['rate' => $params->upperRate, 'amount' => $upperAmount, 'contribution' => $upperContribution],
             ],
         );

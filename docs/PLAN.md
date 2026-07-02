@@ -315,7 +315,14 @@ forms behind `compliance.personal_use`.**
     a plain float ratio, was mis-typed `Percent`; null/≤0 defaults to 12) and the tax-free lump sum is paid
     in the year the member reaches NRA (routed as PCLS-style tax-free cash; LSA cap a v1 limit). Applies to
     the survivor fraction too. `DbCommutationTest`; builder gained a factor input + hints.
-  - **Idle fields (Rob: wire both).** `Person::niCategory` and `Property::ownershipShare` — to wire.
+  - **NI category. — DONE 2026-07-03.** `Person::niCategory` now selects the employee NI band rate:
+    standard 8% (A/F/H/M/N/V), reduced 1.85% (B/E/I), deferred 2% (D/J/L/Z), nil (C/K/S/X) — sourced from
+    the gov.uk category-letter tables (2025-26 & 2026-27 identical; `NationalInsuranceParameters` gained
+    `reducedMainRate`/`deferredMainRate`). Empty/unknown = standard. Builder gained a category select.
+    `NationalInsuranceCalculatorTest` + `NiCategoryForecastTest`.
+  - **Property::ownershipShare (Rob: wire; research the convention).** Researched: tenants in common each
+    own a distinct beneficial share; HMRC apportions the gain and sale proceeds by that share (each owner
+    their own allowance — the joint-owner split already exists). To wire per that convention.
 - **User-facing copy fixes (cheap; the copy-audit cluster — trust depends on copy matching the engine).**
   The **"Survivor fraction" field** is resolved (2026-07-02 — it now works and has a hint). Still open: the
   **care-off silence** — care risk is opt-in/default-off, so by default nothing tells the user a ~1-in-4,

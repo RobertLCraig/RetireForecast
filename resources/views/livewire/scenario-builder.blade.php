@@ -336,6 +336,17 @@
                                 @error('people.'.$i.'.plannedRetirementAge') <p id="people-{{ $i }}-plannedRetirementAge-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                             </div>
                             <div>
+                                <label for="people-{{ $i }}-niCategory" class="{{ $label }}">National Insurance category</label>
+                                <select id="people-{{ $i }}-niCategory" wire:model="people.{{ $i }}.niCategory" class="{{ $field }}">
+                                    <option value="">Standard (category A)</option>
+                                    <option value="B">B — married woman's / widow's reduced rate</option>
+                                    <option value="C">C — over State Pension age (no NI)</option>
+                                    <option value="J">J — deferred (paying maximum NI in another job)</option>
+                                    <option value="X">X — not liable</option>
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Only affects National Insurance on employment earnings. Almost everyone is the standard rate.</p>
+                            </div>
+                            <div>
                                 <label for="people-{{ $i }}-longevityMode" class="{{ $label }}">Lifespan assumption</label>
                                 <select id="people-{{ $i }}-longevityMode" wire:model.live="people.{{ $i }}.longevityMode" class="{{ $field }}">
                                     <option value="peer">Average for their age (default)</option>
