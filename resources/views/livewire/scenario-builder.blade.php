@@ -535,6 +535,7 @@
                                 <div>
                                     <label for="pensions-{{ $i }}-spousePensionFraction" class="{{ $label }}">Survivor fraction (%)</label>
                                     <input id="pensions-{{ $i }}-spousePensionFraction" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.spousePensionFraction" class="{{ $field }}">
+                                    <p class="mt-1 text-xs text-gray-500">The % of this pension your partner keeps for life if you die first (schemes are commonly 50%). Leave blank if it stops on your death.</p>
                                 </div>
                                 <div>
                                     <label for="pensions-{{ $i }}-commutationLumpSum" class="{{ $label }}">Commutation lump sum (£, optional)</label>

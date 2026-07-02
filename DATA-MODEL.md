@@ -66,9 +66,9 @@ distinct from revaluation — ⚠️ both **collected but the engine applies one
 proxy** regardless; per-scheme bases are a flagged v1 limit), commutation_lump_sum (Money?),
 commutation_factor (ratio? — ⚠️ **both collected, not consumed (v1)**: the commutation
 trade-off is not yet modelled), spouse_pension_fraction (Percent?, survivor benefit —
-⚠️ **collected, not consumed (v1)**: on the member's death the survivor gets **£0 DB income**
-regardless of the entered fraction; 2026-07-02 doc audit, **top backlog fix** — contrast the
-annuity's `survivorFraction`, which IS consumed).
+**consumed 2026-07-02**: on the member's death the survivor keeps `accrued_annual_pension ×
+fraction` for life, escalated by the same in-payment factor; mirrors the annuity's
+`survivorFraction`. A scheme with no fraction still stops on death, as before).
 
 **State:** weekly_entitlement (Money/wk?) or qualifying_years (int?), deferral_weeks (int,
 consumed). (Planned `spa_override` and `triple_lock_assumption` fields were never
@@ -357,14 +357,14 @@ from the original plan, flagged inline:
   (single-property model — DECISIONS 2026-07-01).
 
 ## Known divergences (to close)
-- **Collected-but-not-consumed fields (2026-07-02 doc audit).** Five inputs are validated,
+- **Collected-but-not-consumed fields (2026-07-02 doc audit).** Inputs that are validated,
   assembled into DTOs and documented above, but read by no engine code — a silent-drop class
-  (see the completeness rule in CLAUDE.md): `DbPension::spousePensionFraction` (**high** —
-  survivor DB income is modelled as £0; the analogous annuity `survivorFraction` IS consumed),
+  (see the completeness rule in CLAUDE.md). **`DbPension::spousePensionFraction` — CLOSED
+  2026-07-02** (survivor DB income now paid; `SurvivorDbPensionTest`). Still open:
   `Person::salaryGrowth` (**high** — a live builder input; the engine always uses the
   assumption set's figure), `DbPension::commutationLumpSum`/`commutationFactor`,
-  `Property::ownershipShare`, `Person::niCategory`. Each row above carries a ⚠️ caveat; fixes
-  are on the PLAN backlog (wire with a per-source completeness test, or remove the input).
+  `Property::ownershipShare`, `Person::niCategory`. Each open row above carries a ⚠️ caveat;
+  fixes are on the PLAN backlog (wire with a per-source completeness test, or remove the input).
 - **Planned fields never materialised:** `DcPension::crystallisedValue`,
   `StatePensionEntitlement` `spa_override` + `triple_lock_assumption` (SPA computes from DOB;
   the triple-lock factor lives in the projector). Kept here rather than in the entity tables

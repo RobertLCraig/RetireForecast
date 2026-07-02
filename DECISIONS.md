@@ -3,6 +3,31 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-02 — Survivor DB pension: `spousePensionFraction` now paid (first silent-drop backlog fix)
+**Decision:** Fixed the top data-integrity silent-drop the 2026-07-02 doc audit re-found (see the docs-only
+entry below): `DbPension::spousePensionFraction` was collected, validated and mapped into the DTO but consumed
+by **no** engine code, so on a DB member's death the surviving partner received **£0** DB income regardless of
+the fraction entered. This violated the CLAUDE.md completeness rule (every input that should affect a result
+must reach it) and understated a couple's secure income after the first death.
+
+**How:** a new `PathProjector::survivorDbIncomeNominal()` — the joint-life analogue of the already-correct
+`annuityIncomeNominal()` — pays `accruedAnnualPension × dbFactor × spousePensionFraction` to the first living
+partner once the member has died, escalated by the same in-payment `dbFactor` as the member's own pension and
+sourced as `defined_benefit` (so it is taxed and counts as assessable income for the Pension Credit test, like
+the member's own DB income). The member-alive path (`dbIncome()`) is unchanged, so no double-count (owner alive
+XOR dead). A scheme with a **null** fraction still stops on death, exactly as before.
+
+**v1 scope choice (flagged in the method docblock):** a single fraction, paid from the member's death regardless
+of whether they had reached normal retirement age (real schemes pay a spouse's pension on death in service /
+deferment / payment alike), escalated by the household `dbFactor` from the base year (no separate deferred-
+revaluation basis) — consistent with how the member's own DB pension is already approximated.
+
+**Tested:** `SurvivorDbPensionTest` — a completeness test (the entered 50% fraction demonstrably reaches the
+forecast: full pension while the member lives, half for life after death, not £0) plus the boundary guard (a
+null fraction pays nothing after death). Suite green. Also added a builder hint under the "Survivor fraction (%)"
+field (it previously did nothing and had no explanation — trust depends on the copy matching the engine).
+Remaining silent-drop fixes (`Person::salaryGrowth` next, then the lower-impact fields) stay on the PLAN backlog.
+
 ## 2026-07-02 — Docs-only pass: delta research folded in, doc set reconciled to code, household scope decided
 **Decision:** On Rob's ask ("review the project + the improved brief; then update the plan and documentation so we
 can build any features really well"), a two-workflow pass ran (a) a **delta research wave** over the five topics the

@@ -299,12 +299,12 @@ forms behind `compliance.personal_use`.**
 - **Data-integrity fixes first (silent drops found by the 2026-07-02 doc audit — the same class the
   reconciliation/completeness rule exists to kill; see DATA-MODEL "Known divergences").** Each is a live
   builder input read by **zero** engine code, so a user's entry silently vanishes:
-  - **DB survivor pension (highest).** `DbPension::spousePensionFraction` is collected/validated/mapped but
-    never paid — on the member's death the survivor gets **£0 DB income** regardless of the entered fraction
-    (the annuity's analogous `survivorFraction` **is** consumed). Wire it in the death/settle path (pay
-    `accruedAnnualPension × spousePensionFraction` to the survivor), **with a per-source completeness test**;
-    fix the overclaiming `DbPension` docblock + the builder "Survivor fraction (%)" hint. Until then it is a
-    known limit.
+  - **DB survivor pension (highest). — DONE 2026-07-02.** `spousePensionFraction` is now paid: on the
+    member's death the survivor keeps `accruedAnnualPension × dbFactor × fraction` for life (a new
+    `PathProjector::survivorDbIncomeNominal`, mirroring the annuity survivor income), sourced as
+    `defined_benefit`. Pinned by `SurvivorDbPensionTest` (completeness: the fraction demonstrably reaches
+    the forecast; a null fraction still stops on death). Builder "Survivor fraction (%)" field gained a
+    hint; the `DbPension` docblock was already accurate.
   - **Per-person salary growth.** `Person::salaryGrowth` is a live input; the engine always uses the
     assumption set's figure. Wire as a per-person override (fall back to the set), like the 2026-07-02
     per-asset overrides, + a completeness test — or remove the field.
@@ -312,9 +312,10 @@ forms behind `compliance.personal_use`.**
     trade-off, or remove); `Property::ownershipShare` and `Person::niCategory` (both idle). Decide
     wire-or-remove per field.
 - **User-facing copy fixes (cheap; the copy-audit cluster — trust depends on copy matching the engine).**
-  The two that actively mislead: the **"Survivor fraction" field** (above) and the **care-off silence** — care
-  risk is opt-in/default-off, so by default nothing tells the user a ~1-in-4, six-figure tail is excluded from
-  "will the money last?" (add one line on results + PDF when off; the PDF never mentions care even when on).
+  The **"Survivor fraction" field** is resolved (2026-07-02 — it now works and has a hint). Still open: the
+  **care-off silence** — care risk is opt-in/default-off, so by default nothing tells the user a ~1-in-4,
+  six-figure tail is excluded from "will the money last?" (add one line on results + PDF when off; the PDF
+  never mentions care even when on).
   Lower: the **stress-test copy** ("actual returns that followed") should say years past 2020 revert to
   expected returns (the early sequence-critical years are always historical); the **fan chart** carries no
   house-price/salary uncertainty (deterministic in the MC) — say so; footnote the **longevity panel** (ONS

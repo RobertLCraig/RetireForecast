@@ -428,6 +428,15 @@ final class PathProjector
             $src['other_taxable'] += $annuityAmount;
         }
 
+        // Survivor DB pension: when a DB member dies, a scheme with a survivor's fraction continues
+        // that fraction of the pension to the surviving partner for life (the joint-life analogue of
+        // the annuity above). Without this the guaranteed DB income silently dropped to £0 on the
+        // member's death. Taxed and Pension-Credit-assessable like the member's own DB income.
+        foreach ($this->survivorDbIncomeNominal($household, $alive, $state['dbFactor']) as $pid => $dbSurvivor) {
+            $taxablePerPerson[$pid] += $dbSurvivor;
+            $src['defined_benefit'] += $dbSurvivor;
+        }
+
         // Taxable investment income from unwrapped assets, on opening balances (A5):
         // GIA dividends and cash interest are paid out as income each year and taxed.
         // ISA is tax-free, so excluded. The rest of the return is capital growth, left in
@@ -856,6 +865,42 @@ final class PathProjector
                     $income[$survivor] = ($income[$survivor] ?? 0) + (int) round($amount * $annuity['survivorFraction']);
                 }
             }
+        }
+
+        return $income;
+    }
+
+    /**
+     * This year's survivor DB pension income, per person, in nominal pence. When a DB member has
+     * died, a scheme with a spousePensionFraction continues that fraction of the pension to the
+     * surviving partner for life (the joint-life analogue of {@see annuityIncomeNominal}). Escalated
+     * by the same dbFactor as the member's own pension in payment. Without this the guaranteed DB
+     * income would silently fall to £0 on the member's death, understating the survivor's secure income.
+     *
+     * A single-fraction v1 model: a scheme with no survivor fraction pays nothing (as today), and the
+     * fraction is paid from the member's death regardless of whether they had reached normal retirement
+     * age (real schemes pay a spouse's pension on death in service / deferment / payment alike).
+     *
+     * @param  array<string, bool>  $alive
+     * @return array<string, int> personId => nominal taxable survivor DB income
+     */
+    private function survivorDbIncomeNominal(Household $household, array $alive, float $dbFactor): array
+    {
+        $income = [];
+        foreach ($household->pensions as $pension) {
+            if (! $pension instanceof DbPension || $pension->spousePensionFraction === null) {
+                continue;
+            }
+            if ($alive[$pension->ownerId] ?? false) {
+                continue; // member still alive — they draw their own full pension via dbIncome()
+            }
+            $survivor = $this->firstLiving($household, $alive);
+            if ($survivor === null) {
+                continue; // no surviving partner to inherit the income
+            }
+            $full = (int) round($pension->accruedAnnualPension->pence * $dbFactor);
+            $income[$survivor] = ($income[$survivor] ?? 0)
+                + (int) round($full * $pension->spousePensionFraction->asFraction());
         }
 
         return $income;
