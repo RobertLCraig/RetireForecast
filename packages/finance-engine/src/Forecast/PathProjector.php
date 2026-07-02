@@ -1238,6 +1238,10 @@ final class PathProjector
 
     private function oneOffCostsNominal(Household $household, array $ages, float $cumInflation): int
     {
+        // v1 limitation (flagged): a one-off cost has an `atAge` but no `personId`, so it fires on
+        // the FIRST-declared person's age only. A cost meant to land at the second person's age
+        // cannot trigger, and (since $ages carries dead persons too) the reference age keeps
+        // advancing after that person dies. Add a per-cost personId to lift this.
         $referenceId = array_key_first($ages);
         $referenceAge = $ages[$referenceId] ?? null;
         $total = 0;
