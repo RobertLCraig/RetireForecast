@@ -78,6 +78,34 @@ final class GiaCapitalGainsTaxTest extends TestCase
         $this->assertGreaterThan(100_000, $withGain->totalTax->pence - $noGain->totalTax->pence);
     }
 
+    public function test_the_personal_allowance_does_not_extend_the_lower_cgt_band_below_it(): void
+    {
+        // The band-straddle fix, tested to the penny. 2026-27 statutory figures: PA £12,570,
+        // basic-rate band £37,700, CGT AEA £3,000, residential rates 18% / 24%.
+        $pa = 1_257_000;
+        $band = 3_770_000;
+        $aea = 300_000;
+        $basic = Percent::fromPercent(18);
+        $higher = Percent::fromPercent(24);
+        $gain = Money::fromPounds(50_000)->pence; // £50,000 realised gain → £47,000 chargeable
+
+        // £0 other income: the PA is NOT available against gains, so only the £37,700 band fills
+        // at 18% — £37,700 @ 18% (£6,786) + £9,300 @ 24% (£2,232) = £9,018. (The pre-fix bug let
+        // the PA extend the 18% band, taxing all £47,000 at 18% = £8,460 — a £558 understatement.)
+        $this->assertSame(Money::fromPounds(9_018)->pence, PathProjector::cgtOnGain($gain, 0, $aea, $pa, $band, $basic, $higher));
+
+        // Income anywhere at or below the PA consumes none of the basic-rate band, so the CGT is
+        // identical to the £0 case — under the bug the £0 case was cheaper, so this pins the fix.
+        $this->assertSame(
+            PathProjector::cgtOnGain($gain, 0, $aea, $pa, $band, $basic, $higher),
+            PathProjector::cgtOnGain($gain, $pa, $aea, $pa, $band, $basic, $higher),
+        );
+
+        // Income £20,000 is £7,430 above the PA, shrinking the 18% room to £30,270: £30,270 @ 18%
+        // (£5,448.60) + £16,730 @ 24% (£4,015.20) = £9,463.80.
+        $this->assertSame(Money::of(9_463, 80)->pence, PathProjector::cgtOnGain($gain, Money::fromPounds(20_000)->pence, $aea, $pa, $band, $basic, $higher));
+    }
+
     public function test_a_gainful_gia_depletes_faster_than_a_no_gain_one(): void
     {
         // Over the run the CGT drag means the gainful holding funds fewer years / less wealth.

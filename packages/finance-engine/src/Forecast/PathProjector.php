@@ -16,6 +16,7 @@ use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Pension\WithdrawalKind;
 use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
 use RetireForecast\FinanceEngine\StatePension\StatePensionCalculator;
@@ -161,6 +162,8 @@ final class PathProjector
         $isa = [];
         $pots = [];
         $lsaUsed = [];
+        $giaOverrideBal = [];       // per-person GIA balance carrying a yield override
+        $giaOverrideYieldSum = [];  // per-person Σ(balance × override yield)
 
         foreach ($household->persons as $person) {
             $birthYear = (int) $person->dob->format('Y');
@@ -185,7 +188,27 @@ final class PathProjector
             // so a later disposal taxes only the gain (CGT, A5). Other wrappers need no basis.
             if ($account->type === AccountType::Gia) {
                 $giaBasis[$pid] += $account->balance->pence - ($account->unrealisedGain?->pence ?? 0);
+                // A per-account income-yield override: accumulate the balance-weighted override
+                // rate and the balance it covers, so the person's effective GIA yield can blend
+                // overridden accounts with the assumption-set default (see effectiveGiaYield).
+                if ($account->yield !== null) {
+                    $giaOverrideBal[$pid] = ($giaOverrideBal[$pid] ?? 0) + $account->balance->pence;
+                    $giaOverrideYieldSum[$pid] = ($giaOverrideYieldSum[$pid] ?? 0.0)
+                        + $account->balance->pence * $account->yield->asFraction();
+                }
             }
+        }
+
+        // Per-person GIA yield override, held at base-year balance proportions: the share of a
+        // person's GIA under an override and its balance-weighted rate. effectiveGiaYield() blends
+        // this with the assumption-set yield. (v1: the override share is fixed at base-year weights.)
+        $giaOverrideYield = [];
+        $giaOverrideShare = [];
+        foreach ($household->persons as $person) {
+            $overrideBal = $giaOverrideBal[$person->id] ?? 0;
+            $totalGia = $gia[$person->id] ?? 0;
+            $giaOverrideYield[$person->id] = $overrideBal > 0 ? $giaOverrideYieldSum[$person->id] / $overrideBal : 0.0;
+            $giaOverrideShare[$person->id] = $totalGia > 0 ? $overrideBal / $totalGia : 0.0;
         }
 
         $annuities = [];
@@ -196,6 +219,8 @@ final class PathProjector
                     'plan' => $pension->withdrawalPlan,
                     'firstAccessDone' => false,
                     'contribution' => $pension->ongoingContribution->pence + $pension->employerContribution->pence,
+                    'earliestAccessAge' => $pension->earliestAccessAge,
+                    'growthOverrideReal' => $pension->growthAssumptionOverride?->asFraction(),
                 ];
                 $lsaUsed[$pension->ownerId] += $pension->pclsTakenToDate?->pence ?? 0;
 
@@ -242,7 +267,24 @@ final class PathProjector
             'spendFactor' => 1.0,
             'rentFactor' => 1.0,
             'rentInflationReal' => $settings->rentInflationReal?->asFraction() ?? 0.0,
+            'propertyGrowthReal' => $household->primaryResidence?->growthAssumptionOverride?->asFraction(),
+            'giaOverrideYield' => $giaOverrideYield,   // per-person balance-weighted override rate
+            'giaOverrideShare' => $giaOverrideShare,   // per-person share of GIA under an override
         ];
+    }
+
+    /**
+     * A person's effective GIA income yield: the base-year balance-weighted blend of any
+     * per-account yield overrides with the assumption-set default. With no override the
+     * share is 0, so this returns the global yield unchanged.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function effectiveGiaYield(array $state, string $pid, float $globalYield): float
+    {
+        $share = $state['giaOverrideShare'][$pid] ?? 0.0;
+
+        return $share * ($state['giaOverrideYield'][$pid] ?? 0.0) + (1.0 - $share) * $globalYield;
     }
 
     /**
@@ -302,7 +344,9 @@ final class PathProjector
                 $inherited += $pot['value'];
             }
             if ($inherited > 0) {
-                $state['pots'][$heir][] = ['value' => $inherited, 'plan' => [], 'firstAccessDone' => true, 'contribution' => 0];
+                // An inherited DC pot is a beneficiary drawdown — accessible at any age (access age 0);
+                // it grows at the blended assumption rate (the deceased's per-pot override is not carried).
+                $state['pots'][$heir][] = ['value' => $inherited, 'plan' => [], 'firstAccessDone' => true, 'contribution' => 0, 'earliestAccessAge' => 0, 'growthOverrideReal' => null];
             }
             $state['pots'][$id] = [];
         }
@@ -403,7 +447,7 @@ final class PathProjector
                 continue;
             }
             $cashInterest = (int) round($state['cash'][$person->id] * $cashInterestRate);
-            $giaDividends = (int) round($state['gia'][$person->id] * $giaYield);
+            $giaDividends = (int) round($state['gia'][$person->id] * $this->effectiveGiaYield($state, $person->id, $giaYield));
             $investmentIncome = $cashInterest + $giaDividends;
 
             $taxable = $taxablePerPerson[$person->id];
@@ -518,7 +562,7 @@ final class PathProjector
         $shortfall = $spendNominal - $netCashNominal;
         $fundedNominal = 0;
         if ($shortfall > 0) {
-            $funded = $this->fundShortfall($household, $settings, $state, $alive, $taxablePerPerson, $shortfall, $thresholdFactor, $benefitNominal > 0);
+            $funded = $this->fundShortfall($household, $settings, $state, $alive, $ages, $taxablePerPerson, $shortfall, $thresholdFactor, $benefitNominal > 0);
             $fundedNominal = $funded['funded'];
             $totalTaxNominal += $funded['extraTax'];
             $src['pension_drawdown'] += $funded['fromPension'];
@@ -875,7 +919,7 @@ final class PathProjector
      * @param  array<string, int>  $taxablePerPerson
      * @return array{funded: int, extraTax: int, fromPension: int, fromAssets: int}
      */
-    private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $taxablePerPerson, int $shortfall, float $thresholdFactor = 1.0, bool $onGuaranteeCredit = false): array
+    private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $ages, array $taxablePerPerson, int $shortfall, float $thresholdFactor = 1.0, bool $onGuaranteeCredit = false): array
     {
         $remaining = $shortfall;
         $funded = 0;
@@ -978,7 +1022,7 @@ final class PathProjector
         // Draw taxable pension income, per person, capped so the person's taxable income does
         // not exceed $taxableLimit (null = uncapped). Grosses up so the after-tax cash meets
         // the remaining need.
-        $drawPension = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, $alive, $household, $taxablePerPerson, $thresholdFactor): void {
+        $drawPension = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, $alive, $ages, $household, $taxablePerPerson, $thresholdFactor): void {
             foreach ($household->persons as $person) {
                 if ($remaining <= 0) {
                     return;
@@ -989,6 +1033,13 @@ final class PathProjector
                 $alreadyTaxable = $taxablePerPerson[$person->id];
                 foreach ($state['pots'][$person->id] as &$pot) {
                     if ($remaining <= 0 || $pot['value'] <= 0) {
+                        continue;
+                    }
+                    // A DC pot is not accessible until its owner reaches its earliest access age
+                    // (normal minimum pension age — 55, rising to 57 from April 2028); an inherited
+                    // pot carries age 0 (a beneficiary can draw it at any age). Before then a
+                    // shortfall cannot legally be met from this pot — it falls to other sources.
+                    if (($ages[$person->id] ?? 0) < ($pot['earliestAccessAge'] ?? 0)) {
                         continue;
                     }
                     $cap = $pot['value'];
@@ -1042,6 +1093,12 @@ final class PathProjector
         // further drawing, so the small extra gain from funding the tax itself is not
         // re-taxed — a bounded v1 simplification). It is a real cost, so draw a little
         // more to pay it; that funding is not spend, so it is taken back out of $funded.
+        // NOTE: $fromAssets / $fromPension deliberately KEEP the CGT-funding draw — that
+        // capital genuinely left the pots, so the incomeBySource drawdown lines reflect the
+        // true withdrawal and the year's money-in == money-out (income + capital drawn == tax
+        // + met spend). Only $funded (spend actually met) excludes it, so it differs from the
+        // drawdown sources by exactly the tax in a disposal year — pinned by a reconciliation
+        // test. Do not "restore" the source totals here or the cashflow ladder stops balancing.
         $cgt = $this->capitalGainsTax($realisedGain, $taxablePerPerson, $alive);
         if ($cgt > 0) {
             $extraTax += $cgt;
@@ -1088,25 +1145,43 @@ final class PathProjector
     {
         $cgt = $this->config->cgt;
         $aea = $cgt->annualExemptAmount->pence;
-        $basicLimit = $this->config->incomeTax->personalAllowance->pence + $this->config->incomeTax->basicRateBand->pence;
+        $personalAllowance = $this->config->incomeTax->personalAllowance->pence;
+        $basicRateBand = $this->config->incomeTax->basicRateBand->pence;
 
         $total = 0;
         foreach ($realisedGain as $pid => $gain) {
             if (! ($alive[$pid] ?? false)) {
                 continue;
             }
-            $chargeable = max(0, $gain - $aea);
-            if ($chargeable <= 0) {
-                continue;
-            }
-            $basicRoom = max(0, $basicLimit - ($taxablePerPerson[$pid] ?? 0));
-            $atBasic = min($chargeable, $basicRoom);
-            $atHigher = $chargeable - $atBasic;
-            $total += Money::fromPence($atBasic)->applyRate($cgt->residentialBasicRate)->pence;
-            $total += Money::fromPence($atHigher)->applyRate($cgt->residentialHigherRate)->pence;
+            $total += self::cgtOnGain(
+                $gain, $taxablePerPerson[$pid] ?? 0, $aea, $personalAllowance,
+                $basicRateBand, $cgt->residentialBasicRate, $cgt->residentialHigherRate,
+            );
         }
 
         return $total;
+    }
+
+    /**
+     * CGT on one person's realised gain (pence). Gains stack ABOVE income, but the personal
+     * allowance is NOT available against gains: only the basic-rate BAND left after income
+     * *above* the PA fills at the lower rate, the rest at the higher rate. Crucially, when
+     * income is below the PA the unused allowance must NOT extend the lower-rate band (else a
+     * low-income retiree's gain is under-taxed). Public static so the band split is unit-tested
+     * directly across the below-PA and straddle boundaries.
+     */
+    public static function cgtOnGain(int $gain, int $income, int $aea, int $personalAllowance, int $basicRateBand, Percent $basicRate, Percent $higherRate): int
+    {
+        $chargeable = max(0, $gain - $aea);
+        if ($chargeable <= 0) {
+            return 0;
+        }
+        $basicRoom = max(0, $basicRateBand - max(0, $income - $personalAllowance));
+        $atBasic = min($chargeable, $basicRoom);
+        $atHigher = $chargeable - $atBasic;
+
+        return Money::fromPence($atBasic)->applyRate($basicRate)->pence
+            + Money::fromPence($atHigher)->applyRate($higherRate)->pence;
     }
 
     /**
@@ -1294,7 +1369,7 @@ final class PathProjector
         // only: total return minus the income yield. These rates MUST mirror the income
         // rates in projectYear, so income paid out + capital growth == total return (no
         // double count). ISA reinvests tax-free, so it keeps the full total return.
-        $giaCapital = $investNominal - $draws->investmentIncomeYield();
+        $globalGiaYield = $draws->investmentIncomeYield(); // per-person effective yield blends overrides
         $cashCapital = $cashNominal - max(0.0, $cashNominal);
 
         $growth = 0; // capital appreciation left in the pots (new balance − old), summed across all
@@ -1304,12 +1379,20 @@ final class PathProjector
                 $before += $pot['value'];
             }
 
+            // GIA grows at capital only = total return minus THIS person's effective income yield
+            // (blending any per-account override), mirroring the income paid out in projectYear.
+            $giaCapital = $investNominal - $this->effectiveGiaYield($state, $pid, $globalGiaYield);
             $state['cash'][$pid] = (int) round($v * (1.0 + $cashCapital));
             $state['gia'][$pid] = (int) round($state['gia'][$pid] * (1.0 + $giaCapital));
             $state['isa'][$pid] = (int) round($state['isa'][$pid] * (1.0 + $investNominal));
             $after = $state['cash'][$pid] + $state['gia'][$pid] + $state['isa'][$pid];
             foreach ($state['pots'][$pid] as &$pot) {
-                $pot['value'] = (int) round($pot['value'] * (1.0 + $investNominal));
+                // A per-pot growth override grows that pot at its own real rate; otherwise the
+                // blended investment return. (The override sets return, not risk — no volatility.)
+                $potNominal = $pot['growthOverrideReal'] !== null
+                    ? (1.0 + $pot['growthOverrideReal']) * (1.0 + $infl) - 1.0
+                    : $investNominal;
+                $pot['value'] = (int) round($pot['value'] * (1.0 + $potNominal));
                 $after += $pot['value'];
             }
             unset($pot);
@@ -1317,7 +1400,12 @@ final class PathProjector
             $growth += $after - $before;
         }
 
-        $state['property'] = (int) round($state['property'] * (1.0 + $houseNominal));
+        // A per-property growth override grows the home at its own real rate; otherwise the
+        // assumption-set house-price growth.
+        $propertyNominal = $state['propertyGrowthReal'] !== null
+            ? (1.0 + $state['propertyGrowthReal']) * (1.0 + $infl) - 1.0
+            : $houseNominal;
+        $state['property'] = (int) round($state['property'] * (1.0 + $propertyNominal));
 
         $rentNominal = (1.0 + $state['rentInflationReal']) * (1.0 + $infl) - 1.0;
 

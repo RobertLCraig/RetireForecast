@@ -328,6 +328,125 @@ final class PathProjectorTest extends TestCase
         $this->assertNotNull($result->depletionCalendarYear);
     }
 
+    public function test_a_dc_pot_is_not_drawn_before_its_earliest_access_age(): void
+    {
+        // An early retiree (53 in 2026) whose only asset is a DC pot with an earliest access
+        // age of 57. The £20k/yr shortfall cannot legally be met from the pension before 57
+        // (normal minimum pension age), so no pension is drawn until the access year (2030,
+        // age 57) — the pot must not silently fund an infeasible early-retirement plan.
+        $person = new Person('p1', new DateTimeImmutable('1973-06-15'), Sex::Male, EmploymentStatus::Retired);
+        $household = new Household('EarlyRetiree', RegionProfile::EnglandWalesNi, [$person],
+            new ExpenseProfile(Money::fromPounds(20_000), Money::zero(), Percent::fromPercent(70)),
+            [new DcPension('p1', Money::fromPounds(200_000), Money::zero(), Money::zero(), 57)],
+        );
+
+        $result = $this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings());
+
+        $drawByYear = [];
+        foreach ($result->years as $y) {
+            $drawByYear[$y->calendarYear] = $y->incomeBySource['pension_drawdown']->pence;
+        }
+
+        // Below the access age (2026 age 53 … 2029 age 56): the pot is untouchable.
+        $this->assertSame(0, $drawByYear[2026], 'a DC pot must not be drawn at 53');
+        $this->assertSame(0, $drawByYear[2029], 'still gated at 56 — one year before access');
+        // From the access age (2030, age 57): the pot funds the shortfall.
+        $this->assertGreaterThan(0, $drawByYear[2030], 'the pot becomes drawable at 57');
+    }
+
+    public function test_income_sources_reconcile_to_tax_plus_spend_in_a_cgt_year(): void
+    {
+        // Money-in == money-out each year: income + capital drawn == tax + met spend. In a
+        // GIA-disposal year the capital drawn to pay the CGT is a real withdrawal, so
+        // asset_drawdown deliberately exceeds the spend-only shortfallFunded by exactly that
+        // tax. This pins the identity so a future edit can't silently unbalance the ladder.
+        // (Flat assumptions ⇒ real == nominal, so the reconciliation is exact to the penny.)
+        $person = new Person('p1', new DateTimeImmutable('1955-01-01'), Sex::Male, EmploymentStatus::Retired);
+        $household = new Household('CgtReconcile', RegionProfile::EnglandWalesNi, [$person],
+            new ExpenseProfile(Money::fromPounds(40_000), Money::zero(), Percent::fromPercent(70)),
+            [], // no pensions / State Pension → zero income, so all spend is drawn from the GIA
+            [new Account('p1', AccountType::Gia, Money::fromPounds(500_000), unrealisedGain: Money::fromPounds(400_000))],
+        );
+
+        $year0 = $this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings())->years[0];
+
+        // Non-vacuous: the year drew from the GIA and realised CGT (no income tax here).
+        $this->assertTrue($year0->incomeBySource['asset_drawdown']->isPositive());
+        $this->assertTrue($year0->totalTax->isPositive(), 'a gainful GIA disposal must realise CGT');
+
+        // asset_drawdown includes the capital drawn to pay the CGT, so it exceeds the
+        // spend-only shortfallFunded by exactly the tax.
+        $this->assertSame(
+            $year0->shortfallFunded->plus($year0->totalTax)->pence,
+            $year0->incomeBySource['asset_drawdown']->pence,
+        );
+
+        // Full identity: income + all capital drawn == tax + met spend.
+        $capitalDrawn = $year0->incomeBySource['pension_lump_sum']
+            ->plus($year0->incomeBySource['pension_drawdown'])
+            ->plus($year0->incomeBySource['asset_drawdown']);
+        $this->assertSame(
+            $year0->totalTax->plus($year0->spendTarget)->pence,
+            $year0->grossIncome->plus($capitalDrawn)->pence,
+        );
+    }
+
+    public function test_a_per_pot_growth_override_reaches_the_forecast(): void
+    {
+        // A DC growth override grows that pot at its own real rate. With flat assumptions (0%
+        // blended return) an un-drawn pot stays flat by default but compounds under a +5% override.
+        $make = fn (?Percent $override): Household => new Household(
+            'PotGrowth', RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1958-01-01'), Sex::Male, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(10_000), Money::zero(), Percent::fromPercent(70)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(300, 0)), // covers spend → no draw
+                new DcPension('p1', Money::fromPounds(100_000), Money::zero(), Money::zero(), 55, growthAssumptionOverride: $override),
+            ],
+        );
+
+        $without = $this->forecaster()->forecast($make(null), $this->flatAssumptions(), $this->settings());
+        $with = $this->forecaster()->forecast($make(Percent::fromPercent(5)), $this->flatAssumptions(), $this->settings());
+
+        // The un-drawn pot is flat by default, but has compounded under the override by year 5.
+        $this->assertSame(Money::fromPounds(100_000)->pence, $without->years[5]->pensionWealth->pence);
+        $this->assertGreaterThan($without->years[5]->pensionWealth->pence, $with->years[5]->pensionWealth->pence);
+    }
+
+    public function test_a_per_property_growth_override_reaches_the_forecast(): void
+    {
+        // A property growth override grows the home at its own real rate (0% blended by default).
+        $home = fn (?Percent $override): Property => new Property(
+            currentValue: Money::fromPounds(300_000), ownership: OwnershipType::Outright,
+            growthAssumptionOverride: $override,
+        );
+        $without = $this->forecaster()->forecast($this->homeownerCouple($home(null)), $this->flatAssumptions(), $this->settings());
+        $with = $this->forecaster()->forecast($this->homeownerCouple($home(Percent::fromPercent(6))), $this->flatAssumptions(), $this->settings());
+
+        $this->assertSame(Money::fromPounds(300_000)->pence, $without->years[5]->propertyWealth->pence);
+        $this->assertGreaterThan($without->years[5]->propertyWealth->pence, $with->years[5]->propertyWealth->pence);
+    }
+
+    public function test_a_per_account_yield_override_reaches_the_forecast(): void
+    {
+        // A per-account yield override pays that GIA's income at its own rate. Flat assumptions
+        // have a 0% default yield, so year-0 investment income is nil by default and 4% of the
+        // GIA balance (£4,000 on £100k) under the override.
+        $make = fn (?Percent $yield): Household => new Household(
+            'GiaYield', RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1958-01-01'), Sex::Male, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(10_000), Money::zero(), Percent::fromPercent(70)),
+            [new StatePensionEntitlement('p1', weeklyForecast: Money::of(300, 0))],
+            [new Account('p1', AccountType::Gia, Money::fromPounds(100_000), yield: $yield)],
+        );
+
+        $without = $this->forecaster()->forecast($make(null), $this->flatAssumptions(), $this->settings())->years[0];
+        $with = $this->forecaster()->forecast($make(Percent::fromPercent(4)), $this->flatAssumptions(), $this->settings())->years[0];
+
+        $this->assertSame(0, $without->incomeBySource['investment_income']->pence);
+        $this->assertSame(Money::fromPounds(4_000)->pence, $with->incomeBySource['investment_income']->pence);
+    }
+
     public function test_tax_free_income_streams_are_counted_as_usable_income(): void
     {
         // Two State Pensions (~£12.5k total) cannot cover £24k of essentials on their own.
