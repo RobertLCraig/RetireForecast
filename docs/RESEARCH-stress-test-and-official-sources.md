@@ -53,7 +53,7 @@ cannot produce an accurate backtest.** The realistic sources:
 | Source | Equity **total** return? | Official? | Licence | Notes |
 |---|---|---|---|---|
 | **BoE "Millennium of Macroeconomic Data" v3.1** | **No** — share *price* index + bond *yields* only | Yes (central bank) | **OGL v3.0** (fully shippable, incl. commercial) | Bond total return is reconstructable from yields; equity dividends are missing (verified). CPI to 2016. |
-| **Jordà–Schularick–Taylor Macrohistory ("Rate of Return on Everything") R6** | **Yes** — equity total return, capital gain, dividend yield; bond + bill total return; CPI; UK 1870–2020 | Academic (peer-reviewed, QJE 2019) | **CC BY-NC-SA 4.0 — NON-commercial + ShareAlike** | Free + accurate + citable. Fine for a **private** tool; **risky for a free *public* release** (NC forbids commercial-provider integration; ShareAlike is sticky). |
+| **Jordà–Schularick–Taylor Macrohistory ("Rate of Return on Everything") R6** | **Yes** — equity total return, capital gain, dividend yield; bond + bill total return; CPI; UK 1870–2020 (the embedded series runs **1871–2020**: returns need the prior year's level) | Academic (peer-reviewed, QJE 2019) | **CC BY-NC-SA 4.0 — NON-commercial + ShareAlike** | Free + accurate + citable. Fine for a **private** tool; **risky for a free *public* release** (NC forbids commercial-provider integration; ShareAlike is sticky). |
 | **ONS** inflation (RPI 1947–, CPIH/CPI) | n/a | Yes | OGL | Inflation leg to the present; cross-check / extend the CPI. |
 | **DMS Yearbook (UBS)** / **Barclays Equity Gilt Study** | Yes (gold standard; what Timeline uses) | Commercial | **Paid, not redistributable** | Best data, but licence-blocked for us. |
 
@@ -63,10 +63,15 @@ cannot produce an accurate backtest.** The realistic sources:
 posture), the pragmatic recommendation is:
 
 - **Now (personal use): JST macrohistory R6** for UK equity/bond/bill **total returns** + dividend yield + CPI
-  (accurate, free for non-commercial use, peer-reviewed), extended for recent inflation with **ONS**. Cite both
-  with `verified_on`. **Flag the licence as a public-release blocker** the same way `compliance.personal_use`
-  flags the regulatory line: before any public release, swap the source to **BoE (bond TR from yields) + a
-  fully-licensed equity total-return / dividend series**, or license DMS, or drop the shipped historical numbers.
+  (accurate, free for non-commercial use, peer-reviewed). **Flag the licence as a public-release blocker** the same
+  way `compliance.personal_use` flags the regulatory line: before any public release, swap the source to **BoE (bond
+  TR from yields) + a fully-licensed equity total-return / dividend series**, or license DMS, or drop the shipped
+  historical numbers.
+  - **⚠️ As built (2026-07-01), the ONS-inflation extension was NOT added:** `HistoricalReturns` embeds the JST
+    series **only, ending 2020** — so 2021–2024 (including the 2022–23 inflation shock, highly relevant to a
+    sequence-risk backtest) is **absent**, and past-2020 horizons revert to the run's expected-return assumptions.
+    Recorded here as the state of the build; a backlog item (PLAN "Delta-research backlog") is to either extend the
+    series with ONS CPI (own `source` + `verified_on`) or keep it JST-only and say so on the panel.
 - **Alternative if Rob wants strictly OGL even now:** BoE bond total return from yields + BoE equity *price*
   index plus a **documented dividend-yield assumption** (an approximation, flagged) — fully shippable but less
   accurate than JST's measured dividends.
@@ -84,7 +89,8 @@ historical path** of returns/inflation into the same `PathProjector` (which alre
 
 - **ONS-refresh script: fully ONS.** ✅ The engine's `CohortLifeTable` maps directly onto **ONS national life
   tables** (annual, 3-year rolling) and **"Past and projected period and cohort life tables"** (biennial,
-  currently 2020-based; a 2022-based release exists), downloadable as xlsx by single year of age 0–100 under
+  currently **2024-based, published 2026-05-15 — which is what the engine embeds**; see docs/MORTALITY.md),
+  downloadable as xlsx by single year of age 0–100 under
   OGL. Build: ingest the ONS cohort qₓ, diff against our current table, surface the changes. No non-ONS source
   needed.
 - **Care-cost stochasticity: only *partly* ONS — this is a genuine gap.** ONS supplies useful pieces but **not

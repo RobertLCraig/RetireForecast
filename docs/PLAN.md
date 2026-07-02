@@ -73,6 +73,13 @@ The engine never touches the container, DB, or the clock. Inject `TaxYearConfig`
 
 ## Data model (canonical shape)
 
+> **⚠️ Original planning shape (2026-06) — [DATA-MODEL.md](../DATA-MODEL.md) is the current canonical
+> description.** Since this was written: the `builder_state` storage inversion + delta-child what-ifs
+> replaced `encrypted_payload` (households table dropped); ExpenseProfile gained 3-tier line items with
+> conditions (`always`/`while_owning_home`/`while_mortgaged`/`while_working`); Property gained `is_let`,
+> the mortgage-maturity event and `CgtHistory`; DcPension gained `AnnuityPurchase` and the consumed
+> `growthAssumptionOverride`/`earliestAccessAge`. Build against DATA-MODEL.md, not this sketch.
+
 Units everywhere: money = integer **pence**; rates = a `Percent` value object (basis points, no float drift); dates = ISO `Y-m-d`; **ages derived from DOB + a reference date, never stored**. Legend: 🔒 = encrypt at rest, `?` = nullable.
 
 - **Household** — id, name, region enum(`england_wales` default / `scotland` / `ni`), persons (1–2), primary_residence_id?, created_by_user_id? (null = anonymous).
@@ -113,7 +120,7 @@ One immutable `TaxYearConfig` per tax year via `TaxYearRegistry::for('2025-26')`
 
 **SDLT (buying the cheaper home, England/NI):** 0% to £125k, 2% to £250k, 5% to £925k, 10% to £1.5m, 12% above (from 1 Apr 2025) ✅; **+5% additional-property surcharge** if they own two homes momentarily (buy before sell), reclaimable within 36 months, model the timing ✅. SDLT bands + 5% surcharge ✅ (verified 2026-06-27). Scotland/Wales use LBTT/LTT (different taxes; out of v1 scope, region resolver throws), swap by region, ship SDLT first.
 
-**Means-tested benefits:** Pension Credit capital, first **£10,000 disregarded**, then **deemed income £1/wk per £500** (pensioner tariff, not the working-age £6,000/£250 rule), **no upper limit for PC itself** ✅; **HB / Council Tax Support: same tariff but £16,000 upper cut-off** ✅; **downsizing converts an exempt home into assessable capital** (the killer interaction, warn on crossing £16,000) ✅; deprivation-of-capital surfaced as information only, never a recommendation. Capital tariff (£10k disregard, £1/wk per £500, £16k HB/CTS cut-off) ✅ verified 2026-06-27. (The PC weekly Guarantee Credit *payment* rates are not modelled — the engine models only the capital-tariff interaction, not the benefit award — so there is no GC figure to verify.)
+**Means-tested benefits:** Pension Credit capital, first **£10,000 disregarded**, then **deemed income £1/wk per £500** (pensioner tariff, not the working-age £6,000/£250 rule), **no upper limit for PC itself** ✅; **HB / Council Tax Support: same tariff but £16,000 upper cut-off** ✅; **downsizing converts an exempt home into assessable capital** (the killer interaction, warn on crossing £16,000) ✅; deprivation-of-capital surfaced as information only, never a recommendation. Capital tariff (£10k disregard, £1/wk per £500, £16k HB/CTS cut-off) ✅ verified 2026-06-27. **The Guarantee Credit award is now modelled (2026-07-01):** `Benefits\PensionCreditCalculator` computes it per year inside `PathProjector` (SMG single/couple + Severe Disability addition, sourced weekly rates per tax year in `TaxYearRegistry`) — those figures join the freshness/verification pass.
 
 **IHT (toggle):** NRB £325,000 ✅ (frozen to 5 Apr 2031), RNRB £175,000 ✅ (frozen to 5 Apr 2030) with £2m taper ✅, spousal transfer (up to £1m for a couple) ✅ structure (all verified 2026-06-27); **unused pension pots enter the IHT estate from 6 April 2027** ✅ — **now enacted** (Finance Act 2026, Royal Assent 18 Mar 2026), upgraded from "proposed"; model behind the toggle.
 
@@ -127,11 +134,11 @@ One immutable `TaxYearConfig` per tax year via `TaxYearRegistry::for('2025-26')`
 
 - **Real terms throughout** (user thinks in today's money), but model **inflation as its own stochastic series** to convert to nominal for the tax interaction: frozen nominal thresholds mean **real fiscal drag** is a modelled feature, not a footnote.
 - **Correlated annual real returns, lognormal compounding** (Cholesky on the correlation matrix). Annual step.
-- **Joint-life mortality:** sample each partner's age of death per path from **ONS cohort life tables** (by sex/age), independent by default (a documented "broken-heart" correlation option later). Household runs until the **last survivor** dies (hard cap age 105). On first death: one State Pension stops, DB survivor fraction kicks in, spend drops by `survivor_spend_factor`, single-person council-tax discount applies. So each path carries both a return sequence and a mortality outcome.
+- **Joint-life mortality:** sample each partner's age of death per path from **ONS cohort life tables** (by sex/age), independent by default (a documented "broken-heart" correlation option later). Household runs until the **last survivor** dies (hard cap age 105). On first death: one State Pension stops, spend drops by `survivor_spend_factor`, and **the survivor inherits the deceased's assets** (cash/ISA/GIA with CGT base-cost uplift + remaining pension pot — `PathProjector::settleEstates`, the 2026-07-01 stranded-wealth fix that changed every couple forecast). *Not yet modelled despite the original sketch:* the DB survivor fraction (`spousePensionFraction` is collected but unconsumed — see DATA-MODEL Known divergences) and any council-tax single-person discount (arguably folded into `survivor_spend_factor`). So each path carries both a return sequence and a mortality outcome.
 - **Defaults are sourced, never invented.** Asset classes (global equities, gilts/bonds, cash) and inflation each carry expected real return, volatility and a `source` string, editable in admin/UI. Presets: FCA-derived (default), DMS/EGS-derived, OBR/BoE-inflation-blended. A **compare-assumptions** view overlays them, each labelled with its source and method.
 - **Outputs:** 10/25/50/75/90 percentile fan; **success probability** reported two ways (essentials always met; full target met); **depletion-age distribution** (at what age money runs out across failing paths); a dedicated **sequence-risk** surface (the p10 path's first-five-years drawdown), not buried.
 - **Reproducibility:** seeded PRNG (`\Random\Randomizer` with `Mt19937(seed)`). Seed set gives byte-identical results for golden-master tests and shareable runs; seed always recorded.
-- **Performance, no silent long-runs:** preview ~1,000 paths synchronous (~1–2s, still shows progress); full 10,000 paths queued (Horizon), chunked 10×1,000 so progress is granular and cancellable. UI shows live progress via Livewire `wire:poll` (~1s) for v1, with a cancel; Reverb/Echo push is a later upgrade. Pre-draw the random matrix; convert to `Money` only at year boundaries.
+- **Performance, no silent long-runs:** preview ~1,000 paths synchronous (~1–2s, still shows progress); full 10,000 paths queued (database queue + worker; Horizon dropped — see Locked decisions), chunked 10×1,000 so progress is granular and cancellable. UI shows live progress via Livewire `wire:poll` (~1s) for v1, with a cancel; Reverb/Echo push is a later upgrade. Pre-draw the random matrix; convert to `Money` only at year boundaries.
 
 ---
 
@@ -183,12 +190,10 @@ the phase it belongs in so the normal build absorbs it rather than treating it a
   reusable `<x-disclaimer.result>` + `<x-signpost>` components on every result; a disclaimer prefix on
   the CSV export. The interpretation toggle is built too (see §Regulatory). Stock `welcome.blade.php`
   deleted (unused; tripped the lint).
-- ⬚ **Surface the headline outputs still missing from the results page (step 4 — STILL OPEN).** (a) The
-  **lump-sum tax-shock panel** — headline output #1, already computed by
-  `ScenarioForecaster::deterministic()`'s first-year tax, just not rendered yet; (b) the
-  **compare-assumptions overlay** — a run per assumption set feeding a third chart + accessible table
-  (`ScenarioForecaster` already takes the set, so it is a loop over sets). Do these when the results
-  page is next touched.
+- ✅ **Surface the headline outputs still missing from the results page (step 4) — BUILT.** (a) The
+  **lump-sum tax-shock panel** (`App\Forecast\LumpSumTaxShock`, live on the results page) and (b) the
+  **compare-assumptions overlay** (`AssumptionComparison`) both shipped — see HANDOVER Current state
+  "Done — app layer".
 - ✅ **"No silent failure" hardening — BUILT (steps 3–4).**
   - *GDPR export* now includes the user's `simulation_runs` + `results` (decrypted, portable); erase
     cascades (user_id FK on households/scenarios/simulation_runs, results via simulation_run_id); tests
@@ -197,12 +202,12 @@ the phase it belongs in so the normal build absorbs it rather than treating it a
     timeout / OOM / killed worker reaches a terminal status instead of stranding the page on `Running`.
   - *Owner-scoping:* `ScenarioResults::currentRun()` now scopes by `user_id`, so a forged `$runId`
     cannot load another user's run.
-- ⬚ **Accessibility + form UX, against the mandatory WCAG 2.1 AA bar (STILL OPEN — step 6 a11y audit).**
-  The scenario builder's field errors are not programmatically associated (`aria-describedby` /
-  `aria-invalid` missing on invalid inputs), the top-of-form error list has no focus-to-first-error,
-  Save has no double-submit guard / loading state (a fast double-click creates two forecasts), and
-  there is no `endAge ≥ startAge` cross-field check or draft-save on the long form. Do a focused a11y
-  pass and wire axe/Pa11y in CI per step 6.
+- ✅ **Accessibility + form UX (the itemised defects) — BUILT.** The scenario builder now programmatically
+  associates field errors (`aria-invalid` + `aria-describedby` on invalid inputs), focuses the error summary on
+  a validation failure, guards Save against double-submit (`wire:loading.attr="disabled"` + "Saving…"), enforces
+  the `endAge ≥ startAge` cross-field rule (`endAfterStart`) and auto-saves the long-form draft. The Pa11y CI
+  scaffold is wired. **What genuinely remains** is the **browser a11y audit to a public bar over the post-06-29
+  panels** (What's-next #1/#2) — not these form-UX defects.
 
 ### External review triage (2026-06-25) — post-v1 enhancement backlog
 A second-opinion review (MS Copilot, from the doc set) was triaged. Much of it re-surfaced our own
@@ -212,28 +217,30 @@ rate-limiting is in `FortifyServiceProvider`; the first-run acknowledgement + ba
 the planned compliance step). The genuinely new, aligned items, kept as a post-v1 backlog:
 
 - **Outputs that exploit engine results we already compute (cheap, high adviser-value):** a
-  **cashflow timeline table** (income-by-source / spend / net / balance straight from `YearResult`);
+  **cashflow timeline table** ✅ **DONE** (the cashflow ladder, Phase C3 + drill-down #3);
   a **longevity distribution** visual (median / p10 / p90 last-survivor age, P(live past 95) from the
   joint-life sampler) ✅ **DONE**; a **stress-test panel** feeding historical sequences (1929, 1973–74,
   dot-com, GFC) through the engine ✅ **DONE (2026-07-01** — historical sequence backtest on the JST
-  Macrohistory total-return data; DECISIONS 2026-07-01); **what-if sliders** ✅ **DONE**.
+  Macrohistory total-return data; DECISIONS 2026-07-01); **what-if sliders** ✅ **DONE, then superseded
+  2026-07-01** by the save-as-a-what-if "Build a what-if" control (DECISIONS 2026-07-01 "What-ifs are
+  the only way").
 - **Modelling depth (v2 scope):** ✅ **an annuitisation option — DONE (2026-07-01).** Partial / level /
   escalating (RPI/CPI), single- or joint-life, priced off a **user-input rate** (default a sourced ~7.2%),
   not the mortality tables — a real quote is age/health-specific and belongs to the user, so no fabricated
   rate table lives in the engine (DECISIONS 2026-07-01). ✅ **care-cost stochasticity — DONE
   (2026-07-01):** a sampled late-life care spell in the Monte Carlo (sourced probability / duration /
   self-funder fee — Dilnot/PSSRU/LaingBuisson), opt-in, surfaced as a care-risk panel (DECISIONS 2026-07-01).
-- **Neutral diagnostics — adopt ONLY behind the `OutputPhrasing` lint:** implied per-year withdrawal
-  rate (as a fact, **not** "compare to a safe 3–4% range" — that reads as a target), critical yield,
-  replacement rate, a neutral narrative-report generator, a capacity-for-loss *definitions* panel.
-  These edge toward the advice line, so in the public/neutral view they stay strictly "here is the
-  number / the definition"; their directive form (e.g. withdrawal-rate-vs-range) is available only via
-  the admin-granted interpretation toggle (§Regulatory/compliance, DECISIONS 2026-06-25).
-- **Hardening + process (cheap):** a **Content-Security-Policy** header (charts are embedded; none set
-  today); an optional tamper-evident SHA-256 over each run's assumption snapshot + seed + input DTO
-  (reproducibility/audit); a build-time **source-freshness** check (fail/warn if any `verified_on` is
-  older than N months) extending the gov.uk verification pass; an **annual ONS mortality refresh**
-  ingest script + diff; caching deterministic forecasts by input hash (pure function).
+- ❌ **Neutral diagnostics — SUPERSEDED/declined (2026-06-30).** The academic diagnostics list (implied
+  withdrawal rate, critical yield, replacement rate, narrative generator, capacity-for-loss panel) was
+  replaced by the **per-year surplus/shortfall classification + configurable safety floor** (Rob found
+  the diagnostics framing unhelpful — DECISIONS 2026-06-30 "per-year surplus/shortfall + safety floor").
+  Do not build these.
+- **Hardening + process (cheap):** ✅ a **Content-Security-Policy** header — **DONE** (Phase D Tier-2,
+  `config/security.php`); ✅ the build-time **source-freshness** check — **DONE (2026-06-30,**
+  `figures:freshness`); ✅ the **annual ONS mortality refresh** ingest + diff — **DONE (2026-07-01,**
+  `mortality:refresh`). Still open (HANDOVER What's-next #4 flags both low-value/confirm-worth-it):
+  the optional tamper-evident SHA-256 over each run's snapshot + seed + input DTO, and caching
+  deterministic forecasts by input hash.
 
 **Declined (over-engineering or misaligned for a local-first single-user tool) — see DECISIONS 2026-06-25:**
 per-row/envelope encryption, a native (Rust/WASM/SIMD) Monte Carlo accelerator, and automated gov.uk
@@ -249,12 +256,12 @@ stochastic engine + HMRC tax + housing). The gaps are a **decumulation-policy + 
 sliders, annuitisation, care-cost stochasticity and the neutral diagnostics — this study **validates and
 sharpens** them; the items below are the net-new ones), ranked by impact × on-brand fit:
 
-- **Tax-efficient withdrawal sequencing across wrappers (highest value, most on-brand).** Optimise the draw
-  order across **ISA vs SIPP/DC pension vs GIA** (+ CGT-aware GIA disposals, the 25% PCLS) and a **"fill the
-  band"** lever (draw to the personal-allowance / basic-rate ceiling; realise gains to the CGT AEA; steer
-  around the £100k–£125,140 PA taper). **Show the lifetime-tax £ delta** of the choice (RightCapital/Timeline
-  pattern). Even pro tools mostly let the adviser *specify* the order; optimising + quantifying it is white
-  space. Uses the HMRC engine we already have.
+- ✅ **Tax-efficient withdrawal sequencing across wrappers — CORE SHIPPED (2026-07-01, Lane C).** The
+  `FillBands` strategy (pension to the PA → GIA gains to the CGT AEA → cash/ISA → basic-rate pension →
+  the rest, Pension-Credit-aware) + the results-page **lifetime-tax £-delta** panel are built —
+  see **[docs/PLAN-withdrawal-sequencing.md](PLAN-withdrawal-sequencing.md)** + DECISIONS 2026-07-01
+  (Lane C). Remaining from that spec: **#5 planner-timed PCLS** and **#6 the optimiser** (ready-to-execute
+  plan in the spec, gated on two small modelling calls from Rob).
 - **Dynamic / guardrail withdrawal strategies.** Add Guyton-Klinger (±20% bands → ±10% adjustments) and a
   Vanguard-style +5%/−2.5% collar; ideally **Income Lab's risk-based guardrail** (target spend = a percentile
   of *our own* Monte-Carlo sustainable-spend distribution; recompute yearly; asymmetric raise-fast/cut-slow) —
@@ -266,10 +273,12 @@ sharpens** them; the items below are the net-new ones), ranked by impact × on-b
   cap, LTV-by-age gates, drawdown reserve vs lump sum, **with the IHT-estate interaction**. No holistic tool
   integrates equity release; clearest unoccupied position in the market. Builds on the existing
   buy/rent/stay machinery + IHT engine.
-- **Sharpen the planned stress-test panel** to the FCA TR24/1 **four named tests** (start-of-retirement crash,
-  reduced real returns, lower-percentile path, higher withdrawals) and a UK **"retire into a bad year"**
-  historical-sequence mode (block-bootstrap MC as a refinement); make care-cost stochasticity
-  longevity-correlated (+ an NHS Continuing Healthcare branch, the spousal home-disregard).
+- **Sharpen the stress-test panel** (the panel itself + the "retire into a bad year" historical-sequence
+  mode are ✅ **BUILT 2026-07-01** — JST backtest over ~140 start years; and care-cost stochasticity is
+  already longevity-correlated, the spell lands at end of life off the sampled death age). Genuinely
+  open: the FCA TR24/1 **four named tests** (start-of-retirement crash, reduced real returns,
+  lower-percentile path, higher withdrawals), **block-bootstrap MC** as a refinement, and the care
+  means-test refinements (an NHS Continuing Healthcare branch, the spousal home-disregard).
 - **Framing/legibility on output we already compute:** a single **success-probability gauge** (+ first
   shortfall year + a Timeline-style **longevity-adjusted success rate** blending survival × sustainability),
   a **Sankey** income→tax→wrappers→spend, **reverse goal-solving** ("what pot/age/contributions hit £X for
@@ -280,15 +289,100 @@ sharpens** them; the items below are the net-new ones), ranked by impact × on-b
   it conflicts with the local-first posture. A **deep-link to the gov.uk State Pension forecast** and a future
   **Pensions Dashboard** import (consumer launch ~2027) are the pragmatic substitutes.
 
+### Delta-research backlog (2026-07-02) — communication, household, adviser outputs, a11y, methodology
+A second research wave over the five topics the competitive scan left as residuals/gaps. Full findings +
+sources + the adversarial source-check: **[docs/RESEARCH-delta-2026-07-02.md](RESEARCH-delta-2026-07-02.md)**.
+Conclusion: the engine is (again) not the gap — these are **presentation, disclosure and a small scope**
+items. Ranked by value × on-brand fit. **All stay education/guidance-side (banned-phrasing lint); directive
+forms behind `compliance.personal_use`.**
+
+- **Data-integrity fixes first (silent drops found by the 2026-07-02 doc audit — the same class the
+  reconciliation/completeness rule exists to kill; see DATA-MODEL "Known divergences").** Each is a live
+  builder input read by **zero** engine code, so a user's entry silently vanishes:
+  - **DB survivor pension (highest).** `DbPension::spousePensionFraction` is collected/validated/mapped but
+    never paid — on the member's death the survivor gets **£0 DB income** regardless of the entered fraction
+    (the annuity's analogous `survivorFraction` **is** consumed). Wire it in the death/settle path (pay
+    `accruedAnnualPension × spousePensionFraction` to the survivor), **with a per-source completeness test**;
+    fix the overclaiming `DbPension` docblock + the builder "Survivor fraction (%)" hint. Until then it is a
+    known limit.
+  - **Per-person salary growth.** `Person::salaryGrowth` is a live input; the engine always uses the
+    assumption set's figure. Wire as a per-person override (fall back to the set), like the 2026-07-02
+    per-asset overrides, + a completeness test — or remove the field.
+  - **Lower-impact:** `DbPension::commutationLumpSum`/`commutationFactor` (model the lump-sum-for-income
+    trade-off, or remove); `Property::ownershipShare` and `Person::niCategory` (both idle). Decide
+    wire-or-remove per field.
+- **User-facing copy fixes (cheap; the copy-audit cluster — trust depends on copy matching the engine).**
+  The two that actively mislead: the **"Survivor fraction" field** (above) and the **care-off silence** — care
+  risk is opt-in/default-off, so by default nothing tells the user a ~1-in-4, six-figure tail is excluded from
+  "will the money last?" (add one line on results + PDF when off; the PDF never mentions care even when on).
+  Lower: the **stress-test copy** ("actual returns that followed") should say years past 2020 revert to
+  expected returns (the early sequence-critical years are always historical); the **fan chart** carries no
+  house-price/salary uncertainty (deterministic in the MC) — say so; footnote the **longevity panel** (ONS
+  50–100, >100 extrapolated, cap 110) and the **emergency-tax panel** (models the magnitude, PAYE can differ
+  by a few pounds); the **"Tax-free (25%)"** card should read "up to 25%" (LSA cap / drawdown = £0); the
+  **disclaimer** should acknowledge the labelled advice panel in personal-use mode; the **"all three run and
+  compared"** builder copy should match the single-strategy report (compare on Compare); and pull
+  **hardcoded figures** (10,000 paths, care fees, 1871–2020, CGT rates) from their single sources.
+- **Uncertainty-communication upgrades** (reuse figures already computed): a **natural-frequency headline +
+  10×10 icon array** ("12 of 100 futures run short", never "1 in 8"); **consequence metrics** (median
+  depletion age + the £/month cut that fixes it — a solver over the engine, directive form gated);
+  **mortality-weighted ruin risk** ("alive **and** out of money", Timeline/Rich-Broke-Dead); **harden the fan
+  chart** vs deterministic construal (in-plot band labels + "1-in-10 fall below the fan" + optional sample
+  paths). **Record the deterministic-leads decision** (COBS 13.5 + PRIIPs removal) so a redesign can't invert
+  it into a public-release problem.
+- **Third adult contributing to upkeep (Rob's back-burner scope ask — model without full third-person
+  planning).** A **household-owned `BoardContribution`** income stream with a three-way tax enum
+  (`family_cost_sharing` non-taxable · `rent_a_room` £7,500/£3,750 exemption, excess taxable · `taxable_rent`)
+  + a lightweight **`HouseholdMember`** presence record (flags only, no mortality/pension). Wire the two UK
+  interactions that bite for a pensioner household: suppress the **25% council-tax discount** and the **PC
+  Severe Disability addition** while a non-disregarded member is present; family board money is not PC-means-
+  test income. Reconciliation **in reverse**: a third adult must be able to **reduce** entitlements. Same
+  shape later serves **dependent children with time-limited costs**. **No third full planning subject** — the
+  couple ceiling stands (market-unanimous; DECISIONS 2026-07-02).
+- **User-facing methodology layer (market-unique trust signal).** A single **`/methodology`** page (intent →
+  TOC by component → plain-English + expandable technical + concrete values → a "what we don't model" list →
+  an **auto-rendered sources-and-dates table** from the registries → FAQ → regulatory posture); the results
+  panels deep-link into it. Plus a **"how we test this"** section (reproduces HMRC examples; completeness;
+  reconciliation — no competitor makes this claim) and a **public assumptions changelog** (dated lines from
+  registry diffs). Adopt the UK statutory disclosure vocabulary (SI 2013/2734 Sch 6) as lint-safe boilerplate.
+- **Adviser / Pension-Wise output pack** (turns the PDF from *results* into a conversation-starter): add the
+  **five COBS 9.4.10G drawdown risk warnings**; a **Plan Version** id on the cover; **real-terms net-of-tax**
+  page labels + a visible fees line; **per-objective funding lines** ("essentials met in N of M years");
+  an **assumptions annex** (value + source + `verified_on` + altered-from-default markers); a
+  **scenario-comparison** section with a fixed interpretation block + sub-100% success figure; a **Pension
+  Wise fact-find appendix** (RIAAT 8 areas + prep checklist + plan-specific "questions to ask"); a
+  **version-to-version change log**. Later: a **modular pack** (self / adviser / full) and — personal-use mode
+  only, behind the flag — a suitability-style narrative.
+- **Accessibility + mobile to a public bar.** Raise the target to **WCAG 2.2 AA** (the operative UK baseline;
+  encode the six new criteria as a manual checklist — axe/Pa11y don't cover them); publish a GOV.UK-style
+  **accessibility statement**; add a **body-text message description** per chart (keep the table+CSV); **stay
+  responsive-web, desktop-recommended setup** but make the results/monitoring surface work on mobile and
+  **replace the results nav hidden on mobile** (no market precedent for hiding it); restructure the wizard
+  toward **GOV.UK question-pages** (one topic per page + check-answers — mobile-capable for free, satisfies
+  2.2 Redundant Entry); run **one manual assistive-tech pass** before release.
+- **Stress-test data completeness (from the technical-doc audit).** `HistoricalReturns` embeds JST **only,
+  ending 2020** — 2021–2024 (incl. the 2022–23 inflation shock) is absent; past-2020 horizons revert to
+  expected returns. Either extend with **ONS CPI** (own `source` + `verified_on`) or keep JST-only and say so
+  on the panel + in DECISIONS.
+
 ### Forced-housing-event workstream (2026-06-30) — from the V2 real-couple pressure-test
 Driving the engine against a real forced-mortgage couple (a BTL they live in, due for redemption and can't refinance;
 income ≈ two State Pensions + DLA + one small DC pot) found the *core* already answered (buy-vs-rent on identical seeds,
 partial-PRR CGT, income-floor + safety floor, longevity) but four decision-critical gaps. Rationale +
-the couple's figures: DECISIONS 2026-06-30 (forced-mortgage pressure-test; input-expectation clarity). Build order
-(value-first); each lands green with its own DECISIONS + DATA-MODEL note:
+the couple's figures: DECISIONS 2026-06-30 (forced-mortgage pressure-test; input-expectation clarity).
 
-- **(A) Means-tested benefits in the live forecast.** Today `Benefits\CapitalAssessment` (capital tariff + £16k
-  cliff, verified 2026-06-27) is a standalone snapshot, **never wired into `PathProjector`**. Build a sourced
+> **✅ ALL FOUR TRACKS BUILT (2026-06-30 → 07-01, Lane B)** — see DECISIONS 2026-06-30/07-01 +
+> DATA-MODEL "Forced-housing" notes. (A) Pension Credit (SMG + Severe Disability addition, sourced weekly
+> rates) is wired into `PathProjector` as the `means_tested_benefit` income source; (B) the
+> mortgage-maturity event + the payment-stop are built ([PLAN-mortgage-payment-stop.md](PLAN-mortgage-payment-stop.md),
+> BUILT); (C) feasibility flags are surfaced by `ResultPresenter`; (D) the pay-frequency selector + the
+> first-class tax-free `DisabilityBenefit` income type are built (the income-ends-on-sale sub-item was
+> **declined** — single-property model, DECISIONS 2026-07-01). **The one remaining piece is the specced
+> in-place forced-sale what-if** ([PLAN-in-place-forced-sale.md](PLAN-in-place-forced-sale.md), decisions
+> resolved, ready to build). The original build-order spec follows as the build record:
+
+- **(A) Means-tested benefits in the live forecast.** ~~Today~~ (at time of writing) `Benefits\CapitalAssessment` (capital tariff + £16k
+  cliff, verified 2026-06-27) was a standalone snapshot, **never wired into `PathProjector`**. Build a sourced
   `Benefits\PensionCreditCalculator` (Guarantee Credit = top assessable income up to the Standard Minimum Guarantee;
   + **Severe Disability / Carer additions**; tariff income from capital reuses `CapitalAssessment`); add it to the
   per-year net-cash assembly as a new `YearResult` income source **`means_tested_benefit`**, recomputed each year as
@@ -501,8 +595,9 @@ explanation. Priority order below.
 gains `propertyCosts` + `employmentCosts` markers; the **sell variants build with `withoutPropertyCosts()`** (so the
 mortgage/service charge stop when the home is sold) and `PathProjector` **drops the commute when no one earns** (so
 it stops at retirement); `HousingComparison::variantInputs()` is the new single source of the variant households
-(also for the #6 ladder); PLSA excludes property costs too. Reconciliation-tested. **Still to build:** the **builder
-UI** for the per-line override (auto-classification gives the defaults today). The original analysis follows.
+(also for the #6 ladder); PLSA excludes property costs too. Reconciliation-tested. ✅ **The builder UI for the
+per-line cost-condition override was built 2026-06-30** (the "Applies" select — DECISIONS 2026-06-30; agrees with
+the revised-sequencing item 3 list below). The original analysis follows.
 `expenseProfile` is shared by all three housing variants (`HousingComparison::withHousing` passes it through
 unchanged) and `PathProjector` charges `targetAnnualSpend()` in every variant. So costs that should depend on a
 *choice* or a *life phase* are charged unconditionally:
@@ -528,9 +623,10 @@ unchanged) and `PathProjector` charges `targetAnnualSpend()` in every variant. S
 "When the big events happen"; DECISIONS 2026-06-29 "life-event milestones"):** `ResultPresenter::milestones` shows a
 dated/aged list of *when* each person **retires**, takes their first **pension** withdrawal, their **State Pension
 starts** (SPA from `StatePensionAge`), and their **modelled death** — the death from a new single-source engine
-field `ForecastResult::deathCalendarYears` (birthYear + death age). **Still to do:** the **house-sale** marker (a
-variant transform — lands with the per-variant ladder, #6) and **markers on the ladder + charts** (the list is
-text-only for now). The original spec follows. Major events — each person
+field `ForecastResult::deathCalendarYears` (birthYear + death age). **The "still to do" half landed 2026-07-01:**
+the house-sale marker ships with a sell strategy, and the charts moved to the top of the report **with milestone
+annotations** (the Compare burndown gained the same annotations) — DECISIONS 2026-07-01 "What-ifs are the only
+way". The original spec follows. Major events — each person
 **retires**, **State Pension starts** (SPA), planned **pension access / lump sum**, **house sale**, each person's
 **modelled death**, and the cost changes they trigger (commute stops, mortgage ends) — all happen inside the
 projection but are invisible on screen. **Fix:** a milestones layer — a dated/aged list plus markers on the
@@ -581,7 +677,11 @@ wrong for offsetting reasons — the exact failure mode that destroys trust in t
 ~£37k of planned spend." Factual, milestone-anchored, lint-safe (guidance, never a recommendation).
 
 **6. [LEGIBILITY] Per-strategy cashflow ladder — show the year-by-year differences by housing strategy.** ✅ **Built
-(2026-06-29; DECISIONS 2026-06-29 "Built #6"):** `ScenarioForecaster::deterministicVariants()` runs each strategy
+(2026-06-29), then the report UI superseded 2026-07-01:** the results-page **strategy selector was removed** — the
+individual report is now **single-strategy** (the ladder shows the scenario's own variant, labelled) and cross-strategy
+comparison lives on **Compare** via variant what-ifs (DECISIONS 2026-07-01 "What-ifs are the only way"). The
+per-variant engine projection (`deterministicVariants` off `HousingComparison::variantInputs()`) survives and drives
+Compare. **Original build record (2026-06-29; DECISIONS 2026-06-29 "Built #6"):** `ScenarioForecaster::deterministicVariants()` runs each strategy
 through `DeterministicForecaster` on the variant household + settings from **`HousingComparison::variantInputs()`**
 (the *same single source* the Monte Carlo comparison runs, so they can't drift; `stay_put` == the old
 `deterministic()`). The results page gained a **strategy selector** driving the ladder + its milestones (default =
@@ -635,11 +735,13 @@ per-year spend — pending his browser sign-off. His browser pass then set the r
      a custom set stored as a **sparse `assumptionOverrides` delta** (engine `AssumptionSet::with*` + app
      `AssumptionOverrides` + applied once in `ScenarioForecaster::assumptions()`; results panel labels it
      *customised*). Reconciliation-tested. See DECISIONS 2026-06-29.
-   - **[next, in order]** live in-builder preview · **age of death / longevity-lever UX** (surface the existing
-     per-person lever + show the modelled death year) · decomposed editable **cost components** (estate agent +
-     legal/conveyancing + EPC/removals) · the **per-line cost-condition override UI** (#1's remaining piece) ·
-     real-time cost toggles (#7).
-4. **Buy-vs-rent as a deliberate Compare / what-if** (not baked into every report) + the per-option **#5** narrative.
+   - ✅ **All five follow-ons built (2026-06-30):** live in-builder preview · age-of-death / longevity-lever UX
+     (modelled death year beside the lever) · decomposed editable cost components (agent + legal + EPC/removals,
+     %/£ toggles) · the per-line cost-condition override UI (#1's remaining piece) · the per-line include/exclude
+     toggle (#7's real-time cost toggles). See DECISIONS 2026-06-30 + HANDOVER Current state.
+4. ✅ **Buy-vs-rent as a deliberate Compare / what-if — BUILT (2026-06-30,** one-click variant what-ifs + per-variant
+   Compare**)**, with the per-option **#5** narrative shipped in advice mode as `Interpretation::compareNarrative`;
+   then sharpened by the 2026-07-01 single-strategy-report restructure (DECISIONS 2026-07-01).
 
 ### Statement-driven onboarding + document import (2026-06-28) — PARKED, post-v1
 Rob's ask: let the wizard **ingest uploaded documents** (bank statements, credit-card statements,

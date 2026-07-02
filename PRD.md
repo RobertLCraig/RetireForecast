@@ -4,7 +4,7 @@
 > consequences and run-out-of-money risk visible for an older couple.
 
 **Stage:** active
-_Last updated: 2026-06-29_
+_Last updated: 2026-07-02_
 
 Full implementation plan and scope source of truth: [docs/PLAN.md](docs/PLAN.md). This PRD
 is the orientation layer; the plan holds the exhaustive data model, UK rule set, Monte Carlo
@@ -79,22 +79,19 @@ lump-sum question and longevity risk made explicit.
       no value changed; the April-2027 pensions-in-IHT change is now enacted (Finance Act 2026). See
       DECISIONS 2026-06-27. (The ONS mortality + FCA/DMS assumption *sources* sit at their 2026-06-24
       sign-off — a separate review, not this gov.uk statutory pass.)
-- [ ] **Demo couple's anonymised figures** supplied by Rob, entered via the UI (not hardcoded),
-      once the scenario builder exists.
-- [ ] **Everything user-editable in the UI** (Rob's 2026-06-29 direction) — investment growth, inflation,
-      house/rent growth, **age of death**, and the selling-cost components become user-editable, with the sourced
-      presets as starting points that derive a tweakable custom set + live preview; and **buy-vs-rent becomes a
-      deliberate what-if/Compare** rather than baked into every report. Sequenced after the #1 contingent-cost fix
-      (option b). See DECISIONS 2026-06-29 "everything user-editable" + docs/RESEARCH-editable-assumptions-ux.md.
-- [ ] **Forced-housing-event workstream (2026-06-30)** — pressure-testing the engine on a real forced-mortgage
-      couple (a buy-to-let they live in, redeemed Dec 2026, can't refinance) set four improvements now in build:
-      **(A) means-tested benefits in the live forecast** (Pension Credit Guarantee Credit + the £16k capital cliff +
-      disability additions / DLA passport — today `Benefits\CapitalAssessment` is a standalone snapshot, never wired
-      into `PathProjector`, so the forecast neither credits nor erodes them); **(B) a mortgage-redemption event** (a
-      maturity year + action — refinance / repay-from-capital / forced sale — so "stay put" can't model an
-      impossible perpetual BTL); **(C) feasibility flags** (a buy price above net proceeds is silently floored
-      today; an option needing capital the household lacks should be flagged, not modelled away); and **(D)
-      input-expectation clarity** (a pay-frequency selector, a tax-free-benefit income type, and retirement-age /
-      one-off-scope prompts — the V2 case mis-entered 4-weekly DLA as monthly taxable rental, and monthly rent as
-      annual, inflating the result ~£700k). See DECISIONS 2026-06-30 (forced-mortgage pressure-test;
-      input-expectation clarity).
+- [ ] **Demo couple's anonymised figures** — Rob supplies later, entered via the UI (not
+      hardcoded); field list in docs/PLAN.md "Data Rob supplies".
+- [x] **Everything user-editable in the UI** (Rob's 2026-06-29 direction) — **BUILT 2026-06-29/30**
+      (pending Rob's browser sign-off): the six economic assumptions, the age-of-death lever and the
+      selling-cost components are editable in the builder, deriving a custom set from the sourced presets
+      with a live preview; **buy-vs-rent is a deliberate what-if/Compare** (one-click variant what-ifs)
+      rather than baked into every report. See DECISIONS 2026-06-29/30 + HANDOVER Current state.
+- [x] **Forced-housing-event workstream (2026-06-30)** — **BUILT 2026-06-30 → 07-01** bar one spec.
+      Delivered: **(A) means-tested benefits in the live forecast** (Pension Credit Guarantee Credit with
+      sourced weekly rates + the capital tariff + Severe Disability addition, computed per year inside
+      `PathProjector`); **(B) the mortgage-redemption event** (maturity year + refinance / repay-from-capital
+      action, plus the mortgage-payment-stop); **(C) feasibility flags** (an unaffordable option is flagged,
+      not modelled away); **(D) input-expectation clarity** (pay-frequency selector, tax-free
+      DisabilityBenefit income type). Remaining: the specced **in-place forced-sale what-if**
+      (docs/PLAN-in-place-forced-sale.md — decisions resolved, ready to build). See DECISIONS
+      2026-06-30/07-01.

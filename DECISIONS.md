@@ -3,6 +3,47 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-02 — Docs-only pass: delta research folded in, doc set reconciled to code, household scope decided
+**Decision:** On Rob's ask ("review the project + the improved brief; then update the plan and documentation so we
+can build any features really well"), a two-workflow pass ran (a) a **delta research wave** over the five topics the
+2026-06-30 competitive scan left as residuals/gaps, and (b) a **full doc-set audit** against code. No engine/app
+code was changed — this pass sets up the build. Outcomes:
+- **Household scope decided.** RetireForecast will **not** support a third full **planning subject** — the
+  1–2-person (couple) ceiling stands. This matches the whole market (Boldin is explicitly "one user/couple per
+  plan"; Timeline is main-profile+spouse; ProjectionLab's family account is an unbuilt 239-vote request; Guiide is
+  single-only; even Voyant's extra people are dependants). Throuples / 30+ accumulation planning are **back-burner
+  aspiration**, not scope. **But** Rob's real ask — "model 3 adults contributing to upkeep" — is a **backlog item**
+  served *without* third-person planning: a household-owned **`BoardContribution`** income stream (three-way UK tax
+  enum: family cost-sharing non-taxable · Rent-a-Room £7,500/£3,750 · taxable rent) + a lightweight
+  **`HouseholdMember`** presence record (flags only) that can **reduce** entitlements (the 25% council-tax discount,
+  the PC Severe Disability addition) — reconciliation in reverse. See docs/RESEARCH-delta-2026-07-02.md §2 + the
+  PLAN "Delta-research backlog".
+- **Delta research captured** in **docs/RESEARCH-delta-2026-07-02.md** (uncertainty communication; household
+  composition; adviser/Pension-Wise outputs; accessibility + mobile; methodology disclosure), every load-bearing
+  claim adversarially source-checked, recommendations sized, folded into the PLAN "Delta-research backlog". Load-
+  bearing UK anchors: **WCAG 2.2 AA** is now the operative UK baseline (RF targets 2.1); the FCA's deterministic-
+  leads / stochastic-supplement convention (COBS 13.5) + the scrapped PRIIPs percentile scenarios validate RF's
+  ladder-first layout; the five **COBS 9.4.10G** drawdown risk warnings + **TR24/1** define an adviser output pack;
+  RF's per-figure `source`+`verified_on` provenance already exceeds every public methodology page found.
+- **Silent-drop class re-found (data-integrity).** The doc audit found the same collected-but-unconsumed bug class
+  the 2026-07-02 engine pass fixed for the per-asset overrides, still live in **five** inputs — worst:
+  **`DbPension::spousePensionFraction`** (a survivor's DB pension is silently **£0**; the annuity's analogous
+  `survivorFraction` **is** consumed) and **`Person::salaryGrowth`** (the engine always uses the assumption-set
+  figure). Logged in DATA-MODEL "Known divergences" + the PLAN backlog as the **first** fixes (wire with a
+  per-source completeness test, or remove the input); **not fixed this pass** (docs-only, per Rob).
+- **Doc set reconciled to code.** PRD open questions that shipped (everything-user-editable, the forced-housing
+  workstream) marked resolved; DATA-MODEL entity tables caveated for the five unconsumed fields + three
+  never-materialised fields moved to Known divergences; PLAN DONE/superseded markers corrected (withdrawal-
+  sequencing core shipped, neutral-diagnostics declined, CSP/freshness/mortality-refresh done, the report is
+  single-strategy, a11y form-UX defects built); ASSUMPTIONS/MORTALITY de-staled (runtime editability, the mortality
+  grid-edge behaviour + `mortality:refresh`, the 2024-based ONS release); the stress-test doc records that
+  `HistoricalReturns` embeds **JST only, ending 2020** (the recommended ONS-inflation extension was not built).
+**Why:** the brief overstated "full backlog delivered" and "throuples/30+ support"; grounding both against reality
+before building avoids a fresh agent building the wrong thing, and the research turns "align with real UK tools"
+into a concrete, sourced, sized backlog. Docs-only keeps the green invariant untouched and leaves the actual
+feature builds — with the data-integrity fixes first — for Rob to prioritise. Links: [[data-consistency-reconciliation]],
+[[handover-doc-hygiene]].
+
 ## 2026-07-02 — Review pass: two engine correctness fixes, per-asset overrides wired, and a personal-data scrub + history purge
 **Decision:** A project review (multi-agent audit of the engine + docs) surfaced and fixed the following.
 - **Personal data purged from the repo.** Real figures/names for the V2 couple had leaked into **tracked** files

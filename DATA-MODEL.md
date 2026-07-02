@@ -43,27 +43,37 @@ parsed to exact pence), so a value entered, stored and re-read is identical.
 | dob | date | Y-m-d | no | ages derived, never stored |
 | employment_status | enum | | no | employed \| self_employed \| retired \| not_working |
 | gross_salary | Money | pence/yr | yes | working partner |
-| salary_growth | Percent | bps/yr | yes | |
-| ni_category | string | | yes | |
+| salary_growth | Percent | bps/yr | yes | ⚠️ **collected, not consumed (v1)** — the engine uses the assumption set's `salaryGrowth`; a per-person figure is silently ignored (2026-07-02 doc audit; backlog: wire as a per-person override like the per-asset overrides) |
+| ni_category | string | | yes | ⚠️ **collected, not consumed (v1)** — the NI calculator takes no category |
 | planned_retirement_age | int | years | yes | |
-| state_pension_deferral_weeks | int | weeks | no | default 0 |
+| state_pension_deferral_weeks | int | weeks | no | default 0; **lives on the State pension subtype in code** (`StatePensionEntitlement::deferralWeeks`, consumed) |
 | sex_for_mortality | enum | | no | drives cohort life table |
 
 ### Pension 🔒 (single table, subtype-discriminated by `subtype`)
 Common: id, person_id, subtype (`dc` \| `db` \| `state`).
 
 **DC:** current_value (Money), ongoing_contributions (Money/yr), employer_contributions
-(Money/yr), growth_assumption (Percent?), pcls_taken_to_date (Money, LSA tracking),
-crystallised_value (Money), access_age (int; 55, rising to 57 from Apr 2028),
-intended_withdrawals (WithdrawalPlan[]: kind PCLS/UFPLS/drawdown, amount, age).
+(Money/yr), growth_assumption_override (Percent?, consumed since 2026-07-02 — per-pot growth
+beats the assumption set), pcls_taken_to_date (Money, LSA tracking), earliest_access_age
+(int; 55, rising to 57 from Apr 2028 — gates drawdown since 2026-07-02),
+intended_withdrawals (WithdrawalPlan[]: kind PCLS/UFPLS/drawdown, amount, age),
+annuity_purchase (AnnuityPurchase?, 2026-07-01). (A planned `crystallised_value` field was
+never materialised — see Known divergences.)
 
 **DB:** accrued_annual_pension (Money/yr), normal_retirement_age (int),
 revaluation_basis (enum, pre-retirement), escalation_in_payment (enum, post-retirement,
-distinct from revaluation), commutation_lump_sum (Money?), commutation_factor (ratio?),
-spouse_pension_fraction (Percent?, survivor benefit — matters for joint-life).
+distinct from revaluation — ⚠️ both **collected but the engine applies one smooth inflation
+proxy** regardless; per-scheme bases are a flagged v1 limit), commutation_lump_sum (Money?),
+commutation_factor (ratio? — ⚠️ **both collected, not consumed (v1)**: the commutation
+trade-off is not yet modelled), spouse_pension_fraction (Percent?, survivor benefit —
+⚠️ **collected, not consumed (v1)**: on the member's death the survivor gets **£0 DB income**
+regardless of the entered fraction; 2026-07-02 doc audit, **top backlog fix** — contrast the
+annuity's `survivorFraction`, which IS consumed).
 
-**State:** weekly_entitlement (Money/wk?) or qualifying_years (int?),
-spa_override (int?; normally computed from DOB), triple_lock_assumption (enum).
+**State:** weekly_entitlement (Money/wk?) or qualifying_years (int?), deferral_weeks (int,
+consumed). (Planned `spa_override` and `triple_lock_assumption` fields were never
+materialised — SPA is computed from DOB and the triple-lock factor lives in the projector;
+see Known divergences.)
 
 ### Property
 | Field | Type | Units | Nullable | Notes |
@@ -73,7 +83,7 @@ spa_override (int?; normally computed from DOB), triple_lock_assumption (enum).
 | outstanding_mortgage | Money 🔒 | pence | yes | |
 | is_primary_residence | bool | | no | PRR / capital-exemption flag |
 | ever_let | bool | | no | default false; triggers PRR restriction |
-| ownership_share | Percent | bps | no | default 100% |
+| ownership_share | Percent | bps | no | default 100%; ⚠️ **collected, not consumed (v1)** — a non-100% share is modelled as whole ownership (docs/PLAN-multi-property.md calls it "partly ready") |
 | running_costs | Money 🔒 | pence/yr | yes | maintenance + insurance + council tax |
 | growth_assumption | Percent | bps/yr | yes | |
 
@@ -347,6 +357,18 @@ from the original plan, flagged inline:
   (single-property model — DECISIONS 2026-07-01).
 
 ## Known divergences (to close)
+- **Collected-but-not-consumed fields (2026-07-02 doc audit).** Five inputs are validated,
+  assembled into DTOs and documented above, but read by no engine code — a silent-drop class
+  (see the completeness rule in CLAUDE.md): `DbPension::spousePensionFraction` (**high** —
+  survivor DB income is modelled as £0; the analogous annuity `survivorFraction` IS consumed),
+  `Person::salaryGrowth` (**high** — a live builder input; the engine always uses the
+  assumption set's figure), `DbPension::commutationLumpSum`/`commutationFactor`,
+  `Property::ownershipShare`, `Person::niCategory`. Each row above carries a ⚠️ caveat; fixes
+  are on the PLAN backlog (wire with a per-source completeness test, or remove the input).
+- **Planned fields never materialised:** `DcPension::crystallisedValue`,
+  `StatePensionEntitlement` `spa_override` + `triple_lock_assumption` (SPA computes from DOB;
+  the triple-lock factor lives in the projector). Kept here rather than in the entity tables
+  so the tables describe only what exists.
 - The DTO carries withdrawals on the DC pension; the original Scenario sketch listed
   `withdrawal_decisions` separately. Resolved in favour of the DTO (one source of truth); the
   scenario does not duplicate them.

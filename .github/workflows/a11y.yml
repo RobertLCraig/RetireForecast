@@ -1,7 +1,6 @@
-# Accessibility (WCAG 2.1 AA) CI sweep with Pa11y CI (axe + HTML CodeSniffer).
+# Accessibility (WCAG 2.1 AA) CI sweep with Pa11y CI (axe runner — see .pa11yci.json).
 #
-# This is the CI home for the a11y gate. The project is local-first with no remote
-# today, so this workflow activates the first time it is pushed to a GitHub remote.
+# This is the CI home for the a11y gate; it runs on the GitHub remote (first ran 2026-06-29).
 # To run the same sweep locally instead, see docs/A11Y.md.
 name: a11y
 

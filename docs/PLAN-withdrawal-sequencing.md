@@ -121,8 +121,11 @@ all engine-side and framework-free.
 - **The 60% PA-taper band** (£100k–£125,140): band-filling should treat this as a threshold to step
   *around*, not just the basic/higher boundary. (Matters only for higher earners — may be out of scope
   for the target couple; see Open questions.)
-- **One rate per owner per year** vs straddling the band boundary from exact income — the same bounded
-  simplification already flagged for partial-PRR CGT.
+- **CGT band-straddle — resolved for GIA disposals (2026-07-02):** `PathProjector::cgtOnGain` now splits a
+  GIA gain exactly across the 18%/24% boundary from **exact income** (basic-rate room = band − max(0, income − PA)).
+  The one-rate-per-owner simplification now survives **only** in the partial-PRR home-sale calculator. The live
+  simplification a band-fill planner still inherits is that the CGT band is judged on **non-savings income only**
+  (+ no capital-loss relief).
 - **MPAA** after flexible access caps recycling; the planner must not "fill" beyond it.
 - **Section 24** (if multi-property lands): BTL mortgage interest is a 20% credit, not a deduction —
   rental income occupies bands and must be in the already-taxable figure the planner reads.
@@ -154,21 +157,23 @@ hot file other lanes also touch (Lane A stress-test, Lane B forced-housing). Kee
 enum case + new branches, not a refactor of the existing `TaxEfficient` / `PensionAware` logic), re-check `git`
 before each engine edit, and claim the lane in HANDOVER.
 
-1. **Core — the `FillBands` strategy.** New `DrawdownStrategy::FillBands` + its draw order in `fundShortfall`
+1. ✅ **Core — the `FillBands` strategy — BUILT (2026-07-01, commit `7e79b22`).** New `DrawdownStrategy::FillBands` + its draw order in `fundShortfall`
    (pension→PA, GIA gains→CGT AEA, ISA, pension→basic-rate ceiling, then the rest), **Pension-Credit-aware**
    (skip the free-band pension draw when it would claw back Guarantee Credit; prefer ISA/PCLS). + engine tests
    (band-fill stops at the exact thresholds; the PC-aware path; per-source completeness).
-2. **PA-taper — resolved by the ordering (no code change, 2026-07-01).** The engine already taxes the 60%
+2. ✅ **PA-taper — resolved by the ordering (no code change, 2026-07-01).** The engine already taxes the 60%
    £100k–£125,140 band (`IncomeTaxParameters::taperThreshold`/`taperRate`), so this is a sequencing concern only.
    The FillBands order already draws **all** capital (cash, ISA, GIA) before any higher-rate/taper pension, so taxable
    income is minimised and the 60% band is only ever entered when pension is the sole remaining source — unavoidable,
    nothing cheaper to substitute. So the fill order is inherently taper-optimal; no extra step needed.
-3. **£-delta in Compare.** "Strategy X pays £Y less lifetime tax" (neutral, always) + the advice-gated steer
+3. ✅ **£-delta in Compare — BUILT (2026-07-01, commits `c598381` + `39db68c`).** "Strategy X pays £Y less lifetime tax" (neutral, always) + the advice-gated steer
    (`personal_use`). Reuses Compare's identical-seed runs; reconciliation test (delta == tax(A) − tax(B)).
-4. **PCLS timing.** Let the planner choose when to take the 25% tax-free cash (vs user-specified).
-5. **Search-optimiser (last).** A bounded search over orderings to minimise lifetime tax; flag cost/benefit.
+4. **PCLS timing** (= **#5** in the Decisions numbering used by the handoff below + HANDOVER). Let the planner
+   choose when to take the 25% tax-free cash (vs user-specified).
+5. **Search-optimiser (last)** (= **#6** in the Decisions numbering). A bounded search over orderings to minimise
+   lifetime tax; flag cost/benefit.
 
-Each slice ships alone; stopping after 1–3 already delivers the headline value.
+Each slice ships alone; stopping after 1–3 already delivered the headline value (the core is shipped).
 
 ## Decisions (Rob, 2026-07-01)
 
@@ -189,8 +194,10 @@ Rob chose the **full capability**, so v1 is the whole feature, delivered in the 
 
 ## Implementation plan for a fresh agent — remaining slices #5 (PCLS timing) + #6 (optimiser)
 
-> Handoff written 2026-07-01. Slices 1–4 are **built + committed + green**; #5 and #6 remain. This section is a
-> ready-to-execute plan. Read the whole spec above first (especially Decisions + "Already built"), then this.
+> Handoff written 2026-07-01. Build-order slices 1–3 are **built + committed + green** (core `FillBands`,
+> PA-taper-by-ordering, the £-delta panel); **#5 (PCLS timing) and #6 (optimiser)** — build-order 4 and 5 —
+> remain. This section is a ready-to-execute plan. Read the whole spec above first (especially Decisions +
+> "Where things stand"), then this.
 
 ### Where things stand (start here)
 - **Built + committed (green):**
@@ -205,15 +212,21 @@ Rob chose the **full capability**, so v1 is the whole feature, delivered in the 
   `ScenarioResultsTest` (the panel renders). All green; `BannedPhrasingTest` partition intact.
 
 ### Coordination (READ before touching PathProjector)
-`PathProjector` is the shared hot file — as of this writing **Lane A is mid-build on it** (care-cost stochasticity:
-dirty `PathProjector` + the `PathDraws` family + new `Care/` classes). Per HANDOVER "Multi-agent coordination":
-re-check `git status`/`git log` first, **rebase your work on top of Lane A's committed changes**, commit **only your
-own files** (no `git add -A`), and keep every change **additive** so `TaxEfficient`/`PensionAware` + the HMRC
-worked-example tests stay byte-identical (they are the trust guard).
+Lanes are **closed** (HANDOVER 2026-07-02) — Lane A's care-cost work is committed and the tree is single-session
+again. `PathProjector` remains the shared hot file: re-check `git status`/`git log` before editing it, and keep
+every change **additive** so `TaxEfficient`/`PensionAware` + the HMRC worked-example tests stay byte-identical
+(they are the trust guard).
 
 ### Model facts you need (verified 2026-07-01 — re-confirm against the current file first)
 - Pot state: `$state['pots'][$personId]` is a list; each pot is
-  `['value' => int pence, 'plan' => WithdrawalInstruction[], 'firstAccessDone' => bool, 'contribution' => int]`.
+  `['value' => int pence, 'plan' => WithdrawalInstruction[], 'firstAccessDone' => bool, 'contribution' => int,
+  'earliestAccessAge' => int, 'growthOverrideReal' => ?int]` (the last two added by the 2026-07-02 review pass —
+  the access-age gate + the per-pot growth override).
+- **⚠️ Access-age gate (2026-07-02 HIGH fix — do not regress it in #5).** `drawPension` **skips a pot until its
+  owner reaches `pot['earliestAccessAge']`** (`PathProjector.php`, DECISIONS 2026-07-02). The new
+  `$drawPensionUfpls` closure in #5 **must apply the same gate** — a pot is drawable only once its owner is at or
+  past its access age. Pin it with a test that an under-access-age pot is never UFPLS-drawn (otherwise #5
+  reintroduces the just-fixed drawn-before-access-age bug in trust-critical tax code).
 - LSA accounting: `$state['lsaUsed'][$personId]` (pence), seeded from `pclsTakenToDate` + planned PCLS/UFPLS.
   Headroom = `$this->config->pension->lumpSumAllowance->pence - $state['lsaUsed'][$pid]`.
 - The existing UFPLS split lives in `plannedWithdrawals()`: `taxFree = min((int) floor($amount * $pclsRate), max(0, $lsaRemaining))`,

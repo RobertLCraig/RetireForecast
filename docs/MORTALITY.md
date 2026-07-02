@@ -1,6 +1,6 @@
 # Mortality data — ONS cohort life tables
 
-_Last updated: 2026-06-24_
+_Last updated: 2026-07-02_
 
 The stochastic joint-life model samples each partner's age at death from one-year mortality
 probabilities q(x) by age and sex (see [DECISIONS.md](../DECISIONS.md) — "Mortality model:
@@ -25,11 +25,27 @@ the period table**: a person aged `x` in year `y` experiences `period_q[x, y]`, 
 `period_q[x+1, y+1]`, and so on. This embeds future mortality improvement, i.e. it *is* the
 cohort curve. Verified against the ONS cohort sheets cell-by-cell by the research step.
 
-## Open items for the build (todo: CohortLifeTable + JointLifeSampler)
-- **Ages above 100 / years beyond 2074** are outside the ONS grid and need a documented tail
-  (e.g. Gompertz/Kannisto extrapolation, or a capped q ceiling), clearly marked non-ONS.
-- Engine stays I/O-free: generate a PHP data class from the JSON at build time rather than
-  reading the file at runtime.
+## How the grid edges are handled (built — `CohortLifeTable` + `JointLifeSampler` exist)
+- **Below the grid** (age < 50 or year < 2025): clamped to the nearest grid cell. NB this
+  overstates mortality for younger ages — a v1 limit noted in HANDOVER; extending the grid
+  below 50 is ONS data work if younger households ever come into scope.
+- **Years beyond 2074:** hold the last published year (mortality improvement frozen).
+- **Ages above 100:** a geometric Gompertz-style tail to a hard cap of **110**, clearly marked
+  non-ONS in code (`CohortLifeTable`).
+- Engine stays I/O-free: `OnsPeriodMortalityData` is a **generated** PHP data class (header says
+  GENERATED, do not hand-edit) built from the JSON resource — not read at runtime.
+
+## Keeping it fresh: `mortality:refresh` (built 2026-07-01)
+The integrity/freshness guard for this dataset (DECISIONS 2026-07-01). Three behaviours, non-zero
+exit on drift or staleness (a CI signal):
+1. verifies the generated `OnsPeriodMortalityData` still matches the JSON resource cell-for-cell
+   (5,100 cells);
+2. flags the ONS data stale past `--months` (default 24, off the JSON's `verified_on`);
+3. `--against <newRelease.json>` diffs a fresh ONS release and reports the cohort-life-expectancy
+   impact before adoption.
+**Adopting a new ONS release:** convert the ONS xlsx to the JSON resource shape (xlsx auto-parse
+is deferred — see the command docblock in `app/Console/Commands/RefreshMortalityData.php`),
+regenerate `OnsPeriodMortalityData`, then run the command to confirm sync.
 
 ## Sanity anchors (ONS)
 - Cohort life expectancy at 65 (UK, 2024-based): ≈ 19.8 yrs (male), 22.5 yrs (female).
