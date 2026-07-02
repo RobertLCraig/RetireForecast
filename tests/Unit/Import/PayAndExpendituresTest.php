@@ -15,7 +15,7 @@ class PayAndExpendituresTest extends TestCase
     private function workbook(): Spreadsheet
     {
         return new Spreadsheet([
-            'RC Mortgage Rates' => [['Max purchase price', 'Loan amount']], // a non-scenario tab to skip
+            'Demo Mortgage Rates' => [['Max purchase price', 'Loan amount']], // a non-scenario tab to skip
             'Demo Test Gate' => [
                 ['', 'Yearly', 'Monthly'],
                 ['Person Pension DLA', '11772', '981'],                       // -> tax-free income stream
@@ -27,7 +27,7 @@ class PayAndExpendituresTest extends TestCase
                 // but has only "% of Total Pay" — must NOT be picked as the expenditure block.
                 ['Expenditure Item', 'Deduction Amount', '% of Total Pay', '', 'Item', 'Cost'],
                 ['P.A.Y.E', '250'],
-                ['Mum Take home', '900'],            // decoy: label contains "take home"
+                ['Family Take home', '900'],         // decoy: label contains "take home"
                 ['Combined Take home Pay', '1500'],  // decoy: label contains "take home"
                 [],
                 // The real expenditure header — the only one with "% of Take Home Pay".

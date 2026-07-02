@@ -12,8 +12,8 @@ use App\Import\ReconciliationLine;
 use App\Import\Spreadsheet;
 
 /**
- * Rob's personal "Pay and Expenditures" workbook. Each scenario lives on its own tab
- * (e.g. "Demo Flat A" = buy, "Demo Rental B" = rent), with a monthly expenditure
+ * A personal "Pay and Expenditures" workbook. Each scenario lives on its own tab
+ * (e.g. one tab per housing option — a "buy" tab and a "rent" tab), with a monthly expenditure
  * list under a header row containing "% of Take Home Pay" (label in column A, monthly
  * amount in column B), and a top income block where column B is the yearly figure.
  *
@@ -37,7 +37,7 @@ final class PayAndExpenditures implements ImportProfile
 
     public function description(): string
     {
-        return 'Reads the monthly expenditure list and yearly salary from an Demo-style scenario tab.';
+        return 'Reads the monthly expenditure list and yearly salary from a demo-style scenario tab.';
     }
 
     public function isAvailable(): bool
@@ -49,7 +49,7 @@ final class PayAndExpenditures implements ImportProfile
     {
         [$tab, $rows] = $this->scenarioTab($sheet);
         if ($rows === null) {
-            throw new ImportException('No expenditure tab found — this profile expects a sheet with a "% of Take Home Pay" expenditure list (an Demo-style tab).');
+            throw new ImportException('No expenditure tab found — this profile expects a sheet with a "% of Take Home Pay" expenditure list (a demo-style tab).');
         }
 
         $header = $this->expenditureHeaderRow($rows);

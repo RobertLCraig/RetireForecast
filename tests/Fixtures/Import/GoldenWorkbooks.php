@@ -19,12 +19,12 @@ use App\Import\Spreadsheet;
  * "what the sheet itself states" and catch any double-count or mis-bucketing.
  *
  * Structure captured from the masked dumps of:
- *  - docs/Pay and Expenditures.xlsx  (Demo scenario tab)
+ *  - docs/Pay and Expenditures.xlsx  (demo scenario tab)
  *  - docs/IWT Conscious Spending Plan 2023.xlsx  (Example tab)
  */
 final class GoldenWorkbooks
 {
-    // --- Pay & Expenditures (Demo scenario tab) -------------------------------------
+    // --- Pay & Expenditures (demo scenario tab) -------------------------------------
     /** Monthly sum of the expenditure line items == the sheet's own "Total" row. */
     public const PAYEXP_MONTHLY_TOTAL = 2050;          // 1000+150+200+80+30+400+90+15+85
 
@@ -74,7 +74,7 @@ final class GoldenWorkbooks
     {
         return new Spreadsheet([
             // A non-scenario tab the profile must skip over.
-            'RC Mortgage Rates' => [['Max purchase price', 'Loan amount']],
+            'Demo Mortgage Rates' => [['Max purchase price', 'Loan amount']],
             'Demo Golden Gate' => [
                 ['', 'Yearly', 'Monthly', '', '', 'Yearly', 'Monthly'],
                 ['Alex Pension DLA (Disability Living Allowance)', '6000', '500', 'Joint Account 123'],
@@ -88,7 +88,7 @@ final class GoldenWorkbooks
                 ['N.I.', '200', '0.05'],
                 ['Pension', '100', '0.02'],
                 ['Child fund', '10'],
-                ['Mum Take home', '900', '0.20'],          // decoy: label contains "take home"
+                ['Family Take home', '900', '0.20'],       // decoy: label contains "take home"
                 ['Combined Take home Pay', '1500'],         // decoy: label contains "take home"
                 [],
                 // The REAL expenditure header — the only one with "% of Take Home Pay".

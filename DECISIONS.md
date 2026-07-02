@@ -3,6 +3,43 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-02 — Review pass: two engine correctness fixes, per-asset overrides wired, and a personal-data scrub + history purge
+**Decision:** A project review (multi-agent audit of the engine + docs) surfaced and fixed the following.
+- **Personal data purged from the repo.** Real figures/names for the V2 couple had leaked into **tracked** files
+  (the stale, orphaned `docs/morning-worklist.md`; `docs/PLAN.md` + this log's narrative; and several import
+  tests/fixtures — exact salary / State Pension / DLA / mortgage amounts, the couple's first names, and their
+  workbook tab labels), violating the **no-hardcoded-client-data** rule. Everything was first captured privately
+  (kept only in the gitignored local files — deliberately not restated here, per the same rule; alongside
+  `docs/SCENARIO-V2.local.md`), then scrubbed from the working tree — doc figures → neutral placeholders (rationale
+  preserved), test figures → clearly-synthetic values (assertions kept consistent, suite green), names → Alex/Sam/Blake.
+  Because the data was already in pushed history, git history was **rewritten and force-pushed** to remove
+  it from all past commits (Rob authorised the force-push). The `docs/*.xlsx` + `docs/*.local.md` gitignores already
+  guard the source files; this closes the leak into tracked markdown/tests.
+- **HIGH — DC pension drawn before its earliest access age (fixed).** `DcPension::earliestAccessAge` was mapped and
+  builder-validated but **never consulted by `PathProjector`**, so a shortfall in an early-retirement year drew the DC
+  pot at any age — making an infeasible plan (e.g. retire 52, access 57) read as feasible. Each pot now carries its
+  access age; `fundShortfall`'s `drawPension` skips a pot until its owner reaches it (an inherited pot carries age 0 —
+  a beneficiary drawdown is accessible at any age). Engine-tested.
+- **HIGH — CGT band-straddle under-taxed low-income GIA disposals (fixed).** `capitalGainsTax` computed the 18% band
+  room as `(PA + basic-rate band) − income`, letting the **unused personal allowance extend the 18% CGT band** when
+  income is below the PA (the PA is not available against gains). A £50k gain at £0 income was taxed £8,460 vs the
+  correct £9,018 (£558 under) — hitting exactly the target population (low-income retirees drawing a gainful GIA). Room
+  is now `basic-rate band − max(0, income − PA)`. Extracted `PathProjector::cgtOnGain` (public static, like
+  `disposeGiaSlice`) with an exact-figure test across the below-PA / straddle boundaries.
+- **MED — per-asset overrides now reach the forecast (was a silent drop).** `DcPension::growthAssumptionOverride`,
+  `Property::growthAssumptionOverride` and `Account::yield` were collected + mapped but **ignored by the engine**. Now
+  a pot/home grows at its own real rate, and a GIA distributes income at its own yield (per-person, balance-weighted
+  blend where a person holds multiple GIA accounts — held at base-year weights, a flagged v1 approximation), each
+  falling back to the assumption-set default when unset. Return-only override (no volatility change), so it composes
+  with the stochastic Monte Carlo the same way house/salary growth already do. A completeness test per override.
+- **MED — CGT `incomeBySource` reconciliation (guard added, no numeric change).** In a GIA-disposal year the capital
+  drawn to pay the CGT is a real withdrawal, so `asset_drawdown`/`pension_drawdown` deliberately exceed the spend-only
+  `shortfallFunded` by exactly that tax — which keeps the cashflow ladder's money-in == money-out. This was correct but
+  unpinned; added a per-year reconciliation test and a code comment so it is not "fixed" wrongly by restoring the totals.
+**Why:** the two HIGH items are trust-critical correctness bugs in the core engine that no test pinned; the override
+wiring closes a silent-drop (the project's cardinal sin — every input that should affect a result must reach it); and
+the data scrub restores the no-client-data-in-the-repo invariant. Full suite green throughout.
+
 ## 2026-07-01 — Mortgage payment stops after a repay-from-capital redemption (built — the last Lane-B deferred item)
 **Decision:** Built the `while_mortgaged` expense condition per
 [docs/PLAN-mortgage-payment-stop.md](docs/PLAN-mortgage-payment-stop.md), removing the v1 simplification flagged in
@@ -264,16 +301,16 @@ sign-off. The let-out what-if + the engine treatment of a let home as assessable
 **Decision:** The V2 data foot-guns the pressure-test exposed are less user error than **UI-communication gaps**
 (Rob: "these flags show where the input hasn't matched the expectation of usage, and where the UI needs to
 communicate how to use it"). Each mis-entry maps to a concrete builder improvement:
-- **Income pay-frequency.** DLA was entered as "£749/month" when the DWP pays **£600.00 per 4 weeks** (the real
-  figure ≈ £9,747–£10,119/yr), and the rent reads £1,650/yr (almost certainly a monthly figure typed as annual).
+- **Income pay-frequency.** DLA was entered as a **monthly** figure when the DWP pays that benefit **per 4 weeks**
+  (so the annualised amount was understated), and the rent reads as a yearly figure that is almost certainly monthly.
   → a **pay-frequency selector** (weekly / 4-weekly / monthly / annual) on every per-period money input, converting
   to the stored annual figure. **4-weekly matters** specifically because DWP (State Pension, DLA/AA/PIP) pays that way.
 - **Income type vs taxability.** DLA was entered as a **taxable "rental"** stream (double-counting, and taxed). →
   offer a **"tax-free benefit (DLA / AA / PIP)"** income type that sets `taxable = false`, with examples, so a
   disability benefit can't be mis-typed as taxable rental.
 - **Missing retirement age.** An employed person with a blank `plannedRetirementAge` is modelled **earning for
-  life** (here, +£30,000/yr forever → a ~£700k overstatement). → flag it in the builder / input-sanity notes.
-- **One-off cost scope.** A one-off (the £[redacted] convert-to-residential deposit) was charged across **all** housing
+  life** (here, a full salary modelled forever → a large overstatement). → flag it in the builder / input-sanity notes.
+- **One-off cost scope.** A one-off (a large convert-to-residential deposit) was charged across **all** housing
   variants, including sell/rent. → let a one-off declare **which path(s)** it applies to (pairs with the
   feasibility-flag + mortgage-redemption work).
 These extend the existing input-sanity notes [[2026-06-29 — Adviser-legibility: input-sanity notes (explain a "wild numbers" result back to its input)]]
@@ -281,22 +318,22 @@ and the feasibility flags of [[2026-06-30 — Forced-mortgage pressure-test → 
 **Why:** the engine is only as trustworthy as its inputs, so the project's single-definition / no-silent-failure
 discipline (applied so far to *outputs*) must reach *inputs* — a mis-entry should be caught and explained **at
 entry**, not silently produce a plausible-but-wrong forecast. The V2 case is the proof: four ordinary-looking
-entries inflated the result to ~£700k+ until corrected against the real DWP figures.
+entries grossly inflated the result until corrected against the real DWP figures.
 **Status:** recorded; build folds into the feature workstream (input-clarity track).
 
 ## 2026-06-30 — Forced-mortgage pressure-test → a 3-feature workstream (benefits-in-forecast, mortgage-redemption event, feasibility flags)
 **Decision:** Pressure-testing the engine against a **real forced-housing case** (the "V2" couple Rob has been
 building) set the next workstream. The case: both about to be retired (one retired on **DLA**, one in her final
 working year); they **live in a flat that is on a buy-to-let mortgage** — the occupation is itself the breach, so
-the BTL cannot continue, and a residential remortgage fails on age + income; the BTL is **due for redemption
-December 2026** with no extension, and converting to residential needs **~£100k** they don't have, so the realistic
-outcome is sell-or-repossession. Equity ≈ £[redacted] (a stale £[redacted] valuation, 13+ weeks unsold) − £[redacted] ≈ **£[redacted] gross
-/ ~£[redacted] net** ([redacted]-yr lease, ~£4k to extend; **partial PRR** — secondary then **primary ~4–5 yrs**, joint names).
-Guaranteed income floor ≈ **£[redacted]/yr** (State Pension ~£230/wk + ~£188/wk + **DLA £749/mo, tax-free**), plus one
-**£[redacted]** DC pot. **Finding:** the engine already answers the *core* — buy-cheaper-outright vs sell-and-rent on
+the BTL cannot continue, and a residential remortgage fails on age + income; the BTL is **due for redemption** with
+no extension, and converting to residential needs a **large lump sum** they don't have, so the realistic
+outcome is sell-or-repossession. Equity is the flat's value less a substantial outstanding BTL mortgage, net of a
+**partial-PRR** CGT bill (a short-ish remaining lease with a modest extension cost; occupation secondary then
+**primary ~4–5 yrs**, joint names).
+Guaranteed income floor ≈ two **State Pensions** + a tax-free **DLA** disability benefit, plus one **small** DC pot. **Finding:** the engine already answers the *core* — buy-cheaper-outright vs sell-and-rent on
 identical seeds, partial-PRR CGT (occupation-driven, joint owners — near purpose-built for this flat), the
 income-floor + per-year surplus/shortfall + safety floor, and the longevity horizon. But the **lump-sum tax shock,
-the flagship output, barely applies** (a £[redacted] pot is inside the personal allowance), while the three things that
+the flagship output, barely applies** (a small DC pot is inside the personal allowance), while the three things that
 actually decide this couple's path are **not modelled in the forecast**:
 1. **Means-tested benefits are a standalone snapshot, not in the cashflow.** {@see Benefits\CapitalAssessment}
    correctly models the pensioner capital tariff (£10k disregard, £1/wk per £500, the £16k Council Tax / Housing

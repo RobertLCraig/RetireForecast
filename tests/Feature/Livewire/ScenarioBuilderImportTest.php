@@ -25,7 +25,7 @@ class ScenarioBuilderImportTest extends TestCase
 
     public function test_importing_the_template_pre_fills_spending_and_salary(): void
     {
-        $csv = "section,label,monthly_amount\nessential,Rent,1000\ndiscretionary,Fun,200\nsalary,Pay,2408\n";
+        $csv = "section,label,monthly_amount\nessential,Rent,1000\ndiscretionary,Fun,200\nsalary,Pay,2500\n";
 
         Livewire::test(ScenarioBuilder::class)
             ->set('importProfile', 'retireforecast')
@@ -39,7 +39,7 @@ class ScenarioBuilderImportTest extends TestCase
             ->assertSet('expenseLines.1.label', 'Fun')
             ->assertSet('expenseLines.1.amount', '2400.00')       // 200 * 12
             ->assertSet('expenseLines.1.category', 'discretionary')
-            ->assertSet('people.0.grossSalary', '30000.00')      // 2408 * 12
+            ->assertSet('people.0.grossSalary', '30000.00')      // 2500 * 12
             ->assertSet('people.0.employmentStatus', 'employed')
             ->assertSet('step', 4);                               // lands on the spending step
     }

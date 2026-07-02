@@ -4,63 +4,26 @@
 
 **Stage:** active
 **Status:** Phase D go-live, **feature-complete for personal use**; the adviser-legibility workstream and the whole **post-v1 enhancement backlog are built** (annuitisation, historical stress-test, ONS mortality-refresh guardrail, care-cost risk — plus Lane B forced-housing + Lane C withdrawal-sequencing). The tool runs in **personal-use advice mode** (`config('compliance.personal_use')` = the flagged regulatory line — set false before any public release). What remains is Rob's **browser verification / sign-off**, the **public-release blockers**, and **optional refinements** — see What's next + Current state.
-_Last updated: 2026-07-02 (**concurrent lanes now CLOSED** — single-session from here. Lane B forced-housing is **complete**: this session built the **mortgage-payment-stop** (`while_mortgaged`), and **specced the in-place forced-sale** what-if (decisions resolved, ready to build — the one remaining Lane-B build). The real couple's data is captured privately in the gitignored `docs/SCENARIO-V2.local.md`. Lane A post-v1 backlog + Lane C withdrawal-sequencing were completed earlier. Everything is **feature-complete + green**; what remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**. Narrative in the session log.)_
+_Last updated: 2026-07-02 (**review pass**: a multi-agent audit of the engine + docs fixed **two HIGH engine bugs**
+(DC pot drawn before its earliest access age; CGT under-taxed on below-personal-allowance GIA disposals), **wired the
+three per-asset overrides** that were collected but ignored (pot growth, property growth, GIA yield — a silent drop),
+and added a **CGT reconciliation guard**. Also **purged real personal data** that had leaked into tracked files
+(docs + import tests) — captured privately first, then scrubbed + **git history rewritten and force-pushed**. All
+green; details in DECISIONS 2026-07-02 + the session log. Earlier this cycle: lanes CLOSED, Lane B mortgage-payment-stop
+built + in-place forced-sale specced.)_
 
-## Multi-agent coordination (lanes CLOSED as of 2026-07-02 — kept as the record)
-**The concurrent lanes are now closed (Rob, 2026-07-02) — this is a single-session tree again.** The per-lane bullets
-below are the historical record of who built what (A/B/C/D). Still honour [[concurrent-session-split]] if lanes ever
-reopen: re-check `git status` + `git log` before any commit, commit only your own files, never push without Rob's
-explicit go-ahead. Lane statuses: **A complete, B complete (one what-if left to build, specced), C complete, D a
-docs-only draft awaiting Rob.**
-
-- **Lane A — post-v1 enhancement backlog: COMPLETE.** Built + committed: **what-if sliders**, **retirement-year
-  salary proration**, **v2 annuitisation** (`7bcbede`/`d85f5bf`), the **historical stress-test** (`5938612`/`2cad843`),
-  the **ONS mortality refresh + integrity guardrail** (`mortality:refresh`, `4bc47ea`), and (2026-07-01) **care-cost
-  stochasticity** (`96dd534`/`41b455d`). **No open Lane A backlog items remain** — only Rob's browser sign-off + the
-  optional refinements under What's next #3.
-- **Lane B — forced-housing-event workstream (the "V2" real-couple pressure-test) — BUILT + COMMITTED.** A second
-  session built and committed the whole A/B/C/D workstream (planning committed in `DECISIONS.md` / `docs/PLAN.md` /
-  `PRD.md` / `DATA-MODEL.md` — the 2026-06-30 "forced-mortgage pressure-test" + "input-expectation clarity" entries;
-  the code in `git log`). Those four append-only docs are Lane B's content area — **don't rewrite its entries from
-  another lane.** **Deferred → now BUILT (2026-07-01):** the `while_mortgaged` expense condition (stop the bundled
-  mortgage payment after a repay-from-capital redemption) is built per
-  [docs/PLAN-mortgage-payment-stop.md](docs/PLAN-mortgage-payment-stop.md) — `ExpenseProfile::mortgageCosts`, the
-  projector drop, PLSA exclusion, engine-tested (DECISIONS 2026-07-01). **Only the in-place forced-sale model remains
-  deferred** for Lane B — **specced + decisions resolved, ready to build** in
-  [docs/PLAN-in-place-forced-sale.md](docs/PLAN-in-place-forced-sale.md) (it is a **what-if** on the stay-put base,
-  which finds £100k and stays). The real couple it models is captured privately in `docs/SCENARIO-V2.local.md`
-  (gitignored). Scope (built):
-  **(A) means-tested benefits in the live forecast** (`Benefits\PensionCreditCalculator` wired into `PathProjector`;
-  new `YearResult` source `means_tested_benefit` — completeness/reconciliation guards; the source list grows 8→9),
-  **(B) a mortgage-redemption event** (`Property` maturity year + action; projector tracks the balance),
-  **(C) feasibility flags**, **(D) input-expectation clarity** (pay-frequency selector, tax-free-benefit income
-  type, retirement-age / one-off-scope prompts). Full detail: DECISIONS/PLAN 2026-06-30 — not re-transcribed here.
-- **Lane C — decumulation: withdrawal sequencing (CORE SHIPPED; #5/#6 HANDED OFF 2026-07-01).** A third session ran the
-  full-market competitive scan (`docs/RESEARCH-competitive-gap-analysis.md`) and wrote the spec
-  **`docs/PLAN-withdrawal-sequencing.md`**; **Rob approved the full-capability build**. **Built + committed (green):**
-  the `FillBands` `DrawdownStrategy` + its Pension-Credit-aware fill-order in `PathProjector::fundShortfall`, the
-  PA-taper (resolved by the ordering, no code), the **£-delta computation** (`WithdrawalStrategyComparison`), and the
-  **results-page panel + advice-gated steer** (`Interpretation` behind `personal_use`). **Handed off (not built):**
-  #5 PCLS-timing + #6 the optimiser — a ready-to-execute plan is in the spec's "Implementation plan for a fresh agent"
-  (gated on Rob's two modelling calls). Status: the spec's "Build order" +
-  DECISIONS 2026-07-01 (Lane C). ⚠️ **Shares the `PathProjector` +
-  `ScenarioForecaster` / `ResultPresenter` surface with Lanes A/B** — additive-only, re-checking `git` before each edit,
-  committing engine slices green. Build order + decisions: the spec's "Build order" section.
-- **Lane D — multiple-properties data-model plan (docs-only, DRAFT; awaiting Rob's review).** A fourth session drafted
-  **`docs/PLAN-multi-property.md`** — a DRAFT *proposal, not a decision*: hold **an arbitrary number** of additional
-  properties (buy-to-let / second home / inherited-and-let) as first-class assets (capital growth, taxable net rent,
-  mortgage, optional planned disposal + CGT, IHT estate inclusion, no RNRB). Prompted by an "inherited then let"
-  property the single-residence model can't represent. **No app code.** ⚠️ **Shares surface with Lane B:** it proposes
-  extending the **`Property` DTO** (rent/disposal fields) and generalising **`PathProjector`** property handling — the
-  same files Lane B is changing (mortgage-redemption maturity year + action). Any future build must land **on top of**
-  Lane B's `Property` / `PathProjector` work. The draft ends with 5 open questions for Rob. **NB the draft was
-  accidentally committed inside `5a6688f` (a Lane A cashflow commit) by a blanket add — content intact, just mis-homed
-  in history; not worth a history rewrite on a live shared tree.**
-
-**Commit rule while lanes are live:** commit only the files in your own lane (no blanket `git add -A`).
-Engine overlap to watch: **`PathProjector` is the contention point** — Lane A (proration/sliders, done) and Lane B
-(benefits + mortgage-redemption, active) both touch it, and Lane C is **now building** withdrawal sequencing on it (`fundShortfall` / `DrawdownStrategy`, additive `FillBands` strategy). **Lane D's multi-property plan, when built, also extends the
-`Property` DTO + `PathProjector` — overlapping Lane B's `Property` changes directly.** Coordinate before any large refactor there.
+## Multi-agent coordination (lanes CLOSED 2026-07-02 — single-session tree)
+The concurrent A/B/C/D lanes are **closed**; this is a single-session tree again. The full per-lane build record
+lives in `git log` + DECISIONS.md (2026-06-30 / 07-01) — not restated here. High level: **Lane A** post-v1 backlog
+(annuitisation, historical stress-test, ONS mortality-refresh, care-cost stochasticity) — complete; **Lane B**
+forced-housing workstream (means-tested benefits, mortgage-redemption + payment-stop, feasibility flags, input
+clarity) — complete bar the specced in-place forced-sale what-if
+([docs/PLAN-in-place-forced-sale.md](docs/PLAN-in-place-forced-sale.md)); **Lane C** withdrawal sequencing — core
+shipped, #5/#6 handed off ([docs/PLAN-withdrawal-sequencing.md](docs/PLAN-withdrawal-sequencing.md)); **Lane D**
+multi-property — docs-only DRAFT awaiting Rob ([docs/PLAN-multi-property.md](docs/PLAN-multi-property.md); note it was
+mis-homed inside commit `5a6688f`, content intact). If lanes ever reopen, honour [[concurrent-session-split]]
+(re-check `git` first, commit only your files, never push without Rob's go-ahead). `PathProjector` was the
+cross-lane contention point.
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -187,10 +150,27 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 | CLAUDE.md | Root orient tripwire + build/test conventions + "Doc hygiene" rules. |
 
 ## Branch status
-On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/RetireForecast). As of this save local `master` is **ahead of `origin/master` by ~12 unpushed commits** — confirm with `git rev-list --count origin/master..master`. **Pushing to `master` is gated and needs Rob's explicit go-ahead — do not push unprompted.** Otherwise commit directly to `master` (personal local-first project; no PR flow). **Re-check `git status` / `git log` before any commit or push — concurrent Claude sessions may be sharing this tree (see Multi-agent coordination). Commit only your own lane's files (no blanket `git add -A`).** The pre-rebuild prototype is tagged **`prototype-v1` (a8f1f68)**, the only recovery snapshot. For the commit history use **`git log`** (the source of truth — not restated here, where it would drift); the recent trajectory is in the Session log + DECISIONS.md.
+On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/RetireForecast). Local `master` is **in sync with `origin/master`** (2026-07-02: git history was rewritten to purge personal data and force-pushed — see DECISIONS 2026-07-02; re-verify with `git rev-list --left-right --count origin/master...master`). **Pushing to `master` is gated and needs Rob's explicit go-ahead — do not push unprompted.** Otherwise commit directly to `master` (personal local-first project; no PR flow). **Re-check `git status` / `git log` before any commit or push.** The pre-rebuild prototype is tagged **`prototype-v1` (a8f1f68)**, the only recovery snapshot. For the commit history use **`git log`** (the source of truth — not restated here, where it would drift); the recent trajectory is in the Session log + DECISIONS.md.
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-07-02 (review pass — 2 HIGH engine fixes, per-asset overrides wired, personal-data scrub + history purge)_ — On
+Rob's "review the project, check docs vs reality, check for bugs", ran a multi-agent audit (PathProjector, tax,
+reconciliation/completeness, docs) then fixed everything found, each with a test, suite green throughout.
+**Bugs:** (1) **DC pot drawn before its earliest access age** — `earliestAccessAge` was mapped + validated but never
+consulted in `PathProjector`; `fundShortfall` now gates the pot per owner age (inherited pot = age 0). (2) **CGT
+band-straddle** under-taxed below-PA GIA disposals (unused PA leaked into the 18% band; £50k gain at £0 income was
+£8,460 vs £9,018) — fixed + extracted the testable `cgtOnGain`. **Silent drop:** (3) the three per-asset overrides
+(`DcPension`/`Property` `growthAssumptionOverride`, `Account::yield`) were collected but ignored — **wired into the
+engine** (per-pot / per-property growth, per-person balance-weighted GIA yield), completeness-tested. (4) **CGT
+`incomeBySource` reconciliation** guard + comment (current numbers were right but unpinned). **Data:** real V2-couple
+figures/names had leaked into tracked docs + import tests (violating no-client-data-in-repo) — captured privately
+(`docs/morning-worklist.local.md`), scrubbed to placeholders/synthetic values, and **git history rewritten +
+force-pushed** (Rob authorised) to purge it from all commits. **Docs:** de-staled the Branch status (was "~12
+unpushed", actually in sync), DATA-MODEL (mortgage-stop built; source count; overrides now consumed), the
+withdrawal-sequencing header (DRAFT → core shipped), and compressed the closed-lanes coordination block. DECISIONS
+2026-07-02.
 
 _2026-07-02 (Lane B — mortgage-payment-stop built; forced-sale specced; V2 couple captured; lanes closed)_ — Finishing
 Lane B off the V2 browser review. **(1)** Flagged an **unaffordable "buy cheaper" plan on Compare** (the sale can't

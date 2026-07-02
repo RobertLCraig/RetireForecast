@@ -104,17 +104,17 @@ class HouseholdAssemblerTest extends TestCase
             'expenseLines' => [['id' => 'e1', 'amount' => '10000', 'category' => 'essential']],
             'expense' => ['survivorFactor' => '70'],
             'incomeStreams' => [
-                // DLA at the real DWP cadence: £600.00 every 4 weeks = £9,747.40 a year.
+                // DLA at the four-weekly DWP cadence: £600.00 every 4 weeks = £7,800.00 a year.
                 ['id' => 'i1', 'ownerId' => 'p1', 'type' => 'other', 'grossAnnual' => '600.00', 'frequency' => 'four_weekly', 'taxable' => false, 'inflationLinked' => true, 'startAge' => '0'],
-                // Rent quoted monthly: £1,650/mo = £19,800 a year.
-                ['id' => 'i2', 'ownerId' => 'p1', 'type' => 'rental', 'grossAnnual' => '1650', 'frequency' => 'monthly', 'taxable' => true, 'inflationLinked' => true, 'startAge' => '0'],
+                // Rent quoted monthly: £1,500/mo = £18,000 a year.
+                ['id' => 'i2', 'ownerId' => 'p1', 'type' => 'rental', 'grossAnnual' => '1500', 'frequency' => 'monthly', 'taxable' => true, 'inflationLinked' => true, 'startAge' => '0'],
                 // No frequency = annual (back-compat): the figure is used as-is.
                 ['id' => 'i3', 'ownerId' => 'p1', 'type' => 'annuity', 'grossAnnual' => '5000', 'taxable' => true, 'inflationLinked' => false, 'startAge' => '0'],
             ],
         ]);
 
-        $this->assertSame(974_740, $household->incomeStreams[0]->grossAnnual->pence);   // £600.00 × 13
-        $this->assertSame(1_980_000, $household->incomeStreams[1]->grossAnnual->pence); // £1,650 × 12
+        $this->assertSame(780_000, $household->incomeStreams[0]->grossAnnual->pence);   // £600.00 × 13
+        $this->assertSame(1_800_000, $household->incomeStreams[1]->grossAnnual->pence); // £1,500 × 12
         $this->assertSame(500_000, $household->incomeStreams[2]->grossAnnual->pence);   // £5,000 × 1
     }
 
@@ -137,7 +137,7 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertSame(IncomeStreamType::DisabilityBenefit, $stream->type);
         $this->assertFalse($stream->taxable); // the type overrides the taxable=true flag
         $this->assertTrue($stream->type->isTaxFreeBenefit());
-        $this->assertSame(974_740, $stream->grossAnnual->pence); // £600.00 × 13 — still annualised
+        $this->assertSame(780_000, $stream->grossAnnual->pence); // £600.00 × 13 — still annualised
     }
 
     public function test_the_disability_benefit_flag_is_carried_through_to_the_person(): void

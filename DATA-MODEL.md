@@ -1,6 +1,6 @@
 # Data model: RetireForecast
 
-_Last updated: 2026-06-29_
+_Last updated: 2026-07-02_
 
 The single source of truth for this project's data shape. Every layer (engine, storage, UI)
 conforms to this. The canonical representation **is** the engine's readonly DTOs under
@@ -214,6 +214,10 @@ on the DC pension inside the `builder_state` form-state, not separately on the s
   `rate` as a user-input Percent, `escalation` PensionEscalationBasis where `None` = level, optional
   `survivorFraction` for a joint-life annuity; null = stay in drawdown) — the pot converts to a
   guaranteed lifetime income at that age, mapped to the `other_taxable` income source (DECISIONS 2026-07-01).
+  The optional **per-asset overrides** — `DcPension::growthAssumptionOverride`, `Property::growthAssumptionOverride`
+  and `Account::yield` — are now **consumed by `PathProjector`** (previously collected but ignored — a silent drop):
+  a pot/home grows at its own real rate, a GIA distributes income at its own yield (per-person balance-weighted blend
+  where multiple accounts differ), each falling back to the assumption-set default when unset (DECISIONS 2026-07-02).
 - **App persistence:** Eloquent `Scenario` (a base holds the encrypted `builder_state`, the source of
   truth; a Phase-C2 child instead holds `parent_scenario_id` + an encrypted `overrides` delta and resolves
   `effectiveBuilderState()` = base ⊕ overrides; both derive the engine DTOs). The child's `overrides` is also
@@ -321,8 +325,8 @@ workstream". The canonical-shape additions below are now materialised (see `git 
 from the original plan, flagged inline:
 - ✅ **(A) Means-tested benefits in the forecast.** Engine `Benefits\PensionCreditCalculator` (Guarantee Credit
   to the Standard Minimum Guarantee + Severe Disability / Carer additions; capital tariff via the existing
-  `CapitalAssessment`). **`YearResult` gains an income source `means_tested_benefit`** (the canonical source list
-  grows from 8 to 9 — update the completeness guard). A **disability flag** is added to `Person` (or `Household`):
+  `CapitalAssessment`). **`YearResult` gains an income source `means_tested_benefit`** (one of the 10 canonical
+  `YearResult::INCOME_SOURCES` — completeness guard covers each). A **disability flag** is added to `Person` (or `Household`):
   e.g. `receivesDisabilityBenefit: bool` (+ a derived "severe disability" qualifier), driving the SDP and the
   DLA/AA passport. The benefit is a **household-level** credit computed each projected year from that year's
   assessable income + assessable capital (liquid wealth, home excluded), so it erodes/restores dynamically and
@@ -331,8 +335,9 @@ from the original plan, flagged inline:
   joins assessable capital (it is no longer the exempt main residence) — so "let out & rent" erodes benefit like a sale.
 - ✅ **(B) Mortgage redemption.** `Property` gained `mortgageRedemptionYear: int?` and `mortgageMaturityAction:
   enum {refinance | repay_from_capital | forced_sale}`. The projector tracks the mortgage **balance** (new state) and
-  applies the action at maturity. *Open:* the one-off **path scope** field, and stopping the bundled mortgage *payment*
-  after a repay (needs a `while_mortgaged` expense condition — DECISIONS 2026-07-01, still deferred).
+  applies the action at maturity. Stopping the bundled mortgage *payment* after a repay is **built** (the
+  `while_mortgaged` expense condition + `ExpenseProfile::mortgageCosts`, DECISIONS 2026-07-01). *Open:* the one-off
+  **path scope** field.
 - ✅ **(C) Feasibility** is a **derived** result note (no stored field): `HousingComparison` exposes whether a buy
   price exceeds net proceeds (and the gap), surfaced by `ResultPresenter` as an input-sanity note.
 - ✅ **(D) Input clarity** is mostly **builder-state / UI**, not canonical-shape: a per-input **pay frequency** is a

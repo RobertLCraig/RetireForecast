@@ -1,8 +1,10 @@
-# PLAN (DRAFT) — tax-efficient withdrawal sequencing across wrappers ("fill the band")
+# PLAN — tax-efficient withdrawal sequencing across wrappers ("fill the band")
 
-> **Status: DRAFT proposal, not a decision.** Dated 2026-06-30. To be reviewed by Rob, then
-> folded into docs/PLAN.md (backlog) + a DECISIONS.md entry once the open questions are settled.
-> Nothing here is built **beyond what the "Already built" section explicitly notes as existing.**
+> **Status: CORE SHIPPED (2026-07-01); #5 (PCLS-timing) + #6 (optimiser) handed off.** Dated 2026-06-30,
+> approved by Rob and built in green committed slices — the `FillBands` `DrawdownStrategy` + its
+> Pension-Credit-aware fill order, the lifetime-tax £-delta (`WithdrawalStrategyComparison`), and the
+> results-page panel + advice-gated steer are live (DECISIONS 2026-07-01, Lane C). Still to build: #5/#6,
+> per the "Implementation plan for a fresh agent" section (gated on Rob's two modelling calls).
 > Motivated by the competitive scan ([docs/RESEARCH-competitive-gap-analysis.md](RESEARCH-competitive-gap-analysis.md),
 > Cluster A) — the highest-value, most on-brand net-new item, because RF already owns the HMRC engine.
 >

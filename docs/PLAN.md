@@ -281,8 +281,8 @@ sharpens** them; the items below are the net-new ones), ranked by impact × on-b
   **Pensions Dashboard** import (consumer launch ~2027) are the pragmatic substitutes.
 
 ### Forced-housing-event workstream (2026-06-30) — from the V2 real-couple pressure-test
-Driving the engine against a real forced-mortgage couple (a BTL they live in, redeemed Dec 2026, can't refinance;
-income ≈ two State Pensions + DLA + one £[redacted] pot) found the *core* already answered (buy-vs-rent on identical seeds,
+Driving the engine against a real forced-mortgage couple (a BTL they live in, due for redemption and can't refinance;
+income ≈ two State Pensions + DLA + one small DC pot) found the *core* already answered (buy-vs-rent on identical seeds,
 partial-PRR CGT, income-floor + safety floor, longevity) but four decision-critical gaps. Rationale +
 the couple's figures: DECISIONS 2026-06-30 (forced-mortgage pressure-test; input-expectation clarity). Build order
 (value-first); each lands green with its own DECISIONS + DATA-MODEL note:
@@ -302,8 +302,8 @@ the couple's figures: DECISIONS 2026-06-30 (forced-mortgage pressure-test; input
   {refinance at a rate · repay-from-capital · forced sale}; `PathProjector` tracks the mortgage balance and applies
   the action at maturity (inject capital / switch to a repayment cost / transition to the sell transform). Stops
   "stay put" silently paying a perpetual BTL that must legally be redeemed. Generalises to interest-only maturities
-  and fixed-term ends. (Pairs with: a one-off cost that declares **which path(s)** it applies to — the £[redacted] convert
-  deposit.)
+  and fixed-term ends. (Pairs with: a one-off cost that declares **which path(s)** it applies to — the convert-to-
+  residential deposit.)
 - **(C) Feasibility flags.** `HousingComparison` currently floors a buy price above net proceeds ("downsizing
   assumed") — surface it as an **input-sanity note** ("buying at £X needs £Y more than the sale frees"); likewise
   flag a "stay/convert" needing capital the household lacks. No silent infeasible model.
@@ -566,12 +566,12 @@ salary modelled) and a death floored to the base year (a longevity/health age be
 `ForecastResult::deathCalendarYears`). **Still to do:** the **rate/£ validation** half — a live £-for-a-rate readout
 and an out-of-range flag in the **builder** (the sale waterfall already shows the selling-cost rate beside its £, so
 the 20% case is visible on the results page). The original spec follows. Retirement age
-**≤** the person's current age → no earnings modelled at all (P1, born 1960, retire-age 66 in base-year 2026 →
-£30,000 salary dropped from year one). Longevity **offset** landing below current age → floored at current age =
+**≤** the person's current age → no earnings modelled at all (e.g. a person whose retirement age is at or below
+their base-year age → their whole salary is dropped from year one). Longevity **offset** landing below current age → floored at current age =
 "dies within the year" (P2, median 88, −15 → 73 → clamped to 80). Surface a neutral note at the input and/or on
 the results so the consequence is visible, not discovered in a collapsed forecast. **Rate / percentage inputs must
-show their resulting £ live and flag values far outside typical ranges** — the real couple's selling-cost rate was
-entered as `20` and silently applied as **20% = £70,000** on a £[redacted] sale (~10x the typical 1–3%), and rent was
+show their resulting £ live and flag values far outside typical ranges** — a selling-cost rate was
+entered as `20` and silently applied as **20% of the sale price** (~10x the typical 1–3%), and rent was
 entered as `1650` (≈ £137/month, almost certainly a *monthly* figure in an *annual* field). These two compound
 with #1: the phantom housing costs and the under-stated rent partly cancel, so totals read plausible while being
 wrong for offsetting reasons — the exact failure mode that destroys trust in the output.

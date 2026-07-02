@@ -37,14 +37,14 @@ final class PensionCreditCalculatorTest extends TestCase
 
     public function test_a_widow_on_her_own_state_pension_is_lifted_to_the_single_guarantee(): void
     {
-        // Her State Pension £190.00/wk, single guarantee £238.00 → £49.59 a week.
+        // Her State Pension £190.00/wk, single guarantee £238.00 → £48.00 a week.
         $result = $this->calculator()->assess(
             isCouple: false,
-            assessableIncomeWeekly: Money::of(188, 41),
+            assessableIncomeWeekly: Money::of(190, 0),
             assessableCapital: Money::zero(),
         );
 
-        $this->assertSame(4_959, $result->guaranteeCreditWeekly->pence); // £238.00 − £190.00
+        $this->assertSame(4_800, $result->guaranteeCreditWeekly->pence); // £238.00 − £190.00
     }
 
     public function test_a_couple_whose_income_exceeds_the_couple_guarantee_get_nothing(): void

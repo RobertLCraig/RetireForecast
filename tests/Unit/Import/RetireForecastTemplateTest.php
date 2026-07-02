@@ -14,10 +14,10 @@ class RetireForecastTemplateTest extends TestCase
 {
     public function test_money_text_parses_and_formats_as_exact_pence(): void
     {
-        $this->assertSame(134758, MoneyText::toPence('1500.58'));
-        $this->assertSame(240800, MoneyText::toPence('£2,408.00'));
+        $this->assertSame(150000, MoneyText::toPence('1500.00'));
+        $this->assertSame(250000, MoneyText::toPence('£2,500.00'));
         $this->assertSame(2000, MoneyText::toPence('20'));
-        $this->assertSame('18174.96', MoneyText::fromPence(1817496));
+        $this->assertSame('20400.00', MoneyText::fromPence(2040000));
         $this->assertSame('0.05', MoneyText::fromPence(5));
         $this->assertFalse(MoneyText::looksNumeric('abc'));
         $this->assertTrue(MoneyText::looksNumeric('1,234.50'));
@@ -27,8 +27,8 @@ class RetireForecastTemplateTest extends TestCase
     {
         $csv = <<<'CSV'
         section,label,monthly_amount
-        essential,Mortgage,1500.58
-        essential,Council Tax,167.00
+        essential,Mortgage,1500.00
+        essential,Council Tax,200.00
         discretionary,Netflix,15.00
         salary,Gross salary,2500.00
         savings,Pension contribution,100.00
@@ -36,8 +36,8 @@ class RetireForecastTemplateTest extends TestCase
 
         $result = (new RetireForecastTemplate)->parse(Spreadsheet::fromCsv($csv));
 
-        // (1500.58 + 167.00) * 12 = 18174.96; 15.00 * 12 = 180.00; 2500.00 * 12 = 30000.00
-        $this->assertSame('18174.96', $result->expense['essential']);
+        // (1500.00 + 200.00) * 12 = 20400.00; 15.00 * 12 = 180.00; 2500.00 * 12 = 30000.00
+        $this->assertSame('20400.00', $result->expense['essential']);
         $this->assertSame('180.00', $result->expense['discretionary']);
         $this->assertSame('30000.00', $result->salaryAnnual);
         $this->assertCount(3, $result->filled);
