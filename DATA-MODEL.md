@@ -355,7 +355,11 @@ from the original plan, flagged inline:
   (+ `annualRent`/`rentInflationReal`), populated by `ScenarioForecaster::settings()` for a ForcedSale scenario only,
   since the projector has no `HousingAction` (DECISIONS 2026-07-03). *Open:* the one-off **path scope** field.
 - ✅ **(C) Feasibility** is a **derived** result note (no stored field): `HousingComparison` exposes whether a buy
-  price exceeds net proceeds (and the gap), surfaced by `ResultPresenter` as an input-sanity note.
+  price exceeds net proceeds (and the gap), surfaced by `ResultPresenter` as an input-sanity note. **Buy-with-a-mortgage
+  (2026-07-03):** `HousingAction` gained `buyMortgageRate: Percent?` (builder `housing.buyMortgageRate`); when set and
+  the buy costs more than the sale frees, the shortfall is funded by an interest-only (RIO) mortgage on the new home
+  (`HousingPurchase::$mortgage`; interest charged via `ExpenseProfile::withMortgageCosts`) instead of flooring the
+  surplus — so the feasibility note reads "funded by a £X mortgage" rather than "unaffordable" (DECISIONS 2026-07-03).
 - ✅ **(D) Input clarity** is mostly **builder-state / UI**, not canonical-shape: a per-input **pay frequency** is a
   form concern (stored annual, so the DTO is unchanged). The tax-free-benefit type was **upgraded** from the planned
   `IncomeStream{type: other, taxable: false}` to a first-class `IncomeStreamType::DisabilityBenefit` (structurally
