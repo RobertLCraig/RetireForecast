@@ -3,6 +3,36 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — In-app local-model assistant: explain + capture only, it never builds
+**Context:** Rob wants an in-page **"chatbot"** on a **local AI model** to (1) answer questions about the
+loaded scenario + the project, (2) queue research requests, and (3) be the interface for building the
+feature/task list. Investigated feasibility ([docs/RESEARCH-local-assistant.md](docs/RESEARCH-local-assistant.md)).
+Two findings de-risk it: the project **already settled a local-AI stance** in the 2026-06-28 document-import
+investigation (*"wrangling and explaining, not predicting"*; never the source of a number; local-only;
+walled off — [docs/RESEARCH-document-import.md](docs/RESEARCH-document-import.md) §2), and the **runtime is
+already present** (Ollama on `localhost:11434` with tool-calling models + `nomic-embed-text`). The honest
+reframe: only the **scenario-explainer** has unique in-app value; "queue research / build the task list" is
+thin NL→structured-item capture, where a 14B local model doing real research/planning would be strictly
+worse than, and duplicative of, Rob + Claude Code.
+
+**Decision:**
+1. **Build it, scoped tight and phased** — (1) grounded scenario-explainer, (2) methodology doc-RAG, (3)
+   research/feature capture. App-layer only; the engine stays framework-free.
+2. **The model may only append to the dev backlog / work queue. It never builds anything, edits code, or
+   offers to** (Rob's explicit constraint). "Autonomous writes" = exactly one capability (`queueBacklogItem`,
+   no confirm step) to a **dedicated, attributed, append-only** store — never an in-line edit of curated
+   PLAN/DECISIONS/HANDOVER prose. Promotion into the real backlog stays a human/Claude Code act.
+3. **Local-only**, because the scenario is real financial PII (same rule as document-import DI-7).
+4. **The model is never the source of a number.** Scenario/figure questions use **tool-calls into the
+   engine/`ResultPresenter`** (never embeddings); methodology questions use doc-RAG over `docs/`. Two
+   guardrails wrap every response: **G1** figure-grounding (a verification pass rejects any number not in
+   the tool output) and **G2** the runtime phrasing partition (`App\Compliance\OutputPhrasing` +
+   the `interpret` gate). Reuses the existing `Interpretation` wall rather than adding a new one.
+
+**Consequence / caveat:** a runtime LLM cannot be build-time-linted, so G2 is a **flagged public-release
+blocker** alongside `config('compliance.personal_use')=false`, the JST-dataset swap and CSP nonces. Safe
+in personal-use mode. Specced, not yet built.
+
 ## 2026-07-03 — "Check these figures & get help" panel surfaces sources + contacts in the UI
 **Decision:** The researched backup for the mortgage (RIO) and CGT figures — authoritative sources + real contact
 details — is now surfaced **in the app**, not just the chat/`.local` file. A reusable `<x-sources-and-contacts>`

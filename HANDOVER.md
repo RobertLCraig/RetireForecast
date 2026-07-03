@@ -4,11 +4,12 @@
 
 **Stage:** active
 **Status:** Phase D go-live, **feature-complete for personal use**; the adviser-legibility workstream and the whole **post-v1 enhancement backlog are built** (annuitisation, historical stress-test, ONS mortality-refresh guardrail, care-cost risk — plus **Lane B forced-housing now complete** (in-place forced sale built 2026-07-03) + Lane C withdrawal-sequencing *core*, #5/#6 handed off). The tool runs in **personal-use advice mode** (`config('compliance.personal_use')` = the flagged regulatory line — set false before any public release). What remains is Rob's **browser verification / sign-off**, the **public-release blockers**, and **optional refinements** — see What's next + Current state.
-_Last updated: 2026-07-03 (**in-place forced sale built** — the last Lane-B item, closing the "keep the home for
-ever" bug: a `ForcedSale` home is now sold at the redemption year mid-projection (`PathProjector` event), the equity
-freed into GIA via the shared `HousingProceeds::compute`, housing costs stopped and the entered rent charged from
-then on; rent + selling-cost basis ride on `ForecastSettings` (populated by `ScenarioForecaster::settings()` for a
-ForcedSale scenario only). `ForcedSaleTest` + a completeness test pin it; DECISIONS 2026-07-03.)_
+_Last updated: 2026-07-03 (session arc: in-place forced sale → mortgage-maturity made a **user input** → **buy-with-a-
+mortgage** (`HousingAction::buyMortgageRate` funds a buy-cheaper shortfall with an interest-only RIO) → a contextual
+**"Check these figures & get help"** sources/contacts panel (results / Compare / PDF). Plus the real **V2 couple's DB
+scenarios rebuilt** (Stay-put base + 5 named what-ifs, CGT entered, buy-cheaper on a £165k RIO). A later doc-only
+session then **specced an in-app local-model assistant** ("chatbot" — explains + captures, never builds;
+docs/RESEARCH-local-assistant.md). See Session log + DECISIONS 2026-07-03.)_
 
 ## Multi-agent coordination (lanes CLOSED 2026-07-02 — single-session tree)
 The concurrent A/B/C/D lanes are **closed**; this is a single-session tree again. The full per-lane build record
@@ -108,6 +109,7 @@ Open decisions and parked work, off the immediate go-live path (which is under W
 - [ ] **Demo couple's anonymised figures** — Rob supplies later, entered via the UI, not hardcoded (field list in docs/PLAN.md "Data Rob supplies").
 - [ ] **External-review enhancement backlog** (post-v1, not blocking) — docs/PLAN.md "External review triage" (cashflow timeline, longevity-distribution visual, stress-test panel, what-if sliders, v2 annuitisation + care-cost stochasticity). Declined items recorded in DECISIONS 2026-06-25.
 - [ ] **Delta-research backlog (2026-07-02)** — docs/PLAN.md "Delta-research backlog" + docs/RESEARCH-delta-2026-07-02.md. The **data-integrity fixes are all done** (the five collected-but-unconsumed inputs; DATA-MODEL "Known divergences" — survivor DB pension, per-person salary growth, DB commutation, NI category, ownership share; 2026-07-02/07-03). Remaining: the user-facing-copy fixes (the "Survivor fraction" field is now fixed; the **care-off silence** still misleads — a default-off ~1-in-4 six-figure care tail isn't surfaced), then the uncertainty-communication + household-composition + methodology + a11y items in the Delta-research backlog. Then, by value: uncertainty-communication upgrades; the **third-adult-contributing-to-upkeep** scope item (Rob's back-burner ask — BoardContribution stream + HouseholdMember, no third planning subject); a user-facing **/methodology** page; an adviser/Pension-Wise output pack; **WCAG 2.2 AA** + mobile to a public bar; and the JST-stops-at-2020 stress-test data gap. **Household scope decided: no third full planning subject** (DECISIONS 2026-07-02).
+- [ ] **In-app local-model assistant (2026-07-03)** — SPECCED, not built. docs/RESEARCH-local-assistant.md + docs/PLAN.md "In-app local-model assistant" + DECISIONS 2026-07-03. A local (Ollama, already running) results-page "chatbot" that **explains + captures, never predicts/calculates/builds**: phased (1) grounded scenario-explainer, (2) methodology doc-RAG, (3) research/feature capture. **The model's only write is `queueBacklogItem` (append-only, attributed); it never builds code or offers to.** Two guardrails — G1 figure-grounding, G2 runtime phrasing partition — the latter a flagged public-release blocker.
 
 ## How to pick up
 Run from the **project root** (the test runner shells out to a relative phpunit path, so it fails from `C:\Users\r`):
@@ -141,6 +143,7 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 | docs/RESEARCH-document-import.md | PARKED post-v1 feature: statement-driven onboarding + document import (sector evidence, document→builder-field map, gotchas). |
 | docs/RESEARCH-competitive-gap-analysis.md | Full-market competitive scan (2026-06-30): where the engine already leads vs where the gaps are (decumulation policy + framing). Net-new backlog items folded into docs/PLAN.md "Competitive gap analysis". |
 | docs/RESEARCH-delta-2026-07-02.md | Delta research (2026-07-02) over the five topics the competitive scan left as residuals/gaps: uncertainty communication, household composition (+ third-adult-contributing-to-upkeep UK mechanics), adviser/Pension-Wise outputs, accessibility + mobile (WCAG 2.2 AA), methodology disclosure. Adversarially source-checked; recommendations folded into docs/PLAN.md "Delta-research backlog". |
+| docs/RESEARCH-local-assistant.md | Spec + feasibility (2026-07-03) for the in-app **local-model assistant** ("chatbot"): a results-page explainer + backlog-capture on a local model (Ollama). The model **explains + captures, never predicts/calculates/builds**; phased explainer → doc-RAG → capture; two guardrails (figure-grounding + runtime phrasing partition). SPECCED, not built. See DECISIONS 2026-07-03. |
 | docs/RESEARCH-stress-test-and-official-sources.md | Stress-test industry standards + official UK data sources (2026-07-01): historical sequence backtesting; BoE has no equity total return, so the source is the JST Macrohistory dataset (CC BY-NC-SA); care-cost = LaingBuisson/PSSRU + ONS timing; ONS-refresh = fully ONS. Source decisions resolved + built. |
 | docs/PLAN-withdrawal-sequencing.md | Tax-efficient withdrawal sequencing across wrappers (ISA/SIPP/GIA) + "fill the band" with the lifetime-tax £-delta. **CORE SHIPPED 2026-07-01**; #5 PCLS-timing + #6 optimiser handed off (ready-to-execute plan in the spec, gated on two modelling calls from Rob). |
 | docs/PLAN-mortgage-payment-stop.md | Spec + **BUILT** (2026-07-01): stops the bundled mortgage *payment* after a repay-from-capital redemption via a `while_mortgaged` expense condition + `ExpenseProfile::mortgageCosts`. Kept as the build record. |
@@ -156,6 +159,18 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-07-03 (local-model assistant spec — doc-only)_ — Rob asked to investigate a page "chatbot" on a **local AI
+model** to answer questions about the scenario, queue research, and drive the feature/task list. Investigated: the
+project had **already settled the local-AI stance** (2026-06-28 document-import — *explain/capture, never predict*;
+local-only; never the source of a number) and the **runtime is already up** (Ollama on `localhost:11434` with
+tool-calling models + `nomic-embed-text`). Honest reframe: only the **scenario-explainer** has unique in-app value;
+research/tasklist is thin NL→backlog capture a 14B local model shouldn't do "for real" (that's Claude Code's job).
+Rob's hard constraint: **the model may only append to the work queue — it never builds, edits code, or offers to.**
+Specced across **docs/RESEARCH-local-assistant.md** (framing, architecture, two guardrails — G1 figure-grounding /
+G2 runtime phrasing partition, phasing explainer→doc-RAG→capture, gotchas LA-1…LA-8) + PLAN backlog + DECISIONS +
+this Open-items/sibling-docs. **Nothing built.** A concurrent session committed the sources/contacts panel
+(54af7bd, b9824f2) meanwhile — coordinated; staged only these four doc files. DECISIONS 2026-07-03.
 
 _2026-07-03 (V2 scenario rebuilt + CGT entered + buy-with-mortgage feature)_ — Long session driving the real V2
 couple's model. **(1) Rebuilt the DB scenarios** (backed up to gitignored `database/backups/` first): cleared the

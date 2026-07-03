@@ -799,6 +799,33 @@ document-upload onboarding. **Gotchas** DI-1…DI-9 in the research doc (transfe
 re-import dupes, over-annualising one-offs, saved-to-own-account double-count, tax-free drop, model
 hallucination, data exfiltration, actuals-as-retirement-budget, PDF mis-read).
 
+### In-app local-model assistant (2026-07-03) — SPECCED, post-v1
+Rob's ask: an in-page **"chatbot"** on a **local AI model** that (1) answers questions about the loaded
+scenario + the project, (2) queues research requests, and (3) is the interface for building the
+feature/task list. Full spec + feasibility: **[docs/RESEARCH-local-assistant.md](RESEARCH-local-assistant.md)**.
+The correct framing (inherited from the document-import local-AI stance above): the model **explains and
+captures, never predicts or calculates** — every number it says comes from the engine.
+
+Key calls (Rob, 2026-07-03; recorded in DECISIONS 2026-07-03):
+- **The model may only append to the dev backlog / work queue. It never builds anything, edits code, or
+  offers to.** "Autonomous writes" = exactly one capability (`queueBacklogItem`, no confirm), to a
+  dedicated attributed append-only store; everything else is read-only. Building stays a human/Claude Code act.
+- **Local-only** (Ollama on localhost, already running with tool-calling models + `nomic-embed-text`) —
+  the scenario is real financial PII and must never leave the machine (same rule as document-import DI-7).
+- **Two retrieval modes:** scenario/figure questions use **tool-calls into the engine/`ResultPresenter`**
+  (never embeddings — the user's own numbers must be structured, not hallucinated); methodology questions
+  use **doc-RAG** over `docs/`. Mirrors `Interpretation` (sentences strictly from computed figures).
+- **Two guardrails, both load-bearing:** G1 figure-grounding (a verification pass rejects any number not
+  in the tool output); G2 the runtime phrasing partition (`OutputPhrasing::violations()` + the `interpret`
+  gate). Safe in personal-use mode; a **flagged public-release blocker** (a runtime LLM can't be
+  build-time-linted).
+
+**Phasing (each delivers alone):** (1) grounded scenario-explainer with G1+G2 tested — the real value;
+(2) methodology doc-RAG (`nomic-embed-text` over `docs/`); (3) research/feature **capture-and-route** — the
+`queueBacklogItem` write is the model's only write and the ceiling of its agency. **Gotchas** LA-1…LA-8 in
+the research doc (ungrounded figure, banned phrasing, PII exfiltration, "offers to build", Ollama-down
+silent failure, RAG-for-own-numbers, autonomous-write corruption, right-number-wrong-meaning).
+
 ### Data Rob supplies for the demo couple (agree the shape now, needed at step 5)
 Per person: DOB, employment status, (working partner) gross salary + planned retirement age + NI category, State Pension weekly forecast (or qualifying years) + deferral, sex (for life table). Per pension: type, and DC → value, contributions, access age, withdrawal plan; DB → accrued annual pension, NRA, revaluation + in-payment escalation, commutation option + factor, spouse fraction; State → weekly forecast/qualifying years + triple-lock assumption. Property: value, ownership, mortgage left, ever-let, running costs. Accounts: each ISA/GIA/cash balance + owner (+ GIA unrealised gain). Expenses: target annual spend split essential/discretionary + inflation basis + one-offs + survivor spend factor. Housing: assumed sale price, candidate purchase price, assumed rent + rent inflation. Region. Default assumption set. All anonymised.
 
