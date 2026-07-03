@@ -3,6 +3,31 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — Buy-cheaper can be funded by a mortgage on the shortfall (RIO), not just cash
+**Context:** Modelling the V2 couple, "Sell & buy cheaper" looked strongest but was flagged **unaffordable** (a £200k
+home needs ~£97k more than their thin equity frees). The engine only modelled an **outright** buy — when the buy
+exceeded the proceeds it floored the surplus to £0 and handed them the home for free, inflating that plan's wealth,
+and the advice layer still ranked it top. Real-world research: an older couple could bridge the gap with a
+**retirement interest-only (RIO)** mortgage, but survivor-affordability (the lower earner must carry it alone —
+here YCC on ~£9.8k after FRC dies) caps it well below £97k; a ~£150–185k purchase with a modest RIO is the realistic
+ceiling. Repayment mortgages are worse (higher payments fail the survivor test sooner).
+
+**Decision:** Model a **mortgaged buy**. `HousingAction` gains `buyMortgageRate` (a RIO rate); when set and the
+purchase (buy + SDLT + moving) exceeds the net proceeds, the shortfall is **borrowed** rather than floored:
+`HousingPurchase` gains `mortgage`, the new home is `Mortgaged` with that balance, and its **interest-only payment
+(mortgage × rate)** is charged for life via a new `ExpenseProfile::withMortgageCosts` (added back after
+`withoutPropertyCosts` strips the old home's). Null rate = the old cash-only behaviour. Reconciliation generalises to
+**netProceeds + mortgage == buyPrice + SDLT + moving + surplus**. The interest-only balance stays owing (repaid from
+the estate on sale/death) — the existing "mortgage not netted from displayed wealth" v1 caveat applies, so a
+mortgaged buy's *total* wealth is gross of the RIO still owing.
+
+**Wiring:** builder input `housing.buyMortgageRate` (validation + `blankHousing` default + assembler); the Compare
+affordability note is now mortgage-aware — a funded gap reads "Funded by a £X interest-only mortgage (~£Y/yr)"
+(neutral) instead of the amber "not affordable" warning (which stays for a cash-only unaffordable buy). Tests pin the
+reconciliation, the new home carrying the loan + interest, and the builder round-trip. **V2:** the "Sell & buy
+cheaper" what-if now uses a realistic **£165k** home funded by the **£107.6k proceeds + a £61.7k RIO at 6% (£3,703/yr
+interest)** — and it *lasts* (usable £154.6k at 2049), a genuinely affordable option. Suite green (595).
+
 ## 2026-07-03 — Mortgage-maturity is a user-modelable input; "Stay put" never inherits a forced sale
 **Context:** Browser-verifying the forced-sale build, the one-click "Compare buy vs rent" produced a "Stay put"
 plan that silently sold the home at the redemption year (it was identical to "Sell & rent"), because

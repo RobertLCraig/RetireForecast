@@ -309,6 +309,7 @@ class ScenarioBuilder extends Component
 
             'housing.salePrice' => $moneyReq,
             'housing.buyPrice' => $money,
+            'housing.buyMortgageRate' => $rate,
             'housing.annualRent' => $money,
             'housing.rentInflationReal' => $rate,
             'housing.movingCosts' => $money,
@@ -1462,7 +1463,7 @@ class ScenarioBuilder extends Component
     private function blankHousing(): array
     {
         return [
-            'salePrice' => '', 'buyPrice' => '', 'annualRent' => '',
+            'salePrice' => '', 'buyPrice' => '', 'buyMortgageRate' => '', 'annualRent' => '',
             'rentInflationReal' => '', 'movingCosts' => '',
             'sellingCosts' => self::defaultSellingCosts(),
         ];

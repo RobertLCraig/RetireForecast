@@ -15,10 +15,11 @@ use RetireForecast\FinanceEngine\Money\Money;
  *
  * Holding every part beside the surplus is what makes the invested figure reconcilable:
  * whenever the proceeds cover the purchase, netProceeds == buyPrice + stampDuty +
- * movingCosts + surplus exactly (the floor only bites when the cheaper home still costs
- * more than the proceeds, which downsizing assumes away). This is the single source for
- * the buy-side surplus: {@see HousingComparison::buyVariant} and any UI breakdown read it,
- * so the parts can never drift from the total they sum to.
+ * movingCosts + surplus exactly. When the cheaper home costs more than the proceeds and a
+ * buy mortgage is available, $mortgage funds the gap instead of flooring the surplus, so the
+ * general invariant is netProceeds + mortgage == buyPrice + stampDuty + movingCosts + surplus.
+ * This is the single source for the buy-side figures: {@see HousingComparison::buyVariant} and
+ * any UI breakdown read it, so the parts can never drift from the total they sum to.
  */
 final class HousingPurchase
 {
@@ -28,9 +29,10 @@ final class HousingPurchase
         public readonly Money $stampDuty,
         public readonly Money $movingCosts,
         public readonly Money $surplus,
+        public readonly Money $mortgage,
     ) {}
 
-    /** True when the proceeds cover the purchase and its costs, so the parts sum exactly. */
+    /** True when the proceeds cover the purchase and its costs from cash alone (no mortgage). */
     public function coversPurchase(): bool
     {
         return $this->netProceeds->pence >= $this->buyPrice->pence

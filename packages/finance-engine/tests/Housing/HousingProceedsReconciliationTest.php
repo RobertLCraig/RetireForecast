@@ -6,6 +6,7 @@ namespace RetireForecast\FinanceEngine\Tests\Housing;
 
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\CgtHistory;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
@@ -15,6 +16,7 @@ use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
+use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -196,6 +198,53 @@ final class HousingProceedsReconciliationTest extends TestCase
         $outcome = $this->comparison()->buyOutcome($this->household(), $action);
 
         $this->assertSame(0, $outcome->surplus->pence);
+        $this->assertSame(0, $outcome->mortgage->pence, 'a cash-only buy borrows nothing');
         $this->assertFalse($outcome->coversPurchase());
+    }
+
+    public function test_a_buy_mortgage_funds_the_shortfall_and_reconciles(): void
+    {
+        // Buying dearer than the proceeds, but a 6% buy mortgage is available: the shortfall is
+        // borrowed instead of flooring the surplus and pretending the home was free.
+        $action = new HousingAction(
+            salePrice: Money::fromPounds(400_000),
+            buyPrice: Money::fromPounds(500_000),
+            buyMortgageRate: Percent::fromPercent(6),
+        );
+        $outcome = $this->comparison()->buyOutcome($this->household(), $action);
+
+        $this->assertTrue($outcome->mortgage->isPositive(), 'the shortfall is borrowed');
+        $this->assertSame(0, $outcome->surplus->pence, 'all the cash goes into the purchase');
+        // The general boundary identity: netProceeds + mortgage == buyPrice + SDLT + moving (+ £0 surplus).
+        $this->assertSame(
+            $outcome->netProceeds->pence + $outcome->mortgage->pence,
+            $outcome->buyPrice->pence + $outcome->stampDuty->pence + $outcome->movingCosts->pence + $outcome->surplus->pence,
+        );
+    }
+
+    public function test_a_mortgaged_buy_variant_carries_the_loan_and_its_interest_only_payment(): void
+    {
+        $action = new HousingAction(
+            salePrice: Money::fromPounds(400_000),
+            buyPrice: Money::fromPounds(500_000),
+            buyMortgageRate: Percent::fromPercent(6),
+        );
+        $outcome = $this->comparison()->buyOutcome($this->household(), $action);
+        $variants = $this->comparison()->variantInputs(
+            $this->household(),
+            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+            AssumptionSetLibrary::default(),
+            $action,
+        );
+        $buy = $variants['buy_outright']['household'];
+
+        // The new home carries the borrowed balance, and the interest-only payment (mortgage × rate)
+        // is charged as its mortgage cost — so the projection pays the RIO interest for life.
+        $this->assertNotNull($buy->primaryResidence);
+        $this->assertSame($outcome->mortgage->pence, $buy->primaryResidence->outstandingMortgage->pence);
+        $this->assertSame(
+            $outcome->mortgage->applyRate(Percent::fromPercent(6))->pence,
+            $buy->expenseProfile->mortgageCosts()->pence,
+        );
     }
 }

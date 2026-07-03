@@ -19,6 +19,12 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * $sellingCosts is the cost of selling, broken into named components each entered as a
  * % of the sale price or a flat £ ({@see SellingCostComponent}); null/empty falls back
  * to the engine's default selling-cost rate. The sum is netted off the proceeds.
+ *
+ * $buyMortgageRate, when set, lets the buy-cheaper leg borrow the shortfall when the new
+ * home costs more than the cash the sale frees: the gap is funded by an interest-only
+ * (retirement interest-only / RIO) mortgage on the new home, charged at this annual rate.
+ * Null = an outright (cash-only) purchase, so a buy above the proceeds is not funded (the
+ * old behaviour, flagged as unaffordable).
  */
 final class HousingAction
 {
@@ -32,5 +38,6 @@ final class HousingAction
         public readonly ?Percent $rentInflationReal = null,
         public readonly ?Money $movingCosts = null,
         public readonly ?array $sellingCosts = null,
+        public readonly ?Percent $buyMortgageRate = null,
     ) {}
 }

@@ -139,6 +139,7 @@ class ScenarioCompare extends Component
             // shortfall here, or the comparison could crown a plan the household can't actually
             // afford (only the buy-cheaper variant buys; rent / stay never do). Null when covered.
             'buyShortfall' => $this->buyShortfall($plan, $forecaster),
+            'buyMortgage' => $this->buyMortgage($plan, $forecaster),
             'essentialsMet' => $forecast->essentialsAlwaysMet,
             'fullSpendMet' => $forecast->fullSpendAlwaysMet,
             'moneyLasts' => $forecast->depletionCalendarYear === null,
@@ -165,10 +166,33 @@ class ScenarioCompare extends Component
         }
 
         $outcome = $forecaster->housingComparison($plan)->buyOutcome($plan->toHousehold(), $plan->toHousingAction());
-        if ($outcome->coversPurchase()) {
+        // Covered from cash, or the gap is funded by a buy mortgage → not an affordability warning.
+        if ($outcome->coversPurchase() || $outcome->mortgage->isPositive()) {
             return null;
         }
 
         return $outcome->buyPrice->plus($outcome->stampDuty)->plus($outcome->movingCosts)->minus($outcome->netProceeds)->format();
+    }
+
+    /**
+     * For a "sell & buy cheaper" plan where the purchase costs more than the sale frees and a buy
+     * mortgage funds the gap, a note of the loan taken and its interest-only cost — so a buy above
+     * the proceeds reads as financed, not unaffordable. Null when the plan is not a mortgaged buy.
+     */
+    private function buyMortgage(Scenario $plan, ScenarioForecaster $forecaster): ?string
+    {
+        if ($plan->variant->value !== 'buy_outright') {
+            return null;
+        }
+
+        $action = $plan->toHousingAction();
+        $outcome = $forecaster->housingComparison($plan)->buyOutcome($plan->toHousehold(), $action);
+        if (! $outcome->mortgage->isPositive() || $action->buyMortgageRate === null) {
+            return null;
+        }
+
+        $interest = $outcome->mortgage->applyRate($action->buyMortgageRate);
+
+        return "Funded by a {$outcome->mortgage->format()} interest-only mortgage on the new home (~{$interest->format()}/yr).";
     }
 }

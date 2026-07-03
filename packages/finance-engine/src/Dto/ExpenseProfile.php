@@ -99,4 +99,24 @@ final class ExpenseProfile
             mortgageCosts: null,
         );
     }
+
+    /**
+     * The same profile with an ongoing mortgage payment added — the interest-only cost of a
+     * mortgage taken to fund a buy above the sale proceeds. It is an essential cost, so it lifts
+     * the essential floor and is marked as the mortgage subset (so it stops if that mortgage is
+     * ever redeemed). Typically applied after {@see withoutPropertyCosts} on a buy variant, so it
+     * replaces the sold home's payment with the new home's.
+     */
+    public function withMortgageCosts(Money $mortgageCosts): self
+    {
+        return new self(
+            essentialAnnualSpend: $this->essentialAnnualSpend->plus($mortgageCosts),
+            discretionaryAnnualSpend: $this->discretionaryAnnualSpend,
+            survivorSpendFactor: $this->survivorSpendFactor,
+            oneOffCosts: $this->oneOffCosts,
+            propertyCosts: $this->propertyCosts,
+            employmentCosts: $this->employmentCosts,
+            mortgageCosts: $mortgageCosts,
+        );
+    }
 }

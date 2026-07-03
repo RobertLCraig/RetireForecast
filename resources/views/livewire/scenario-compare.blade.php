@@ -75,6 +75,9 @@
                             @if ($plan['buyShortfall'])
                                 <span class="mt-1 block text-xs font-medium text-amber-700">⚠ Buying needs {{ $plan['buyShortfall'] }} more than the sale frees — not affordable from the sale alone.</span>
                             @endif
+                            @if ($plan['buyMortgage'])
+                                <span class="mt-1 block text-xs text-gray-600">{{ $plan['buyMortgage'] }}</span>
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-gray-700">{{ $plan['essentialsMet'] ? 'Yes' : 'No' }}</td>
                         <td class="px-4 py-3 text-gray-700">

@@ -417,6 +417,19 @@ class ScenarioBuilderTest extends TestCase
         $this->assertSame(MortgageMaturityAction::ForcedSale, $home->mortgageMaturityAction);
     }
 
+    public function test_the_buy_mortgage_rate_round_trips_into_the_housing_action(): void
+    {
+        // The rate that funds a buy above the sale proceeds must reach the HousingAction the engine
+        // reads — without it a mortgaged downsize could not be modelled (a silent drop).
+        $state = BuilderStateFixture::minimalValid();
+        $state['housing']['buyPrice'] = '165000';
+        $state['housing']['buyMortgageRate'] = '6';
+
+        $this->fill($state)->call('save')->assertHasNoErrors();
+
+        $this->assertSame(6.0, Scenario::firstOrFail()->toHousingAction()->buyMortgageRate?->asPercent());
+    }
+
     /** @param array<string, mixed> $state */
     private function fill(array $state): Testable
     {

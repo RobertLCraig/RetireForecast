@@ -992,6 +992,11 @@
                         <input id="housing-buyPrice" type="text" inputmode="decimal" wire:model="housing.buyPrice" class="{{ $field }}">
                     </div>
                     <div>
+                        <label for="housing-buyMortgageRate" class="{{ $label }}">Buy mortgage rate (%/yr, optional)</label>
+                        <input id="housing-buyMortgageRate" type="text" inputmode="decimal" placeholder="e.g. 6" wire:model="housing.buyMortgageRate" class="{{ $field }}">
+                        <p class="mt-1 text-xs text-gray-500">If the new home costs more than the sale frees, the shortfall is funded by an interest-only (retirement interest-only) mortgage at this rate. Blank = buy for cash only.</p>
+                    </div>
+                    <div>
                         <label for="housing-annualRent" class="{{ $label }}">Annual rent if renting (£)</label>
                         <input id="housing-annualRent" type="text" inputmode="decimal" wire:model="housing.annualRent" class="{{ $field }}">
                     </div>

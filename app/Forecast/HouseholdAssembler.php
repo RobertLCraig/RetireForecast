@@ -92,6 +92,7 @@ final class HouseholdAssembler
             rentInflationReal: $this->percent($h['rentInflationReal'] ?? null),
             movingCosts: $this->money($h['movingCosts'] ?? null),
             sellingCosts: $this->sellingCosts($h),
+            buyMortgageRate: $this->percent($h['buyMortgageRate'] ?? null),
         );
     }
 

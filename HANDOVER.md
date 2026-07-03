@@ -157,6 +157,21 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
 
+_2026-07-03 (V2 scenario rebuilt + CGT entered + buy-with-mortgage feature)_ — Long session driving the real V2
+couple's model. **(1) Rebuilt the DB scenarios** (backed up to gitignored `database/backups/` first): cleared the
+clutter (12 old scenarios), made **"Stay put" the base** (id 9 — the ~£90k pays the mortgage down to £118k +
+refinances as a residential RIO, payment reset to £7,080/yr = £118k interest-only @6%, *researched*), and rebuilt 5
+clean named delta-children (forced-sale→rent, sell-&-buy, let-out-&-rent, retire-later, live-longer) via a tinker
+transform of scenario 9's real data. **(2) Entered the CGT history** (never persisted in any scenario; sourced from
+the gitignored `docs/SCENARIO-V2.local.md`): base cost £192.5k, £35k improvement **not** claimed (unevidenced +
+mostly repairs, *researched* — no time bar but must substantiate, and replacement kitchen/bath/windows are repairs
+not improvements), higher-rate → **CGT ≈ £24,237**; the sell what-ifs now reflect it (forced-sale proceeds fell by
+exactly the CGT). **(3) Built buy-with-mortgage** (`HousingAction::buyMortgageRate` → a RIO on the shortfall; see the
+top DECISIONS entry) after researching that a £200k buy is unaffordable but a ~£165k one funded by a ~£61.7k RIO is
+feasible (survivor-affordability the constraint). The V2 "Sell & buy cheaper" now uses £165k + 6% RIO and *lasts*.
+Suite green (595). `database/backups/` holds the pre-rebuild snapshot. Nothing pushed since the last push (the two
+engine/builder commits are on origin/master).
+
 _2026-07-03 (browser verification of the forced sale → mortgage-maturity made user-modelable)_ — Rob browser-checked
 the forced-sale build: it works (input note, the "The home is sold" chart annotation, honest wealth outcomes), but
 the one-click "Compare buy vs rent" produced a **"Stay put" plan that silently sold** at the redemption year (it

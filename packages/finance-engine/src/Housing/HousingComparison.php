@@ -140,24 +140,45 @@ final class HousingComparison
         $buyPrice = $action->buyPrice ?? Money::zero();
         $sdlt = (new SdltCalculator($this->config))->compute($buyPrice)->total;
         $moving = $action->movingCosts ?? Money::fromPence(self::DEFAULT_MOVING_COSTS_PENCE);
+        $totalCost = $buyPrice->plus($sdlt)->plus($moving);
 
-        $surplus = $netProceeds->minus($buyPrice)->minus($sdlt)->minus($moving)->minZero();
+        // If a buy mortgage is available and the purchase costs more than the cash the sale
+        // frees, the shortfall is borrowed (interest-only) rather than flooring the surplus to
+        // zero and pretending the home was bought for free. Otherwise it is an outright buy: any
+        // excess cash is the invested surplus, and an unaffordable buy stays flagged.
+        if ($action->buyMortgageRate !== null && $totalCost->pence > $netProceeds->pence) {
+            $mortgage = $totalCost->minus($netProceeds);
+            $surplus = Money::zero();
+        } else {
+            $mortgage = Money::zero();
+            $surplus = $netProceeds->minus($totalCost)->minZero();
+        }
 
-        return new HousingPurchase($netProceeds, $buyPrice, $sdlt, $moving, $surplus);
+        return new HousingPurchase($netProceeds, $buyPrice, $sdlt, $moving, $surplus, $mortgage);
     }
 
     private function buyVariant(Household $household, HousingAction $action): Household
     {
         $outcome = $this->buyOutcome($household, $action);
+        $mortgaged = $outcome->mortgage->isPositive();
 
         $newProperty = new Property(
             currentValue: $outcome->buyPrice,
-            ownership: OwnershipType::Outright,
+            ownership: $mortgaged ? OwnershipType::Mortgaged : OwnershipType::Outright,
             isPrimaryResidence: true,
+            outstandingMortgage: $mortgaged ? $outcome->mortgage : null,
             runningCosts: $this->scaledRunningCosts($household, $action, $outcome->buyPrice),
         );
 
-        return $this->withHousing($household, $newProperty, $outcome->surplus);
+        // A mortgaged purchase carries an ongoing interest-only (RIO) payment for life; charge it
+        // as the new home's mortgage cost (withHousing strips the old home's, so this is only the
+        // new one). Null rate / cash-only buy → no cost. The balance stays owing (interest-only),
+        // repaid from the estate on sale/death — the v1 "mortgage not netted from wealth" caveat.
+        $interest = ($mortgaged && $action->buyMortgageRate !== null)
+            ? $outcome->mortgage->applyRate($action->buyMortgageRate)
+            : null;
+
+        return $this->withHousing($household, $newProperty, $outcome->surplus, $interest);
     }
 
     private function rentVariant(Household $household, Money $netProceeds): Household
@@ -191,25 +212,32 @@ final class HousingComparison
     }
 
     /**
-     * Rebuild the household with a different primary residence and the freed cash
-     * added to a new invested (GIA) account for the first person.
+     * Rebuild the household with a different primary residence and the freed cash added to a
+     * new invested (GIA) account for the first person. $mortgageInterest, when set, is the
+     * ongoing interest-only payment on a mortgage taken to fund a buy above the proceeds; it is
+     * added back as the new home's mortgage cost (the old home's was stripped below).
      */
-    private function withHousing(Household $household, ?Property $property, Money $investedCash): Household
+    private function withHousing(Household $household, ?Property $property, Money $investedCash, ?Money $mortgageInterest = null): Household
     {
         $accounts = $household->accounts;
         if ($investedCash->isPositive()) {
             $accounts[] = new Account($household->persons[0]->id, AccountType::Gia, $investedCash);
         }
 
+        // The current home is sold in both sell variants, so its housing-linked spend (mortgage
+        // payment, service charge) stops — only "stay put" keeps it. This is the contingent-cost
+        // rule that stops the buy/rent comparison being charged a phantom mortgage on a property
+        // it no longer owns. A mortgaged buy then re-adds the new home's interest-only payment.
+        $profile = $household->expenseProfile->withoutPropertyCosts();
+        if ($mortgageInterest !== null && $mortgageInterest->isPositive()) {
+            $profile = $profile->withMortgageCosts($mortgageInterest);
+        }
+
         return new Household(
             name: $household->name,
             region: $household->region,
             persons: $household->persons,
-            // The current home is sold in both sell variants, so its housing-linked spend
-            // (mortgage payment, service charge) stops — only "stay put" keeps it. This is
-            // the contingent-cost rule that stops the buy/rent comparison being charged a
-            // phantom mortgage on a property it no longer owns.
-            expenseProfile: $household->expenseProfile->withoutPropertyCosts(),
+            expenseProfile: $profile,
             pensions: $household->pensions,
             accounts: $accounts,
             incomeStreams: $household->incomeStreams,
