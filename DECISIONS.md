@@ -3,6 +3,37 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — Local-model assistant Phase 2 built: methodology doc-RAG, corpus CURATED not whole-folder
+**Context:** Phase 2 of the assistant (see the entries below) — "how does it model X?" methodology questions via
+local embeddings (`nomic-embed-text`) over `docs/`, kept distinct from the scenario-figure questions Phase 1 answers.
+
+**Decision + how:** App-layer only (engine untouched), same discipline as Phase 1 — **prompt-stuff, don't route.**
+- New `App\Assistant\`: `EmbeddingClient` (+ `OllamaEmbeddingClient`, local-only, fails loudly via
+  `AssistantUnavailable`), `DocChunk` / `DocChunker` (heading-anchored chunks, hard-word-capped so none exceeds the
+  embed model's context), `DocIndex` (hand-rolled cosine search — no vector DB, the integer-pence spirit),
+  `MethodologyRetriever`. An `assistant:index-docs` command builds a gitignored JSON index under
+  `storage/app/private/assistant/` (a derived build artifact; missing index degrades gracefully to no methodology).
+- **No fragile 14B intent-routing.** Every turn embeds the question, cosine-searches the index, and attaches the top
+  chunks above a threshold under a labelled METHODOLOGY section — threaded into `AssistantService::answer()` by the
+  Livewire component (the service stays pure/unit-testable, no runtime). A scenario question matches nothing → no doc
+  noise. Grounding (G1) widens to context+methodology, so a real methodology figure it cites is groundable while an
+  invented one is still refused; the prompt forbids taking the reader's OWN figure from METHODOLOGY (LA-6/LA-8).
+- **The corpus is CURATED, not the whole folder — the load-bearing call, forced by live verification.** Indexing all
+  of `docs/` made the assistant surface internal PLANNING/build-record prose ("DrawdownStrategy enum, both shipped")
+  as if it were methodology, and nomic's compressed cosines (~0.64–0.71 for *everything*) gave a global threshold no
+  discrimination between methodology and scenario questions. Restricting the index to the genuinely
+  methodology-bearing, sourced docs (`config('assistant.methodology_docs')` = ASSUMPTIONS.md, MORTALITY.md,
+  RESEARCH-stress-test-and-official-sources.md) fixed both: methodology questions now score 0.70–0.76 and hit the
+  right source doc; scenario questions sit at 0.58–0.63 and attach nothing at the 0.66 threshold. Broader "how does
+  the engine compute emergency tax / the Monte Carlo" coverage is **DEFERRED to a purpose-written /methodology page**
+  (already on the backlog) — that is the right corpus for it, not the internal planning docs.
+
+**Evidence:** 15 new unit tests (chunker, cosine index, retriever graceful-degradation, methodology-widens-grounding),
+suite green; verified end-to-end against real `qwen3:14b` + `nomic-embed-text` — a mortality-methodology question is
+answered grounded and sourced (ONS cohort q(x), ages 50–100, years 2025–2074, the JSON resource), a scenario question
+attaches no methodology and answers from the scenario context. **Phase 3 (backlog capture) remains specced.**
+See docs/RESEARCH-local-assistant.md §6.
+
 ## 2026-07-03 — Assistant context: add the home-sale waterfall (Phase-1 sources now comprehensive)
 **Context/decision:** Added the **home-sale waterfall** as the next context source, same pattern as the tax shock: a
 fourth optional already-formatted array on `ScenarioContext` (`?array $saleExplainer`), reused from

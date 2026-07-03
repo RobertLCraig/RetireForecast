@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Assistant\AssistantService;
+use App\Assistant\DocIndex;
+use App\Assistant\MethodologyRetriever;
 use App\Assistant\OllamaChatClient;
+use App\Assistant\OllamaEmbeddingClient;
 use App\Assistant\ScenarioContext;
 use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ResultPresenter;
@@ -83,6 +86,7 @@ class ScenarioAssistant extends Component
             $question,
             adviceAllowed: Gate::allows('interpret'),
             history: $history,
+            methodology: $this->methodologyFor($question),
         );
 
         $this->messages[] = ['role' => 'assistant', 'text' => $answer->text, 'status' => $answer->status];
@@ -128,6 +132,45 @@ class ScenarioAssistant extends Component
             $allocation->blendedRealReturn($assumptions),
             $assumptions->investmentIncomeYield->asFraction(),
         );
+    }
+
+    /**
+     * The relevant methodology doc-RAG block for this question (Phase 2), or '' when the index is
+     * absent, nothing clears the relevance threshold, or the local embedder is unreachable. A pure
+     * scenario question adds no doc noise; methodology is additive and is never allowed to break a
+     * scenario answer, so any failure degrades quietly to ''. See {@see MethodologyRetriever}.
+     */
+    private function methodologyFor(string $question): string
+    {
+        $indexPath = (string) config('assistant.doc_index_path');
+        if (! is_file($indexPath)) {
+            return '';
+        }
+
+        try {
+            $data = json_decode((string) file_get_contents($indexPath), true);
+            $chunks = is_array($data) ? ($data['chunks'] ?? []) : [];
+            if (! is_array($chunks) || $chunks === []) {
+                return '';
+            }
+
+            $embedder = new OllamaEmbeddingClient(
+                (string) config('assistant.base_url'),
+                (string) config('assistant.embed_model'),
+                (int) config('assistant.timeout'),
+                (int) config('assistant.probe_timeout'),
+            );
+            $retriever = new MethodologyRetriever(
+                $embedder,
+                DocIndex::fromArray($chunks),
+                (int) config('assistant.retrieval_k'),
+                (float) config('assistant.retrieval_threshold'),
+            );
+
+            return $retriever->retrieve($question);
+        } catch (\Throwable) {
+            return '';
+        }
     }
 
     private function service(): AssistantService

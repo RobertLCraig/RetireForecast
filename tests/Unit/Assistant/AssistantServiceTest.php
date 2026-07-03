@@ -124,4 +124,40 @@ final class AssistantServiceTest extends TestCase
         $this->assertFalse($answer->ok);
         $this->assertSame('unavailable', $answer->status);
     }
+
+    public function test_a_methodology_figure_is_grounded_when_the_methodology_block_is_attached(): void
+    {
+        // Phase 2: the figure is not in the scenario CONTEXT — the retrieved methodology supplies it,
+        // and folding methodology into the grounding source is what lets the model state it.
+        $methodology = "METHODOLOGY — how the tool works:\n\nFrom ASSUMPTIONS.md: the personal allowance the engine uses is £12,570.";
+        $client = new FakeChatClient(['The personal allowance the tool applies is £12,570.']);
+
+        $answer = (new AssistantService($client))->answer(
+            $this->context,
+            'What personal allowance does it use?',
+            adviceAllowed: true,
+            methodology: $methodology,
+        );
+
+        $this->assertTrue($answer->ok);
+        $this->assertSame('answered', $answer->status);
+        $this->assertStringContainsString('£12,570', $answer->text);
+        $this->assertSame(1, $client->calls());
+    }
+
+    public function test_the_same_methodology_figure_is_refused_without_the_block(): void
+    {
+        // The converse proves the block is what widened grounding: with no methodology attached,
+        // £12,570 is a figure absent from the scenario CONTEXT, so it is held back.
+        $client = new FakeChatClient(['The personal allowance the tool applies is £12,570.']);
+
+        $answer = (new AssistantService($client))->answer(
+            $this->context,
+            'What personal allowance does it use?',
+            adviceAllowed: true,
+        );
+
+        $this->assertFalse($answer->ok);
+        $this->assertSame('ungrounded_refused', $answer->status);
+    }
 }

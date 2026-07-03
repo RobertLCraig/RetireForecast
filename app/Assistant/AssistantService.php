@@ -33,14 +33,19 @@ final class AssistantService
 
     /**
      * @param  list<array{role: string, content: string}>  $history  prior turns, oldest first
+     * @param  string  $methodology  optional retrieved doc-RAG block (Phase 2): general "how the tool
+     *                               works" background. It is shown to the model AND folded into the
+     *                               grounding source, so a methodology figure it cites is groundable
+     *                               while an invented one is still refused. '' when none is relevant.
      */
-    public function answer(ScenarioContext $context, string $question, bool $adviceAllowed, array $history = []): AssistantAnswer
+    public function answer(ScenarioContext $context, string $question, bool $adviceAllowed, array $history = [], string $methodology = ''): AssistantAnswer
     {
         if (! $this->client->isAvailable()) {
             return AssistantAnswer::unavailable("The local assistant isn't running. Start Ollama (on this machine) and try again.");
         }
 
-        $system = SystemPrompt::build($context, $adviceAllowed);
+        $system = SystemPrompt::build($context, $adviceAllowed, $methodology);
+        $groundingSource = $context->promptBlock().($methodology === '' ? '' : "\n\n".$methodology);
         $base = [
             ['role' => 'system', 'content' => $system],
             ...array_values($history),
@@ -59,7 +64,7 @@ final class AssistantService
             }
 
             $phrasing = $adviceAllowed ? [] : OutputPhrasing::violations($raw);
-            $ungrounded = FigureGrounding::ungrounded($raw, $context->promptBlock(), $question);
+            $ungrounded = FigureGrounding::ungrounded($raw, $groundingSource, $question);
 
             if ($phrasing === [] && $ungrounded === []) {
                 return AssistantAnswer::answered($raw);

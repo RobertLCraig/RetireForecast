@@ -10,9 +10,9 @@ discipline, and the phasing. **Post-v1; specced before building.**_
 > capturing, never predicting or calculating**. Every number it says comes from the engine; the only
 > thing it may *write* is a line on the development backlog. It never builds, edits code, or offers to.
 
-**Build status (2026-07-03):** **Phase 1 (grounded scenario-explainer) is BUILT** — `App\Assistant\` +
-`App\Livewire\ScenarioAssistant`, both guardrails tested, verified end-to-end against `qwen3:14b`; see §6.
-Phases 2 (methodology doc-RAG) and 3 (backlog capture) remain specced.
+**Build status (2026-07-03):** **Phases 1 (grounded scenario-explainer) and 2 (methodology doc-RAG) are BUILT** —
+`App\Assistant\` + `App\Livewire\ScenarioAssistant`, both guardrails tested, verified end-to-end against `qwen3:14b`
+(+ `nomic-embed-text` for Phase 2); see §6. Phase 3 (backlog capture) remains specced.
 
 ---
 
@@ -159,8 +159,21 @@ Autonomous, but **safe by construction** — it honours "no silent failure" and 
    sell strategy only) is also in now. With that, the Phase-1 context sources are comprehensive: central
    projection, year-by-year ladder, Monte Carlo, tax shock, sale waterfall. Remaining fast-follows are just
    pre-computed aggregates, streaming and a side-nav entry — the bigger next steps are Phase 2 (doc-RAG) and 3.
-2. **Phase 2 — methodology doc-RAG.** `nomic-embed-text` over `docs/` (small, high-trust corpus) for
-   "how does it model X" questions, kept distinct from scenario-figure questions.
+2. ✅ **Phase 2 — methodology doc-RAG — BUILT (2026-07-03).** `nomic-embed-text` embeds a **CURATED** slice of
+   `docs/` (not the whole folder), and each turn the question is embedded, cosine-searched against a hand-rolled
+   `App\Assistant\DocIndex` (no vector DB), and the top chunks above a threshold are prompt-stuffed under a
+   labelled METHODOLOGY section — **not** intent-routed (a 14B router is unreliable; a scenario question simply
+   matches nothing and adds no doc noise). Pieces: `EmbeddingClient` / `OllamaEmbeddingClient`, `DocChunk` /
+   `DocChunker` (heading-anchored, hard-word-capped), `DocIndex`, `MethodologyRetriever`; an `assistant:index-docs`
+   command writes a gitignored JSON index under `storage/app/private/assistant/`. G1 grounding widens to
+   context+methodology (a real methodology figure is groundable, an invented one still refused); the prompt forbids
+   quoting a METHODOLOGY figure as the reader's OWN (LA-6/LA-8). **The curation call is load-bearing (LA-9 below):**
+   most of `docs/` is internal planning/build-record prose, not user-facing methodology, so the index is limited to
+   the sourced-methodology docs (`config('assistant.methodology_docs')` = ASSUMPTIONS.md, MORTALITY.md,
+   RESEARCH-stress-test-and-official-sources.md). Broader engine-computation methodology (emergency tax, the Monte
+   Carlo) is **deferred to a purpose-written /methodology page** — the right corpus for it. Verified end-to-end
+   against real `qwen3:14b` + `nomic-embed-text` (a mortality-methodology question answers grounded + sourced; a
+   scenario question attaches nothing). See DECISIONS 2026-07-03.
 3. **Phase 3 — research/feature capture-and-route.** The `queueBacklogItem` write tool → the append-only
    attributed store + a review/promote list. **This is the model's only write, and the ceiling of its
    agency: it queues, it does not build.**
@@ -177,6 +190,7 @@ Autonomous, but **safe by construction** — it honours "no silent failure" and 
 | LA-6 | Embedding-RAG used for the user's own numbers → stale/wrong figure | two-mode split: figures = tool-calls only; embeddings = methodology docs only |
 | LA-7 | Autonomous backlog items silently corrupt curated PLAN/DECISIONS | append-only to a separate attributed store; human promotion; never in-line edits |
 | LA-8 | A wrong grounded explanation of a *right* number (misreads what a figure means) | tool payloads carry the figure's meaning/label, not just the value; provenance link back to the panel that owns it |
+| LA-9 | Doc-RAG surfaces internal PLANNING/build-record prose as if it were methodology; nomic's compressed cosines (~0.64–0.71) let a scenario question pull docs too | curate the index to sourced-methodology docs only (`config('assistant.methodology_docs')`), not the whole `docs/`; threshold (0.66) tuned to the curated corpus's score gap; broader engine-computation methodology awaits a /methodology page (found via live verification 2026-07-03) |
 
 ## 8. Sources
 
