@@ -184,8 +184,14 @@ not improvements), higher-rate → **CGT ≈ £24,237**; the sell what-ifs now r
 exactly the CGT). **(3) Built buy-with-mortgage** (`HousingAction::buyMortgageRate` → a RIO on the shortfall; see the
 top DECISIONS entry) after researching that a £200k buy is unaffordable but a ~£165k one funded by a ~£61.7k RIO is
 feasible (survivor-affordability the constraint). The V2 "Sell & buy cheaper" now uses £165k + 6% RIO and *lasts*.
-Suite green (595). `database/backups/` holds the pre-rebuild snapshot. Nothing pushed since the last push (the two
-engine/builder commits are on origin/master).
+**(4) Surfaced sources + contacts in the UI** — a reusable `<x-sources-and-contacts>` "Check these figures & get
+help" panel (Pensions & money always; Later-life mortgages + Capital gains tax **contextual** — shown only when a
+plan involves a mortgage / sells an ever-let home) on the results + Compare pages + a compact PDF version, with
+verified live contacts (Pension Wise, MoneyHelper, Equity Release Council, HMRC CGT 0300 200 3300, TaxAid, FCA);
+neutral signposting, passes `BannedPhrasingTest`. All mortgage/CGT reasoning + sources + contacts also captured in
+`docs/SCENARIO-V2.local.md`. Suite green (595). `database/backups/` holds the pre-rebuild snapshot. **Unpushed since
+the last push:** buy-with-mortgage + sources-panel commits are local-only on `master` (forced-sale + mortgage-maturity
+are already on origin).
 
 _2026-07-03 (browser verification of the forced sale → mortgage-maturity made user-modelable)_ — Rob browser-checked
 the forced-sale build: it works (input note, the "The home is sold" chart annotation, honest wealth outcomes), but
