@@ -57,10 +57,11 @@ return [
     // PLANNING and build-record prose (PLAN*, RESEARCH-competitive/delta/import…), which is NOT user-facing
     // methodology: indexing it makes the assistant surface build-status noise ("DrawdownStrategy enum, both
     // shipped") as if it were an explanation — a trust regression. So the index is limited to the docs that
-    // genuinely explain how the tool models things and where its sourced figures come from. Broader "how does
-    // the engine compute X" coverage is deferred to a purpose-written /methodology page (backlog), which is
-    // the right corpus for it. Filenames, matched case-insensitively; empty = every *.md (minus *.local.md).
+    // genuinely explain how the tool models things and where its sourced figures come from. METHODOLOGY.md is
+    // the purpose-written engine-computation doc (also the public /methodology page — one source, two homes).
+    // Filenames, matched case-insensitively; empty = every *.md (minus *.local.md).
     'methodology_docs' => [
+        'METHODOLOGY.md',
         'ASSUMPTIONS.md',
         'MORTALITY.md',
         'RESEARCH-stress-test-and-official-sources.md',

@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BuyVsRentController;
 use App\Http\Controllers\DisclaimerController;
+use App\Http\Controllers\MethodologyController;
 use App\Http\Controllers\QuickWhatIfController;
 use App\Http\Controllers\ScenarioPdfController;
 use App\Http\Middleware\EnsureDisclaimerAcknowledged;
@@ -20,6 +21,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return Auth::check() ? redirect()->route('dashboard') : view('home');
 })->name('home');
+
+// How the tool computes its figures. Public education/guidance content (no user data), rendered
+// from docs/METHODOLOGY.md — the same source the local assistant's doc-RAG indexes.
+Route::get('/methodology', [MethodologyController::class, 'show'])->name('methodology');
 
 Route::middleware('auth')->group(function () {
     // The first-run guidance-only acknowledgement. Reachable before acknowledging (it is

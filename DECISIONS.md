@@ -3,6 +3,30 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — /methodology page + doc: engine-computation methodology, one source for page + assistant
+**Context:** Phase 2's doc-RAG deliberately left broad "how does the engine compute emergency tax / the Monte Carlo /
+CGT" coverage to a purpose-written /methodology page (the curated corpus was only ASSUMPTIONS/MORTALITY/stress-test —
+LA-9). Rob picked building that page next.
+
+**Decision + how:**
+- **One source, two homes:** `docs/METHODOLOGY.md` is BOTH the public **/methodology page** (rendered by a
+  `MethodologyController` + `Str::markdown`, cached by the file's mtime, scoped `.methodology-prose` CSS — no
+  typography plugin) AND part of the assistant's methodology corpus (`config('assistant.methodology_docs')`). The page
+  a reader opens and the passage the assistant retrieves are the same words.
+- **Accuracy first (Rob's overriding priority):** the engine-computation content was written from a **code-grounded
+  survey of the actual engine**, not the planning prose — so it is true to the implementation, including the honest
+  caveats (IHT and the care means-test are standalone calculators, NOT in the year-by-year loop; the SDLT
+  additional-property surcharge and the Pension-Credit carer addition exist but aren't wired into the live path; the
+  standalone lump-sum panel omits State-Pension/DB other income the full forecast includes). A thorough **"what we
+  don't model"** section lists the flagged v1 limits.
+- **Public + education-only:** the route is public (no user data), linked from the footer; the doc closes with the
+  guidance-not-advice posture. It complements ASSUMPTIONS.md (economic inputs) + MORTALITY.md (life tables), which it
+  links rather than duplicates.
+
+**Evidence:** page renders (test + browser-fetched); corpus re-indexed (METHODOLOGY.md → 21 chunks, 43 total);
+**verified end-to-end vs real `qwen3:14b`** — "how does emergency tax work / the Monte Carlo / CGT on a let home?" now
+answer accurately and grounded from METHODOLOGY.md (before, they surfaced planning noise or nothing). Suite green.
+
 ## 2026-07-03 — Assistant on the Compare page: a multi-plan context so it can answer comparison questions
 **Context:** Rob asked to show the assistant on Compare too — but there it must answer COMPARISON questions ("which
 plan leaves the most / runs short?"), which the single-scenario `ScenarioContext` cannot.

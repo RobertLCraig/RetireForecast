@@ -171,9 +171,11 @@ Autonomous, but **safe by construction** — it honours "no silent failure" and 
    most of `docs/` is internal planning/build-record prose, not user-facing methodology, so the index is limited to
    the sourced-methodology docs (`config('assistant.methodology_docs')` = ASSUMPTIONS.md, MORTALITY.md,
    RESEARCH-stress-test-and-official-sources.md). Broader engine-computation methodology (emergency tax, the Monte
-   Carlo) is **deferred to a purpose-written /methodology page** — the right corpus for it. Verified end-to-end
+   Carlo, CGT) is now covered by a purpose-written **`docs/METHODOLOGY.md`** — the public `/methodology` page AND part
+   of this same corpus (one source, two homes), written from a code-grounded engine survey. Verified end-to-end
    against real `qwen3:14b` + `nomic-embed-text` (a mortality-methodology question answers grounded + sourced; a
-   scenario question attaches nothing). See DECISIONS 2026-07-03.
+   scenario question attaches nothing; emergency-tax / Monte-Carlo / let-home-CGT now answer accurately from
+   METHODOLOGY.md). See DECISIONS 2026-07-03.
 3. **Phase 3 — research/feature capture-and-route.** The `queueBacklogItem` write tool → the append-only
    attributed store + a review/promote list. **This is the model's only write, and the ceiling of its
    agency: it queues, it does not build.**
@@ -190,7 +192,7 @@ Autonomous, but **safe by construction** — it honours "no silent failure" and 
 | LA-6 | Embedding-RAG used for the user's own numbers → stale/wrong figure | two-mode split: figures = tool-calls only; embeddings = methodology docs only |
 | LA-7 | Autonomous backlog items silently corrupt curated PLAN/DECISIONS | append-only to a separate attributed store; human promotion; never in-line edits |
 | LA-8 | A wrong grounded explanation of a *right* number (misreads what a figure means) | tool payloads carry the figure's meaning/label, not just the value; provenance link back to the panel that owns it |
-| LA-9 | Doc-RAG surfaces internal PLANNING/build-record prose as if it were methodology; nomic's compressed cosines (~0.64–0.71) let a scenario question pull docs too | curate the index to sourced-methodology docs only (`config('assistant.methodology_docs')`), not the whole `docs/`; threshold (0.66) tuned to the curated corpus's score gap; broader engine-computation methodology awaits a /methodology page (found via live verification 2026-07-03) |
+| LA-9 | Doc-RAG surfaces internal PLANNING/build-record prose as if it were methodology; nomic's compressed cosines (~0.64–0.71) let a scenario question pull docs too | curate the index to sourced-methodology docs only (`config('assistant.methodology_docs')`), not the whole `docs/`; threshold (0.66) tuned to the curated corpus's score gap; broader engine-computation methodology now in a purpose-written docs/METHODOLOGY.md (= the /methodology page), added to the corpus 2026-07-03 |
 
 ## 8. Sources
 

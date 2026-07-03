@@ -356,12 +356,14 @@ forms behind `compliance.personal_use`.**
   test income. Reconciliation **in reverse**: a third adult must be able to **reduce** entitlements. Same
   shape later serves **dependent children with time-limited costs**. **No third full planning subject** — the
   couple ceiling stands (market-unanimous; DECISIONS 2026-07-02).
-- **User-facing methodology layer (market-unique trust signal).** A single **`/methodology`** page (intent →
-  TOC by component → plain-English + expandable technical + concrete values → a "what we don't model" list →
-  an **auto-rendered sources-and-dates table** from the registries → FAQ → regulatory posture); the results
-  panels deep-link into it. Plus a **"how we test this"** section (reproduces HMRC examples; completeness;
-  reconciliation — no competitor makes this claim) and a **public assumptions changelog** (dated lines from
-  registry diffs). Adopt the UK statutory disclosure vocabulary (SI 2013/2734 Sch 6) as lint-safe boilerplate.
+- **User-facing methodology layer (market-unique trust signal). CORE BUILT 2026-07-03** — a single public
+  **`/methodology`** page rendered from **`docs/METHODOLOGY.md`** (also the assistant's methodology corpus; written
+  from a code-grounded engine survey), covering per-component plain-English methodology + concrete values + a
+  **"what we don't model"** list + a **"how we test this"** section + the regulatory posture. **Enhancements still
+  open:** a per-component collapsible TOC with expandable technical detail; an **auto-rendered sources-and-dates
+  table** from the tax-year/registry data (currently prose + links, not generated); an FAQ; deep-links from the
+  results panels into the relevant section; a **public assumptions changelog** (dated lines from registry diffs);
+  adopt the UK statutory disclosure vocabulary (SI 2013/2734 Sch 6) as lint-safe boilerplate. See DECISIONS 2026-07-03.
 - **Adviser / Pension-Wise output pack** (turns the PDF from *results* into a conversation-starter): add the
   **five COBS 9.4.10G drawdown risk warnings**; a **Plan Version** id on the cover; **real-terms net-of-tax**
   page labels + a visible fees line; **per-objective funding lines** ("essentials met in N of M years");

@@ -58,6 +58,9 @@
                     <a class="underline" href="https://www.moneyhelper.org.uk/en/pensions-and-retirement/pension-wise" rel="noopener">Pension Wise</a>,
                     or speak to an FCA-regulated adviser.
                 </p>
+                <p class="mt-2">
+                    <a class="underline" href="{{ route('methodology') }}">How this tool works</a> — the methods, figures and sources behind every result.
+                </p>
             </div>
         </footer>
     </body>

@@ -45,3 +45,98 @@ body {
         padding-right: 24rem; /* == the panel's w-96 */
     }
 }
+
+/*
+ * The /methodology page renders docs/METHODOLOGY.md straight to HTML, so it needs base typographic
+ * styles (no @tailwindcss/typography plugin in this build). Scoped to .methodology-prose so it never
+ * touches the utility-styled app UI. Kept deliberately plain — readable long-form prose, sourced
+ * tables, code spans — in the same hand-rolled spirit as the rest of the CSS here.
+ */
+.methodology-prose {
+    color: #1f2937; /* gray-800 */
+    line-height: 1.65;
+}
+.methodology-prose h1 {
+    font-size: 1.875rem;
+    font-weight: 600;
+    color: #111827; /* gray-900 */
+    margin-bottom: 0.5rem;
+}
+.methodology-prose h2 {
+    font-size: 1.375rem;
+    font-weight: 600;
+    color: #111827;
+    margin-top: 2.25rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid #e5e7eb; /* gray-200 */
+}
+.methodology-prose h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+.methodology-prose p,
+.methodology-prose ul,
+.methodology-prose ol,
+.methodology-prose blockquote {
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+.methodology-prose ul,
+.methodology-prose ol {
+    padding-left: 1.5rem;
+}
+.methodology-prose ul {
+    list-style: disc;
+}
+.methodology-prose ol {
+    list-style: decimal;
+}
+.methodology-prose li {
+    margin-top: 0.25rem;
+}
+.methodology-prose a {
+    color: #1d4ed8; /* blue-700 */
+    text-decoration: underline;
+}
+.methodology-prose strong {
+    font-weight: 600;
+    color: #111827;
+}
+.methodology-prose code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.85em;
+    background-color: #f3f4f6; /* gray-100 */
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+}
+.methodology-prose blockquote {
+    border-left: 3px solid #93c5fd; /* blue-300 */
+    padding-left: 1rem;
+    color: #374151; /* gray-700 */
+    background-color: #f8fafc; /* slate-50 */
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-radius: 0 0.25rem 0.25rem 0;
+}
+.methodology-prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+    display: block;
+    overflow-x: auto;
+}
+.methodology-prose th,
+.methodology-prose td {
+    border: 1px solid #e5e7eb;
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+}
+.methodology-prose th {
+    background-color: #f9fafb; /* gray-50 */
+    font-weight: 600;
+}
