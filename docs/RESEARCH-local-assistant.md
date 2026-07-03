@@ -154,8 +154,11 @@ Autonomous, but **safe by construction** — it honours "no silent failure" and 
    **lump-sum tax shock** (the flagship figure: 25% tax-free, marginal tax, the Month-1 emergency
    over-deduction + reclaim — when a lump sum is planned) are now in the snapshot, each figure reused from the
    same `ResultPresenter` / `LumpSumTaxShock` output the panels show (provenance) and prefixed so the model
-   keeps "how likely" apart from "what happens". Remaining fast-follows: the sale waterfall, pre-computed
-   aggregates, streaming and a side-nav entry.
+   keeps "how likely" apart from "what happens". The **home-sale waterfall** (what you pocket after the
+   mortgage / costs / CGT, then invest-and-rent or buy-cheaper — from `ResultPresenter::saleExplainer()`, for a
+   sell strategy only) is also in now. With that, the Phase-1 context sources are comprehensive: central
+   projection, year-by-year ladder, Monte Carlo, tax shock, sale waterfall. Remaining fast-follows are just
+   pre-computed aggregates, streaming and a side-nav entry — the bigger next steps are Phase 2 (doc-RAG) and 3.
 2. **Phase 2 — methodology doc-RAG.** `nomic-embed-text` over `docs/` (small, high-trust corpus) for
    "how does it model X" questions, kept distinct from scenario-figure questions.
 3. **Phase 3 — research/feature capture-and-route.** The `queueBacklogItem` write tool → the append-only

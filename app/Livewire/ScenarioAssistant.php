@@ -8,6 +8,7 @@ use App\Assistant\AssistantService;
 use App\Assistant\OllamaChatClient;
 use App\Assistant\ScenarioContext;
 use App\Forecast\LumpSumTaxShock;
+use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
 use App\Models\Result;
 use App\Models\Scenario;
@@ -69,11 +70,13 @@ class ScenarioAssistant extends Component
         $this->messages[] = ['role' => 'user', 'text' => $question, 'status' => 'user'];
         $this->question = '';
 
+        $forecaster = app(ScenarioForecaster::class);
         $context = ScenarioContext::for(
             $this->scenario,
-            app(ScenarioForecaster::class),
+            $forecaster,
             $this->simulationResult(),
             app(LumpSumTaxShock::class)->assess($this->scenario),
+            $this->saleExplainer($forecaster),
         );
         $answer = $this->service()->answer(
             $context,
@@ -101,6 +104,30 @@ class ScenarioAssistant extends Component
         $result = $byVariant[$this->scenario->variant->value] ?? $run->results->first();
 
         return $result?->simulationResult();
+    }
+
+    /**
+     * The home-sale waterfall for this scenario's strategy, or null when it isn't a sell strategy
+     * ({@see ResultPresenter::saleExplainer()} returns null on a zero sale price). Assembled exactly
+     * as the results page does, so the assistant's figures are the sale-waterfall panel's.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function saleExplainer(ScenarioForecaster $forecaster): ?array
+    {
+        $household = $this->scenario->toHousehold();
+        $action = $this->scenario->toHousingAction();
+        $assumptions = $forecaster->assumptions($this->scenario);
+        $allocation = $forecaster->settings($this->scenario)->allocation();
+        $housing = $forecaster->housingComparison($this->scenario);
+
+        return ResultPresenter::saleExplainer(
+            $housing->saleProceeds($household, $action),
+            $housing->buyOutcome($household, $action),
+            $action,
+            $allocation->blendedRealReturn($assumptions),
+            $assumptions->investmentIncomeYield->asFraction(),
+        );
     }
 
     private function service(): AssistantService

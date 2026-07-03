@@ -23,9 +23,11 @@ use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
  * panel shows), the Monte Carlo probabilities and ranges when a full simulation has been run (chance
  * the money lasts, chance of running out, spread of terminal wealth, longevity, care risk), and the
  * pension lump-sum tax shock when one is planned (the flagship figure: 25% tax-free, marginal tax, the
- * Month-1 emergency over-deduction + reclaim). The central (deterministic) figures answer "what
- * happens"; the Monte Carlo ones answer "how likely / what's the range". Every figure is inline-
- * labelled, so the model states the right number for the right thing (right-number-wrong-meaning, LA-8).
+ * Month-1 emergency over-deduction + reclaim), and the home-sale waterfall for a sell strategy (what you
+ * pocket after the mortgage, costs and CGT, then invest/rent or buy cheaper). The central (deterministic)
+ * figures answer "what happens"; the Monte Carlo ones answer "how likely / what's the range". Every figure
+ * is inline-labelled, so the model states the right number for the right thing (right-number-wrong-meaning,
+ * LA-8).
  */
 final class ScenarioContext
 {
@@ -44,7 +46,7 @@ final class ScenarioContext
      * a completed Monte Carlo run's aggregate ({@see SimulationResult}) for the probability/range
      * figures. Null simulation = no run yet; the deterministic view still stands.
      */
-    public static function for(Scenario $scenario, ScenarioForecaster $forecaster, ?SimulationResult $simulation = null, ?array $taxShock = null): self
+    public static function for(Scenario $scenario, ScenarioForecaster $forecaster, ?SimulationResult $simulation = null, ?array $taxShock = null, ?array $saleExplainer = null): self
     {
         return self::fromForecast(
             $scenario->name,
@@ -52,18 +54,21 @@ final class ScenarioContext
             $forecaster->deterministic($scenario),
             $simulation,
             $taxShock,
+            $saleExplainer,
         );
     }
 
     /**
      * Build the facts from a forecast result (+ optional Monte Carlo aggregate + optional pension
-     * lump-sum tax shock, the tool's flagship figure). Pure — no container, no I/O — so it is
-     * unit-testable from hand-built inputs. $taxShock is the {@see LumpSumTaxShock}
-     * result array (already-formatted figures), or null when no lump sum is planned.
+     * lump-sum tax shock + optional home-sale waterfall). Pure — no container, no I/O — so it is
+     * unit-testable from hand-built inputs. $taxShock is the {@see LumpSumTaxShock} array and
+     * $saleExplainer is the {@see ResultPresenter::saleExplainer()} array (both already-formatted),
+     * each null when it does not apply (no lump sum / not a sell strategy).
      *
      * @param  array<string, mixed>|null  $taxShock
+     * @param  array<string, mixed>|null  $saleExplainer
      */
-    public static function fromForecast(string $title, string $strategyLabel, ForecastResult $forecast, ?SimulationResult $simulation = null, ?array $taxShock = null): self
+    public static function fromForecast(string $title, string $strategyLabel, ForecastResult $forecast, ?SimulationResult $simulation = null, ?array $taxShock = null, ?array $saleExplainer = null): self
     {
         $facts = [
             new AssistantFact('Plan', $title),
@@ -102,7 +107,53 @@ final class ScenarioContext
             $facts = [...$facts, ...self::taxShockFacts($taxShock)];
         }
 
+        if ($saleExplainer !== null) {
+            $facts = [...$facts, ...self::saleFacts($saleExplainer)];
+        }
+
         return new self($title, $facts, self::renderLadder($forecast), $simulation !== null);
+    }
+
+    /**
+     * The home-sale waterfall as facts — for a sell strategy, what the household actually pockets:
+     * sale price less the mortgage, selling costs and any CGT = net proceeds, then either invested
+     * (sell & rent) or put toward a cheaper home (with the surplus, or the shortfall when the buy
+     * costs more than the proceeds cover). Reuses the already-formatted
+     * {@see ResultPresenter::saleExplainer()} array, so the figures match the sale-waterfall panel.
+     *
+     * @param  array<string, mixed>  $s
+     * @return list<AssistantFact>
+     */
+    private static function saleFacts(array $s): array
+    {
+        $p = $s['proceeds'];
+        $facts = [new AssistantFact('Home sale — sale price', $p['salePrice'])];
+
+        if ($p['hasMortgage']) {
+            $facts[] = new AssistantFact('Home sale — mortgage cleared from the sale', $p['mortgage']);
+        }
+        $facts[] = new AssistantFact('Home sale — selling costs', $p['sellingCosts']);
+        if ($p['cgtCharged']) {
+            $facts[] = new AssistantFact('Home sale — capital gains tax on the sale', $p['cgt']);
+        }
+        $facts[] = new AssistantFact('Home sale — net proceeds (what you actually pocket)', $p['netProceeds']);
+
+        if ($s['buy'] !== null) {
+            $b = $s['buy'];
+            $facts[] = new AssistantFact('Home sale — buying a cheaper home: purchase price', $b['buyPrice']);
+            $facts[] = new AssistantFact('Home sale — buying a cheaper home: stamp duty', $b['sdlt']);
+            $facts[] = new AssistantFact('Home sale — buying a cheaper home: moving costs', $b['movingCosts']);
+            if ($b['coversPurchase']) {
+                $facts[] = new AssistantFact('Home sale — surplus left over to invest after buying', $b['surplus']);
+            } elseif ($b['shortfall'] !== null) {
+                $facts[] = new AssistantFact('Home sale — shortfall: the purchase costs this much more than the proceeds cover', $b['shortfall']);
+            }
+        } elseif (($s['rent']['annualRent'] ?? null) !== null) {
+            $facts[] = new AssistantFact('Home sale — proceeds invested (sell & rent)', $s['rent']['invested']);
+            $facts[] = new AssistantFact('Home sale — annual rent then paid', $s['rent']['annualRent']);
+        }
+
+        return $facts;
     }
 
     /**

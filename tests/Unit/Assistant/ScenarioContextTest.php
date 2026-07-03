@@ -191,6 +191,37 @@ final class ScenarioContextTest extends TestCase
         $this->assertSame([], FigureGrounding::ungrounded('You can reclaim £11,568.00 using form P55.', $block, ''));
     }
 
+    public function test_the_home_sale_waterfall_reaches_the_prompt_and_is_groundable(): void
+    {
+        $forecast = new ForecastResult([], true, true, null, Money::fromPence(1), Money::fromPence(1), 2058);
+
+        // The shape App\Forecast\ResultPresenter::saleExplainer() returns for a "sell & buy cheaper" plan.
+        $sale = [
+            'sellingCostsAssumed' => false,
+            'sellingCostBreakdown' => [],
+            'cgtDetail' => null,
+            'proceeds' => [
+                'salePrice' => '£400,000.00', 'mortgage' => '£118,000.00', 'hasMortgage' => true,
+                'sellingCosts' => '£8,000.00', 'cgt' => '£0.00', 'cgtCharged' => false,
+                'netProceeds' => '£274,000.00', 'clearsCosts' => true,
+            ],
+            'rent' => ['invested' => '£274,000.00', 'annualRent' => null],
+            'buy' => [
+                'netProceeds' => '£274,000.00', 'buyPrice' => '£165,000.00', 'sdlt' => '£800.00',
+                'movingCosts' => '£1,500.00', 'surplus' => '£106,700.00', 'coversPurchase' => true, 'shortfall' => null,
+            ],
+            'blendedReturnPct' => '3.5%', 'incomeYieldPct' => '2.0%',
+        ];
+
+        $block = ScenarioContext::fromForecast('My Plan', 'Sell and buy cheaper', $forecast, null, null, $sale)->promptBlock();
+
+        $this->assertStringContainsString('£274,000.00', $block);   // net proceeds pocketed
+        $this->assertStringContainsString('£165,000.00', $block);   // cheaper home price
+        $this->assertStringContainsString('£106,700.00', $block);   // surplus left to invest
+
+        $this->assertSame([], FigureGrounding::ungrounded('You pocket £274,000.00 and have £106,700.00 to invest after buying.', $block, ''));
+    }
+
     public function test_care_cost_appears_only_when_modelled(): void
     {
         $withCare = new ForecastResult([], true, true, null, Money::fromPence(1), Money::fromPence(1), 2058, [], Money::fromPence(5_000_000));

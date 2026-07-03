@@ -3,6 +3,18 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — Assistant context: add the home-sale waterfall (Phase-1 sources now comprehensive)
+**Context/decision:** Added the **home-sale waterfall** as the next context source, same pattern as the tax shock: a
+fourth optional already-formatted array on `ScenarioContext` (`?array $saleExplainer`), reused from
+`ResultPresenter::saleExplainer()` (so the figures match the sale-waterfall panel) and resolved by the Livewire
+component exactly as the results page assembles it. For a sell strategy it exposes what the household actually pockets
+— sale price less mortgage, selling costs and CGT = net proceeds — then the invest-and-rent or buy-cheaper split
+(surplus, or the shortfall when the buy costs more than the proceeds cover). Null (no facts) for a stay-put scenario.
+Verified end-to-end vs real `qwen3:14b`. **With this, the Phase-1 context sources are comprehensive** — central
+projection, year-by-year ladder, Monte Carlo, lump-sum tax shock, sale waterfall — all grounded, all reusing the
+panels' own figures. The next meaningful work is phase-level: Phase 2 (methodology doc-RAG) and Phase 3 (backlog
+capture). See docs/RESEARCH-local-assistant.md §6.
+
 ## 2026-07-03 — Assistant context: add Monte Carlo probabilities and the lump-sum tax shock
 **Context:** Continuing to widen what the assistant can interrogate (Rob: "a big part of the point is to interrogate
 data not visible in the UI"). The deterministic snapshot couldn't answer "what's my chance of running out?" or "how
