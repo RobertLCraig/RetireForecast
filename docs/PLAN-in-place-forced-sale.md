@@ -5,11 +5,32 @@
 > Read `HANDOVER.md` (orient) then this. Follows the doc standard + `CLAUDE.md` engine rules
 > (framework-free engine, integer pence, reconciliation invariants, tests green on every commit).
 
-**Stage:** design-spec — **decisions resolved by Rob 2026-07-01, ready to build** (not yet built).
-**Owner lane:** B (forced-housing-event workstream). The last open Lane-B item after the
-mortgage-payment-stop shipped ([docs/PLAN-mortgage-payment-stop.md](PLAN-mortgage-payment-stop.md)).
+**Stage:** **BUILT 2026-07-03** (engine + app + tests; suite green). The last open Lane-B item,
+now closed — Lane B is complete.
+**Owner lane:** B (forced-housing-event workstream). Followed the mortgage-payment-stop
+([docs/PLAN-mortgage-payment-stop.md](PLAN-mortgage-payment-stop.md)).
 The real couple this models is captured in `docs/SCENARIO-V2.local.md` (gitignored, private).
-_Last updated: 2026-07-01 (Rob's decisions folded in)_
+_Last updated: 2026-07-03 (built)_
+
+> **BUILT — how it landed (2026-07-03).** The forced sale fires as an additive event in
+> `PathProjector::projectYear` (after the RepayFromCapital block) at the redemption year: it sells
+> at the grown whole-property value via the shared `HousingProceeds::compute` (extracted so the
+> year-0 variants and this in-projection sale share ONE reconciled definition), frees the net
+> proceeds into the first living person's GIA (basis = proceeds), clears the debt (`property`,
+> `propertyWhole`, `mortgageOutstanding` → 0; `homeSold`/`mortgageRepaid` → true), and from that year
+> stops the mortgage payment + property/running costs and charges the entered rent. The freed equity
+> lands in liquid wealth, so it is automatically assessed as Pension Credit capital (no separate
+> `homeSold` capital branch needed). The projector has no `HousingAction`, so the post-sale rent and
+> the selling-cost basis ride on `ForecastSettings` (`annualRent`, `rentInflationReal`, `sellingCosts`),
+> populated by `ScenarioForecaster::settings()` only for a ForcedSale scenario. Tests:
+> `packages/finance-engine/tests/Forecast/ForcedSaleTest.php` (wealth conserved across the sale to the
+> penny under zero growth; costs stop + rent starts; Pension Credit erodes; let-home CGT vs
+> lived-in-£0; no-redemption-year no-op) + an app-layer completeness test in
+> `ScenarioForecasterTest`. **v1 limits (flagged):** selling-cost components are honoured, but with a
+> partial `ownershipShare` the sale-price reconciliation is penny-exact only for whole ownership (the
+> grown share value can differ sub-penny from `share × grown-whole`); Pension Credit sees the freed
+> capital from the year after the sale (the benefit is computed before the sale event within the
+> year). See DECISIONS 2026-07-03.
 
 > **Framing (Rob's decision 2):** the **base scenario is "stay put"** — the couple **find ~£100k to pay
 > down the capital and stay** (that is `RepayFromCapital`, already built). The forced sale is therefore a

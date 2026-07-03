@@ -15,6 +15,7 @@ use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
+use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Pension\WithdrawalKind;
@@ -266,7 +267,14 @@ final class PathProjector
             'property' => (int) round(($household->primaryResidence?->currentValue->pence ?? 0) * $propertyShare),
             'mortgageOutstanding' => (int) round(($household->primaryResidence?->outstandingMortgage?->pence ?? 0) * $propertyShare),
             'ownershipShare' => $propertyShare,
+            // The whole-property (un-scaled) value, grown in lockstep with the share value. A
+            // forced sale needs the whole figure to compute CGT on the household's share of the
+            // gain (purchase price is whole too); null-share leaves it equal to `property`.
+            'propertyWhole' => $household->primaryResidence?->currentValue->pence ?? 0,
             'mortgageRepaid' => false,
+            // A forced sale (MortgageMaturityAction::ForcedSale) sells the home in the redemption
+            // year, mid-projection, then the household rents. Flips true at that event.
+            'homeSold' => false,
             'annuities' => $annuities, // planned/active lifetime annuities bought from DC pots
             'careRealTotal' => 0, // accumulated real (today's money) care cost incurred on this path
             'estateSettled' => [], // person ids whose assets have passed to the survivor (once each)
@@ -521,8 +529,8 @@ final class PathProjector
         // is to repay it from capital, the outstanding balance is a one-off outflow that year
         // (funded from assets, like any one-off). A fixed-£ debt, so it is already nominal. If the
         // assets are not there the shortfall surfaces, flagging the keep-the-home option as
-        // unaffordable. Refinance rolls the loan over (no event); a forced sale is modelled by the
-        // sell variants. Once redeemed, the ongoing mortgage *payment* stops too (dropped just
+        // unaffordable. Refinance rolls the loan over (no event); a forced sale is handled by the
+        // block just below. Once redeemed, the ongoing mortgage *payment* stops too (dropped just
         // below), so a repay-and-stay path is not charged both the repayment and the payment.
         $repayOneOff = 0;
         $home = $household->primaryResidence;
@@ -536,6 +544,45 @@ final class PathProjector
             $state['mortgageRepaid'] = true;
         }
 
+        // Forced sale: the mortgage is called for redemption and cannot be refinanced, so the home
+        // must be sold that year. Unlike the year-0 sell variants (which can only sell at the
+        // start), this sells mid-projection at the grown value: net proceeds are freed into liquid
+        // wealth, the debt is cleared, and from this year on the household rents and pays no
+        // property costs — the realistic path, not the impossible "keep the home for ever". The
+        // sale is decomposed by the shared HousingProceeds so it reconciles (parts sum to net); CGT
+        // is £0 for a home lived in throughout, partial-PRR for an ever-let one.
+        if ($home?->mortgageRedemptionYear !== null
+            && $home->mortgageMaturityAction === MortgageMaturityAction::ForcedSale
+            && ! $state['homeSold']
+            && $calendarYear >= $home->mortgageRedemptionYear) {
+            $proceeds = HousingProceeds::compute(
+                Money::fromPence($state['propertyWhole']),
+                $home->outstandingMortgage ?? Money::zero(),
+                $settings->sellingCosts,
+                $home->cgtHistory,
+                $home->ownershipShare,
+                $this->config,
+            );
+
+            // The net proceeds become investable liquid wealth in the first living person's GIA
+            // (drawable now, invested per the run's assumptions and drawn per the strategy). Cost
+            // basis = proceeds, so no latent gain is taxed on a later disposal. Once in the GIA the
+            // freed equity is assessable capital for Pension Credit (it is no longer the exempt
+            // main residence), so a forced sale can erode the award / cross the £16k cliff.
+            $owner = $this->firstLiving($household, $alive);
+            if ($owner !== null) {
+                $state['gia'][$owner] += $proceeds->netProceeds->pence;
+                $state['giaBasis'][$owner] += $proceeds->netProceeds->pence;
+            }
+
+            // Clear the home and its debt; flip onto a renting footing from here.
+            $state['property'] = 0;
+            $state['propertyWhole'] = 0;
+            $state['mortgageOutstanding'] = 0;
+            $state['mortgageRepaid'] = true; // stops the ongoing mortgage payment (dropped just below)
+            $state['homeSold'] = true;
+        }
+
         // Once the mortgage is redeemed its ongoing payment stops (unlike service charge / ground
         // rent, which continue while the home is owned) — drop the while_mortgaged spend from the
         // redemption year on. Sell variants already removed it via withoutPropertyCosts.
@@ -545,21 +592,34 @@ final class PathProjector
             $essentialPence = max(0, $essentialPence - $mortgagePay);
         }
 
+        // After a forced sale the home is gone, so its property costs (service charge / ground
+        // rent — the while_owning_home bucket) stop too, alongside the running costs below. The
+        // year-0 sell variants drop these via withoutPropertyCosts; here they drop from the sale year.
+        if ($state['homeSold']) {
+            $propCosts = $household->expenseProfile->propertyCosts()->pence;
+            $targetPence = max(0, $targetPence - $propCosts);
+            $essentialPence = max(0, $essentialPence - $propCosts);
+        }
+
         $spendNominal = (int) round($targetPence * $state['spendFactor'] * $survivor)
             + $this->oneOffCostsNominal($household, $ages, $cumInflation)
             + $repayOneOff;
         $essentialNominal = (int) round($essentialPence * $state['spendFactor'] * $survivor);
 
-        // Rent (the "sell and rent" leg) is an essential cost with its own inflation.
-        if ($settings->annualRent !== null) {
+        // Rent (the "sell and rent" leg) is an essential cost with its own inflation. It applies
+        // once the household no longer owns a home: always for a year-0 rent variant (no
+        // primaryResidence), or from the sale year for a forced sale. An owner still in the home
+        // pays no rent (even where a post-sale rent figure is set for the forced-sale years).
+        $ownsHome = $home !== null && ! $state['homeSold'];
+        if ($settings->annualRent !== null && ! $ownsHome) {
             $rentNominal = (int) round($settings->annualRent->pence * $state['rentFactor']);
             $spendNominal += $rentNominal;
             $essentialNominal += $rentNominal;
         }
 
         // Property running costs (maintenance, insurance, council tax) for owners are
-        // essential too — the counterpart to a renter's rent.
-        if ($household->primaryResidence?->runningCosts !== null) {
+        // essential too — the counterpart to a renter's rent. They stop once the home is sold.
+        if ($household->primaryResidence?->runningCosts !== null && ! $state['homeSold']) {
             // Only the household's share of the running costs (it owns a share of the home, entered whole).
             $runningNominal = (int) round($household->primaryResidence->runningCosts->pence * $state['spendFactor'] * $state['ownershipShare']);
             $spendNominal += $runningNominal;
@@ -1514,6 +1574,9 @@ final class PathProjector
             ? (1.0 + $state['propertyGrowthReal']) * (1.0 + $infl) - 1.0
             : $houseNominal;
         $state['property'] = (int) round($state['property'] * (1.0 + $propertyNominal));
+        // The whole-property value tracks the same growth, so a forced sale reads the grown
+        // whole figure for its CGT gain (share value / share, without the rounding drift).
+        $state['propertyWhole'] = (int) round($state['propertyWhole'] * (1.0 + $propertyNominal));
 
         $rentNominal = (1.0 + $state['rentInflationReal']) * (1.0 + $infl) - 1.0;
 

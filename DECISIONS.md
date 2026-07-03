@@ -3,6 +3,43 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — In-place forced sale built (last Lane-B item; the "keep the home for ever" bug closed)
+**Decision:** Built the in-place forced sale (`docs/PLAN-in-place-forced-sale.md`, Rob's decisions resolved
+2026-07-01). `MortgageMaturityAction::ForcedSale` was a projector no-op, so a stay-put projection with a forced
+redemption **kept the home for ever** — the exact plausible-but-wrong outcome the project guards against. Now the
+projector sells the home **in place, at the redemption year**, mid-projection.
+
+**How:** an additive event in `PathProjector::projectYear` (after the RepayFromCapital block) fires once at
+`mortgageRedemptionYear` when the action is `ForcedSale`: it sells at the **grown whole-property value**, frees the
+net proceeds into the first living person's GIA (cost basis = proceeds, no latent gain), clears the home + debt
+(`property`/`propertyWhole`/`mortgageOutstanding` → 0; `homeSold`/`mortgageRepaid` → true), and from that year stops
+the mortgage payment + property/running costs and charges the entered rent. Two new state keys: `homeSold` and
+`propertyWhole` (the un-scaled whole value, grown in lockstep with the share value, so CGT reads the whole gain).
+
+**One definition (CLAUDE.md data-integrity rule):** the sale maths was extracted to
+`HousingProceeds::compute(salePriceWhole, mortgageWhole, components, cgtHistory, ownershipShare, config)`, the single
+reconciled decomposition. `HousingComparison::saleProceeds` (year-0) now delegates to it, and the projector's
+redemption-year sale runs the same code on the grown value — the two can never drift. The `DEFAULT_SELLING_COST_RATE_BP`
+(2%) moved onto `HousingProceeds`.
+
+**Rent + selling-cost basis via settings:** the projector has no `HousingAction`, so the post-sale rent
+(`annualRent`, `rentInflationReal`) and the selling-cost components (new `ForecastSettings::$sellingCosts`) ride on
+`ForecastSettings`, populated by `ScenarioForecaster::settings()` **only for a ForcedSale scenario** (every other run
+leaves rent null, so an owner is never charged rent). The rent leg is gated on `! ownsHome`, so it starts at the
+sale year for a forced sale and stays as-is for a year-0 rent variant. Decisions honoured: rent is the user's input
+(no invented default; £0 + a results note when none is entered); this is a what-if, not base behaviour (the base
+stays "find capital and stay"); CGT on the grown, sale-year value via the `CgtHistory`; freed proceeds are
+investable GIA. The Pension Credit erosion falls out for free (the proceeds are now liquid, already assessed as
+capital), so no `homeSold` capital branch was needed.
+
+**v1 limits (flagged in code + the spec):** with a partial `ownershipShare` the sale reconciles penny-exact only for
+whole ownership (grown-share vs `share × grown-whole` can differ sub-penny); Pension Credit sees the freed capital
+from the year **after** the sale (the benefit is computed before the sale event within the year). `ForcedSaleTest`
+pins wealth conserved across the sale to the penny (zero-growth fixture), costs-stop-rent-starts, Pension Credit
+erosion, let-home CGT vs lived-in-£0, and the no-redemption-year no-op; a `ScenarioForecasterTest` completeness test
+pins the rent + selling costs reaching the settings. The `ForcedSale` enum doc + results input note were updated
+(now "the home is sold that year", not "weigh alternatives on Compare"). Suite green (590).
+
 ## 2026-07-03 — Property ownership share now consumed (`Property::ownershipShare`; last silent-drop closed)
 **Decision:** Wired `Property::ownershipShare`, the fifth and last silent-drop. Rob asked me to **research the
 correct real-world convention** (not guess), since it touches the flagship buy-vs-rent path. Researched:

@@ -14,7 +14,6 @@ use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Money\Money;
-use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\MonteCarlo\Simulator;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -44,8 +43,6 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  */
 final class HousingComparison
 {
-    private const DEFAULT_SELLING_COST_RATE_BP = 200;   // 2%
-
     private const DEFAULT_MOVING_COSTS_PENCE = 200_000; // £2,000
 
     public function __construct(
@@ -120,62 +117,16 @@ final class HousingComparison
      */
     public function saleProceeds(Household $household, HousingAction $action): HousingProceeds
     {
-        // Each selling-cost component resolves to £ against the sale price (a % of it, or a
-        // flat fee). The total is their sum; the breakdown is carried so a UI can show it and
-        // it reconciles to the total by construction. No components → the engine default rate.
-        $components = $action->sellingCosts ?? [new SellingCostComponent('Selling costs', Percent::fromBasisPoints(self::DEFAULT_SELLING_COST_RATE_BP))];
-
-        $sellingCostsWhole = Money::zero();
-        $breakdownWhole = [];
-        foreach ($components as $component) {
-            $amount = $component->amount($action->salePrice);
-            $sellingCostsWhole = $sellingCostsWhole->plus($amount);
-            $breakdownWhole[] = ['label' => $component->label, 'amount' => $amount];
-        }
-
-        $mortgageWhole = $household->primaryResidence?->outstandingMortgage ?? Money::zero();
-
-        // The household owns a beneficial share of the home (tenants in common); null = wholly owned.
-        // Whole-property figures are entered, and HMRC apportions both the gain and the sale proceeds by
-        // that share, so the household receives its share of (price − mortgage − costs) and is taxed on
-        // its share of the gain. Scaling by the share leaves the wholly-owned case (null) untouched.
-        $share = $household->primaryResidence?->ownershipShare;
-        $scale = fn (Money $m): Money => $share === null ? $m : $m->applyRate($share);
-
-        // CGT: £0 for a main home owned and lived in throughout (full Private Residence Relief —
-        // the common case, and the default when no CGT history is given). When the home was let
-        // or not the main residence for part of ownership, the gain (sale less purchase, less
-        // improvement/acquisition costs, less the allowable selling costs) is taxed after partial
-        // PRR by {@see CgtPrivateResidenceCalculator}, on the household's share of the gain, split
-        // across its owners (so the beneficial share and the per-owner allowances compose).
-        $history = $household->primaryResidence?->cgtHistory;
-        $cgtResult = null;
-        $cgt = Money::zero();
-        if ($history !== null) {
-            $gain = $scale($action->salePrice
-                ->minus($history->purchasePrice)
-                ->minus($history->improvementCosts)
-                ->minus($sellingCostsWhole)
-                ->minZero());
-            $cgtResult = (new CgtPrivateResidenceCalculator($this->config))->compute(
-                $gain,
-                $history->ownershipMonths,
-                $history->mainResidenceMonths,
-                $history->higherRateOnSale,
-                $history->owners,
-            );
-            $cgt = $cgtResult->tax;
-        }
-
-        // The household's share of each figure, so the waterfall (price − mortgage − costs − CGT) reconciles.
-        $salePrice = $scale($action->salePrice);
-        $mortgage = $scale($mortgageWhole);
-        $sellingCosts = $scale($sellingCostsWhole);
-        $breakdown = array_map(fn (array $b): array => ['label' => $b['label'], 'amount' => $scale($b['amount'])], $breakdownWhole);
-
-        $netProceeds = $salePrice->minus($mortgage)->minus($sellingCosts)->minus($cgt)->minZero();
-
-        return new HousingProceeds($salePrice, $mortgage, $sellingCosts, $cgt, $netProceeds, $breakdown, $cgtResult);
+        // The reconciled decomposition lives on HousingProceeds (the single definition, also used
+        // for an in-projection forced sale); here it runs on the year-0 sale price entered.
+        return HousingProceeds::compute(
+            $action->salePrice,
+            $household->primaryResidence?->outstandingMortgage ?? Money::zero(),
+            $action->sellingCosts,
+            $household->primaryResidence?->cgtHistory,
+            $household->primaryResidence?->ownershipShare,
+            $this->config,
+        );
     }
 
     /**

@@ -896,7 +896,7 @@ final class ResultPresenter
             $text = match ($home->mortgageMaturityAction) {
                 MortgageMaturityAction::Refinance => "This home's mortgage of {$amount} is due for redemption in {$year}; the forecast assumes it is refinanced (rolled into a new mortgage). If refinancing isn't available it would have to be repaid from savings or the home sold.",
                 MortgageMaturityAction::RepayFromCapital => "This home's mortgage of {$amount} is due for redemption in {$year}; the forecast repays it from savings that year (a {$amount} one-off). If that capital isn't there, the year shows a shortfall — keeping the home is unaffordable.",
-                MortgageMaturityAction::ForcedSale => "This home's mortgage of {$amount} is due for redemption in {$year} and is modelled as not refinanceable, so keeping the home is not an option. This report shows one strategy — weigh the realistic alternatives (sell-and-rent, buy somewhere cheaper, or let it out and rent elsewhere) as what-if scenarios on the Compare page.",
+                MortgageMaturityAction::ForcedSale => "This home's mortgage of {$amount} is due for redemption in {$year} and is modelled as not refinanceable, so the home is sold that year: the equity left after the mortgage, selling costs and any CGT is freed into your investments, the mortgage and property costs stop, and rent begins (enter a rent so the sell-and-rent cost is modelled). You can still compare selling now, buying somewhere cheaper or letting it out as what-if scenarios on the Compare page.",
             };
             $notes[] = ['kind' => 'mortgage_redemption', 'text' => $text];
         }

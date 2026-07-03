@@ -15,9 +15,13 @@ namespace RetireForecast\FinanceEngine\Dto;
  *                     the redemption year (a one-off outflow) — used to model keeping the home by
  *                     paying the mortgage off (or converting it) with capital. If the capital is
  *                     not there, the shortfall surfaces, flagging the option as unaffordable.
- *  - ForcedSale:      the home cannot be kept — it must be sold. v1 directs this to the sell
- *                     variants (sell-and-rent / buy-cheaper), which model the sale, costs and CGT
- *                     in full; the feasibility layer flags that staying is not an option.
+ *  - ForcedSale:      the home cannot be kept — it must be sold in the redemption year. The
+ *                     projector models this in place, mid-projection: at that year it sells at the
+ *                     grown value, frees the net proceeds (after mortgage, selling costs and CGT)
+ *                     into investable wealth, stops the mortgage and property costs, and charges
+ *                     the entered rent from then on. So an "own until the redemption year, then
+ *                     forced out" path is modelled directly, not just approximated by the year-0
+ *                     sell variants.
  */
 enum MortgageMaturityAction: string
 {

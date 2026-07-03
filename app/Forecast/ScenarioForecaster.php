@@ -9,6 +9,7 @@ use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
+use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
@@ -174,11 +175,24 @@ final class ScenarioForecaster
      */
     public function settings(Scenario $scenario, ?DrawdownStrategy $strategy = null): ForecastSettings
     {
+        // A forced sale (a home whose mortgage is called for redemption and not refinanceable)
+        // is modelled in place by the projector: it needs the entered post-sale rent and the
+        // selling-cost basis, neither of which the projector can reach (it has no HousingAction),
+        // so they ride on the settings here. Only a forced-sale scenario carries them; every other
+        // run leaves rent null (an owner pays no rent) and the projector uses its default costs.
+        $home = $this->household($scenario)->primaryResidence;
+        $forcedSale = $home?->mortgageMaturityAction === MortgageMaturityAction::ForcedSale
+            && $home?->mortgageRedemptionYear !== null;
+        $action = $forcedSale ? $this->housingAction($scenario) : null;
+
         return new ForecastSettings(
             baseYear: (int) substr($scenario->base_tax_year, 0, 4),
             baseTaxYear: $scenario->base_tax_year,
             drawdownStrategy: $strategy ?? DrawdownStrategy::TaxEfficient,
+            annualRent: $action?->annualRent,
+            rentInflationReal: $action?->rentInflationReal ?? ($forcedSale ? $scenario->assumptionSet?->toDto()?->rentInflation : null),
             modelCareCost: (bool) ($scenario->effectiveBuilderState()['modelCareCost'] ?? false),
+            sellingCosts: $action?->sellingCosts,
         );
     }
 

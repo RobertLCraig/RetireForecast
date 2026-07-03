@@ -136,4 +136,29 @@ class ScenarioForecasterTest extends TestCase
             );
         }
     }
+
+    public function test_a_forced_sale_scenario_carries_the_post_sale_rent_and_selling_costs_into_settings(): void
+    {
+        $user = User::factory()->create();
+
+        // A home whose mortgage is called for redemption in 2030 and cannot be refinanced: the
+        // projector sells it in place and the household rents, so the entered post-sale rent and
+        // the selling-cost basis must reach the run settings — the projector has no HousingAction
+        // to read them from, so a drop here would silently omit the rent from the forecast.
+        $forced = ScenarioFixture::rich($user, [
+            'variant' => 'stay_put',
+            'property' => [
+                'currentValue' => '525000', 'ownership' => 'mortgaged', 'everLet' => false,
+                'outstandingMortgage' => '48000', 'runningCosts' => '6400', 'ownershipShare' => '100',
+                'mortgageRedemptionYear' => '2030', 'mortgageMaturityAction' => 'forced_sale',
+            ],
+        ]);
+        $settings = (new ScenarioForecaster)->settings($forced);
+        $this->assertSame(1_800_000, $settings->annualRent?->pence, 'the £18k post-sale rent reaches the settings');
+        $this->assertNotNull($settings->sellingCosts, 'the entered selling-cost basis reaches the settings');
+        $this->assertNotNull($settings->rentInflationReal, 'rent inflation falls back to the assumption set');
+
+        // A refinancing owner keeps the home, so no rent is charged (settings stay bare).
+        $this->assertNull((new ScenarioForecaster)->settings(ScenarioFixture::rich($user))->annualRent);
+    }
 }

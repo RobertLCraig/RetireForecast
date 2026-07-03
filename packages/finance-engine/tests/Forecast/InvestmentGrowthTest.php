@@ -18,6 +18,7 @@ use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -26,7 +27,7 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
 /**
  * The year's CAPITAL growth (share/fund appreciation left in the pots) is surfaced on
- * {@see \RetireForecast\FinanceEngine\Forecast\YearResult::investmentGrowth} so the cashflow
+ * {@see YearResult::investmentGrowth} so the cashflow
  * ladder can show where wealth grows beyond the interest/dividends paid out as income. The
  * discriminating property: an invested pot (ISA) shows real capital growth, while cash of the
  * same size shows ~none — its return is paid out as taxable interest income instead, not left

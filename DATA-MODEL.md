@@ -348,8 +348,12 @@ from the original plan, flagged inline:
 - ✅ **(B) Mortgage redemption.** `Property` gained `mortgageRedemptionYear: int?` and `mortgageMaturityAction:
   enum {refinance | repay_from_capital | forced_sale}`. The projector tracks the mortgage **balance** (new state) and
   applies the action at maturity. Stopping the bundled mortgage *payment* after a repay is **built** (the
-  `while_mortgaged` expense condition + `ExpenseProfile::mortgageCosts`, DECISIONS 2026-07-01). *Open:* the one-off
-  **path scope** field.
+  `while_mortgaged` expense condition + `ExpenseProfile::mortgageCosts`, DECISIONS 2026-07-01). **`forced_sale` is now
+  modelled in place (2026-07-03):** the projector sells at the redemption year (new state `homeSold` + `propertyWhole`),
+  frees the net proceeds into GIA via the shared `HousingProceeds::compute`, stops the housing costs and charges the
+  entered rent from then on. The post-sale rent + selling-cost basis ride on the new `ForecastSettings::$sellingCosts`
+  (+ `annualRent`/`rentInflationReal`), populated by `ScenarioForecaster::settings()` for a ForcedSale scenario only,
+  since the projector has no `HousingAction` (DECISIONS 2026-07-03). *Open:* the one-off **path scope** field.
 - ✅ **(C) Feasibility** is a **derived** result note (no stored field): `HousingComparison` exposes whether a buy
   price exceeds net proceeds (and the gap), surfaced by `ResultPresenter` as an input-sanity note.
 - ✅ **(D) Input clarity** is mostly **builder-state / UI**, not canonical-shape: a per-input **pay frequency** is a

@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Forecast;
 
 use RetireForecast\FinanceEngine\Care\CareCostSampler;
+use RetireForecast\FinanceEngine\Dto\HousingAction;
+use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
+use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 
@@ -26,9 +29,18 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * person (see {@see CareCostSampler}), so the
  * distribution reflects the fat-tail risk of care fees. Default false, so existing
  * runs are unchanged; the deterministic and historical views never model care.
+ *
+ * $sellingCosts is the cost basis for an in-projection forced sale (a home whose mortgage
+ * is called for redemption with {@see MortgageMaturityAction::ForcedSale}):
+ * the projector has no {@see HousingAction}, so the entered
+ * components ride here. Null falls back to the engine default rate. Only consumed at the
+ * forced sale; irrelevant to every other run.
  */
 final class ForecastSettings
 {
+    /**
+     * @param  list<SellingCostComponent>|null  $sellingCosts
+     */
     public function __construct(
         public readonly int $baseYear,
         public readonly string $baseTaxYear = '2026-27',
@@ -38,6 +50,7 @@ final class ForecastSettings
         public readonly ?Money $annualRent = null,
         public readonly ?Percent $rentInflationReal = null,
         public readonly bool $modelCareCost = false,
+        public readonly ?array $sellingCosts = null,
     ) {}
 
     public function allocation(): PortfolioAllocation
