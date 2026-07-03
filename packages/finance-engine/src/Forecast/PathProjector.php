@@ -248,6 +248,8 @@ final class PathProjector
             }
         }
 
+        $propertyShare = $household->primaryResidence?->ownershipShare?->asFraction() ?? 1.0;
+
         return [
             'baseYear' => $settings->baseYear,
             'baseAge' => $baseAge,
@@ -258,8 +260,12 @@ final class PathProjector
             'isa' => $isa,
             'pots' => $pots,
             'lsaUsed' => $lsaUsed,
-            'property' => $household->primaryResidence?->currentValue->pence ?? 0,
-            'mortgageOutstanding' => $household->primaryResidence?->outstandingMortgage?->pence ?? 0,
+            // The household owns a beneficial share of the home (tenants in common); null = 100%.
+            // Value and mortgage are entered whole and scaled to the household's share here, so every
+            // downstream use (wealth, the means test, IHT, growth) reflects only the share it owns.
+            'property' => (int) round(($household->primaryResidence?->currentValue->pence ?? 0) * $propertyShare),
+            'mortgageOutstanding' => (int) round(($household->primaryResidence?->outstandingMortgage?->pence ?? 0) * $propertyShare),
+            'ownershipShare' => $propertyShare,
             'mortgageRepaid' => false,
             'annuities' => $annuities, // planned/active lifetime annuities bought from DC pots
             'careRealTotal' => 0, // accumulated real (today's money) care cost incurred on this path
@@ -554,7 +560,8 @@ final class PathProjector
         // Property running costs (maintenance, insurance, council tax) for owners are
         // essential too — the counterpart to a renter's rent.
         if ($household->primaryResidence?->runningCosts !== null) {
-            $runningNominal = (int) round($household->primaryResidence->runningCosts->pence * $state['spendFactor']);
+            // Only the household's share of the running costs (it owns a share of the home, entered whole).
+            $runningNominal = (int) round($household->primaryResidence->runningCosts->pence * $state['spendFactor'] * $state['ownershipShare']);
             $spendNominal += $runningNominal;
             $essentialNominal += $runningNominal;
         }

@@ -729,6 +729,11 @@
                             <input id="property-growthAssumptionOverride" type="text" inputmode="decimal" wire:model="property.growthAssumptionOverride" class="{{ $field }}">
                         </div>
                         <div>
+                            <label for="property-ownershipShare" class="{{ $label }}">Your ownership share (%, optional)</label>
+                            <input id="property-ownershipShare" type="text" inputmode="decimal" placeholder="100" wire:model="property.ownershipShare" class="{{ $field }}">
+                            <p class="mt-1 text-xs text-gray-500">If you own only part of the home (e.g. a tenancy in common). Enter the whole property's value, mortgage and costs above; we apply your share to your wealth, running costs, and sale proceeds/CGT. Blank = 100%.</p>
+                        </div>
+                        <div>
                             <label class="mt-7 flex items-center gap-2 text-sm text-gray-700">
                                 <input type="checkbox" wire:model.live="property.everLet" class="rounded border-gray-300"> Let out / not always my main home (affects CGT)
                             </label>

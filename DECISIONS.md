@@ -3,6 +3,32 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — Property ownership share now consumed (`Property::ownershipShare`; last silent-drop closed)
+**Decision:** Wired `Property::ownershipShare`, the fifth and last silent-drop. Rob asked me to **research the
+correct real-world convention** (not guess), since it touches the flagship buy-vs-rent path. Researched:
+**tenants in common** each hold a distinct **beneficial share**; HMRC apportions both the **gain and the sale
+proceeds** by that share, and each co-owner is taxed on their share with their own annual exempt amount (the
+joint-owner split the engine already does). Sources: gov.uk/HMRC guidance on jointly-owned property + CGT (the
+beneficial-interest / tenancy-in-common treatment).
+
+**Convention chosen (documented in the builder + DTO):** the user enters the **whole property's** figures
+(value, mortgage, running costs, purchase price); `ownershipShare` (null = 100%) is the household's beneficial
+fraction, applied to derive its position everywhere the property matters.
+
+**How:** the share scales `$state['property']` and `$state['mortgageOutstanding']` at projector init (so wealth,
+the Pension-Credit means test on a let home, IHT, and growth all reflect only the share owned), the stay-put
+running costs in `projectYear`, and — in `HousingComparison::saleProceeds` — the household's sale price,
+mortgage and selling costs, with **CGT computed on its share of the gain** (then split across its owners, so the
+beneficial share and the per-owner allowances compose). Scaling by the share is a **no-op when null**, so the
+reconciliation-tested whole-ownership sale math is byte-identical and every existing housing test is unaffected.
+The buy-variant's new home is a fresh 100%-owned purchase, so its running-cost ratio stays on whole figures.
+
+**v1 note:** running costs and the mortgage are apportioned pro-rata (the standard tenants-in-common assumption);
+a household paying a non-pro-rata share of upkeep is not modelled. `OwnershipShareTest` pins the share reaching the
+sale proceeds (halved + still reconciling), the CGT (a smaller share taxes a smaller gain, still non-zero), and the
+forecast property wealth (a half share counts half). Builder gained an ownership-share input with a whole-property
+hint. **With this, all five collected-but-unconsumed silent-drops from the 2026-07-02 audit are closed.**
+
 ## 2026-07-03 — Employee NI is now category-aware (`Person::niCategory` consumed; sourced B/E/I + D/J/L/Z rates)
 **Decision:** Wired `Person::niCategory`, the fourth silent-drop. Rob chose to **wire fully** (add the real
 per-category rate tables, not a minimal stub) — his standing steer that an accurate, true-to-life forecast beats

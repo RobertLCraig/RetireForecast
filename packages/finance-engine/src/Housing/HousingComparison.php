@@ -125,30 +125,38 @@ final class HousingComparison
         // it reconciles to the total by construction. No components → the engine default rate.
         $components = $action->sellingCosts ?? [new SellingCostComponent('Selling costs', Percent::fromBasisPoints(self::DEFAULT_SELLING_COST_RATE_BP))];
 
-        $sellingCosts = Money::zero();
-        $breakdown = [];
+        $sellingCostsWhole = Money::zero();
+        $breakdownWhole = [];
         foreach ($components as $component) {
             $amount = $component->amount($action->salePrice);
-            $sellingCosts = $sellingCosts->plus($amount);
-            $breakdown[] = ['label' => $component->label, 'amount' => $amount];
+            $sellingCostsWhole = $sellingCostsWhole->plus($amount);
+            $breakdownWhole[] = ['label' => $component->label, 'amount' => $amount];
         }
 
-        $mortgage = $household->primaryResidence?->outstandingMortgage ?? Money::zero();
+        $mortgageWhole = $household->primaryResidence?->outstandingMortgage ?? Money::zero();
+
+        // The household owns a beneficial share of the home (tenants in common); null = wholly owned.
+        // Whole-property figures are entered, and HMRC apportions both the gain and the sale proceeds by
+        // that share, so the household receives its share of (price − mortgage − costs) and is taxed on
+        // its share of the gain. Scaling by the share leaves the wholly-owned case (null) untouched.
+        $share = $household->primaryResidence?->ownershipShare;
+        $scale = fn (Money $m): Money => $share === null ? $m : $m->applyRate($share);
 
         // CGT: £0 for a main home owned and lived in throughout (full Private Residence Relief —
         // the common case, and the default when no CGT history is given). When the home was let
         // or not the main residence for part of ownership, the gain (sale less purchase, less
         // improvement/acquisition costs, less the allowable selling costs) is taxed after partial
-        // PRR by {@see CgtPrivateResidenceCalculator}, split across the owners.
+        // PRR by {@see CgtPrivateResidenceCalculator}, on the household's share of the gain, split
+        // across its owners (so the beneficial share and the per-owner allowances compose).
         $history = $household->primaryResidence?->cgtHistory;
         $cgtResult = null;
         $cgt = Money::zero();
         if ($history !== null) {
-            $gain = $action->salePrice
+            $gain = $scale($action->salePrice
                 ->minus($history->purchasePrice)
                 ->minus($history->improvementCosts)
-                ->minus($sellingCosts)
-                ->minZero();
+                ->minus($sellingCostsWhole)
+                ->minZero());
             $cgtResult = (new CgtPrivateResidenceCalculator($this->config))->compute(
                 $gain,
                 $history->ownershipMonths,
@@ -159,9 +167,15 @@ final class HousingComparison
             $cgt = $cgtResult->tax;
         }
 
-        $netProceeds = $action->salePrice->minus($mortgage)->minus($sellingCosts)->minus($cgt)->minZero();
+        // The household's share of each figure, so the waterfall (price − mortgage − costs − CGT) reconciles.
+        $salePrice = $scale($action->salePrice);
+        $mortgage = $scale($mortgageWhole);
+        $sellingCosts = $scale($sellingCostsWhole);
+        $breakdown = array_map(fn (array $b): array => ['label' => $b['label'], 'amount' => $scale($b['amount'])], $breakdownWhole);
 
-        return new HousingProceeds($action->salePrice, $mortgage, $sellingCosts, $cgt, $netProceeds, $breakdown, $cgtResult);
+        $netProceeds = $salePrice->minus($mortgage)->minus($sellingCosts)->minus($cgt)->minZero();
+
+        return new HousingProceeds($salePrice, $mortgage, $sellingCosts, $cgt, $netProceeds, $breakdown, $cgtResult);
     }
 
     /**

@@ -85,7 +85,7 @@ see Known divergences.)
 | outstanding_mortgage | Money 🔒 | pence | yes | |
 | is_primary_residence | bool | | no | PRR / capital-exemption flag |
 | ever_let | bool | | no | default false; triggers PRR restriction |
-| ownership_share | Percent | bps | no | default 100%; ⚠️ **collected, not consumed (v1)** — a non-100% share is modelled as whole ownership (docs/PLAN-multi-property.md calls it "partly ready") |
+| ownership_share | Percent | bps | no | default 100%; **consumed 2026-07-03** — the household's beneficial share of a home held with others (tenants in common). Whole-property figures are entered; the share scales the household's wealth, running costs, means-test capital, IHT, and sale proceeds/CGT (HMRC apportions gain + proceeds by beneficial share). Null = wholly owned |
 | running_costs | Money 🔒 | pence/yr | yes | maintenance + insurance + council tax |
 | growth_assumption | Percent | bps/yr | yes | |
 
@@ -359,15 +359,16 @@ from the original plan, flagged inline:
   (single-property model — DECISIONS 2026-07-01).
 
 ## Known divergences (to close)
-- **Collected-but-not-consumed fields (2026-07-02 doc audit).** Inputs that are validated,
-  assembled into DTOs and documented above, but read by no engine code — a silent-drop class
-  (see the completeness rule in CLAUDE.md). **CLOSED 2026-07-02:**
+- **Collected-but-not-consumed fields (2026-07-02 doc audit) — ALL CLOSED 2026-07-02/07-03.** Inputs that
+  were validated, assembled into DTOs and documented above but read by no engine code — a silent-drop class
+  (see the completeness rule in CLAUDE.md), all now wired with a per-source completeness test:
   `DbPension::spousePensionFraction` (survivor DB income now paid; `SurvivorDbPensionTest`),
-  `Person::salaryGrowth` (per-person salary-growth override now consumed; `PerPersonSalaryGrowthTest`),
-  `DbPension::commutationLumpSum`/`commutationFactor` (the commutation trade-off now modelled;
-  `DbCommutationTest`), and `Person::niCategory` (employee NI now category-aware, sourced B/E/I reduced
-  + D/J/L/Z deferred + C/K/S/X nil rates; `NationalInsuranceCalculatorTest` / `NiCategoryForecastTest`).
-  Still open: `Property::ownershipShare` (Rob: wire, researching the tenants-in-common convention).
+  `Person::salaryGrowth` (per-person salary-growth override; `PerPersonSalaryGrowthTest`),
+  `DbPension::commutationLumpSum`/`commutationFactor` (the commutation trade-off; `DbCommutationTest`),
+  `Person::niCategory` (employee NI now category-aware, sourced B/E/I reduced + D/J/L/Z deferred + C/K/S/X
+  nil rates; `NationalInsuranceCalculatorTest` / `NiCategoryForecastTest`), and `Property::ownershipShare`
+  (beneficial share scales wealth, means-test, IHT + sale proceeds/CGT per HMRC tenants-in-common
+  apportionment; `OwnershipShareTest`).
 - **Planned fields never materialised:** `DcPension::crystallisedValue`,
   `StatePensionEntitlement` `spa_override` + `triple_lock_assumption` (SPA computes from DOB;
   the triple-lock factor lives in the projector). Kept here rather than in the entity tables

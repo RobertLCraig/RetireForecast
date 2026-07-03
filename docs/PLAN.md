@@ -320,9 +320,13 @@ forms behind `compliance.personal_use`.**
     the gov.uk category-letter tables (2025-26 & 2026-27 identical; `NationalInsuranceParameters` gained
     `reducedMainRate`/`deferredMainRate`). Empty/unknown = standard. Builder gained a category select.
     `NationalInsuranceCalculatorTest` + `NiCategoryForecastTest`.
-  - **Property::ownershipShare (Rob: wire; research the convention).** Researched: tenants in common each
-    own a distinct beneficial share; HMRC apportions the gain and sale proceeds by that share (each owner
-    their own allowance — the joint-owner split already exists). To wire per that convention.
+  - **Property::ownershipShare. — DONE 2026-07-03.** Researched the tenants-in-common convention (HMRC
+    apportions value, sale proceeds and the taxable gain by beneficial share); wired it: whole-property
+    figures are entered, and the share scales the household's property wealth, mortgage, means-test capital,
+    IHT, running costs, and sale proceeds — with CGT computed on the household's share of the gain and split
+    across its owners (composing with the existing joint-owner split). Null = wholly owned (a no-op, so the
+    reconciliation-tested sale math is unchanged). `OwnershipShareTest`; builder gained an ownership-share input.
+  - **All five silent-drops are now closed.** The collected-but-unconsumed class the 2026-07-02 audit found is done.
 - **User-facing copy fixes (cheap; the copy-audit cluster — trust depends on copy matching the engine).**
   The **"Survivor fraction" field** is resolved (2026-07-02 — it now works and has a hint). Still open: the
   **care-off silence** — care risk is opt-in/default-off, so by default nothing tells the user a ~1-in-4,
