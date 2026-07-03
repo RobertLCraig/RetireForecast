@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Livewire;
 
+use App\Enums\BacklogItemKind;
 use App\Livewire\ScenarioAssistant;
+use App\Models\AssistantBacklogItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
@@ -82,5 +85,70 @@ final class ScenarioAssistantTest extends TestCase
             ->assertSee('Compare the plans')
             ->assertSee('Which plan leaves the most money at the end?')
             ->assertDontSee('Does my money last, and until when?');   // the single-scenario starters are replaced
+    }
+
+    // --- Phase 3: idea capture (the model's only write) ---
+
+    public function test_capturing_an_idea_queues_it_and_shows_it_in_the_list(): void
+    {
+        config(['assistant.enabled' => true]);
+        // Model unreachable → the capture falls back to storing the raw idea as a Task (never lost).
+        Http::fake(['*' => Http::response('', 500)]);
+
+        Livewire::test(ScenarioAssistant::class, ['scenario' => ScenarioFixture::rich($this->user)])
+            ->set('open', true)
+            ->set('tab', 'ideas')
+            ->set('idea', 'Could it model equity release?')
+            ->call('captureIdea')
+            ->assertSet('idea', '')
+            ->assertSee('Added to the backlog')
+            ->assertSee('Could it model equity release?');
+
+        $this->assertDatabaseHas('assistant_backlog_items', [
+            'user_id' => $this->user->id,
+            'kind' => 'task',
+            'title' => 'Could it model equity release?',
+            'source' => 'Could it model equity release?',
+        ]);
+    }
+
+    public function test_capture_is_inert_when_the_assistant_is_disabled(): void
+    {
+        config(['assistant.enabled' => false]);
+
+        Livewire::test(ScenarioAssistant::class, ['scenario' => ScenarioFixture::rich($this->user)])
+            ->set('tab', 'ideas')
+            ->set('idea', 'Something')
+            ->call('captureIdea');
+
+        $this->assertDatabaseCount('assistant_backlog_items', 0);
+    }
+
+    public function test_the_ideas_list_shows_only_this_users_items_and_can_delete_them(): void
+    {
+        $other = User::factory()->create();
+        AssistantBacklogItem::create(['user_id' => $other->id, 'kind' => BacklogItemKind::Task, 'title' => 'Someone elses idea', 'source' => 'x']);
+        $mine = AssistantBacklogItem::create(['user_id' => $this->user->id, 'kind' => BacklogItemKind::Feature, 'title' => 'My own idea', 'source' => 'y']);
+
+        Livewire::test(ScenarioAssistant::class, ['scenario' => ScenarioFixture::rich($this->user)])
+            ->set('open', true)
+            ->set('tab', 'ideas')
+            ->assertSee('My own idea')
+            ->assertDontSee('Someone elses idea')
+            ->call('deleteIdea', $mine->id)
+            ->assertDontSee('My own idea');
+
+        $this->assertDatabaseMissing('assistant_backlog_items', ['id' => $mine->id]);
+    }
+
+    public function test_cannot_delete_another_users_idea(): void
+    {
+        $other = User::factory()->create();
+        $theirs = AssistantBacklogItem::create(['user_id' => $other->id, 'kind' => BacklogItemKind::Task, 'title' => 'Not mine', 'source' => 'x']);
+
+        Livewire::test(ScenarioAssistant::class, ['scenario' => ScenarioFixture::rich($this->user)])
+            ->call('deleteIdea', $theirs->id);
+
+        $this->assertDatabaseHas('assistant_backlog_items', ['id' => $theirs->id]);
     }
 }

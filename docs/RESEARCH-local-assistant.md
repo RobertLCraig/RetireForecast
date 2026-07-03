@@ -10,9 +10,9 @@ discipline, and the phasing. **Post-v1; specced before building.**_
 > capturing, never predicting or calculating**. Every number it says comes from the engine; the only
 > thing it may *write* is a line on the development backlog. It never builds, edits code, or offers to.
 
-**Build status (2026-07-03):** **Phases 1 (grounded scenario-explainer) and 2 (methodology doc-RAG) are BUILT** —
-`App\Assistant\` + `App\Livewire\ScenarioAssistant`, both guardrails tested, verified end-to-end against `qwen3:14b`
-(+ `nomic-embed-text` for Phase 2); see §6. Phase 3 (backlog capture) remains specced.
+**Build status (2026-07-03):** **All three phases are BUILT** — (1) grounded scenario-explainer, (2) methodology
+doc-RAG, (3) idea capture (the model's only write). `App\Assistant\` + `App\Livewire\ScenarioAssistant`, both
+guardrails tested, each phase verified end-to-end against `qwen3:14b` (+ `nomic-embed-text` for Phase 2); see §6.
 
 ---
 
@@ -176,9 +176,13 @@ Autonomous, but **safe by construction** — it honours "no silent failure" and 
    against real `qwen3:14b` + `nomic-embed-text` (a mortality-methodology question answers grounded + sourced; a
    scenario question attaches nothing; emergency-tax / Monte-Carlo / let-home-CGT now answer accurately from
    METHODOLOGY.md). See DECISIONS 2026-07-03.
-3. **Phase 3 — research/feature capture-and-route.** The `queueBacklogItem` write tool → the append-only
-   attributed store + a review/promote list. **This is the model's only write, and the ceiling of its
-   agency: it queues, it does not build.**
+3. ✅ **Phase 3 — research/feature capture — BUILT (2026-07-03).** The panel's **"Ideas" tab**: a reader's free-text
+   idea is structured by the model (`App\Assistant\BacklogCapture` → {kind, title, note}) and appended to an
+   append-only, attributed, reversible store (`assistant_backlog_items` table, NOT a curated doc), with a review list
+   (delete supported) and an on-screen confirmation. Safe by construction — an unreachable/unusable model falls back
+   to saving the raw idea as a Task (an idea is never lost). Promotion into docs/PLAN.md stays a human/Claude Code act
+   (an `assistant:backlog` command lists the queue). **This is the model's only write, and the ceiling of its agency:
+   it queues, it does not build.** Verified end-to-end vs real `qwen3:14b`. See DECISIONS 2026-07-03.
 
 ## 7. Gotchas — what could bite
 

@@ -829,8 +829,10 @@ methodology doc-RAG (`nomic-embed-text`, hand-rolled cosine `DocIndex`, `assista
 top chunks, not intent-route**, over a **CURATED** methodology corpus (`config('assistant.methodology_docs')`), not
 the whole `docs/` folder (live verification showed indexing planning prose surfaces build-status as "methodology"
 and nomic's compressed cosines don't discriminate — LA-9); broader engine-computation methodology deferred to a
-**/methodology page**; (3) research/feature **capture-and-route** — the `queueBacklogItem` write is the model's
-only write and the ceiling of its agency. **Gotchas** LA-1…LA-9 in the research doc (ungrounded figure, banned
+**/methodology page**; (3) ✅ **BUILT (2026-07-03)** research/feature **capture** — the panel's "Ideas" tab structures a
+reader's idea (`BacklogCapture` → {kind, title, note}) into an append-only, attributed, reversible
+`assistant_backlog_items` store, with a review/delete list + an `assistant:backlog` command for human promotion; the
+model's only write and the ceiling of its agency (it queues, it never builds). **Gotchas** LA-1…LA-9 in the research doc (ungrounded figure, banned
 phrasing, PII exfiltration, "offers to build", Ollama-down silent failure, RAG-for-own-numbers, autonomous-write
 corruption, right-number-wrong-meaning, planning-prose-as-methodology).
 

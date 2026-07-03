@@ -3,6 +3,29 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — Local-model assistant Phase 3 built: idea capture, the model's only write
+**Context:** The last specced assistant phase — the model's ONLY write: capturing a reader's "we should look at X"
+idea to a work queue for a human to promote later. It never builds, edits code, or offers to.
+
+**Decision + how (app-layer only; engine untouched):**
+- **Append-only, attributed, reversible store:** an `assistant_backlog_items` table (user_id, kind, title, note,
+  source, timestamps) — NOT a curated doc (never PLAN/DECISIONS/HANDOVER). Ideas are about the tool, not the
+  household's finances, so nothing is encrypted; a deleted user's items cascade away.
+- **The model structures, never builds:** `App\Assistant\BacklogCapture` turns free text into {kind, title, note}
+  via the local model (research|feature|task). Safe by construction — an unreachable model or an unusable reply
+  falls back to storing the raw idea as a Task, so an idea is never lost (no silent failure); injected `ChatClient`,
+  unit-tested with a fake.
+- **UI:** the panel gains an **"Ideas" tab** (alongside "Ask") — a capture box + a review list of the reader's queued
+  ideas, each deletable. On-screen confirmation on capture (visible, never silent). No confirm step (reversible, per
+  the spec).
+- **Promotion stays a human act:** an **`assistant:backlog`** command lists the queue for a human/Claude Code to
+  promote into docs/PLAN.md and clear. The model never touches curated docs.
+
+**Evidence:** 9 new tests (BacklogCapture structuring + fallbacks; Livewire capture/list/delete/owner-scoping/inert);
+verified end-to-end vs real `qwen3:14b` — it classified "equity release" → feature, "Scottish tax bands" → research,
+"reclaim wording confusing" → task, each into clean parseable JSON. Suite green. **The assistant's three specced
+phases (1 explainer, 2 methodology doc-RAG, 3 capture) are now all built.** See docs/RESEARCH-local-assistant.md §6.
+
 ## 2026-07-03 — /methodology page + doc: engine-computation methodology, one source for page + assistant
 **Context:** Phase 2's doc-RAG deliberately left broad "how does the engine compute emergency tax / the Monte Carlo /
 CGT" coverage to a purpose-written /methodology page (the curated corpus was only ASSUMPTIONS/MORTALITY/stress-test —

@@ -31,7 +31,7 @@
                     </p>
                 </div>
                 <div class="flex shrink-0 items-center gap-1">
-                    @if ($messages !== [])
+                    @if ($tab === 'ask' && $messages !== [])
                         <button
                             type="button"
                             wire:click="clear"
@@ -52,6 +52,19 @@
                 </div>
             </header>
 
+            {{-- Two views: Ask (explain this forecast) and Ideas (capture backlog items — the model's only write). --}}
+            <div class="flex border-b border-gray-200 px-2" role="tablist">
+                <button type="button" role="tab" wire:click="switchTab('ask')" @if ($tab === 'ask') aria-selected="true" @endif
+                    class="border-b-2 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 {{ $tab === 'ask' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800' }}">
+                    Ask
+                </button>
+                <button type="button" role="tab" wire:click="switchTab('ideas')" @if ($tab === 'ideas') aria-selected="true" @endif
+                    class="border-b-2 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 {{ $tab === 'ideas' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800' }}">
+                    Ideas
+                </button>
+            </div>
+
+            @if ($tab === 'ask')
             <div class="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite" aria-atomic="false">
                 @forelse ($messages as $m)
                     @if ($m['role'] === 'user')
@@ -125,6 +138,59 @@
                     Explanation only — not a personal recommendation or regulated advice. See Pension Wise / MoneyHelper.
                 </p>
             </form>
+            @else
+            {{-- Ideas tab: capture an idea for the tool. The model structures it into a queued item; it
+                 never builds it. Append-only, attributed, reversible — a human reviews and promotes elsewhere. --}}
+            <div class="flex-1 space-y-3 overflow-y-auto p-4">
+                <p class="text-sm text-gray-600">
+                    Have an idea for the tool — something to research, a feature, a fix? Jot it down and it goes on a
+                    backlog for review. The assistant only captures ideas here; it never builds them.
+                </p>
+
+                @if ($captureNotice !== '')
+                    <p role="status" class="rounded-md bg-green-50 px-3 py-2 text-sm text-green-800">{{ $captureNotice }}</p>
+                @endif
+
+                @forelse ($this->backlogItems() as $item)
+                    <div class="flex items-start justify-between gap-2 rounded-md border border-gray-200 p-3">
+                        <div class="min-w-0">
+                            <span class="inline-block rounded bg-gray-100 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-gray-500">{{ $item->kind->label() }}</span>
+                            <p class="mt-1 text-sm font-medium text-gray-900">{{ $item->title }}</p>
+                            @if ($item->note)
+                                <p class="mt-0.5 text-xs text-gray-600">{{ $item->note }}</p>
+                            @endif
+                        </div>
+                        <button type="button" wire:click="deleteIdea({{ $item->id }})" aria-label="Delete this idea"
+                            class="shrink-0 rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span aria-hidden="true" class="text-lg leading-none">&times;</span>
+                        </button>
+                    </div>
+                @empty
+                    <p class="text-sm text-gray-500">No ideas captured yet.</p>
+                @endforelse
+            </div>
+
+            <form wire:submit="captureIdea" class="border-t border-gray-200 p-3">
+                <label for="assistant-idea" class="sr-only">Your idea for the tool</label>
+                <textarea
+                    id="assistant-idea"
+                    wire:model="idea"
+                    wire:loading.attr="disabled"
+                    wire:target="captureIdea"
+                    rows="2"
+                    placeholder="e.g. Could it model equity release?"
+                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                ></textarea>
+                <div class="mt-2 flex items-center justify-between gap-2">
+                    <p class="text-xs text-gray-400">Saved for review — not acted on.</p>
+                    <button type="submit" wire:loading.attr="disabled" wire:target="captureIdea"
+                        class="shrink-0 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="captureIdea">Add to backlog</span>
+                        <span wire:loading wire:target="captureIdea">Adding…</span>
+                    </button>
+                </div>
+            </form>
+            @endif
         </section>
     @endif
 </div>

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Assistant\AssistantService;
+use App\Assistant\BacklogCapture;
+use App\Assistant\ChatClient;
 use App\Assistant\ComparisonContext;
 use App\Assistant\DocIndex;
 use App\Assistant\MethodologyRetriever;
@@ -16,6 +18,7 @@ use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\WhatIfChanges;
+use App\Models\AssistantBacklogItem;
 use App\Models\Result;
 use App\Models\Scenario;
 use Illuminate\Contracts\View\View;
@@ -46,7 +49,16 @@ class ScenarioAssistant extends Component
      *  stays out of the content until the reader wants it (a docked panel, not a floating chat bubble). */
     public bool $open = false;
 
+    /** Which view the panel shows: 'ask' (explain this forecast) or 'ideas' (capture backlog items). */
+    public string $tab = 'ask';
+
     public string $question = '';
+
+    /** The reader's free-text idea for the tool, on the Ideas tab. */
+    public string $idea = '';
+
+    /** A one-line confirmation after capturing an idea (visible, never silent). */
+    public string $captureNotice = '';
 
     public function toggle(): void
     {
@@ -62,6 +74,66 @@ class ScenarioAssistant extends Component
     {
         $this->messages = [];
         $this->question = '';
+    }
+
+    /** Switch between the Ask (explain) and Ideas (capture) views. */
+    public function switchTab(string $tab): void
+    {
+        $this->tab = in_array($tab, ['ask', 'ideas'], true) ? $tab : 'ask';
+        $this->captureNotice = '';
+    }
+
+    /**
+     * Phase 3 — capture the reader's idea to the work queue. This is the model's ONE write, and the
+     * ceiling of its agency: it structures the idea into a queued item; it never builds it. The write
+     * is append-only, attributed and reversible (deletable below), so it needs no confirm step. If the
+     * model can't structure it, the raw idea is still saved (a Task) — an idea is never lost.
+     */
+    public function captureIdea(): void
+    {
+        if (! config('assistant.enabled')) {
+            return;
+        }
+
+        $raw = trim($this->idea);
+        if ($raw === '') {
+            return;
+        }
+
+        $structured = (new BacklogCapture($this->chatClient()))->structure($raw);
+
+        AssistantBacklogItem::create([
+            'user_id' => auth()->id(),
+            'kind' => $structured['kind'],
+            'title' => $structured['title'],
+            'note' => $structured['note'],
+            'source' => $raw,
+        ]);
+
+        $this->idea = '';
+        $this->captureNotice = 'Added to the backlog for review. The assistant only captures ideas — it never builds them.';
+    }
+
+    /** Remove a queued idea (owner-scoped) — the write is reversible. */
+    public function deleteIdea(int $id): void
+    {
+        AssistantBacklogItem::query()->where('user_id', auth()->id())->whereKey($id)->delete();
+        $this->captureNotice = '';
+    }
+
+    /**
+     * This reader's queued ideas, newest first — the review list where they are promoted (by a human,
+     * elsewhere) or deleted. Capped to a recent window.
+     *
+     * @return Collection<int, AssistantBacklogItem>
+     */
+    public function backlogItems(): Collection
+    {
+        return AssistantBacklogItem::query()
+            ->where('user_id', auth()->id())
+            ->latest()
+            ->limit(30)
+            ->get();
     }
 
     /**
@@ -325,14 +397,18 @@ class ScenarioAssistant extends Component
 
     private function service(): AssistantService
     {
-        $client = new OllamaChatClient(
+        return new AssistantService($this->chatClient());
+    }
+
+    /** The local chat client, built from config — shared by the Q&A answerer and the idea-capture structurer. */
+    private function chatClient(): ChatClient
+    {
+        return new OllamaChatClient(
             (string) config('assistant.base_url'),
             (string) config('assistant.model'),
             (int) config('assistant.timeout'),
             (int) config('assistant.probe_timeout'),
         );
-
-        return new AssistantService($client);
     }
 
     /**
