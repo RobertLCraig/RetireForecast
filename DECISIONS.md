@@ -3,6 +3,26 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — Assistant UI: a docked side panel (not a chat bubble), Clear, adviser-style starter questions
+**Context:** Rob's UI asks on the built assistant — make it a fixed/docked sidebar rather than a floating "live chat"
+bubble; add a **Clear** to wipe history; and offer **more pre-populated questions** in the "what would I ask a
+financial adviser" vein.
+
+**Decision + how (view + `ScenarioAssistant` only; engine + service untouched):**
+- **Docked side panel.** The launcher is now an **edge-anchored tab** (rounded-left, attached to the right edge), and
+  the open panel is a **full-height right-docked sidebar** (`fixed inset-y-0 right-0`, `border-l`), not a bottom-right
+  floating card. Still collapsible and inert unless `config('assistant.enabled')`; CSP-safe (Livewire state only).
+- **Clear.** `clear()` wipes the local transcript + input back to the starter state (nothing is persisted
+  server-side); the button shows only once there is a conversation.
+- **Grouped, clickable starter questions** (`suggestions()`; a click asks directly via `ask($preset)`): "Your plan";
+  **"Risks worth checking (and worth raising with Pension Wise or an adviser)"** — the plain-English form of the five
+  **COBS 9.4.10G** drawdown risk warnings (run-out likelihood, returns below illustration, longevity, care shock,
+  inflation), the same "take to Pension Wise / an adviser" material as the adviser-pack backlog
+  (docs/RESEARCH-delta-2026-07-02 §3); "Tax and the home" (the home-sale starter shown **only for a sell strategy** —
+  a stay-put plan pockets nothing); and "How the forecast is worked out" (methodology, Phase 2). Every question is
+  neutral (passes `BannedPhrasingTest`, which scans the component + view) and answerable from the grounded context.
+  Livewire-tested (starter groups render, Clear wipes, sale starter gated on variant).
+
 ## 2026-07-03 — Local-model assistant Phase 2 built: methodology doc-RAG, corpus CURATED not whole-folder
 **Context:** Phase 2 of the assistant (see the entries below) — "how does it model X?" methodology questions via
 local embeddings (`nomic-embed-text`) over `docs/`, kept distinct from the scenario-figure questions Phase 1 answers.

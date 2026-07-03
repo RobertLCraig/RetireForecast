@@ -34,8 +34,8 @@ class ScenarioAssistant extends Component
 {
     public Scenario $scenario;
 
-    /** Whether the side panel is expanded. Collapsed to a launcher button by default so it
-     *  stays out of the way until the reader wants it. */
+    /** Whether the docked side panel is expanded. Collapsed to an edge tab by default so it
+     *  stays out of the content until the reader wants it (a docked panel, not a floating chat bubble). */
     public bool $open = false;
 
     public string $question = '';
@@ -43,6 +43,73 @@ class ScenarioAssistant extends Component
     public function toggle(): void
     {
         $this->open = ! $this->open;
+    }
+
+    /**
+     * Forget the conversation and return the panel to its starting (suggested-questions) state.
+     * The transcript is local component state only — nothing is persisted server-side — so this
+     * just clears it.
+     */
+    public function clear(): void
+    {
+        $this->messages = [];
+        $this->question = '';
+    }
+
+    /**
+     * Starter questions, grouped, shown when the transcript is empty (and again after Clear).
+     * They double as a "what to ask about a retirement plan" prompt: the "Risks worth checking"
+     * group is the plain-English form of the five COBS 9.4.10G drawdown risk warnings a firm must
+     * give (capital may be eroded; returns may be less than illustrated; income may not be
+     * sustainable; you may live longer than expected; there are tax implications) — the same
+     * "take to Pension Wise / an adviser" material as the adviser-pack backlog
+     * (docs/RESEARCH-delta-2026-07-02 §3). Every question is answerable from the grounded context
+     * and free of directive phrasing (BannedPhrasingTest scans this file). The home-sale question
+     * only shows for a sell strategy (a stay-put plan pockets nothing).
+     *
+     * @return list<array{heading: string, questions: list<string>}>
+     */
+    public function suggestions(): array
+    {
+        return [
+            [
+                'heading' => 'Your plan',
+                'questions' => [
+                    'Does my money last, and until when?',
+                    'How much spendable money is left at the end?',
+                    'What happens to my essential spending over the years?',
+                ],
+            ],
+            [
+                'heading' => 'Risks worth checking (and worth raising with Pension Wise or an adviser)',
+                'questions' => [
+                    'Could my money run out, and how likely is that?',
+                    'What if investment returns are lower than assumed?',
+                    'What if one of us lives a lot longer than expected?',
+                    'What could paying for care later in life do to the plan?',
+                    'How does inflation affect what I can spend?',
+                ],
+            ],
+            [
+                'heading' => 'Tax and the home',
+                'questions' => array_values(array_filter([
+                    'How much tax would I pay if I took a pension lump sum?',
+                    $this->isSellStrategy() ? 'If I sell the home, what do I actually pocket after costs?' : null,
+                ])),
+            ],
+            [
+                'heading' => 'How the forecast is worked out',
+                'questions' => [
+                    'What assumptions is this forecast based on?',
+                    'What data do you use for how long we might live?',
+                ],
+            ],
+        ];
+    }
+
+    private function isSellStrategy(): bool
+    {
+        return $this->scenario->variant->value !== 'stay_put';
     }
 
     /**
@@ -55,13 +122,17 @@ class ScenarioAssistant extends Component
      */
     public array $messages = [];
 
-    public function ask(): void
+    /**
+     * Ask a question. With no argument it asks the text box; a suggested-question button passes the
+     * question as $preset (so a click asks it directly without a round-trip through the input).
+     */
+    public function ask(?string $preset = null): void
     {
         if (! config('assistant.enabled')) {
             return;
         }
 
-        $question = trim($this->question);
+        $question = trim($preset ?? $this->question);
         if ($question === '') {
             return;
         }

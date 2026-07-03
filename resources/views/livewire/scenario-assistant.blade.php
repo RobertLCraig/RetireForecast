@@ -1,25 +1,26 @@
-{{-- Local-model scenario assistant, as a fixed SIDE PANEL (bottom-right), collapsed to a
-     launcher until opened — out of the content flow, not a centre panel. Explains THIS forecast
-     in plain English; it cannot change the plan, run anything, or build anything. Runs on a local
-     model only (data never leaves the machine). Every figure it states is engine-derived and
-     re-verified at runtime (App\Assistant\FigureGrounding); a held-back or unreachable reply is
-     shown as such, never a silent blank. Inert unless config('assistant.enabled'). CSP-safe:
-     all interactivity is Livewire wire: directives, no inline JS. --}}
-<div class="fixed bottom-4 right-4 z-40 print:hidden">
+{{-- Local-model scenario assistant, as a DOCKED full-height side panel on the right edge (not a
+     floating chat bubble): collapsed to an edge tab until opened. Explains THIS forecast in plain
+     English; it cannot change the plan, run anything, or build anything. Runs on a local model only
+     (data never leaves the machine). Every figure it states is engine-derived and re-verified at
+     runtime (App\Assistant\FigureGrounding); a held-back or unreachable reply is shown as such, never
+     a silent blank. Inert unless config('assistant.enabled'). CSP-safe: all interactivity is Livewire
+     wire: directives, no inline JS. --}}
+<div class="print:hidden">
     @if (! $open)
+        {{-- Docked edge tab (attached to the right edge, not a corner bubble). --}}
         <button
             type="button"
             wire:click="toggle"
             aria-expanded="false"
-            class="flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            class="fixed right-0 top-1/3 z-40 flex items-center gap-2 rounded-l-lg bg-blue-600 py-3 pl-3 pr-2 text-sm font-medium text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
             <span aria-hidden="true">💬</span>
-            Ask about this forecast
+            <span class="hidden sm:inline">Ask about this forecast</span>
         </button>
     @else
         <section
             aria-labelledby="assistant-heading"
-            class="flex max-h-[80vh] w-96 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl"
+            class="fixed inset-y-0 right-0 z-40 flex w-96 max-w-[calc(100vw-1rem)] flex-col border-l border-gray-200 bg-white shadow-xl"
         >
             <header class="flex items-start justify-between gap-2 border-b border-gray-200 p-4">
                 <div>
@@ -28,15 +29,26 @@
                         Runs locally on this machine. It only states figures from your forecast and can’t change your plan.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    wire:click="toggle"
-                    aria-expanded="true"
-                    aria-label="Close the assistant"
-                    class="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                    <span aria-hidden="true" class="text-lg leading-none">&times;</span>
-                </button>
+                <div class="flex shrink-0 items-center gap-1">
+                    @if ($messages !== [])
+                        <button
+                            type="button"
+                            wire:click="clear"
+                            class="rounded-md px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            Clear
+                        </button>
+                    @endif
+                    <button
+                        type="button"
+                        wire:click="toggle"
+                        aria-expanded="true"
+                        aria-label="Close the assistant"
+                        class="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <span aria-hidden="true" class="text-lg leading-none">&times;</span>
+                    </button>
+                </div>
             </header>
 
             <div class="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite" aria-atomic="false">
@@ -56,10 +68,28 @@
                         </div>
                     @endif
                 @empty
-                    <p class="text-sm text-gray-500">
-                        For example: “Does my money last, and until when?”, “How much spendable money is left at the end?”,
-                        or “What happens to the essentials in the plan?”
-                    </p>
+                    {{-- Starting state: grouped starter questions. Clicking one asks it directly. --}}
+                    <p class="text-sm text-gray-600">Ask anything about this forecast, or start with one of these:</p>
+                    @foreach ($this->suggestions() as $group)
+                        @if ($group['questions'] !== [])
+                            <div>
+                                <p class="mb-1.5 mt-3 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ $group['heading'] }}</p>
+                                <div class="space-y-1.5">
+                                    @foreach ($group['questions'] as $q)
+                                        <button
+                                            type="button"
+                                            wire:click="ask(@js($q))"
+                                            wire:loading.attr="disabled"
+                                            wire:target="ask"
+                                            class="block w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left text-sm text-gray-700 hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            {{ $q }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                    @endforeach
                 @endforelse
 
                 <div wire:loading wire:target="ask" class="flex justify-start">
