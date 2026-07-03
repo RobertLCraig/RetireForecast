@@ -799,7 +799,7 @@ document-upload onboarding. **Gotchas** DI-1…DI-9 in the research doc (transfe
 re-import dupes, over-annualising one-offs, saved-to-own-account double-count, tax-free drop, model
 hallucination, data exfiltration, actuals-as-retirement-budget, PDF mis-read).
 
-### In-app local-model assistant (2026-07-03) — SPECCED, post-v1
+### In-app local-model assistant (2026-07-03) — Phase 1 BUILT, Phases 2–3 SPECCED, post-v1
 Rob's ask: an in-page **"chatbot"** on a **local AI model** that (1) answers questions about the loaded
 scenario + the project, (2) queues research requests, and (3) is the interface for building the
 feature/task list. Full spec + feasibility: **[docs/RESEARCH-local-assistant.md](RESEARCH-local-assistant.md)**.
@@ -820,9 +820,11 @@ Key calls (Rob, 2026-07-03; recorded in DECISIONS 2026-07-03):
   gate). Safe in personal-use mode; a **flagged public-release blocker** (a runtime LLM can't be
   build-time-linted).
 
-**Phasing (each delivers alone):** (1) grounded scenario-explainer with G1+G2 tested — the real value;
-(2) methodology doc-RAG (`nomic-embed-text` over `docs/`); (3) research/feature **capture-and-route** — the
-`queueBacklogItem` write is the model's only write and the ceiling of its agency. **Gotchas** LA-1…LA-8 in
+**Phasing (each delivers alone):** (1) ✅ **BUILT (2026-07-03)** grounded scenario-explainer with G1+G2 tested
+(`App\Assistant\` + `ScenarioAssistant`, inert unless `config('assistant.enabled')`; prompt-stuffs the figure
+snapshot rather than tool-calling; verified vs real `qwen3:14b`) — the real value; (2) methodology doc-RAG
+(`nomic-embed-text` over `docs/`); (3) research/feature **capture-and-route** — the `queueBacklogItem` write is
+the model's only write and the ceiling of its agency. **Gotchas** LA-1…LA-8 in
 the research doc (ungrounded figure, banned phrasing, PII exfiltration, "offers to build", Ollama-down
 silent failure, RAG-for-own-numbers, autonomous-write corruption, right-number-wrong-meaning).
 

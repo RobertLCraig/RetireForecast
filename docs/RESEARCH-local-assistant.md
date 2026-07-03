@@ -10,6 +10,10 @@ discipline, and the phasing. **Post-v1; specced before building.**_
 > capturing, never predicting or calculating**. Every number it says comes from the engine; the only
 > thing it may *write* is a line on the development backlog. It never builds, edits code, or offers to.
 
+**Build status (2026-07-03):** **Phase 1 (grounded scenario-explainer) is BUILT** — `App\Assistant\` +
+`App\Livewire\ScenarioAssistant`, both guardrails tested, verified end-to-end against `qwen3:14b`; see §6.
+Phases 2 (methodology doc-RAG) and 3 (backlog capture) remain specced.
+
 ---
 
 ## 0. The decisions that scope this (Rob, 2026-07-03)
@@ -130,10 +134,16 @@ Autonomous, but **safe by construction** — it honours "no silent failure" and 
 
 ## 6. Phasing (each phase delivers alone; earlier ones carry no dependency on later)
 
-1. **Phase 1 — grounded scenario-explainer (the real value).** Results-page Livewire panel; tool-calling
-   into `ResultPresenter` / engine; **G1 figure-grounding** + **G2 phrasing guard** as first-class, tested
-   pieces; behind the `interpret` gate. Ships the unique value with the two guardrails proven. Add an
-   *"the assistant never emits an ungrounded figure"* test, in the spirit of the reconciliation invariants.
+1. ✅ **Phase 1 — grounded scenario-explainer — BUILT (2026-07-03).** Results-page Livewire panel
+   (`App\Livewire\ScenarioAssistant`, inert unless `config('assistant.enabled')`); **G1 figure-grounding**
+   (`App\Assistant\FigureGrounding`) + **G2 phrasing guard** (reuses `App\Compliance\OutputPhrasing`) as
+   first-class, tested pieces; behind the `interpret` gate. The *"the assistant never surfaces an ungrounded
+   figure"* invariant is pinned (`AssistantServiceTest`), and it's verified end-to-end against the real
+   `qwen3:14b`. **As built it PROMPT-STUFFS the bounded figure snapshot (`ScenarioContext`) rather than
+   tool-calling** — more reliable on a smaller local model (risk A3), and the snapshot simply appends more
+   facts as context grows; tool-calling stays the path only if the snapshot ever gets too large to inline.
+   v1 is a synchronous call with a "Thinking…" state; streaming/queueing, richer context (tax shock, sale
+   waterfall, Monte Carlo probabilities) and a side-nav entry are fast-follows.
 2. **Phase 2 — methodology doc-RAG.** `nomic-embed-text` over `docs/` (small, high-trust corpus) for
    "how does it model X" questions, kept distinct from scenario-figure questions.
 3. **Phase 3 — research/feature capture-and-route.** The `queueBacklogItem` write tool → the append-only

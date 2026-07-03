@@ -3,6 +3,28 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — Local-model assistant Phase 1 built: prompt-stuff the figure snapshot, not tool-calling
+**Context:** Building Phase 1 (the grounded scenario-explainer) of the assistant specced in the entry below.
+The spec sketched **tool-calling** into `ResultPresenter`/the engine as the grounding mechanism.
+
+**Decision + how:** Build Phase 1 app-layer only (engine untouched) and, in place of tool-calling, **prompt-stuff a
+bounded, labelled figure snapshot** (`App\Assistant\ScenarioContext`, built from the deterministic `ForecastResult`)
+into the system prompt. Rationale: a 14B local model does tool-calling less reliably (risk A3), the snapshot is
+small and bounded, and — the key property — the snapshot is the SINGLE source of both the model's context AND the
+grounding allow-list, so "the figures it is given" and "the figures it may state" are one thing. Tool-calling stays
+the fallback only if the snapshot ever grows too large to inline. Guardrails as specced: **G1** `FigureGrounding`
+refuses any £/year/% figure not present in the snapshot or the reader's question (strict — no re-rounding — because
+the tool promises penny-accuracy); **G2** reuses `App\Compliance\OutputPhrasing` (recommendation phrasing blocked in
+guidance-only mode, a direct steer allowed in advice mode via the existing `interpret` gate). `AssistantService`
+gives one corrective retry then **refuses rather than show a bad answer**. The local client (`OllamaChatClient`) sits
+behind a `ChatClient` interface so the whole thing is unit-testable with a fake — no running model needed — and it
+**fails loudly** (`AssistantUnavailable`). Inert by default (`config('assistant.enabled')`).
+
+**Evidence:** 19 unit tests incl. the headline **"never surfaces an invented figure"** invariant; verified
+end-to-end against the real `qwen3:14b` (a grounded answer passes; it declined to invent a 2070 house value). v1 is
+a synchronous call with a "Thinking…" state; streaming/queueing, richer context and a side-nav entry are flagged
+fast-follows. **Phases 2–3 remain specced.** See docs/RESEARCH-local-assistant.md §6.
+
 ## 2026-07-03 — In-app local-model assistant: explain + capture only, it never builds
 **Context:** Rob wants an in-page **"chatbot"** on a **local AI model** to (1) answer questions about the
 loaded scenario + the project, (2) queue research requests, and (3) be the interface for building the

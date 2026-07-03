@@ -991,6 +991,10 @@
         </section>
     @endif
 
+    @if (config('assistant.enabled'))
+        <livewire:scenario-assistant :scenario="$scenario" />
+    @endif
+
     <x-sources-and-contacts id="sec-sources" class="scroll-mt-6" :show-mortgage="$sourcesShowMortgage" :show-cgt="$sourcesShowCgt" />
 
     </div>{{-- /content column --}}
