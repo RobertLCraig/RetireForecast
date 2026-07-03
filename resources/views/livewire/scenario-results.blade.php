@@ -24,6 +24,7 @@
         ['id' => 'sec-milestones', 'label' => 'Life events', 'show' => (bool) $milestones],
         ['id' => 'sec-ladder', 'label' => 'Year-by-year cashflow', 'show' => ! empty($ladder['rows'])],
         ['id' => 'sec-explore', 'label' => 'Build a what-if', 'show' => $canMakeWhatIf],
+        ['id' => 'sec-sources', 'label' => 'Check figures & get help', 'show' => true],
     ], fn ($s) => $s['show']));
 @endphp
 
@@ -989,6 +990,8 @@
             <p class="mt-2 text-xs text-gray-500">Saved as a separate scenario; this report is unchanged. Compare them on the Compare page.</p>
         </section>
     @endif
+
+    <x-sources-and-contacts id="sec-sources" class="scroll-mt-6" />
 
     </div>{{-- /content column --}}
 </div>{{-- /on-this-page grid --}}

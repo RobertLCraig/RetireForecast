@@ -151,6 +151,8 @@
         </details>
     </section>
 
+    <x-sources-and-contacts class="mt-8" />
+
     <div class="mt-6">
         <x-disclaimer.result />
     </div>

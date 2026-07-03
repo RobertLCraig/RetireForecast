@@ -3,6 +3,19 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — "Check these figures & get help" panel surfaces sources + contacts in the UI
+**Decision:** The researched backup for the mortgage (RIO) and CGT figures — authoritative sources + real contact
+details — is now surfaced **in the app**, not just the chat/`.local` file. A reusable `<x-sources-and-contacts>`
+component (three columns: Pensions & money, Later-life mortgages, Capital gains tax) renders on the **results** page
+(a `sec-sources` section in the on-this-page nav) and the **Compare** page, and a compact version is in the **PDF**
+export. It carries live contacts: Pension Wise (0800 138 3944), MoneyHelper (0800 138 7777), the Equity Release
+Council later-life-adviser directory, GOV.UK CGT + report-and-pay (60-day rule), HMRC CGT (0300 200 3300), TaxAid
+(0345 120 3779, low income), a Chartered Tax Adviser, and the FCA register. **Wording is neutral signposting only**
+(it points to help + says figures are estimates until a professional confirms them), so it passes the
+`BannedPhrasingTest` guidance-only lint — consistent with the existing `<x-signpost>` / disclaimer posture. Contact
+details were verified against gov.uk / MoneyHelper / TaxAid / CIOT / Equity Release Council (2026-07-03). Suite green
+(595).
+
 ## 2026-07-03 — Buy-cheaper can be funded by a mortgage on the shortfall (RIO), not just cash
 **Context:** Modelling the V2 couple, "Sell & buy cheaper" looked strongest but was flagged **unaffordable** (a £200k
 home needs ~£97k more than their thin equity frees). The engine only modelled an **outright** buy — when the buy
