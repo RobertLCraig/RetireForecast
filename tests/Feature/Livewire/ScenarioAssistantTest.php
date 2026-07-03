@@ -35,7 +35,9 @@ final class ScenarioAssistantTest extends TestCase
     {
         Livewire::test(ScenarioAssistant::class, ['scenario' => ScenarioFixture::rich($this->user)])
             ->assertSee('Ask about this forecast')          // the docked tab, collapsed
+            ->assertDontSeeHtml('data-assistant-open')      // no open-panel marker while collapsed
             ->call('toggle')
+            ->assertSeeHtml('data-assistant-open')          // the marker the page-shrink CSS keys off
             ->assertSee('Does my money last, and until when?')
             ->assertSee('Risks worth checking')             // the COBS-risk-warning / adviser group
             ->assertSee('Could my money run out')

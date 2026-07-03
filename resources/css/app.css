@@ -27,3 +27,21 @@
     line-height: 1rem;
     color: #b45309; /* amber-700 */
 }
+
+/*
+ * When the local-model assistant side panel is open (its open <section> carries
+ * data-assistant-open — App\Livewire\ScenarioAssistant), shift the whole page shell left of it on
+ * wide screens so the docked sidebar sits BESIDE the content, not over it. The panel is
+ * position:fixed (pinned to the right edge); padding the body only moves the normal-flow shell.
+ * Narrow screens keep the overlay (the panel is near-full-width there by design), so the shift is
+ * gated to lg+.
+ */
+body {
+    transition: padding-right 0.2s ease;
+}
+
+@media (min-width: 1024px) {
+    body:has([data-assistant-open]) {
+        padding-right: 24rem; /* == the panel's w-96 */
+    }
+}

@@ -12,6 +12,11 @@ financial adviser" vein.
 - **Docked side panel.** The launcher is now an **edge-anchored tab** (rounded-left, attached to the right edge), and
   the open panel is a **full-height right-docked sidebar** (`fixed inset-y-0 right-0`, `border-l`), not a bottom-right
   floating card. Still collapsible and inert unless `config('assistant.enabled')`; CSP-safe (Livewire state only).
+- **The page makes room instead of being overlapped.** The open `<section>` carries `data-assistant-open`, and a
+  CSS-only `body:has([data-assistant-open])` rule pads the shell right by the panel width (`24rem`) on **lg+**, so the
+  fixed sidebar sits beside the content, not over it (no JS, no component/layout state-sharing; narrow screens keep the
+  overlay since the panel is near-full-width there). The results-page left "on this page" nav column was also trimmed
+  (`13rem`→`11rem`, `gap-8`→`gap-6`) to give the content back the width the sidebar takes.
 - **Clear.** `clear()` wipes the local transcript + input back to the starter state (nothing is persisted
   server-side); the button shows only once there is a conversation.
 - **Grouped, clickable starter questions** (`suggestions()`; a click asks directly via `ask($preset)`): "Your plan";

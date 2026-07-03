@@ -28,7 +28,7 @@
     ], fn ($s) => $s['show']));
 @endphp
 
-<div class="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:gap-8">
+<div class="lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:items-start lg:gap-6">
     {{-- Floating "on this page" nav: jump between sections on a long results page. Real
          anchor links (work without JS); a bundled IntersectionObserver highlights the
          section in view (resources/js/toc.js). Sticky on large screens, hidden on small. --}}

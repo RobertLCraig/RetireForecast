@@ -20,6 +20,7 @@
     @else
         <section
             aria-labelledby="assistant-heading"
+            data-assistant-open
             class="fixed inset-y-0 right-0 z-40 flex w-96 max-w-[calc(100vw-1rem)] flex-col border-l border-gray-200 bg-white shadow-xl"
         >
             <header class="flex items-start justify-between gap-2 border-b border-gray-200 p-4">
