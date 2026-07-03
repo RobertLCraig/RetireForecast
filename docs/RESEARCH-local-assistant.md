@@ -143,7 +143,12 @@ Autonomous, but **safe by construction** — it honours "no silent failure" and 
    tool-calling** — more reliable on a smaller local model (risk A3), and the snapshot simply appends more
    facts as context grows; tool-calling stays the path only if the snapshot ever gets too large to inline.
    v1 is a synchronous call with a "Thinking…" state; streaming/queueing, richer context (tax shock, sale
-   waterfall, Monte Carlo probabilities) and a side-nav entry are fast-follows.
+   waterfall, Monte Carlo probabilities), pre-computed aggregates and a side-nav entry are fast-follows. As
+   built, the snapshot ALSO carries the **full year-by-year cashflow ladder** (the reconciled
+   `ResultPresenter::ladder()` rows, inline-labelled) so the reader can **interrogate data the UI does not
+   spell out** (e.g. "essentials in five years" — the original ask); each figure is labelled to keep the right
+   number on the right thing (LA-8). The panel is a **fixed, collapsible side panel** (bottom-right), not a
+   centre panel. The model won't sum across years — G1 refuses an ungrounded aggregate, by design.
 2. **Phase 2 — methodology doc-RAG.** `nomic-embed-text` over `docs/` (small, high-trust corpus) for
    "how does it model X" questions, kept distinct from scenario-figure questions.
 3. **Phase 3 — research/feature capture-and-route.** The `queueBacklogItem` write tool → the append-only

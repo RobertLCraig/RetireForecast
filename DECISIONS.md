@@ -3,6 +3,27 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — Assistant refinements: carry the full year-by-year ladder; a side panel, not a centre panel
+**Context:** Testing Phase 1, Rob asked "how much are my essentials in 5 years?" and it refused — the context held
+only the *headline* facts, not per-year figures. His framing: **a big part of the point is to interrogate the data
+for information not immediately visible in the UI.** He also asked to move the panel to the side.
+
+**Decision + how:**
+1. **`ScenarioContext` now carries the full year-by-year cashflow ladder** — every projected year's essentials /
+   discretionary / total spend, income by source, tax, investment growth, shortfall and spendable/total wealth —
+   built from the **reconciled `ResultPresenter::ladder()` rows** (so the assistant's per-year figures ARE the
+   ladder panel's; provenance), **one line per year, every figure inline-labelled**. Inline labels (not a bare
+   table) keep the model stating the right number for the right thing — the right-number-wrong-meaning risk
+   (gotcha LA-8) bites hardest on exactly this drill-down. All figures land in the grounding allow-list, so any
+   per-year question is answerable. **Limit (by design):** the model still won't compute *across* years (a summed
+   aggregate is ungrounded → G1 refuses it); pre-computed aggregates are a clean future add. Verified against real
+   `qwen3:14b` ("essentials in 5 years" → the right year's figure; maps "5 years" to a calendar year).
+2. **The panel is a fixed, collapsible SIDE panel** (bottom-right; a launcher when closed), out of the report's
+   content flow — not a centre panel. Toggle is pure Livewire state (`$open`/`toggle()`), so it stays CSP-safe
+   (no inline JS). Still inert unless `config('assistant.enabled')`.
+
+Both are Phase-1 refinements (see the entry below); the engine is untouched. See docs/RESEARCH-local-assistant.md §6.
+
 ## 2026-07-03 — Local-model assistant Phase 1 built: prompt-stuff the figure snapshot, not tool-calling
 **Context:** Building Phase 1 (the grounded scenario-explainer) of the assistant specced in the entry below.
 The spec sketched **tool-calling** into `ResultPresenter`/the engine as the grounding mechanism.

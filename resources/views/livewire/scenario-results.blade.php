@@ -991,11 +991,13 @@
         </section>
     @endif
 
-    @if (config('assistant.enabled'))
-        <livewire:scenario-assistant :scenario="$scenario" />
-    @endif
-
     <x-sources-and-contacts id="sec-sources" class="scroll-mt-6" :show-mortgage="$sourcesShowMortgage" :show-cgt="$sourcesShowCgt" />
 
     </div>{{-- /content column --}}
+
+    @if (config('assistant.enabled'))
+        {{-- A page-level fixed side panel (not in the content flow); position:fixed floats it
+             bottom-right regardless of where it mounts in the grid. --}}
+        <livewire:scenario-assistant :scenario="$scenario" />
+    @endif
 </div>{{-- /on-this-page grid --}}

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Assistant;
 
+use App\Assistant\FigureGrounding;
 use App\Assistant\ScenarioContext;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
+use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
 
 /**
@@ -58,6 +60,51 @@ final class ScenarioContextTest extends TestCase
         $block = ScenarioContext::fromForecast('Rent', 'Sell and rent', $forecast)->promptBlock();
 
         $this->assertStringContainsString('it runs short in 2041', $block);
+    }
+
+    public function test_the_year_by_year_ladder_reaches_the_prompt_and_is_groundable(): void
+    {
+        $year = new YearResult(
+            yearIndex: 0,
+            calendarYear: 2030,
+            ages: ['p1' => 67, 'p2' => 64],
+            aliveCount: 2,
+            grossIncome: Money::fromPence(2_680_000),
+            totalTax: Money::fromPence(120_000),          // £1,200.00
+            netIncome: Money::fromPence(2_560_000),
+            spendTarget: Money::fromPence(2_800_000),     // £28,000.00
+            essentialSpend: Money::fromPence(2_200_000),  // £22,000.00
+            shortfallFunded: Money::zero(),
+            unmetSpend: Money::zero(),
+            essentialsMet: true,
+            liquidWealth: Money::fromPence(18_000_000),   // £180,000.00 spendable
+            pensionWealth: Money::zero(),
+            propertyWealth: Money::fromPence(25_000_000),
+            totalWealth: Money::fromPence(43_000_000),    // £430,000.00
+            incomeBySource: ['state_pension' => Money::fromPence(1_150_200)], // £11,502.00
+        );
+
+        $forecast = new ForecastResult(
+            years: [$year],
+            essentialsAlwaysMet: true,
+            fullSpendAlwaysMet: true,
+            depletionCalendarYear: null,
+            terminalTotalWealth: Money::fromPence(43_000_000),
+            terminalUsableWealth: Money::fromPence(18_000_000),
+            finalCalendarYear: 2030,
+        );
+
+        $block = ScenarioContext::fromForecast('My Plan', 'Stay put', $forecast)->promptBlock();
+
+        // The per-year figures the UI ladder shows are in the context, each inline-labelled.
+        $this->assertStringContainsString('2030', $block);
+        $this->assertStringContainsString('essentials £22,000.00', $block);
+        $this->assertStringContainsString('discretionary £6,000.00', $block); // spend − essentials
+        $this->assertStringContainsString('State Pension £11,502.00', $block);
+        $this->assertStringContainsString('spendable wealth £180,000.00', $block);
+
+        // So a per-year question ("essentials in five years") is now answerable, not refused.
+        $this->assertSame([], FigureGrounding::ungrounded('Your essentials in 2030 are £22,000.00.', $block, ''));
     }
 
     public function test_care_cost_appears_only_when_modelled(): void

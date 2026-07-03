@@ -27,7 +27,16 @@ class ScenarioAssistant extends Component
 {
     public Scenario $scenario;
 
+    /** Whether the side panel is expanded. Collapsed to a launcher button by default so it
+     *  stays out of the way until the reader wants it. */
+    public bool $open = false;
+
     public string $question = '';
+
+    public function toggle(): void
+    {
+        $this->open = ! $this->open;
+    }
 
     /**
      * The visible transcript. Each entry: role (user|assistant), the text, and — for an
