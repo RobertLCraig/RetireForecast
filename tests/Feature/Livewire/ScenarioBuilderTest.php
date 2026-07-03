@@ -14,6 +14,7 @@ use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
+use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\HouseholdFixture;
@@ -394,6 +395,26 @@ class ScenarioBuilderTest extends TestCase
         $this->fill(BuilderStateFixture::minimalValid())->call('save');
 
         $this->assertSame(2, Scenario::where('user_id', auth()->id())->firstOrFail()->safetyBufferMonths());
+    }
+
+    public function test_the_mortgage_maturity_action_and_redemption_year_round_trip(): void
+    {
+        // The user can now say what happens when the mortgage term ends. Without a builder input for
+        // these the choice (refinance / repay / forced sale) could not be modelled at all — so this
+        // pins the two fields reaching the Property DTO the engine reads.
+        $state = BuilderStateFixture::minimalValid();
+        $state['hasProperty'] = true;
+        $state['property'] = [
+            'currentValue' => '400000', 'ownership' => 'mortgaged', 'everLet' => false,
+            'outstandingMortgage' => '150000', 'runningCosts' => '3000', 'growthAssumptionOverride' => '', 'ownershipShare' => '',
+            'mortgageRedemptionYear' => '2032', 'mortgageMaturityAction' => 'forced_sale',
+        ];
+
+        $this->fill($state)->call('save')->assertHasNoErrors();
+
+        $home = Scenario::firstOrFail()->toHousehold()->primaryResidence;
+        $this->assertSame(2032, $home->mortgageRedemptionYear);
+        $this->assertSame(MortgageMaturityAction::ForcedSale, $home->mortgageMaturityAction);
     }
 
     /** @param array<string, mixed> $state */

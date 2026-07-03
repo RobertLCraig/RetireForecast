@@ -39,6 +39,36 @@ class BuyVsRentTest extends TestCase
         }
     }
 
+    public function test_a_generated_stay_put_plan_does_not_inherit_a_forced_sale(): void
+    {
+        // A base whose mortgage is force-called (forced_sale) must sell — but a generated "Stay put"
+        // plan keeps the home, so it must reset that to a keep-the-home action, otherwise it would
+        // silently sell at the redemption year and be identical to "Sell & rent".
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user, [
+            'variant' => 'rent',
+            'property' => [
+                'currentValue' => '525000', 'ownership' => 'mortgaged', 'everLet' => false,
+                'outstandingMortgage' => '208000', 'runningCosts' => '6400', 'ownershipShare' => '100',
+                'mortgageRedemptionYear' => '2030', 'mortgageMaturityAction' => 'forced_sale',
+            ],
+        ]);
+
+        $this->post(route('scenarios.compare.housing', $base));
+
+        // The stay-put plan keeps the home: its maturity action is reset to refinance, not forced_sale.
+        $stayPut = $base->children()->where('variant', 'stay_put')->firstOrFail();
+        $effective = $stayPut->effectiveBuilderState();
+        $this->assertSame('stay_put', $effective['variant']);
+        $this->assertSame('refinance', $effective['property']['mortgageMaturityAction']);
+
+        // The reset is scoped to stay-put — the buy plan replaces the home anyway, so it stays a
+        // minimal variant-only delta (no spurious maturity override).
+        $buy = $base->children()->where('variant', 'buy_outright')->firstOrFail();
+        $this->assertSame(['name' => 'Buy somewhere cheaper', 'variant' => 'buy_outright'], $buy->overrides);
+    }
+
     public function test_it_offers_only_strategies_whose_inputs_are_present(): void
     {
         // A stay-put base with a buy price but no rent → only "buy" is meaningful.

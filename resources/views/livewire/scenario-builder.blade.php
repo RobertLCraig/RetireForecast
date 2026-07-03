@@ -740,6 +740,35 @@
                         </div>
                     </div>
 
+                    {{-- When the mortgage term ends: an interest-only or fixed-term mortgage that can't
+                         simply roll on forces a decision. Modelling it — rather than assuming the home is
+                         kept for ever — is the difference between refinancing, repaying from savings, or a
+                         forced sale, each a distinct plan the user can build and compare. --}}
+                    <div class="mt-4 rounded-md border border-gray-200 bg-gray-50 p-4">
+                        <h3 class="font-medium text-gray-900">When the mortgage term ends</h3>
+                        <p class="mt-1 text-xs text-gray-600">
+                            If the mortgage is interest-only or has a fixed term that ends within the plan, it can't
+                            just roll on. Tell us the year it ends and what you'd do. Leave the year blank if it runs
+                            the whole plan. Try each choice as a separate what-if to compare them.
+                        </p>
+                        <div class="mt-3 grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <label for="property-mortgageRedemptionYear" class="{{ $label }}">Year the mortgage term ends (optional)</label>
+                                <input id="property-mortgageRedemptionYear" type="text" inputmode="numeric" placeholder="e.g. 2030" wire:model="property.mortgageRedemptionYear" class="{{ $field }}" @error('property.mortgageRedemptionYear') aria-invalid="true" aria-describedby="property-mortgageRedemptionYear-error" @enderror>
+                                @error('property.mortgageRedemptionYear') <p id="property-mortgageRedemptionYear-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="property-mortgageMaturityAction" class="{{ $label }}">What you'd do then</label>
+                                <select id="property-mortgageMaturityAction" wire:model="property.mortgageMaturityAction" class="{{ $field }}">
+                                    <option value="refinance">Refinance (new mortgage; payments continue)</option>
+                                    <option value="repay_from_capital">Repay it from savings that year</option>
+                                    <option value="forced_sale">Sell the home (can't refinance)</option>
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Only applies if you set a year. "Sell the home" models a forced sale that year: the equity is freed into your investments and you rent from then on.</p>
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- Capital gains on sale: only part of the gain is relieved when the home was let
                          or not always the main residence. Occupation drives the relief, not the mortgage
                          type (gov.uk HS283), so this captures the lived-in vs let timeline. --}}

@@ -327,6 +327,9 @@ class ScenarioBuilder extends Component
             $rules['property.runningCosts'] = $money;
             $rules['property.growthAssumptionOverride'] = $rate;
             $rules['property.ownershipShare'] = ['nullable', 'numeric', 'min:0', 'max:100'];
+            // What happens when the mortgage term ends (only acts when a redemption year is set).
+            $rules['property.mortgageRedemptionYear'] = ['nullable', 'integer', 'min:2020', 'max:2100'];
+            $rules['property.mortgageMaturityAction'] = ['nullable', Rule::in(['refinance', 'repay_from_capital', 'forced_sale'])];
             // Capital-gains history (only meaningful when the home was ever let — see the wizard).
             $rules['property.cgtHistory.purchasePrice'] = $money;
             $rules['property.cgtHistory.improvementCosts'] = $money;
@@ -587,6 +590,14 @@ class ScenarioBuilder extends Component
         // structure so the wizard's inputs bind (it stays hidden unless the home is ever-let).
         if ($this->hasProperty && ! is_array($this->property['cgtHistory'] ?? null)) {
             $this->property['cgtHistory'] = self::blankCgtHistory();
+        }
+
+        // A property saved before the mortgage-maturity inputs existed has neither key; default
+        // them so the new year input + action select bind cleanly (refinance = the mortgage rolls
+        // on, the safe default; a blank year means no maturing-mortgage event).
+        if ($this->hasProperty) {
+            $this->property['mortgageRedemptionYear'] ??= '';
+            $this->property['mortgageMaturityAction'] ??= 'refinance';
         }
 
         // Every spend line carries an explicit `included` flag so its on/off checkbox binds to a
@@ -1364,6 +1375,7 @@ class ScenarioBuilder extends Component
         return [
             'currentValue' => '', 'ownership' => 'outright', 'everLet' => false,
             'outstandingMortgage' => '', 'runningCosts' => '', 'growthAssumptionOverride' => '', 'ownershipShare' => '',
+            'mortgageRedemptionYear' => '', 'mortgageMaturityAction' => 'refinance',
             'cgtHistory' => self::blankCgtHistory(),
         ];
     }

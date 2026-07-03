@@ -3,6 +3,35 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — Mortgage-maturity is a user-modelable input; "Stay put" never inherits a forced sale
+**Context:** Browser-verifying the forced-sale build, the one-click "Compare buy vs rent" produced a "Stay put"
+plan that silently sold the home at the redemption year (it was identical to "Sell & rent"), because
+`BuyVsRentCompare` overrode only `variant` and the plan inherited the base property's `forced_sale`. Before the
+forced sale was modelled this was masked (forced_sale did nothing, so stay-put accidentally kept the home). Asked
+Rob how a stay-put plan should behave when the mortgage is force-called; his decision: **the different treatments
+(refinance / repay-from-capital / forced sale) should each be scenarios the user can build and compare**, not a
+behaviour baked in.
+
+**Decision + how:**
+1. **`mortgageMaturityAction` + `mortgageRedemptionYear` are now editable builder inputs** (property step: a year
+   field + a Refinance / Repay from savings / Sell the home select). They were real `Property` DTO fields the
+   assembler already read, but had **no UI at all**, so the treatment could not be modelled by the user — the gap
+   behind Rob's answer. Validation added; `blankProperty()` defaults them (refinance, blank year); `loadState()`
+   backfills them for pre-input scenarios so the select binds (mirrors the cgtHistory backfill).
+2. **A generated "Stay put" plan keeps the home**, so `BuyVsRentCompare` now resets a `forced_sale` maturity action
+   to `refinance` on the stay-put child (a neutral keep-the-home baseline; the user can then model repay-from-capital
+   explicitly). Mirrors the existing `QuickWhatIf::letOutAndRent` precedent (which resets to refinance when it keeps
+   the flat). The reset is scoped to stay-put — buy replaces the home anyway, rent sells.
+
+**Notes:** `refinance` (not `repay_from_capital`) was chosen for the auto stay-put reset as the least-alarming
+keep-home baseline (repay-from-capital would force a large one-off that usually shows an immediate shortfall); the
+user drives the harder cases via the new input. Adding a non-empty-default builder field re-surfaced the
+new-field-spurious-delta gotcha (`BuilderStateDelta::diff` records a child key the base lacks): fixed by adding the
+keys to `BuilderStateFixture::full()`, matching the `ownershipShare` precedent. `ScenarioBuilderTest` pins the
+round-trip; `BuyVsRentTest` pins the stay-put reset (+ that buy stays a variant-only delta). **Migration note:** a
+`forced_sale` base's *existing* stay-put child (created before this) still inherits the forced sale — regenerate it.
+Suite green (592).
+
 ## 2026-07-03 — In-place forced sale built (last Lane-B item; the "keep the home for ever" bug closed)
 **Decision:** Built the in-place forced sale (`docs/PLAN-in-place-forced-sale.md`, Rob's decisions resolved
 2026-07-01). `MortgageMaturityAction::ForcedSale` was a projector no-op, so a stay-put projection with a forced

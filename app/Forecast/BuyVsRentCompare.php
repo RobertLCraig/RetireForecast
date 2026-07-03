@@ -52,7 +52,19 @@ final class BuyVsRentCompare
                 continue;
             }
 
-            $overrides = BuilderStateDelta::diff($state, ['variant' => $variant] + $state);
+            $target = ['variant' => $variant] + $state;
+
+            // "Stay put" keeps the home, so it cannot carry a forced sale (which would sell it at
+            // the mortgage-redemption year — the plan would silently become "sell & rent"). Reset a
+            // force-called mortgage to the neutral keep-the-home baseline (refinance); the user can
+            // then model repaying it from capital as a further edit. Mirrors QuickWhatIf::letOutAndRent.
+            if ($variant === 'stay_put'
+                && is_array($target['property'] ?? null)
+                && ($target['property']['mortgageMaturityAction'] ?? null) === 'forced_sale') {
+                $target['property']['mortgageMaturityAction'] = 'refinance';
+            }
+
+            $overrides = BuilderStateDelta::diff($state, $target);
             if ($overrides !== []) {
                 $children[] = ['variant' => $variant, 'name' => $name, 'overrides' => $overrides];
             }
