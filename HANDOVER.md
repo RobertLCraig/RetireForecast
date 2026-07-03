@@ -116,7 +116,7 @@ Open decisions and parked work, off the immediate go-live path (which is under W
 - [ ] **Demo couple's anonymised figures** — Rob supplies later, entered via the UI, not hardcoded (field list in docs/PLAN.md "Data Rob supplies").
 - [ ] **External-review enhancement backlog** (post-v1, not blocking) — docs/PLAN.md "External review triage" (cashflow timeline, longevity-distribution visual, stress-test panel, what-if sliders, v2 annuitisation + care-cost stochasticity). Declined items recorded in DECISIONS 2026-06-25.
 - [ ] **Delta-research backlog (2026-07-02)** — docs/PLAN.md "Delta-research backlog" + docs/RESEARCH-delta-2026-07-02.md. The **data-integrity fixes are all done** (the five collected-but-unconsumed inputs; DATA-MODEL "Known divergences" — survivor DB pension, per-person salary growth, DB commutation, NI category, ownership share; 2026-07-02/07-03). Remaining: the user-facing-copy fixes (the "Survivor fraction" field is now fixed; the **care-off silence** still misleads — a default-off ~1-in-4 six-figure care tail isn't surfaced), then the uncertainty-communication + household-composition + methodology + a11y items in the Delta-research backlog. Then, by value: uncertainty-communication upgrades; the **third-adult-contributing-to-upkeep** scope item (Rob's back-burner ask — BoardContribution stream + HouseholdMember, no third planning subject); a user-facing **/methodology** page; an adviser/Pension-Wise output pack; **WCAG 2.2 AA** + mobile to a public bar; and the JST-stops-at-2020 stress-test data gap. **Household scope decided: no third full planning subject** (DECISIONS 2026-07-02).
-- [ ] **In-app local-model assistant (2026-07-03)** — **Phases 1–2 BUILT** (grounded scenario-explainer + methodology doc-RAG, see Current state, pending Rob's browser sign-off); **Phase 3 specced.** docs/RESEARCH-local-assistant.md + docs/PLAN.md "In-app local-model assistant" + DECISIONS 2026-07-03. A local (Ollama) results-page "chatbot" that **explains + captures, never predicts/calculates/builds**: phased (1) ✅ grounded scenario-explainer, (2) ✅ methodology doc-RAG (curated corpus — see LA-9), (3) research/feature capture. **The model's only write (Phase 3) is `queueBacklogItem` (append-only, attributed); it never builds code or offers to.** Two guardrails — G1 figure-grounding, G2 runtime phrasing partition — the latter a flagged public-release blocker. **A /methodology page (Delta-research backlog) is now the natural next corpus for engine-computation methodology the curated doc-RAG deliberately doesn't cover.**
+- [ ] **In-app local-model assistant (2026-07-03)** — **Phases 1–2 BUILT** (grounded scenario-explainer + methodology doc-RAG, see Current state, pending Rob's browser sign-off); **Phase 3 specced.** docs/RESEARCH-local-assistant.md + docs/PLAN.md "In-app local-model assistant" + DECISIONS 2026-07-03. A local (Ollama) results-page "chatbot" that **explains + captures, never predicts/calculates/builds**: phased (1) ✅ grounded scenario-explainer (now also on the **Compare page**, comparison-aware via a shared `AssistantContext` + `ComparisonContext`), (2) ✅ methodology doc-RAG (curated corpus — see LA-9), (3) research/feature capture. **The model's only write (Phase 3) is `queueBacklogItem` (append-only, attributed); it never builds code or offers to.** Two guardrails — G1 figure-grounding, G2 runtime phrasing partition — the latter a flagged public-release blocker. **A /methodology page (Delta-research backlog) is now the natural next corpus for engine-computation methodology the curated doc-RAG deliberately doesn't cover.**
 
 ## How to pick up
 Run from the **project root** (the test runner shells out to a relative phpunit path, so it fails from `C:\Users\r`):
@@ -167,6 +167,19 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
 
+_2026-07-03 (assistant on Compare — a multi-plan context for comparison questions)_ — Showed the assistant on the
+**Compare page** too, where it must answer **comparison** questions the single-scenario context can't. Introduced a
+shared **`AssistantContext`** contract (`promptBlock`/`includesMonteCarlo`/`systemIntro`) that both `ScenarioContext`
+and a new **`ComparisonContext`** implement — `SystemPrompt` + `AssistantService` now work against the interface, so
+the guardrails and orchestration are untouched. `ComparisonContext` lays out each compared plan (base + ready what-ifs)
+with its deterministic headline figures (money lasts / runs short, essentials, spendable + total wealth, how it differs
+from base), from the **same per-variant `deterministicVariants` forecasts the Compare table renders** (provenance); its
+system intro tells the model to name the plan(s) and **not do arithmetic across plans** (so a compared figure grounds,
+never an invented delta). `ScenarioAssistant` gained a **`compare` flag** (mounted `:compare="true"` on Compare) with
+comparison starter questions. Deterministic only (per-plan Monte Carlo a later add). Verified end-to-end vs real
+`qwen3:14b` (named the plan leaving the most + which last vs run short, all grounded). Unit + Livewire tested. Suite
+green. DECISIONS 2026-07-03. Nothing pushed.
+
 _2026-07-03 (assistant UI — docked sidebar, Clear, adviser-style starter questions)_ — On Rob's asks: turned the
 assistant from a floating "live chat" bubble into a **docked full-height side panel** (edge-tab when closed;
 `fixed inset-y-0 right-0`, `border-l`), added a **Clear** (wipes the local transcript back to the starter state), and
@@ -174,8 +187,10 @@ replaced the three plain-text examples with **grouped, clickable starter questio
 a click asks directly via `ask($preset)`). The "Risks worth checking (Pension Wise / adviser)" group is the
 plain-English form of the five **COBS 9.4.10G** drawdown risk warnings — the "what to ask a financial adviser"
 material from the adviser-pack backlog (docs/RESEARCH-delta-2026-07-02 §3); the home-sale starter shows only for a
-sell strategy. View + component only (service/engine untouched); neutral (passes `BannedPhrasingTest`); Livewire-tested.
-Suite green. DECISIONS 2026-07-03. Nothing pushed.
+sell strategy. Also made the open panel **shrink the page** beside it (CSS-only `body:has([data-assistant-open])`
+padding on lg+, so the fixed sidebar sits beside the content, not over it) and **trimmed the results left nav**
+(`13rem`→`11rem`). View + component only (service/engine untouched); neutral (passes `BannedPhrasingTest`);
+Livewire-tested. Suite green. DECISIONS 2026-07-03. Nothing pushed.
 
 _2026-07-03 (local-model assistant — Phase 2 built: methodology doc-RAG)_ — Built **Phase 2**: "how does it model
 X?" answers on local embeddings (`nomic-embed-text`). App-layer only. New `App\Assistant\`:

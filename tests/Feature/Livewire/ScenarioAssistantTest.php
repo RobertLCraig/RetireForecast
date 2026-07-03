@@ -74,4 +74,13 @@ final class ScenarioAssistantTest extends TestCase
             ->set('open', true)
             ->assertDontSee('If I sell the home');
     }
+
+    public function test_compare_mode_offers_comparison_starter_questions(): void
+    {
+        Livewire::test(ScenarioAssistant::class, ['scenario' => ScenarioFixture::rich($this->user), 'compare' => true])
+            ->set('open', true)
+            ->assertSee('Compare the plans')
+            ->assertSee('Which plan leaves the most money at the end?')
+            ->assertDontSee('Does my money last, and until when?');   // the single-scenario starters are replaced
+    }
 }

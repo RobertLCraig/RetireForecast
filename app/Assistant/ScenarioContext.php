@@ -29,7 +29,7 @@ use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
  * is inline-labelled, so the model states the right number for the right thing (right-number-wrong-meaning,
  * LA-8).
  */
-final class ScenarioContext
+final class ScenarioContext implements AssistantContext
 {
     /**
      * @param  list<AssistantFact>  $facts
@@ -40,6 +40,16 @@ final class ScenarioContext
         public readonly string $ladder = '',
         public readonly bool $hasMonteCarlo = false,
     ) {}
+
+    public function includesMonteCarlo(): bool
+    {
+        return $this->hasMonteCarlo;
+    }
+
+    public function systemIntro(): string
+    {
+        return 'You help the reader understand THEIR OWN forecast, shown under CONTEXT below.';
+    }
 
     /**
      * Build the context by running the scenario's central deterministic forecast, optionally with

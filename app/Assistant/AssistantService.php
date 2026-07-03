@@ -38,7 +38,7 @@ final class AssistantService
      *                               grounding source, so a methodology figure it cites is groundable
      *                               while an invented one is still refused. '' when none is relevant.
      */
-    public function answer(ScenarioContext $context, string $question, bool $adviceAllowed, array $history = [], string $methodology = ''): AssistantAnswer
+    public function answer(AssistantContext $context, string $question, bool $adviceAllowed, array $history = [], string $methodology = ''): AssistantAnswer
     {
         if (! $this->client->isAvailable()) {
             return AssistantAnswer::unavailable("The local assistant isn't running. Start Ollama (on this machine) and try again.");

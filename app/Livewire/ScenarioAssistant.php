@@ -5,17 +5,21 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Assistant\AssistantService;
+use App\Assistant\ComparisonContext;
 use App\Assistant\DocIndex;
 use App\Assistant\MethodologyRetriever;
 use App\Assistant\OllamaChatClient;
 use App\Assistant\OllamaEmbeddingClient;
 use App\Assistant\ScenarioContext;
+use App\Enums\ScenarioStatus;
 use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
+use App\Forecast\WhatIfChanges;
 use App\Models\Result;
 use App\Models\Scenario;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
@@ -33,6 +37,10 @@ use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 class ScenarioAssistant extends Component
 {
     public Scenario $scenario;
+
+    /** Compare mode: $scenario is the base of a family, and the assistant reasons over ALL the compared
+     *  plans (base + ready what-ifs) so it can answer comparison questions. Off = single-scenario explainer. */
+    public bool $compare = false;
 
     /** Whether the docked side panel is expanded. Collapsed to an edge tab by default so it
      *  stays out of the content until the reader wants it (a docked panel, not a floating chat bubble). */
@@ -71,6 +79,27 @@ class ScenarioAssistant extends Component
      */
     public function suggestions(): array
     {
+        if ($this->compare) {
+            return [
+                [
+                    'heading' => 'Compare the plans',
+                    'questions' => [
+                        'Which plan leaves the most money at the end?',
+                        'Which plans keep the money going for life, and which run short?',
+                        'Which plan covers my essential spending every year?',
+                        'How do these plans differ from the base plan?',
+                    ],
+                ],
+                [
+                    'heading' => 'How the forecast is worked out',
+                    'questions' => [
+                        'What assumptions is this comparison based on?',
+                        'What data do you use for how long we might live?',
+                    ],
+                ],
+            ];
+        }
+
         return [
             [
                 'heading' => 'Your plan',
@@ -144,14 +173,7 @@ class ScenarioAssistant extends Component
         $this->messages[] = ['role' => 'user', 'text' => $question, 'status' => 'user'];
         $this->question = '';
 
-        $forecaster = app(ScenarioForecaster::class);
-        $context = ScenarioContext::for(
-            $this->scenario,
-            $forecaster,
-            $this->simulationResult(),
-            app(LumpSumTaxShock::class)->assess($this->scenario),
-            $this->saleExplainer($forecaster),
-        );
+        $context = $this->compare ? $this->comparisonContext() : $this->scenarioContext();
         $answer = $this->service()->answer(
             $context,
             $question,
@@ -161,6 +183,63 @@ class ScenarioAssistant extends Component
         );
 
         $this->messages[] = ['role' => 'assistant', 'text' => $answer->text, 'status' => $answer->status];
+    }
+
+    /**
+     * The single-scenario context (results page): this plan's headline, year-by-year ladder, Monte
+     * Carlo probabilities, lump-sum tax shock and home-sale waterfall.
+     */
+    private function scenarioContext(): ScenarioContext
+    {
+        $forecaster = app(ScenarioForecaster::class);
+
+        return ScenarioContext::for(
+            $this->scenario,
+            $forecaster,
+            $this->simulationResult(),
+            app(LumpSumTaxShock::class)->assess($this->scenario),
+            $this->saleExplainer($forecaster),
+        );
+    }
+
+    /**
+     * The comparison context (Compare page): each compared plan's deterministic headline figures, so
+     * the model can answer "which lasts longest / leaves the most / covers essentials?". Built from the
+     * SAME per-variant deterministic forecasts the Compare table renders ({@see ScenarioCompare}), so the
+     * assistant's figures are the table's (provenance).
+     */
+    private function comparisonContext(): ComparisonContext
+    {
+        $forecaster = app(ScenarioForecaster::class);
+
+        $plans = $this->comparePlans()->map(fn (Scenario $plan): array => [
+            'name' => $plan->name,
+            'variant' => ResultPresenter::variantLabel($plan->variant),
+            'forecast' => $forecaster->deterministicVariants($plan)[$plan->variant->value],
+            'changes' => $this->changeSummary($plan),
+        ])->all();
+
+        return ComparisonContext::fromPlans($plans);
+    }
+
+    /** The base plan first, then its ready what-if children — the same family {@see ScenarioCompare} shows. */
+    private function comparePlans(): Collection
+    {
+        return collect([$this->scenario])->concat(
+            $this->scenario->children()->where('status', ScenarioStatus::Ready)->latest()->get(),
+        );
+    }
+
+    /** A one-line summary of what a what-if changed from its base ('' for the base itself), reusing the
+     *  same {@see WhatIfChanges} the Compare page shows, so the model can explain how the plans differ. */
+    private function changeSummary(Scenario $plan): string
+    {
+        $changes = WhatIfChanges::of($plan);
+
+        return implode('; ', array_map(
+            static fn (array $c): string => trim("{$c['label']} {$c['from']} → {$c['to']}"),
+            $changes,
+        ));
     }
 
     /**

@@ -3,6 +3,28 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — Assistant on the Compare page: a multi-plan context so it can answer comparison questions
+**Context:** Rob asked to show the assistant on Compare too — but there it must answer COMPARISON questions ("which
+plan leaves the most / runs short?"), which the single-scenario `ScenarioContext` cannot.
+
+**Decision + how (app-layer only; engine untouched):**
+- **A shared `AssistantContext` contract** (`promptBlock()`, `includesMonteCarlo()`, `systemIntro()`) that both
+  `ScenarioContext` and the new **`ComparisonContext`** implement. `SystemPrompt` + `AssistantService` now work against
+  the interface, so a new kind of context drops in without touching the orchestration or the two guardrails (G1/G2).
+- **`ComparisonContext`** lays out each compared plan (base + ready what-ifs) with its deterministic headline figures
+  (money lasts / runs short + year, essentials met, full spend met, spendable + total wealth left, and how it differs
+  from the base), built from the SAME per-variant deterministic forecasts the Compare table renders (`deterministicVariants`,
+  provenance). Its `systemIntro()` tells the model to name the plan(s) and **not do arithmetic across plans** (state each
+  plan's own figure, not the difference), so a compared figure is always grounded (G1), never an invented delta.
+- **`ScenarioAssistant` gains a `compare` flag** (`<livewire:scenario-assistant :scenario="$base" :compare="true" />` on
+  the Compare page): it builds the comparison context from the base's family and offers comparison starter questions
+  ("which plan leaves the most?", "which run short?"). **Deterministic only** (matching the Compare table); per-plan
+  Monte Carlo is a possible later add.
+
+**Evidence:** unit-tested (`ComparisonContextTest` — each plan reaches the block, comparison figures ground) + Livewire
+(compare mode offers comparison starters); verified end-to-end vs real `qwen3:14b` — it correctly named the plan leaving
+the most and which plans last vs run short, every figure grounded. See docs/RESEARCH-local-assistant.md.
+
 ## 2026-07-03 — Assistant UI: a docked side panel (not a chat bubble), Clear, adviser-style starter questions
 **Context:** Rob's UI asks on the built assistant — make it a fixed/docked sidebar rather than a floating "live chat"
 bubble; add a **Clear** to wipe history; and offer **more pre-populated questions** in the "what would I ask a

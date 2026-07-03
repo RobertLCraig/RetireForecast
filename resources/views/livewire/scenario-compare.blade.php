@@ -156,4 +156,10 @@
     <div class="mt-6">
         <x-disclaimer.result />
     </div>
+
+    @if (config('assistant.enabled'))
+        {{-- Docked assistant in COMPARE mode: it reasons over ALL the compared plans (base + ready
+             what-ifs) so it can answer comparison questions. A page-level fixed panel, out of flow. --}}
+        <livewire:scenario-assistant :scenario="$base" :compare="true" />
+    @endif
 </div>
