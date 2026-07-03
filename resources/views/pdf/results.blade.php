@@ -208,11 +208,15 @@
         <strong>Check these figures &amp; get help.</strong> Pointers, not advice; a mortgage rate or capital gains tax
         is an estimate until confirmed for your circumstances.<br>
         Pensions &amp; money: Pension Wise 0800 138 3944 · MoneyHelper 0800 138 7777 (moneyhelper.org.uk) · find/check an
-        adviser at fca.org.uk.<br>
-        Later-life mortgages: a broker via the Equity Release Council directory (equityreleasecouncil.com) — a free
-        Decision in Principle shows what is actually obtainable.<br>
-        Capital gains tax: gov.uk/capital-gains-tax (report &amp; pay within 60 days of a property sale) · HMRC 0300 200 3300 ·
-        low-income help from TaxAid 0345 120 3779.
+        adviser at fca.org.uk.
+        @if ($sourcesShowMortgage)
+            <br>Later-life mortgages: a broker via the Equity Release Council directory (equityreleasecouncil.com) — a free
+            Decision in Principle shows what is actually obtainable.
+        @endif
+        @if ($sourcesShowCgt)
+            <br>Capital gains tax: gov.uk/capital-gains-tax (report &amp; pay within 60 days of a property sale) · HMRC 0300 200 3300 ·
+            low-income help from TaxAid 0345 120 3779.
+        @endif
     </div>
 
     <div class="disclaimer">

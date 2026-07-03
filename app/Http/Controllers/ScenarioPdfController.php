@@ -65,6 +65,10 @@ class ScenarioPdfController extends Controller
             // exists, so a 1,000-path preview can't masquerade as the 10k report.
             'presented' => $presented,
             'mcRun' => $mcRun,
+            // Contextual "get help" contacts: mortgage line when this plan involves a mortgage, CGT
+            // line when it would sell a home that was ever let (partial-PRR CGT).
+            'sourcesShowMortgage' => ($scenario->toHousehold()->primaryResidence?->outstandingMortgage?->isPositive() ?? false) || $scenario->toHousingAction()->buyMortgageRate !== null,
+            'sourcesShowCgt' => $scenario->toHousehold()->primaryResidence?->everLet ?? false,
         ];
     }
 

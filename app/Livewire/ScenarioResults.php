@@ -493,6 +493,11 @@ class ScenarioResults extends Component
                 $allocation->blendedRealReturn($assumptions),
                 $assumptions->investmentIncomeYield->asFraction(),
             ),
+            // Contextual "get help" panel: the mortgage column shows when this plan involves a
+            // mortgage (an owed balance or a buy funded by one); the CGT column when it would sell a
+            // home that was ever let (partial-PRR CGT). The pensions & money column always shows.
+            'sourcesShowMortgage' => ($household->primaryResidence?->outstandingMortgage?->isPositive() ?? false) || $action->buyMortgageRate !== null,
+            'sourcesShowCgt' => $household->primaryResidence?->everLet ?? false,
         ])->title('Forecast results');
     }
 

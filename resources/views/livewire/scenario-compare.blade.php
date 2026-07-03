@@ -151,7 +151,7 @@
         </details>
     </section>
 
-    <x-sources-and-contacts class="mt-8" />
+    <x-sources-and-contacts class="mt-8" :show-mortgage="$sourcesShowMortgage" :show-cgt="$sourcesShowCgt" />
 
     <div class="mt-6">
         <x-disclaimer.result />

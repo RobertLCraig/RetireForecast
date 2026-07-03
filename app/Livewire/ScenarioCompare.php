@@ -104,11 +104,19 @@ class ScenarioCompare extends Component
             )
             : [];
 
+        // Contextual "get help" panel: the mortgage column shows if any compared plan involves a
+        // mortgage (an owed balance or a buy funded by one); the CGT column if any sells a home that
+        // was ever let (partial-PRR CGT). The pensions & money column always shows.
+        $showMortgage = $forecasts->contains(fn (array $pf): bool => ($pf['scenario']->toHousehold()->primaryResidence?->outstandingMortgage?->isPositive() ?? false) || $pf['scenario']->toHousingAction()->buyMortgageRate !== null);
+        $showCgt = $forecasts->contains(fn (array $pf): bool => $pf['scenario']->toHousehold()->primaryResidence?->everLet ?? false);
+
         return view('livewire.scenario-compare', [
             'base' => $this->base,
             'plans' => $plans,
             'burndown' => $burndown,
             'narrative' => $narrative,
+            'sourcesShowMortgage' => $showMortgage,
+            'sourcesShowCgt' => $showCgt,
         ])->title('Compare what-ifs');
     }
 

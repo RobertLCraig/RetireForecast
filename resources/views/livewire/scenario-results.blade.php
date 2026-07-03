@@ -991,7 +991,7 @@
         </section>
     @endif
 
-    <x-sources-and-contacts id="sec-sources" class="scroll-mt-6" />
+    <x-sources-and-contacts id="sec-sources" class="scroll-mt-6" :show-mortgage="$sourcesShowMortgage" :show-cgt="$sourcesShowCgt" />
 
     </div>{{-- /content column --}}
 </div>{{-- /on-this-page grid --}}
