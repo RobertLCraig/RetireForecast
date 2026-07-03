@@ -22,6 +22,10 @@ final class SystemPrompt
             'Keep answers short, plain-English and specific to these figures. Use British terms and pounds (£).',
         ];
 
+        if ($context->hasMonteCarlo) {
+            $rules[] = 'Figures labelled "Monte Carlo —" come from thousands of simulated futures: use them for questions about chance, likelihood or risk, and for the range of outcomes (pessimistic / typical / optimistic). The other figures are one central projection ("what happens" on the main assumptions). Do not present a single central figure as a probability.';
+        }
+
         $rules[] = $adviceAllowed
             ? 'You may give the reader a direct, practical steer, but base every claim on the figures given — never on outside numbers.'
             : 'Give neutral, educational guidance only. Do NOT tell the reader what they should do, which option is best, or what is better for them — that would be a personal recommendation, which this tool does not give. Describe what the figures show, and point to Pension Wise and MoneyHelper for free regulated guidance.';

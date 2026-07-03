@@ -4,24 +4,28 @@ declare(strict_types=1);
 
 namespace App\Assistant;
 
+use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
 use App\Models\Scenario;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
+use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 
 /**
- * The bounded, labelled snapshot of a scenario's central (deterministic) forecast that the
- * assistant reasons over. It is the SINGLE source for two things at once: the context shown to
- * the model AND the grounding allow-list its answer is checked against ({@see promptBlock()}) —
- * so the model can only be given, and can only legitimately state, exactly these engine figures
- * (guardrail G1).
+ * The bounded, labelled snapshot of a scenario's forecast that the assistant reasons over. It is
+ * the SINGLE source for two things at once: the context shown to the model AND the grounding
+ * allow-list its answer is checked against ({@see promptBlock()}) — so the model can only be
+ * given, and can only legitimately state, exactly these engine figures (guardrail G1).
  *
  * A big part of the point is to let the reader interrogate figures the UI does NOT spell out —
  * "how much are my essentials in five years?", "what's my tax in 2035?" — so the snapshot carries
- * BOTH the headline summary AND the full year-by-year cashflow ladder (the same reconciled rows
- * the ladder panel shows). Every per-year figure is inline-labelled, so the model states the right
- * number for the right thing (mitigating the right-number-wrong-meaning risk, gotcha LA-8). Still
- * additive: the tax shock, sale waterfall and Monte Carlo probabilities are further fast-follows.
+ * the headline summary, the full year-by-year cashflow ladder (the same reconciled rows the ladder
+ * panel shows), the Monte Carlo probabilities and ranges when a full simulation has been run (chance
+ * the money lasts, chance of running out, spread of terminal wealth, longevity, care risk), and the
+ * pension lump-sum tax shock when one is planned (the flagship figure: 25% tax-free, marginal tax, the
+ * Month-1 emergency over-deduction + reclaim). The central (deterministic) figures answer "what
+ * happens"; the Monte Carlo ones answer "how likely / what's the range". Every figure is inline-
+ * labelled, so the model states the right number for the right thing (right-number-wrong-meaning, LA-8).
  */
 final class ScenarioContext
 {
@@ -32,23 +36,34 @@ final class ScenarioContext
         public readonly string $title,
         public readonly array $facts,
         public readonly string $ladder = '',
+        public readonly bool $hasMonteCarlo = false,
     ) {}
 
-    /** Build the context by running the scenario's central deterministic forecast. */
-    public static function for(Scenario $scenario, ScenarioForecaster $forecaster): self
+    /**
+     * Build the context by running the scenario's central deterministic forecast, optionally with
+     * a completed Monte Carlo run's aggregate ({@see SimulationResult}) for the probability/range
+     * figures. Null simulation = no run yet; the deterministic view still stands.
+     */
+    public static function for(Scenario $scenario, ScenarioForecaster $forecaster, ?SimulationResult $simulation = null, ?array $taxShock = null): self
     {
         return self::fromForecast(
             $scenario->name,
             ResultPresenter::strategyLabel($scenario->variant->value),
             $forecaster->deterministic($scenario),
+            $simulation,
+            $taxShock,
         );
     }
 
     /**
-     * Build the headline facts from a forecast result. Pure — no container, no I/O — so it is
-     * unit-testable from a hand-built {@see ForecastResult}.
+     * Build the facts from a forecast result (+ optional Monte Carlo aggregate + optional pension
+     * lump-sum tax shock, the tool's flagship figure). Pure — no container, no I/O — so it is
+     * unit-testable from hand-built inputs. $taxShock is the {@see LumpSumTaxShock}
+     * result array (already-formatted figures), or null when no lump sum is planned.
+     *
+     * @param  array<string, mixed>|null  $taxShock
      */
-    public static function fromForecast(string $title, string $strategyLabel, ForecastResult $forecast): self
+    public static function fromForecast(string $title, string $strategyLabel, ForecastResult $forecast, ?SimulationResult $simulation = null, ?array $taxShock = null): self
     {
         $facts = [
             new AssistantFact('Plan', $title),
@@ -74,7 +89,100 @@ final class ScenarioContext
             $facts[] = new AssistantFact('Modelled late-life care cost on this path (today\'s money)', $care->format());
         }
 
-        return new self($title, $facts, self::renderLadder($forecast));
+        if ($simulation !== null) {
+            $facts = [...$facts, ...self::monteCarloFacts($simulation)];
+        } else {
+            $facts[] = new AssistantFact(
+                'Monte Carlo probabilities',
+                'Not available yet — no completed simulation run. The figures above are one central projection; run the full simulation on the results page to see the chance the money lasts and the range of outcomes.',
+            );
+        }
+
+        if ($taxShock !== null) {
+            $facts = [...$facts, ...self::taxShockFacts($taxShock)];
+        }
+
+        return new self($title, $facts, self::renderLadder($forecast), $simulation !== null);
+    }
+
+    /**
+     * The pension lump-sum tax shock as facts — the tool's flagship figure: the 25% tax-free part,
+     * the marginal tax due, and (the trap most people miss) the Month-1 emergency over-deduction
+     * and how to reclaim it. Reuses the already-formatted {@see LumpSumTaxShock}
+     * array, so the assistant's figures match the tax-shock panel's (provenance).
+     *
+     * @param  array<string, mixed>  $t
+     * @return list<AssistantFact>
+     */
+    private static function taxShockFacts(array $t): array
+    {
+        $facts = [
+            new AssistantFact('Pension lump sum — age when taken', (string) $t['atAge']),
+            new AssistantFact('Pension lump sum — gross amount withdrawn', $t['gross']),
+            new AssistantFact('Pension lump sum — tax-free part (up to 25%)', $t['taxFree']),
+            new AssistantFact('Pension lump sum — taxable part', $t['taxable']),
+            new AssistantFact('Pension lump sum — tax actually due at your marginal rate', $t['marginalTax']),
+            new AssistantFact('Pension lump sum — tax taken at source'.($t['emergencyApplied'] ? ' (emergency Month-1 basis)' : ''), $t['taxAtSource']),
+        ];
+
+        if ($t['hasOverDeduction']) {
+            $label = 'Pension lump sum — over-deducted now, reclaimable'.($t['reclaimForm'] ? " (reclaim with form {$t['reclaimForm']})" : '');
+            $facts[] = new AssistantFact($label, $t['overDeduction']);
+        }
+
+        $facts[] = new AssistantFact('Pension lump sum — net cash received before any reclaim', $t['netReceived']);
+        $facts[] = new AssistantFact('Pension lump sum — money-purchase annual allowance (MPAA) triggered', $t['mpaaTriggered'] ? 'Yes' : 'No');
+
+        return $facts;
+    }
+
+    /**
+     * The Monte Carlo aggregate as facts — the probabilities and ranges the single central
+     * projection can't give. Formatted through the SAME presenter helpers the results page uses
+     * ({@see ResultPresenter::formatPercent()} / the longevity + care panels), so a probability
+     * the assistant states matches the panel's to the point (provenance). Every label carries the
+     * "Monte Carlo —" prefix so the model never confuses a range/probability for the central figure.
+     *
+     * @return list<AssistantFact>
+     */
+    private static function monteCarloFacts(SimulationResult $s): array
+    {
+        $facts = [
+            new AssistantFact('Monte Carlo — number of simulated futures', number_format($s->nPaths)),
+            new AssistantFact('Monte Carlo — chance your full spending is funded for life', ResultPresenter::formatPercent($s->successProbabilityFullSpend)),
+            new AssistantFact('Monte Carlo — chance your essential spending is funded for life', ResultPresenter::formatPercent($s->successProbabilityEssentials)),
+            new AssistantFact('Monte Carlo — chance of running out of money', ResultPresenter::formatPercent($s->depletionRate)),
+        ];
+
+        if ($s->medianDepletionYear !== null) {
+            $facts[] = new AssistantFact('Monte Carlo — if the money runs out, the typical year it happens', (string) $s->medianDepletionYear);
+        }
+
+        // Spendable (excl-home) range where available — the honest series; else total wealth.
+        $usable = $s->usableWealthPercentiles !== [];
+        $p = $usable ? $s->usableWealthPercentiles : $s->terminalWealthPercentiles;
+        $basis = $usable ? 'spendable wealth left at the end (excludes the home)' : 'total wealth left at the end (includes the home)';
+        if (isset($p['p10'], $p['p50'], $p['p90'])) {
+            $facts[] = new AssistantFact("Monte Carlo — {$basis}, pessimistic (10th percentile)", $p['p10']->format());
+            $facts[] = new AssistantFact("Monte Carlo — {$basis}, typical (median)", $p['p50']->format());
+            $facts[] = new AssistantFact("Monte Carlo — {$basis}, optimistic (90th percentile)", $p['p90']->format());
+        }
+
+        $longevity = ResultPresenter::longevityPanel($s->longevity);
+        if ($longevity !== null) {
+            $facts[] = new AssistantFact('Monte Carlo — last-survivor age, typical (median)', (string) $longevity['ageP50']);
+            $facts[] = new AssistantFact('Monte Carlo — last-survivor age range (10th to 90th percentile)', "{$longevity['ageP10']} to {$longevity['ageP90']}");
+            $facts[] = new AssistantFact('Monte Carlo — chance at least one of you reaches 95', $longevity['reaches95']);
+            $facts[] = new AssistantFact('Monte Carlo — chance at least one of you reaches 100', $longevity['reaches100']);
+        }
+
+        if ($s->careImpact !== null) {
+            $facts[] = new AssistantFact('Monte Carlo — chance of needing residential or nursing care', ResultPresenter::formatPercent($s->careImpact->shareOfPathsWithCare));
+            $facts[] = new AssistantFact('Monte Carlo — typical (median) care bill when it happens', $s->careImpact->medianCareCost->format());
+            $facts[] = new AssistantFact('Monte Carlo — high (90th percentile) care bill', $s->careImpact->p90CareCost->format());
+        }
+
+        return $facts;
     }
 
     /**

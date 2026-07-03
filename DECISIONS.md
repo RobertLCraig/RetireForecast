@@ -3,6 +3,30 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-03 — Assistant context: add Monte Carlo probabilities and the lump-sum tax shock
+**Context:** Continuing to widen what the assistant can interrogate (Rob: "a big part of the point is to interrogate
+data not visible in the UI"). The deterministic snapshot couldn't answer "what's my chance of running out?" or "how
+much tax on my lump sum?" — the two figures the tool most exists to make visible (Monte Carlo risk; the flagship
+lump-sum tax shock, PRD goal #1).
+
+**Decision + how:**
+1. **Monte Carlo probabilities/ranges** join the context when a completed run exists: chance full/essential spending
+   is funded for life, chance of running out (+ typical depletion year), the terminal spendable-wealth spread
+   (p10/p50/p90), longevity (last-survivor age range, P(reach 95/100)) and the care-cost tail. Built from the run's
+   `SimulationResult` via the SAME `ResultPresenter` helpers the panels use (provenance), every label prefixed
+   **"Monte Carlo —"** and the system prompt told to use those for likelihood/range questions and never present a
+   central figure as a probability. **No completed run → the context says so explicitly** (honest, not a silent gap).
+2. **The lump-sum tax shock** joins when a lump sum is planned: 25% tax-free, taxable part, marginal tax, the Month-1
+   emergency over-deduction + which reclaim form (P55/P50Z/P53Z), net received, MPAA — reused from the already-formatted
+   `App\Forecast\LumpSumTaxShock::assess()` array (same figures as the tax-shock panel).
+3. Both are **optional inputs to `ScenarioContext`** (`?SimulationResult`, `?array $taxShock`), so it stays pure and
+   unit-testable from hand-built inputs; the Livewire component resolves them (`latestCompletedRun()` for the run,
+   `LumpSumTaxShock` for the shock). App-layer only; engine untouched.
+
+Both verified end-to-end against real `qwen3:14b` (18% run-out / 71% funded / the wealth range; £17,432 tax + £11,568
+reclaim via P55). Known limit unchanged: the model won't compute across years/figures (an ungrounded aggregate is
+refused by G1). See docs/RESEARCH-local-assistant.md §6.
+
 ## 2026-07-03 — Assistant refinements: carry the full year-by-year ladder; a side panel, not a centre panel
 **Context:** Testing Phase 1, Rob asked "how much are my essentials in 5 years?" and it refused — the context held
 only the *headline* facts, not per-year figures. His framing: **a big part of the point is to interrogate the data

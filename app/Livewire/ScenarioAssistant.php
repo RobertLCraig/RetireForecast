@@ -7,11 +7,14 @@ namespace App\Livewire;
 use App\Assistant\AssistantService;
 use App\Assistant\OllamaChatClient;
 use App\Assistant\ScenarioContext;
+use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ScenarioForecaster;
+use App\Models\Result;
 use App\Models\Scenario;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
+use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 
 /**
  * The in-page assistant: a plain-English explainer over THIS scenario's forecast, running on a
@@ -66,7 +69,12 @@ class ScenarioAssistant extends Component
         $this->messages[] = ['role' => 'user', 'text' => $question, 'status' => 'user'];
         $this->question = '';
 
-        $context = ScenarioContext::for($this->scenario, app(ScenarioForecaster::class));
+        $context = ScenarioContext::for(
+            $this->scenario,
+            app(ScenarioForecaster::class),
+            $this->simulationResult(),
+            app(LumpSumTaxShock::class)->assess($this->scenario),
+        );
         $answer = $this->service()->answer(
             $context,
             $question,
@@ -75,6 +83,24 @@ class ScenarioAssistant extends Component
         );
 
         $this->messages[] = ['role' => 'assistant', 'text' => $answer->text, 'status' => $answer->status];
+    }
+
+    /**
+     * The latest completed Monte Carlo run's aggregate for this scenario's own variant, or null
+     * if no run has finished (the deterministic context still stands). Mirrors how the results
+     * page resolves its results ({@see ScenarioResults}).
+     */
+    private function simulationResult(): ?SimulationResult
+    {
+        $run = $this->scenario->latestCompletedRun();
+        if ($run === null) {
+            return null;
+        }
+
+        $byVariant = $run->results->keyBy(fn (Result $r): string => $r->variant->value);
+        $result = $byVariant[$this->scenario->variant->value] ?? $run->results->first();
+
+        return $result?->simulationResult();
     }
 
     private function service(): AssistantService

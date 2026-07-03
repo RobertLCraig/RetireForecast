@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 
 /**
  * The context is the assistant's whole world: the figures shown to the model and the ones it
@@ -105,6 +106,89 @@ final class ScenarioContextTest extends TestCase
 
         // So a per-year question ("essentials in five years") is now answerable, not refused.
         $this->assertSame([], FigureGrounding::ungrounded('Your essentials in 2030 are £22,000.00.', $block, ''));
+    }
+
+    public function test_monte_carlo_probabilities_and_ranges_reach_the_prompt_and_are_groundable(): void
+    {
+        $forecast = new ForecastResult([], true, true, null, Money::fromPence(1), Money::fromPence(1), 2058);
+        $mc = new SimulationResult(
+            nPaths: 10000,
+            seed: 42,
+            successProbabilityEssentials: 0.92,
+            successProbabilityFullSpend: 0.78,
+            depletionRate: 0.12,
+            medianDepletionYear: 2052,
+            terminalWealthPercentiles: [
+                'p10' => Money::fromPence(30_000_000), 'p25' => Money::fromPence(35_000_000),
+                'p50' => Money::fromPence(40_000_000), 'p75' => Money::fromPence(45_000_000),
+                'p90' => Money::fromPence(50_000_000),
+            ],
+            fanChart: [],
+            usableWealthPercentiles: [
+                'p10' => Money::fromPence(5_000_000), 'p25' => Money::fromPence(8_000_000),
+                'p50' => Money::fromPence(12_000_000), 'p75' => Money::fromPence(18_000_000),
+                'p90' => Money::fromPence(25_000_000),
+            ],
+        );
+
+        $context = ScenarioContext::fromForecast('My Plan', 'Stay put', $forecast, $mc);
+        $block = $context->promptBlock();
+
+        $this->assertTrue($context->hasMonteCarlo);
+        $this->assertStringContainsString('78%', $block);            // chance full spend funded
+        $this->assertStringContainsString('92%', $block);            // chance essentials funded
+        $this->assertStringContainsString('12%', $block);            // chance of running out
+        $this->assertStringContainsString('£120,000.00', $block);    // spendable wealth, median (usable p50)
+        $this->assertStringContainsString('2052', $block);           // typical depletion year
+
+        // A probability question is now answerable, and grounded.
+        $this->assertSame([], FigureGrounding::ungrounded('There is a 78% chance your full spending is funded for life.', $block, ''));
+    }
+
+    public function test_without_a_completed_run_the_context_says_probabilities_are_unavailable(): void
+    {
+        $forecast = new ForecastResult([], true, true, null, Money::fromPence(1), Money::fromPence(1), 2058);
+
+        $context = ScenarioContext::fromForecast('My Plan', 'Stay put', $forecast);
+
+        $this->assertFalse($context->hasMonteCarlo);
+        $this->assertStringContainsString('Not available yet', $context->promptBlock());
+    }
+
+    public function test_the_lump_sum_tax_shock_reaches_the_prompt_and_is_groundable(): void
+    {
+        $forecast = new ForecastResult([], true, true, null, Money::fromPence(1), Money::fromPence(1), 2058);
+
+        // The shape App\Forecast\LumpSumTaxShock::assess() returns (already-formatted figures).
+        $shock = [
+            'kind' => 'UFPLS (uncrystallised lump sum)',
+            'ownerLabel' => 'You',
+            'atAge' => 60,
+            'taxYear' => '2026-27',
+            'workingAssumed' => true,
+            'otherIncome' => '£20,000.00',
+            'gross' => '£100,000.00',
+            'taxFree' => '£25,000.00',
+            'taxable' => '£75,000.00',
+            'taxAtSource' => '£29,000.00',
+            'emergencyApplied' => true,
+            'marginalTax' => '£17,432.00',
+            'overDeduction' => '£11,568.00',
+            'hasOverDeduction' => true,
+            'reclaimForm' => 'P55',
+            'netReceived' => '£71,000.00',
+            'mpaaTriggered' => true,
+            'warnings' => [],
+        ];
+
+        $block = ScenarioContext::fromForecast('My Plan', 'Stay put', $forecast, null, $shock)->promptBlock();
+
+        $this->assertStringContainsString('£25,000.00', $block);   // tax-free 25%
+        $this->assertStringContainsString('£17,432.00', $block);   // marginal tax due
+        $this->assertStringContainsString('£11,568.00', $block);   // Month-1 emergency over-deduction
+        $this->assertStringContainsString('P55', $block);          // reclaim form
+
+        $this->assertSame([], FigureGrounding::ungrounded('You can reclaim £11,568.00 using form P55.', $block, ''));
     }
 
     public function test_care_cost_appears_only_when_modelled(): void

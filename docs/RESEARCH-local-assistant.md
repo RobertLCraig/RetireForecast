@@ -148,7 +148,14 @@ Autonomous, but **safe by construction** — it honours "no silent failure" and 
    `ResultPresenter::ladder()` rows, inline-labelled) so the reader can **interrogate data the UI does not
    spell out** (e.g. "essentials in five years" — the original ask); each figure is labelled to keep the right
    number on the right thing (LA-8). The panel is a **fixed, collapsible side panel** (bottom-right), not a
-   centre panel. The model won't sum across years — G1 refuses an ungrounded aggregate, by design.
+   centre panel. The model won't sum across years — G1 refuses an ungrounded aggregate, by design. **Also
+   built (2026-07-03):** the **Monte Carlo probabilities/ranges** (chance the money lasts, chance of running
+   out, wealth spread, longevity, care risk — when a completed run exists; else the context says so) and the
+   **lump-sum tax shock** (the flagship figure: 25% tax-free, marginal tax, the Month-1 emergency
+   over-deduction + reclaim — when a lump sum is planned) are now in the snapshot, each figure reused from the
+   same `ResultPresenter` / `LumpSumTaxShock` output the panels show (provenance) and prefixed so the model
+   keeps "how likely" apart from "what happens". Remaining fast-follows: the sale waterfall, pre-computed
+   aggregates, streaming and a side-nav entry.
 2. **Phase 2 — methodology doc-RAG.** `nomic-embed-text` over `docs/` (small, high-trust corpus) for
    "how does it model X" questions, kept distinct from scenario-figure questions.
 3. **Phase 3 — research/feature capture-and-route.** The `queueBacklogItem` write tool → the append-only
