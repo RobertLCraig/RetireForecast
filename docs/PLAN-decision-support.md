@@ -53,9 +53,20 @@ of the exact numbers + accessible table + CSV.
 4. **Which levers ship in v1** (Phase 4 menu) and whether the **2-D frontier** (Phase 5) is v1 or a
    fast-follow. (Assumes: buy-price + retirement-age frontier is the flagship and should be v1.)
 
-## Correctness spine — Phase 0 (must hold before any UI is built)
-These three are the reasons this is a staged plan rather than a slider tweak. Prove them headlessly, on the
-V2 scenario, with tests, before building anything a user sees.
+## Correctness spine — Phase 0 (must hold before any UI is built) — **BUILT 2026-07-04**
+**Status: the spine is built and green** — `packages/finance-engine/src/Sweep/` (`SweepEngine` +
+`SweepLever`/`SweepMetric`/`SweepPoint`/`SweepCurve`/`Crossing`/`Frontier` + verdict enums), tested in
+`packages/finance-engine/tests/Sweep/SweepEngineTest.php`. S1 (the deterministic-median pass over-promises
+on a survivor-cliff household), S2 (the 2-D frontier primitive), S3 (the banded crossing verdicts) and
+pinned-seed reproducibility + Wilson confidence intervals all hold. Tests use **synthetic** levers +
+a synthetic survivor-cliff scenario (V2's real figures are private, never committed). **What remains from
+Phase 0's original wish-list:** the real-world levers (buy price, retirement age) — deferred to Phase 4's
+lever menu, since the spine is lever-agnostic — and per-component seeded RNG substreams (the CRN discipline
+note below) for levers that change RNG consumption; today levers that do so must declare
+`LeverDirection::Unknown` and are not monotone-fit. **Next: Phase 1 (the app-layer queued job).**
+
+These three are the reasons this is a staged plan rather than a slider tweak. Proven headlessly, with tests,
+before building anything a user sees.
 
 - **S1 — never bracket a tail crossing with a deterministic pass.** `DeterministicForecaster` runs each
   person at their *independent median* death age (`RepresentativeDeathAge::forPerson` →

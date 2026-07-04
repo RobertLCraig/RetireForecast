@@ -7,8 +7,9 @@
 _Last updated: 2026-07-04 (**built IHT into the forecast, relationship-status aware** — the collected-but-unconsumed
 `ihtModelled` toggle now bites: estate valued at each death, tax computed, married/cohabiting-aware, home-to-descendants
 RNRB toggle, results/Compare/PDF panels + cohabiting survivor caveats; six green slices; DECISIONS 2026-07-04. Then two
-follow-ons: a **Monte-Carlo IHT distribution** and a **"care isn't modelled" heads-up** (a silent-omission fix). Prior
-same-day threads below.)_
+follow-ons: a **Monte-Carlo IHT distribution** and a **"care isn't modelled" heads-up** (a silent-omission fix). Then
+**decision-support Phase 0** — the headless `SweepEngine` correctness spine (S1/S2/S3) — was built, and the
+family-money × Pension-Credit question was **researched** (disregarded, per DWP). Prior same-day threads below.)_
 _Earlier 2026-07-04: three doc/infra threads, no engine change: **(1)** worked the V2 couple's real "what
 combination gives us the best chance?" question via headless engine sweeps — findings folded into a new **decision-support**
 feature spec (`docs/PLAN.md` section + staged `docs/PLAN-decision-support.md`), hardened by a **4-agent review**
@@ -133,7 +134,7 @@ The adviser-legibility workstream and the whole post-v1 backlog are built (see C
 3. **Optional refinements to built features** (all flagged v1 limits; pick by value). **Care:** means-test the tail once assets fall below the threshold (`Care\CareMeansTest` is the hook), sex/age-split probability + HSLE timing, ONS-xlsx auto-parse for `mortality:refresh`. **CGT:** deemed-occupation absences, per-owner band-straddle from exact income, shared-occupancy lettings relief (DECISIONS 2026-06-30). **Monte Carlo:** stochastic house/salary growth (currently deterministic), post-2031 reindexing, per-scheme DB escalation. **Annuitisation:** explicit retirement-*month* override.
 4. **CI / data hygiene.** Wire the freshness guardrails (`figures:freshness`, `mortality:refresh`) into a scheduled/CI run so aging or drifted figures fail loudly. Low-value hardening (confirm worth it): tamper-evident run hash, forecast caching.
 
-**Specced-but-unbuilt work (lanes closed — no coordination needed, just pick it up).** **Decision-support: lever thresholds + combination comparison** (docs/PLAN-decision-support.md, 2026-07-04, 4-agent-reviewed) — start at **Phase 0** (the headless `SweepEngine`: MC-based bracketing, the 2-D frontier, crossing semantics — the correctness spine everything else rests on); two open questions are Rob's (public-build ordering; family-contribution vs Pension Credit). Lane C: withdrawal-sequencing next steps #5/#6 (docs/PLAN-withdrawal-sequencing.md — gated on two modelling calls from Rob). Lane D: multi-property (docs/PLAN-multi-property.md, DRAFT, [needs Rob]). (Lane B is complete — the in-place forced sale built 2026-07-03; **IHT + relationship status is now built** — see Current state + DECISIONS 2026-07-04.)
+**Specced-but-unbuilt work (lanes closed — no coordination needed, just pick it up).** **Decision-support: lever thresholds + combination comparison** (docs/PLAN-decision-support.md, 2026-07-04, 4-agent-reviewed) — **Phase 0 (the headless `SweepEngine` correctness spine) is BUILT (2026-07-04)**: `packages/finance-engine/src/Sweep/` (S1 MC-vs-deterministic guard, S2 2-D frontier, S3 banded crossing verdicts, Wilson CIs, pinned-seed reproducibility; `SweepEngineTest`). Rob resolved two open questions this session (Q3 target: sweep both essentials + full-spend, engine parameterised; Q2 family-money × PC: **researched** — disregarded income per DWP, DECISIONS 2026-07-04). **Next: Phase 1** (the app-layer queued threshold-finder job) then the UI phases; the real-world levers (buy price, retirement age) land in Phase 4. Q1 (public-build ordering) is still Rob's, but gates Phase 3 only. Lane C: withdrawal-sequencing next steps #5/#6 (docs/PLAN-withdrawal-sequencing.md — gated on two modelling calls from Rob). Lane D: multi-property (docs/PLAN-multi-property.md, DRAFT, [needs Rob]). (Lane B is complete — the in-place forced sale built 2026-07-03; **IHT + relationship status is now built** — see Current state + DECISIONS 2026-07-04.)
 
 ## Open items
 Open decisions and parked work, off the immediate go-live path (which is under What's next).
@@ -183,7 +184,7 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 | docs/PLAN-mortgage-payment-stop.md | Spec + **BUILT** (2026-07-01): stops the bundled mortgage *payment* after a repay-from-capital redemption via a `while_mortgaged` expense condition + `ExpenseProfile::mortgageCosts`. Kept as the build record. |
 | docs/PLAN-in-place-forced-sale.md | Spec + **BUILT** (2026-07-03): `ForcedSale` sold in place at the redemption year — `PathProjector` event sells at the grown value via the shared `HousingProceeds::compute`, frees equity into GIA, stops housing costs, charges the entered rent; rent + selling costs ride on `ForecastSettings`. The last Lane-B item, now closed. |
 | docs/PLAN-iht-and-relationship-status.md | Spec + **BUILT 2026-07-04** (six green slices). Wired Inheritance Tax into the forecast (consumes the `ihtModelled` toggle) + `Household::relationshipStatus` (married/civil-partner vs cohabiting) driving the spousal exemption + transferable nil-rate band, `Iht\EstateValuer` + `Iht\IhtOutcome` on `ForecastResult`, a `homeToDescendants` toggle, results/Compare/PDF panels, and cohabiting survivor caveats. Kept as the build record + the flagged v1 limits (Monte-Carlo IHT distribution, gifts/trusts/reliefs). See DECISIONS 2026-07-04. |
-| docs/PLAN-decision-support.md | **SPEC (not built), 2026-07-04.** Staged plan for the "lever thresholds + combination comparison" feature (surface the V2 sweep analysis in-app for non-numbers users). **Phase 0 correctness spine** (MC-based bracketing — never the deterministic median; the 2-D frontier; crossing semantics) → phases 1–6 → reuse/build map. Hardened by a 4-agent review. Expands the `docs/PLAN.md` "Decision-support…" section. |
+| docs/PLAN-decision-support.md | Staged plan for the "lever thresholds + combination comparison" feature. **Phase 0 correctness spine BUILT 2026-07-04** (`packages/finance-engine/src/Sweep/` — the `SweepEngine`: MC-based bracketing, Wilson CIs, the 2-D frontier, banded crossing verdicts, the S1 deterministic-over-promises guard). Q2 (family-money × PC) + Q3 (target) resolved this session; **phases 1–6 remain** (Phase 1 = the app-layer queued job; real levers land in Phase 4). Hardened by a 4-agent review. |
 | docs/PLAN-assistant-scenario-editing.md | **SPEC (approved scope, not built), 2026-07-04.** The local assistant assembles a **reviewable what-if** from the reader's own stated changes to the base (conversational; Phase 1 value-edits, Phase 2 add/remove rows) + **gated base editing** (Phase 3, `can_edit_base` default off, orphan + stale-run surfacing). A deliberate **narrow widening** of the assistant's "never builds" rule (reviewable delta-child, no invented figures/outcomes — DECISIONS 2026-07-04). Mostly a new *producer* of the existing delta shape: reuses `BuilderStateDelta`/`QuickWhatIf`/`QuickWhatIfController`/`WhatIfChanges`; new guards C1 (input grounding) + C2 (closed target menu). |
 | docs/SCENARIO-V2.local.md | **GITIGNORED / PRIVATE** (real couple's data, never commit): the durable capture of the V2 couple + core scenario (incomes, the flat, CGT history, base + what-ifs) to re-model from after a DB wipe. |
 | docs/METHODOLOGY.md | User-facing engine-computation methodology (income tax, lump-sum shock, SP, SDLT/CGT/PRR, benefits, IHT, care, Monte Carlo, the year loop) + "what we don't model". One source, two homes: the public `/methodology` page AND the assistant's methodology corpus. Written from a code-grounded engine survey (2026-07-03). |
@@ -197,6 +198,19 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-07-04 (decision-support Phase 0 — the SweepEngine correctness spine; + family-money × PC researched)_ —
+After the IHT work + its two follow-ons, Rob (away from desk) chose **decision-support Phase 0** as the next build and
+answered two open questions. Built the framework-free **`SweepEngine`** (`packages/finance-engine/src/Sweep/`): sweep one
+lever across a grid, measure MC success at each point on a **pinned seed** with a **Wilson** confidence interval, and read
+the crossing of a target as a **banded verdict** (S3: already-on-track / unreachable / crosses / non-monotone). The
+load-bearing **S1** guard is tested — a deterministic **median** pass *over-promises* on a survivor-cliff household (the
+survivor-poverty tail the median hides), which is exactly why the crossing must be an MC quantity. **S2** 2-D frontier
+(threshold of A conditioned on B) built + tested. Success is **parameterised** (essentials + full-spend, per Rob's Q3);
+tests use synthetic levers + a synthetic survivor-cliff scenario (V2's real data stays private). Separately **researched
+Rob's Q2** (how the DWP treats family money for Pension Credit): **disregarded income** — gov.uk adviser guidance lists
+"regular payments from a charity or relative" under "what doesn't count as income" (DECISIONS 2026-07-04, sourced). 4 green
+Sweep tests; suite green; nothing pushed. **Next: Phase 1** (app-layer queued threshold-finder job).
 
 _2026-07-04 (built IHT into the forecast, relationship-status aware — closed the collected-but-unconsumed toggle)_ —
 Executed [docs/PLAN-iht-and-relationship-status.md](docs/PLAN-iht-and-relationship-status.md) end-to-end in **six green,
