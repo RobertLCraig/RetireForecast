@@ -125,6 +125,18 @@ Wrap the `SweepEngine` in an app-layer service + a **queued job** (mirror `RunSc
 cancel, terminal status). Persist a `ThresholdResult` keyed by inputs hash with seed/paths/grid/engine-version;
 invalidate on scenario edit exactly as runs are invalidated. Expose the curve + crossing band + the pinned
 context + the optimism caveats.
+
+**Progress (2026-07-04): the COMPUTE CORE is BUILT** — `App\DecisionSupport\LeverThresholdService` (+ `LeverKey`,
+`ThresholdOutcome`) resolves a scenario's household/settings/assumptions through the single `ScenarioForecaster`
+(so a threshold rests on the same inputs the results page forecasts), builds the lever (`LeverKey` registry →
+the engine levers), sweeps it and finds the crossing, on a **fixed seed** with **default per-lever grids** that
+bracket the scenario's figures; `SweepEngine::sweep` gained an `onProgress(done, total)` hook. Feature-tested
+(a real scenario computes a retirement-age threshold with per-point progress; reproducible; grids bracket).
+**What REMAINS for Phase 1:** the **queued job** (`RunLeverThreshold`, mirroring `RunScenarioSimulation` —
+progress/cancel/terminal), the **persisted `ThresholdResult`** (model + migration + a mapper for the curve/
+crossing, keyed by an **inputs hash** with seed/paths/grid/engine-version) and **edit-invalidation** (the same
+mechanism `SimulationRun` uses), plus the **CSV export** carrying the `EXPORT_DISCLAIMER`. Best built fresh —
+it is DB + queue + invalidation code where the data-integrity rules bite hardest.
 - **Done when:** a scenario can compute a buy-price threshold via the queue with live progress; re-running with
   identical inputs is a cache hit; editing an input invalidates it. **Tests:** job progress/cancel; invalidation
   on edit; provenance stamped; CSV export carries the `EXPORT_DISCLAIMER`.
