@@ -8,8 +8,10 @@ _Last updated: 2026-07-04 (**built IHT into the forecast, relationship-status aw
 `ihtModelled` toggle now bites: estate valued at each death, tax computed, married/cohabiting-aware, home-to-descendants
 RNRB toggle, results/Compare/PDF panels + cohabiting survivor caveats; six green slices; DECISIONS 2026-07-04. Then two
 follow-ons: a **Monte-Carlo IHT distribution** and a **"care isn't modelled" heads-up** (a silent-omission fix). Then
-**decision-support Phase 0** — the headless `SweepEngine` correctness spine (S1/S2/S3) — was built, and the
-family-money × Pension-Credit question was **researched** (disregarded, per DWP). Prior same-day threads below.)_
+**decision-support**: Phase 0 (the headless `SweepEngine` correctness spine, S1/S2/S3) + the **real levers** + the
+**Phase 1 compute core** (`LeverThresholdService`); family-money × Pension-Credit **researched** (disregarded, per DWP).
+Then **Rob started browser sign-off**, which found + fixed a real advice-ranking bug (the "weakest" plan was ranked by
+terminal wealth, which floors at £0, so an earlier-failing plan was mis-ranked; now uses depletion year). Threads below.)_
 _Earlier 2026-07-04: three doc/infra threads, no engine change: **(1)** worked the V2 couple's real "what
 combination gives us the best chance?" question via headless engine sweeps — findings folded into a new **decision-support**
 feature spec (`docs/PLAN.md` section + staged `docs/PLAN-decision-support.md`), hardened by a **4-agent review**
@@ -198,6 +200,20 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-07-04 (decision-support real levers + Phase 1 compute core; Rob's browser sign-off began → advice-ranking bug fixed)_ —
+On Rob's "Go", built the **real sweep levers** (`packages/finance-engine/src/Sweep/Lever/`: `RetirementAgeLever` /
+`EssentialSpendLever` / `BuyPriceLever` — the buy-price one reuses `HousingComparison` so a threshold reconciles with the
+results page; all monotone + CRN-safe; `SweepLeversTest`) and the **Phase 1 compute core** (`App\DecisionSupport\`:
+`LeverThresholdService` + `LeverKey` + `ThresholdOutcome` — a scenario→threshold bridge through the single `ScenarioForecaster`,
+fixed seed, default per-lever grids, an `onProgress` hook added to `SweepEngine::sweep`; `LeverThresholdServiceTest`). Then
+Rob **began the browser sign-off** (the real V2 scenarios, base #9): the Compare page's advice-mode "What this suggests" panel
+named a plan failing in **2042** the "weakest" when another failed in **2029** — `Interpretation::compareNarrative` sorted on
+`[lasts, terminalUsableWealth]`, but usable wealth **floors at £0**, so every run-out plan tied there and the weakest was an
+arbitrary `usort` pick. **Fixed** (add the depletion year: fail earlier = weaker; `CompareNarrativeTest` guards it). Confirmed
+the IHT panel renders live on #9 and that this session's work is **success-neutral** on the base MC (IHT is an estate tax at
+death, never deducted in-life; the base's 48%→30% drop is the care toggle / an input edit, not this session). Suite green
+(696); nothing pushed. **Next: finish Phase 1** (queued `RunLeverThreshold` job + persisted `ThresholdResult` + invalidation + CSV).
 
 _2026-07-04 (decision-support Phase 0 — the SweepEngine correctness spine; + family-money × PC researched)_ —
 After the IHT work + its two follow-ons, Rob (away from desk) chose **decision-support Phase 0** as the next build and
