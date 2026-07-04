@@ -313,7 +313,7 @@
                             </div>
                             <div>
                                 <label for="people-{{ $i }}-employmentStatus" class="{{ $label }}">Employment</label>
-                                <select id="people-{{ $i }}-employmentStatus" wire:model="people.{{ $i }}.employmentStatus" class="{{ $field }}">
+                                <select id="people-{{ $i }}-employmentStatus" wire:model.live="people.{{ $i }}.employmentStatus" class="{{ $field }}">
                                     <option value="employed">Employed</option>
                                     <option value="self_employed">Self-employed</option>
                                     <option value="retired">Retired</option>
@@ -335,17 +335,21 @@
                                 <input id="people-{{ $i }}-plannedRetirementAge" type="number" wire:model="people.{{ $i }}.plannedRetirementAge" class="{{ $field }}" @error('people.'.$i.'.plannedRetirementAge') aria-invalid="true" aria-describedby="people-{{ $i }}-plannedRetirementAge-error" @enderror>
                                 @error('people.'.$i.'.plannedRetirementAge') <p id="people-{{ $i }}-plannedRetirementAge-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                             </div>
-                            <div>
-                                <label for="people-{{ $i }}-niCategory" class="{{ $label }}">National Insurance category</label>
-                                <select id="people-{{ $i }}-niCategory" wire:model="people.{{ $i }}.niCategory" class="{{ $field }}">
-                                    <option value="">Standard (category A)</option>
-                                    <option value="B">B — married woman's / widow's reduced rate</option>
-                                    <option value="C">C — over State Pension age (no NI)</option>
-                                    <option value="J">J — deferred (paying maximum NI in another job)</option>
-                                    <option value="X">X — not liable</option>
-                                </select>
-                                <p class="mt-1 text-xs text-gray-500">Only affects National Insurance on employment earnings. Almost everyone is the standard rate.</p>
-                            </div>
+                            {{-- National Insurance is charged only on an employment salary, so this shows
+                                 only for an employed person. It automatically stops at State Pension age
+                                 and never touches pension income, so those cases aren't set by hand — the
+                                 only genuine overrides are the two reduced/deferred employee rates. --}}
+                            @if (($person['employmentStatus'] ?? '') === 'employed')
+                                <div>
+                                    <label for="people-{{ $i }}-niCategory" class="{{ $label }}">National Insurance rate</label>
+                                    <select id="people-{{ $i }}-niCategory" wire:model="people.{{ $i }}.niCategory" class="{{ $field }}">
+                                        <option value="">Standard (most employees)</option>
+                                        <option value="B">Reduced rate — married woman's / widow's pre-1977 election</option>
+                                        <option value="J">Deferred — pays maximum NI through another job</option>
+                                    </select>
+                                    <p class="mt-1 text-xs text-gray-500">Applies to this salary during working years. National Insurance stops automatically at State Pension age and never applies to pension income — you don't set those here. Almost everyone is the standard rate.</p>
+                                </div>
+                            @endif
                             <div>
                                 <label for="people-{{ $i }}-longevityMode" class="{{ $label }}">Lifespan assumption</label>
                                 <select id="people-{{ $i }}-longevityMode" wire:model.live="people.{{ $i }}.longevityMode" class="{{ $field }}">

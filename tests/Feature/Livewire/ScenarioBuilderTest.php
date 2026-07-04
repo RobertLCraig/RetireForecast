@@ -430,6 +430,28 @@ class ScenarioBuilderTest extends TestCase
         $this->assertSame(6.0, Scenario::firstOrFail()->toHousingAction()->buyMortgageRate?->asPercent());
     }
 
+    public function test_the_ni_rate_field_shows_only_for_an_employed_person_and_drops_the_auto_categories(): void
+    {
+        $component = Livewire::test(ScenarioBuilder::class)->set('step', 1);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+
+        // The lone person starts retired — employee NI can't apply, so the rate field is hidden.
+        $component->assertDontSee('National Insurance rate');
+
+        // Employed → the field appears with only the two genuine working-years overrides (Standard
+        // is the default). The auto/moot letters are gone: NI stops at State Pension age and never
+        // touches pension income on its own, so "over State Pension age (no NI)" and "not liable"
+        // are no longer offered by hand.
+        $component->set('people.0.employmentStatus', 'employed')
+            ->assertSee('National Insurance rate')
+            ->assertSee('Reduced rate')
+            ->assertSee('Deferred')
+            ->assertDontSee('(no NI)')
+            ->assertDontSee('not liable');
+    }
+
     /** @param array<string, mixed> $state */
     private function fill(array $state): Testable
     {

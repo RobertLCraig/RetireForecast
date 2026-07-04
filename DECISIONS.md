@@ -3,6 +3,37 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-04 — NI category tidied to derive-default-plus-override; IHT-not-wired found + specced
+**Context:** Building a what-if, Rob saw the per-person **National Insurance category** field and asked whether
+it's expected to change over time and whether we can auto-apply the correct one. Investigating that surfaced a
+second, bigger finding about IHT.
+
+**Decision — NI category is now derive-default-plus-override (built):** for a *household* forecast only the
+**employee's** primary NI touches their money, so the ~26 category letters collapse to four employee outcomes,
+and the two that vary over time are already handled — **over State Pension age → nil** and **no salary → nil**
+are auto (the calculator returns £0 at SPA; NI is charged only on an employment salary). So the field only
+matters for **working years under SPA**, and the only non-derivable exceptions are the *married-woman's/widow's
+reduced rate* (a pre-1977 election) and *deferred* (a second job). The builder now shows the field **only when
+the person is `Employed`** (live), defaults to **Standard**, offers just **Standard / Reduced rate / Deferred**
+in plain English, and **drops the misleading manual "over State Pension age" and "not liable" options** (both
+auto). The hint states NI stops at SPA and never touches pension income. Behaviour-preserving (engine unchanged;
+`niCategory` still stored, default standard).
+
+**Finding — `ihtModelled` is collected but unconsumed (a silent drop).** The IHT toggle is stored, shown in
+what-if diffs + GDPR, but **no forecast or engine code reads it**; `InheritanceTaxCalculator` (complete +
+tested) is called only by its own test and the Filament tax-audit page. **IHT is never computed in a forecast.**
+This is the collected-but-unconsumed class the reconciliation rule exists to catch.
+
+**Decision — spec, don't build (Rob's call): relationship status only matters once IHT is wired.** Married vs
+cohabiting materially changes IHT (spousal exemption + transferable nil-rate band) and survivor treatment, but
+the engine implicitly assumes married (`settleEstates`; the calculator's `nilRateBandMultiplier=2` path) and
+there's no field to say otherwise — so a cohabiting couple is over-relieved. Adding a relationship field *now*
+would just create another inert input; it earns its keep only when IHT is actually computed. So the unit of work
+is **"wire IHT into the forecast (consume the toggle), relationship-status aware"** — fully specced for a fresh
+agent in **[docs/PLAN-iht-and-relationship-status.md](docs/PLAN-iht-and-relationship-status.md)** (the
+calculator is done; only wiring + an `EstateValuer` + a `relationshipStatus` input + a results panel remain).
+Not built this session.
+
 ## 2026-07-04 — Relax the guidance-only partition for personal/family use (keep it re-enforceable + flagged)
 **Context:** The tool is, for now, purely for Rob's own family scenario (internal use, not a public release). The
 build-time banned-phrasing partition (`BannedPhrasingTest` + `OutputPhrasing`) was getting in the way: it is a static

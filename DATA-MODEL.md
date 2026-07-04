@@ -1,6 +1,6 @@
 # Data model: RetireForecast
 
-_Last updated: 2026-07-02_
+_Last updated: 2026-07-04_
 
 The single source of truth for this project's data shape. Every layer (engine, storage, UI)
 conforms to this. The canonical representation **is** the engine's readonly DTOs under
@@ -382,6 +382,13 @@ from the original plan, flagged inline:
   nil rates; `NationalInsuranceCalculatorTest` / `NiCategoryForecastTest`), and `Property::ownershipShare`
   (beneficial share scales wealth, means-test, IHT + sale proceeds/CGT per HMRC tenants-in-common
   apportionment; `OwnershipShareTest`).
+- **Open (found 2026-07-04): `Scenario::iht_modelled` / the IHT toggle is collected but unconsumed.** It is
+  stored, validated, and shown in what-if diffs + the GDPR export — but **no forecast reads it**;
+  `InheritanceTaxCalculator` (complete + tested) is never called in the pipeline, so turning IHT on changes no
+  result. This is the one open collected-but-unconsumed input. The fix — wire IHT into the forecast, made
+  relationship-status aware — is specced in **docs/PLAN-iht-and-relationship-status.md**; a new
+  `Household::relationshipStatus` (married/civil-partner vs cohabiting, default married) lands with it and drives
+  the spousal exemption + transferable nil-rate band (today a two-person household is implicitly treated as married).
 - **Planned fields never materialised:** `DcPension::crystallisedValue`,
   `StatePensionEntitlement` `spa_override` + `triple_lock_assumption` (SPA computes from DOB;
   the triple-lock factor lives in the projector). Kept here rather than in the entity tables
