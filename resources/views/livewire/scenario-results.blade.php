@@ -729,6 +729,31 @@
                 <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800" role="note">Unused pension pots are counted as part of the estate — the rule due from <strong>April 2027</strong> (Finance Act 2026). Before then they sat outside it, so this raises the taxable estate.</p>
             @endif
 
+            {{-- How IHT varies across the simulated futures (once a Monte Carlo run has modelled it):
+                 the figures above are a single representative-life estimate; this shows the spread
+                 longevity and returns produce. --}}
+            @if (! empty($presented['ihtDistribution'] ?? null))
+                @php $ihtDist = $presented['ihtDistribution']; @endphp
+                <div class="mt-4 rounded-md border border-gray-200 p-4">
+                    <h3 class="text-sm font-semibold text-gray-900">How this varies across your simulated futures</h3>
+                    <p class="mt-1 text-xs text-gray-500">The figures above assume a single representative lifespan. Across the full simulation, how much Inheritance Tax you leave depends on how long you live and how your investments fare.</p>
+                    <dl class="mt-3 grid gap-4 sm:grid-cols-3">
+                        <div class="rounded-md bg-gray-50 p-3">
+                            <dt class="text-xs text-gray-500">Futures leaving any IHT</dt>
+                            <dd class="mt-1 text-xl font-semibold text-gray-900 tabular-nums">{{ $ihtDist['sharePct'] }}</dd>
+                        </div>
+                        <div class="rounded-md bg-gray-50 p-3">
+                            <dt class="text-xs text-gray-500">Typical (median) bill</dt>
+                            <dd class="mt-1 text-xl font-semibold text-gray-900 tabular-nums">£{{ number_format($ihtDist['median']) }}</dd>
+                        </div>
+                        <div class="rounded-md bg-gray-50 p-3">
+                            <dt class="text-xs text-gray-500">High end (1 in 10)</dt>
+                            <dd class="mt-1 text-xl font-semibold text-gray-900 tabular-nums">£{{ number_format($ihtDist['p90']) }}</dd>
+                        </div>
+                    </dl>
+                </div>
+            @endif
+
             <p class="mt-3 text-xs text-gray-500">This shows the <strong>headline allowances</strong> only (nil-rate band £325,000 and residence nil-rate band up to £175,000 per person, tapered away above a £2m estate), not a full estate calculation: lifetime gifts and the 7-year rule, trusts, business or agricultural relief, and the reduced charity rate are not modelled. Deaths are valued at the plan's representative ages. Verified against gov.uk on 2026-06-27.</p>
 
             <x-signpost class="mt-3" />

@@ -6,6 +6,7 @@ namespace App\Finance\Mapping;
 
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\MonteCarlo\CareImpact;
+use RetireForecast\FinanceEngine\MonteCarlo\IhtDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\LongevityDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 
@@ -38,6 +39,7 @@ final class SimulationResultMapper
             'netPositionFanChart' => self::penceFan($result->netPositionFanChart),
             'longevity' => self::longevityToArray($result->longevity),
             'careImpact' => self::careImpactToArray($result->careImpact),
+            'ihtDistribution' => self::ihtDistributionToArray($result->ihtDistribution),
         ];
     }
 
@@ -64,6 +66,28 @@ final class SimulationResultMapper
             longevity: self::longevityFromArray($data['longevity'] ?? null),
             // Runs persisted before care-cost modelling (or with it off) have no key — default to null.
             careImpact: self::careImpactFromArray($data['careImpact'] ?? null),
+            // Runs persisted before the IHT distribution (or with IHT off) have no key — default to null.
+            ihtDistribution: self::ihtDistributionFromArray($data['ihtDistribution'] ?? null),
+        );
+    }
+
+    /** @return array<string, int|float>|null */
+    private static function ihtDistributionToArray(?IhtDistribution $d): ?array
+    {
+        return $d === null ? null : [
+            'shareWithAnyIht' => $d->shareWithAnyIht,
+            'medianIht' => Codec::pence($d->medianIht),
+            'p90Iht' => Codec::pence($d->p90Iht),
+        ];
+    }
+
+    /** @param  array<string, mixed>|null  $data */
+    private static function ihtDistributionFromArray(?array $data): ?IhtDistribution
+    {
+        return $data === null ? null : new IhtDistribution(
+            shareWithAnyIht: (float) $data['shareWithAnyIht'],
+            medianIht: Codec::money($data['medianIht']),
+            p90Iht: Codec::money($data['p90Iht']),
         );
     }
 

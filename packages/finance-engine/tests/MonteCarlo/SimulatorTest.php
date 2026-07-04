@@ -87,6 +87,54 @@ final class SimulatorTest extends TestCase
         $this->assertGreaterThanOrEqual($with->careImpact->medianCareCost->pence, $with->careImpact->p90CareCost->pence);
     }
 
+    public function test_modelling_iht_reports_the_spread_across_futures(): void
+    {
+        // A wealthy couple whose State Pensions cover the modest spend, so two large DC pots grow
+        // largely untouched — a big estate at death, so IHT occurs across the sampled futures.
+        $wealthy = new Household(
+            'Estate MC',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1952-04-01'), Sex::Female, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1952-09-01'), Sex::Male, EmploymentStatus::Retired),
+            ],
+            new ExpenseProfile(Money::fromPounds(18_000), Money::zero(), Percent::fromPercent(70)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::fromPounds(190)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::fromPounds(190)),
+                new DcPension('p1', Money::fromPounds(500_000), Money::zero(), Money::zero(), 55),
+                new DcPension('p2', Money::fromPounds(500_000), Money::zero(), Money::zero(), 55),
+            ],
+        );
+
+        $off = $this->settings(); // modelIht false (the default)
+        $on = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelIht: true);
+
+        $without = $this->simulator()->run($wealthy, $off, AssumptionSetLibrary::default(), new CohortLifeTable, 400, seed: 11);
+        $with = $this->simulator()->run($wealthy, $on, AssumptionSetLibrary::default(), new CohortLifeTable, 400, seed: 11);
+
+        // The toggle gates it: no distribution off, a distribution on (completeness — the modelled
+        // IHT reaches the aggregate, not just the deterministic panel).
+        $this->assertNull($without->ihtDistribution);
+        $this->assertNotNull($with->ihtDistribution);
+
+        $d = $with->ihtDistribution;
+        $this->assertGreaterThan(0.0, $d->shareWithAnyIht, 'a large estate leaves IHT in some futures');
+        $this->assertLessThanOrEqual(1.0, $d->shareWithAnyIht);
+        $this->assertTrue($d->p90Iht->isPositive(), 'the high-end future leaves a real IHT bill');
+        $this->assertGreaterThanOrEqual($d->medianIht->pence, $d->p90Iht->pence, 'p90 >= median');
+    }
+
+    public function test_iht_distribution_is_reproducible_under_a_fixed_seed(): void
+    {
+        $settings = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelIht: true);
+        $a = $this->simulator()->run($this->comfortable(), $settings, AssumptionSetLibrary::default(), new CohortLifeTable, 200, seed: 5);
+        $b = $this->simulator()->run($this->comfortable(), $settings, AssumptionSetLibrary::default(), new CohortLifeTable, 200, seed: 5);
+
+        $this->assertSame($a->ihtDistribution->shareWithAnyIht, $b->ihtDistribution->shareWithAnyIht);
+        $this->assertSame($a->ihtDistribution->p90Iht->pence, $b->ihtDistribution->p90Iht->pence);
+    }
+
     public function test_care_modelling_is_reproducible_under_a_fixed_seed(): void
     {
         $settings = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelCareCost: true);

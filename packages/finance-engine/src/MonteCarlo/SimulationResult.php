@@ -53,5 +53,6 @@ final class SimulationResult
         public readonly ?LongevityDistribution $longevity = null,
         public readonly ?CareImpact $careImpact = null,
         public readonly array $netPositionFanChart = [],
+        public readonly ?IhtDistribution $ihtDistribution = null,
     ) {}
 }

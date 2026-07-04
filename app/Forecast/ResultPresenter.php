@@ -30,6 +30,7 @@ use RetireForecast\FinanceEngine\Iht\IhtOutcome;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\MonteCarlo\CareImpact;
+use RetireForecast\FinanceEngine\MonteCarlo\IhtDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\LongevityDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
@@ -135,6 +136,24 @@ final class ResultPresenter
             'longevity' => self::longevityPanel($primarySim->longevity),
             // The modelled late-life care-cost risk (null unless the run modelled care).
             'careImpact' => self::careImpactPanel($primarySim->careImpact),
+            // The spread of Inheritance Tax across the sampled futures (null unless IHT is modelled).
+            'ihtDistribution' => self::ihtDistributionPanel($primarySim->ihtDistribution),
+        ];
+    }
+
+    /**
+     * The Monte Carlo IHT spread for display: the share of futures leaving any IHT, and the median
+     * vs high-end (p90) total across all futures. Complements the deterministic IHT panel (a single
+     * representative-death figure) with the range longevity + returns produce. Null when not modelled.
+     *
+     * @return array{sharePct: string, median: int, p90: int}|null
+     */
+    public static function ihtDistributionPanel(?IhtDistribution $d): ?array
+    {
+        return $d === null ? null : [
+            'sharePct' => self::formatPercent($d->shareWithAnyIht),
+            'median' => self::pounds($d->medianIht),
+            'p90' => self::pounds($d->p90Iht),
         ];
     }
 

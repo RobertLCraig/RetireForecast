@@ -94,4 +94,26 @@ class SimulationResultMappingTest extends TestCase
         unset($payload['careImpact']);
         $this->assertNull(SimulationResultMapper::fromArray($payload)->careImpact);
     }
+
+    public function test_an_iht_modelled_run_round_trips_the_iht_distribution(): void
+    {
+        $result = (new Simulator(TaxYearRegistry::for('2026-27')))->run(
+            HouseholdFixture::household(),
+            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelIht: true),
+            AssumptionSetLibrary::default(),
+            new CohortLifeTable,
+            nPaths: 60,
+            seed: 5,
+        );
+
+        $rebuilt = SimulationResultMapper::fromArray(json_decode(json_encode(SimulationResultMapper::toArray($result)), true));
+
+        $this->assertNotNull($rebuilt->ihtDistribution);
+        $this->assertEquals($result, $rebuilt);
+
+        // A run persisted before the IHT distribution existed has no key — it rehydrates to null.
+        $payload = SimulationResultMapper::toArray($result);
+        unset($payload['ihtDistribution']);
+        $this->assertNull(SimulationResultMapper::fromArray($payload)->ihtDistribution);
+    }
 }

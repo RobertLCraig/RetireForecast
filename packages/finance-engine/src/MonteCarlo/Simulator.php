@@ -68,6 +68,7 @@ final class Simulator
         $terminalWealth = [];
         $terminalUsable = [];
         $careCosts = [];          // per path with care: total real care cost (pence)
+        $ihtTotals = [];          // per path: total IHT due across the household's deaths (real pence); only when IHT is modelled
         $lastSurvivorAges = [];   // per path: the age the longest-living person reaches
         $lastSurvivorYears = [];  // per path: the calendar year the household ends
         $wealthByYearIndex = [];       // yearIndex => list<int pence> total wealth (incl. home)
@@ -92,6 +93,11 @@ final class Simulator
             $result = $projector->project($household, $settings, $draws);
             if ($result->careCostReal()->isPositive()) {
                 $careCosts[] = $result->careCostReal()->pence;
+            }
+            // Each path computes its own IHT (death timing + terminal wealth vary), so collect the
+            // total to build the distribution. Present only when IHT is modelled (else iht is null).
+            if ($result->iht !== null) {
+                $ihtTotals[] = $result->iht->total->pence;
             }
 
             // The last survivor (the person who lives longest) sets how long the money must
@@ -155,6 +161,25 @@ final class Simulator
             longevity: $this->longevityDistribution($lastSurvivorAges, $lastSurvivorYears, $settings->baseYear),
             careImpact: $settings->modelCareCost ? $this->careImpact($careCosts, $nPaths) : null,
             netPositionFanChart: $this->fanChart($netByYearIndex, $settings->baseYear),
+            ihtDistribution: $settings->modelIht ? $this->ihtDistribution($ihtTotals, $nPaths) : null,
+        );
+    }
+
+    /**
+     * The spread of Inheritance Tax across the sampled futures: the share of paths that leave any
+     * IHT bill, and the median / p90 total across ALL paths (so the median reflects the central
+     * outcome — often £0 or modest — and p90 the long-life, strong-return tail).
+     *
+     * @param  list<int>  $ihtTotals  per-path total IHT (real pence)
+     */
+    private function ihtDistribution(array $ihtTotals, int $nPaths): IhtDistribution
+    {
+        $withAny = count(array_filter($ihtTotals, static fn (int $t): bool => $t > 0));
+
+        return new IhtDistribution(
+            shareWithAnyIht: $nPaths > 0 ? $withAny / $nPaths : 0.0,
+            medianIht: Money::fromPence((int) round($this->percentile($ihtTotals, 0.50))),
+            p90Iht: Money::fromPence((int) round($this->percentile($ihtTotals, 0.90))),
         );
     }
 
