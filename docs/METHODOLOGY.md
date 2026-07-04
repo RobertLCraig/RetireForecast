@@ -181,8 +181,9 @@ home 50/50 (immaterial for a married couple, whose first death is exempt).
 Not modelled (so this is an illustration of the headline bands, not a full estate computation): lifetime
 gifts and the 7-year taper; trusts; business or agricultural relief; the reduced 36% charitable rate;
 non-descendant beneficiaries or split legacies; the income tax a beneficiary later pays on an inherited
-pension. Deaths are valued at the plan's representative (median) ages; a Monte Carlo IHT distribution is
-not yet produced.
+pension. The headline panel values deaths at the plan's representative (median) ages; a completed Monte
+Carlo run also shows the **spread** of IHT across futures (the share leaving any bill, and the median vs
+high-end), since it varies with longevity and returns.
 
 ## Care costs
 
@@ -280,8 +281,8 @@ An honest list of the current limits (each is flagged in the code):
 - **Inheritance tax** (when the toggle is on) values the estate at each death inside the projection and
   applies the headline bands (relationship-status aware), but not the fuller estate: no lifetime gifts or
   7-year taper, trusts, business/agricultural relief, the 36% charity rate, non-descendant beneficiaries,
-  or the inherited-pension income-tax interaction; deaths are valued at representative ages (no Monte
-  Carlo IHT distribution yet).
+  or the inherited-pension income-tax interaction. The headline panel values deaths at representative
+  ages; a completed Monte Carlo run additionally shows the spread of IHT across futures.
 - **Care:** the projection charges the gross self-funder cost (means-test relief not applied inside
   the path); one probability, no sex/age split; Monte Carlo only.
 - **Benefits:** Guarantee Credit only (no Savings Credit); the carer addition is not in the live
