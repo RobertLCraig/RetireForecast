@@ -44,7 +44,12 @@ final class SweepEngine
      * Sweep $lever across $grid, running a Monte Carlo on the pinned $seed at each value and
      * recording the $metric success probability with its Wilson confidence interval.
      *
+     * $onProgress, if given, is called after each grid point with (points done, total points) — so
+     * the queued run reports progress and never runs silently (the plan's "no silent long-runs").
+     * Throwing from it aborts the sweep, mirroring how {@see Simulator::run} allows a cancel.
+     *
      * @param  list<float>  $grid  the lever values to measure (sorted ascending here defensively)
+     * @param  (callable(int $done, int $total): void)|null  $onProgress
      */
     public function sweep(
         Household $household,
@@ -56,18 +61,24 @@ final class SweepEngine
         SweepMetric $metric,
         int $nPaths,
         int $seed,
+        ?callable $onProgress = null,
     ): SweepCurve {
         sort($grid);
         $simulator = new Simulator($this->config);
+        $total = count($grid);
 
         $points = [];
-        foreach ($grid as $value) {
+        foreach ($grid as $i => $value) {
             $inputs = $lever->apply($household, $settings, $value);
             // Same seed at every grid point (common random numbers): only the lever changes.
             $result = $simulator->run($inputs->household, $inputs->settings, $assumptions, $lifeTable, $nPaths, $seed);
             $p = $metric->probability($result);
             [$low, $high] = self::wilsonInterval($p, $nPaths);
             $points[] = new SweepPoint($value, $p, $low, $high, $nPaths);
+
+            if ($onProgress !== null) {
+                $onProgress($i + 1, $total);
+            }
         }
 
         return new SweepCurve(
