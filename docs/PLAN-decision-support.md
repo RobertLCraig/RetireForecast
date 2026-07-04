@@ -34,13 +34,22 @@ of the exact numbers + accessible table + CSV.
    blind to sort order). Fine now (private, `compliance.personal_use = true`). Decision: when the flag flips
    for public release, should the comparison ever show a **gated** best-first ordering, or **never rank**?
    (This plan assumes: unordered in guidance mode, ordering behind the `interpret` gate — Phase 3.)
-2. **Family contribution × Pension Credit.** Model regular child money as **fully disregarded** (best case)
-   or as **income that can erode PC** (stricter, likely more correct — third-party contributions can count
-   as notional income)? Needs a sourced decision before that lever ships (deferred item, not in the core
-   phases).
-3. **Target(s).** One target (95% essentials-last) or a couple (90/95%)? And is "essentials" the only
-   success bar, or also a "full spend" curve? (Assumes: essentials-last, target 95% with a 90% secondary
-   line, essentials-only for v1 — discretionary is £0 for V2 anyway.)
+2. **Family contribution × Pension Credit — RESOLVED 2026-07-04 (researched, Rob asked "how does the DWP
+   actually handle it").** Model regular family/third-party money as **fully disregarded income** for
+   Pension Credit — this is the *correct* DWP treatment, not merely the optimistic one. gov.uk's Pension
+   Credit adviser technical guidance lists **"regular payments from a charity or relative"** under *"What
+   doesn't count as income"*; a regular gift is not income and not notional income. Caveats to model when
+   the lever ships: (a) **maintenance** (from a former partner / the other parent of a child) is *not*
+   voluntary and is not disregarded; (b) a **one-off lump sum** banked as **savings** becomes *capital*,
+   which PC *does* assess (tariff income above £10k, and the £16k HB/CTS cliff) — so a regular income
+   stream is disregarded but a large banked gift counts. Sources: gov.uk *"A detailed guide to Pension
+   Credit for advisers and others"*; entitledto *"Income from voluntary or charity sources"*. Verified
+   2026-07-04. (Deferred lever, not in the core phases — but the modelling call is now made.)
+3. **Target(s) — RESOLVED 2026-07-04 (Rob).** Sweep **both** an essentials-last curve **and** a full-spend
+   -last curve (essentials + discretionary). Design the `SweepEngine` **parameterised on the success
+   predicate** (which spend bar) **and the target probability**, so 95%, a 90/95 pair, and both curves are
+   all caller choices — the engine doesn't hard-code the bar. (Superseded the earlier "essentials-only
+   v1" assumption.)
 4. **Which levers ship in v1** (Phase 4 menu) and whether the **2-D frontier** (Phase 5) is v1 or a
    fast-follow. (Assumes: buy-price + retirement-age frontier is the flagship and should be v1.)
 

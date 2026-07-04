@@ -3,6 +3,24 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-04 — Family / third-party contributions are DISREGARDED income for Pension Credit (researched)
+**Context:** the decision-support feature has a "a child contributes ~£150–330/mo closes the gap" lever. Open
+question (Rob's, then handed to research): does regular family money count as income that erodes Pension Credit,
+or is it disregarded? Rob: *"Research and you tell me. How is it actually handled by the DWP."*
+
+**Finding (sourced, verified 2026-07-04):** regular voluntary payments from a relative are **disregarded** for
+Pension Credit — not income, not notional income. gov.uk's *"A detailed guide to Pension Credit for advisers and
+others"* lists **"regular payments from a charity or relative"** under *"What doesn't count as income"*; entitledto
+(*"Income from voluntary or charity sources"*) confirms voluntary payments from friends/family are *"disregarded
+completely"*. So modelling the family-contribution lever as **fully disregarded income** is the *correct* DWP
+treatment, not merely the optimistic one — the two coincide.
+
+**Caveats to model when the lever ships (flagged in PLAN-decision-support Q2):** (a) **maintenance** (from a former
+partner / the other parent of a child) is *not* voluntary and is not disregarded; (b) a **one-off lump sum** banked
+as **savings** becomes *capital*, which PC *does* assess (tariff income above £10k; the £16k HB/CTS cliff) — a
+regular income stream is disregarded, a large banked gift is not. Deferred lever, but the modelling call is made.
+Sources carry `verified_on: 2026-07-04`.
+
 ## 2026-07-04 — Inheritance Tax wired into the forecast, relationship-status aware (the toggle now bites)
 **Context:** the `ihtModelled` toggle was collected-but-unconsumed — stored, validated, shown in what-if diffs +
 the GDPR export, but read by no forecast, so turning it on changed nothing. A silent drop of exactly the class the
