@@ -1192,6 +1192,7 @@ class ScenarioBuilder extends Component
             : new Scenario;
 
         $hadRuns = $scenario->exists && $scenario->simulationRuns()->exists();
+        $hadThresholds = $scenario->exists && $scenario->thresholdResults()->exists();
 
         $scenario->user_id = auth()->id();
         $scenario->status = ScenarioStatus::Ready;
@@ -1209,6 +1210,14 @@ class ScenarioBuilder extends Component
         // (cascading to its results) and prompt a fresh run (gotcha B).
         if ($hadRuns) {
             $scenario->simulationRuns()->delete();
+        }
+
+        // A computed decision-support threshold rests on the same inputs, so it is stale too —
+        // drop it on the same edit (a threshold can exist without a run, so it is checked
+        // independently). The inputs-hash guard is the belt-and-braces; this is the primary
+        // invalidation, mirroring the runs above.
+        if ($hadThresholds) {
+            $scenario->thresholdResults()->delete();
         }
 
         // A base edit changes every child's effective inputs too: refresh their projected
@@ -1244,12 +1253,13 @@ class ScenarioBuilder extends Component
         $scenario->save();
     }
 
-    /** Refresh each child's projected columns from its (now-changed) effective state and drop its stale runs. */
+    /** Refresh each child's projected columns from its (now-changed) effective state and drop its stale runs + thresholds. */
     private function refreshChildren(Scenario $scenario): void
     {
         foreach ($scenario->children()->get() as $child) {
             $child->projectFrom($child->effectiveBuilderState())->save();
             $child->simulationRuns()->delete();
+            $child->thresholdResults()->delete();
         }
     }
 

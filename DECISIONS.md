@@ -3,6 +3,40 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-05 — Decision-support Phase 1: the queued threshold runner + persisted, inputs-hash-keyed store
+**Context:** Phase 0 (the framework-free `SweepEngine`) and the Phase-1 *compute core* (`LeverThresholdService`,
+scenario → threshold) were built (DECISIONS 2026-07-04). What remained of Phase 1 (docs/PLAN-decision-support.md):
+turn the compute into a **queued, cancellable, cacheable, persisted** run so a threshold behaves like a first-class
+result — the same discipline a `SimulationRun` gets, because a sweep is a set of Monte Carlo runs (a long run) that
+must never run on the web request or silently.
+
+**Decision — mirror the `SimulationRun` triad exactly, one table.** A single `ThresholdResult` model + table is
+*both* the run (lifecycle + live progress + cancel, reusing `SimulationStatus`) *and* the stored result (the mapped
+`ThresholdOutcome` = curve + crossing in the encrypted `payload`, null until done). `ThresholdRunner` mirrors
+`SimulationRunner` (createRun / request-or-cache-hit / execute-with-onProgress-and-cancel), `RunLeverThreshold`
+mirrors `RunScenarioSimulation` (holds the id, delegates, `failed()` marks a dead worker Failed). No new lifecycle
+enum — `SimulationStatus` is generic (queued/running/done/failed/cancelled).
+
+**Two-layer staleness guard (both, deliberately).** (1) **Primary — delete on edit:** a scenario save deletes its
+`thresholdResults()` exactly as it deletes `simulationRuns()`, cascading to children (a threshold can exist without a
+run, so it is checked independently). (2) **Belt-and-braces — inputs hash:** each record is keyed by a sha256 of the
+**effective builder-state** (the single source of truth for every forecast input) plus the engine version and every
+compute parameter (lever / metric / target / grid / paths / seed). So an identical re-request is a **cache hit** (no
+second sweep) and a result is only ever surfaced while its hash matches the current inputs — even if the delete were
+ever missed. The fixed seed (`LeverThresholdService::SEED`) makes a threshold reproducible and part of the key.
+
+**Provenance + CSV.** Every record freezes seed / paths / grid / engine + tax-year versions / assumption snapshot
+(the plan's "every threshold ships with its provenance"). The **CSV export** (owner-scoped route + `ThresholdCsvExporter`)
+carries the shared **`App\Export\ExportDisclaimer`** — extracted from `ScenarioResults` so the fan/ladder/threshold
+exports have **one home** for the guidance-only wording — plus the provenance, the honest crossing **verdict** (a band,
+never a bare point, S3) and the full swept grid with each point's confidence interval.
+
+**Path count:** the queued default is **2,000 paths/point** (`ThresholdRunner::DEFAULT_PATHS`) — higher than the compute
+core's 500 so a persisted crossing is tight; recorded as provenance and overridable. The preview→confirm path-count
+ladder is a Phase-2 concern. **Lever values stay float lever-space** (a price / age / annual spend), not `Money` — so
+the payload mapper is float-not-pence (documented in `ThresholdOutcomeMapper`); the money rule still governs everything
+the engine computes underneath. **Next: Phase 2 UI** (the "how far can we go?" panel). See docs/PLAN-decision-support.md.
+
 ## 2026-07-04 — Family / third-party contributions are DISREGARDED income for Pension Credit (researched)
 **Context:** the decision-support feature has a "a child contributes ~£150–330/mo closes the gap" lever. Open
 question (Rob's, then handed to research): does regular family money count as income that erodes Pension Credit,

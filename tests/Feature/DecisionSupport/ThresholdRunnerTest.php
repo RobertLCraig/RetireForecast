@@ -1,0 +1,160 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\DecisionSupport;
+
+use App\DecisionSupport\LeverKey;
+use App\DecisionSupport\LeverThresholdService;
+use App\DecisionSupport\ThresholdRunner;
+use App\Enums\SimulationStatus;
+use App\Forecast\ScenarioForecaster;
+use App\Jobs\RunLeverThreshold;
+use App\Models\Scenario;
+use App\Models\ThresholdResult;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
+use RetireForecast\FinanceEngine\Sweep\CrossingVerdict;
+use RetireForecast\FinanceEngine\Sweep\SweepMetric;
+use RuntimeException;
+use Tests\Feature\Forecast\SimulationRunnerTest;
+use Tests\Support\ScenarioFixture;
+use Tests\TestCase;
+
+/**
+ * The queued threshold runner (Phase 1): a scenario computes a lever threshold on the worker
+ * with live progress, an identical re-request is a cache hit, and every record carries its
+ * provenance. Mirrors {@see SimulationRunnerTest} — the sweep is a long
+ * run, so nothing about it runs silently.
+ *
+ * The test queue connection is sync, so `request()` runs the sweep inline through the real
+ * dispatch -> job -> runner path. Grids and path counts are kept tiny for speed.
+ */
+final class ThresholdRunnerTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private const GRID = [62.0, 66.0, 70.0];
+
+    private function runner(): ThresholdRunner
+    {
+        return app(ThresholdRunner::class);
+    }
+
+    private function scenario(): Scenario
+    {
+        return ScenarioFixture::rich(User::factory()->create());
+    }
+
+    private function request(Scenario $scenario, ?array $grid = null, int $paths = 40): ThresholdResult
+    {
+        return $this->runner()->request(
+            $scenario, LeverKey::RetirementAge, SweepMetric::Essentials, 0.90, $grid ?? self::GRID, $paths,
+        );
+    }
+
+    public function test_request_queues_the_sweep_and_stamps_provenance(): void
+    {
+        Queue::fake();
+        $scenario = $this->scenario();
+
+        $run = $this->request($scenario);
+
+        Queue::assertPushed(RunLeverThreshold::class, fn (RunLeverThreshold $job): bool => $job->thresholdResultId === $run->id);
+
+        $this->assertSame(SimulationStatus::Queued, $run->status);
+        $this->assertSame(LeverKey::RetirementAge->value, $run->lever_key);
+        $this->assertSame(SweepMetric::Essentials->value, $run->metric);
+        $this->assertSame(0.90, $run->target_probability);
+        $this->assertSame(40, $run->n_paths);
+        $this->assertSame(LeverThresholdService::SEED, $run->seed);
+        $this->assertEquals(self::GRID, $run->grid);
+        $this->assertSame(ScenarioForecaster::ENGINE_VERSION, $run->engine_version);
+        $this->assertNotEmpty($run->inputs_hash);
+        $this->assertNotEmpty($run->assumption_snapshot); // frozen for reproducibility
+        $this->assertNull($run->thresholdOutcome());       // nothing computed yet
+    }
+
+    public function test_the_sweep_runs_to_completion_with_progress_and_a_curve(): void
+    {
+        $run = $this->request($this->scenario())->fresh();
+
+        $this->assertSame(SimulationStatus::Done, $run->status);
+        $this->assertSame(100, $run->progress_pct);
+        $this->assertNotNull($run->started_at);
+        $this->assertNotNull($run->finished_at);
+
+        $outcome = $run->thresholdOutcome();
+        $this->assertNotNull($outcome);
+        $this->assertCount(3, $outcome->curve->points);           // one point per grid value
+        $this->assertSame(LeverThresholdService::SEED, $outcome->curve->seed);
+        $this->assertInstanceOf(CrossingVerdict::class, $outcome->crossing->verdict);
+    }
+
+    public function test_the_job_handle_runs_a_queued_sweep_to_completion(): void
+    {
+        $scenario = $this->scenario();
+        $runner = $this->runner();
+        $hash = $runner->inputsHash($scenario, LeverKey::RetirementAge, SweepMetric::Essentials, 0.90, self::GRID, 40);
+        $run = $runner->createRun($scenario, LeverKey::RetirementAge, SweepMetric::Essentials, 0.90, self::GRID, 40, $hash);
+
+        (new RunLeverThreshold($run->id))->handle($runner);
+
+        $this->assertSame(SimulationStatus::Done, $run->fresh()->status);
+        $this->assertNotNull($run->fresh()->thresholdOutcome());
+    }
+
+    public function test_re_requesting_identical_inputs_is_a_cache_hit(): void
+    {
+        $scenario = $this->scenario();
+
+        $first = $this->request($scenario)->fresh();
+        $this->assertSame(SimulationStatus::Done, $first->status);
+
+        $second = $this->request($scenario);
+
+        $this->assertSame($first->id, $second->id);            // the same stored result
+        $this->assertSame(1, ThresholdResult::count());        // no second sweep queued
+    }
+
+    public function test_a_changed_parameter_is_a_cache_miss(): void
+    {
+        $scenario = $this->scenario();
+
+        $this->request($scenario, paths: 40);
+        $this->request($scenario, paths: 60); // different paths -> different inputs hash
+
+        $this->assertSame(2, ThresholdResult::count());
+    }
+
+    public function test_cancelling_before_it_starts_stops_it_and_stores_no_curve(): void
+    {
+        $scenario = $this->scenario();
+        $runner = $this->runner();
+        $hash = $runner->inputsHash($scenario, LeverKey::RetirementAge, SweepMetric::Essentials, 0.90, self::GRID, 40);
+        $run = $runner->createRun($scenario, LeverKey::RetirementAge, SweepMetric::Essentials, 0.90, self::GRID, 40, $hash);
+
+        $runner->cancel($run);
+        $this->assertSame(SimulationStatus::Cancelled, $run->fresh()->status);
+
+        $runner->execute($run->fresh());
+
+        $this->assertSame(SimulationStatus::Cancelled, $run->fresh()->status);
+        $this->assertNull($run->fresh()->thresholdOutcome());
+    }
+
+    public function test_a_dead_worker_marks_the_threshold_failed(): void
+    {
+        $scenario = $this->scenario();
+        $runner = $this->runner();
+        $hash = $runner->inputsHash($scenario, LeverKey::RetirementAge, SweepMetric::Essentials, 0.90, self::GRID, 40);
+        $run = $runner->createRun($scenario, LeverKey::RetirementAge, SweepMetric::Essentials, 0.90, self::GRID, 40, $hash);
+
+        (new RunLeverThreshold($run->id))->failed(new RuntimeException('worker died'));
+
+        $run->refresh();
+        $this->assertSame(SimulationStatus::Failed, $run->status);
+        $this->assertStringContainsString('worker died', (string) $run->error);
+    }
+}

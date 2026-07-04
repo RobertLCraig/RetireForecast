@@ -9,6 +9,7 @@ use App\Enums\ScenarioVariant;
 use App\Enums\SimulationStatus;
 use App\Forecast\BuilderStateDelta;
 use App\Forecast\HouseholdAssembler;
+use App\Forecast\ResultPresenter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -68,7 +69,7 @@ class Scenario extends Model
      * Append a completed run's headline figures (for the chosen strategy) to the
      * edit-surviving snapshot history, keeping only the last two (current + previous), so
      * the results page can diff a run against the one before — even across an input edit
-     * (which deletes the runs themselves). {@see \App\Forecast\ResultPresenter::runDiff()}.
+     * (which deletes the runs themselves). {@see ResultPresenter::runDiff()}.
      */
     public function recordResultSnapshot(SimulationResult $sim): void
     {
@@ -112,6 +113,12 @@ class Scenario extends Model
     public function simulationRuns(): HasMany
     {
         return $this->hasMany(SimulationRun::class);
+    }
+
+    /** Computed decision-support lever thresholds for this scenario (invalidated on edit, like runs). */
+    public function thresholdResults(): HasMany
+    {
+        return $this->hasMany(ThresholdResult::class);
     }
 
     /**

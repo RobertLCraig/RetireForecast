@@ -6,6 +6,7 @@ namespace App\Livewire;
 
 use App\Compliance\Interpretation;
 use App\Enums\ScenarioStatus;
+use App\Export\ExportDisclaimer;
 use App\Forecast\AssumptionComparison;
 use App\Forecast\BuilderStateDelta;
 use App\Forecast\LumpSumTaxShock;
@@ -199,13 +200,6 @@ class ScenarioResults extends Component
         return $state;
     }
 
-    /** Prepended to every CSV export so a downloaded figure never travels without its disclaimer. */
-    private const EXPORT_DISCLAIMER = [
-        'RetireForecast — guidance only, not financial advice.',
-        'These figures illustrate the consequences of the inputs and assumptions you entered; they are not a personal recommendation.',
-        'Free, impartial guidance: Pension Wise and MoneyHelper (moneyhelper.org.uk), or an FCA-regulated adviser.',
-    ];
-
     public function mount(Scenario $scenario): void
     {
         abort_unless($scenario->user_id === auth()->id(), 403);
@@ -262,7 +256,7 @@ class ScenarioResults extends Component
 
         return response()->streamDownload(function () use ($fan): void {
             $out = fopen('php://output', 'wb');
-            foreach (self::EXPORT_DISCLAIMER as $line) {
+            foreach (ExportDisclaimer::LINES as $line) {
                 fputcsv($out, [$line]);
             }
             fputcsv($out, []);
@@ -313,7 +307,7 @@ class ScenarioResults extends Component
 
         return response()->streamDownload(function () use ($ladder): void {
             $out = fopen('php://output', 'wb');
-            foreach (self::EXPORT_DISCLAIMER as $line) {
+            foreach (ExportDisclaimer::LINES as $line) {
                 fputcsv($out, [$line]);
             }
             fputcsv($out, []);

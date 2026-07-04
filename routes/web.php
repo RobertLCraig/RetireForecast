@@ -6,6 +6,7 @@ use App\Http\Controllers\DisclaimerController;
 use App\Http\Controllers\MethodologyController;
 use App\Http\Controllers\QuickWhatIfController;
 use App\Http\Controllers\ScenarioPdfController;
+use App\Http\Controllers\ThresholdCsvController;
 use App\Http\Middleware\EnsureDisclaimerAcknowledged;
 use App\Livewire\AccountSecurity;
 use App\Livewire\Dashboard;
@@ -57,5 +58,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/scenarios/{scenario}/compare', ScenarioCompare::class)->name('scenarios.compare');
         Route::get('/scenarios/{scenario}/results', ScenarioResults::class)->name('scenarios.results');
         Route::get('/scenarios/{scenario}/results/pdf', [ScenarioPdfController::class, 'download'])->name('scenarios.results.pdf');
+        Route::get('/scenarios/{scenario}/threshold/{threshold}/csv', [ThresholdCsvController::class, 'download'])->name('scenarios.threshold.csv');
     });
 });

@@ -132,14 +132,23 @@ context + the optimism caveats.
 the engine levers), sweeps it and finds the crossing, on a **fixed seed** with **default per-lever grids** that
 bracket the scenario's figures; `SweepEngine::sweep` gained an `onProgress(done, total)` hook. Feature-tested
 (a real scenario computes a retirement-age threshold with per-point progress; reproducible; grids bracket).
-**What REMAINS for Phase 1:** the **queued job** (`RunLeverThreshold`, mirroring `RunScenarioSimulation` —
-progress/cancel/terminal), the **persisted `ThresholdResult`** (model + migration + a mapper for the curve/
-crossing, keyed by an **inputs hash** with seed/paths/grid/engine-version) and **edit-invalidation** (the same
-mechanism `SimulationRun` uses), plus the **CSV export** carrying the `EXPORT_DISCLAIMER`. Best built fresh —
-it is DB + queue + invalidation code where the data-integrity rules bite hardest.
-- **Done when:** a scenario can compute a buy-price threshold via the queue with live progress; re-running with
-  identical inputs is a cache hit; editing an input invalidates it. **Tests:** job progress/cancel; invalidation
-  on edit; provenance stamped; CSV export carries the `EXPORT_DISCLAIMER`.
+**Phase 1 is now COMPLETE (2026-07-05).** The queued backend was built mirroring the `SimulationRun` triad
+(DECISIONS 2026-07-05): a single `ThresholdResult` model + migration that is both the run (lifecycle + live
+progress + cancel, reusing `SimulationStatus`) and the store (the mapped `ThresholdOutcome` = curve + crossing in
+the encrypted `payload`); `ThresholdOutcomeMapper` (float lever-space, not pence); `ThresholdRunner` (mirrors
+`SimulationRunner` — createRun / request-or-**cache-hit** / execute-with-progress-and-cancel) + `RunLeverThreshold`
+job (mirrors `RunScenarioSimulation`). **Two-layer staleness:** primary delete-on-edit (`ScenarioBuilder` deletes
+`thresholdResults()` like runs, cascading to children) + belt-and-braces **inputs hash** (sha256 of the effective
+builder-state + engine version + lever/metric/target/grid/paths/seed) so a re-request is a cache hit and a stale
+figure never surfaces. **Provenance** frozen per record (seed/paths/grid/engine+tax-year versions/assumption
+snapshot). **CSV export**: an owner-scoped route + `ThresholdCsvExporter` carrying the shared
+`App\Export\ExportDisclaimer` (extracted from `ScenarioResults` — one home for the guidance wording), the crossing
+verdict (a band, S3) and the full grid. Default 2,000 paths/point (`ThresholdRunner::DEFAULT_PATHS`); the
+preview→confirm path ladder is a Phase-2 concern. Tested: provenance + queue dispatch; sweep-to-done with a curve;
+job handle; cache-hit / cache-miss; cancel-before-start; dead-worker → Failed; edit invalidates (base + children);
+mapper round-trip; CSV disclaimer + owner-scoping. **Next: Phase 2 UI.**
+- **Done when (met):** a scenario computes a threshold via the queue with live progress; re-running with identical
+  inputs is a cache hit; editing an input invalidates it; the CSV carries the disclaimer.
 
 ### Phase 2 — The simple view (non-numbers decision-maker)
 On the results page, a **"How far can we go?"** panel: the lever slider drives a **live net-position line redraw**
