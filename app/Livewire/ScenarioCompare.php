@@ -272,6 +272,8 @@ class ScenarioCompare extends Component
             'finalYear' => $forecast->finalCalendarYear,
             'usableWealth' => $forecast->terminalUsableWealth->format(),
             'totalWealth' => $forecast->terminalTotalWealth->format(),
+            // Inheritance Tax due across the household's deaths, when this plan models it (else null).
+            'ihtDue' => $forecast->iht?->total->format(),
             'orphans' => $plan->orphanedOverrides(),
             'editUrl' => route('scenarios.edit', $plan),
             'resultsUrl' => route('scenarios.results', $plan),

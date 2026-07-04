@@ -456,6 +456,10 @@ class ScenarioResults extends Component
             // How to claim the Pension Credit the forecast models (only when it credits any) —
             // it is means-tested, so it has to be applied for, and is heavily under-claimed.
             'pensionCredit' => ResultPresenter::pensionCreditGuidance($forecast),
+            // Inheritance Tax on the estate at death (only when the IHT toggle is on): the estate
+            // valued, the nil-rate bands applied, and the tax due at each death — relationship-
+            // status aware. Deterministic, so it shows immediately like the ladder.
+            'iht' => ResultPresenter::ihtPanel($forecast->iht, $household),
             // Deterministic year-by-year cashflow ladder (income by source -> tax -> spend
             // -> wealth) for the selected housing strategy. Shows immediately, before any run.
             'ladder' => ResultPresenter::ladder($ladderForecast, $this->scenario->safetyBufferMonths()),

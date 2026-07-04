@@ -110,6 +110,35 @@
         </table>
     @endif
 
+    @if ($iht)
+        <h2>Inheritance tax on your estate</h2>
+        <p class="muted">
+            @if ($iht['relationship'] === 'married')
+                Modelled as married / civil partnership: the first death passes to the survivor free of Inheritance Tax, and both allowances apply on the second death.
+            @elseif ($iht['relationship'] === 'cohabiting')
+                Modelled as cohabiting: no spouse exemption and no shared allowances, so the estate is taxed more heavily.
+            @endif
+            Figures in today's money; headline allowances only (not gifts, trusts or reliefs).
+        </p>
+        <table>
+            <tbody>
+                <tr><td>Estate at the final death</td><td class="num">£{{ number_format($iht['secondDeath']['estate']) }}</td></tr>
+                <tr><td>Nil-rate band applied</td><td class="num">£{{ number_format($iht['secondDeath']['nrb']) }}</td></tr>
+                @if ($iht['secondDeath']['rnrb'] > 0)
+                    <tr><td>Residence nil-rate band applied</td><td class="num">£{{ number_format($iht['secondDeath']['rnrb']) }}</td></tr>
+                @endif
+                <tr><td>Taxable estate</td><td class="num">£{{ number_format($iht['secondDeath']['taxable']) }}</td></tr>
+                @if ($iht['firstDeath'] && $iht['firstDeath']['tax'] > 0)
+                    <tr><td>Inheritance Tax on the first death</td><td class="num">£{{ number_format($iht['firstDeath']['tax']) }}</td></tr>
+                @endif
+                <tr><td><strong>Inheritance Tax due</strong></td><td class="num"><strong>£{{ number_format($iht['total']) }}</strong></td></tr>
+            </tbody>
+        </table>
+        @if ($iht['pensionsIncluded'])
+            <p class="muted">Unused pension pots are counted in the estate (the April 2027 rule).</p>
+        @endif
+    @endif
+
     <h2>Spending budget</h2>
     <table>
         <thead>

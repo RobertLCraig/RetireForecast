@@ -17,6 +17,7 @@
         ['id' => 'sec-budget', 'label' => 'Your spending plan', 'show' => ! empty($budget['tiers'])],
         ['id' => 'sec-plsa', 'label' => 'PLSA living standards', 'show' => (bool) $plsa],
         ['id' => 'sec-income-floor', 'label' => 'Spending vs secure income', 'show' => (bool) $incomeFloor],
+        ['id' => 'sec-iht', 'label' => 'Inheritance tax', 'show' => (bool) ($iht ?? null)],
         ['id' => 'sec-withdrawal-sequencing', 'label' => 'How you draw your money', 'show' => (bool) $withdrawal],
         ['id' => 'sec-stress', 'label' => 'Stress test: past crises', 'show' => (bool) $stressTest],
         ['id' => 'sec-assumptions', 'label' => 'Assumptions used', 'show' => true],
@@ -661,6 +662,67 @@
             @endif
 
             <x-signpost class="mt-4" />
+        </section>
+    @endif
+
+    {{-- Inheritance tax on the estate at death (only when the IHT toggle is on). Education only:
+         the headline nil-rate bands, not a full estate computation. Deterministic; shows pre-run. --}}
+    @if ($iht)
+        <section id="sec-iht" aria-labelledby="iht-heading" class="{{ $card }} scroll-mt-6">
+            <h2 id="iht-heading" class="text-xl font-semibold text-gray-900">Inheritance tax on your estate</h2>
+            <p class="mt-1 text-sm text-gray-600">
+                @if ($iht['relationship'] === 'married')
+                    You're modelled as <strong>married or in a civil partnership</strong>: on the first death everything passes to the survivor free of Inheritance Tax, and both of your allowances are available on the second death.
+                @elseif ($iht['relationship'] === 'cohabiting')
+                    You're modelled as <strong>cohabiting (not married or in a civil partnership)</strong>: there is <strong>no spouse exemption</strong> on the first death and you cannot share allowances, so the same estate is taxed more heavily than a married couple's.
+                @else
+                    Inheritance Tax on a single estate: one set of allowances applies.
+                @endif
+                All figures are in today's money.
+            </p>
+
+            <dl class="mt-4 grid gap-4 sm:grid-cols-3">
+                <div class="rounded-md bg-gray-50 p-4">
+                    <dt class="text-sm text-gray-500">Estate at the final death</dt>
+                    <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">£{{ number_format($iht['secondDeath']['estate']) }}</dd>
+                    <dd class="mt-1 text-xs text-gray-500">everything you're modelled to leave (savings, investments, pensions and home).</dd>
+                </div>
+                <div class="rounded-md bg-gray-50 p-4">
+                    <dt class="text-sm text-gray-500">Sheltered by allowances</dt>
+                    <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">£{{ number_format($iht['secondDeath']['nrb'] + $iht['secondDeath']['rnrb']) }}</dd>
+                    <dd class="mt-1 text-xs text-gray-500">nil-rate band £{{ number_format($iht['secondDeath']['nrb']) }}{{ $iht['secondDeath']['rnrb'] > 0 ? ' + residence band £'.number_format($iht['secondDeath']['rnrb']) : '' }}.</dd>
+                </div>
+                <div class="rounded-md bg-gray-50 p-4">
+                    <dt class="text-sm text-gray-500">Inheritance Tax due</dt>
+                    <dd class="mt-1 text-2xl font-semibold {{ $iht['anyTaxDue'] ? 'text-gray-900' : 'text-green-700' }} tabular-nums">£{{ number_format($iht['total']) }}</dd>
+                    <dd class="mt-1 text-xs text-gray-500">
+                        @if ($iht['anyTaxDue'])
+                            40% on the £{{ number_format($iht['secondDeath']['taxable']) }} above your allowances{{ $iht['firstDeath'] && $iht['firstDeath']['tax'] > 0 ? ' (plus £'.number_format($iht['firstDeath']['tax']).' on the first death)' : '' }}.
+                        @else
+                            your estate is within the allowances, so no Inheritance Tax is modelled.
+                        @endif
+                    </dd>
+                </div>
+            </dl>
+
+            @if ($iht['firstDeath'])
+                <p class="mt-3 text-sm text-gray-600">
+                    @if ($iht['firstDeath']['spouseExempt'])
+                        <strong>First death:</strong> the estate (£{{ number_format($iht['firstDeath']['estate']) }}) passes to the surviving spouse or civil partner with no Inheritance Tax, and their unused allowances carry over to the second death.
+                    @else
+                        <strong>First death:</strong> the deceased's share of the estate (£{{ number_format($iht['firstDeath']['estate']) }}) passing to a cohabiting partner is a chargeable transfer, so £{{ number_format($iht['firstDeath']['tax']) }} of Inheritance Tax is modelled then.
+                    @endif
+                </p>
+            @endif
+
+            @if ($iht['pensionsIncluded'])
+                <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800" role="note">Unused pension pots are counted as part of the estate — the rule due from <strong>April 2027</strong> (Finance Act 2026). Before then they sat outside it, so this raises the taxable estate.</p>
+            @endif
+
+            <p class="mt-3 text-xs text-gray-500">This shows the <strong>headline allowances</strong> only (nil-rate band £325,000 and residence nil-rate band up to £175,000 per person, tapered away above a £2m estate), not a full estate calculation: lifetime gifts and the 7-year rule, trusts, business or agricultural relief, and the reduced charity rate are not modelled. Deaths are valued at the plan's representative ages. Verified against gov.uk on 2026-06-27.</p>
+
+            <x-signpost class="mt-3" />
+            <p class="mt-2 text-xs text-gray-600">Estate planning is specialised: consider a solicitor or a <a class="underline" href="https://www.step.org/public" rel="noopener">STEP-qualified adviser</a>, and see <a class="underline" href="https://www.gov.uk/inheritance-tax" rel="noopener">gov.uk/inheritance-tax</a>.</p>
         </section>
     @endif
 

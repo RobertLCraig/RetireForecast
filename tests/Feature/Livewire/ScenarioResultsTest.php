@@ -60,6 +60,18 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('tax paid across the plan');
     }
 
+    public function test_the_iht_panel_shows_only_when_the_toggle_is_on(): void
+    {
+        // Deterministic, so it renders without a completed run — like the withdrawal panel.
+        Livewire::test(ScenarioResults::class, ['scenario' => ScenarioFixture::rich($this->user, ['ihtModelled' => true])])
+            ->assertSee('Inheritance tax on your estate')
+            ->assertSee('married or in a civil partnership');
+
+        // With the toggle off (the default), the estate section is absent — proving the toggle drives it.
+        Livewire::test(ScenarioResults::class, ['scenario' => ScenarioFixture::rich($this->user, ['ihtModelled' => false])])
+            ->assertDontSee('Inheritance tax on your estate');
+    }
+
     public function test_the_fan_chart_ships_with_an_accessible_data_table(): void
     {
         Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])

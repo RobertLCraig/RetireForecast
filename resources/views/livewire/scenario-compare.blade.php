@@ -85,6 +85,7 @@
     @endif
 
     <div class="mt-6 overflow-x-auto rounded-lg border border-gray-200 bg-white" tabindex="0">
+        @php $showIht = collect($plans)->contains(fn ($p) => $p['ihtDue'] !== null); @endphp
         <table class="min-w-full divide-y divide-gray-200 text-sm">
             <caption class="sr-only">Your base plan and its what-ifs compared on their central projection.</caption>
             <thead class="bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -95,6 +96,7 @@
                     <th scope="col" class="px-4 py-3">Money lasts</th>
                     <th scope="col" class="px-4 py-3">Usable wealth left (excl. home)</th>
                     <th scope="col" class="px-4 py-3">Total wealth left (incl. home)</th>
+                    @if ($showIht)<th scope="col" class="px-4 py-3">Inheritance tax</th>@endif
                     <th scope="col" class="px-4 py-3"><span class="sr-only">Links</span></th>
                 </tr>
             </thead>
@@ -138,6 +140,7 @@
                         </td>
                         <td class="px-4 py-3 tabular-nums text-gray-900">{{ $plan['usableWealth'] }}</td>
                         <td class="px-4 py-3 tabular-nums text-gray-900">{{ $plan['totalWealth'] }}</td>
+                        @if ($showIht)<td class="px-4 py-3 tabular-nums text-gray-900">{{ $plan['ihtDue'] ?? '— not modelled' }}</td>@endif
                         <td class="px-4 py-3 text-right">
                             <a href="{{ $plan['resultsUrl'] }}" class="font-medium text-blue-600 hover:text-blue-700">Results</a>
                             <span class="text-gray-500" aria-hidden="true">·</span>

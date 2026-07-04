@@ -17,6 +17,7 @@ use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\Person;
+use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestOutcome;
 use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestResult;
@@ -24,12 +25,14 @@ use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\HousingPurchase;
+use RetireForecast\FinanceEngine\Iht\IhtOutcome;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\MonteCarlo\CareImpact;
 use RetireForecast\FinanceEngine\MonteCarlo\LongevityDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
+use RetireForecast\FinanceEngine\Support\WarningCode;
 
 /**
  * Turns a run's three variant {@see SimulationResult}s into everything the results
@@ -172,6 +175,59 @@ final class ResultPresenter
             'reaches95' => self::formatPercent($l->reaches95),
             'reaches100' => self::formatPercent($l->reaches100),
         ];
+    }
+
+    /**
+     * The Inheritance Tax outcome for the panel: the estate valued at the final death, the
+     * nil-rate bands applied, the tax due at each death and the total — in real (today's money)
+     * terms, as the engine computed them. Relationship status is stated plainly so the reader
+     * sees the assumption. Null when IHT is not modelled (the toggle off). Education only: it
+     * shows the headline bands, not a full estate computation (gifts, trusts, reliefs excluded).
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function ihtPanel(?IhtOutcome $iht, Household $household): ?array
+    {
+        if ($iht === null) {
+            return null;
+        }
+
+        $couple = count($household->persons) === 2;
+        $second = $iht->secondDeath;
+
+        $panel = [
+            'couple' => $couple,
+            'relationship' => $couple
+                ? ($household->relationshipStatus === RelationshipStatus::MarriedOrCivilPartnership ? 'married' : 'cohabiting')
+                : 'single',
+            'total' => self::pounds($iht->total),
+            'anyTaxDue' => $iht->total->isPositive(),
+            'pensionsIncluded' => $second->pensionsIncluded,
+            'secondDeath' => [
+                'estate' => self::pounds($second->totalEstate),
+                'nrb' => self::pounds($second->nilRateBandUsed),
+                'rnrb' => self::pounds($second->residenceNilRateBandUsed),
+                'taxable' => self::pounds($second->taxableEstate),
+                'tax' => self::pounds($second->tax),
+            ],
+            'firstDeath' => null,
+        ];
+
+        if ($iht->firstDeath !== null) {
+            $first = $iht->firstDeath;
+            $panel['firstDeath'] = [
+                'estate' => self::pounds($first->totalEstate),
+                'tax' => self::pounds($first->tax),
+                // Spouse exemption vs simply under the threshold: the engine flags the exempt case.
+                'spouseExempt' => in_array(
+                    WarningCode::IHT_SPOUSE_EXEMPTION,
+                    array_map(static fn ($w) => $w->code, $first->warnings),
+                    true,
+                ),
+            ];
+        }
+
+        return $panel;
     }
 
     /**
