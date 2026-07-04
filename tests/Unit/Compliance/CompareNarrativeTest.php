@@ -55,6 +55,22 @@ final class CompareNarrativeTest extends TestCase
         $this->assertStringContainsString('Stay put is the strongest plan', $lines[0]);
     }
 
+    public function test_among_plans_that_run_out_the_one_failing_earliest_is_the_weakest(): void
+    {
+        // Both run out with £0 spendable left (usable wealth floors at £0), so terminal wealth can't
+        // tell them apart — the plan that runs short EARLIER must be named the weakest, not an
+        // arbitrary pick. (The bug this guards: a 2042 failure was named weaker than a 2029 one.)
+        $lines = Interpretation::compareNarrative([
+            ['name' => 'Forced sale to rent', 'forecast' => $this->forecastResult(lasts: false, fullSpend: false, depletion: 2042, usablePounds: 0)],
+            ['name' => 'Stay put', 'forecast' => $this->forecastResult(lasts: true, fullSpend: true, depletion: null, usablePounds: 300_000)],
+            ['name' => 'Let out & rent elsewhere', 'forecast' => $this->forecastResult(lasts: false, fullSpend: false, depletion: 2029, usablePounds: 0)],
+        ]);
+
+        $this->assertStringContainsString('Stay put is the strongest plan', $lines[0]);
+        $this->assertStringContainsString('Let out & rent elsewhere is the weakest', $lines[1]);
+        $this->assertStringContainsString('runs short in 2029', $lines[1]);
+    }
+
     public function test_a_single_plan_has_nothing_to_compare(): void
     {
         $this->assertSame([], Interpretation::compareNarrative([

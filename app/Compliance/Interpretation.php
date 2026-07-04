@@ -96,9 +96,15 @@ final class Interpretation
             return [];
         }
 
-        // Rank: the money lasting beats not lasting; then more spendable wealth left.
-        usort($plans, static fn (array $a, array $b): int => [self::lasts($b['forecast']), $b['forecast']->terminalUsableWealth->pence]
-            <=> [self::lasts($a['forecast']), $a['forecast']->terminalUsableWealth->pence]);
+        // Rank: the money lasting beats not lasting; among plans that run out, lasting LONGER
+        // (a later depletion year) is less weak; then more spendable wealth left. The depletion
+        // year is the load-bearing discriminator at the weak end — terminal usable wealth floors
+        // at £0, so every plan that runs out ties there, and without the year the "weakest" would
+        // be an arbitrary pick between them (e.g. a plan failing in 2042 named weaker than one
+        // failing in 2029). Null depletion (never runs out) sorts as +∞ (best).
+        $depletion = static fn (ForecastResult $f): int => $f->depletionCalendarYear ?? PHP_INT_MAX;
+        usort($plans, static fn (array $a, array $b): int => [self::lasts($b['forecast']), $depletion($b['forecast']), $b['forecast']->terminalUsableWealth->pence]
+            <=> [self::lasts($a['forecast']), $depletion($a['forecast']), $a['forecast']->terminalUsableWealth->pence]);
 
         $best = $plans[0];
         $worst = $plans[count($plans) - 1];
