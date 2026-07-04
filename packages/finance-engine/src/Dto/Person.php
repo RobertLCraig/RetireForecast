@@ -40,4 +40,22 @@ final class Person
          */
         public readonly bool $receivesDisabilityBenefit = false,
     ) {}
+
+    /** The same person with a different planned retirement age (immutable; e.g. a sweep lever). */
+    public function withPlannedRetirementAge(?int $plannedRetirementAge): self
+    {
+        return new self(
+            $this->id,
+            $this->dob,
+            $this->sex,
+            $this->employmentStatus,
+            $this->grossSalary,
+            $this->salaryGrowth,
+            $plannedRetirementAge,
+            $this->niCategory,
+            $this->name,
+            $this->longevity,
+            $this->receivesDisabilityBenefit,
+        );
+    }
 }
