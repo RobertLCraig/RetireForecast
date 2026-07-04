@@ -174,6 +174,45 @@ final class SweepEngineTest extends TestCase
         $this->assertTrue($found, 'a deterministic median pass should over-promise vs the MC target on a survivor-cliff household');
     }
 
+    public function test_the_2d_frontier_is_a_threshold_of_one_lever_conditioned_on_another(): void
+    {
+        // S2: the spend the money can sustain is not one number — it depends on how much cash the
+        // household holds. The frontier of the spend threshold vs starting cash should therefore
+        // RISE with cash: more cash affords a higher sustainable spend.
+        $frontier = $this->engine()->frontier(
+            $this->cashPoorCouple(),
+            $this->settings(),
+            AssumptionSetLibrary::default(),
+            new CohortLifeTable,
+            new EssentialSpendLever,                              // threshold lever (swept)
+            [24_000.0, 30_000.0, 36_000.0, 42_000.0, 48_000.0],  // spend grid
+            new StartingCashLever,                               // condition lever (held)
+            [100_000.0, 300_000.0, 500_000.0],                  // cash grid
+            SweepMetric::Essentials,
+            targetProbability: 0.90,
+            nPaths: 200,
+            seed: 4,
+        );
+
+        $this->assertCount(3, $frontier->points);
+
+        // Collect the spend ceiling at each cash level (only where a real crossing was found).
+        $ceilings = [];
+        foreach ($frontier->points as $point) {
+            if ($point->crossing->hasThreshold()) {
+                $ceilings[] = $point->crossing->estimate;
+            }
+        }
+
+        // The frontier is meaningful (several genuine thresholds) and monotone: more cash never
+        // lowers the sustainable-spend ceiling, and the top of the cash range clears the bottom.
+        $this->assertGreaterThanOrEqual(2, count($ceilings), 'the frontier should produce real thresholds');
+        for ($i = 1; $i < count($ceilings); $i++) {
+            $this->assertGreaterThanOrEqual($ceilings[$i - 1], $ceilings[$i], 'more cash should not lower the spend ceiling');
+        }
+        $this->assertGreaterThan($ceilings[0], end($ceilings), 'more cash affords a higher sustainable spend');
+    }
+
     /** A couple with State Pensions but no other assets, spending above their income — success rises with cash. */
     private function cashPoorCouple(): Household
     {

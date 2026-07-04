@@ -82,6 +82,54 @@ final class SweepEngine
     }
 
     /**
+     * The 2-D frontier (S2): the $thresholdLever's crossing of $targetProbability at each held
+     * value of $conditionLever. For each condition value it applies that lever, then sweeps the
+     * threshold lever over $thresholdGrid on the pinned seed and finds the crossing — so the answer
+     * is "the threshold of A as a function of B", not a single unconditional number.
+     *
+     * The two levers must vary different things (else the second `apply` overwrites the first);
+     * that is the caller's responsibility, as in Compare's variant construction.
+     *
+     * @param  list<float>  $thresholdGrid  the values swept for the threshold lever at each condition
+     * @param  list<float>  $conditionGrid  the held values of the condition lever
+     */
+    public function frontier(
+        Household $household,
+        ForecastSettings $settings,
+        AssumptionSet $assumptions,
+        CohortLifeTable $lifeTable,
+        SweepLever $thresholdLever,
+        array $thresholdGrid,
+        SweepLever $conditionLever,
+        array $conditionGrid,
+        SweepMetric $metric,
+        float $targetProbability,
+        int $nPaths,
+        int $seed,
+    ): Frontier {
+        sort($conditionGrid);
+        $points = [];
+        foreach ($conditionGrid as $conditionValue) {
+            $held = $conditionLever->apply($household, $settings, $conditionValue);
+            $curve = $this->sweep(
+                $held->household, $held->settings, $assumptions, $lifeTable,
+                $thresholdLever, $thresholdGrid, $metric, $nPaths, $seed,
+            );
+            $points[] = new FrontierPoint($conditionValue, $this->findCrossing($curve, $targetProbability));
+        }
+
+        return new Frontier(
+            points: $points,
+            thresholdLeverName: $thresholdLever->name(),
+            conditionLeverName: $conditionLever->name(),
+            metric: $metric,
+            targetProbability: $targetProbability,
+            pathsPerPoint: $nPaths,
+            seed: $seed,
+        );
+    }
+
+    /**
      * Find where the curve crosses $targetProbability, as a band with an honest verdict (S3).
      * A point is on the "safe" side when its success probability is at or above the target;
      * a crossing is an adjacent pair straddling that boundary. No crossing and all-safe is

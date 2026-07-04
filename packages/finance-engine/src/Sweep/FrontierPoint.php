@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+namespace RetireForecast\FinanceEngine\Sweep;
+
+/**
+ * One point of a 2-D frontier: the value a *condition* lever is held at, and where the *threshold*
+ * lever then crosses the target ({@see Crossing}). E.g. "at retirement age 70, the buy-price
+ * ceiling is ~£300k" is one FrontierPoint (condition = retirement age 70, crossing = the buy-price
+ * threshold there).
+ */
+final class FrontierPoint
+{
+    public function __construct(
+        public readonly float $conditionValue,
+        public readonly Crossing $crossing,
+    ) {}
+}
