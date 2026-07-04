@@ -76,7 +76,8 @@ class ScenarioBuilder extends Component
     /** Which top-level form section lives on which step — drives the jump-to-first-error on save. */
     private const STEP_OF_FIELD = [
         'name' => 1, 'householdName' => 1, 'region' => 1, 'baseTaxYear' => 1,
-        'variant' => 1, 'assumptionSetId' => 1, 'assumptionOverrides' => 1, 'ihtModelled' => 1, 'people' => 1,
+        'variant' => 1, 'assumptionSetId' => 1, 'assumptionOverrides' => 1, 'ihtModelled' => 1,
+        'relationshipStatus' => 1, 'people' => 1,
         'pensions' => 2, 'incomeStreams' => 2,
         'accounts' => 3, 'property' => 3, 'hasProperty' => 3,
         'expense' => 4, 'expenseLines' => 4, 'oneOffCosts' => 4,
@@ -96,6 +97,13 @@ class ScenarioBuilder extends Component
     public string $variant = 'rent';
 
     public bool $ihtModelled = false;
+
+    /**
+     * How the two people are related (married/civil-partnership vs cohabiting), which drives the
+     * Inheritance Tax treatment on death. Defaults to married so an existing scenario keeps today's
+     * spousal treatment; only meaningful for a two-person household.
+     */
+    public string $relationshipStatus = 'married_or_civil_partnership';
 
     /**
      * Model the risk of late-life residential/nursing care fees in the Monte Carlo (off by
@@ -217,6 +225,7 @@ class ScenarioBuilder extends Component
             'region' => ['required', Rule::in(['england_wales_ni', 'scotland']), $this->regionSupported(...)],
             'baseTaxYear' => ['required', Rule::in(['2025-26', '2026-27'])],
             'variant' => ['required', Rule::in(['buy_outright', 'rent', 'stay_put'])],
+            'relationshipStatus' => ['required', Rule::in(['married_or_civil_partnership', 'cohabiting'])],
             'assumptionSetId' => ['nullable', 'integer', 'exists:assumption_sets,id'],
             // Editable economic assumptions: each is an optional override of the chosen
             // preset's figure (empty = keep the preset). Real growth rates may be negative;
@@ -348,6 +357,7 @@ class ScenarioBuilder extends Component
     {
         return [
             'householdName' => 'household name',
+            'relationshipStatus' => 'relationship status',
             'people.*.dob' => 'date of birth',
             'people.*.grossSalary' => 'gross salary',
             'expense.essential' => 'essential annual spend',
@@ -761,6 +771,7 @@ class ScenarioBuilder extends Component
             'baseTaxYear' => $this->baseTaxYear,
             'variant' => $this->variant,
             'ihtModelled' => $this->ihtModelled,
+            'relationshipStatus' => $this->relationshipStatus,
             'assumptionSetId' => $this->assumptionSetId,
             'people' => $this->people,
             'expense' => $expense,

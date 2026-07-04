@@ -11,6 +11,7 @@ use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
+use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -35,6 +36,25 @@ class HouseholdAssemblerTest extends TestCase
 
         $this->assertEquals(HouseholdFixture::household(), $assembled['household']);
         $this->assertEquals(HouseholdFixture::housingAction(), $assembled['housingAction']);
+    }
+
+    public function test_relationship_status_defaults_to_married_when_absent_and_maps_when_set(): void
+    {
+        $state = BuilderStateFixture::full();
+
+        // Absent key → married (so an existing scenario keeps today's spousal treatment).
+        unset($state['relationshipStatus']);
+        $this->assertSame(
+            RelationshipStatus::MarriedOrCivilPartnership,
+            (new HouseholdAssembler)->household($state)->relationshipStatus,
+        );
+
+        // Explicit cohabiting flows through.
+        $state['relationshipStatus'] = 'cohabiting';
+        $this->assertSame(
+            RelationshipStatus::Cohabiting,
+            (new HouseholdAssembler)->household($state)->relationshipStatus,
+        );
     }
 
     public function test_selling_costs_assemble_each_component_on_its_own_basis(): void

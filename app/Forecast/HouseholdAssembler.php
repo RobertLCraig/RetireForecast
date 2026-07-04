@@ -24,6 +24,7 @@ use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
+use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
@@ -80,6 +81,9 @@ final class HouseholdAssembler
             primaryResidence: ($state['hasProperty'] ?? false)
                 ? $this->property($state['property'] ?? [], (int) substr((string) ($state['baseTaxYear'] ?? '2026-27'), 0, 4))
                 : null,
+            // Relationship status drives the IHT treatment on death; a scenario predating the
+            // field (absent key) rehydrates as married, so its forecast is unchanged.
+            relationshipStatus: RelationshipStatus::from((string) ($state['relationshipStatus'] ?? 'married_or_civil_partnership')),
         );
     }
 

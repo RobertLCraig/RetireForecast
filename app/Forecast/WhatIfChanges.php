@@ -49,6 +49,7 @@ final class WhatIfChanges
         'isa' => 'ISA', 'gia' => 'GIA', 'cash' => 'Cash', 'premium_bonds' => 'Premium Bonds',
         'rental' => 'Rental', 'annuity' => 'Annuity', 'disability_benefit' => 'Disability benefit', 'other' => 'Other',
         'essential' => 'Essential', 'discretionary' => 'Discretionary', 'self_investment' => 'Self-investment',
+        'married_or_civil_partnership' => 'Married / civil partnership', 'cohabiting' => 'Cohabiting',
     ];
 
     /**
@@ -158,6 +159,7 @@ final class WhatIfChanges
         $topLevel = [
             'variant' => 'Primary option', 'region' => 'Tax region', 'baseTaxYear' => 'Base tax year',
             'ihtModelled' => 'Model inheritance tax', 'householdName' => 'Household name',
+            'relationshipStatus' => 'Relationship status',
             'assumptionSetId' => 'Assumption set', 'hasProperty' => 'Owns a property',
         ];
         if (count($segments) === 1) {

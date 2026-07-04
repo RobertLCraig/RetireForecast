@@ -32,6 +32,11 @@ final class Household
         public readonly array $accounts = [],
         public readonly array $incomeStreams = [],
         public readonly ?Property $primaryResidence = null,
+        // How the two people are related, which drives the Inheritance Tax treatment on death
+        // (spousal exemption + transferable nil-rate band vs a chargeable transfer). Defaulted to
+        // married/civil-partnership so every existing scenario keeps today's spousal behaviour;
+        // ignored for a single-person household. See {@see RelationshipStatus}.
+        public readonly RelationshipStatus $relationshipStatus = RelationshipStatus::MarriedOrCivilPartnership,
     ) {}
 
     public function person(string $id): ?Person

@@ -18,6 +18,7 @@ final class BuilderStateFixture
     {
         return [
             'householdName' => 'The Worked-Example Couple',
+            'relationshipStatus' => 'married_or_civil_partnership',
             'region' => 'england_wales_ni',
             'people' => [
                 ['id' => 'p1', 'dob' => '1961-04-02', 'sex' => 'male', 'employmentStatus' => 'employed',

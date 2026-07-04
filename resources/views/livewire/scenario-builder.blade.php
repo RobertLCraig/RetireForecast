@@ -242,6 +242,16 @@
                             @endforeach
                         </select>
                     </div>
+                    @if (count($people) > 1)
+                    <div>
+                        <label for="relationshipStatus" class="{{ $label }}">Relationship</label>
+                        <select id="relationshipStatus" wire:model="relationshipStatus" class="{{ $field }}">
+                            <option value="married_or_civil_partnership">Married / civil partnership</option>
+                            <option value="cohabiting">Cohabiting (not married)</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">Affects Inheritance Tax on death: a married couple pass their estate to each other tax-free and share both nil-rate bands; a cohabiting couple do not.</p>
+                    </div>
+                    @endif
                     <div class="sm:col-span-2">
                         <label class="flex items-center gap-2 text-sm text-gray-700">
                             <input type="checkbox" wire:model="ihtModelled" class="rounded border-gray-300">
