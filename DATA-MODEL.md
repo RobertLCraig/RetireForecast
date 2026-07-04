@@ -382,13 +382,16 @@ from the original plan, flagged inline:
   nil rates; `NationalInsuranceCalculatorTest` / `NiCategoryForecastTest`), and `Property::ownershipShare`
   (beneficial share scales wealth, means-test, IHT + sale proceeds/CGT per HMRC tenants-in-common
   apportionment; `OwnershipShareTest`).
-- **Open (found 2026-07-04): `Scenario::iht_modelled` / the IHT toggle is collected but unconsumed.** It is
-  stored, validated, and shown in what-if diffs + the GDPR export — but **no forecast reads it**;
-  `InheritanceTaxCalculator` (complete + tested) is never called in the pipeline, so turning IHT on changes no
-  result. This is the one open collected-but-unconsumed input. The fix — wire IHT into the forecast, made
-  relationship-status aware — is specced in **docs/PLAN-iht-and-relationship-status.md**; a new
-  `Household::relationshipStatus` (married/civil-partner vs cohabiting, default married) lands with it and drives
-  the spousal exemption + transferable nil-rate band (today a two-person household is implicitly treated as married).
+- **`Scenario::iht_modelled` / the IHT toggle — CLOSED 2026-07-04.** Was collected-but-unconsumed (stored,
+  validated, shown in diffs + GDPR export, but no forecast read it). Now wired: `ForecastSettings::modelIht`
+  drives `PathProjector` to value the estate at each death (via the new `Iht\EstateValuer` = liquid + home
+  equity, pensions separate) and compute the IHT due (`InheritanceTaxCalculator`), surfaced on
+  `ForecastResult::iht` (an `Iht\IhtOutcome`). Two new inputs land with it: **`Household::relationshipStatus`**
+  (married/civil-partner vs cohabiting, default married — drives the first-death spousal exemption + the
+  final-death transferable nil-rate band ×2) and **`ForecastSettings::homeToDescendants`** (builder toggle,
+  default on; unlocks the residence nil-rate band). Computed in nominal pounds at the death year (frozen bands
+  bite = real fiscal drag), deflated to real; pensions enter the estate only from April 2027. Completeness-
+  tested (`InheritanceTaxForecastTest`: the toggle bites, relationship status changes it). See DECISIONS 2026-07-04.
 - **Planned fields never materialised:** `DcPension::crystallisedValue`,
   `StatePensionEntitlement` `spa_override` + `triple_lock_assumption` (SPA computes from DOB;
   the triple-lock factor lives in the projector). Kept here rather than in the entity tables

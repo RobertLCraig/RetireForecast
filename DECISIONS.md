@@ -3,6 +3,44 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-04 — Inheritance Tax wired into the forecast, relationship-status aware (the toggle now bites)
+**Context:** the `ihtModelled` toggle was collected-but-unconsumed — stored, validated, shown in what-if diffs +
+the GDPR export, but read by no forecast, so turning it on changed nothing. A silent drop of exactly the class the
+completeness rule (CLAUDE.md) exists to catch. `InheritanceTaxCalculator` was complete + tested but called only by
+its own test and the Filament tax-audit page. Built per [docs/PLAN-iht-and-relationship-status.md](docs/PLAN-iht-and-relationship-status.md)
+in six green slices (see `git log`).
+
+**Decision — wire it in, and make it relationship-status aware.** `ForecastSettings::modelIht` drives `PathProjector`
+to value the estate at each death (a new pure `Iht\EstateValuer` = liquid + home equity, pensions kept separate) and
+compute the IHT due, surfaced on `ForecastResult::iht` (an `Iht\IhtOutcome`; null when off). A new
+`Household::relationshipStatus` (married/civil-partner vs cohabiting, default married) drives the treatment; today's
+implicit "everyone is married" is now explicit and overridable.
+
+**The modelling calls (the plan delegated these open questions to the executing agent; taken here, with reasons):**
+- **Nominal-at-death, deflated to real (open Q2 → option a).** The estate is valued in the death year's nominal
+  pounds against the frozen nil-rate bands, then the result is deflated to today's money. So a growing estate against
+  a frozen band is taxed more over the horizon — the real fiscal drag, matching how the projector already treats the
+  frozen income-tax thresholds. Deflating to real keeps the panel consistent with every other figure.
+- **Married: first death spousally exempt (£0, flagged), final death gets both bands (multiplier 2).** The
+  transferable NRB/RNRB, since the whole first estate passed spouse-exempt. **Cohabiting: first-death transfer to the
+  survivor is chargeable, one set of bands each.** So the same estate pays materially more IHT unmarried — the point
+  of the feature.
+- **Pensions in the estate only from a death in/after 2027 (the enacted April-2027 rule).** Gated on the death year,
+  not a manual toggle; immaterial in practice (deaths are decades out) but correct for an early death.
+- **RNRB "home to descendants" defaults ON when there is a home (open Q1).** A builder toggle (`homeToDescendants`,
+  sparse-stored when off) unlocks the £175k-per-person residence band; the £2m taper still applies (a large estate
+  loses it, correctly).
+- **A first death splits the jointly-owned home 50/50 (v1).** Immaterial for a married couple (first death exempt);
+  a documented simplification for a cohabiting couple. Per-person liquid + pension are already tracked individually.
+- **Cohabiting survivor caveats surfaced, not silently applied.** A cohabiting partner may not receive a DB scheme's
+  survivor pension and cannot inherit State Pension (not modelled for anyone) — flagged as input-sanity notes rather
+  than auto-zeroing the income (some schemes do pay a nominated cohabitant; no silent overstatement, no silent change).
+
+**Scope (v1, flagged):** deterministic forecast only (a Monte-Carlo IHT distribution is a later add); headline bands
+only — no lifetime gifts/7-year taper, trusts, business/agricultural relief, the 36% charity rate, or non-descendant
+beneficiaries. Education/guidance only in the UI (signpost to a solicitor / STEP / gov.uk). See DATA-MODEL "Known
+divergences" (now closed) + docs/METHODOLOGY.md.
+
 ## 2026-07-04 — Assistant may assemble a reviewable what-if (a narrow, deliberate widening of "the model never builds")
 **Context:** Rob asked whether the local-model assistant could **create scenarios** — ask targeted questions about
 what to change from the base, then fill it in — and, on an explicit request, update the base. This reverses a rule

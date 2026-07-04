@@ -153,15 +153,36 @@ forecast.
 ## Inheritance tax
 
 Inheritance tax is offered as a **toggle**, to compare spending your pension down against preserving
-an estate. It applies the nil-rate band (£325,000), the residence nil-rate band (£175,000, tapered
-away £1 for every £2 of estate over £2,000,000 and capped at the home passing to direct
-descendants), and 40% on the rest; a couple's second death gets two bands. The **April 2027** change
-that brings unwrapped pensions into the estate sits behind the toggle.
+an estate. When it is on, the forecast values your estate **at each death inside the projection** and
+computes the tax due: the nil-rate band (£325,000), the residence nil-rate band (£175,000, tapered
+away £1 for every £2 of estate over £2,000,000 and capped at the home passing to direct descendants),
+and 40% on the rest. The **April 2027** change that brings unused pensions into the estate applies to
+any death from that year on.
 
-Important: inheritance tax is a **standalone** calculation on the final estate, **not** something
-applied inside the year-by-year path. Not modelled: lifetime gifts and the 7-year taper; business or
-agricultural relief; the reduced 36% charitable rate; the income tax a beneficiary later pays on an
-inherited pension.
+The result depends on your **relationship status** (a household input, defaulting to married / civil
+partnership):
+
+- **Married or in a civil partnership:** on the first death everything passes to the survivor free of
+  tax (the spouse exemption), and both partners' nil-rate bands are available on the second death (the
+  transferable band — modelled as two full bands). The tax lands on the second death, when the estate
+  passes to direct descendants.
+- **Cohabiting (not married):** there is no spouse exemption and no shared band. The deceased's share
+  of the estate passing to the surviving partner on the first death is a chargeable transfer, and each
+  death has only one set of bands — so the same estate is taxed more heavily. A cohabiting couple also
+  can't inherit a State Pension or (usually) a scheme's survivor pension; the forecast flags where those
+  may overstate the survivor's income.
+
+The estate at each death is valued from the projection state as **liquid savings + home equity (net of
+mortgage) + unused pension** (the pension counting only from April 2027). It is computed in the year's
+nominal pounds against the frozen bands (so a growing estate against a frozen band is taxed more over
+time, the real fiscal drag) and then shown in today's money. A first death splits the jointly-owned
+home 50/50 (immaterial for a married couple, whose first death is exempt).
+
+Not modelled (so this is an illustration of the headline bands, not a full estate computation): lifetime
+gifts and the 7-year taper; trusts; business or agricultural relief; the reduced 36% charitable rate;
+non-descendant beneficiaries or split legacies; the income tax a beneficiary later pays on an inherited
+pension. Deaths are valued at the plan's representative (median) ages; a Monte Carlo IHT distribution is
+not yet produced.
 
 ## Care costs
 
@@ -256,8 +277,11 @@ An honest list of the current limits (each is flagged in the code):
 - **SDLT** surcharge is not applied to a replacement main residence; no first-time-buyer relief.
 - **Capital gains:** no lettings relief; deemed-occupation absences are entered by hand; one rate per
   owner; capital losses are not relieved; the CGT band is judged on non-savings income.
-- **Inheritance tax** is a standalone estate calculation, not part of the year loop; no gifts, taper,
-  business/agricultural relief, or the inherited-pension income-tax interaction.
+- **Inheritance tax** (when the toggle is on) values the estate at each death inside the projection and
+  applies the headline bands (relationship-status aware), but not the fuller estate: no lifetime gifts or
+  7-year taper, trusts, business/agricultural relief, the 36% charity rate, non-descendant beneficiaries,
+  or the inherited-pension income-tax interaction; deaths are valued at representative ages (no Monte
+  Carlo IHT distribution yet).
 - **Care:** the projection charges the gross self-funder cost (means-test relief not applied inside
   the path); one probability, no sex/age split; Monte Carlo only.
 - **Benefits:** Guarantee Credit only (no Savings Credit); the carer addition is not in the live
