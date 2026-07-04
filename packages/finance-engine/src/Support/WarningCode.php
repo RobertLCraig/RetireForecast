@@ -27,4 +27,7 @@ final class WarningCode
 
     /** Unused pension pots have been included in the estate for Inheritance Tax (April 2027 rule). */
     public const IHT_PENSIONS_IN_ESTATE = 'iht_pensions_in_estate';
+
+    /** The first death passed to a spouse / civil partner, so no IHT was due then (spouse exemption). */
+    public const IHT_SPOUSE_EXEMPTION = 'iht_spouse_exemption';
 }

@@ -193,6 +193,11 @@ final class ScenarioForecaster
             rentInflationReal: $action?->rentInflationReal ?? ($forcedSale ? $scenario->assumptionSet?->toDto()?->rentInflation : null),
             modelCareCost: (bool) ($scenario->effectiveBuilderState()['modelCareCost'] ?? false),
             sellingCosts: $action?->sellingCosts,
+            // Consume the (previously inert) IHT toggle. homeToDescendants unlocks the residence
+            // nil-rate band on the final death; default true (the common case for a homeowner),
+            // overridable in the builder (slice 4).
+            modelIht: (bool) ($scenario->effectiveBuilderState()['ihtModelled'] ?? false),
+            homeToDescendants: (bool) ($scenario->effectiveBuilderState()['homeToDescendants'] ?? true),
         );
     }
 

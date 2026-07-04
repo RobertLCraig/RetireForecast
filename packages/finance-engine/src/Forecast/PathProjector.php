@@ -13,14 +13,22 @@ use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
+use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
 use RetireForecast\FinanceEngine\Housing\HousingProceeds;
+use RetireForecast\FinanceEngine\Iht\EstateValuation;
+use RetireForecast\FinanceEngine\Iht\EstateValuer;
+use RetireForecast\FinanceEngine\Iht\IhtOutcome;
+use RetireForecast\FinanceEngine\Iht\IhtResult;
+use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Pension\WithdrawalKind;
 use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
 use RetireForecast\FinanceEngine\StatePension\StatePensionCalculator;
+use RetireForecast\FinanceEngine\Support\Warning;
+use RetireForecast\FinanceEngine\Support\WarningCode;
 use RetireForecast\FinanceEngine\Tax\IncomeTaxCalculator;
 use RetireForecast\FinanceEngine\Tax\NationalInsuranceCalculator;
 use RetireForecast\FinanceEngine\Tax\TaxableIncome;
@@ -53,6 +61,12 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  */
 final class PathProjector
 {
+    /**
+     * The tax year unused pension pots start counting towards the estate for Inheritance Tax
+     * (the enacted April-2027 rule, Finance Act 2026). A death before then excludes pensions.
+     */
+    private const PENSIONS_IN_ESTATE_FROM_YEAR = 2027;
+
     private readonly IncomeTaxCalculator $incomeTax;
 
     private readonly NationalInsuranceCalculator $ni;
@@ -61,12 +75,15 @@ final class PathProjector
 
     private readonly PensionCreditCalculator $pensionCredit;
 
+    private readonly InheritanceTaxCalculator $iht;
+
     public function __construct(private readonly TaxYearConfig $config)
     {
         $this->incomeTax = new IncomeTaxCalculator($config);
         $this->ni = new NationalInsuranceCalculator($config);
         $this->statePension = new StatePensionCalculator($config);
         $this->pensionCredit = new PensionCreditCalculator($config);
+        $this->iht = new InheritanceTaxCalculator($config);
     }
 
     public function project(Household $household, ForecastSettings $settings, PathDraws $draws): ForecastResult
@@ -77,6 +94,9 @@ final class PathProjector
         $cumInflation = 1.0; // product of (1+inflation) before the current year
         $freezeRefInflation = 1.0; // price level when the income-tax threshold freeze ends
         $depletionYear = null;
+        // Who was alive last year, so a death (alive last year, gone now) can be detected and the
+        // deceased's estate valued for IHT before settleEstates moves it. Everyone is alive at base.
+        $prevAlive = array_fill_keys(array_map(static fn (Person $p): string => $p->id, $household->persons), true);
 
         for ($yearIndex = 0; ; $yearIndex++) {
             $calendarYear = $settings->baseYear + $yearIndex;
@@ -87,7 +107,25 @@ final class PathProjector
                 $alive[$person->id] = $age <= $draws->deathAge($person->id);
             }
             if (! in_array(true, $alive, true)) {
+                // The last survivor has died: value the whole remaining estate (which passes to
+                // descendants) as the final death and compute its IHT. cumInflation here is the
+                // price level at the end of the final living year, so the nominal estate deflates
+                // to real correctly.
+                if ($settings->modelIht) {
+                    $this->recordFinalDeathIht($state, $household, $settings, $draws, $prevAlive, $cumInflation);
+                }
                 break; // last survivor has died
+            }
+
+            // A person alive last year and gone now, while someone still survives, has just died:
+            // value their own estate (per-person liquid + pension + their share of the home) for
+            // the first death's IHT BEFORE settleEstates moves it to the heir. Two-person households only.
+            if ($settings->modelIht) {
+                foreach ($household->persons as $person) {
+                    if (($prevAlive[$person->id] ?? true) && ! $alive[$person->id]) {
+                        $this->recordFirstDeathIht($state, $household, $draws, $person, $cumInflation);
+                    }
+                }
             }
 
             // On a death, the surviving partner inherits the deceased's assets — without this
@@ -120,6 +158,8 @@ final class PathProjector
             $cumInflation *= (1.0 + $draws->inflation($yearIndex));
             $years[] = $year->withInvestmentGrowth(Money::fromPence((int) round($growthNominal / $cumInflation)));
 
+            $prevAlive = $alive; // carry this year's living into next year's death detection
+
             if ($yearIndex > 200) {
                 break; // safety backstop; should never trigger (mortality caps at 110)
             }
@@ -144,7 +184,162 @@ final class PathProjector
             finalCalendarYear: $terminal ? $terminal->calendarYear : $settings->baseYear,
             deathCalendarYears: $deathCalendarYears,
             careCostRealValue: $state['careRealTotal'] > 0 ? Money::fromPence($state['careRealTotal']) : null,
+            iht: $this->buildIhtOutcome($state),
         );
+    }
+
+    /**
+     * Assemble the path's {@see IhtOutcome} from the recorded per-death IHT results (already
+     * deflated to real). Null when IHT was not modelled (no final-death result recorded), so
+     * the toggle demonstrably drives the result. The final death always occurs, so its result
+     * is the anchor; the first death is present only for a two-person household.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function buildIhtOutcome(array $state): ?IhtOutcome
+    {
+        $second = $state['ihtSecondDeath'] ?? null;
+        if (! $second instanceof IhtResult) {
+            return null;
+        }
+
+        $first = ($state['ihtFirstDeath'] ?? null) instanceof IhtResult ? $state['ihtFirstDeath'] : null;
+        $total = $second->tax->plus($first?->tax ?? Money::zero());
+
+        return new IhtOutcome($first, $second, $total);
+    }
+
+    /**
+     * Record the first death's IHT: the deceased's OWN estate — their per-person liquid (cash +
+     * ISA + GIA) and pension, plus their share of the home. The couple own the home jointly, so a
+     * first death carries half the household's equity (a v1 50/50 split; immaterial for a married
+     * couple, whose first death is spousally exempt). On the first death the estate passes to the
+     * surviving partner, not to descendants, so the residence nil-rate band never applies here.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function recordFirstDeathIht(array &$state, Household $household, PathDraws $draws, Person $deceased, float $cumInflation): void
+    {
+        $married = $household->relationshipStatus === RelationshipStatus::MarriedOrCivilPartnership;
+
+        $liquid = Money::fromPence($state['cash'][$deceased->id] + $state['gia'][$deceased->id] + $state['isa'][$deceased->id]);
+        $pension = Money::fromPence($this->personPots($state, $deceased->id));
+        $estate = EstateValuer::value(
+            $liquid,
+            $pension,
+            Money::fromPence((int) round($state['property'] / 2)),
+            Money::fromPence((int) round($state['mortgageOutstanding'] / 2)),
+        );
+
+        $deathYear = (int) $deceased->dob->format('Y') + $draws->deathAge($deceased->id);
+
+        $state['ihtFirstDeath'] = $this->computeDeathIht($estate, spousallyExempt: $married, multiplier: 1, homeToDescendants: false, deathYear: $deathYear, cumInflation: $cumInflation);
+    }
+
+    /**
+     * Record the final death's IHT: the WHOLE remaining estate (the survivor holds all the liquid
+     * and pensions by now — settleEstates moved them — plus the whole home) passing to direct
+     * descendants. A married couple's final death has both partners' nil-rate bands available (the
+     * transferable NRB / RNRB, multiplier 2, since the whole first estate passed spouse-exempt); a
+     * cohabiting couple or a single person has one set.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $prevAlive  who was alive in the final living year
+     */
+    private function recordFinalDeathIht(array &$state, Household $household, ForecastSettings $settings, PathDraws $draws, array $prevAlive, float $cumInflation): void
+    {
+        $twoPeople = count($household->persons) === 2;
+        $married = $twoPeople && $household->relationshipStatus === RelationshipStatus::MarriedOrCivilPartnership;
+
+        $liquid = Money::fromPence($this->sum($state['cash']) + $this->sum($state['gia']) + $this->sum($state['isa']));
+        $estate = EstateValuer::value(
+            $liquid,
+            Money::fromPence($this->totalPots($state)),
+            Money::fromPence($state['property']),
+            Money::fromPence($state['mortgageOutstanding']),
+        );
+
+        // The final death year is the last survivor's (the latest modelled death among those alive
+        // in the final living year), used for the April-2027 pensions-in-estate gate.
+        $deathYear = $settings->baseYear;
+        foreach ($household->persons as $person) {
+            if ($prevAlive[$person->id] ?? false) {
+                $deathYear = max($deathYear, (int) $person->dob->format('Y') + $draws->deathAge($person->id));
+            }
+        }
+
+        $state['ihtSecondDeath'] = $this->computeDeathIht($estate, spousallyExempt: false, multiplier: $married ? 2 : 1, homeToDescendants: $settings->homeToDescendants, deathYear: $deathYear, cumInflation: $cumInflation);
+    }
+
+    /**
+     * Compute one death's IHT in NOMINAL pounds at the death year — so the frozen nil-rate bands
+     * bite against the grown nominal estate (real fiscal drag, matching how the projector treats
+     * frozen income-tax thresholds) — then deflate the whole result to REAL today's money for the
+     * outcome. A spousally-exempt death (a married couple's first death) is £0 with a note. Unused
+     * pension pots enter the estate only from April 2027 (the enacted rule).
+     */
+    private function computeDeathIht(EstateValuation $estate, bool $spousallyExempt, int $multiplier, bool $homeToDescendants, int $deathYear, float $cumInflation): IhtResult
+    {
+        $includePensions = $deathYear >= self::PENSIONS_IN_ESTATE_FROM_YEAR;
+
+        if ($spousallyExempt) {
+            $total = $estate->estateExcludingPensions->plus($includePensions ? $estate->pensionValue : Money::zero());
+            $result = new IhtResult(
+                totalEstate: $total,
+                nilRateBandUsed: Money::zero(),
+                residenceNilRateBandUsed: Money::zero(),
+                taxableEstate: Money::zero(),
+                rate: $this->config->iht->rate,
+                tax: Money::zero(),
+                pensionsIncluded: $includePensions,
+                warnings: [new Warning(
+                    WarningCode::IHT_SPOUSE_EXEMPTION,
+                    'Everything passes to the surviving spouse or civil partner, so no Inheritance Tax '
+                    .'is due on the first death (the spouse exemption); their unused allowances carry over.',
+                )],
+            );
+        } else {
+            $homeToDesc = $homeToDescendants ? $estate->homeEquity : Money::zero();
+            $result = $this->iht->compute($estate->estateExcludingPensions, $estate->pensionValue, $includePensions, $homeToDesc, $multiplier);
+        }
+
+        return $this->deflateIht($result, 1.0 / $cumInflation);
+    }
+
+    /**
+     * Deflate an {@see IhtResult} computed in nominal pounds at the death year to real today's
+     * money, scaling each money leg by the real factor (the rate, the pensions-included flag and
+     * the warnings are unit-free and carry through).
+     */
+    private function deflateIht(IhtResult $result, float $realFactor): IhtResult
+    {
+        $r = static fn (Money $m): Money => Money::fromPence((int) round($m->pence * $realFactor));
+
+        return new IhtResult(
+            totalEstate: $r($result->totalEstate),
+            nilRateBandUsed: $r($result->nilRateBandUsed),
+            residenceNilRateBandUsed: $r($result->residenceNilRateBandUsed),
+            taxableEstate: $r($result->taxableEstate),
+            rate: $result->rate,
+            tax: $r($result->tax),
+            pensionsIncluded: $result->pensionsIncluded,
+            warnings: $result->warnings,
+        );
+    }
+
+    /**
+     * The total value of one person's DC pension pots (nominal pence).
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function personPots(array $state, string $id): int
+    {
+        $total = 0;
+        foreach ($state['pots'][$id] ?? [] as $pot) {
+            $total += $pot['value'];
+        }
+
+        return $total;
     }
 
     /**

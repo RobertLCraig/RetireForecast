@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Forecast;
 
+use RetireForecast\FinanceEngine\Iht\IhtOutcome;
 use RetireForecast\FinanceEngine\Money\Money;
 
 /**
@@ -24,6 +25,10 @@ use RetireForecast\FinanceEngine\Money\Money;
  * (today's money); null when care is not modelled (the deterministic and historical
  * views, and any Monte Carlo path with no sampled care spell), so the risk stays
  * visible rather than buried in the success rate. See {@see careCostReal()}.
+ *
+ * $iht is the Inheritance Tax due across the household's deaths (in real terms), or null
+ * when IHT is not modelled ({@see ForecastSettings::$modelIht} off) — so turning the toggle
+ * on demonstrably changes the result, closing the collected-but-unconsumed input.
  */
 final class ForecastResult
 {
@@ -41,6 +46,7 @@ final class ForecastResult
         public readonly int $finalCalendarYear,
         public readonly array $deathCalendarYears = [],
         public readonly ?Money $careCostRealValue = null,
+        public readonly ?IhtOutcome $iht = null,
     ) {}
 
     /** The real total care cost incurred on this path (zero if none was modelled). */

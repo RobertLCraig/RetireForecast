@@ -7,6 +7,7 @@ namespace RetireForecast\FinanceEngine\Forecast;
 use RetireForecast\FinanceEngine\Care\CareCostSampler;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
+use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
@@ -35,6 +36,13 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * the projector has no {@see HousingAction}, so the entered
  * components ride here. Null falls back to the engine default rate. Only consumed at the
  * forced sale; irrelevant to every other run.
+ *
+ * $modelIht, when true, makes the projector value the estate at each death and compute the
+ * Inheritance Tax due (relationship-status aware — see {@see RelationshipStatus}),
+ * surfaced as {@see ForecastResult::$iht}. Default false, so an existing run is unchanged
+ * (the IHT toggle was collected but not consumed before this). $homeToDescendants says the
+ * home is left to direct descendants, which is what unlocks the residence nil-rate band on
+ * the final death; default true (the common case when a household owns a home).
  */
 final class ForecastSettings
 {
@@ -51,6 +59,8 @@ final class ForecastSettings
         public readonly ?Percent $rentInflationReal = null,
         public readonly bool $modelCareCost = false,
         public readonly ?array $sellingCosts = null,
+        public readonly bool $modelIht = false,
+        public readonly bool $homeToDescendants = true,
     ) {}
 
     public function allocation(): PortfolioAllocation
