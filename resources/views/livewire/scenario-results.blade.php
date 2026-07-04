@@ -197,6 +197,16 @@
         </div>
     @endif
 
+    {{-- Care not modelled: a heads-up so a default-off ~1-in-4 six-figure risk isn't a silent
+         omission. Shown regardless of run state (it depends on the toggle, not a run); suppressed
+         once a run actually models care, when the care panel below takes over. --}}
+    @if ($careNotModelled)
+        <section class="{{ $card }} border-amber-200 bg-amber-50" role="note">
+            <h2 class="text-lg font-semibold text-amber-900">Later-life care isn't included in this forecast</h2>
+            <p class="mt-1 text-sm text-amber-800">These projections don't include the cost of residential or nursing care. It's a real risk: around <strong>1 in 4</strong> people need care in later life, and self-funded fees run to roughly <strong>£1,300–£1,600 a week</strong> (about £65,000–£85,000 a year), which can be a large and prolonged cost. To see how it would affect whether your money lasts, turn on <strong>Model the risk of late-life care costs</strong> in the builder.</p>
+        </section>
+    @endif
+
     @if (! $presented)
         <div class="{{ $card }} text-sm text-gray-600">
             <p>No completed run yet. Run a preview to see headline figures, then the full forecast for the precise picture.</p>

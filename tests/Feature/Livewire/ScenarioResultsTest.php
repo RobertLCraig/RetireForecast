@@ -60,6 +60,19 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('tax paid across the plan');
     }
 
+    public function test_care_not_modelled_shows_a_heads_up_that_disappears_when_care_is_on(): void
+    {
+        // Care off (the default): a note flags the omitted ~1-in-4 six-figure risk, so it is not
+        // silently left out of "will the money last?".
+        Livewire::test(ScenarioResults::class, ['scenario' => ScenarioFixture::rich($this->user)])
+            ->assertSee('Later-life care')
+            ->assertSee('1 in 4');
+
+        // Care on: the heads-up is gone (the care panel takes over once a run models it).
+        Livewire::test(ScenarioResults::class, ['scenario' => ScenarioFixture::rich($this->user, ['modelCareCost' => true])])
+            ->assertDontSee('Later-life care');
+    }
+
     public function test_the_iht_panel_shows_only_when_the_toggle_is_on(): void
     {
         // Deterministic, so it renders without a completed run — like the withdrawal panel.
