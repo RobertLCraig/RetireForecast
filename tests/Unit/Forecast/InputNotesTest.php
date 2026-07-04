@@ -129,6 +129,51 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('£208,000', $flag[0]['text']);
     }
 
+    public function test_a_cohabiting_couple_with_a_db_survivor_pension_is_flagged(): void
+    {
+        // A DB scheme's survivor pension usually goes to a spouse/civil partner, not a cohabitant,
+        // and State Pension can't be inherited by a cohabiting partner — flag both so the survivor's
+        // income is not silently overstated.
+        $notes = $this->notes([
+            'householdName' => 'Cohab', 'region' => 'england_wales_ni', 'relationshipStatus' => 'cohabiting',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Ari', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'name' => 'Bo', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230'],
+                ['id' => 'db1', 'ownerId' => 'p2', 'subtype' => 'db', 'accruedAnnualPension' => '12000', 'normalRetirementAge' => '65', 'spousePensionFraction' => '50'],
+            ],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]);
+
+        $kinds = array_column($notes, 'kind');
+        $this->assertContains('cohabiting_db_survivor', $kinds);
+        $this->assertContains('cohabiting_state_pension', $kinds);
+    }
+
+    public function test_a_married_couple_with_the_same_db_pension_raises_no_cohabiting_caveat(): void
+    {
+        $notes = $this->notes([
+            'householdName' => 'Married', 'region' => 'england_wales_ni', 'relationshipStatus' => 'married_or_civil_partnership',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Ari', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'name' => 'Bo', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230'],
+                ['id' => 'db1', 'ownerId' => 'p2', 'subtype' => 'db', 'accruedAnnualPension' => '12000', 'normalRetirementAge' => '65', 'spousePensionFraction' => '50'],
+            ],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]);
+
+        $kinds = array_column($notes, 'kind');
+        $this->assertNotContains('cohabiting_db_survivor', $kinds);
+        $this->assertNotContains('cohabiting_state_pension', $kinds);
+    }
+
     public function test_a_sensible_household_raises_no_notes(): void
     {
         // Employed retiring in the future, normal longevity ⇒ nothing to flag (no noise).

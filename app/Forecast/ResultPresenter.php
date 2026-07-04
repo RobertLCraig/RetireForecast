@@ -11,6 +11,7 @@ use App\Models\Scenario;
 use Illuminate\Support\Collection;
 use RetireForecast\FinanceEngine\Benchmark\RetirementLivingStandards;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
+use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Household;
@@ -1052,6 +1053,26 @@ final class ResultPresenter
                 MortgageMaturityAction::ForcedSale => "This home's mortgage of {$amount} is due for redemption in {$year} and is modelled as not refinanceable, so the home is sold that year: the equity left after the mortgage, selling costs and any CGT is freed into your investments, the mortgage and property costs stop, and rent begins (enter a rent so the sell-and-rent cost is modelled). You can still compare selling now, buying somewhere cheaper or letting it out as what-if scenarios on the Compare page.",
             };
             $notes[] = ['kind' => 'mortgage_redemption', 'text' => $text];
+        }
+
+        // (d) Cohabiting-couple survivor caveats. The married/civil-partner survivor rights the
+        // engine implicitly assumes do NOT extend to a cohabiting partner, so flag where the
+        // forecast may overstate what the survivor actually receives (no silent overstatement).
+        if (count($household->persons) === 2 && $household->relationshipStatus === RelationshipStatus::Cohabiting) {
+            $hasSurvivorDb = false;
+            foreach ($household->pensions as $pension) {
+                if ($pension instanceof DbPension && $pension->spousePensionFraction !== null && $pension->spousePensionFraction->basisPoints > 0) {
+                    $hasSurvivorDb = true;
+                    break;
+                }
+            }
+            if ($hasSurvivorDb) {
+                $notes[] = ['kind' => 'cohabiting_db_survivor', 'text' => "You're modelled as cohabiting (not married or in a civil partnership). This forecast pays a defined-benefit survivor's pension to the surviving partner, but many schemes pay a survivor's pension only to a spouse or civil partner (some pay a nominated cohabitant). Check the scheme rules — if it wouldn't be paid, the survivor's secure income is overstated."];
+            }
+
+            // State Pension inheritance is a spouse/civil-partner right this tool does not model for
+            // anyone; a cohabiting survivor could not inherit any State Pension in any case.
+            $notes[] = ['kind' => 'cohabiting_state_pension', 'text' => 'A cohabiting partner cannot inherit any State Pension (that right is for a spouse or civil partner only), and this tool does not model inheriting State Pension for anyone: each person\'s State Pension stops on their death.'];
         }
 
         return $notes;
