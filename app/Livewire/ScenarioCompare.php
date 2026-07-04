@@ -6,11 +6,13 @@ namespace App\Livewire;
 
 use App\Compliance\Interpretation;
 use App\Enums\ScenarioStatus;
+use App\Enums\SimulationStatus;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
 use App\Forecast\WhatIfChanges;
 use App\Models\Scenario;
+use App\Models\SimulationRun;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -35,8 +37,18 @@ class ScenarioCompare extends Component
 {
     public Scenario $base;
 
-    /** How many plans the last "re-run all" click queued (0 = none yet); shown as a note. */
+    /** How many plans the last "re-run all" click queued (0 = none yet). */
     public int $familyQueued = 0;
+
+    /**
+     * The full-run IDs currently being tracked for live progress — the last "re-run all" batch,
+     * plus any family run already in flight when the page loaded. Polled while any is unfinished
+     * so a background Monte Carlo run never runs silently. Public (so it survives poll requests)
+     * and therefore treated as tamperable: {@see trackedRuns()} re-scopes it to the owner.
+     *
+     * @var list<int>
+     */
+    public array $runIds = [];
 
     public function mount(Scenario $scenario): void
     {
@@ -44,6 +56,10 @@ class ScenarioCompare extends Component
 
         // Compare is base-centric: opening it on a what-if compares its base's family.
         $this->base = $scenario->isChild() ? $scenario->parent : $scenario;
+
+        // Pick up any family run already in flight (launched here before a reload, or from a
+        // plan's own results page), so arriving on Compare mid-run shows live progress.
+        $this->runIds = $this->inFlightFamilyRunIds();
     }
 
     /**
@@ -57,11 +73,25 @@ class ScenarioCompare extends Component
     public function runFullFamily(): void
     {
         $runner = app(SimulationRunner::class);
-        $plans = $this->plans();
-        foreach ($plans as $plan) {
-            $runner->dispatch($plan);
+        $this->runIds = $this->plans()->map(fn (Scenario $plan): int => $runner->dispatch($plan)->id)->all();
+        $this->familyQueued = count($this->runIds);
+    }
+
+    /** wire:poll target while the batch is in flight; the render pass re-reads its progress. */
+    public function refreshFamily(): void
+    {
+        // intentionally empty — render() reloads the tracked runs from the database
+    }
+
+    /** Cancel every still-running plan in the tracked batch (each stops at its next progress tick). */
+    public function cancelFamily(): void
+    {
+        $runner = app(SimulationRunner::class);
+        foreach ($this->trackedRuns() as $run) {
+            if (! $run->status->isTerminal()) {
+                $runner->cancel($run);
+            }
         }
-        $this->familyQueued = $plans->count();
     }
 
     public function render(): View
@@ -117,7 +147,94 @@ class ScenarioCompare extends Component
             'narrative' => $narrative,
             'sourcesShowMortgage' => $showMortgage,
             'sourcesShowCgt' => $showCgt,
+            // Live progress for the "re-run all" batch, from the same plans the table shows.
+            'familyRun' => $this->familyProgress($forecasts->map(fn (array $pf): Scenario => $pf['scenario'])),
         ])->title('Compare what-ifs');
+    }
+
+    /**
+     * Live progress for the tracked batch: each plan's status + percentage, an aggregate, and
+     * whether any run is still in flight (so the view polls only while it must). Empty when
+     * nothing is tracked, so the panel — and the polling — appear exactly while runs execute.
+     *
+     * @param  Collection<int, Scenario>  $scenarios  the compared plans, in display order
+     * @return array{active: bool, total: int, done: int, failed: int, overallPct: int, awaitingWorker: bool, rows: list<array{name: string, status: string, pct: int, terminal: bool, failed: bool}>}
+     */
+    private function familyProgress(Collection $scenarios): array
+    {
+        $runs = $this->trackedRuns()->keyBy('scenario_id');
+
+        $rows = [];
+        $sumPct = 0;
+        $done = 0;
+        $failed = 0;
+        $active = false;
+        $awaitingWorker = false;
+
+        foreach ($scenarios as $plan) {
+            $run = $runs->get($plan->id);
+            if ($run === null) {
+                continue;
+            }
+
+            $terminal = $run->status->isTerminal();
+            $didNotFinish = in_array($run->status, [SimulationStatus::Failed, SimulationStatus::Cancelled], true);
+            // Done reports 100; a still-running plan reports its live percentage.
+            $pct = $run->status === SimulationStatus::Done ? 100 : (int) $run->progress_pct;
+
+            $rows[] = [
+                'name' => $plan->name,
+                'status' => ucfirst($run->status->value),
+                'pct' => $pct,
+                'terminal' => $terminal,
+                'failed' => $didNotFinish,
+            ];
+            $sumPct += $pct;
+            $done += $run->status === SimulationStatus::Done ? 1 : 0;
+            $failed += $didNotFinish ? 1 : 0;
+            $active = $active || ! $terminal;
+            $awaitingWorker = $awaitingWorker || $run->isAwaitingWorker();
+        }
+
+        $total = count($rows);
+
+        return [
+            'active' => $active,
+            'total' => $total,
+            'done' => $done,
+            'failed' => $failed,
+            'overallPct' => $total > 0 ? (int) round($sumPct / $total) : 0,
+            'awaitingWorker' => $awaitingWorker,
+            'rows' => $rows,
+        ];
+    }
+
+    /** The tracked batch runs, re-scoped to the owner ($runIds is public and tamperable). */
+    private function trackedRuns(): Collection
+    {
+        if ($this->runIds === []) {
+            return collect();
+        }
+
+        return SimulationRun::where('user_id', auth()->id())
+            ->whereIn('id', $this->runIds)
+            ->get();
+    }
+
+    /**
+     * The latest run per compared plan that is still in flight — what's running right now,
+     * used to restore the progress panel when Compare is opened mid-run.
+     *
+     * @return list<int>
+     */
+    private function inFlightFamilyRunIds(): array
+    {
+        return $this->plans()
+            ->map(fn (Scenario $plan): ?SimulationRun => $plan->simulationRuns()->latest()->first())
+            ->filter(fn (?SimulationRun $run): bool => $run !== null && ! $run->status->isTerminal())
+            ->map(fn (SimulationRun $run): int => $run->id)
+            ->values()
+            ->all();
     }
 
     /** The base plan first, then its ready what-if children. */

@@ -6,9 +6,10 @@
         </div>
         <div class="flex items-center gap-3">
             <button type="button" wire:click="runFullFamily" wire:loading.attr="disabled" wire:target="runFullFamily"
+                @disabled($familyRun['active'])
                 class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50"
                 title="Queue a fresh 10,000-path Monte Carlo run for every plan here — handy after a model change so each plan's results page shows current figures.">
-                <span wire:loading.remove wire:target="runFullFamily">Re-run all {{ $plans->count() }} (full 10k)</span>
+                <span wire:loading.remove wire:target="runFullFamily">{{ $familyRun['active'] ? 'Running…' : 'Re-run all '.$plans->count().' (full 10k)' }}</span>
                 <span wire:loading wire:target="runFullFamily">Queuing…</span>
             </button>
             <a href="{{ route('scenarios.child', $base) }}" class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Create a what-if</a>
@@ -22,8 +23,56 @@
         change tracks the base.
     </p>
 
-    @if ($familyQueued > 0)
-        <p class="mt-3 max-w-3xl rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800" role="status">Queued a full 10,000-path run for {{ $familyQueued }} {{ $familyQueued === 1 ? 'plan' : 'plans' }}. They run in the background on the worker — open any plan's results to see its refreshed Monte Carlo (this comparison already reflects the current model).</p>
+    {{-- Live progress for the "re-run all" batch: each plan's 10,000-path run, polled until
+         every one lands in a terminal state, so a background Monte Carlo run is never silent.
+         The panel (and the polling) show only while runs are tracked. --}}
+    @if (! empty($familyRun['rows']))
+        <div @if ($familyRun['active']) wire:poll.1500ms="refreshFamily" @endif
+             class="mt-4 max-w-3xl rounded-md border border-gray-200 bg-white p-4" role="status" aria-live="polite">
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-sm font-medium text-gray-800">
+                    @if ($familyRun['active'])
+                        Running {{ $familyRun['total'] }} full {{ $familyRun['total'] === 1 ? 'simulation' : 'simulations' }} — {{ $familyRun['done'] }} of {{ $familyRun['total'] }} done
+                    @elseif ($familyRun['failed'] > 0)
+                        All {{ $familyRun['total'] }} {{ $familyRun['total'] === 1 ? 'run' : 'runs' }} finished — {{ $familyRun['failed'] }} did not complete.
+                    @else
+                        All {{ $familyRun['total'] }} {{ $familyRun['total'] === 1 ? 'run' : 'runs' }} finished.
+                    @endif
+                </p>
+                @if ($familyRun['active'])
+                    <button type="button" wire:click="cancelFamily" class="shrink-0 text-sm text-red-700 underline">Cancel all</button>
+                @endif
+            </div>
+
+            <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200"
+                 role="progressbar" aria-valuenow="{{ $familyRun['overallPct'] }}" aria-valuemin="0" aria-valuemax="100" aria-label="Overall forecast progress">
+                <div class="h-full bg-blue-600 transition-all" style="width: {{ $familyRun['overallPct'] }}%"></div>
+            </div>
+
+            <ul class="mt-3 space-y-2">
+                @foreach ($familyRun['rows'] as $row)
+                    <li class="text-xs">
+                        <div class="flex items-center justify-between gap-2 text-gray-600">
+                            <span class="truncate font-medium text-gray-700">{{ $row['name'] }}</span>
+                            <span class="shrink-0 tabular-nums">{{ $row['status'] }}@if (! $row['terminal']) — {{ $row['pct'] }}%@endif</span>
+                        </div>
+                        <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                            <div class="h-full transition-all {{ $row['failed'] ? 'bg-amber-500' : 'bg-blue-500' }}" style="width: {{ $row['pct'] }}%"></div>
+                        </div>
+                    </li>
+                @endforeach
+            </ul>
+
+            @if ($familyRun['awaitingWorker'])
+                <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    Still queued. The full run needs a background worker — start one with <code>php artisan queue:work</code> (JIT flags in the handover), then this picks up automatically.
+                </p>
+            @endif
+
+            @unless ($familyRun['active'])
+                <p class="mt-3 text-xs text-gray-500">Open any plan's results to see its refreshed Monte Carlo — this comparison already reflects the current model.</p>
+            @endunless
+        </div>
     @endif
 
     {{-- Walled-off, advice-style "why" narrative ranking the plans. Built only when the
@@ -114,8 +163,11 @@
         <h2 id="burndown-heading" class="text-xl font-semibold text-gray-900">Usable wealth over time</h2>
         <p class="mt-1 text-sm text-gray-600">
             Each plan's spendable money (excluding your home) across the central projection, overlaid so you can
-            read the trajectories against each other. A line burning down to zero is money running out. Figures are
-            in today's money. These are consequences, not a recommendation.
+            read the trajectories against each other. A line burning down to zero is money running out.
+            @if ($burndown['dipsNegative'])
+                Where a line continues <strong>below £0</strong> it shows the <strong>cumulative shortfall</strong> — the extra money that plan would need to keep spending at the planned level after its savings are gone.
+            @endif
+            Figures are in today's money. These are consequences, not a recommendation.
         </p>
 
         <div class="mt-4" wire:ignore>

@@ -35,6 +35,7 @@ final class SimulationResultMapper
                 : self::penceBands($result->usableWealthPercentiles),
             'fanChart' => self::penceFan($result->fanChart),
             'usableFanChart' => self::penceFan($result->usableFanChart),
+            'netPositionFanChart' => self::penceFan($result->netPositionFanChart),
             'longevity' => self::longevityToArray($result->longevity),
             'careImpact' => self::careImpactToArray($result->careImpact),
         ];
@@ -56,6 +57,9 @@ final class SimulationResultMapper
             fanChart: self::moneyFan($data['fanChart']),
             // Runs persisted before the per-year usable fan landed have no key — default to empty.
             usableFanChart: self::moneyFan($data['usableFanChart'] ?? []),
+            // Runs persisted before the net-position fan landed have no key — default to empty
+            // (the presenter falls back to the usable fan, which floors at £0).
+            netPositionFanChart: self::moneyFan($data['netPositionFanChart'] ?? []),
             // Runs persisted before the longevity distribution landed have no key — default to null.
             longevity: self::longevityFromArray($data['longevity'] ?? null),
             // Runs persisted before care-cost modelling (or with it off) have no key — default to null.

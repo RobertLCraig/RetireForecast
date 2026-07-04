@@ -3,6 +3,37 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-04 — Wealth-over-time charts show the funding gap below £0; live Compare MC progress
+**Context:** Rob's browser review flagged that the "usable wealth over time" charts bottom out at £0, and that
+"Re-run all" on Compare runs the Monte Carlo with no progress indicator.
+
+**Decision — a distinct net-position series, not a redefinition of usable wealth:** the engine floors wealth at £0 by
+construction (you cannot draw cash you do not have; running out is recorded as £0 wealth + a separate `unmetSpend`), so
+removing the axis floor alone shows nothing. Added `SimulationResult::netPositionFanChart` = **usable − Σ unmet spend**,
+a new derived quantity (one definition, one home — `usableFanChart`/`usableWealthPercentiles` stay literal usable
+wealth). Rob chose **one continuous line** (net position dips below £0 to show the *cumulative shortfall*) on the **full
+target-spend** basis (reuses the existing `unmetSpend`; no new engine figure). Net = usable while solvent; nullable/
+empty for runs persisted before it (fall back to the £0-floored usable fan). The fan + Compare **burndown** plot it and
+show it in their data tables; `yaxis.min = 0` is dropped only when a series goes negative; `charts.js gbpAxis` is
+sign-aware (`-£80k`). **The cashflow-ladder table deliberately keeps usable wealth ≥ £0** (plus its separate
+`shortfall` column) — a "what you hold" table showing −£80k of cash would be false; the graphs are the on-track-over-
+time view where negative reads naturally as the gap. Reconciliation preserved and tested (burndown = ladder usable − Σ
+unmet; equal while solvent).
+
+**Decision — live batch progress on Compare (no silent long-runs):** "Re-run all" queued the runs and showed a one-shot
+static note. `ScenarioCompare` now tracks the batch's run IDs (public prop, re-scoped to the owner) and polls a progress
+panel — aggregate bar + "X of N done", per-plan status/% bars, **Cancel all**, the results-page **awaiting-worker** hint
+— until every run is terminal, then stops polling. A family run already in flight (launched from a plan's own page, or
+after a reload) is **restored on mount**. Reads the existing `SimulationRun` status/`progress_pct` — no data-model
+change.
+
+**Gotcha fixed + guarded — Blade `word@if` gluing:** a control directive glued to a word char (`finished@if`,
+`payments@if`) is **not compiled** — it leaks literal `@if`/`@endif` to the page and renders the conditional body
+unconditionally (`word@endif` sometimes compiles, desyncing the block and leaking a stray `@endif`). Fixed the new panel
+(`@elseif`) and a **pre-existing** PLSA-footnote instance on the results page (ternary echo — it had been showing raw
+Blade tokens). Added `BladeDirectivesCompileTest` (compiles every view, fails on any leaked control directive) so the
+whole class can't recur; Livewire panel tests gained `assertDontSee('@endif')`. See memory `blade-directive-word-glue-gotcha`.
+
 ## 2026-07-03 — Local-model assistant Phase 3 built: idea capture, the model's only write
 **Context:** The last specced assistant phase — the model's ONLY write: capturing a reader's "we should look at X"
 idea to a work queue for a human to promote later. It never builds, edits code, or offers to.

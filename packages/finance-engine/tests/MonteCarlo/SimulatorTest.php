@@ -207,6 +207,61 @@ final class SimulatorTest extends TestCase
         $this->assertGreaterThan(0, $separatedYears, 'the home should pull usable below total in at least one year');
     }
 
+    public function test_net_position_fan_never_exceeds_usable_and_starts_equal_to_it(): void
+    {
+        // Net position = usable − cumulative unmet spend, so it can never sit ABOVE usable wealth
+        // in any year or percentile (the shortfall only ever subtracts). And in the first year no
+        // shortfall can have accrued yet (a comfortable household funds its spend up front, both
+        // partners alive), so net position starts out exactly equal to usable wealth.
+        $result = $this->simulator()->run($this->comfortable(), $this->settings(), AssumptionSetLibrary::default(), new CohortLifeTable, 200, seed: 11);
+
+        $this->assertNotEmpty($result->netPositionFanChart);
+        $this->assertSameSize($result->usableFanChart, $result->netPositionFanChart);
+
+        foreach ($result->usableFanChart as $i => $usableBand) {
+            $netBand = $result->netPositionFanChart[$i];
+            $this->assertSame($usableBand['calendarYear'], $netBand['calendarYear']);
+            foreach (['p10', 'p25', 'p50', 'p75', 'p90'] as $p) {
+                $this->assertLessThanOrEqual($usableBand[$p]->pence, $netBand[$p]->pence, "net exceeds usable in {$usableBand['calendarYear']} at {$p}");
+                if ($i === 0) {
+                    $this->assertSame($usableBand[$p]->pence, $netBand[$p]->pence, "net != usable in the first year at {$p}");
+                }
+            }
+        }
+    }
+
+    public function test_net_position_fan_falls_below_zero_once_the_money_runs_out(): void
+    {
+        // A household that outspends its assets: after the pot empties the shortfall accrues, so
+        // net position keeps falling below £0 (the usable fan floors at zero — it can't show this).
+        $underfunded = new Household(
+            'Underfunded',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1964-04-01'), Sex::Female, EmploymentStatus::NotWorking),
+                new Person('p2', new DateTimeImmutable('1964-09-01'), Sex::Male, EmploymentStatus::NotWorking),
+            ],
+            new ExpenseProfile(Money::fromPounds(28_000), Money::fromPounds(6_000), Percent::fromPercent(70)),
+            [new DcPension('p2', Money::fromPounds(40_000), Money::zero(), Money::zero(), 55)],
+        );
+
+        $result = $this->simulator()->run($underfunded, $this->settings(), AssumptionSetLibrary::default(), new CohortLifeTable, 200, seed: 5);
+
+        // Net position never exceeds usable wealth (it only ever subtracts the shortfall)...
+        $sawNegative = false;
+        foreach ($result->usableFanChart as $i => $usableBand) {
+            $netBand = $result->netPositionFanChart[$i];
+            foreach (['p10', 'p25', 'p50', 'p75', 'p90'] as $p) {
+                $this->assertLessThanOrEqual($usableBand[$p]->pence, $netBand[$p]->pence, "net exceeds usable in {$usableBand['calendarYear']} at {$p}");
+                $sawNegative = $sawNegative || $netBand[$p]->pence < 0;
+            }
+        }
+
+        // ...and once the money is gone it goes genuinely negative, showing the funding gap depth.
+        $this->assertTrue($sawNegative, 'the net-position fan should fall below £0 when the household runs out');
+        $this->assertGreaterThan(0.0, $result->depletionRate);
+    }
+
     public function test_longevity_distribution_reads_the_last_survivor_from_the_sampler(): void
     {
         // Pin both lifespans (fixed-age longevity), so every path samples the same deaths and the

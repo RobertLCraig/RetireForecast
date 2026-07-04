@@ -35,6 +35,27 @@ class SimulationResultMappingTest extends TestCase
         $this->assertNotNull($rebuilt->longevity);
     }
 
+    public function test_a_run_persisted_before_the_net_position_fan_existed_rehydrates_with_an_empty_fan(): void
+    {
+        $result = (new Simulator(TaxYearRegistry::for('2026-27')))->run(
+            HouseholdFixture::household(),
+            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+            AssumptionSetLibrary::default(),
+            new CohortLifeTable,
+            nPaths: 20,
+            seed: 5,
+        );
+
+        // A fresh run carries the net-position fan; an older stored payload has no such key and
+        // must rehydrate to an empty fan (the presenter then falls back to the usable fan).
+        $this->assertNotEmpty($result->netPositionFanChart);
+
+        $payload = SimulationResultMapper::toArray($result);
+        unset($payload['netPositionFanChart']);
+
+        $this->assertSame([], SimulationResultMapper::fromArray($payload)->netPositionFanChart);
+    }
+
     public function test_a_run_persisted_before_longevity_existed_rehydrates_with_null(): void
     {
         $result = (new Simulator(TaxYearRegistry::for('2026-27')))->run(

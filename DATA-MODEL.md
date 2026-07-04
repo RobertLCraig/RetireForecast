@@ -311,7 +311,12 @@ Recorded here so the rebuild does not fork the model:
   (100% run out yet high "wealth left") reads correctly. **Extended 2026-06-29:** `SimulationResult` also
   carries a **per-year** usable fan (`usableFanChart`) beside the total `fanChart` — same `liquid + pension`
   definition as the ladder, with a `usable ≤ total` per-year invariant — so the over-time charts can default to
-  spendable (excl-home) money, the honest "will it last" series (gotcha P), with an include-home toggle. Also added **`YearResult::incomeBySource`** (the
+  spendable (excl-home) money, the honest "will it last" series (gotcha P), with an include-home toggle.
+  **Extended 2026-07-04:** `SimulationResult` also carries `netPositionFanChart` — the same excl-home series
+  continued **below £0** by the cumulative unmet spend (`net = usable − Σ unmet`; assets can't go negative, so
+  usable floors at £0 and a household that runs out reads as flat zero, while net position shows how deep the
+  funding gap gets). Equals `usableFanChart` while solvent; nullable/empty for a run persisted before it existed
+  (the presenter falls back to the usable fan). See DECISIONS 2026-07-04. Also added **`YearResult::incomeBySource`** (the
   canonical sources — now 10, incl. `means_tested_benefit`) powering the deterministic cashflow ladder + the
   per-source completeness guard. Phase C1 added **`YearResult::essentialSpend`** (real terms — the essential
   floor incl. rent/running costs and the survivor factor) so the income-floor readout reads one definition.

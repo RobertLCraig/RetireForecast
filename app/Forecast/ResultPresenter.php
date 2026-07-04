@@ -310,6 +310,21 @@ final class ResultPresenter
 
         $basisLabel = $usableBasis ? 'Spendable money, excl. home' : 'Total wealth, incl. home';
 
+        // Anchor the axis at £0 so "do we hit zero?" reads honestly — UNLESS the net-position
+        // series dips below zero (a household that runs out), in which case let the axis extend
+        // negative to show the depth of the shortfall. p10 is the lowest band, so it decides.
+        $dipsNegative = false;
+        foreach ($series as $y) {
+            if ($y['p10']->isNegative()) {
+                $dipsNegative = true;
+                break;
+            }
+        }
+        $yaxis = ['forceNiceScale' => true, 'title' => ['text' => $basisLabel.' (real £)']];
+        if (! $dipsNegative) {
+            $yaxis['min'] = 0;
+        }
+
         $options = [
             'chart' => ['type' => 'rangeArea', 'height' => 380, 'toolbar' => ['show' => false]],
             'colors' => ['#93c5fd', '#3b82f6', '#1e3a8a'],
@@ -332,7 +347,7 @@ final class ResultPresenter
             // ApexCharts option; year keys aren't zero-sequential so @js encodes it as an object.
             'ageByYear' => $ageByYear === [] ? null : $ageByYear,
             'xaxis' => ['type' => 'numeric', 'tickAmount' => 8, 'decimalsInFloat' => 0, 'title' => ['text' => 'Calendar year']],
-            'yaxis' => ['min' => 0, 'forceNiceScale' => true, 'title' => ['text' => $basisLabel.' (real £)']],
+            'yaxis' => $yaxis,
             'legend' => ['position' => 'top'],
         ];
 
@@ -341,6 +356,7 @@ final class ResultPresenter
             'label' => self::LABELS[$variant],
             'usableBasis' => $usableBasis,
             'basisLabel' => $basisLabel,
+            'dipsNegative' => $dipsNegative,
             'options' => $options,
             'rows' => $rows,
         ];
@@ -355,6 +371,13 @@ final class ResultPresenter
      */
     private static function fanSeries(SimulationResult $r, bool $includeHome): array
     {
+        // The spendable (excl-home) view prefers the net-position fan, which continues below
+        // £0 by the cumulative shortfall so a household that runs out shows how deep the gap
+        // gets rather than flatlining at zero. Falls back to the usable fan (floored at £0) for
+        // a run persisted before the net-position fan existed, then to the total fan.
+        if (! $includeHome && $r->netPositionFanChart !== []) {
+            return [$r->netPositionFanChart, true];
+        }
         if (! $includeHome && $r->usableFanChart !== []) {
             return [$r->usableFanChart, true];
         }
@@ -383,7 +406,7 @@ final class ResultPresenter
      * have both partners alive; `paths` is carried per point for that caveat.
      *
      * @param  Collection<string, Result>  $resultsByVariant
-     * @return array{options: array<string, mixed>, rows: list<array<string, mixed>>, years: list<int>, lineRows: list<array{year: int, cells: array<string, ?string>}>, strategies: list<array{key: string, label: string}>, usableBasis: bool, basisLabel: string}
+     * @return array{options: array<string, mixed>, rows: list<array<string, mixed>>, years: list<int>, lineRows: list<array{year: int, cells: array<string, ?string>}>, strategies: list<array{key: string, label: string}>, usableBasis: bool, basisLabel: string, dipsNegative: bool}
      */
     private static function comparison(Collection $resultsByVariant, bool $includeHome, array $ageByYear = []): array
     {
@@ -451,6 +474,22 @@ final class ResultPresenter
 
         $basisLabel = $usableBasis ? 'Median spendable money, excl. home' : 'Median total wealth, incl. home';
 
+        // A strategy whose median future runs out shows a net-position median below £0; let the
+        // axis extend negative so that depth is visible rather than clipped to a flat zero.
+        $dipsNegative = false;
+        foreach ($byVariant as $median) {
+            foreach ($median as $point) {
+                if ($point['pounds'] < 0) {
+                    $dipsNegative = true;
+                    break 2;
+                }
+            }
+        }
+        $yaxis = ['forceNiceScale' => true, 'title' => ['text' => $basisLabel.' (real £)']];
+        if (! $dipsNegative) {
+            $yaxis['min'] = 0;
+        }
+
         $options = [
             'chart' => ['type' => 'line', 'height' => 360, 'toolbar' => ['show' => false]],
             'colors' => $colours,
@@ -461,7 +500,7 @@ final class ResultPresenter
             'moneyAxis' => true,
             'ageByYear' => $ageByYear === [] ? null : $ageByYear,
             'xaxis' => ['type' => 'numeric', 'tickAmount' => 8, 'decimalsInFloat' => 0, 'title' => ['text' => 'Calendar year']],
-            'yaxis' => ['min' => 0, 'forceNiceScale' => true, 'title' => ['text' => $basisLabel.' (real £)']],
+            'yaxis' => $yaxis,
             'legend' => ['position' => 'top'],
         ];
 
@@ -473,6 +512,7 @@ final class ResultPresenter
             'strategies' => $strategies,
             'usableBasis' => $usableBasis,
             'basisLabel' => $basisLabel,
+            'dipsNegative' => $dipsNegative,
         ];
     }
 
@@ -505,18 +545,27 @@ final class ResultPresenter
 
         $series = [];
         $rows = [];
+        $dipsNegative = false;
         foreach ($plans as $plan) {
-            $usableByYear = [];
+            // Net position continues the usable-wealth line below £0 once assets are exhausted:
+            // usable (liquid + pension) minus the cumulative shortfall the plan could not fund.
+            // Equal to usable wealth while solvent (unmet is zero), so it reconciles to the
+            // cashflow ladder's usable-wealth column year-for-year until the money runs out,
+            // then shows how deep the funding gap gets instead of flatlining at zero.
+            $netByYear = [];
+            $cumulativeUnmet = Money::zero();
             foreach ($plan['forecast']->years as $year) {
-                $usableByYear[$year->calendarYear] = $year->liquidWealth->plus($year->pensionWealth);
+                $cumulativeUnmet = $cumulativeUnmet->plus($year->unmetSpend);
+                $netByYear[$year->calendarYear] = $year->liquidWealth->plus($year->pensionWealth)->minus($cumulativeUnmet);
             }
 
             $data = [];
             $cells = [];
             foreach ($years as $calendarYear) {
-                $usable = $usableByYear[$calendarYear] ?? null;
-                $data[] = ['x' => $calendarYear, 'y' => $usable !== null ? self::pounds($usable) : null];
-                $cells[$calendarYear] = $usable?->format();
+                $net = $netByYear[$calendarYear] ?? null;
+                $data[] = ['x' => $calendarYear, 'y' => $net !== null ? self::pounds($net) : null];
+                $cells[$calendarYear] = $net?->format();
+                $dipsNegative = $dipsNegative || ($net !== null && $net->isNegative());
             }
 
             $series[] = ['name' => $plan['name'], 'data' => $data];
@@ -534,14 +583,35 @@ final class ResultPresenter
             'legend' => ['position' => 'top'],
         ];
 
-        // Mark the big life events (deaths, retirements, State Pension starts, the home sale) on
-        // the comparison, the same annotations the single-scenario charts use ({@see
-        // milestoneAnnotations}) — person-based events are shared across the compared plans.
+        // Annotations layer. Two things share it:
+        //  - the big life-event verticals (deaths, retirements, State Pension starts, the home
+        //    sale), the same annotations the single-scenario charts use ({@see
+        //    milestoneAnnotations}); person-based events are shared across the compared plans.
+        //  - a light-red band shading everything below £0, drawn only when a plan actually runs
+        //    out, so the shortfall region ("savings are gone, this is the funding gap") reads at
+        //    a glance rather than as an easily-missed dip past the axis.
+        $chartAnnotations = [];
         if ($annotations !== []) {
-            $options['annotations'] = ['xaxis' => $annotations];
+            $chartAnnotations['xaxis'] = $annotations;
+        }
+        if ($dipsNegative) {
+            // The band runs from the zero line down to a floor far below any real forecast.
+            // ApexCharts clamps a y-axis region to the plot area and clips it to the grid mask
+            // (YAxisAnnotations + Helpers::getY1Y2), so this sentinel floor simply fills to the
+            // bottom of the chart whatever the auto axis minimum is — no need to know it here.
+            $chartAnnotations['yaxis'] = [[
+                'y' => 0,
+                'y2' => -1_000_000_000,
+                'fillColor' => '#ef4444',
+                'opacity' => 0.09,
+                'borderColor' => 'transparent',
+            ]];
+        }
+        if ($chartAnnotations !== []) {
+            $options['annotations'] = $chartAnnotations;
         }
 
-        return ['options' => $options, 'years' => $years, 'rows' => $rows];
+        return ['options' => $options, 'years' => $years, 'rows' => $rows, 'dipsNegative' => $dipsNegative];
     }
 
     /**

@@ -9,13 +9,16 @@ function gbpAxis(value) {
     }
     const n = Number(value)
     const abs = Math.abs(n)
+    // Sign goes BEFORE the £ (-£80k, not £-80k) so a net position below zero — the cumulative
+    // funding gap once the money runs out — reads as currency, not a stray minus on the pounds.
+    const sign = n < 0 ? '-' : ''
     if (abs >= 1e6) {
-        return '£' + (n / 1e6).toFixed(abs >= 1e7 ? 0 : 1) + 'm'
+        return sign + '£' + (abs / 1e6).toFixed(abs >= 1e7 ? 0 : 1) + 'm'
     }
     if (abs >= 1e3) {
-        return '£' + Math.round(n / 1e3) + 'k'
+        return sign + '£' + Math.round(abs / 1e3) + 'k'
     }
-    return '£' + Math.round(n)
+    return sign + '£' + Math.round(abs)
 }
 
 /**

@@ -6,8 +6,10 @@ namespace Tests\Feature\Livewire;
 
 use App\Enums\ScenarioStatus;
 use App\Enums\SimulationMode;
+use App\Enums\SimulationStatus;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
+use App\Forecast\SimulationRunner;
 use App\Jobs\RunScenarioSimulation;
 use App\Livewire\ScenarioCompare;
 use App\Models\Scenario;
@@ -16,6 +18,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use RetireForecast\FinanceEngine\Money\Money;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
@@ -117,10 +120,25 @@ class ScenarioCompareTest extends TestCase
         $burndown = ResultPresenter::burndown([['name' => $base->name, 'forecast' => $forecast]]);
         $ladder = ResultPresenter::ladder($forecast);
 
-        // The burndown's usable-wealth line is the SAME figure the cashflow ladder shows for
-        // each year — one definition, so the chart can't drift from the table.
+        // The burndown's line is the ladder's usable wealth continued below zero by the running
+        // shortfall: net position = usable wealth − Σ unmet spend, both derived from the same
+        // per-year figures. So the chart can't drift from the table — and while a year carries no
+        // shortfall the net position IS the ladder's usable-wealth figure, to the penny.
+        $ladderUsable = [];
         foreach ($ladder['rows'] as $row) {
-            $this->assertSame($row['usableWealth'], $burndown['rows'][0]['cells'][$row['year']], "usable wealth in {$row['year']}");
+            $ladderUsable[$row['year']] = $row['usableWealth'];
+        }
+
+        $cumulativeUnmet = Money::zero();
+        foreach ($forecast->years as $year) {
+            $cumulativeUnmet = $cumulativeUnmet->plus($year->unmetSpend);
+            $expectedNet = $year->liquidWealth->plus($year->pensionWealth)->minus($cumulativeUnmet);
+            $cell = $burndown['rows'][0]['cells'][$year->calendarYear];
+
+            $this->assertSame($expectedNet->format(), $cell, "net position in {$year->calendarYear}");
+            if ($cumulativeUnmet->isZero()) {
+                $this->assertSame($ladderUsable[$year->calendarYear], $cell, "solvent-year reconciliation in {$year->calendarYear}");
+            }
         }
     }
 
@@ -156,6 +174,61 @@ class ScenarioCompareTest extends TestCase
             ->call('runFullFamily')
             ->assertSet('familyQueued', 3);
         Queue::assertPushed(RunScenarioSimulation::class, 3);
+    }
+
+    public function test_re_run_all_shows_live_progress_for_the_family_batch(): void
+    {
+        Queue::fake(); // runs are created (queued) but the worker never executes them here
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user);
+        $this->childOf($base, $user, ['expenseLines.ess1.amount' => '31000'], 'What-if A');
+
+        // Before running, no progress panel (nothing is in flight).
+        $component = Livewire::test(ScenarioCompare::class, ['scenario' => $base]);
+        $component->assertDontSee('Cancel all');
+
+        // After launching, the queued (non-terminal) runs surface as a live, per-plan progress
+        // panel — so the batch is never a silent background run.
+        $component->call('runFullFamily')
+            ->assertSee('0 of 2 done')
+            ->assertSee('Cancel all')
+            ->assertDontSee('@endif')   // a mis-compiled Blade directive must never leak to the page
+            ->assertViewHas('familyRun', fn (array $f): bool => $f['active'] && $f['total'] === 2 && $f['done'] === 0);
+    }
+
+    public function test_cancel_all_stops_every_running_plan_in_the_batch(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user);
+        $this->childOf($base, $user, ['expenseLines.ess1.amount' => '31000'], 'What-if A');
+
+        Livewire::test(ScenarioCompare::class, ['scenario' => $base])
+            ->call('runFullFamily')
+            ->call('cancelFamily')
+            ->assertDontSee('Cancel all')            // the batch is no longer active
+            ->assertSee('did not complete')          // both runs ended cancelled
+            ->assertDontSee('@endif')                // the finished/failed branch must compile cleanly too
+            ->assertViewHas('familyRun', fn (array $f): bool => ! $f['active'] && $f['failed'] === 2);
+
+        $this->assertSame(2, SimulationRun::where('status', SimulationStatus::Cancelled)->count());
+    }
+
+    public function test_compare_picks_up_a_family_run_already_in_flight(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user);
+        // A full run left queued (e.g. launched from the base's own results page), never executed.
+        app(SimulationRunner::class)->createRun($base, SimulationMode::Full);
+
+        // Opening Compare mid-run restores the progress panel from the in-flight run.
+        Livewire::test(ScenarioCompare::class, ['scenario' => $base])
+            ->assertSee('0 of 1 done')
+            ->assertSee('Cancel all')
+            ->assertViewHas('familyRun', fn (array $f): bool => $f['active'] && $f['total'] === 1);
     }
 
     public function test_the_re_run_all_button_reflects_the_plan_count(): void

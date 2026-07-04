@@ -326,7 +326,12 @@
             <p class="mt-1 text-sm text-gray-600">
                 The shaded bands are the range across thousands of simulated futures (10th–90th and 25th–75th percentiles); the solid line is the median, with half of futures above it and half below. Figures are in today's money.
                 @if ($fan['usableBasis'])
-                    This is your <strong>spendable</strong> money — it excludes your home, which can't pay day-to-day bills unless you sell. Watch the lower edge: where the bottom band trends toward £0, a meaningful share of futures have run short.
+                    This is your <strong>spendable</strong> money — it excludes your home, which can't pay day-to-day bills unless you sell.
+                    @if ($fan['dipsNegative'])
+                        Where a band drops <strong>below £0</strong> those futures have run out of savings; the line keeps falling to show the <strong>cumulative shortfall</strong> — the extra money that future would need to carry on spending at the planned level.
+                    @else
+                        Watch the lower edge: where the bottom band trends toward £0, a meaningful share of futures have run short.
+                    @endif
                 @else
                     This <strong>includes your home's value</strong> — a net-worth view. The home can't cover day-to-day spending unless sold, so the spendable (excl-home) view is the honest "will it last" picture.
                 @endif
@@ -577,7 +582,7 @@
             @endif
 
             <p class="mt-3 text-xs text-gray-500">
-                Figures are per year, in today's money, for a {{ $plsa['composition'] }} outside London (the standards publish higher figures for London). The standards assume you own your home outright, so they exclude rent and mortgage payments@if ($plsa['runningCostsIncluded']) but include your home running costs, which are added here@endif. Source: PLSA Retirement Living Standards, {{ $plsa['edition'] }} ({{ $plsa['source'] }}), figures read {{ $plsa['verifiedOn'] }}.
+                Figures are per year, in today's money, for a {{ $plsa['composition'] }} outside London (the standards publish higher figures for London). The standards assume you own your home outright, so they exclude rent and mortgage payments{{ $plsa['runningCostsIncluded'] ? ', but include your home running costs, which are added here' : '' }}. Source: PLSA Retirement Living Standards, {{ $plsa['edition'] }} ({{ $plsa['source'] }}), figures read {{ $plsa['verifiedOn'] }}.
             </p>
             <x-signpost class="mt-4" />
         </section>

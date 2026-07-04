@@ -72,6 +72,7 @@ final class Simulator
         $lastSurvivorYears = [];  // per path: the calendar year the household ends
         $wealthByYearIndex = [];       // yearIndex => list<int pence> total wealth (incl. home)
         $usableByYearIndex = [];       // yearIndex => list<int pence> usable wealth (excl. home)
+        $netByYearIndex = [];          // yearIndex => list<int pence> net position (usable − cumulative unmet spend)
 
         for ($p = 0; $p < $nPaths; $p++) {
             $deathAges = $jointLife->sampleHousehold($people, $settings->baseYear, $rng);
@@ -117,11 +118,19 @@ final class Simulator
             $terminalWealth[] = $result->terminalTotalWealth->pence;
             $terminalUsable[] = $result->terminalUsableWealth->pence;
 
+            $cumulativeUnmet = 0; // real pence of target spend this path could not fund, running total
             foreach ($result->years as $year) {
                 $wealthByYearIndex[$year->yearIndex][] = $year->totalWealth->pence;
                 // Usable = liquid + pension (excl. home) — the SAME definition the cashflow
                 // ladder and burndown use, so the spendable series can't drift between views.
-                $usableByYearIndex[$year->yearIndex][] = $year->liquidWealth->plus($year->pensionWealth)->pence;
+                $usable = $year->liquidWealth->plus($year->pensionWealth)->pence;
+                $usableByYearIndex[$year->yearIndex][] = $usable;
+                // Net position continues the usable series below zero once assets are gone:
+                // it subtracts the shortfall the household could not fund (accumulated), so the
+                // fan shows how deep the funding gap gets instead of flatlining at £0. Equal to
+                // usable while solvent (unmet is zero until assets run out).
+                $cumulativeUnmet += $year->unmetSpend->pence;
+                $netByYearIndex[$year->yearIndex][] = $usable - $cumulativeUnmet;
             }
 
             if ($onProgress !== null) {
@@ -145,6 +154,7 @@ final class Simulator
             usableFanChart: $this->fanChart($usableByYearIndex, $settings->baseYear),
             longevity: $this->longevityDistribution($lastSurvivorAges, $lastSurvivorYears, $settings->baseYear),
             careImpact: $settings->modelCareCost ? $this->careImpact($careCosts, $nPaths) : null,
+            netPositionFanChart: $this->fanChart($netByYearIndex, $settings->baseYear),
         );
     }
 

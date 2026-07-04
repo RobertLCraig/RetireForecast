@@ -13,6 +13,8 @@ use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Sex;
+use RetireForecast\FinanceEngine\Forecast\ForecastResult;
+use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
@@ -49,6 +51,26 @@ final class ResultPresenterChartsTest extends TestCase
         // The axis opts into the £ formatter and is anchored at zero so "do we hit £0?" reads honestly.
         $this->assertTrue($excl['fan']['options']['moneyAxis']);
         $this->assertSame(0, $excl['fan']['options']['yaxis']['min']);
+        // A solvent plan never dips below zero, so the £0 floor stays.
+        $this->assertFalse($excl['fan']['dipsNegative']);
+    }
+
+    public function test_the_fan_plots_the_net_position_below_zero_and_drops_the_axis_floor_when_the_money_runs_out(): void
+    {
+        // A plan whose spendable money runs out: the net-position fan carries a year gone
+        // negative. The fan must plot THAT (not the £0-floored usable fan), flag the dip, drop
+        // the axis floor so the shortfall depth shows, and its data table must match the chart.
+        $result = $this->makeResult('stay_put', total: 200_000, usable: 100_000, depletion: 0.6, netFanMedians: [2026 => 60_000, 2027 => -40_000]);
+
+        $built = ResultPresenter::build(collect(['stay_put' => $result]), 'stay_put', includeHome: false);
+
+        $this->assertTrue($built['fan']['usableBasis']);
+        $this->assertTrue($built['fan']['dipsNegative']);
+        // The £0 floor is dropped when the series goes negative (so it isn't clipped at zero).
+        $this->assertArrayNotHasKey('min', $built['fan']['options']['yaxis']);
+        // The accessible table shows the NET position (2027's 10th percentile is below zero),
+        // proving the chart plots the net-position fan, not the £0-floored usable fan.
+        $this->assertSame(Money::fromPounds(-90_000)->format(), $built['fan']['rows'][1]['p10']);
     }
 
     public function test_the_comparison_is_one_median_line_per_strategy_over_time(): void
@@ -119,6 +141,85 @@ final class ResultPresenterChartsTest extends TestCase
         $this->assertFalse(ResultPresenter::build($stale, 'buy_outright')['usableFanAvailable']);
     }
 
+    public function test_the_burndown_continues_below_zero_by_the_cumulative_shortfall(): void
+    {
+        // Solvent in 2026 (usable £20k), then out of money in 2027 and 2028 (usable £0) with
+        // £15k of spend unfunded each of those years. The burndown line tracks usable wealth
+        // while solvent, then keeps falling below £0 by the ACCUMULATED shortfall (−£15k, −£30k)
+        // — usable wealth alone floors at zero and can't show that depth.
+        $forecast = new ForecastResult(
+            [
+                $this->year(0, 2026, liquid: 12_000, pension: 8_000, unmet: 0),
+                $this->year(1, 2027, liquid: 0, pension: 0, unmet: 15_000),
+                $this->year(2, 2028, liquid: 0, pension: 0, unmet: 15_000),
+            ],
+            false, false, 2027, Money::zero(), Money::zero(), 2028,
+        );
+
+        $burndown = ResultPresenter::burndown([['name' => 'Plan', 'forecast' => $forecast]]);
+
+        $this->assertTrue($burndown['dipsNegative']);
+        $cells = $burndown['rows'][0]['cells'];
+        $this->assertSame(Money::fromPounds(20_000)->format(), $cells[2026]);   // usable wealth, still solvent
+        $this->assertSame(Money::fromPounds(-15_000)->format(), $cells[2027]);  // £0 − £15k cumulative shortfall
+        $this->assertSame(Money::fromPounds(-30_000)->format(), $cells[2028]);  // £0 − £30k cumulative shortfall
+    }
+
+    public function test_the_burndown_shades_below_zero_only_when_a_plan_runs_out(): void
+    {
+        // A plan that runs out gets a light-red y-axis region from £0 down, so the shortfall
+        // territory reads at a glance. The band anchors at y = 0 and drops to a sentinel floor
+        // ApexCharts clamps to the bottom of the plot, whatever the auto axis minimum.
+        $runsOut = new ForecastResult(
+            [
+                $this->year(0, 2026, liquid: 12_000, pension: 8_000, unmet: 0),
+                $this->year(1, 2027, liquid: 0, pension: 0, unmet: 15_000),
+            ],
+            false, false, 2027, Money::zero(), Money::zero(), 2027,
+        );
+        $band = ResultPresenter::burndown([['name' => 'Plan', 'forecast' => $runsOut]])['options']['annotations']['yaxis'];
+        $this->assertCount(1, $band);
+        $this->assertSame(0, $band[0]['y']);
+        $this->assertLessThan(0, $band[0]['y2']);          // fills below the zero line
+        $this->assertSame('#ef4444', $band[0]['fillColor']);
+
+        // A plan that stays solvent throughout has no below-zero region to shade.
+        $solvent = new ForecastResult(
+            [
+                $this->year(0, 2026, liquid: 12_000, pension: 8_000, unmet: 0),
+                $this->year(1, 2027, liquid: 10_000, pension: 8_000, unmet: 0),
+            ],
+            false, false, null, Money::zero(), Money::zero(), 2027,
+        );
+        $options = ResultPresenter::burndown([['name' => 'Plan', 'forecast' => $solvent]])['options'];
+        $this->assertArrayNotHasKey('annotations', $options);
+    }
+
+    private function year(int $index, int $calendarYear, int $liquid, int $pension, int $unmet): YearResult
+    {
+        $liquidM = Money::fromPounds($liquid);
+        $pensionM = Money::fromPounds($pension);
+
+        return new YearResult(
+            yearIndex: $index,
+            calendarYear: $calendarYear,
+            ages: [],
+            aliveCount: 2,
+            grossIncome: Money::zero(),
+            totalTax: Money::zero(),
+            netIncome: Money::zero(),
+            spendTarget: Money::zero(),
+            essentialSpend: Money::zero(),
+            shortfallFunded: Money::zero(),
+            unmetSpend: Money::fromPounds($unmet),
+            essentialsMet: $unmet === 0,
+            liquidWealth: $liquidM,
+            pensionWealth: $pensionM,
+            propertyWealth: Money::zero(),
+            totalWealth: $liquidM->plus($pensionM),
+        );
+    }
+
     /**
      * Three strategies with deliberately distinct total vs usable medians so the toggle and
      * the per-strategy lines are unambiguous. Keyed by variant value, as build() expects.
@@ -135,7 +236,11 @@ final class ResultPresenterChartsTest extends TestCase
         ]);
     }
 
-    private function makeResult(string $variant, int $total, int $usable, float $depletion, bool $usableFan = true): Result
+    /**
+     * @param  array<int, int>|null  $netFanMedians  calendarYear => net-position median (pounds);
+     *                                               pass a negative year to model running out
+     */
+    private function makeResult(string $variant, int $total, int $usable, float $depletion, bool $usableFan = true, ?array $netFanMedians = null): Result
     {
         $sim = new SimulationResult(
             nPaths: 100,
@@ -149,6 +254,8 @@ final class ResultPresenterChartsTest extends TestCase
             usableWealthPercentiles: $this->band($usable),
             // A run from before the per-year usable fan landed has none.
             usableFanChart: $usableFan ? $this->fan([2026 => $usable, 2027 => $usable - 10_000]) : [],
+            // The net-position fan (continues below £0 by the shortfall); absent unless supplied.
+            netPositionFanChart: $netFanMedians === null ? [] : $this->fan($netFanMedians),
         );
 
         return (new Result(['variant' => $variant]))->setSimulationResult($sim);
