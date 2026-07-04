@@ -159,7 +159,7 @@ final class WhatIfChanges
         $topLevel = [
             'variant' => 'Primary option', 'region' => 'Tax region', 'baseTaxYear' => 'Base tax year',
             'ihtModelled' => 'Model inheritance tax', 'householdName' => 'Household name',
-            'relationshipStatus' => 'Relationship status',
+            'relationshipStatus' => 'Relationship status', 'homeToDescendants' => 'Leave home to descendants',
             'assumptionSetId' => 'Assumption set', 'hasProperty' => 'Owns a property',
         ];
         if (count($segments) === 1) {

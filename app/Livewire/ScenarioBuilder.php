@@ -77,7 +77,7 @@ class ScenarioBuilder extends Component
     private const STEP_OF_FIELD = [
         'name' => 1, 'householdName' => 1, 'region' => 1, 'baseTaxYear' => 1,
         'variant' => 1, 'assumptionSetId' => 1, 'assumptionOverrides' => 1, 'ihtModelled' => 1,
-        'relationshipStatus' => 1, 'people' => 1,
+        'homeToDescendants' => 1, 'relationshipStatus' => 1, 'people' => 1,
         'pensions' => 2, 'incomeStreams' => 2,
         'accounts' => 3, 'property' => 3, 'hasProperty' => 3,
         'expense' => 4, 'expenseLines' => 4, 'oneOffCosts' => 4,
@@ -97,6 +97,13 @@ class ScenarioBuilder extends Component
     public string $variant = 'rent';
 
     public bool $ihtModelled = false;
+
+    /**
+     * Whether the home is left to direct descendants (children / grandchildren), which is what
+     * unlocks the £175k residence nil-rate band on the final death. Default on (the common case for
+     * a homeowner); only relevant when IHT is modelled and there is a home.
+     */
+    public bool $homeToDescendants = true;
 
     /**
      * How the two people are related (married/civil-partnership vs cohabiting), which drives the
@@ -226,6 +233,7 @@ class ScenarioBuilder extends Component
             'baseTaxYear' => ['required', Rule::in(['2025-26', '2026-27'])],
             'variant' => ['required', Rule::in(['buy_outright', 'rent', 'stay_put'])],
             'relationshipStatus' => ['required', Rule::in(['married_or_civil_partnership', 'cohabiting'])],
+            'homeToDescendants' => ['boolean'],
             'assumptionSetId' => ['nullable', 'integer', 'exists:assumption_sets,id'],
             // Editable economic assumptions: each is an optional override of the chosen
             // preset's figure (empty = keep the preset). Real growth rates may be negative;
@@ -798,6 +806,14 @@ class ScenarioBuilder extends Component
         // assumptionOverrides). Absent = off, which ScenarioForecaster::settings() reads as false.
         if ($this->modelCareCost) {
             $state['modelCareCost'] = true;
+        }
+
+        // Store the home-to-descendants toggle only when OFF (sparse). Its default is ON — leaving
+        // the home to direct descendants unlocks the residence nil-rate band — so an absent key
+        // reads as on and a scenario predating it (or a what-if that never touched it) records no
+        // spurious delta. Mirrors modelCareCost, inverted for a default-on flag.
+        if (! $this->homeToDescendants) {
+            $state['homeToDescendants'] = false;
         }
 
         return $state;

@@ -65,13 +65,14 @@ final class InheritanceTaxForecastTest extends TestCase
         );
     }
 
-    private function forecast(Household $h, bool $modelIht): ForecastResult
+    private function forecast(Household $h, bool $modelIht, bool $homeToDescendants = true): ForecastResult
     {
         return (new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
             ->forecast($h, AssumptionSetLibrary::default(), new ForecastSettings(
                 baseYear: 2026,
                 baseTaxYear: '2026-27',
                 modelIht: $modelIht,
+                homeToDescendants: $homeToDescendants,
             ));
     }
 
@@ -115,6 +116,48 @@ final class InheritanceTaxForecastTest extends TestCase
             $married->total->pence,
             $cohabiting->total->pence,
             'a cohabiting couple, with no spouse exemption and no transferable band, pays more IHT',
+        );
+    }
+
+    public function test_leaving_the_home_to_descendants_unlocks_the_residence_band(): void
+    {
+        // A MODEST estate that stays under the £2m residence-band taper threshold (the large
+        // couple() estate is tapered away entirely — correct behaviour, but it hides the band).
+        // Both die soon, so the nominal estate at the final death does not grow past £2m.
+        $household = new Household(
+            'Modest',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1948-01-01'), Sex::Male, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(84)),   // dies ~2032
+                new Person('p2', new DateTimeImmutable('1950-01-01'), Sex::Female, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(84)), // dies ~2034 (final)
+            ],
+            new ExpenseProfile(Money::fromPounds(18_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::fromPounds(200)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::fromPounds(200)),
+            ],
+            accounts: [
+                new Account('p1', AccountType::Cash, Money::fromPounds(200_000)),
+                new Account('p2', AccountType::Cash, Money::fromPounds(200_000)),
+            ],
+            primaryResidence: new Property(Money::fromPounds(450_000), OwnershipType::Outright),
+            relationshipStatus: RelationshipStatus::MarriedOrCivilPartnership,
+        );
+
+        $toDescendants = $this->forecast($household, true, homeToDescendants: true)->iht;
+        $notToDescendants = $this->forecast($household, true, homeToDescendants: false)->iht;
+
+        $this->assertNotNull($toDescendants);
+        $this->assertNotNull($notToDescendants);
+
+        // The residence nil-rate band applies only when the home passes to direct descendants, so
+        // leaving it to them shelters more of the estate and the final death pays LESS IHT.
+        $this->assertTrue($toDescendants->secondDeath->residenceNilRateBandUsed->isPositive());
+        $this->assertSame(0, $notToDescendants->secondDeath->residenceNilRateBandUsed->pence);
+        $this->assertLessThan(
+            $notToDescendants->total->pence,
+            $toDescendants->total->pence,
+            'leaving the home to descendants unlocks the residence band, so less IHT is due',
         );
     }
 

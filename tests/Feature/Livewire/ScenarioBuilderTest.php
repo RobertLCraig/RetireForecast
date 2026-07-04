@@ -87,6 +87,32 @@ class ScenarioBuilderTest extends TestCase
         $this->assertTrue(app(ScenarioForecaster::class)->settings($scenario)->modelCareCost);
     }
 
+    public function test_the_iht_toggles_flow_through_and_home_to_descendants_stores_sparsely(): void
+    {
+        $save = function (callable $mutate) {
+            $component = Livewire::test(ScenarioBuilder::class);
+            foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+                $component->set($key, $value);
+            }
+            $mutate($component);
+            $component->call('save')->assertHasNoErrors();
+
+            return Scenario::latest('id')->firstOrFail();
+        };
+
+        // IHT on, home left to descendants (the default): the toggle reaches the forecast settings,
+        // and the default-on flag is stored sparsely (absent = on), so no spurious what-if delta.
+        $on = $save(fn ($c) => $c->set('ihtModelled', true));
+        $this->assertTrue(app(ScenarioForecaster::class)->settings($on)->modelIht);
+        $this->assertTrue(app(ScenarioForecaster::class)->settings($on)->homeToDescendants);
+        $this->assertArrayNotHasKey('homeToDescendants', $on->effectiveBuilderState());
+
+        // Home NOT left to descendants: the off value is stored and read back off.
+        $off = $save(fn ($c) => $c->set('ihtModelled', true)->set('homeToDescendants', false));
+        $this->assertFalse($off->effectiveBuilderState()['homeToDescendants']);
+        $this->assertFalse(app(ScenarioForecaster::class)->settings($off)->homeToDescendants);
+    }
+
     public function test_an_unannuitised_pot_stores_no_annuity_fields(): void
     {
         // Sparse storage: a DC pot with the toggle off records none of the annuity keys, so a

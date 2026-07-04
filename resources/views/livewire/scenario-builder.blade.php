@@ -257,6 +257,13 @@
                             <input type="checkbox" wire:model="ihtModelled" class="rounded border-gray-300">
                             Model inheritance tax (estate &amp; legacy)
                         </label>
+                        @if ($ihtModelled)
+                        <label class="mt-2 flex items-center gap-2 pl-6 text-sm text-gray-700">
+                            <input type="checkbox" wire:model="homeToDescendants" class="rounded border-gray-300">
+                            Leaving your home to your children / direct descendants
+                        </label>
+                        <p class="mt-1 pl-6 text-xs text-gray-500">Unlocks the £175,000 residence nil-rate band per person (only when the home passes to direct descendants). Untick if it will not.</p>
+                        @endif
                     </div>
                     <div class="sm:col-span-2">
                         <label class="flex items-center gap-2 text-sm text-gray-700">
