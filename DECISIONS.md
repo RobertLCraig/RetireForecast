@@ -20,6 +20,17 @@ sign-aware (`-£80k`). **The cashflow-ladder table deliberately keeps usable wea
 time view where negative reads naturally as the gap. Reconciliation preserved and tested (burndown = ladder usable − Σ
 unmet; equal while solvent).
 
+**Follow-on (same day) — shade the below-£0 region light red:** Rob asked to highlight the shortfall territory the
+net-position series exposed. Added a light-red `annotations.yaxis` band from £0 down, on **all three** over-time charts
+(the results fan + strategy-comparison and the Compare burndown), via one shared `ResultPresenter::belowZeroBand()`.
+**Two non-obvious calls a future agent should not undo:** (a) the band's `y2` is a fixed **sentinel floor** (−£1bn), not
+a computed axis minimum — ApexCharts clamps a y-axis region to the plot and clips it to the grid mask, so the sentinel
+just fills to the chart bottom whatever the auto scale is (verified against the ApexCharts 4.7 source); no need to know
+the axis min server-side, and it does not drag the scale down. (b) the fan chart's milestone verticals are **merged**
+into `annotations.xaxis` at the `ScenarioResults` call site (`…['annotations']['xaxis'] = …`), not assigned to the whole
+`annotations` key — the old `= ['xaxis' => …]` would clobber the band. Drawn only when a series dips negative (solvent
+charts show no empty band); guarded by unit tests.
+
 **Decision — live batch progress on Compare (no silent long-runs):** "Re-run all" queued the runs and showed a one-shot
 static note. `ScenarioCompare` now tracks the batch's run IDs (public prop, re-scoped to the owner) and polls a progress
 panel — aggregate bar + "X of N done", per-plan status/% bars, **Cancel all**, the results-page **awaiting-worker** hint

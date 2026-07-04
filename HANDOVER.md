@@ -6,7 +6,8 @@
 **Status:** Phase D go-live, **feature-complete for personal use**; the adviser-legibility workstream and the whole **post-v1 enhancement backlog are built** (annuitisation, historical stress-test, ONS mortality-refresh guardrail, care-cost risk — plus **Lane B forced-housing now complete** (in-place forced sale built 2026-07-03) + Lane C withdrawal-sequencing *core*, #5/#6 handed off). The tool runs in **personal-use advice mode** (`config('compliance.personal_use')` = the flagged regulatory line — set false before any public release). What remains is Rob's **browser verification / sign-off**, the **public-release blockers**, and **optional refinements** — see What's next + Current state.
 _Last updated: 2026-07-04 (browser-review fixes: the wealth-over-time charts now continue **below £0** to show the
 cumulative funding gap once the money runs out — `SimulationResult::netPositionFanChart` = usable − Σ unmet spend,
-plotted by the fan + Compare burndown, sign-aware axis; the **Compare page shows live Monte-Carlo progress** for a
+plotted by the fan + Compare burndown, sign-aware axis, and the **below-£0 region now shaded light red** on all three
+over-time charts (fan, strategy-comparison, Compare burndown) so shortfall territory reads at a glance; the **Compare page shows live Monte-Carlo progress** for a
 "re-run all" batch — aggregate + per-plan bars, cancel-all, awaiting-worker hint, polls until terminal, restores an
 in-flight batch on load; and two **Blade `word@if` gluing** bugs fixed — one new (the progress panel), one pre-existing
 (the PLSA footnote) — now guarded app-wide by `BladeDirectivesCompileTest` ([[blade-directive-word-glue-gotcha]]).
@@ -180,6 +181,15 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-07-04 (browser review follow-on — shade the below-£0 region)_ — Rob asked to highlight the funding-gap
+territory the prior fix exposed. Added a **light-red y-axis band below £0** to all three over-time charts — the results
+**fan** + **strategy-comparison** (`ResultPresenter::fan`/`comparison`) and the Compare **burndown** — via one shared
+`ResultPresenter::belowZeroBand()`. Drawn only when a series actually dips negative (a solvent chart shows no empty
+band). It's an ApexCharts `annotations.yaxis` region from £0 to a sentinel floor ApexCharts clamps + clips to the plot,
+so no server-side axis-min needed. The fan's milestone verticals are now **merged** into `annotations.xaxis`
+([ScenarioResults.php](app/Livewire/ScenarioResults.php)) instead of overwriting the key, so both coexist. PHP-only
+(chart-option blobs) — no asset rebuild. Unit-tested (band present when negative, absent when solvent). Nothing pushed.
 
 _2026-07-04 (Rob's browser review — three fixes)_ — **(1)** The "usable wealth over time" charts bottomed at £0 —
 because the engine floors wealth there (running out = £0 + a separate unmet-spend), not a chart bug. Added a

@@ -351,6 +351,13 @@ final class ResultPresenter
             'legend' => ['position' => 'top'],
         ];
 
+        // Shade everything below £0 light red when the net-position fan runs into shortfall, so
+        // that territory reads at a glance. The results page later merges its milestone x-axis
+        // annotations into this same key (it adds annotations.xaxis, keeping this band).
+        if ($dipsNegative) {
+            $options['annotations'] = ['yaxis' => self::belowZeroBand()];
+        }
+
         return [
             'variant' => $variant,
             'label' => self::LABELS[$variant],
@@ -504,6 +511,12 @@ final class ResultPresenter
             'legend' => ['position' => 'top'],
         ];
 
+        // Shade everything below £0 light red when a strategy's median runs into shortfall, so
+        // that territory reads at a glance (this chart carries no other annotations).
+        if ($dipsNegative) {
+            $options['annotations'] = ['yaxis' => self::belowZeroBand()];
+        }
+
         return [
             'options' => $options,
             'rows' => $rows,
@@ -514,6 +527,30 @@ final class ResultPresenter
             'basisLabel' => $basisLabel,
             'dipsNegative' => $dipsNegative,
         ];
+    }
+
+    /**
+     * A light-red y-axis region shading everything below £0, so a chart that dips into
+     * shortfall marks that territory at a glance (used by the fan, strategy-comparison and
+     * burndown charts). Returns the `annotations.yaxis` list (one region).
+     *
+     * The band runs from the zero line down to a floor far below any real forecast: ApexCharts
+     * clamps a y-axis region to the plot area and clips it to the grid mask, so this sentinel
+     * floor simply fills to the bottom of the chart whatever the auto axis minimum turns out to
+     * be — no need to compute the axis min server-side. Only added when a series actually dips
+     * negative, so a solvent chart shows no empty band.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function belowZeroBand(): array
+    {
+        return [[
+            'y' => 0,
+            'y2' => -1_000_000_000,
+            'fillColor' => '#ef4444',
+            'opacity' => 0.09,
+            'borderColor' => 'transparent',
+        ]];
     }
 
     /**
@@ -595,17 +632,7 @@ final class ResultPresenter
             $chartAnnotations['xaxis'] = $annotations;
         }
         if ($dipsNegative) {
-            // The band runs from the zero line down to a floor far below any real forecast.
-            // ApexCharts clamps a y-axis region to the plot area and clips it to the grid mask
-            // (YAxisAnnotations + Helpers::getY1Y2), so this sentinel floor simply fills to the
-            // bottom of the chart whatever the auto axis minimum is — no need to know it here.
-            $chartAnnotations['yaxis'] = [[
-                'y' => 0,
-                'y2' => -1_000_000_000,
-                'fillColor' => '#ef4444',
-                'opacity' => 0.09,
-                'borderColor' => 'transparent',
-            ]];
+            $chartAnnotations['yaxis'] = self::belowZeroBand();
         }
         if ($chartAnnotations !== []) {
             $options['annotations'] = $chartAnnotations;

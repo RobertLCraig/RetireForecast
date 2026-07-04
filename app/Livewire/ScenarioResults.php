@@ -402,7 +402,9 @@ class ScenarioResults extends Component
             $primaryVariant = $this->scenario->variant->value;
             $primaryForecast = $ladderContext['forecasts'][$primaryVariant] ?? $forecast;
             $chartMilestones = ResultPresenter::milestones($household, $primaryForecast, in_array($primaryVariant, ['buy_outright', 'rent'], true));
-            $presented['fan']['options']['annotations'] = ['xaxis' => ResultPresenter::milestoneAnnotations($chartMilestones)];
+            // Add the milestone verticals to the fan chart's annotations WITHOUT clobbering the
+            // below-zero shortfall band ResultPresenter::fan() may already have set on annotations.yaxis.
+            $presented['fan']['options']['annotations']['xaxis'] = ResultPresenter::milestoneAnnotations($chartMilestones);
         }
 
         // "Since your last run": diff the two most recent completed-run snapshots (they survive

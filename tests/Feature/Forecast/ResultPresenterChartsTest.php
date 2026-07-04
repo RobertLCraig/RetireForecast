@@ -53,6 +53,9 @@ final class ResultPresenterChartsTest extends TestCase
         $this->assertSame(0, $excl['fan']['options']['yaxis']['min']);
         // A solvent plan never dips below zero, so the £0 floor stays.
         $this->assertFalse($excl['fan']['dipsNegative']);
+        // Nothing below zero, so no shortfall band is shaded on either over-time chart.
+        $this->assertArrayNotHasKey('annotations', $excl['fan']['options']);
+        $this->assertArrayNotHasKey('annotations', $excl['comparison']['options']);
     }
 
     public function test_the_fan_plots_the_net_position_below_zero_and_drops_the_axis_floor_when_the_money_runs_out(): void
@@ -71,6 +74,15 @@ final class ResultPresenterChartsTest extends TestCase
         // The accessible table shows the NET position (2027's 10th percentile is below zero),
         // proving the chart plots the net-position fan, not the £0-floored usable fan.
         $this->assertSame(Money::fromPounds(-90_000)->format(), $built['fan']['rows'][1]['p10']);
+
+        // The below-zero shortfall region is shaded light red on both the fan and the
+        // strategy-comparison chart, anchored at £0 and dropping into the negative territory.
+        $fanBand = $built['fan']['options']['annotations']['yaxis'];
+        $this->assertCount(1, $fanBand);
+        $this->assertSame(0, $fanBand[0]['y']);
+        $this->assertLessThan(0, $fanBand[0]['y2']);
+        $this->assertSame('#ef4444', $fanBand[0]['fillColor']);
+        $this->assertSame('#ef4444', $built['comparison']['options']['annotations']['yaxis'][0]['fillColor']);
     }
 
     public function test_the_comparison_is_one_median_line_per_strategy_over_time(): void
