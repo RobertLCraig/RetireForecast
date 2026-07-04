@@ -3,6 +3,38 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-04 — Assistant may assemble a reviewable what-if (a narrow, deliberate widening of "the model never builds")
+**Context:** Rob asked whether the local-model assistant could **create scenarios** — ask targeted questions about
+what to change from the base, then fill it in — and, on an explicit request, update the base. This reverses a rule
+recorded emphatically in [docs/RESEARCH-local-assistant.md](docs/RESEARCH-local-assistant.md) (§0/§3, risk A4),
+[config/assistant.php](config/assistant.php) and DECISIONS 2026-07-03: the model *"never builds; its only write is a
+backlog append"* (A4: *"Rob has ruled building out entirely"*).
+
+**Decision — widen it, narrowly and by design (Rob's call).** The assistant may assemble a **reviewable what-if**
+from the reader's **own stated figures**, and — behind a separate off-by-default flag — edit the base **only on an
+explicit request**. The old rule's protections all still hold, which is what makes this an application of the
+doctrine, not a betrayal of it:
+- The model is never the **source of a figure** — every value comes from what the reader said (guard **C1**, the
+  inverse of G1). It maps "bump my retirement to 68" onto a field; it supplies no number of its own.
+- The model never **computes an outcome** — it produces **inputs**; the deterministic engine + Monte Carlo forecast
+  the result, exactly as for a hand-built what-if.
+- Writes are **reviewable + reversible** — a what-if is a **delta-child** (a throwaway draft off the base), shown as a
+  `WhatIfChanges` diff and confirmed before persist, deletable after; the base is untouched by default.
+- **Still ruled out:** research / planning / code (Claude Code's job, and worse on a 14B) and any from-scratch
+  scenario. This is **data-entry assistance**, categorically different from authoring content or predicting.
+
+**Scope + phasing (Rob, 2026-07-04): full widen.** Conversational what-ifs (Phase 1 value edits; Phase 2 add/remove
+rows), then **gated base editing** (Phase 3, `config('assistant.can_edit_base')` **default off**, with orphan +
+stale-run surfacing). Mostly a new *producer* of the existing delta shape — reuses `BuilderStateDelta`, `QuickWhatIf`'s
+`{name, overrides}`, `QuickWhatIfController` persistence, `WhatIfChanges` for the confirm. New pieces: a **closed
+edit-target menu** (C2, so the model selects a real path, never fabricates one), a `BacklogCapture`-shaped extraction,
+and the input-grounding guard **C1**. Full spec, guardrails (C1–C5) and risks in
+**[docs/PLAN-assistant-scenario-editing.md](docs/PLAN-assistant-scenario-editing.md)**.
+
+**Status:** spec approved, **not built**. When built, update the "never builds" wording in RESEARCH-local-assistant.md
+(§0/§3/A4) + the `config/assistant.php` header to the narrowed form. Guidance-only phrasing (G2) still wraps every
+conversational turn; local-only (LA-3) is unchanged.
+
 ## 2026-07-04 — NI category tidied to derive-default-plus-override; IHT-not-wired found + specced
 **Context:** Building a what-if, Rob saw the per-person **National Insurance category** field and asked whether
 it's expected to change over time and whether we can auto-apply the correct one. Investigating that surfaced a

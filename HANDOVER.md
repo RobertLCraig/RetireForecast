@@ -4,15 +4,19 @@
 
 **Stage:** active
 **Status:** Phase D go-live, **feature-complete for personal use**; the adviser-legibility workstream and the whole **post-v1 enhancement backlog are built** (annuitisation, historical stress-test, ONS mortality-refresh guardrail, care-cost risk — plus **Lane B forced-housing now complete** (in-place forced sale built 2026-07-03) + Lane C withdrawal-sequencing *core*, #5/#6 handed off). The tool runs in **personal-use advice mode** (`config('compliance.personal_use')` = the flagged regulatory line — set false before any public release). What remains is Rob's **browser verification / sign-off**, the **public-release blockers**, and **optional refinements** — see What's next + Current state.
-_Last updated: 2026-07-04 (two doc/infra threads, no engine change: **(1)** worked the V2 couple's real "what
+_Last updated: 2026-07-04 (three doc/infra threads, no engine change: **(1)** worked the V2 couple's real "what
 combination gives us the best chance?" question via headless engine sweeps — findings folded into a new **decision-support**
 feature spec (`docs/PLAN.md` section + staged `docs/PLAN-decision-support.md`), hardened by a **4-agent review**
 (gaps/pitfalls/presentation/communication; the correctness spine — MC-based bracketing, NOT the deterministic median,
 which is optimistically wrong on this survivor-cliff household — is load-bearing); five V2 what-if scenarios built into
 the **local (gitignored) DB**. **(2)** Per Rob, **relaxed the guidance-only partition for the private/family phase**:
 suite now runs in advice mode, `BannedPhrasingTest` posture-aware (skips in advice mode, enforces when
-`personal_use=false`), new `compliance:advice-audit` inventory, one flag flip re-enforces. See Session log + DECISIONS
-2026-07-04._
+`personal_use=false`), new `compliance:advice-audit` inventory, one flag flip re-enforces. **(3)** specced the **assistant creating
+scenarios**: a conversational what-if builder (the model asks what to change from the base, then fills a
+**reviewable delta-child** from the reader's own figures) + **gated base editing** — a deliberate **narrow widening
+of the assistant's "never builds" rule** (reviewable/reversible, no invented figures or computed outcomes). Rob
+chose the full widen; base editing deferred to Phase 3 (`can_edit_base` default off). Spec approved, **not built**:
+`docs/PLAN-assistant-scenario-editing.md`. See Session log + DECISIONS 2026-07-04._
 _Prior arc (2026-07-03): in-place forced sale → mortgage-maturity made a **user input** → **buy-with-a-
 mortgage** (`HousingAction::buyMortgageRate` funds a buy-cheaper shortfall with an interest-only RIO) → a contextual
 **"Check these figures & get help"** sources/contacts panel (results / Compare / PDF). Plus the real **V2 couple's DB
@@ -174,6 +178,7 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 | docs/PLAN-in-place-forced-sale.md | Spec + **BUILT** (2026-07-03): `ForcedSale` sold in place at the redemption year — `PathProjector` event sells at the grown value via the shared `HousingProceeds::compute`, frees equity into GIA, stops housing costs, charges the entered rent; rent + selling costs ride on `ForecastSettings`. The last Lane-B item, now closed. |
 | docs/PLAN-iht-and-relationship-status.md | Spec (DRAFT, **not built** — 2026-07-04). Wire Inheritance Tax into the forecast (the `ihtModelled` toggle is currently collected-but-unconsumed) + add `relationshipStatus` (married/civil-partner vs cohabiting) driving the spousal exemption + transferable nil-rate band. The `InheritanceTaxCalculator` is done; only wiring + an `EstateValuer` + the input + a results panel remain. Ready for a fresh agent. |
 | docs/PLAN-decision-support.md | **SPEC (not built), 2026-07-04.** Staged plan for the "lever thresholds + combination comparison" feature (surface the V2 sweep analysis in-app for non-numbers users). **Phase 0 correctness spine** (MC-based bracketing — never the deterministic median; the 2-D frontier; crossing semantics) → phases 1–6 → reuse/build map. Hardened by a 4-agent review. Expands the `docs/PLAN.md` "Decision-support…" section. |
+| docs/PLAN-assistant-scenario-editing.md | **SPEC (approved scope, not built), 2026-07-04.** The local assistant assembles a **reviewable what-if** from the reader's own stated changes to the base (conversational; Phase 1 value-edits, Phase 2 add/remove rows) + **gated base editing** (Phase 3, `can_edit_base` default off, orphan + stale-run surfacing). A deliberate **narrow widening** of the assistant's "never builds" rule (reviewable delta-child, no invented figures/outcomes — DECISIONS 2026-07-04). Mostly a new *producer* of the existing delta shape: reuses `BuilderStateDelta`/`QuickWhatIf`/`QuickWhatIfController`/`WhatIfChanges`; new guards C1 (input grounding) + C2 (closed target menu). |
 | docs/SCENARIO-V2.local.md | **GITIGNORED / PRIVATE** (real couple's data, never commit): the durable capture of the V2 couple + core scenario (incomes, the flat, CGT history, base + what-ifs) to re-model from after a DB wipe. |
 | docs/METHODOLOGY.md | User-facing engine-computation methodology (income tax, lump-sum shock, SP, SDLT/CGT/PRR, benefits, IHT, care, Monte Carlo, the year loop) + "what we don't model". One source, two homes: the public `/methodology` page AND the assistant's methodology corpus. Written from a code-grounded engine survey (2026-07-03). |
 | PRD.md | Goal, success criteria, scope, non-goals, open questions. |
@@ -186,6 +191,19 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-07-04 (spec: assistant creates scenarios — conversational what-ifs + gated base edit)_ — Doc-only, no code.
+Rob asked whether the local assistant could **create scenarios** (ask targeted questions about what to change from the
+base, then fill in) and, on an explicit request, edit the base. Grounded it in the real machinery, then wrote
+**`docs/PLAN-assistant-scenario-editing.md`**: it's mostly a new *producer* of the existing delta-child shape —
+reuses `BuilderStateDelta`, `QuickWhatIf`'s `{name, overrides}`, `QuickWhatIfController` persistence, `WhatIfChanges`
+for the confirm; the new pieces are a **closed edit-target menu** (guard C2), a `BacklogCapture`-shaped extraction,
+and an **input-grounding guard C1** (the inverse of G1 — refuses any figure the reader didn't state). **This reverses
+the recorded "the model never builds" rule** (RESEARCH-local-assistant §0/§3/A4); Rob chose the **full widen**
+(what-ifs + gated base editing) with **base editing deferred to Phase 3, `can_edit_base` default off**. DECISIONS
+2026-07-04. **Only `docs/PLAN-assistant-scenario-editing.md` was mine this session** — the `scenario-builder.blade.php`
++ `ScenarioBuilderTest.php` the entry below lists as a "concurrent workstream" were that session's *own* NI-category
+work, committed in `7cbb45e`; nothing of that feature is built. Nothing pushed.
 
 _2026-07-04 (V2 "best combination" analysis → decision-support spec + 4-agent review; relax guidance-only for private use)_ —
 **No engine change; two threads. (1) Decision-support.** Answered Rob's real question ("what combination gives us the best
