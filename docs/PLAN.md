@@ -289,6 +289,120 @@ sharpens** them; the items below are the net-new ones), ranked by impact × on-b
   it conflicts with the local-first posture. A **deep-link to the gov.uk State Pension forecast** and a future
   **Pensions Dashboard** import (consumer launch ~2027) are the pragmatic substitutes.
 
+### Decision-support: lever thresholds + combination comparison (2026-07-04) — post-v1 backlog, from the V2 analysis
+Surfaced by working the V2 couple's real question ("what combination gives us the best chance of enough money?").
+Answering it needed a by-hand parameter sweep — run the Monte Carlo across a range of a lever and read off where the
+success probability crosses a target. That analysis **is the product's core job** and should be in the app, not a
+scratchpad. Today a user sees only **one lever-point at a time** (the deterministic "Explore the levers" sliders —
+`ScenarioResults::applySliders` + `sliderForecast`, transient, single point) or hand-builds what-ifs and eyeballs
+Compare; the **thresholds and the trade-offs are invisible**. **Audience split (load-bearing):** the *decision-makers*
+are not numbers people (a "line goes up / dives below the floor" picture lands; probabilities, decimals and dense
+tables do not), while the *analyst* (Rob) must be able to interrogate every figure — so every output is a
+plain-language/visual headline over a collapsed drill-down of the exact numbers + table + CSV.
+
+**This spec was hardened by a 4-agent review (2026-07-04: gaps / pitfalls / presentation / communication).** The
+corrections below are not polish — three of them would otherwise make the feature *quietly wrong on the very household
+it was built from*. Read this whole entry before building.
+
+**Correctness spine — must hold before any code:**
+- **Do NOT bracket the crossing with a deterministic pass.** The plan's original cost-saver (coarse deterministic-
+  depletion bracket → MC confirm) is invalid here: `DeterministicForecaster` runs each person at their *independent
+  median* death age (`RepresentativeDeathAge` → `CohortLifeTable::medianDeathAge`), so the survivor-poverty tail
+  (first death *early*, second death *late*) — the binding risk — **never appears in the deterministic path**. A
+  median pass locates where success ≈ 50%, not the 90/95% *tail* crossing, and it is biased *optimistic* (~£120k too
+  high on buy price for V2). Bracket instead with a **low-path MC grid** (common random numbers, interpolate the
+  crossing), or a **tail-calibrated** death stress (first-dier low percentile, survivor high percentile) used only as
+  a wide outer bracket. Detect survivor-cliff households (secure survivor income < essentials — `incomeFloor()`
+  already knows this) and force a full MC grid for them. Validate any claimed crossing against a full MC before it is
+  ever displayed.
+- **The headline is a 2-D frontier, not a 1-D sweep.** "£260k at 67 / £300k at 70" varies *two* levers; a single-
+  lever curve can't express it and would print £260k as if unconditional. Make the primitive a **parametric threshold**
+  — threshold of lever A as a function of lever B — rendered as a small family of curves or a success **heatmap with
+  the target iso-line drawn on it**, at least for the flagship buy-price × retirement-age pair. Every 1-D readout must
+  pin its held-fixed context ("at spend £30k, return 3%, retire 67, care off").
+- **Define the crossing semantics.** Handle **already-safe** (no crossing — say "already on track, no change needed"),
+  **unreachable** (never crosses in range), and **non-monotone / multi-crossing** levers (drawdown, SP-deferral, and
+  the longevity lever are not monotone). Report the first crossing **as a band with its MC confidence interval**, never
+  a point, and monotone-fit only where the lever is provably monotone (buy price is; longevity is not).
+
+**Two views, reframed for the non-numbers decision-maker (the probability curve becomes the analyst's drill-down):**
+- **Threshold finder → a green-zone "how far can we go" meter, not a probability S-curve.** Reuse the lever slider; as
+  it drags, the **net-position line redraws** (the below-£0 `SimulationResult::netPositionFanChart` / `ResultPresenter::fan`
+  — "does the line stay above the floor or dive under the red?"), and a **green→red meter track** under the slider
+  shows the safe zone with a plain caption ("essentials last in most futures up to about £260k; beyond that the odds
+  slip"). Live redraw uses the cheap **deterministic** line (instant); the green edge + caption come from the backend
+  MC sweep on release (debounced, `aria-live`). The actual **success-probability curve** (with a break-even marker and
+  the 90/95% target line) lives inside a "Show the full sweep" disclosure for the analyst, with its grid table + CSV.
+  Never the word "safe" in neutral copy; never a bare percentage headline.
+- **Combination *comparison* (not "ranking") — best-first ordering is gated advice.** A sorted best-to-worst list *is*
+  a recommendation, and the banned-phrasing lint is blind to a table's **sort order** (it scans text) — so an ordered
+  list still steers when `compliance.personal_use` flips false for public release. Render an **unordered** comparison
+  in guidance mode; the best-first ordering and any "best/strongest" label live behind the `interpret` gate (like
+  `Interpretation::compareNarrative`), with a test asserting neutral order when the flag is false. Present each option
+  as a **word-band chip** (Very likely / Borderline / Unlikely to last — reuse `runOutVerdict`) + a net-position
+  **sparkline**, **no decimals** (94.9 vs 95.0 is within MC noise; bucket to words). Surface the **surprising-lever**
+  callout in plain English (for V2, *living longer raises* success — the risk is the survivor years, so a longer joint
+  life delays the deficit). Do not mix probabilistic rows into Compare's existing deterministic Yes/No grid.
+
+**Communication assets (mostly REUSE — the below-£0 line shipped 2026-07-04):**
+- Reuse: `netPositionFanChart` + `fan()`/`burndown()`/`belowZeroBand()` (the line + red "money runs out" floor),
+  `charts.js` sign-aware £ + age axes + table fallback, `runOutVerdict()` (word verdict + green/amber/red band),
+  `milestones()`/`milestoneAnnotations()` (the death vertical), the slider + transient forecast, `ScenarioContext` +
+  `FigureGrounding` (assistant, G1). Build: a **simple-mode `fan()`** (median line + floor only, bands hidden behind a
+  toggle); a **10-dot natural-frequency pictograph** ("~9 of 10 futures your money lasts", year-first — "runs short
+  around 2045", never "88%"; already in the delta-research backlog); the **green-zone meter**; the **survivor-cliff
+  dumbbell** (income-vs-essentials before/after the first death — and note `incomeFloor()` currently snapshots the last
+  *all-alive* year, i.e. *before* the cliff, so it understates this exact risk: fix it to a survivor-year twin off
+  `deathCalendarYears` + per-year `incomeBySource`); the comparison word-chip list + sparklines. **Progressive
+  disclosure** everywhere: word verdict → one picture → collapsed numbers/table/CSV for the analyst.
+
+**Statistical & operational discipline (project invariants the plan must honour):**
+- **Pin one explicit seed** through every grid point and combination (`SimulationRunner::createRun` defaults to a
+  *random* seed — it fights the sweep) and record it. Common random numbers give a smooth curve **only for monotone
+  levers**; and CRN **breaks** when a combination changes RNG consumption (toggling care, adding a household member
+  desyncs the return stream) — give each stochastic component (mortality / care / returns) its own seeded substream,
+  or hold structure fixed within a comparison set and flag when identical-paths comparability can't hold.
+- **No silent long-runs, no silent path cuts.** There is currently **no transient-forecast entry point** (the live
+  preview was retired; `makeWhatIf` persists a child before forecasting) and the preview MC is **synchronous** — a grid
+  would litter the DB and block the request. Add a **framework-free sweep entry** (builder-state / `Household` in, curve
+  out; no persistence) and run the sweep as a **queued job reusing the Compare live-progress + cancel UX**; make
+  **path-count-per-point explicit** on every readout (the first-N paths of a seed are an honest sub-sample: label
+  "preview (500 paths)" → "confirmed (10k)" and show it tightening). Cap and specify the **combination generator**
+  (single-lever + a curated set of pairs, or a bounded greedy/beam search toward the target — never an unbounded
+  cross-product). Ship every new figure with its **table + CSV + seed + paths + assumption snapshot** (the figure-
+  provenance rule).
+- **A computed threshold must not go stale silently.** A cached "£260k" is engine-derived, so the assistant's G1
+  grounding (provenance, not freshness) would restate it after inputs change. Persist a threshold keyed by an inputs
+  hash and ride the **same input-edit invalidation as `SimulationRun`**; the assistant surfaces it only when the hash
+  matches, else "not yet computed for these inputs".
+
+**Levers — re-scope around the survivor (the binding risk), and don't ship an unmodelled lever:**
+- Add the survivor-targeted levers, several already built: **joint-life annuity with a survivor %** (`AnnuityPurchase`,
+  built), **defer the *survivor's* State Pension** (deferring the first-dier's is wasted — whose-SP-to-defer is the
+  insight), **DB survivor fraction** (`spousePensionFraction`, built), **equity release / lifetime mortgage** (a
+  house-rich/income-poor survivor's classic fix — named elsewhere as a 4th housing strategy, not built), and **care
+  on/off pinned** (an off-by-default six-figure tail otherwise inflates every ceiling). Offer **per-person longevity**
+  (the current slider bumps both, conflating "who dies first" with "how long the survivor lives").
+- **Family/board contribution has no modelling home yet — do not ship it as a lever until it does.** `IncomeStream` is
+  fixed-`startAge`; the child money is meant to start *when the first partner dies* (a *sampled* year), which no stream
+  can trigger, and a tax-free stream keeps **full** Pension Credit **plus** the money (a double-count the reconciliation/
+  completeness rule exists to catch — regular third-party contributions can be treated as income for PC). Minimum viable:
+  a **survivor-onset (first-death-triggered) tax-free stream in `PathProjector`**, an explicit *tested* decision on its
+  PC treatment, and the resident-contributor entitlement reductions (council-tax single-person discount, PC SDP) it
+  should trigger — guarded by a completeness test (the money reaches the survivor) and a reconciliation test (PC +
+  contribution don't both count).
+
+**Every threshold carries its optimism stack.** The buy-cheaper ceiling stacks assumptions that all push it *up* —
+`withoutPropertyCosts()` drops the flat's service charge and adds no new one, new-home running costs are only price-
+scaled (`scaledRunningCosts`), house/salary growth is deterministic inside the MC, care is off by default, CGT rests on
+the hand-entered base cost, no SDLT surcharge. A single confident number erases these; the readout must carry the same
+caveat set the results page already computes (`assumptionsPanel` / `saleExplainer`) and name the buy-variant
+simplifications explicitly.
+
+**Staged build plan:** [docs/PLAN-decision-support.md](PLAN-decision-support.md) — Phase 0 (the correctness
+spine: MC-based bracketing, the 2-D frontier, crossing semantics) → phases 1–6 (backend → simple view →
+comparison → survivor levers → frontier → assistant) + the open questions + the reuse-vs-build map.
+
 ### Delta-research backlog (2026-07-02) — communication, household, adviser outputs, a11y, methodology
 A second research wave over the five topics the competitive scan left as residuals/gaps. Full findings +
 sources + the adversarial source-check: **[docs/RESEARCH-delta-2026-07-02.md](RESEARCH-delta-2026-07-02.md)**.

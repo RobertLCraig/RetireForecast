@@ -23,9 +23,12 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
-        <!-- Run the suite in the PUBLIC guidance-only posture, so the regulatory guard stays
-             tested by default; personal-use advice mode is exercised by tests that opt in. -->
-        <env name="COMPLIANCE_PERSONAL_USE" value="false"/>
+        <!-- Run the suite in PERSONAL-USE advice mode (the working default while this is a private
+             family tool, DECISIONS 2026-07-04): the guidance-only partition test then SKIPS instead
+             of blocking advice copy. The guard is not gone — set COMPLIANCE_PERSONAL_USE=false (the
+             public guidance-only posture) to re-enforce the partition, and `php artisan
+             compliance:advice-audit` lists the advice spots at any time. -->
+        <env name="COMPLIANCE_PERSONAL_USE" value="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

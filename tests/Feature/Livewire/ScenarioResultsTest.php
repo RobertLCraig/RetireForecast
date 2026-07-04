@@ -34,6 +34,10 @@ class ScenarioResultsTest extends TestCase
 
     public function test_a_preview_runs_and_renders_headline_numbers_as_text(): void
     {
+        // Neutral single-strategy report. Pin the public posture (the suite default is now advice
+        // mode — DECISIONS 2026-07-04), where the advice readouts reference the other strategies.
+        config()->set('compliance.personal_use', false);
+
         Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
             ->set('previewPaths', 30)
             ->call('preview')
@@ -162,6 +166,10 @@ class ScenarioResultsTest extends TestCase
 
     public function test_a_completed_run_carries_the_guidance_only_disclaimer_and_mode_label(): void
     {
+        // The neutral "mode label" is posture-dependent; pin the public guidance-only posture
+        // (the suite default is now personal-use advice mode — DECISIONS 2026-07-04).
+        config()->set('compliance.personal_use', false);
+
         Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
             ->set('previewPaths', 30)
             ->call('preview')

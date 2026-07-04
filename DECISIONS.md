@@ -3,6 +3,33 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-04 — Relax the guidance-only partition for personal/family use (keep it re-enforceable + flagged)
+**Context:** The tool is, for now, purely for Rob's own family scenario (internal use, not a public release). The
+build-time banned-phrasing partition (`BannedPhrasingTest` + `OutputPhrasing`) was getting in the way: it is a static
+lint that fails if any directive phrasing ("you should", "the best option") appears anywhere outside the walled-off
+`Interpretation` layer, so writing direct advice for real use meant routing everything through the wall. Runtime advice
+mode was already on (`compliance.personal_use` default true; the `interpret` gate open); the friction was the test +
+the partition discipline. Supersedes the "suite runs in public posture so the guard stays tested" stance of
+DECISIONS 2026-06-30 — for the private phase only.
+
+**Decision — relax by default, do not delete; keep it reversible and flagged:**
+- The suite now runs in **personal-use advice mode** (`phpunit.xml` sets `COMPLIANCE_PERSONAL_USE=true`). The partition
+  test is **posture-aware**: in advice mode it **skips** (reporting the advice-spot count) instead of failing; in the
+  public posture (`personal_use=false`) it **fully enforces** the partition as before. Nothing is removed — `OutputPhrasing`,
+  `Interpretation`, the `interpret` gate and the walled-off view all stay.
+- The neutral-zone definition moved to one home, `App\Compliance\NeutralZoneScanner`, shared by the test and a new
+  **`compliance:advice-audit`** command that lists every advice-vs-guidance spot on demand (a report; `--strict` exits
+  non-zero for a pre-release CI gate). This is the standing "flag it for later" inventory the user asked for.
+- **Re-enforcement path (before any public release):** set `COMPLIANCE_PERSONAL_USE=false` and the partition test turns
+  every advice spot back into a listed failure to fix (move behind the `interpret` gate, or reword). The regulatory line
+  is unchanged — only its *default enforcement while private* is relaxed.
+
+**Why:** personal recommendations on pensions/drawdown are FCA-regulated activity, so the guard must survive intact for a
+possible future public release — but it should not obstruct the owner's own family use now. Skipping (visible) beats
+deleting (silent), and an on-demand audit + a single flag flip keep the crossings findable and the posture one toggle
+away. See CLAUDE.md (regulatory-line bullet) + `config/compliance.php`.
+**Status:** active (private phase). Reverts to full enforcement when `personal_use` is set false.
+
 ## 2026-07-04 — Wealth-over-time charts show the funding gap below £0; live Compare MC progress
 **Context:** Rob's browser review flagged that the "usable wealth over time" charts bottom out at £0, and that
 "Re-run all" on Compare runs the Monte Carlo with no progress indicator.

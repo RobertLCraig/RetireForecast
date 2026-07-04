@@ -25,6 +25,9 @@ class InterpretationTest extends TestCase
 
     public function test_the_capability_is_off_by_default_and_the_gate_denies(): void
     {
+        // The public guidance-only posture. Pinned explicitly (the suite default is now personal-use
+        // advice mode — DECISIONS 2026-07-04), so this keeps the off-by-default guard tested.
+        config()->set('compliance.personal_use', false);
         $user = User::factory()->create();
 
         $this->assertFalse($user->can_interpret);
@@ -41,8 +44,8 @@ class InterpretationTest extends TestCase
     public function test_personal_use_mode_opens_the_capability_to_everyone(): void
     {
         // The single regulatory-line switch (config/compliance.php): in personal-use mode the
-        // advice capability is on without an admin grant. (The suite default is the public
-        // posture, so the tests above still exercise the off-by-default guidance behaviour.)
+        // advice capability is on without an admin grant. (This is now the suite default; the
+        // public-posture tests pin `personal_use=false` explicitly to keep the guard tested.)
         config()->set('compliance.personal_use', true);
         $user = User::factory()->create();
 
@@ -66,7 +69,9 @@ class InterpretationTest extends TestCase
 
     public function test_compare_stays_neutral_in_the_public_posture(): void
     {
-        // With personal-use off (the suite default) and no per-user grant, Compare shows no advice.
+        // With personal-use off (pinned — the suite default is now advice mode) and no per-user
+        // grant, Compare shows no advice.
+        config()->set('compliance.personal_use', false);
         $user = User::factory()->create();
         $this->actingAs($user);
         $base = ScenarioFixture::rich($user, ['variant' => 'stay_put']);
@@ -79,6 +84,8 @@ class InterpretationTest extends TestCase
 
     public function test_results_stay_neutral_without_the_capability(): void
     {
+        // Public guidance-only posture, pinned (suite default is now advice mode).
+        config()->set('compliance.personal_use', false);
         $user = User::factory()->create();
         $this->actingAs($user);
 

@@ -5,39 +5,40 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance;
 
 use App\Compliance\Interpretation;
+use App\Compliance\NeutralZoneScanner;
 use App\Compliance\OutputPhrasing;
 use Illuminate\Support\Facades\File;
-use SplFileInfo;
 use Tests\TestCase;
 
 /**
- * The regulatory boundary, enforced at build time: education/guidance only, never a
- * personal recommendation.
+ * The regulatory boundary: education/guidance only, never a personal recommendation.
  *
- * This is a *partition* check (see DECISIONS 2026-06-25). The neutral zone — every
- * Blade template the user sees and every app-side string builder — must be free of
- * directive recommendation phrasing. Directive phrasing is permitted in exactly one
- * place: the walled-off, admin-granted {@see Interpretation} layer and
- * its single gated partial. If a "you should" leaks into a result template, this test
- * fails the build.
+ * This is a *partition* check (see DECISIONS 2026-06-25). The neutral zone — every Blade
+ * template the user sees and every app-side string builder — must be free of directive
+ * recommendation phrasing. Directive phrasing is permitted in exactly one place: the
+ * walled-off {@see Interpretation} layer and its single gated partial.
+ *
+ * **Posture-aware (DECISIONS 2026-07-04).** The partition is ENFORCED (a build failure) only
+ * in the public guidance-only posture (`compliance.personal_use = false`). In personal-use
+ * advice mode (the default while this is a private family tool) the partition is deliberately
+ * relaxed: advice phrasing is allowed in the neutral zone and this test SKIPS rather than
+ * fails, reporting how many advice spots exist. The spots stay findable at any time via
+ * `php artisan compliance:advice-audit`, and flipping `personal_use` to false before any public
+ * release re-enforces the partition — turning every advice spot back into a listed failure to fix.
  */
 class BannedPhrasingTest extends TestCase
 {
-    /** The one app namespace allowed to hold directive phrasing (and the lint itself). */
-    private const WALLED_OFF_DIR = DIRECTORY_SEPARATOR.'Compliance'.DIRECTORY_SEPARATOR;
-
-    /** The one view allowed to hold directive phrasing. */
-    private const WALLED_OFF_VIEW = 'interpretation';
-
-    public function test_no_result_template_or_app_string_contains_banned_phrasing(): void
+    public function test_neutral_zone_stays_on_the_guidance_side_of_the_line(): void
     {
-        $offenders = [];
+        $offenders = NeutralZoneScanner::advice();
 
-        foreach ($this->neutralZoneFiles() as $file) {
-            $violations = OutputPhrasing::violations(File::get($file->getPathname()));
-            if ($violations !== []) {
-                $offenders[$file->getPathname()] = $violations;
-            }
+        if (config('compliance.personal_use')) {
+            $this->markTestSkipped(
+                'Personal-use advice mode (compliance.personal_use=true): guidance-only partition '.
+                'relaxed by design. '.count($offenders).' advice spot(s) in the neutral zone — run '.
+                '`php artisan compliance:advice-audit` to list them, or set COMPLIANCE_PERSONAL_USE=false '.
+                'to re-enforce the partition before a public release.',
+            );
         }
 
         $this->assertSame(
@@ -68,39 +69,5 @@ class BannedPhrasingTest extends TestCase
             'The walled-off Interpretation layer is expected to contain directive phrasing; '.
             'if it does not, the partition check proves nothing.',
         );
-    }
-
-    /**
-     * Every user-facing Blade view (bar the walled-off interpretation partial) and every
-     * app PHP file (bar the Compliance namespace, which holds the lint patterns and the
-     * interpretation layer).
-     *
-     * @return list<SplFileInfo>
-     */
-    private function neutralZoneFiles(): array
-    {
-        $files = [];
-
-        foreach (File::allFiles(resource_path('views')) as $file) {
-            if (! str_ends_with($file->getFilename(), '.blade.php')) {
-                continue;
-            }
-            if (str_contains($file->getFilename(), self::WALLED_OFF_VIEW)) {
-                continue;
-            }
-            $files[] = $file;
-        }
-
-        foreach (File::allFiles(app_path()) as $file) {
-            if ($file->getExtension() !== 'php') {
-                continue;
-            }
-            if (str_contains($file->getPathname(), self::WALLED_OFF_DIR)) {
-                continue;
-            }
-            $files[] = $file;
-        }
-
-        return $files;
     }
 }

@@ -4,14 +4,15 @@
 
 **Stage:** active
 **Status:** Phase D go-live, **feature-complete for personal use**; the adviser-legibility workstream and the whole **post-v1 enhancement backlog are built** (annuitisation, historical stress-test, ONS mortality-refresh guardrail, care-cost risk — plus **Lane B forced-housing now complete** (in-place forced sale built 2026-07-03) + Lane C withdrawal-sequencing *core*, #5/#6 handed off). The tool runs in **personal-use advice mode** (`config('compliance.personal_use')` = the flagged regulatory line — set false before any public release). What remains is Rob's **browser verification / sign-off**, the **public-release blockers**, and **optional refinements** — see What's next + Current state.
-_Last updated: 2026-07-04 (browser-review fixes: the wealth-over-time charts now continue **below £0** to show the
-cumulative funding gap once the money runs out — `SimulationResult::netPositionFanChart` = usable − Σ unmet spend,
-plotted by the fan + Compare burndown, sign-aware axis, and the **below-£0 region now shaded light red** on all three
-over-time charts (fan, strategy-comparison, Compare burndown) so shortfall territory reads at a glance; the **Compare page shows live Monte-Carlo progress** for a
-"re-run all" batch — aggregate + per-plan bars, cancel-all, awaiting-worker hint, polls until terminal, restores an
-in-flight batch on load; and two **Blade `word@if` gluing** bugs fixed — one new (the progress panel), one pre-existing
-(the PLSA footnote) — now guarded app-wide by `BladeDirectivesCompileTest` ([[blade-directive-word-glue-gotcha]]).
-See Session log + DECISIONS 2026-07-04._
+_Last updated: 2026-07-04 (two doc/infra threads, no engine change: **(1)** worked the V2 couple's real "what
+combination gives us the best chance?" question via headless engine sweeps — findings folded into a new **decision-support**
+feature spec (`docs/PLAN.md` section + staged `docs/PLAN-decision-support.md`), hardened by a **4-agent review**
+(gaps/pitfalls/presentation/communication; the correctness spine — MC-based bracketing, NOT the deterministic median,
+which is optimistically wrong on this survivor-cliff household — is load-bearing); five V2 what-if scenarios built into
+the **local (gitignored) DB**. **(2)** Per Rob, **relaxed the guidance-only partition for the private/family phase**:
+suite now runs in advice mode, `BannedPhrasingTest` posture-aware (skips in advice mode, enforces when
+`personal_use=false`), new `compliance:advice-audit` inventory, one flag flip re-enforces. See Session log + DECISIONS
+2026-07-04._
 _Prior arc (2026-07-03): in-place forced sale → mortgage-maturity made a **user input** → **buy-with-a-
 mortgage** (`HousingAction::buyMortgageRate` funds a buy-cheaper shortfall with an interest-only RIO) → a contextual
 **"Check these figures & get help"** sources/contacts panel (results / Compare / PDF). Plus the real **V2 couple's DB
@@ -71,7 +72,7 @@ The engine is the product; the Laravel app is a shell around it. The full tree i
 See [DECISIONS.md](DECISIONS.md) for the full append-only log + rationale. The load-bearing "don't relitigate" anchors:
 - **Local-first, personal use, no hardcoded client data.** Rob enters the couple via the UI; any first-run sample must be obviously fictional. Possible free public release later, so do not design accounts out.
 - **Modelling depth:** HMRC-accurate deterministic engine PLUS Monte Carlo with **stochastic joint-life mortality**. Pensions DC/DB/State; housing buy-vs-rent on identical seeds; IHT a toggle (incl. pensions entering the estate from April 2027). Assumptions are a sourced, runtime/display choice (FCA default), not baked in.
-- **Regulatory posture: education/guidance only** is the **public** stance (never a personal recommendation; `BannedPhrasingTest` partition lint; signpost Pension Wise / MoneyHelper). **Currently relaxed for personal use:** this is a private tool, so **`config('compliance.personal_use')` (default true) is the flagged "regulatory line"** — it turns the walled-off advice-style `interpret` capability ON for everyone (no admin grant), so the app gives direct advice (e.g. the buy-vs-rent "why" narrative). **Set it false before any public release** and the guidance-only partition (lint + per-user `can_interpret` grant) re-applies; the suite runs with it false so the guard stays tested. See DECISIONS 2026-06-30.
+- **Regulatory posture: education/guidance only** is the **public** stance (never a personal recommendation; `BannedPhrasingTest` partition lint; signpost Pension Wise / MoneyHelper). **Currently relaxed for personal use:** this is a private tool, so **`config('compliance.personal_use')` (default true) is the flagged "regulatory line"** — it turns the walled-off advice-style `interpret` capability ON for everyone (no admin grant), so the app gives direct advice (e.g. the buy-vs-rent "why" narrative). **Set it false before any public release** and the guidance-only partition (lint + per-user `can_interpret` grant) re-applies. **Relaxed further for the private/family phase (2026-07-04):** the suite now runs with it **true** (advice mode), and `BannedPhrasingTest` is **posture-aware** — it *skips* (visibly, with a count) in advice mode instead of blocking direct advice copy, and *fully enforces* the partition when `personal_use=false`. Nothing deleted; the neutral-zone definition has one home (`App\Compliance\NeutralZoneScanner`), and **`php artisan compliance:advice-audit`** lists advice spots on demand (the standing "flag it for later" inventory). Flip the flag false to re-enforce. See DECISIONS 2026-06-30 + 2026-07-04.
 - **Engine is framework-free** in a path package; **money = integer pence**; **savings + dividends in one combined income-tax pass**; **tax figures versioned per tax year with source + verified-on** (freeze to April 2031; dividend rates rise in 2026/27).
 - **UI = hand-rolled Livewire 4** (Filament admin-only); form input → engine DTOs via a standalone, unit-tested `HouseholdAssembler`; charts are a progressive enhancement (every figure also text + accessible `<table>` + CSV); the region guard asks the engine's `TaxYearRegistry` (Scotland refused until its bands land).
 
@@ -120,7 +121,7 @@ The adviser-legibility workstream and the whole post-v1 backlog are built (see C
 3. **Optional refinements to built features** (all flagged v1 limits; pick by value). **Care:** means-test the tail once assets fall below the threshold (`Care\CareMeansTest` is the hook), sex/age-split probability + HSLE timing, ONS-xlsx auto-parse for `mortality:refresh`. **CGT:** deemed-occupation absences, per-owner band-straddle from exact income, shared-occupancy lettings relief (DECISIONS 2026-06-30). **Monte Carlo:** stochastic house/salary growth (currently deterministic), post-2031 reindexing, per-scheme DB escalation. **Annuitisation:** explicit retirement-*month* override.
 4. **CI / data hygiene.** Wire the freshness guardrails (`figures:freshness`, `mortality:refresh`) into a scheduled/CI run so aging or drifted figures fail loudly. Low-value hardening (confirm worth it): tamper-evident run hash, forecast caching.
 
-**Specced-but-unbuilt work (lanes closed — no coordination needed, just pick it up).** Lane C: withdrawal-sequencing next steps #5/#6 (docs/PLAN-withdrawal-sequencing.md — gated on two modelling calls from Rob). Lane D: multi-property (docs/PLAN-multi-property.md, DRAFT, [needs Rob]). (Lane B is complete — the in-place forced sale built 2026-07-03.)
+**Specced-but-unbuilt work (lanes closed — no coordination needed, just pick it up).** **Decision-support: lever thresholds + combination comparison** (docs/PLAN-decision-support.md, 2026-07-04, 4-agent-reviewed) — start at **Phase 0** (the headless `SweepEngine`: MC-based bracketing, the 2-D frontier, crossing semantics — the correctness spine everything else rests on); two open questions are Rob's (public-build ordering; family-contribution vs Pension Credit). Lane C: withdrawal-sequencing next steps #5/#6 (docs/PLAN-withdrawal-sequencing.md — gated on two modelling calls from Rob). Lane D: multi-property (docs/PLAN-multi-property.md, DRAFT, [needs Rob]). (Lane B is complete — the in-place forced sale built 2026-07-03.)
 
 ## Open items
 Open decisions and parked work, off the immediate go-live path (which is under What's next).
@@ -169,6 +170,7 @@ If `vendor/` is missing: `composer install`. If engine classes are not found, re
 | docs/PLAN-withdrawal-sequencing.md | Tax-efficient withdrawal sequencing across wrappers (ISA/SIPP/GIA) + "fill the band" with the lifetime-tax £-delta. **CORE SHIPPED 2026-07-01**; #5 PCLS-timing + #6 optimiser handed off (ready-to-execute plan in the spec, gated on two modelling calls from Rob). |
 | docs/PLAN-mortgage-payment-stop.md | Spec + **BUILT** (2026-07-01): stops the bundled mortgage *payment* after a repay-from-capital redemption via a `while_mortgaged` expense condition + `ExpenseProfile::mortgageCosts`. Kept as the build record. |
 | docs/PLAN-in-place-forced-sale.md | Spec + **BUILT** (2026-07-03): `ForcedSale` sold in place at the redemption year — `PathProjector` event sells at the grown value via the shared `HousingProceeds::compute`, frees equity into GIA, stops housing costs, charges the entered rent; rent + selling costs ride on `ForecastSettings`. The last Lane-B item, now closed. |
+| docs/PLAN-decision-support.md | **SPEC (not built), 2026-07-04.** Staged plan for the "lever thresholds + combination comparison" feature (surface the V2 sweep analysis in-app for non-numbers users). **Phase 0 correctness spine** (MC-based bracketing — never the deterministic median; the 2-D frontier; crossing semantics) → phases 1–6 → reuse/build map. Hardened by a 4-agent review. Expands the `docs/PLAN.md` "Decision-support…" section. |
 | docs/SCENARIO-V2.local.md | **GITIGNORED / PRIVATE** (real couple's data, never commit): the durable capture of the V2 couple + core scenario (incomes, the flat, CGT history, base + what-ifs) to re-model from after a DB wipe. |
 | docs/METHODOLOGY.md | User-facing engine-computation methodology (income tax, lump-sum shock, SP, SDLT/CGT/PRR, benefits, IHT, care, Monte Carlo, the year loop) + "what we don't model". One source, two homes: the public `/methodology` page AND the assistant's methodology corpus. Written from a code-grounded engine survey (2026-07-03). |
 | PRD.md | Goal, success criteria, scope, non-goals, open questions. |
@@ -181,6 +183,26 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-07-04 (V2 "best combination" analysis → decision-support spec + 4-agent review; relax guidance-only for private use)_ —
+**No engine change; two threads. (1) Decision-support.** Answered Rob's real question ("what combination gives us the best
+chance?") by driving the engine headlessly on the V2 couple (scratchpad scripts, not committed): the failure mode is
+**survivor-poverty** (when FRC dies, his State Pension *and* the DLA stop), so the levers that move it are housing cost +
+income into the survivor years. Findings — buy-price ceiling ~£260k@retire-67 / ~£300k@retire-70 for ~95% "money lasts"; a
+child ~£150–330/mo closes the gap; **living longer *raises* success** here. Built **five V2 what-if scenarios** (#21–25) into
+the **local gitignored DB** (ran their 10k MC). Folded the feature into `docs/PLAN.md` ("Decision-support: lever thresholds +
+combination comparison") + a staged **`docs/PLAN-decision-support.md`**, then **hardened it with a 4-agent review**
+(gaps/pitfalls/presentation/communication). Load-bearing corrections: the cheap **deterministic-bracket is invalid** (median
+death age hides the survivor tail — bias optimistic ~£120k); the headline is a **2-D frontier** a 1-D sweep can't show;
+best-first **ranking is advice the lint can't see** (gate the ordering); decimals/"safe" are false precision → words +
+natural-frequency pictograph; reuse the below-£0 net-position line as the core "line dives below the floor" picture.
+**(2) Compliance relaxed for the private/family phase** (Rob's call): suite now runs advice mode (`phpunit.xml`),
+`BannedPhrasingTest` is **posture-aware** (skips with a count in advice mode; fully enforces when `personal_use=false`),
+neutral-zone definition extracted to `App\Compliance\NeutralZoneScanner`, new **`compliance:advice-audit`** on-demand
+inventory (the "flag it for later" net; currently 0 spots — all advice still behind the wall). Pinned the posture in 5
+posture-dependent tests so both stances stay tested. Nothing deleted; flip `COMPLIANCE_PERSONAL_USE=false` to re-enforce.
+DECISIONS 2026-07-04. Nothing pushed. **NB the tree also holds a concurrent workstream I did not touch or commit**
+(scenario-builder assistant-editing: `scenario-builder.blade.php`, `ScenarioBuilderTest.php`, `docs/PLAN-assistant-scenario-editing.md`).
 
 _2026-07-04 (browser review follow-on — shade the below-£0 region)_ — Rob asked to highlight the funding-gap
 territory the prior fix exposed. Added a **light-red y-axis band below £0** to all three over-time charts — the results
