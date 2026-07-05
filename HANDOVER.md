@@ -4,18 +4,18 @@
 
 **Stage:** active
 **Status:** Phase D go-live, **feature-complete for personal use**; the adviser-legibility workstream and the whole **post-v1 enhancement backlog are built** (annuitisation, historical stress-test, ONS mortality-refresh guardrail, care-cost risk — plus **Lane B forced-housing now complete** (in-place forced sale built 2026-07-03) + Lane C withdrawal-sequencing *core*, #5/#6 handed off). The tool runs in **personal-use advice mode** (`config('compliance.personal_use')` = the flagged regulatory line — set false before any public release). What remains is Rob's **browser verification / sign-off**, the **public-release blockers**, and **optional refinements** — see What's next + Current state.
-_Last updated: 2026-07-05 (**decision-support Phase 3 COMPLETE** — the combination-comparison surface. A new section
-on the Compare page (its own surface, never mixed into the deterministic Yes/No grid) scores each compared plan
-(base + ready children) on its latest completed Monte Carlo run as a plain **word-band chip**
-(`ResultPresenter::lastsBand()`, no decimals, never "safe") over a **net-position sparkline** (same usable − Σ-unmet
-series as the fan/burndown), with the exact figures in a per-plan drill-down + an owner-scoped **CSV**. **Ordering is
-gated:** the neutral `App\DecisionSupport\CombinationComparison` presenter is unordered (plan order); best-first
-reordering + the "which to lean towards" narrative come from `Interpretation::combinationRanking()` only behind the
-`interpret` gate (a test pins neutral order when `personal_use=false`; the banned-phrasing partition passes in enforce
-mode). A factual **surprising-lever callout** flags a longer life raising the odds (the survivor-cliff signal).
-`CombinationComparisonData` is the one home for the compared set (Compare render + CSV controller). **Next: Phase 4**
-(survivor-first lever menu). DECISIONS 2026-07-05. Phases 1 + 2 (same day: the queued `ThresholdResult` backend + the
-"How far can we go?" results panel) are in the Session log.)_
+_Last updated: 2026-07-05 (**decision-support Phase 4 PART-BUILT** — the **survivor-cliff story**.
+`ResultPresenter::incomeFloor()` was reading only the last all-alive year (the floor *before* the first death), so it
+understated survivor-poverty risk. It now also carries a **`survivor`** twin computed at the deepest survivor year
+off the same `YearResult` (reconciling to the ladder's survivor rows via the extracted one-definition `floorAt()`),
+plus the signed coverage **`cliff`**, surfaced as a factual before/after **dumbbell** on the results-page income-floor
+section (+ a PDF survivor line). Null twin for a single person. **What remains of Phase 4 = the survivor lever menu**
+(a large, modelling-heavy engine piece — see What's next). Earlier the same day: **Phase 3 COMPLETE** — the
+combination-comparison surface on the Compare page (word-band chips over net-position sparklines, unordered in
+guidance mode, best-first ordering + narrative gated behind `interpret`, a surprising-lever callout;
+`CombinationComparison`/`CombinationComparisonData`/`CombinationCsvExporter`). **Next: the Phase 4 survivor lever
+menu.** DECISIONS 2026-07-05. Phases 1 + 2 (the queued `ThresholdResult` backend + the "How far can we go?" panel)
+are in the Session log.)_
 _Earlier 2026-07-04: three doc/infra threads, no engine change: **(1)** worked the V2 couple's real "what
 combination gives us the best chance?" question via headless engine sweeps — findings folded into a new **decision-support**
 feature spec (`docs/PLAN.md` section + staged `docs/PLAN-decision-support.md`), hardened by a **4-agent review**
