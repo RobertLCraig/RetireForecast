@@ -95,6 +95,59 @@ final class ThresholdExplorerTest extends TestCase
             ->assertDontSee("Your annuity's survivor share");
     }
 
+    public function test_it_offers_a_per_person_longevity_lever_for_each_person_in_a_couple(): void
+    {
+        // The rich fixture is a couple, so "whose longevity" is a real question — one lever per person.
+        $scenario = ScenarioFixture::rich($this->user);
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->assertSee('How long Person 1 lives')
+            ->assertSee('How long Person 2 lives');
+    }
+
+    public function test_it_hides_the_per_person_longevity_lever_for_a_single_person(): void
+    {
+        // A lone person has no survivor cliff and no "whose longevity" split — the combined lifespan
+        // what-if covers them, so the explorer offers no per-person longevity lever.
+        $scenario = ScenarioFixture::fromState($this->user, array_replace(
+            ['step' => 5, 'name' => 'Solo', 'baseTaxYear' => '2026-27', 'variant' => 'rent', 'ihtModelled' => false, 'assumptionSetId' => null],
+            BuilderStateFixture::minimalValid(),
+        ));
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->assertSee('Your essential spending')
+            ->assertDontSee('How long');
+    }
+
+    public function test_finding_the_limit_on_a_persons_longevity_records_which_person(): void
+    {
+        Queue::fake();
+        $scenario = ScenarioFixture::rich($this->user);
+
+        $component = Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->call('setLever', 'person_longevity:p2') // the composite menu id names the person
+            ->assertSet('lever', 'person_longevity:p2')
+            ->call('findLimit');
+
+        // The queued threshold splits the composite id back into a clean lever key + its person.
+        $threshold = ThresholdResult::findOrFail($component->get('thresholdId'));
+        $this->assertSame(LeverKey::PersonLongevity->value, $threshold->lever_key);
+        $this->assertSame('p2', $threshold->lever_param);
+    }
+
+    public function test_the_same_longevity_lever_on_different_people_is_a_distinct_threshold(): void
+    {
+        // The person id joins the inputs hash, so p1's threshold is never served for a p2 request.
+        $scenario = ScenarioFixture::rich($this->user);
+        $runner = app(ThresholdRunner::class);
+        $grid = [0.0, 8.0, 15.0];
+
+        $p1 = $runner->inputsHash($scenario, LeverKey::PersonLongevity, SweepMetric::Essentials, 0.90, $grid, 60, 'p1');
+        $p2 = $runner->inputsHash($scenario, LeverKey::PersonLongevity, SweepMetric::Essentials, 0.90, $grid, 60, 'p2');
+
+        $this->assertNotSame($p1, $p2);
+    }
+
     public function test_switching_lever_resets_the_value_and_clears_the_threshold(): void
     {
         $scenario = ScenarioFixture::rich($this->user);
@@ -150,6 +203,27 @@ final class ThresholdExplorerTest extends TestCase
             ->assertSee('Show the full sweep')
             ->assertSee('Download CSV')
             ->assertDontSee('@endif'); // no leaked Blade directive
+    }
+
+    public function test_a_completed_per_person_longevity_threshold_paints_without_error(): void
+    {
+        // Exercises the presenter's PersonLongevity arms (the ± year value labels + caption) and the
+        // leverParam round-trip through request → execute → render on a non-monotone (Unknown) lever.
+        $scenario = ScenarioFixture::rich($this->user);
+
+        $threshold = app(ThresholdRunner::class)->request(
+            $scenario, LeverKey::PersonLongevity, SweepMetric::Essentials, 0.90, [0.0, 8.0, 15.0], 40, leverParam: 'p2',
+        )->fresh();
+        $this->assertSame(SimulationStatus::Done, $threshold->status);
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->set('lever', 'person_longevity:p2')
+            ->set('leverValue', 8)
+            ->set('thresholdId', $threshold->id)
+            ->assertOk()
+            ->assertSee('Show the full sweep')
+            ->assertSee('+8 years')          // the ± year value label from the PersonLongevity arm
+            ->assertDontSee('@endif');       // no leaked Blade directive
     }
 
     public function test_a_threshold_id_from_another_user_does_not_load(): void

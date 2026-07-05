@@ -46,6 +46,10 @@ final class ThresholdRunner
      * {@see DEFAULT_PATHS}; the same defaults feed the inputs hash, so a defaulted re-request
      * still hits the cache.
      *
+     * $leverParam is the per-person target for a parameterised lever (the person id the per-person
+     * longevity lever moves) — it joins the inputs hash, so the same lever on a different person is
+     * a distinct threshold, and re-requesting the same person is a cache hit.
+     *
      * @param  list<float>|null  $grid
      */
     public function request(
@@ -55,10 +59,11 @@ final class ThresholdRunner
         float $targetProbability,
         ?array $grid = null,
         ?int $paths = null,
+        ?string $leverParam = null,
     ): ThresholdResult {
         $grid ??= $this->service->defaultGrid($lever, $scenario->toHousehold(), $scenario->toHousingAction());
         $paths ??= self::DEFAULT_PATHS;
-        $hash = $this->inputsHash($scenario, $lever, $metric, $targetProbability, $grid, $paths);
+        $hash = $this->inputsHash($scenario, $lever, $metric, $targetProbability, $grid, $paths, $leverParam);
 
         $existing = ThresholdResult::query()
             ->where('scenario_id', $scenario->id)
@@ -71,7 +76,7 @@ final class ThresholdRunner
             return $existing; // cache hit, or a sweep for these inputs is already running
         }
 
-        $run = $this->createRun($scenario, $lever, $metric, $targetProbability, $grid, $paths, $hash);
+        $run = $this->createRun($scenario, $lever, $metric, $targetProbability, $grid, $paths, $hash, $leverParam);
         RunLeverThreshold::dispatch($run->id);
 
         return $run;
@@ -92,11 +97,13 @@ final class ThresholdRunner
         float $targetProbability,
         array $grid,
         int $paths,
+        ?string $leverParam = null,
     ): string {
         return hash('sha256', json_encode([
             'inputs' => $scenario->effectiveBuilderState(),
             'engine' => ScenarioForecaster::ENGINE_VERSION,
             'lever' => $lever->value,
+            'lever_param' => $leverParam,
             'metric' => $metric->value,
             'target' => $targetProbability,
             'grid' => $grid,
@@ -116,11 +123,13 @@ final class ThresholdRunner
         array $grid,
         int $paths,
         string $inputsHash,
+        ?string $leverParam = null,
     ): ThresholdResult {
         $run = new ThresholdResult([
             'scenario_id' => $scenario->id,
             'user_id' => $scenario->user_id,
             'lever_key' => $lever->value,
+            'lever_param' => $leverParam,
             'metric' => $metric->value,
             'target_probability' => $targetProbability,
             'n_paths' => $paths,
@@ -159,6 +168,7 @@ final class ThresholdRunner
                 $run->target_probability,
                 grid: $run->grid,
                 nPaths: $run->n_paths,
+                leverParam: $run->lever_param,
                 onProgress: function (int $done, int $total) use ($run): void {
                     $pct = min(99, (int) floor($done / max(1, $total) * 100));
                     if ($pct > $run->progress_pct) {

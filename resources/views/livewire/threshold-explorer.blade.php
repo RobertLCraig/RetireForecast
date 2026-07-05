@@ -61,10 +61,10 @@
             <button type="button" wire:click="setLever('{{ $option['value'] }}')"
                 @class([
                     'rounded-full border px-3 py-1.5 text-sm',
-                    'border-blue-600 bg-blue-600 text-white' => $leverKey->value === $option['value'],
-                    'border-gray-300 text-gray-700 hover:bg-gray-100' => $leverKey->value !== $option['value'],
+                    'border-blue-600 bg-blue-600 text-white' => $selectedLever === $option['value'],
+                    'border-gray-300 text-gray-700 hover:bg-gray-100' => $selectedLever !== $option['value'],
                 ])
-                @if ($leverKey->value === $option['value']) aria-pressed="true" @endif>
+                @if ($selectedLever === $option['value']) aria-pressed="true" @endif>
                 {{ $option['label'] }}
             </button>
         @endforeach
@@ -73,7 +73,7 @@
     {{-- The slider: dragging redraws the deterministic line (a server round-trip, debounced). --}}
     <div class="mt-4">
         <div class="flex items-baseline justify-between">
-            <label for="lever-slider" class="text-sm font-medium text-gray-800">{{ $leverKey->label() }}</label>
+            <label for="lever-slider" class="text-sm font-medium text-gray-800">{{ $selectedLabel }}</label>
             <span class="text-sm font-semibold text-gray-900" aria-live="polite">{{ $slider['valueLabel'] }}</span>
         </div>
         <input id="lever-slider" type="range" wire:model.live.debounce.400ms="leverValue"
@@ -89,7 +89,7 @@
     {{-- The instant deterministic net-position line. Keyed on the lever + value so a drag
          replaces the subtree and re-inits the chart with the new line; wire:ignore inside keeps
          the threshold poll from disturbing the canvas. --}}
-    <div class="mt-4" wire:key="np-{{ $leverKey->value }}-{{ $slider['value'] }}">
+    <div class="mt-4" wire:key="np-{{ $selectedLever }}-{{ $slider['value'] }}">
         <div wire:ignore>
             <div x-data="chart(@js($netPosition['options']))" role="img"
                 aria-label="Central-estimate net position over time at {{ $slider['valueLabel'] }}. The figures are in the table below."></div>
@@ -137,7 +137,7 @@
             @endif
             <button type="button" wire:click="findLimit"
                 class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-                Find the limit for “{{ $leverKey->label() }}”
+                Find the limit for “{{ $selectedLabel }}”
             </button>
             <p class="mt-1 text-xs text-gray-500">Runs the full Monte&nbsp;Carlo across the range in the background — a minute or so.</p>
         @elseif (! $threshold->status->isTerminal())
@@ -200,7 +200,7 @@
                     <div class="mt-3" wire:key="scurve-{{ $threshold->id }}">
                         <div wire:ignore>
                             <div x-data="chart(@js($sCurve['options']))" role="img"
-                                aria-label="The chance the money lasts at each setting of {{ $leverKey->label() }}, with your target marked. The figures are in the table below."></div>
+                                aria-label="The chance the money lasts at each setting of {{ $selectedLabel }}, with your target marked. The figures are in the table below."></div>
                         </div>
                     </div>
                     <div class="mt-2 flex items-center justify-between">
@@ -209,10 +209,10 @@
                     </div>
                     <div class="mt-2 overflow-x-auto" tabindex="0">
                         <table class="w-full text-sm">
-                            <caption class="sr-only">Chance the money lasts at each {{ $leverKey->label() }} setting, with the 95% confidence interval and paths per point</caption>
+                            <caption class="sr-only">Chance the money lasts at each {{ $selectedLabel }} setting, with the 95% confidence interval and paths per point</caption>
                             <thead>
                                 <tr>
-                                    <th scope="col" class="{{ $th }}">{{ $leverKey->label() }}</th>
+                                    <th scope="col" class="{{ $th }}">{{ $selectedLabel }}</th>
                                     <th scope="col" class="{{ $th }}">Chance it lasts</th>
                                     <th scope="col" class="{{ $th }}">Low</th>
                                     <th scope="col" class="{{ $th }}">High</th>

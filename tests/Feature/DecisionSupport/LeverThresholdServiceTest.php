@@ -10,6 +10,7 @@ use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RetireForecast\FinanceEngine\Sweep\CrossingVerdict;
+use RetireForecast\FinanceEngine\Sweep\LeverDirection;
 use RetireForecast\FinanceEngine\Sweep\SweepMetric;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\ScenarioFixture;
@@ -105,6 +106,34 @@ final class LeverThresholdServiceTest extends TestCase
         $annuity = $service->defaultGrid(LeverKey::SurvivorAnnuityFraction, $household, $action);
         $this->assertSame(0.0, $annuity[0]);
         $this->assertSame(100.0, end($annuity));
+
+        // Per-person longevity: a ± year offset from the cohort peer, −5 to +15 years.
+        $longevity = $service->defaultGrid(LeverKey::PersonLongevity, $household, $action);
+        $this->assertSame(-5.0, $longevity[0]);
+        $this->assertSame(15.0, end($longevity));
+    }
+
+    public function test_a_scenario_computes_a_per_person_longevity_threshold(): void
+    {
+        $scenario = ScenarioFixture::rich(User::factory()->create());
+
+        $outcome = $this->service()->compute(
+            $scenario,
+            LeverKey::PersonLongevity,
+            SweepMetric::Essentials,
+            targetProbability: 0.90,
+            grid: [0.0, 8.0, 15.0],
+            nPaths: 60,
+            leverParam: 'p2', // the survivor-side partner
+        );
+
+        $this->assertSame(LeverKey::PersonLongevity, $outcome->lever);
+        $this->assertSame('how long one of you lives', $outcome->curve->leverName);
+        $this->assertSame('years', $outcome->curve->leverUnit);
+        $this->assertSame([0.0, 8.0, 15.0], array_map(fn ($p) => $p->leverValue, $outcome->curve->points));
+        // Longevity is not provably monotone (whose life it is decides the sign), so the curve
+        // declares its direction Unknown — the sweep reports the first crossing, never a monotone fit.
+        $this->assertSame(LeverDirection::Unknown, $outcome->curve->direction);
     }
 
     public function test_a_scenario_computes_an_annuity_survivor_fraction_threshold(): void

@@ -25,6 +25,7 @@ use RetireForecast\FinanceEngine\Sweep\SweepMetric;
  * result is only ever surfaced while its hash matches the scenario's current inputs.
  *
  * @property string $lever_key
+ * @property string|null $lever_param
  * @property string $metric
  * @property float $target_probability
  * @property int $n_paths
@@ -44,7 +45,7 @@ use RetireForecast\FinanceEngine\Sweep\SweepMetric;
 class ThresholdResult extends Model
 {
     protected $fillable = [
-        'scenario_id', 'user_id', 'lever_key', 'metric', 'target_probability', 'n_paths', 'seed',
+        'scenario_id', 'user_id', 'lever_key', 'lever_param', 'metric', 'target_probability', 'n_paths', 'seed',
         'grid', 'engine_version', 'taxyear_config_version', 'assumption_snapshot', 'inputs_hash',
         'status', 'progress_pct', 'payload', 'error', 'started_at', 'finished_at',
     ];

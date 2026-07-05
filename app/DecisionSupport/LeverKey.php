@@ -19,6 +19,7 @@ enum LeverKey: string
     case EssentialSpend = 'essential_spend';
     case SurvivorDbFraction = 'survivor_db_fraction';
     case SurvivorAnnuityFraction = 'survivor_annuity_fraction';
+    case PersonLongevity = 'person_longevity';
 
     public function label(): string
     {
@@ -28,6 +29,9 @@ enum LeverKey: string
             self::EssentialSpend => 'Your essential spending',
             self::SurvivorDbFraction => "Your DB pension's survivor share",
             self::SurvivorAnnuityFraction => "Your annuity's survivor share",
+            // Generic fallback; the explorer names the specific person ("How long Alex lives"),
+            // since this lever is parameterised by which person it targets.
+            self::PersonLongevity => 'How long one of you lives',
         };
     }
 }

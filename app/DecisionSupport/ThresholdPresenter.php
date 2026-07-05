@@ -208,6 +208,10 @@ final class ThresholdPresenter
             LeverKey::RetirementAge => 'age '.(int) round($value),
             LeverKey::BuyPrice, LeverKey::EssentialSpend => '£'.number_format(round($value), 0),
             LeverKey::SurvivorDbFraction, LeverKey::SurvivorAnnuityFraction => (int) round($value).'%',
+            // A ± year offset from the cohort peer; 0 reads as "about average", not "+0 years".
+            LeverKey::PersonLongevity => ($n = (int) round($value)) === 0
+                ? 'about average'
+                : sprintf('%+d years', $n),
         };
     }
 
@@ -231,6 +235,10 @@ final class ThresholdPresenter
             LeverKey::RetirementAge => "On these figures the money reaches your target if the working partner retires at about {$at} or later; retiring earlier slips below it.",
             LeverKey::SurvivorDbFraction => "On these figures the money reaches your target if the survivor keeps about {$at} of the DB pension or more; a smaller survivor's pension slips below it.",
             LeverKey::SurvivorAnnuityFraction => "On these figures the money reaches your target if about {$at} of the annuity carries on to the survivor or more; a smaller survivor's share slips below it.",
+            // Longevity is not a simple limit: living longer helps when it is the better-provided
+            // partner (their pension keeps paying) and hurts when it is the survivor leaning on a
+            // thinner income. So point at the full sweep for the shape rather than a single line.
+            LeverKey::PersonLongevity => 'Living longer moves the odds both ways here — it helps when it is the better-provided partner and hurts when it is the survivor leaning on a thinner income. Read the full sweep below for the shape rather than a single limit.',
         };
     }
 

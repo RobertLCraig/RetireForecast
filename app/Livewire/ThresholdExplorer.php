@@ -51,21 +51,21 @@ class ThresholdExplorer extends Component
         abort_unless($scenario->user_id === auth()->id(), 403);
 
         $this->scenario = $scenario;
-        $default = $this->leverKeys()[0];
-        $this->lever = $default->value;
-        $this->leverValue = $this->defaultValue($default);
+        $first = $this->leverChoices()[0];
+        $this->lever = $first['id'];
+        $this->leverValue = $this->defaultValue($first['key']);
     }
 
     /** Switch the explored lever: reset the slider to that lever's mid-range and drop the old (lever-specific) threshold. */
     public function setLever(string $lever): void
     {
-        $key = LeverKey::tryFrom($lever);
-        if ($key === null || ! in_array($key, $this->leverKeys(), true)) {
+        $choice = $this->choiceFor($lever);
+        if ($choice === null) {
             return; // ignore a lever this scenario doesn't offer (or a tampered value)
         }
 
-        $this->lever = $key->value;
-        $this->leverValue = $this->defaultValue($key);
+        $this->lever = $choice['id'];
+        $this->leverValue = $this->defaultValue($choice['key']);
         $this->thresholdId = null;
     }
 
@@ -73,7 +73,8 @@ class ThresholdExplorer extends Component
     public function findLimit(): void
     {
         $run = app(ThresholdRunner::class)->request(
-            $this->scenario, LeverKey::from($this->lever), SweepMetric::Essentials, $this->target,
+            $this->scenario, $this->currentKey(), SweepMetric::Essentials, $this->target,
+            leverParam: $this->currentParam(),
         );
         $this->thresholdId = $run->id;
     }
@@ -93,12 +94,14 @@ class ThresholdExplorer extends Component
 
     public function render(): View
     {
-        $lever = LeverKey::from($this->lever);
+        $choice = $this->currentChoice();
+        $lever = $choice['key'];
+        $param = $choice['param'];
         $grid = $this->grid($lever);
         $value = $this->clampedValue($lever, $grid);
 
         // The instant deterministic net-position line at the current lever value.
-        $forecast = app(LeverThresholdService::class)->deterministicForecastAt($this->scenario, $lever, $value);
+        $forecast = app(LeverThresholdService::class)->deterministicForecastAt($this->scenario, $lever, $value, $param);
         $netPosition = ThresholdPresenter::netPosition(
             $forecast,
             $this->scenario->toHousehold(),
@@ -121,6 +124,11 @@ class ThresholdExplorer extends Component
 
         return view('livewire.threshold-explorer', [
             'leverKey' => $lever,
+            // The selected menu id + its person-aware label: the id marks the active button (a
+            // per-person lever's id carries the person, so it can't match on the bare LeverKey),
+            // and the label names the specific person ("How long Alex lives").
+            'selectedLever' => $choice['id'],
+            'selectedLabel' => $choice['label'],
             'levers' => $this->leverOptions(),
             'slider' => [
                 'min' => $grid[0],
@@ -172,23 +180,36 @@ class ThresholdExplorer extends Component
     }
 
     /**
-     * The levers this scenario can explore: buy price only when a sale frees proceeds to buy
-     * with, retirement age only when someone is still working, essential spending always, and the
-     * survivor's DB share only for a couple whose DB scheme actually provides a survivor pension.
+     * The levers this scenario can explore, each a stable menu id → (engine lever key, its
+     * per-person parameter, a human label): buy price only when a sale frees proceeds to buy with,
+     * retirement age only when someone is still working, essential spending always, the survivor's
+     * DB / annuity share only for a couple whose scheme actually provides a survivor benefit, and
+     * per-person longevity (one entry per person) only for a couple.
      *
-     * @return list<LeverKey>
+     * A household-wide lever's id is just its {@see LeverKey} value; a per-person lever's id is
+     * "person_longevity:<personId>" so each person is a distinct menu choice. The id is the single
+     * value the wire:model, the gate check and the threshold request all agree on (storage still
+     * splits it back into lever_key + lever_param).
+     *
+     * @return list<array{id: string, key: LeverKey, param: ?string, label: string}>
      */
-    private function leverKeys(): array
+    private function leverChoices(): array
     {
         $state = $this->scenario->effectiveBuilderState();
         $action = $this->scenario->toHousingAction();
-        $keys = [];
+        $household = $this->scenario->toHousehold();
+        $choices = [];
+
+        $add = static function (LeverKey $key, ?string $param = null, ?string $label = null) use (&$choices): void {
+            $id = $param === null ? $key->value : $key->value.':'.$param;
+            $choices[] = ['id' => $id, 'key' => $key, 'param' => $param, 'label' => $label ?? $key->label()];
+        };
 
         // Buy price is a lever only when the plan actually buys a home (a sale that funds a
         // purchase), mirroring the ladder's buy-strategy gating — renting or staying put has no
         // buy price to move.
         if ($action->salePrice->isPositive() && ($action->buyPrice?->isPositive() ?? false)) {
-            $keys[] = LeverKey::BuyPrice;
+            $add(LeverKey::BuyPrice);
         }
         $working = false;
         foreach ($state['people'] ?? [] as $person) {
@@ -198,18 +219,66 @@ class ThresholdExplorer extends Component
             }
         }
         if ($working) {
-            $keys[] = LeverKey::RetirementAge;
+            $add(LeverKey::RetirementAge);
         }
-        $keys[] = LeverKey::EssentialSpend;
+        $add(LeverKey::EssentialSpend);
 
         if ($this->hasSurvivorDbPension()) {
-            $keys[] = LeverKey::SurvivorDbFraction;
+            $add(LeverKey::SurvivorDbFraction);
         }
         if ($this->hasSurvivorAnnuity()) {
-            $keys[] = LeverKey::SurvivorAnnuityFraction;
+            $add(LeverKey::SurvivorAnnuityFraction);
         }
 
-        return $keys;
+        // Per-person longevity — one entry per person, only for a couple. Whose longevity binds is
+        // the insight (extending the better-provided partner helps, the survivor hurts); a lone
+        // person's longevity is the whole household's, already covered by a quick what-if. Named by
+        // the person so "How long Alex lives" and "How long Sam lives" are distinct choices.
+        if (count($household->persons) >= 2) {
+            foreach ($household->persons as $i => $person) {
+                $name = $person->name !== null && $person->name !== '' ? $person->name : 'Person '.($i + 1);
+                $add(LeverKey::PersonLongevity, $person->id, "How long {$name} lives");
+            }
+        }
+
+        return $choices;
+    }
+
+    /**
+     * The choice for a menu id, or null if this scenario doesn't offer it (a tampered/stale value).
+     *
+     * @return array{id: string, key: LeverKey, param: ?string, label: string}|null
+     */
+    private function choiceFor(string $id): ?array
+    {
+        foreach ($this->leverChoices() as $choice) {
+            if ($choice['id'] === $id) {
+                return $choice;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The currently-selected choice, falling back to the first available when the id is unknown
+     * (so a tampered `lever` prop can never resolve to another scenario's lever or crash render).
+     *
+     * @return array{id: string, key: LeverKey, param: ?string, label: string}
+     */
+    private function currentChoice(): array
+    {
+        return $this->choiceFor($this->lever) ?? $this->leverChoices()[0];
+    }
+
+    private function currentKey(): LeverKey
+    {
+        return $this->currentChoice()['key'];
+    }
+
+    private function currentParam(): ?string
+    {
+        return $this->currentChoice()['param'];
     }
 
     /**
@@ -259,7 +328,7 @@ class ThresholdExplorer extends Component
     /** @return list<array{value: string, label: string}> */
     private function leverOptions(): array
     {
-        return array_map(static fn (LeverKey $k): array => ['value' => $k->value, 'label' => $k->label()], $this->leverKeys());
+        return array_map(static fn (array $c): array => ['value' => $c['id'], 'label' => $c['label']], $this->leverChoices());
     }
 
     /**

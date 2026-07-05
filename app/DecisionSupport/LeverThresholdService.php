@@ -14,6 +14,7 @@ use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\Sweep\Lever\BuyPriceLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\EssentialSpendLever;
+use RetireForecast\FinanceEngine\Sweep\Lever\PersonLongevityLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\RetirementAgeLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\SurvivorAnnuityFractionLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\SurvivorDbFractionLever;
@@ -45,6 +46,9 @@ final class LeverThresholdService
      * $grid defaults to a sensible per-lever range; $onProgress (points done, total) lets the job
      * report progress and cancel by throwing.
      *
+     * $leverParam is the per-person target for a parameterised lever (the person id the
+     * per-person longevity lever moves); null for the household-wide levers.
+     *
      * @param  list<float>|null  $grid
      * @param  (callable(int $done, int $total): void)|null  $onProgress
      */
@@ -56,6 +60,7 @@ final class LeverThresholdService
         ?array $grid = null,
         int $nPaths = 500,
         ?callable $onProgress = null,
+        ?string $leverParam = null,
     ): ThresholdOutcome {
         $engine = new SweepEngine($this->forecaster->config($scenario));
         $household = $scenario->toHousehold();
@@ -63,7 +68,7 @@ final class LeverThresholdService
         $assumptions = $this->forecaster->assumptions($scenario);
         $action = $scenario->toHousingAction();
 
-        $sweepLever = $this->buildLever($scenario, $lever, $assumptions, $action);
+        $sweepLever = $this->buildLever($scenario, $lever, $assumptions, $action, $leverParam);
         $grid ??= $this->defaultGrid($lever, $household, $action);
 
         $curve = $engine->sweep(
@@ -82,21 +87,25 @@ final class LeverThresholdService
      * swept curve's inputs (and with the results page, since both resolve through `ScenarioForecaster`).
      * No Monte Carlo, no persistence: builder-state in, one `ForecastResult` out.
      */
-    public function deterministicForecastAt(Scenario $scenario, LeverKey $lever, float $value): ForecastResult
+    public function deterministicForecastAt(Scenario $scenario, LeverKey $lever, float $value, ?string $leverParam = null): ForecastResult
     {
         $household = $scenario->toHousehold();
         $settings = $this->forecaster->settings($scenario);
         $assumptions = $this->forecaster->assumptions($scenario);
         $action = $scenario->toHousingAction();
 
-        $inputs = $this->buildLever($scenario, $lever, $assumptions, $action)->apply($household, $settings, $value);
+        $inputs = $this->buildLever($scenario, $lever, $assumptions, $action, $leverParam)->apply($household, $settings, $value);
 
         return (new DeterministicForecaster($this->forecaster->config($scenario), new CohortLifeTable))
             ->forecast($inputs->household, $assumptions, $inputs->settings);
     }
 
-    /** Build the engine lever for $key, wired with the scenario's context (housing for buy-price). */
-    private function buildLever(Scenario $scenario, LeverKey $key, AssumptionSet $assumptions, HousingAction $action): SweepLever
+    /**
+     * Build the engine lever for $key, wired with the scenario's context (housing for buy-price,
+     * and $leverParam — the person id — for a per-person lever). A per-person lever falls back to
+     * the first person when no target is given (defensive; the UI always names one).
+     */
+    private function buildLever(Scenario $scenario, LeverKey $key, AssumptionSet $assumptions, HousingAction $action, ?string $leverParam = null): SweepLever
     {
         return match ($key) {
             LeverKey::BuyPrice => new BuyPriceLever($this->forecaster->housingComparison($scenario), $assumptions, $action),
@@ -104,6 +113,7 @@ final class LeverThresholdService
             LeverKey::EssentialSpend => new EssentialSpendLever,
             LeverKey::SurvivorDbFraction => new SurvivorDbFractionLever,
             LeverKey::SurvivorAnnuityFraction => new SurvivorAnnuityFractionLever,
+            LeverKey::PersonLongevity => new PersonLongevityLever($leverParam ?? $scenario->toHousehold()->persons[0]->id),
         };
     }
 
@@ -132,6 +142,11 @@ final class LeverThresholdService
             LeverKey::SurvivorDbFraction => self::linspace(0.0, 100.0, 11),
             // Survivor's annuity fraction: likewise the whole 0–100% joint-life range.
             LeverKey::SurvivorAnnuityFraction => self::linspace(0.0, 100.0, 11),
+            // Per-person longevity: a ± year offset from the cohort peer, −5 to +15 years, every
+            // two years (0 = peer). Spans both a shorter life (a health condition) and a much
+            // longer one — the survivor-cliff case being "what if the survivor lives well beyond
+            // average"; the grid is the same whichever person the lever targets.
+            LeverKey::PersonLongevity => self::linspace(-5.0, 15.0, 11),
         };
     }
 
