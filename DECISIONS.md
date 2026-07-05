@@ -3,6 +3,30 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-05 — Decision-support Phase 4 (part): the survivor-cliff story (incomeFloor survivor-year twin)
+**Context:** Phase 4 re-scopes decision-support around the binding risk on a couple — survivor poverty
+after the first death. Its "survivor-cliff story" half calls out a correctness gap: `ResultPresenter::incomeFloor()`
+snapshotted only the **last all-alive year**, so it read the floor *before* the cliff and understated the exact
+risk. At the first death a State Pension stops and a DB pension may drop to its survivor fraction, while essentials
+fall only by the survivor factor, so the survivor's coverage of essentials can fall sharply.
+
+**Decision — add a survivor-year twin, don't replace the all-alive floor.** `incomeFloor()` keeps the mature
+all-alive floor (unchanged for existing consumers) and now also carries a **`survivor`** twin computed at the
+**deepest survivor year** (the last year exactly one person is alive) off the same `YearResult`, plus the signed
+coverage **`cliff`** between the two. A new private `floorAt(YearResult)` is the single definition both floors read,
+so they can differ only by year, never by how the figure is built — and the twin reconciles to the cashflow
+ladder's survivor rows (a test pins essentialSpend + secure income to that year's engine figures). Null twin for a
+single-person household or no survivor phase. Surfaced as a factual before/after **dumbbell** on the results page
+(and a PDF survivor line): the coverage before vs after the first death, never a prediction of who dies first,
+never a recommendation.
+
+**Still open (Phase 4 remainder — the survivor lever menu):** re-scope the sweep lever menu around the binding
+risk — per-person longevity (split from the combined bump), **defer the *survivor's* State Pension** (deferring the
+first-dier's is wasted), **DB survivor fraction**, **joint-life annuity survivor %**, and **care on/off pinned**.
+Each is a new engine `SweepLever` with real CRN/monotonicity calls (a longevity lever changes RNG consumption →
+`LeverDirection::Unknown`; verify the MC sampler honours `LongevityAdjustment`) + per-scenario gating. Left for a
+focused session. See docs/PLAN-decision-support.md Phase 4.
+
 ## 2026-07-05 — Decision-support Phase 3: the combination-comparison surface (its own, MC-based, neutral-unless-gated)
 **Context:** the Compare page already lays a base beside its what-ifs, but on the DETERMINISTIC central
 projection (a Yes/No grid). Phase 3 answers "which combination gives the best chance the money lasts?" across

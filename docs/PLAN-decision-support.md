@@ -218,6 +218,16 @@ and so understates this exact risk: add a **survivor-year twin** off `deathCalen
   **Tests:** deferring the survivor's SP raises the floor while deferring the first-dier's does not (completeness);
   care-on lowers the ceiling; the incomeFloor survivor-year twin reconciles to the ladder's survivor rows.
 
+**Phase 4 is PART-BUILT (2026-07-05).** The **survivor-cliff story** is done: `ResultPresenter::incomeFloor()` gained a
+**survivor-year twin** (`floorAt()` extracted as the one definition; the twin reads the deepest survivor year off the
+same `YearResult`, so it reconciles to the ladder's survivor rows) + the signed coverage `cliff`, surfaced as a factual
+before/after **dumbbell** on the results page (+ a PDF survivor line). Tested (twin reconciles; the cliff drops when a
+State Pension is lost at the first death; single → no twin). See DECISIONS 2026-07-05. **What remains = the survivor
+lever menu:** per-person longevity (split), defer-the-survivor's-SP, DB survivor fraction, joint-life annuity survivor
+%, and care-on/off-pinned — each a new engine `SweepLever` wired into `LeverKey` + `LeverThresholdService::buildLever`
++ the `ThresholdExplorer` menu, with the CRN/monotonicity calls the statistical-discipline section demands (a longevity
+lever changes RNG consumption → `LeverDirection::Unknown`; verify the MC sampler honours `LongevityAdjustment`).
+
 ### Phase 5 — The 2-D frontier (the flagship visual)
 Render the parametric threshold (S2) as a small **family of curves** or a **success heatmap with the 95% iso-line**
 for buy-price × retirement-age (the headline pair), each cell an MC success on the pinned seed. Simple-view
