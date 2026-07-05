@@ -9,6 +9,8 @@ use App\Models\Scenario;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
+use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
+use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\Sweep\Lever\BuyPriceLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\EssentialSpendLever;
@@ -68,6 +70,27 @@ final class LeverThresholdService
         );
 
         return new ThresholdOutcome($lever, $metric, $targetProbability, $curve, $engine->findCrossing($curve, $targetProbability));
+    }
+
+    /**
+     * A single cheap DETERMINISTIC forecast at one lever value — the instant "live redraw" behind
+     * the decision-support slider (the Monte Carlo threshold is the slow, queued part). It applies
+     * the lever to the scenario's household + settings exactly as the sweep does — through the same
+     * {@see buildLever} and {@see SweepLever::apply} — so the transient line reconciles with the
+     * swept curve's inputs (and with the results page, since both resolve through `ScenarioForecaster`).
+     * No Monte Carlo, no persistence: builder-state in, one `ForecastResult` out.
+     */
+    public function deterministicForecastAt(Scenario $scenario, LeverKey $lever, float $value): ForecastResult
+    {
+        $household = $scenario->toHousehold();
+        $settings = $this->forecaster->settings($scenario);
+        $assumptions = $this->forecaster->assumptions($scenario);
+        $action = $scenario->toHousingAction();
+
+        $inputs = $this->buildLever($scenario, $lever, $assumptions, $action)->apply($household, $settings, $value);
+
+        return (new DeterministicForecaster($this->forecaster->config($scenario), new CohortLifeTable))
+            ->forecast($inputs->household, $assumptions, $inputs->settings);
     }
 
     /** Build the engine lever for $key, wired with the scenario's context (housing for buy-price). */

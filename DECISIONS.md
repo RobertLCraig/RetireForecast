@@ -3,6 +3,36 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-05 — Decision-support Phase 2: the "How far can we go?" results panel
+**Context:** with the queued threshold backend built (Phase 1, below), Phase 2 is the decision-maker's view —
+"how far can we move one lever before the money stops lasting?" for someone who is not a numbers person. The
+plan's audience split is load-bearing: a plain-language/visual headline over a collapsed drill-down of the exact
+figures.
+
+**Decision — a nested Livewire component (`App\Livewire\ThresholdExplorer`) on the results page**, so its slider
+drags and its threshold poll re-render on their own without re-running the whole results page (same nesting the
+assistant uses). It offers only the levers the scenario can move (buy price when a buy is configured, retirement
+age when someone still works, essential spend always), and:
+- **The live line is deterministic, the limit is Monte Carlo.** Dragging the slider redraws an INSTANT deterministic
+  net-position line (a new transient entry point `LeverThresholdService::deterministicForecastAt` — applies the
+  lever via the same `SweepLever::apply` the sweep uses, runs one `DeterministicForecaster`, no MC, no persistence);
+  "Find the limit" runs the queued Phase-1 threshold and paints a green→red meter. The line is explicitly labelled
+  "a quick central estimate, not the full range" so it is never mistaken for the probability answer — honouring the
+  plan's S1 warning that the deterministic pass is optimistically biased for a *threshold* (which is why the meter
+  comes from MC, not the line).
+- **Reuse over rebuild.** The net-position line reuses `ResultPresenter::burndown` (single plan) so it shares the
+  ONE usable-wealth definition (liquid + pension, continued below £0 by cumulative shortfall) with the cashflow
+  ladder and Compare — it cannot drift. The chart/table/CSV plumbing reuses the existing `chart()` Alpine contract
+  and the Phase-1 CSV route.
+- **`App\DecisionSupport\ThresholdPresenter`** turns a `ThresholdOutcome` into the view models: the net-position
+  line, the meter (domain + crossing boundary + which side is on-track, from the lever's monotone direction), the
+  analyst S-curve + grid, and a 10-dot natural-frequency pictograph.
+
+**Neutral-copy guardrails (enforced + tested):** the word "safe" never appears in neutral copy (we say "on track");
+the headline is a dot pictograph + a year-first phrase, never a bare percentage (the % axis is only in the analyst
+disclosure); the meter chip carries an icon + text, never colour alone; and the death vertical is recoloured off
+the shortfall-red band so the two reds don't collide. **Next: Phase 3 (combination comparison).**
+
 ## 2026-07-05 — Decision-support Phase 1: the queued threshold runner + persisted, inputs-hash-keyed store
 **Context:** Phase 0 (the framework-free `SweepEngine`) and the Phase-1 *compute core* (`LeverThresholdService`,
 scenario → threshold) were built (DECISIONS 2026-07-04). What remained of Phase 1 (docs/PLAN-decision-support.md):

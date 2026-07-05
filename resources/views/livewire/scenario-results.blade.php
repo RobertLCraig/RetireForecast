@@ -25,6 +25,7 @@
         ['id' => 'sec-milestones', 'label' => 'Life events', 'show' => (bool) $milestones],
         ['id' => 'sec-ladder', 'label' => 'Year-by-year cashflow', 'show' => ! empty($ladder['rows'])],
         ['id' => 'sec-explore', 'label' => 'Build a what-if', 'show' => $canMakeWhatIf],
+        ['id' => 'sec-how-far', 'label' => 'How far can we go?', 'show' => true],
         ['id' => 'sec-sources', 'label' => 'Check figures & get help', 'show' => true],
     ], fn ($s) => $s['show']));
 @endphp
@@ -1092,6 +1093,11 @@
             <p class="mt-2 text-xs text-gray-500">Saved as a separate scenario; this report is unchanged. Compare them on the Compare page.</p>
         </section>
     @endif
+
+    {{-- "How far can we go?" (decision-support Phase 2): a nested component so its slider drags
+         and threshold poll re-render on their own, without re-running this whole results page.
+         Renders its own <section id="sec-how-far">. --}}
+    <livewire:threshold-explorer :scenario="$scenario" />
 
     <x-sources-and-contacts id="sec-sources" class="scroll-mt-6" :show-mortgage="$sourcesShowMortgage" :show-cgt="$sourcesShowCgt" />
 

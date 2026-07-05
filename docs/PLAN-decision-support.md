@@ -166,6 +166,19 @@ disclosure with its grid table + CSV.
   red past the ceiling; the analyst can open the curve + numbers. **Tests:** simple-mode fan hides bands; meter
   boundary matches the Phase-1 crossing; `aria-live` + table update on redraw.
 
+**Phase 2 is now COMPLETE (2026-07-05).** Built as a nested Livewire component `App\Livewire\ThresholdExplorer` on
+the results page (`sec-how-far`), with `App\DecisionSupport\ThresholdPresenter` for the view models (DECISIONS
+2026-07-05). The live redraw is a new transient deterministic entry point `LeverThresholdService::deterministicForecastAt`
+(lever+value → one `DeterministicForecaster` run, no MC/persistence), explicitly labelled "a central estimate, not the
+range" — because the plan's live-preview was retired, this is the transient entry point Phase 0's discipline note said
+did not exist. The net-position line reuses `ResultPresenter::burndown` (one usable-wealth definition, shared with the
+ladder/Compare), the meter reads the Phase-1 crossing, the analyst S-curve + grid + the Phase-1 CSV route sit in a
+disclosure, and a 10-dot pictograph headlines the current plan's MC odds. Guardrails enforced + tested (no "safe"
+wording; dots + year, never a bare % headline; icon+text chips; death vertical recoloured off shortfall-red). Levers
+offered are gated to the scenario (buy price only when a buy is configured, retirement age only when someone works).
+**Deferred to a fast-follow / later phase:** starting the slider at the scenario's *actual* value rather than the grid
+mid-point; the simple-mode MC fan (median + floor) as an alternative to the deterministic line. **Next: Phase 3.**
+
 ### Phase 3 — Combination *comparison* (not ranking)
 A panel comparing a chosen set of what-if children (or a bounded generated set) as **word-band chips** +
 net-position **sparklines**, **no decimals** (bucket to words — 94.9 vs 95.0 is MC noise). **Unordered in

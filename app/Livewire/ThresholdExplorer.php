@@ -1,0 +1,245 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Livewire;
+
+use App\DecisionSupport\LeverKey;
+use App\DecisionSupport\LeverThresholdService;
+use App\DecisionSupport\ThresholdPresenter;
+use App\DecisionSupport\ThresholdRunner;
+use App\Enums\SimulationStatus;
+use App\Models\Scenario;
+use App\Models\ThresholdResult;
+use Illuminate\Contracts\View\View;
+use Livewire\Component;
+use RetireForecast\FinanceEngine\Sweep\SweepMetric;
+
+/**
+ * The "How far can we go?" panel (decision-support Phase 2), nested on the results page. It
+ * answers, for one lever, "how far can we move this before the money stops lasting?" for a
+ * decision-maker who is not a numbers person: drag the lever and watch a plain net-position
+ * line dive under the £0 floor (an INSTANT deterministic redraw — the cheap part), then ask for
+ * the limit, which runs the queued Monte Carlo threshold (the slow, correct part) and paints a
+ * green→red meter. The analyst can open the full sweep (S-curve + grid + CSV) underneath.
+ *
+ * The live redraw is deterministic (one path, instant); the meter's boundary and the word
+ * verdict come from the Phase-1 job on completion. The two are honest about what they are — the
+ * caption says "a quick central estimate" for the line and the meter carries the Monte Carlo
+ * confidence — so the instant line is never mistaken for the probability answer.
+ */
+class ThresholdExplorer extends Component
+{
+    public Scenario $scenario;
+
+    /** Which lever is being explored ({@see LeverKey} value). */
+    public string $lever = '';
+
+    /** The slider position in the lever's own units (a price, an age, an annual spend). */
+    public ?float $leverValue = null;
+
+    /** The success bar the limit answers — the chance the essentials last (a caller choice, 0.90 default). */
+    public float $target = 0.90;
+
+    /** The queued/completed threshold for the current lever, or null before one is requested. */
+    public ?int $thresholdId = null;
+
+    public function mount(Scenario $scenario): void
+    {
+        abort_unless($scenario->user_id === auth()->id(), 403);
+
+        $this->scenario = $scenario;
+        $default = $this->leverKeys()[0];
+        $this->lever = $default->value;
+        $this->leverValue = $this->defaultValue($default);
+    }
+
+    /** Switch the explored lever: reset the slider to that lever's mid-range and drop the old (lever-specific) threshold. */
+    public function setLever(string $lever): void
+    {
+        $key = LeverKey::tryFrom($lever);
+        if ($key === null || ! in_array($key, $this->leverKeys(), true)) {
+            return; // ignore a lever this scenario doesn't offer (or a tampered value)
+        }
+
+        $this->lever = $key->value;
+        $this->leverValue = $this->defaultValue($key);
+        $this->thresholdId = null;
+    }
+
+    /** Queue the Monte Carlo threshold for the current lever (or hit the cache if it's already computed). */
+    public function findLimit(): void
+    {
+        $run = app(ThresholdRunner::class)->request(
+            $this->scenario, LeverKey::from($this->lever), SweepMetric::Essentials, $this->target,
+        );
+        $this->thresholdId = $run->id;
+    }
+
+    public function cancelLimit(): void
+    {
+        if ($threshold = $this->currentThreshold()) {
+            app(ThresholdRunner::class)->cancel($threshold);
+        }
+    }
+
+    /** wire:poll target while the threshold is computing; the render pass re-reads its status. */
+    public function pollThreshold(): void
+    {
+        // intentionally empty
+    }
+
+    public function render(): View
+    {
+        $lever = LeverKey::from($this->lever);
+        $grid = $this->grid($lever);
+        $value = $this->clampedValue($lever, $grid);
+
+        // The instant deterministic net-position line at the current lever value.
+        $forecast = app(LeverThresholdService::class)->deterministicForecastAt($this->scenario, $lever, $value);
+        $netPosition = ThresholdPresenter::netPosition(
+            $forecast,
+            $this->scenario->toHousehold(),
+            'Central estimate at '.ThresholdPresenter::formatLeverValue($lever, $value),
+        );
+
+        // The queued Monte Carlo threshold (if requested): its meter + full sweep once done.
+        $threshold = $this->currentThreshold();
+        $meter = null;
+        $sCurve = null;
+        $csvUrl = null;
+        if ($threshold !== null && $threshold->status === SimulationStatus::Done) {
+            $outcome = $threshold->thresholdOutcome();
+            if ($outcome !== null) {
+                $meter = ThresholdPresenter::meter($outcome, $lever, $value);
+                $sCurve = ThresholdPresenter::sCurve($outcome, $lever);
+                $csvUrl = route('scenarios.threshold.csv', [$this->scenario, $threshold]);
+            }
+        }
+
+        return view('livewire.threshold-explorer', [
+            'leverKey' => $lever,
+            'levers' => $this->leverOptions(),
+            'slider' => [
+                'min' => $grid[0],
+                'max' => end($grid),
+                'step' => $this->step($grid),
+                'value' => $value,
+                'valueLabel' => ThresholdPresenter::formatLeverValue($lever, $value),
+            ],
+            'netPosition' => $netPosition,
+            'threshold' => $threshold,
+            'meter' => $meter,
+            'sCurve' => $sCurve,
+            'csvUrl' => $csvUrl,
+            // Headline: the current plan's Monte Carlo odds as a natural-frequency pictograph
+            // (year-first, never a bare %). Null until a full forecast has run.
+            'pictograph' => $this->pictograph(),
+        ]);
+    }
+
+    /** The threshold record for the current lever, owner-scoped (a tampered id can't load another user's). */
+    private function currentThreshold(): ?ThresholdResult
+    {
+        return $this->thresholdId
+            ? ThresholdResult::where('user_id', auth()->id())->where('scenario_id', $this->scenario->id)->find($this->thresholdId)
+            : null;
+    }
+
+    /**
+     * The natural-frequency pictograph from the current plan's latest completed Monte Carlo run
+     * (its own chosen variant). Null when no run has completed — the panel then invites one.
+     *
+     * @return array{filled: int, empty: int, runsOutYear: ?int}|null
+     */
+    private function pictograph(): ?array
+    {
+        $run = $this->scenario->latestCompletedRun();
+        if ($run === null) {
+            return null;
+        }
+
+        $result = $run->results->firstWhere(fn ($r) => $r->variant === $this->scenario->variant) ?? $run->results->first();
+        if ($result === null) {
+            return null;
+        }
+
+        $sim = $result->simulationResult();
+
+        return ThresholdPresenter::pictograph($sim->successProbabilityEssentials, $sim->medianDepletionYear);
+    }
+
+    /**
+     * The levers this scenario can explore: buy price only when a sale frees proceeds to buy
+     * with, retirement age only when someone is still working, essential spending always.
+     *
+     * @return list<LeverKey>
+     */
+    private function leverKeys(): array
+    {
+        $state = $this->scenario->effectiveBuilderState();
+        $action = $this->scenario->toHousingAction();
+        $keys = [];
+
+        // Buy price is a lever only when the plan actually buys a home (a sale that funds a
+        // purchase), mirroring the ladder's buy-strategy gating — renting or staying put has no
+        // buy price to move.
+        if ($action->salePrice->isPositive() && ($action->buyPrice?->isPositive() ?? false)) {
+            $keys[] = LeverKey::BuyPrice;
+        }
+        $working = false;
+        foreach ($state['people'] ?? [] as $person) {
+            if (in_array($person['employmentStatus'] ?? '', ['employed', 'self_employed'], true)) {
+                $working = true;
+                break;
+            }
+        }
+        if ($working) {
+            $keys[] = LeverKey::RetirementAge;
+        }
+        $keys[] = LeverKey::EssentialSpend;
+
+        return $keys;
+    }
+
+    /** @return list<array{value: string, label: string}> */
+    private function leverOptions(): array
+    {
+        return array_map(static fn (LeverKey $k): array => ['value' => $k->value, 'label' => $k->label()], $this->leverKeys());
+    }
+
+    /**
+     * The lever grid (min..max) the slider spans — the same default the sweep brackets the
+     * scenario's figures with, so the slider range and the threshold agree.
+     *
+     * @return list<float>
+     */
+    private function grid(LeverKey $lever): array
+    {
+        return app(LeverThresholdService::class)->defaultGrid($lever, $this->scenario->toHousehold(), $this->scenario->toHousingAction());
+    }
+
+    /** Start the slider at the grid's mid-point (a real grid value, always in range). */
+    private function defaultValue(LeverKey $lever): float
+    {
+        $grid = $this->grid($lever);
+
+        return $grid[intdiv(count($grid), 2)];
+    }
+
+    /** A whole, sensible slider step: ~40 stops across the range, at least 1 (integer ages). */
+    private function step(array $grid): float
+    {
+        $span = end($grid) - $grid[0];
+
+        return max(1.0, round($span / 40));
+    }
+
+    /** Clamp the (public, tamperable) slider value into the lever's range before it reaches the engine. */
+    private function clampedValue(LeverKey $lever, array $grid): float
+    {
+        $value = $this->leverValue ?? $this->defaultValue($lever);
+
+        return max($grid[0], min((float) end($grid), (float) $value));
+    }
+}
