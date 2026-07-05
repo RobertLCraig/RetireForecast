@@ -3,6 +3,52 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-05 — Decision-support Phase 4 (part): the per-person longevity sweep lever (third survivor lever) + per-person lever parameterisation
+**Context:** The third lever of the survivor menu, and the first that is *parameterised by which person* it moves.
+The tool already had a combined "live 10 years longer" bump (a QuickWhatIf that offsets everyone). The Phase-4 insight
+is to **split longevity per person**: on a survivor-cliff couple, extending the *better-provided* partner's life and
+extending the *survivor's* life pull the odds in opposite directions, so "whose longevity" is the decision, not "how
+much longer" in aggregate. This is the same shape as the coming defer-the-survivor's-SP lever, so the per-person
+parameterisation built here is the shared foundation for both.
+
+**Decision — an OffsetYears lever on ONE named person, `LeverDirection::Unknown`, CRN-safe.** New engine
+`Sweep\Lever\PersonLongevityLever` (constructed with a person id) sets that person's `LongevityAdjustment` to
+`OffsetYears(value)` and leaves everyone else untouched (+ an immutable `Person::withLongevity`). Grid is a ±year
+offset from the cohort peer (−5..+15, 0 = peer).
+- **Direction is `Unknown`, not monotone.** Success is genuinely non-monotone in the offset (whose life it is decides
+  the sign), so the sweep must report the first crossing and flag that others may exist — never fit a single monotone
+  crossing. The presenter's caption is honest about this ("living longer moves the odds both ways — read the full
+  sweep, not a single limit").
+- **Resolved the flagged RNG modelling call — and it came out better than assumed.** The plan flagged "the longevity
+  lever desyncs RNG". Verified against the sampler: `OffsetYears` applies the shift **after** the peer death is drawn
+  (`JointLifeSampler`/`RepresentativeDeathAge`), so the *number* of mortality draws is unchanged by the offset —
+  common random numbers stay aligned across the grid. (A `FixedAge` or `MortalityMultiplier` lever *would* consume a
+  different number of draws and desync; the offset lever does not.) So the lever is CRN-safe; `Unknown` stands purely
+  on non-monotonicity, not on RNG. Verified too that the MC sampler honours `LongevityAdjustment` (it does).
+
+**Decision — per-person parameterisation via a `lever_param` column, kept separate from `lever_key`.** A `LeverKey`
+enum can't carry instance data, so `?string $leverParam` (the person id) is threaded through
+`LeverThresholdService::buildLever/compute/deterministicForecastAt` and `ThresholdRunner::request/inputsHash/createRun/execute`,
+and stored in a new nullable `threshold_results.lever_param` column. It **joins the inputs hash**, so one person's
+threshold is never served for another. It is a **separate column, not folded into `lever_key`** (encoding
+`person_longevity:p1` into the key would break `LeverKey::from`), so `lever_key` stays a clean enum value. The
+composite `person_longevity:p1` id lives only in the `ThresholdExplorer` UI menu (one entry per person, gated to a
+couple, named "How long <person> lives"); storage stays split.
+
+**Why:** Whose-longevity is the load-bearing survivor-cliff insight; a single combined bump hides it. CRN validity
+(pinned seed across the grid) is what makes a threshold trustworthy, so the OffsetYears-after-draw property was worth
+verifying rather than assuming. Keeping `lever_key` a pure enum value keeps the cache key, the mapper and the model
+accessors simple.
+
+Tested engine-side (offsets only the named person, rounds, direction Unknown; a +12y offset reaches the deterministic
+forecast's death year) and app-side (the −5..+15 default grid; a scenario computes an Unknown-direction longevity
+threshold; the explorer offers one lever per person for a couple and none for a lone person; finding the limit records
+`lever_key`+`lever_param`; the same lever on different people is a distinct cache key; a completed longevity threshold
+paints "+8 years" with no leaked directive). **Two survivor levers remain** (defer-the-survivor's-SP — reuses this
+parameterisation and lands the "deferring the survivor's SP raises the floor, the first-dier's does not" test — and
+care-on/off). See [docs/PLAN-decision-support.md](docs/PLAN-decision-support.md) + [[new-builder-field-delta-gotcha]].
+**Status:** active
+
 ## 2026-07-05 — Decision-support Phase 4 (part): the joint-life-annuity survivor-share sweep lever (second survivor lever)
 **Context:** The second lever of the survivor menu, the annuity analogue of the DB survivor-share lever.
 `AnnuityPurchase::survivorFraction` (on `DcPension`) is the share of a lifetime annuity's income that carries on to
