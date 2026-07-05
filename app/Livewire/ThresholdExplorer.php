@@ -13,6 +13,7 @@ use App\Models\Scenario;
 use App\Models\ThresholdResult;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
+use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Sweep\SweepMetric;
 
 /**
@@ -171,7 +172,8 @@ class ThresholdExplorer extends Component
 
     /**
      * The levers this scenario can explore: buy price only when a sale frees proceeds to buy
-     * with, retirement age only when someone is still working, essential spending always.
+     * with, retirement age only when someone is still working, essential spending always, and the
+     * survivor's DB share only for a couple whose DB scheme actually provides a survivor pension.
      *
      * @return list<LeverKey>
      */
@@ -199,7 +201,32 @@ class ThresholdExplorer extends Component
         }
         $keys[] = LeverKey::EssentialSpend;
 
+        if ($this->hasSurvivorDbPension()) {
+            $keys[] = LeverKey::SurvivorDbFraction;
+        }
+
         return $keys;
+    }
+
+    /**
+     * Whether the survivor's-DB-share lever applies: the household is a couple (there is a survivor
+     * to inherit the pension) and at least one DB scheme already provides a survivor's fraction (the
+     * lever varies an existing benefit, never invents one on a scheme that offers none).
+     */
+    private function hasSurvivorDbPension(): bool
+    {
+        $household = $this->scenario->toHousehold();
+        if (count($household->persons) < 2) {
+            return false;
+        }
+
+        foreach ($household->pensions as $pension) {
+            if ($pension instanceof DbPension && $pension->spousePensionFraction !== null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @return list<array{value: string, label: string}> */

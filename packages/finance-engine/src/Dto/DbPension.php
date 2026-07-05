@@ -41,4 +41,22 @@ final class DbPension implements Pension
     {
         return PensionType::DefinedBenefit;
     }
+
+    /**
+     * The same scheme with a different survivor's fraction (immutable; e.g. a sweep lever exploring
+     * how much survivor provision the money needs). Everything else is preserved.
+     */
+    public function withSpousePensionFraction(?Percent $spousePensionFraction): self
+    {
+        return new self(
+            $this->ownerId,
+            $this->accruedAnnualPension,
+            $this->normalRetirementAge,
+            $this->revaluationBasis,
+            $this->escalationInPayment,
+            $spousePensionFraction,
+            $this->commutationLumpSum,
+            $this->commutationFactor,
+        );
+    }
 }

@@ -93,5 +93,30 @@ final class LeverThresholdServiceTest extends TestCase
         $spend = $service->defaultGrid(LeverKey::EssentialSpend, $household, $action);
         $this->assertEqualsWithDelta(0.5 * $essential, $spend[0], 0.01);
         $this->assertEqualsWithDelta(1.5 * $essential, end($spend), 0.01);
+
+        // Survivor's DB fraction: the whole 0–100% range (none through the full pension).
+        $survivor = $service->defaultGrid(LeverKey::SurvivorDbFraction, $household, $action);
+        $this->assertSame(0.0, $survivor[0]);
+        $this->assertSame(100.0, end($survivor));
+    }
+
+    public function test_a_scenario_computes_a_survivor_db_fraction_threshold(): void
+    {
+        $scenario = ScenarioFixture::rich(User::factory()->create());
+
+        $outcome = $this->service()->compute(
+            $scenario,
+            LeverKey::SurvivorDbFraction,
+            SweepMetric::Essentials,
+            targetProbability: 0.90,
+            grid: [0.0, 50.0, 100.0],
+            nPaths: 60,
+        );
+
+        // The swept curve is labelled as the survivor lever and its points span the 0–100% grid.
+        $this->assertSame(LeverKey::SurvivorDbFraction, $outcome->lever);
+        $this->assertSame('survivor pension', $outcome->curve->leverName);
+        $this->assertSame('%', $outcome->curve->leverUnit);
+        $this->assertSame([0.0, 50.0, 100.0], array_map(fn ($p) => $p->leverValue, $outcome->curve->points));
     }
 }

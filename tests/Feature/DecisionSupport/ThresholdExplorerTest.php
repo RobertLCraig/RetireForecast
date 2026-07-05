@@ -15,6 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use RetireForecast\FinanceEngine\Sweep\SweepMetric;
+use Tests\Support\BuilderStateFixture;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
@@ -44,6 +45,29 @@ final class ThresholdExplorerTest extends TestCase
             ->assertSee('How far can we go?')
             ->assertSee('Your essential spending')     // a lever that always applies
             ->assertSee('Find the limit');
+    }
+
+    public function test_it_offers_the_survivor_db_lever_for_a_couple_with_a_survivor_pension(): void
+    {
+        // The rich fixture is a couple whose DB scheme provides a 50% survivor pension.
+        $scenario = ScenarioFixture::rich($this->user);
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->assertSee("Your DB pension's survivor share");
+    }
+
+    public function test_it_hides_the_survivor_db_lever_without_a_db_survivor_pension(): void
+    {
+        // A single person with only essential spending and no DB pension — no survivor to inherit,
+        // no DB scheme to vary.
+        $scenario = ScenarioFixture::fromState($this->user, array_replace(
+            ['step' => 5, 'name' => 'Solo', 'baseTaxYear' => '2026-27', 'variant' => 'rent', 'ihtModelled' => false, 'assumptionSetId' => null],
+            BuilderStateFixture::minimalValid(),
+        ));
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->assertSee('Your essential spending')
+            ->assertDontSee("Your DB pension's survivor share");
     }
 
     public function test_switching_lever_resets_the_value_and_clears_the_threshold(): void

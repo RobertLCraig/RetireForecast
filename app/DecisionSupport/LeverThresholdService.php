@@ -15,6 +15,7 @@ use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\Sweep\Lever\BuyPriceLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\EssentialSpendLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\RetirementAgeLever;
+use RetireForecast\FinanceEngine\Sweep\Lever\SurvivorDbFractionLever;
 use RetireForecast\FinanceEngine\Sweep\SweepEngine;
 use RetireForecast\FinanceEngine\Sweep\SweepLever;
 use RetireForecast\FinanceEngine\Sweep\SweepMetric;
@@ -100,6 +101,7 @@ final class LeverThresholdService
             LeverKey::BuyPrice => new BuyPriceLever($this->forecaster->housingComparison($scenario), $assumptions, $action),
             LeverKey::RetirementAge => new RetirementAgeLever,
             LeverKey::EssentialSpend => new EssentialSpendLever,
+            LeverKey::SurvivorDbFraction => new SurvivorDbFractionLever,
         };
     }
 
@@ -123,6 +125,9 @@ final class LeverThresholdService
                 1.5 * (float) intdiv($household->expenseProfile->essentialAnnualSpend->pence, 100),
                 9,
             ),
+            // Survivor's DB fraction: the full 0–100% range, every 10 points (a spouse's pension is
+            // commonly half, sometimes two-thirds — the sweep spans none through the whole pension).
+            LeverKey::SurvivorDbFraction => self::linspace(0.0, 100.0, 11),
         };
     }
 

@@ -207,6 +207,7 @@ final class ThresholdPresenter
         return match ($lever) {
             LeverKey::RetirementAge => 'age '.(int) round($value),
             LeverKey::BuyPrice, LeverKey::EssentialSpend => '£'.number_format(round($value), 0),
+            LeverKey::SurvivorDbFraction => (int) round($value).'%',
         };
     }
 
@@ -228,6 +229,7 @@ final class ThresholdPresenter
             LeverKey::BuyPrice => "On these figures the money stays on track up to about {$at} on the new home; spend more and the odds slip below your target.",
             LeverKey::EssentialSpend => "On these figures the money stays on track up to about {$at} of essential spending a year; spend more and the odds slip below your target.",
             LeverKey::RetirementAge => "On these figures the money reaches your target if the working partner retires at about {$at} or later; retiring earlier slips below it.",
+            LeverKey::SurvivorDbFraction => "On these figures the money reaches your target if the survivor keeps about {$at} of the DB pension or more; a smaller survivor's pension slips below it.",
         };
     }
 

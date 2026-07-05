@@ -7,6 +7,7 @@ namespace RetireForecast\FinanceEngine\Tests\Sweep;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
@@ -25,6 +26,7 @@ use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\Sweep\Lever\BuyPriceLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\EssentialSpendLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\RetirementAgeLever;
+use RetireForecast\FinanceEngine\Sweep\Lever\SurvivorDbFractionLever;
 use RetireForecast\FinanceEngine\Sweep\LeverDirection;
 use RetireForecast\FinanceEngine\Sweep\SweepEngine;
 use RetireForecast\FinanceEngine\Sweep\SweepMetric;
@@ -113,6 +115,96 @@ final class SweepLeversTest extends TestCase
             'buying cheaper (more invested surplus) should not lower success',
         );
         $this->assertSame(LeverDirection::Decreasing, $lever->direction());
+    }
+
+    public function test_the_survivor_db_fraction_lever_moves_only_schemes_that_offer_a_survivor_pension(): void
+    {
+        $household = $this->dbCouple();
+        $lever = new SurvivorDbFractionLever;
+
+        $at75 = $lever->apply($household, $this->settings(), 75)->household;
+        $this->assertSame(75.0, $this->db($at75, 'p1')->spousePensionFraction->asPercent(), 'the scheme with a survivor pension is set to the swept fraction');
+        $this->assertNull($this->db($at75, 'p2')->spousePensionFraction, 'a scheme that offers no survivor pension is left untouched (the lever never invents one)');
+
+        // Clamped to a sane 0–100%.
+        $this->assertSame(100.0, $this->db($lever->apply($household, $this->settings(), 130)->household, 'p1')->spousePensionFraction->asPercent());
+        $this->assertSame(0.0, $this->db($lever->apply($household, $this->settings(), -20)->household, 'p1')->spousePensionFraction->asPercent());
+
+        // The DC pot is carried through unchanged (only DB survivor fractions move).
+        $this->assertSame(
+            $household->pensions[2]->currentValue->pence,
+            $at75->pensions[2]->currentValue->pence,
+            'the DC pot is preserved',
+        );
+
+        $this->assertSame(LeverDirection::Increasing, $lever->direction());
+    }
+
+    public function test_a_bigger_survivor_pension_does_not_lower_success(): void
+    {
+        $curve = $this->engine()->sweep(
+            $this->dbSurvivorCliffCouple(), $this->settings(), AssumptionSetLibrary::default(), new CohortLifeTable,
+            new SurvivorDbFractionLever, [0.0, 100.0], SweepMetric::Essentials, nPaths: 250, seed: 9,
+        );
+
+        // More guaranteed survivor income can only help the money last through the survivor cliff.
+        $this->assertGreaterThanOrEqual(
+            $curve->points[0]->successProbability,
+            $curve->points[1]->successProbability,
+            'a larger survivor pension should not lower the chance the money lasts',
+        );
+    }
+
+    /** The Defined Benefit pension owned by $ownerId in $household. */
+    private function db(Household $household, string $ownerId): DbPension
+    {
+        foreach ($household->pensions as $pension) {
+            if ($pension instanceof DbPension && $pension->ownerId === $ownerId) {
+                return $pension;
+            }
+        }
+        $this->fail("no DB pension for {$ownerId}");
+    }
+
+    /** A couple with two DB schemes — one that provides a survivor pension, one that does not — plus a DC pot. */
+    private function dbCouple(): Household
+    {
+        return new Household(
+            'DB couple',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1955-04-01'), Sex::Male, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1957-09-01'), Sex::Female, EmploymentStatus::Retired),
+            ],
+            new ExpenseProfile(Money::fromPounds(28_000), Money::zero(), Percent::fromPercent(80)),
+            [
+                new DbPension('p1', Money::fromPounds(15_000), normalRetirementAge: 65, spousePensionFraction: Percent::fromPercent(50)),
+                new DbPension('p2', Money::fromPounds(8_000), normalRetirementAge: 65), // no survivor fraction
+                new DcPension('p1', Money::fromPounds(90_000), Money::zero(), Money::zero(), earliestAccessAge: 57),
+                new StatePensionEntitlement('p1', weeklyForecast: Money::fromPounds(200)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::fromPounds(200)),
+            ],
+        );
+    }
+
+    /** A couple leaning on one partner's DB pension, tight enough that losing the survivor's share bites. */
+    private function dbSurvivorCliffCouple(): Household
+    {
+        return new Household(
+            'DB survivor cliff',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1948-01-01'), Sex::Male, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1952-01-01'), Sex::Female, EmploymentStatus::Retired),
+            ],
+            new ExpenseProfile(Money::fromPounds(22_000), Money::zero(), Percent::fromPercent(85)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::fromPounds(180)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::fromPounds(120)),
+                new DbPension('p1', Money::fromPounds(18_000), normalRetirementAge: 65, spousePensionFraction: Percent::fromPercent(50)),
+                new DcPension('p2', Money::fromPounds(60_000), Money::zero(), Money::zero(), earliestAccessAge: 57),
+            ],
+        );
     }
 
     /** A couple with one earner still working towards retirement, tight enough that the levers bite. */

@@ -3,6 +3,36 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-05 — Decision-support Phase 4 (part): the survivor's-DB-share sweep lever (first of the survivor lever menu)
+**Context:** Phase 4's remaining work is the survivor-first lever menu. The binding risk on a couple is
+survivor poverty after the first death; a Defined Benefit scheme's `spousePensionFraction` is guaranteed income
+that carries the survivor through the cliff, so "how much survivor provision does the money need?" is a first-class
+lever. This is the first of the five (the others: per-person longevity, defer-the-survivor's-SP, joint-life annuity
+survivor %, care on/off pinned).
+
+**Decision — a monotone, CRN-safe household lever that varies only schemes that already offer a survivor pension.**
+New engine `Sweep\Lever\SurvivorDbFractionLever` (+ an immutable `DbPension::withSpousePensionFraction`) sets the
+survivor's fraction on the household's DB scheme(s) to the swept value (a percentage, 0–100, clamped). Three
+deliberate calls:
+- **It never invents a benefit.** The lever varies only DB schemes whose `spousePensionFraction` is already non-null
+  (a scheme that offers no survivor pension is left untouched); sweeping a null-fraction scheme would model income
+  that does not exist. Non-DB pensions pass through unchanged.
+- **`LeverDirection::Increasing`, and CRN stays valid.** More guaranteed survivor income can only raise the chance
+  the money lasts, and the change touches neither the mortality draw nor the return path — so the sweep's common
+  random numbers hold and the crossing may be found by a monotone fit (unlike the longevity/SP-deferral levers still
+  to come, which desync RNG and must declare `Unknown`).
+- **Gated to where it means something.** `ThresholdExplorer` offers it only for a couple (a survivor to inherit) with
+  at least one DB scheme that provides a survivor's fraction. Default grid spans the whole 0–100% range (a spouse's
+  pension is commonly half, sometimes two-thirds). Wired through `LeverKey::SurvivorDbFraction` + `buildLever` +
+  `defaultGrid` + the presenter's value/caption arms; the outcome mapper needed no change (it keys the lever by its
+  string value, not an exhaustive match).
+
+Tested: the lever moves only survivor-pension schemes and clamps 0–100 (engine); a bigger survivor pension does not
+lower success on a survivor-cliff couple (MC sweep); the default grid brackets 0–100 and a real scenario computes
+the threshold end-to-end (app); the explorer offers it for the couple-with-a-survivor-pension fixture and hides it
+for a single person with no DB. **Four survivor levers remain** (per-person longevity, defer-the-survivor's-SP,
+joint-life annuity survivor %, care on/off pinned). See docs/PLAN-decision-support.md Phase 4.
+
 ## 2026-07-05 — Decision-support Phase 4 (part): the survivor-cliff story (incomeFloor survivor-year twin)
 **Context:** Phase 4 re-scopes decision-support around the binding risk on a couple — survivor poverty
 after the first death. Its "survivor-cliff story" half calls out a correctness gap: `ResultPresenter::incomeFloor()`
