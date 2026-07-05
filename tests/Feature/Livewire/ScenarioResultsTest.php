@@ -453,6 +453,17 @@ class ScenarioResultsTest extends TestCase
         $this->assertStringContainsString('Spend +30%', $child->overrides['name']);
     }
 
+    public function test_the_income_floor_shows_the_survivor_cliff_for_a_couple(): void
+    {
+        // The rich fixture is a couple, so the income-floor section carries the survivor-year twin
+        // (Phase 4): the before/after cliff renders on the deterministic section, pre-run.
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->assertSee('Essential spending vs secure income')
+            ->assertSee('What happens to this floor at the first death')
+            ->assertSee('After the first death')
+            ->assertDontSee('@endif'); // no leaked Blade directive
+    }
+
     private function scenario(): Scenario
     {
         return $this->scenarioFor($this->user);

@@ -1125,35 +1125,66 @@ final class ResultPresenter
      * is the household's mature floor. Reports the coverage factually (a percentage and
      * the surplus or gap); it never says whether that is enough (no recommendation).
      *
+     * The all-alive floor understates the binding risk on a couple: at the FIRST death a
+     * State Pension is lost and a defined-benefit pension may drop to its survivor fraction,
+     * while essential spending falls only by the survivor factor — so the survivor's coverage
+     * can drop off a cliff this mature snapshot hides. So the readout also carries a
+     * **survivor-year twin** (`survivor`) computed the same way at the deepest survivor year,
+     * and the coverage `cliff` between the two (Phase 4, the survivor-cliff story). Null twin
+     * when there is no survivor phase (a single person, or no death within the horizon).
+     *
      * Returns null when the projection has no years to read.
      *
-     * @return array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool}|null
+     * @return array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool, survivor: array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool}|null, cliff: ?int}|null
      */
     public static function incomeFloor(ForecastResult $forecast): ?array
     {
-        $snapshot = self::matureSnapshot($forecast);
-        if ($snapshot === null) {
+        $mature = self::matureSnapshot($forecast);
+        if ($mature === null) {
             return null;
         }
 
+        $floor = self::floorAt($mature);
+
+        $survivorYear = self::survivorSnapshot($forecast);
+        $survivor = $survivorYear === null ? null : self::floorAt($survivorYear);
+
+        return $floor + [
+            'survivor' => $survivor,
+            // The cliff: how many points of secure-income coverage of essentials are lost at the
+            // first death (signed — negative would mean the survivor's coverage actually rises).
+            'cliff' => $survivor === null ? null : $floor['coveragePct'] - $survivor['coveragePct'],
+        ];
+    }
+
+    /**
+     * The essentials-vs-secure-income floor at one projected year: which guaranteed-for-life
+     * sources are in payment, how much they total, and how far they cover essentials. The single
+     * definition both the all-alive floor and the survivor-year twin read, so the two can only
+     * differ by their year, never by how the figure is built.
+     *
+     * @return array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool}
+     */
+    private static function floorAt(YearResult $year): array
+    {
         $sources = [];
         $secure = Money::zero();
         foreach (self::SECURE_SOURCES as $source) {
-            $money = $snapshot->incomeBySource[$source] ?? Money::zero();
+            $money = $year->incomeBySource[$source] ?? Money::zero();
             if ($money->isPositive()) {
                 $sources[] = ['label' => self::SOURCE_LABELS[$source], 'amount' => $money->format()];
                 $secure = $secure->plus($money);
             }
         }
 
-        $essential = $snapshot->essentialSpend;
+        $essential = $year->essentialSpend;
         $shortfall = $essential->minus($secure);
         $surplus = $secure->minus($essential);
         $coverage = $essential->isPositive() ? (int) round($secure->pence / $essential->pence * 100) : 100;
 
         return [
-            'year' => $snapshot->calendarYear,
-            'ages' => implode(' / ', $snapshot->ages),
+            'year' => $year->calendarYear,
+            'ages' => implode(' / ', $year->ages),
             'essentialSpend' => $essential->format(),
             'secureIncome' => $secure->format(),
             'sources' => $sources,
@@ -1162,6 +1193,25 @@ final class ResultPresenter
             'gap' => $shortfall->isPositive() ? $shortfall->format() : null,
             'fullyCovered' => ! $shortfall->isPositive(),
         ];
+    }
+
+    /**
+     * The deepest survivor year: the last projected year in which at least one person has died
+     * AND at least one still lives (for a couple, the last year exactly one survives) — fully
+     * mature for the survivor, every guaranteed source in payment. Null for a single-person
+     * household or when no death falls within the horizon (no survivor phase to read).
+     */
+    private static function survivorSnapshot(ForecastResult $forecast): ?YearResult
+    {
+        $snapshot = null;
+        foreach ($forecast->years as $year) {
+            $total = count($year->ages);
+            if ($total >= 2 && $year->aliveCount >= 1 && $year->aliveCount < $total) {
+                $snapshot = $year;
+            }
+        }
+
+        return $snapshot;
     }
 
     /**

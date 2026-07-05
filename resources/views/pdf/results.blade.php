@@ -108,6 +108,12 @@
                 @endif
             </tbody>
         </table>
+        @if ($incomeFloor['survivor'])
+            <p class="muted">At the first death (read at {{ $incomeFloor['survivor']['year'] }}, the mature survivor year), secure income
+                covers {{ $incomeFloor['survivor']['coveragePct'] }}% of essentials
+                ({{ $incomeFloor['survivor']['secureIncome'] }} of {{ $incomeFloor['survivor']['essentialSpend'] }}) — a State Pension
+                stops and a defined-benefit pension may drop to its survivor rate while essentials fall only part-way.</p>
+        @endif
     @endif
 
     @if ($iht)

@@ -658,6 +658,52 @@
                 @endif
             </p>
 
+            {{-- Survivor-cliff dumbbell (Phase 4): the same floor before and after the FIRST death.
+                 At the first death a State Pension stops and a DB pension may drop to its survivor
+                 rate while essentials fall only part-way, so the survivor's coverage can move
+                 sharply — the risk the all-alive floor above hides. Shown only for a couple with a
+                 modelled survivor phase. Factual: the coverage before vs after, never a prediction
+                 of who dies first, never a recommendation. --}}
+            @if ($incomeFloor['survivor'])
+                @php $sv = $incomeFloor['survivor']; @endphp
+                <div class="mt-5 rounded-md border border-gray-200 bg-white p-4">
+                    <h3 class="text-base font-semibold text-gray-900">What happens to this floor at the first death</h3>
+                    <p class="mt-1 text-sm text-gray-600">
+                        When one of you dies, a State Pension stops and a defined-benefit pension may drop to its survivor rate, while essential spending falls only part-way — so the survivor's secure-income coverage of essentials can change sharply. Here it
+                        @if ($incomeFloor['cliff'] > 0)
+                            <strong>falls from {{ $incomeFloor['coveragePct'] }}% to {{ $sv['coveragePct'] }}%</strong>.
+                        @elseif ($incomeFloor['cliff'] < 0)
+                            <strong>rises from {{ $incomeFloor['coveragePct'] }}% to {{ $sv['coveragePct'] }}%</strong>.
+                        @else
+                            <strong>holds at about {{ $sv['coveragePct'] }}%</strong>.
+                        @endif
+                    </p>
+
+                    <div class="mt-4 space-y-4">
+                        @foreach ([['label' => 'While you are both alive', 'f' => $incomeFloor], ['label' => 'After the first death', 'f' => $sv]] as $phase)
+                            @php $f = $phase['f']; $barWidth = max(0, min(100, $f['coveragePct'])); @endphp
+                            <div>
+                                <div class="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+                                    <span class="font-medium text-gray-800">{{ $phase['label'] }} ({{ $f['year'] }})</span>
+                                    <span class="tabular-nums text-gray-600">secure income {{ $f['secureIncome'] }} of {{ $f['essentialSpend'] }} essentials</span>
+                                </div>
+                                <div class="mt-1 h-4 w-full overflow-hidden rounded-full bg-gray-200" role="img"
+                                    aria-label="{{ $phase['label'] }}, {{ $f['year'] }}: secure income covers {{ $f['coveragePct'] }} percent of essential spending.">
+                                    <div class="h-full {{ $f['fullyCovered'] ? 'bg-emerald-500' : 'bg-amber-500' }}" style="width: {{ $barWidth }}%"></div>
+                                </div>
+                                <p class="mt-1 text-xs {{ $f['fullyCovered'] ? 'text-emerald-700' : 'text-amber-700' }}">
+                                    <span aria-hidden="true">{{ $f['fullyCovered'] ? '✓' : '⚠' }}</span> {{ $f['coveragePct'] }}% of essentials covered by secure income{{ $f['fullyCovered'] ? '' : ' — the rest relies on your savings lasting' }}.
+                                </p>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <p class="mt-3 text-xs text-gray-500">
+                        "After the first death" is read at {{ $sv['year'] }}, the mature survivor year. This compares the secure-income floor before and after; it is not a prediction of who dies first, and not a recommendation.
+                    </p>
+                </div>
+            @endif
+
             @if ($pensionCredit)
                 <div class="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm">
                     <h3 class="font-semibold text-blue-900">How to claim your Pension Credit</h3>

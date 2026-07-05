@@ -92,6 +92,94 @@ final class IncomeFloorTest extends TestCase
         $this->assertSame($floor['essentialSpend'], $floor['gap']);
     }
 
+    public function test_a_couple_gets_a_survivor_year_twin_reconciling_to_the_forecast(): void
+    {
+        // A couple (female outlives male on median lifespans), so there is a survivor phase. The
+        // twin must read the DEEPEST survivor year and reconcile to that year's engine figures
+        // (the same YearResult the cashflow ladder derives its survivor rows from).
+        $forecast = $this->forecast([
+            'householdName' => 'Survivor', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'dob' => '1953-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'dob' => '1953-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230'],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '230'],
+            ],
+            'expenseLines' => [['id' => 'e', 'amount' => '18000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]);
+
+        $floor = ResultPresenter::incomeFloor($forecast);
+        $this->assertNotNull($floor['survivor']);
+        $this->assertNotNull($floor['cliff']);
+
+        // The deepest survivor year in the forecast (last year exactly one person is alive).
+        $survivorYear = null;
+        foreach ($forecast->years as $year) {
+            if ($year->aliveCount === 1) {
+                $survivorYear = $year;
+            }
+        }
+        $this->assertNotNull($survivorYear);
+
+        $this->assertSame($survivorYear->calendarYear, $floor['survivor']['year']);
+        $this->assertSame($survivorYear->essentialSpend->format(), $floor['survivor']['essentialSpend']);
+
+        // Secure income reconciles to the sum of the guaranteed sources in that same year.
+        $secure = Money::zero();
+        foreach (['defined_benefit', 'state_pension', 'other_taxable', 'tax_free_income', 'means_tested_benefit'] as $source) {
+            $secure = $secure->plus($survivorYear->incomeBySource[$source] ?? Money::zero());
+        }
+        $this->assertSame($secure->format(), $floor['survivor']['secureIncome']);
+
+        // The cliff is the signed coverage delta between the all-alive floor and the survivor twin.
+        $this->assertSame($floor['coveragePct'] - $floor['survivor']['coveragePct'], $floor['cliff']);
+    }
+
+    public function test_losing_a_state_pension_at_the_first_death_drops_the_survivor_floor(): void
+    {
+        // Two equal State Pensions, modest essentials, survivor factor 70%. At the first death one
+        // whole State Pension is lost (secure income roughly halves) while essentials fall only to
+        // 70% — so the survivor's coverage falls off a cliff the all-alive floor hides. This is the
+        // exact risk the survivor-year twin exists to surface.
+        $floor = ResultPresenter::incomeFloor($this->forecast([
+            'householdName' => 'Cliff', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'dob' => '1953-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'dob' => '1953-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230'],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '230'],
+            ],
+            'expenseLines' => [['id' => 'e', 'amount' => '18000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]));
+
+        $this->assertNotNull($floor['survivor']);
+        $this->assertGreaterThan(0, $floor['cliff']);
+        $this->assertLessThan($floor['coveragePct'], $floor['survivor']['coveragePct']);
+    }
+
+    public function test_a_single_person_has_no_survivor_twin(): void
+    {
+        // One person: the projection goes straight from alive to gone, so there is no survivor
+        // phase and no twin (and nothing to compare a cliff against).
+        $floor = ResultPresenter::incomeFloor($this->forecast([
+            'householdName' => 'Single', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1953-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'expenseLines' => [['id' => 'e', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]));
+
+        $this->assertNotNull($floor);
+        $this->assertNull($floor['survivor']);
+        $this->assertNull($floor['cliff']);
+    }
+
     public function test_tax_free_income_is_counted_in_the_secure_floor(): void
     {
         // A tax-free income stream (e.g. DLA) must be counted as secure — the exact class of
