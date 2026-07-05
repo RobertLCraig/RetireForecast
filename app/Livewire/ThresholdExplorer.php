@@ -14,6 +14,7 @@ use App\Models\ThresholdResult;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use RetireForecast\FinanceEngine\Dto\DbPension;
+use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Sweep\SweepMetric;
 
 /**
@@ -204,6 +205,9 @@ class ThresholdExplorer extends Component
         if ($this->hasSurvivorDbPension()) {
             $keys[] = LeverKey::SurvivorDbFraction;
         }
+        if ($this->hasSurvivorAnnuity()) {
+            $keys[] = LeverKey::SurvivorAnnuityFraction;
+        }
 
         return $keys;
     }
@@ -222,6 +226,29 @@ class ThresholdExplorer extends Component
 
         foreach ($household->pensions as $pension) {
             if ($pension instanceof DbPension && $pension->spousePensionFraction !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether the joint-life-annuity survivor lever applies: a couple with a DC annuity that is
+     * already joint-life (a non-null survivor fraction). Like the DB lever, it varies an existing
+     * survivor benefit — it never turns a single-life annuity joint-life at a single-life rate.
+     */
+    private function hasSurvivorAnnuity(): bool
+    {
+        $household = $this->scenario->toHousehold();
+        if (count($household->persons) < 2) {
+            return false;
+        }
+
+        foreach ($household->pensions as $pension) {
+            if ($pension instanceof DcPension
+                && $pension->annuityPurchase !== null
+                && $pension->annuityPurchase->survivorFraction !== null) {
                 return true;
             }
         }

@@ -7,6 +7,7 @@ namespace RetireForecast\FinanceEngine\Tests\Sweep;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\AnnuityPurchase;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
@@ -26,6 +27,7 @@ use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\Sweep\Lever\BuyPriceLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\EssentialSpendLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\RetirementAgeLever;
+use RetireForecast\FinanceEngine\Sweep\Lever\SurvivorAnnuityFractionLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\SurvivorDbFractionLever;
 use RetireForecast\FinanceEngine\Sweep\LeverDirection;
 use RetireForecast\FinanceEngine\Sweep\SweepEngine;
@@ -203,6 +205,85 @@ final class SweepLeversTest extends TestCase
                 new StatePensionEntitlement('p2', weeklyForecast: Money::fromPounds(120)),
                 new DbPension('p1', Money::fromPounds(18_000), normalRetirementAge: 65, spousePensionFraction: Percent::fromPercent(50)),
                 new DcPension('p2', Money::fromPounds(60_000), Money::zero(), Money::zero(), earliestAccessAge: 57),
+            ],
+        );
+    }
+
+    public function test_the_survivor_annuity_fraction_lever_moves_only_joint_life_annuities(): void
+    {
+        $household = $this->annuityCouple();
+        $lever = new SurvivorAnnuityFractionLever;
+
+        $at75 = $lever->apply($household, $this->settings(), 75)->household;
+        $this->assertSame(75.0, $at75->pensions[0]->annuityPurchase->survivorFraction->asPercent(), 'the joint-life annuity is set to the swept fraction');
+        $this->assertNull($at75->pensions[1]->annuityPurchase->survivorFraction, 'a single-life annuity is left single-life (never turned joint-life at a single-life rate)');
+        $this->assertNull($at75->pensions[2]->annuityPurchase, 'a pot with no annuity is untouched');
+
+        // Clamped to a sane 0–100%.
+        $this->assertSame(100.0, $lever->apply($household, $this->settings(), 130)->household->pensions[0]->annuityPurchase->survivorFraction->asPercent());
+        $this->assertSame(0.0, $lever->apply($household, $this->settings(), -20)->household->pensions[0]->annuityPurchase->survivorFraction->asPercent());
+
+        // The annuitant's own income is held fixed (same purchase amount + rate).
+        $this->assertSame(
+            $household->pensions[0]->annuityPurchase->amount->pence,
+            $at75->pensions[0]->annuityPurchase->amount->pence,
+            'only the survivor fraction moves',
+        );
+
+        $this->assertSame(LeverDirection::Increasing, $lever->direction());
+    }
+
+    public function test_a_bigger_annuity_survivor_income_does_not_lower_success(): void
+    {
+        $curve = $this->engine()->sweep(
+            $this->annuitySurvivorCliffCouple(), $this->settings(), AssumptionSetLibrary::default(), new CohortLifeTable,
+            new SurvivorAnnuityFractionLever, [0.0, 100.0], SweepMetric::Essentials, nPaths: 250, seed: 9,
+        );
+
+        // More of the annuity carried on to the survivor can only help the money last past the cliff.
+        $this->assertGreaterThanOrEqual(
+            $curve->points[0]->successProbability,
+            $curve->points[1]->successProbability,
+            'a bigger annuity survivor income should not lower the chance the money lasts',
+        );
+    }
+
+    /** A couple with a joint-life annuity, a single-life annuity and a plain pot — to check the lever's reach. */
+    private function annuityCouple(): Household
+    {
+        return new Household(
+            'Annuity couple',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1955-04-01'), Sex::Male, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1957-09-01'), Sex::Female, EmploymentStatus::Retired),
+            ],
+            new ExpenseProfile(Money::fromPounds(28_000), Money::zero(), Percent::fromPercent(80)),
+            [
+                new DcPension('p1', Money::fromPounds(150_000), Money::zero(), Money::zero(), earliestAccessAge: 57, annuityPurchase: new AnnuityPurchase(atAge: 71, amount: Money::fromPounds(100_000), rate: Percent::fromPercent(6), survivorFraction: Percent::fromPercent(50))),
+                new DcPension('p2', Money::fromPounds(120_000), Money::zero(), Money::zero(), earliestAccessAge: 57, annuityPurchase: new AnnuityPurchase(atAge: 69, amount: Money::fromPounds(80_000), rate: Percent::fromPercent(6))), // single-life
+                new DcPension('p1', Money::fromPounds(50_000), Money::zero(), Money::zero(), earliestAccessAge: 57), // no annuity
+                new StatePensionEntitlement('p1', weeklyForecast: Money::fromPounds(200)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::fromPounds(200)),
+            ],
+        );
+    }
+
+    /** A couple leaning on one partner's joint-life annuity, tight enough that the survivor share bites. */
+    private function annuitySurvivorCliffCouple(): Household
+    {
+        return new Household(
+            'Annuity survivor cliff',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1950-01-01'), Sex::Male, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1953-01-01'), Sex::Female, EmploymentStatus::Retired),
+            ],
+            new ExpenseProfile(Money::fromPounds(24_000), Money::zero(), Percent::fromPercent(85)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::fromPounds(180)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::fromPounds(120)),
+                new DcPension('p1', Money::fromPounds(280_000), Money::zero(), Money::zero(), earliestAccessAge: 57, annuityPurchase: new AnnuityPurchase(atAge: 76, amount: Money::fromPounds(250_000), rate: Percent::fromPercent(6), survivorFraction: Percent::fromPercent(50))),
             ],
         );
     }

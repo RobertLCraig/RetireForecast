@@ -42,4 +42,23 @@ final class DcPension implements Pension
     {
         return PensionType::DefinedContribution;
     }
+
+    /**
+     * The same pot with a different annuity plan (immutable; e.g. a sweep lever varying the
+     * joint-life survivor fraction). Everything else is preserved.
+     */
+    public function withAnnuityPurchase(?AnnuityPurchase $annuityPurchase): self
+    {
+        return new self(
+            $this->ownerId,
+            $this->currentValue,
+            $this->ongoingContribution,
+            $this->employerContribution,
+            $this->earliestAccessAge,
+            $this->withdrawalPlan,
+            $this->pclsTakenToDate,
+            $this->growthAssumptionOverride,
+            $annuityPurchase,
+        );
+    }
 }

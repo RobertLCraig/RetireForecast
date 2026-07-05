@@ -224,17 +224,22 @@ same `YearResult`, so it reconciles to the ladder's survivor rows) + the signed 
 before/after **dumbbell** on the results page (+ a PDF survivor line). Tested (twin reconciles; the cliff drops when a
 State Pension is lost at the first death; single → no twin). See DECISIONS 2026-07-05.
 
-**The survivor lever menu is now part-built.** The **DB survivor fraction** lever shipped (2026-07-05):
-`Sweep\Lever\SurvivorDbFractionLever` (+ `DbPension::withSpousePensionFraction`) sweeps the survivor's fraction 0–100%
-on schemes that already provide one — monotone `Increasing`, CRN-safe (touches neither mortality nor returns), gated in
-`ThresholdExplorer` to a couple with a DB survivor pension, wired through `LeverKey::SurvivorDbFraction`. See
-DECISIONS 2026-07-05. **What remains of the menu:** **per-person longevity** (split from the combined bump),
-**defer-the-survivor's-SP** (whose-SP-to-defer is the insight), **joint-life annuity survivor %**, and
-**care-on/off-pinned** — each a new engine `SweepLever` wired into `LeverKey` + `LeverThresholdService::buildLever` +
-the `ThresholdExplorer` menu, with the CRN/monotonicity calls the statistical-discipline section demands (a longevity
-lever changes RNG consumption → `LeverDirection::Unknown`; verify the MC sampler honours `LongevityAdjustment`). The
-headline test still owed lands with the SP lever: deferring the survivor's SP raises the floor while deferring the
-first-dier's does not.
+**The survivor lever menu is now part-built.** Two survivor-share levers shipped (2026-07-05), both monotone
+`Increasing` + CRN-safe (they touch neither mortality nor returns) and both varying only an *existing* survivor
+benefit (never inventing one), gated in `ThresholdExplorer` to a couple with the relevant provision:
+- **DB survivor fraction** — `Sweep\Lever\SurvivorDbFractionLever` (+ `DbPension::withSpousePensionFraction`) sweeps
+  `spousePensionFraction` 0–100% on schemes that already provide one. `LeverKey::SurvivorDbFraction`.
+- **Joint-life annuity survivor %** — `Sweep\Lever\SurvivorAnnuityFractionLever` (+ `AnnuityPurchase::withSurvivorFraction`
+  / `DcPension::withAnnuityPurchase`) sweeps `AnnuityPurchase::survivorFraction` 0–100% on annuities that are already
+  joint-life (never turns a single-life annuity joint-life at a single-life rate). `LeverKey::SurvivorAnnuityFraction`.
+
+See DECISIONS 2026-07-05. **What remains of the menu (three levers):** **per-person longevity** (split from the
+combined bump), **defer-the-survivor's-SP** (whose-SP-to-defer is the insight), and **care-on/off-pinned** — each a
+new engine `SweepLever` wired into `LeverKey` + `LeverThresholdService::buildLever` + the `ThresholdExplorer` menu,
+with the CRN/monotonicity calls the statistical-discipline section demands (per-person longevity and SP-deferral
+change RNG consumption → `LeverDirection::Unknown`; verify the MC sampler honours `LongevityAdjustment`). The headline
+test still owed lands with the SP lever: deferring the survivor's SP raises the floor while deferring the first-dier's
+does not.
 
 ### Phase 5 — The 2-D frontier (the flagship visual)
 Render the parametric threshold (S2) as a small **family of curves** or a **success heatmap with the 95% iso-line**

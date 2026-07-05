@@ -18,6 +18,7 @@ enum LeverKey: string
     case RetirementAge = 'retirement_age';
     case EssentialSpend = 'essential_spend';
     case SurvivorDbFraction = 'survivor_db_fraction';
+    case SurvivorAnnuityFraction = 'survivor_annuity_fraction';
 
     public function label(): string
     {
@@ -26,6 +27,7 @@ enum LeverKey: string
             self::RetirementAge => 'When you retire',
             self::EssentialSpend => 'Your essential spending',
             self::SurvivorDbFraction => "Your DB pension's survivor share",
+            self::SurvivorAnnuityFraction => "Your annuity's survivor share",
         };
     }
 }

@@ -70,6 +70,31 @@ final class ThresholdExplorerTest extends TestCase
             ->assertDontSee("Your DB pension's survivor share");
     }
 
+    public function test_it_offers_the_survivor_annuity_lever_for_a_couple_with_a_joint_life_annuity(): void
+    {
+        // A couple whose DC pot buys a joint-life annuity (a survivor fraction is set).
+        $pensions = BuilderStateFixture::full()['pensions'];
+        $pensions[0] = array_merge($pensions[0], [
+            'annuitise' => '1', 'annuityAmount' => '150000', 'annuityAtAge' => '66',
+            'annuityRate' => '6.5', 'annuityEscalation' => 'none', 'annuityJoint' => '1', 'annuitySurvivorFraction' => '50',
+        ]);
+        $scenario = ScenarioFixture::rich($this->user, ['pensions' => $pensions]);
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->assertSee("Your annuity's survivor share");
+    }
+
+    public function test_it_hides_the_survivor_annuity_lever_without_a_joint_life_annuity(): void
+    {
+        // The rich fixture annuitises nothing — so the annuity lever is hidden even though its DB
+        // survivor lever shows (the two survivor levers gate independently).
+        $scenario = ScenarioFixture::rich($this->user);
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->assertSee("Your DB pension's survivor share")
+            ->assertDontSee("Your annuity's survivor share");
+    }
+
     public function test_switching_lever_resets_the_value_and_clears_the_threshold(): void
     {
         $scenario = ScenarioFixture::rich($this->user);

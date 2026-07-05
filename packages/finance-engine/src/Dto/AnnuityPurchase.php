@@ -34,4 +34,19 @@ final class AnnuityPurchase
         public readonly PensionEscalationBasis $escalation = PensionEscalationBasis::None,
         public readonly ?Percent $survivorFraction = null,
     ) {}
+
+    /**
+     * The same annuity with a different survivor's fraction (immutable; e.g. a sweep lever exploring
+     * how much of the income should carry on to the surviving partner). Everything else is preserved.
+     */
+    public function withSurvivorFraction(?Percent $survivorFraction): self
+    {
+        return new self(
+            $this->atAge,
+            $this->amount,
+            $this->rate,
+            $this->escalation,
+            $survivorFraction,
+        );
+    }
 }

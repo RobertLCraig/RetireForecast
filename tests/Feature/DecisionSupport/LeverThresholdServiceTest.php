@@ -6,10 +6,12 @@ namespace Tests\Feature\DecisionSupport;
 
 use App\DecisionSupport\LeverKey;
 use App\DecisionSupport\LeverThresholdService;
+use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RetireForecast\FinanceEngine\Sweep\CrossingVerdict;
 use RetireForecast\FinanceEngine\Sweep\SweepMetric;
+use Tests\Support\BuilderStateFixture;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
@@ -98,6 +100,43 @@ final class LeverThresholdServiceTest extends TestCase
         $survivor = $service->defaultGrid(LeverKey::SurvivorDbFraction, $household, $action);
         $this->assertSame(0.0, $survivor[0]);
         $this->assertSame(100.0, end($survivor));
+
+        // Survivor's annuity fraction: likewise the whole 0–100% joint-life range.
+        $annuity = $service->defaultGrid(LeverKey::SurvivorAnnuityFraction, $household, $action);
+        $this->assertSame(0.0, $annuity[0]);
+        $this->assertSame(100.0, end($annuity));
+    }
+
+    public function test_a_scenario_computes_an_annuity_survivor_fraction_threshold(): void
+    {
+        $scenario = $this->annuityScenario(User::factory()->create());
+
+        $outcome = $this->service()->compute(
+            $scenario,
+            LeverKey::SurvivorAnnuityFraction,
+            SweepMetric::Essentials,
+            targetProbability: 0.90,
+            grid: [0.0, 50.0, 100.0],
+            nPaths: 60,
+        );
+
+        $this->assertSame(LeverKey::SurvivorAnnuityFraction, $outcome->lever);
+        $this->assertSame('annuity survivor income', $outcome->curve->leverName);
+        $this->assertSame('%', $outcome->curve->leverUnit);
+        $this->assertSame([0.0, 50.0, 100.0], array_map(fn ($p) => $p->leverValue, $outcome->curve->points));
+    }
+
+    /** A rich scenario whose DC pot buys a joint-life annuity, so the annuity survivor lever applies. */
+    private function annuityScenario(User $user): Scenario
+    {
+        $pensions = BuilderStateFixture::full()['pensions'];
+        $pensions[0] = array_merge($pensions[0], [
+            'annuitise' => '1', 'annuityAmount' => '150000', 'annuityAtAge' => '66',
+            'annuityRate' => '6.5', 'annuityEscalation' => 'none',
+            'annuityJoint' => '1', 'annuitySurvivorFraction' => '50',
+        ]);
+
+        return ScenarioFixture::rich($user, ['pensions' => $pensions]);
     }
 
     public function test_a_scenario_computes_a_survivor_db_fraction_threshold(): void

@@ -3,6 +3,34 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-05 — Decision-support Phase 4 (part): the joint-life-annuity survivor-share sweep lever (second survivor lever)
+**Context:** The second lever of the survivor menu, the annuity analogue of the DB survivor-share lever.
+`AnnuityPurchase::survivorFraction` (on `DcPension`) is the share of a lifetime annuity's income that carries on to
+the surviving partner after the annuitant dies — guaranteed income through the survivor cliff, and, unlike the DB
+fraction, an actual purchase decision the household makes.
+
+**Decision — mirror the DB lever exactly: monotone, CRN-safe, varies only annuities that are already joint-life.**
+New engine `Sweep\Lever\SurvivorAnnuityFractionLever` (+ immutable `AnnuityPurchase::withSurvivorFraction` and
+`DcPension::withAnnuityPurchase`) sets the survivor's fraction on the household's joint-life annuity to the swept
+value (0–100%, clamped). The three calls match the DB lever:
+- **It never turns a single-life annuity joint-life.** The lever varies only annuities whose `survivorFraction` is
+  already non-null. A single-life annuity is priced on a single-life quote, so making it joint-life at the *same
+  rate* would model survivor income the quote never paid for (the engine takes the rate as a user input and does not
+  reprice for joint-life). Non-annuitised pots and single-life annuities pass through unchanged; the annuitant's own
+  income is held fixed — only the survivor's share moves.
+- **`LeverDirection::Increasing`, CRN valid.** More survivor income can only raise success, and the change touches
+  neither the mortality draw nor the return path.
+- **Gated** in `ThresholdExplorer` to a couple with a DC annuity that already provides a survivor fraction — the two
+  survivor-share levers (DB, annuity) gate independently, so a household sees each only where it applies.
+
+Wired through `LeverKey::SurvivorAnnuityFraction` + `buildLever` + `defaultGrid` (0–100%) + the presenter's value
+(grouped with the DB `%` arm) and caption arms. Tested: the lever moves only joint-life annuities and clamps 0–100
+(engine); a bigger annuity survivor income does not lower success on a survivor-cliff couple (MC sweep); the default
+grid brackets 0–100 and a scenario with a joint-life annuity computes the threshold (app); the explorer offers it for
+the joint-life-annuity fixture and hides it for the rich fixture (which annuitises nothing but does show the DB
+lever). **Three survivor levers remain** — per-person longevity (split), defer-the-survivor's-SP, care on/off pinned
+(the first two desync RNG → `LeverDirection::Unknown`). See docs/PLAN-decision-support.md Phase 4.
+
 ## 2026-07-05 — Decision-support Phase 4 (part): the survivor's-DB-share sweep lever (first of the survivor lever menu)
 **Context:** Phase 4's remaining work is the survivor-first lever menu. The binding risk on a couple is
 survivor poverty after the first death; a Defined Benefit scheme's `spousePensionFraction` is guaranteed income
