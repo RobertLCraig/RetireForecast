@@ -323,6 +323,10 @@ class ScenarioBuilder extends Component
             'incomeStreams.*.frequency' => ['nullable', Rule::in(['weekly', 'four_weekly', 'monthly', 'annual'])],
             'incomeStreams.*.startAge' => ['required', 'integer', 'min:0', 'max:110'],
             'incomeStreams.*.endAge' => ['nullable', 'integer', 'min:0', 'max:110', $this->endAfterStart(...)],
+            // A free-text label the user writes for their own reference (what this income is and
+            // where it comes from). Purely a visual aid — the assembler never reads it, so it
+            // reaches no engine figure; bounded only to keep the stored payload sane.
+            'incomeStreams.*.note' => ['nullable', 'string', 'max:120'],
 
             'housing.salePrice' => $moneyReq,
             'housing.buyPrice' => $money,
@@ -1074,7 +1078,7 @@ class ScenarioBuilder extends Component
 
     public function addIncome(): void
     {
-        $this->incomeStreams[] = ['id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'type' => 'rental', 'grossAnnual' => '', 'frequency' => 'annual', 'taxable' => true, 'inflationLinked' => true, 'startAge' => '', 'endAge' => ''];
+        $this->incomeStreams[] = ['id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'type' => 'rental', 'grossAnnual' => '', 'frequency' => 'annual', 'taxable' => true, 'inflationLinked' => true, 'startAge' => '', 'endAge' => '', 'note' => ''];
     }
 
     public function removeIncome(int $i): void

@@ -674,6 +674,12 @@
                             <label class="flex items-center gap-1 text-xs text-gray-600"><input type="checkbox" wire:model="incomeStreams.{{ $i }}.taxable" class="rounded border-gray-300"> Taxable</label>
                             <button type="button" wire:click="removeIncome({{ $i }})" class="text-sm text-red-700 underline">Remove</button>
                         </div>
+                        <div class="sm:col-span-6">
+                            <label for="incomeStreams-{{ $i }}-note" class="text-xs text-gray-600">Note (optional)</label>
+                            <input id="incomeStreams-{{ $i }}-note" type="text" maxlength="120" wire:model="incomeStreams.{{ $i }}.note" class="{{ $field }}" placeholder="What is it and where it's from? e.g. Aviva annuity, or the buy-to-let flat in Leeds">
+                            <p class="mt-1 text-xs text-gray-500">Just a label for your own reference. It doesn't affect the forecast.</p>
+                            @error('incomeStreams.'.$i.'.note') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                        </div>
                     </div>
                 @endforeach
                 <button type="button" wire:click="addIncome" class="mt-4 rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100">+ Add income</button>

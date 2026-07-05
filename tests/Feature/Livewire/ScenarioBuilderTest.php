@@ -299,6 +299,29 @@ class ScenarioBuilderTest extends TestCase
         $this->assertSame(0, Scenario::count());
     }
 
+    public function test_an_income_note_persists_as_a_visual_aid_without_reaching_the_engine(): void
+    {
+        // The user can label each income stream with what it is and where it's from. It is a
+        // pure visual aid: it must survive a save (round-trips through builder_state) yet never
+        // reach an engine figure (HouseholdAssembler reads named keys only, so it is ignored).
+        $state = BuilderStateFixture::full();
+        $state['name'] = 'With a note';
+        $state['incomeStreams'][0]['note'] = 'Aviva annuity, from the old works pension';
+
+        $this->fill($state)->call('save')->assertHasNoErrors();
+
+        $scenario = Scenario::firstOrFail();
+        $this->assertSame(
+            'Aviva annuity, from the old works pension',
+            $scenario->builder_state['incomeStreams'][0]['note'],
+        );
+
+        // The assembled engine household carries no trace of the note — the IncomeStream DTO
+        // has no such field, so it cannot affect any forecast figure.
+        $stream = $scenario->toHousehold()->incomeStreams[0];
+        $this->assertObjectNotHasProperty('note', $stream);
+    }
+
     public function test_a_complete_forecast_shows_a_live_deterministic_preview(): void
     {
         // A forecastable set of inputs renders the verdict + end-wealth readout (one cheap
