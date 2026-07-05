@@ -211,6 +211,17 @@ unbacked `WithdrawalKind` by case name. (The pre-rebuild `households` + `scenari
 - **results** — clear: `simulation_run_id`, `variant` (unique per run). Encrypted `payload`: the
   engine's `SimulationResult` (success probabilities, terminal-wealth percentiles, fan-chart
   bands). A buy-vs-rent run produces three (stay_put, buy_outright, rent) on identical seeds.
+- **threshold_results** (decision-support Phase 1, 2026-07-05) — a computed lever threshold; both
+  the queued run and its result in one row (a threshold is one computation). Clear: `scenario_id`,
+  `user_id?`, `lever_key` (`buy_price|retirement_age|essential_spend`), `metric`
+  (`essentials|full_spend`), `target_probability`, `n_paths`, `seed` (fixed, always recorded),
+  `engine_version`, `taxyear_config_version`, `status` (reuses `SimulationStatus`), `progress_pct`,
+  `inputs_hash` (sha256 of the effective builder-state + engine version + all compute params — the
+  cache key), `started_at?`/`finished_at?`/`error?`. Encrypted: `grid` (the swept lever values),
+  `assumption_snapshot` (frozen `AssumptionSet`), and `payload` (the mapped `ThresholdOutcome` =
+  swept curve + crossing, null until done; `App\Finance\Mapping\ThresholdOutcomeMapper`). Invalidated
+  on scenario edit exactly as `simulation_runs` are (deleted, cascade to children), with the
+  `inputs_hash` as the belt-and-braces so a stale threshold is never surfaced.
 
 `ScenarioVariant`, `ScenarioStatus`, `SimulationMode` and `SimulationStatus` are app-level enums
 (the engine takes a Household + HousingAction and does not name the variants). Withdrawals live
