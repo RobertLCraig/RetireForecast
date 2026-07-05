@@ -14,11 +14,13 @@ use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
+use RetireForecast\FinanceEngine\Dto\LongevityMode;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
+use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -26,6 +28,7 @@ use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\Sweep\Lever\BuyPriceLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\EssentialSpendLever;
+use RetireForecast\FinanceEngine\Sweep\Lever\PersonLongevityLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\RetirementAgeLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\SurvivorAnnuityFractionLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\SurvivorDbFractionLever;
@@ -155,6 +158,41 @@ final class SweepLeversTest extends TestCase
             $curve->points[1]->successProbability,
             'a larger survivor pension should not lower the chance the money lasts',
         );
+    }
+
+    public function test_the_person_longevity_lever_offsets_only_the_named_person(): void
+    {
+        $household = $this->dbCouple();
+        $lever = new PersonLongevityLever('p2');
+
+        $applied = $lever->apply($household, $this->settings(), 8.4)->household;
+
+        $this->assertSame(LongevityMode::OffsetYears, $applied->persons[1]->longevity->mode, 'the named person lives an offset from peer');
+        $this->assertSame(8.0, $applied->persons[1]->longevity->value, 'the swept value is the ± year offset (rounded to a whole year)');
+        $this->assertNull($applied->persons[0]->longevity, 'the other partner is untouched (their lifespan is not this lever)');
+
+        // Whose longevity is the insight, so the sweep is genuinely not monotone: extending the
+        // better-provided partner helps, extending the survivor hurts. It must NOT be monotone-fit.
+        $this->assertSame(LeverDirection::Unknown, $lever->direction());
+    }
+
+    public function test_a_person_longevity_offset_reaches_the_forecast(): void
+    {
+        // Completeness: the swept offset must actually change the modelled lifespan the forecast
+        // runs on (not sit inert on the DTO). A deterministic forecast reads the same longevity
+        // adjustment the Monte Carlo sampler does, so it is the cheap, stable proof the lever bites.
+        $household = $this->workingCouple();
+        $forecaster = new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable);
+        $assumptions = AssumptionSetLibrary::default();
+        $lever = new PersonLongevityLever('p1');
+
+        $peer = $lever->apply($household, $this->settings(), 0)->household;
+        $longer = $lever->apply($household, $this->settings(), 12)->household;
+
+        $peerDeath = $forecaster->forecast($peer, $assumptions, $this->settings())->deathCalendarYears['p1'];
+        $longerDeath = $forecaster->forecast($longer, $assumptions, $this->settings())->deathCalendarYears['p1'];
+
+        $this->assertGreaterThan($peerDeath, $longerDeath, 'living 12 years longer pushes the modelled death year later in the forecast');
     }
 
     /** The Defined Benefit pension owned by $ownerId in $household. */

@@ -58,4 +58,22 @@ final class Person
             $this->receivesDisabilityBenefit,
         );
     }
+
+    /** The same person with a different lifespan what-if (immutable; e.g. a per-person longevity sweep). */
+    public function withLongevity(?LongevityAdjustment $longevity): self
+    {
+        return new self(
+            $this->id,
+            $this->dob,
+            $this->sex,
+            $this->employmentStatus,
+            $this->grossSalary,
+            $this->salaryGrowth,
+            $this->plannedRetirementAge,
+            $this->niCategory,
+            $this->name,
+            $longevity,
+            $this->receivesDisabilityBenefit,
+        );
+    }
 }
