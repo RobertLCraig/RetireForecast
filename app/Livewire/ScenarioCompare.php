@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Compliance\Interpretation;
-use App\Enums\ScenarioStatus;
+use App\DecisionSupport\CombinationComparison;
+use App\DecisionSupport\CombinationComparisonData;
 use App\Enums\SimulationStatus;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
+use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 
 /**
  * Compares a base plan with its delta-child what-ifs side by side (Phase C2). Each
@@ -98,15 +100,13 @@ class ScenarioCompare extends Component
     {
         $forecaster = app(ScenarioForecaster::class);
 
-        // One deterministic projection per plan, reused for both the summary table and the
-        // wealth-over-time burndown overlay (so the chart can't drift from the table). Each
-        // plan is projected on ITS OWN housing strategy (not the raw stay-put basis), so a
-        // buy-vs-rent comparison's columns actually differ — the same per-variant single source
-        // the results-page cashflow ladder uses (#6), keyed by the plan's chosen variant.
-        $forecasts = $this->plans()->map(fn (Scenario $plan): array => [
-            'scenario' => $plan,
-            'forecast' => $forecaster->deterministicVariants($plan)[$plan->variant->value],
-        ]);
+        // One assembly of the compared plans — each with its own-variant deterministic forecast
+        // (so a buy-vs-rent comparison's columns actually differ, the same per-variant source the
+        // results-page ladder uses) AND its latest completed Monte Carlo result. Shared by the
+        // deterministic table, the burndown overlay, and the Phase-3 combination comparison, and
+        // built the same way the CSV download builds its plan set, so nothing can drift.
+        $plansData = CombinationComparisonData::assemble($this->base, $forecaster);
+        $forecasts = collect($plansData);
 
         $plans = $forecasts->map(fn (array $pf): array => $this->summarise($pf['scenario'], $pf['forecast'], $forecaster));
 
@@ -128,11 +128,23 @@ class ScenarioCompare extends Component
         // Advice-style "why" narrative ranking the compared plans (the buy-vs-rent recommendation).
         // Walled off behind the `interpret` ability — on for everyone in personal-use mode
         // (config/compliance.php), the per-user grant otherwise. Empty = neutral guidance only.
-        $narrative = Gate::allows('interpret')
+        $interpret = Gate::allows('interpret');
+        $narrative = $interpret
             ? Interpretation::compareNarrative(
                 $forecasts->map(fn (array $pf): array => ['name' => $pf['scenario']->name, 'forecast' => $pf['forecast']])->all(),
             )
             : [];
+
+        // Decision-support Phase 3: the same plans compared on their MONTE CARLO outcome as
+        // plain word-band chips + net-position sparklines (its own surface — never mixed into the
+        // deterministic Yes/No grid above). Neutral and UNORDERED by default; best-first ordering
+        // and the "which to lean towards" narrative appear only when `interpret` allows, because a
+        // best-first list is itself advice (invisible to the phrasing lint). Same gate as above.
+        $comparison = CombinationComparison::build($plansData);
+        $combinationRanking = [];
+        if ($interpret) {
+            [$comparison['rows'], $combinationRanking] = $this->rankCombination($comparison['rows'], $plansData);
+        }
 
         // Contextual "get help" panel: the mortgage column shows if any compared plan involves a
         // mortgage (an owed balance or a buy funded by one); the CGT column if any sells a home that
@@ -149,6 +161,11 @@ class ScenarioCompare extends Component
             'sourcesShowCgt' => $showCgt,
             // Live progress for the "re-run all" batch, from the same plans the table shows.
             'familyRun' => $this->familyProgress($forecasts->map(fn (array $pf): Scenario => $pf['scenario'])),
+            // Phase-3 combination comparison (its own surface, below the deterministic table).
+            'comparison' => $comparison,
+            'combinationRanked' => $interpret,
+            'combinationRanking' => $combinationRanking,
+            'combinationCsvUrl' => route('scenarios.compare.csv', $this->base),
         ])->title('Compare what-ifs');
     }
 
@@ -237,12 +254,57 @@ class ScenarioCompare extends Component
             ->all();
     }
 
-    /** The base plan first, then its ready what-if children. */
+    /** The base plan first, then its ready what-if children (the one home for the compared set). */
     private function plans(): Collection
     {
-        return collect([$this->base])->concat(
-            $this->base->children()->where('status', ScenarioStatus::Ready)->latest()->get(),
-        );
+        return CombinationComparisonData::plans($this->base);
+    }
+
+    /**
+     * Best-first ordering for the Phase-3 combination comparison, reached only when `interpret`
+     * allows (ordering is advice). Sorts the rows by the SAME comparator {@see Interpretation::combinationRanking()}
+     * ranks by — most futures covering the essentials, then the full spend, then the most usable
+     * wealth left — so the row order and the "which to lean towards" narrative can never disagree;
+     * unsimulated plans (no figures) sink to the end. Rows share $plansData's order, so each row's
+     * raw Monte Carlo figures are read by index. Returns the reordered rows and the narrative lines.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @param  list<array{scenario: Scenario, forecast: ForecastResult, mc: ?SimulationResult}>  $plansData
+     * @return array{0: list<array<string, mixed>>, 1: list<string>}
+     */
+    private function rankCombination(array $rows, array $plansData): array
+    {
+        $median = static fn (?SimulationResult $mc): int => $mc !== null && isset($mc->usableWealthPercentiles['p50'])
+            ? $mc->usableWealthPercentiles['p50']->pence
+            : PHP_INT_MIN;
+
+        $indexed = [];
+        foreach ($rows as $i => $row) {
+            $mc = $plansData[$i]['mc'];
+            $indexed[] = [
+                'row' => $row,
+                'key' => $mc === null
+                    ? [0, -1.0, -1.0, PHP_INT_MIN]
+                    : [1, $mc->successProbabilityEssentials, $mc->successProbabilityFullSpend, $median($mc)],
+            ];
+        }
+        usort($indexed, static fn (array $a, array $b): int => $b['key'] <=> $a['key']);
+        $ordered = array_map(static fn (array $x): array => $x['row'], $indexed);
+
+        $figures = [];
+        foreach ($plansData as $plan) {
+            if ($plan['mc'] !== null) {
+                $figures[] = [
+                    'name' => $plan['scenario']->name,
+                    'successEssentials' => $plan['mc']->successProbabilityEssentials,
+                    'successFullSpend' => $plan['mc']->successProbabilityFullSpend,
+                    'depletionRate' => $plan['mc']->depletionRate,
+                    'medianUsablePence' => $median($plan['mc']) === PHP_INT_MIN ? 0 : $median($plan['mc']),
+                ];
+            }
+        }
+
+        return [$ordered, Interpretation::combinationRanking($figures)['lines']];
     }
 
     /**

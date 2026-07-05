@@ -189,6 +189,21 @@ success). Do not mix probabilistic rows into Compare's deterministic Yes/No grid
   **Tests:** a test asserts **neutral order when `compliance.personal_use = false`**; no banned phrasing; the
   analyst drill-down still lists success% / depletion / p10 / median wealth per option with CSV.
 
+**Phase 3 is now COMPLETE (2026-07-05).** Built as a new section on the Compare page (its own surface — never mixed
+into the deterministic Yes/No grid), backed by the neutral `App\DecisionSupport\CombinationComparison` presenter:
+each compared plan (base + ready children) scored on its latest completed Monte Carlo run as a plain **word-band
+chip** (`ResultPresenter::lastsBand()`, no decimals, never "safe") over a **net-position sparkline** (reusing the
+same usable − Σ-unmet series as the fan/burndown), with the exact figures in a per-plan drill-down + an owner-scoped
+**CSV** (`CombinationCsvExporter` + `CombinationCsvController`, carrying `ExportDisclaimer`). **Ordering is gated:**
+the presenter is unordered (plan order); best-first reordering + the "which to lean towards" narrative come from
+`Interpretation::combinationRanking()` only behind the `interpret` ability — a test pins neutral order when
+`personal_use=false`, and the banned-phrasing partition passes in enforce mode. The **surprising-lever callout** (a
+longer life raising the odds → the survivor-cliff signal) is a factual, guidance-side observation. One home for the
+compared set: `CombinationComparisonData` (shared by the Compare render + the CSV controller). See DECISIONS
+2026-07-05. **Deferred fast-follows:** a chosen-subset selector (v1 compares the whole family); the sparkline's
+per-year figures as a full accessible table (v1 = chip word + drill-down + CSV + aria-labelled trend). **Next:
+Phase 4.**
+
 ### Phase 4 — Survivor-first lever menu + the survivor-cliff story
 Re-scope the lever menu around the binding risk. Add the survivor-targeted levers, several already built:
 **joint-life annuity with a survivor %** (`AnnuityPurchase`), **defer the *survivor's* State Pension** (deferring

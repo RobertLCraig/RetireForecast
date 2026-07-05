@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Compliance;
 
+use App\DecisionSupport\CombinationComparison;
 use App\Forecast\ResultPresenter;
 use App\Forecast\WithdrawalStrategyComparison;
 use App\Models\Result;
@@ -118,6 +119,45 @@ final class Interpretation
         $lines[] = 'This is one central projection on your current assumptions; run the full simulation for the range of futures, and revisit it if your spending, returns or longevity differ.';
 
         return $lines;
+    }
+
+    /**
+     * The advice-side ranking for the decision-support combination-comparison surface (Phase 3):
+     * given each simulated plan's Monte Carlo figures, return the best-first ORDER of the plans
+     * plus a plain-English "which to lean towards" narrative. The neutral
+     * {@see CombinationComparison} never ranks; the ordering IS advice (a
+     * best-first list is an implicit recommendation, invisible to the phrasing lint), so it lives
+     * here behind the `interpret` ability and re-hides the moment the regulatory flag flips.
+     *
+     * Ranked best = the most futures covering the essentials, then the full spend, then the most
+     * typical usable wealth left. Fewer than two simulated plans is nothing to rank.
+     *
+     * @param  list<array{name: string, successEssentials: float, successFullSpend: float, depletionRate: float, medianUsablePence: int}>  $plans
+     * @return array{order: list<string>, lines: list<string>}
+     */
+    public static function combinationRanking(array $plans): array
+    {
+        $plans = array_values($plans);
+        if (count($plans) < 2) {
+            return ['order' => array_map(static fn (array $p): string => $p['name'], $plans), 'lines' => []];
+        }
+
+        usort($plans, static fn (array $a, array $b): int => [$b['successEssentials'], $b['successFullSpend'], $b['medianUsablePence']]
+            <=> [$a['successEssentials'], $a['successFullSpend'], $a['medianUsablePence']]);
+
+        $best = $plans[0];
+        $worst = $plans[count($plans) - 1];
+        $bestEss = ResultPresenter::formatPercent($best['successEssentials']);
+        $worstEss = ResultPresenter::formatPercent($worst['successEssentials']);
+
+        return [
+            'order' => array_map(static fn (array $p): string => $p['name'], $plans),
+            'lines' => [
+                "Across the full simulations, {$best['name']} gives the best chance of the money lasting — {$bestEss} of futures cover the essentials, against {$worstEss} for {$worst['name']}.",
+                "If making the money last is what matters most, {$best['name']} is the one to lean towards on these figures.",
+                'These are consequences of your inputs under one set of assumptions; revisit them if your spending, returns or longevity change.',
+            ],
+        ];
     }
 
     /**

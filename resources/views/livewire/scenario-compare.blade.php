@@ -206,6 +206,119 @@
         </details>
     </section>
 
+    {{-- Decision-support Phase 3: the same plans compared on their MONTE CARLO outcome, as plain
+         word-band chips over net-position sparklines. Its own surface — deliberately kept apart
+         from the deterministic Yes/No table above. Neutral and unordered unless the walled-off
+         `interpret` ability is on, in which case the rows come reordered best-first with a "which
+         to lean towards" narrative (ordering is advice). --}}
+    @php
+        $chipStyles = [
+            'strong' => ['cls' => 'bg-emerald-100 text-emerald-800', 'icon' => '✓'],
+            'good' => ['cls' => 'bg-green-100 text-green-800', 'icon' => '✓'],
+            'borderline' => ['cls' => 'bg-amber-100 text-amber-800', 'icon' => '~'],
+            'weak' => ['cls' => 'bg-orange-100 text-orange-800', 'icon' => '!'],
+            'poor' => ['cls' => 'bg-red-100 text-red-800', 'icon' => '✕'],
+        ];
+    @endphp
+    <section aria-labelledby="combo-heading" class="mt-8 rounded-lg border border-gray-200 bg-white p-5">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <h2 id="combo-heading" class="text-xl font-semibold text-gray-900">Chance the money lasts, across your futures</h2>
+                <p class="mt-1 max-w-3xl text-sm text-gray-600">
+                    Each plan below is scored on its full Monte&nbsp;Carlo simulation — a plain read of how likely the
+                    money is to cover the essentials, over the trend of your spendable position. This is separate from
+                    the central-projection table above, which shows a single best estimate.
+                </p>
+            </div>
+            <a href="{{ $combinationCsvUrl }}" class="shrink-0 text-sm text-blue-700 underline">Download CSV</a>
+        </div>
+
+        {{-- A factual, guidance-side observation (e.g. a longer life raising the odds because the
+             binding risk is survivor income), shown only when something counterintuitive appears. --}}
+        @if ($comparison['callout'])
+            <p class="mt-4 rounded-md bg-indigo-50 px-3 py-2 text-sm text-indigo-900">{{ $comparison['callout'] }}</p>
+        @endif
+
+        {{-- Advice-side ranking narrative, only behind the `interpret` ability. --}}
+        @if ($combinationRanked && ! empty($combinationRanking))
+            <div class="mt-4">
+                @include('livewire.partials.interpretation', ['interpretation' => $combinationRanking])
+            </div>
+        @endif
+
+        @if ($comparison['anyMissing'])
+            <p class="mt-4 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800" role="status">
+                Some plans have not been simulated yet — use <strong>Re-run all</strong> above to score every plan across its futures.
+            </p>
+        @endif
+
+        <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach ($comparison['rows'] as $row)
+                <div class="rounded-lg border border-gray-200 p-4"
+                     wire:key="combo-{{ $loop->index }}-{{ \Illuminate\Support\Str::slug($row['name']) ?: 'plan' }}">
+                    <div class="flex items-center justify-between gap-2">
+                        <h3 class="font-medium text-gray-900">{{ $row['name'] }}</h3>
+                        @if ($row['isBase'])
+                            <span class="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">Base</span>
+                        @endif
+                    </div>
+
+                    @if ($row['changes'])
+                        <div class="mt-1 flex flex-wrap gap-1">
+                            @foreach ($row['changes'] as $change)
+                                <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">{{ $change['label'] }}: {{ $change['to'] }}</span>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    @if ($row['chip'])
+                        @php $style = $chipStyles[$row['chip']['level']] ?? $chipStyles['borderline']; @endphp
+                        <div class="mt-3">
+                            <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold {{ $style['cls'] }}">
+                                <span aria-hidden="true">{{ $style['icon'] }}</span> {{ $row['chip']['word'] }}
+                            </span>
+                        </div>
+
+                        {{-- Net-position sparkline: a glanceable trend; the numbers are in the drill-down + CSV. --}}
+                        <div class="mt-3" wire:ignore>
+                            <div x-data="chart(@js($row['sparkline']['options']))" role="img"
+                                 aria-label="Spendable net position over time for {{ $row['name'] }}.@if ($row['sparkline']['runsShortYear']) It dips below £0 around {{ $row['sparkline']['runsShortYear'] }}.@else It stays above £0 to {{ $row['sparkline']['endYear'] }}.@endif The figures are in the drill-down below."></div>
+                        </div>
+
+                        <details class="mt-3">
+                            <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers</summary>
+                            <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                                <dt class="text-gray-500">Essentials last</dt>
+                                <dd class="text-right tabular-nums text-gray-900">{{ $row['figures']['successEssentials'] }}</dd>
+                                <dt class="text-gray-500">Full spend lasts</dt>
+                                <dd class="text-right tabular-nums text-gray-900">{{ $row['figures']['successFullSpend'] }}</dd>
+                                <dt class="text-gray-500">Runs short</dt>
+                                <dd class="text-right tabular-nums text-gray-900">{{ $row['figures']['runsShort'] }}@if ($row['figures']['runsShortYear']) (around {{ $row['figures']['runsShortYear'] }})@endif</dd>
+                                <dt class="text-gray-500">Usable wealth (p10)</dt>
+                                <dd class="text-right tabular-nums text-gray-900">{{ $row['figures']['p10Usable'] ?? '—' }}</dd>
+                                <dt class="text-gray-500">Usable wealth (median)</dt>
+                                <dd class="text-right tabular-nums text-gray-900">{{ $row['figures']['medianUsable'] ?? '—' }}</dd>
+                                <dt class="text-gray-500">Simulated paths</dt>
+                                <dd class="text-right tabular-nums text-gray-900">{{ number_format($row['figures']['paths']) }}</dd>
+                            </dl>
+                        </details>
+                    @else
+                        <p class="mt-3 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-500">Not simulated yet. Use “Re-run all” above to score this plan across its futures.</p>
+                    @endif
+
+                    <a href="{{ $row['resultsUrl'] }}" class="mt-3 inline-block text-xs font-medium text-blue-600 hover:text-blue-700">Open this plan's results →</a>
+                </div>
+            @endforeach
+        </div>
+
+        <p class="mt-4 text-xs text-gray-500">
+            "Chance the money lasts" is the share of simulated futures in which your spendable money covers the
+            essentials to the end. Figures are in today's money.
+            @unless ($combinationRanked) The plans are shown in your own order, not ranked. @endunless
+            Guidance only, not a personal recommendation.
+        </p>
+    </section>
+
     <x-sources-and-contacts class="mt-8" :show-mortgage="$sourcesShowMortgage" :show-cgt="$sourcesShowCgt" />
 
     <div class="mt-6">

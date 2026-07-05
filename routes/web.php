@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BuyVsRentController;
+use App\Http\Controllers\CombinationCsvController;
 use App\Http\Controllers\DisclaimerController;
 use App\Http\Controllers\MethodologyController;
 use App\Http\Controllers\QuickWhatIfController;
@@ -56,6 +57,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/scenarios/{scenario}/what-if/quick', [QuickWhatIfController::class, 'store'])->name('scenarios.whatif.quick');
         Route::post('/scenarios/{scenario}/compare/housing', [BuyVsRentController::class, 'store'])->name('scenarios.compare.housing');
         Route::get('/scenarios/{scenario}/compare', ScenarioCompare::class)->name('scenarios.compare');
+        Route::get('/scenarios/{scenario}/compare/csv', [CombinationCsvController::class, 'download'])->name('scenarios.compare.csv');
         Route::get('/scenarios/{scenario}/results', ScenarioResults::class)->name('scenarios.results');
         Route::get('/scenarios/{scenario}/results/pdf', [ScenarioPdfController::class, 'download'])->name('scenarios.results.pdf');
         Route::get('/scenarios/{scenario}/threshold/{threshold}/csv', [ThresholdCsvController::class, 'download'])->name('scenarios.threshold.csv');

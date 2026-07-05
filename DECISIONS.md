@@ -3,6 +3,42 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-05 — Decision-support Phase 3: the combination-comparison surface (its own, MC-based, neutral-unless-gated)
+**Context:** the Compare page already lays a base beside its what-ifs, but on the DETERMINISTIC central
+projection (a Yes/No grid). Phase 3 answers "which combination gives the best chance the money lasts?" across
+the full Monte Carlo — the trade-offs the deterministic table can't show. The plan is explicit: this is its own
+surface, never mixed into the deterministic grid.
+
+**Decision — a new section on the Compare page (not a new page), backed by a neutral presenter + a walled-off
+ranking.** Each compared plan (base + ready children) is scored on its latest completed Monte Carlo run as a
+plain **word-band chip** ("Very likely to last") over a **net-position sparkline**, with the exact figures
+(chance essentials/full-spend last, runs-short %, p10 + median usable wealth, paths) in a per-plan drill-down and
+an owner-scoped CSV. Load-bearing choices:
+- **No decimals in the headline.** 94.9% and 95.0% are Monte Carlo noise, so the chip is a *word* — the single
+  banding home is `ResultPresenter::lastsBand()` (strong→poor, never the word "safe"), reused so a chip can never
+  disagree with another word-band readout. The decimals live only in the drill-down + CSV.
+- **Ordering is advice; it stays behind the `interpret` gate.** A best-first list is an implicit recommendation
+  the phrasing lint is blind to. So the neutral `App\DecisionSupport\CombinationComparison` presenter is UNORDERED
+  (plan order, base first) and never labels one plan "strongest"; best-first reordering + the "which to lean
+  towards" narrative come from `Interpretation::combinationRanking()` (the walled-off layer) only when the gate
+  allows — the same gate the deterministic compare narrative already uses. A test pins **neutral order when
+  `compliance.personal_use = false`**. The row sort uses the SAME comparator the ranking narrative ranks by (most
+  futures covering essentials, then full spend, then usable wealth), so the reordered rows and the "strongest"
+  named in the narrative can never disagree; unsimulated plans sink to the end.
+- **The surprising-lever callout is guidance, not advice.** A plan that models LIVING LONGER yet comes out with a
+  HIGHER chance the money lasts (the survivor-cliff signal at the heart of this feature) gets a factual callout —
+  phrased as an observation ("something worth noticing…"), never a recommendation, so it stays neutral-zone-clean
+  (verified: the banned-phrasing partition passes in enforce mode).
+- **One home for the plan set.** `CombinationComparisonData` assembles "base + ready children, each with its
+  own-variant deterministic forecast + its latest completed MC result", shared by the Compare render and the CSV
+  controller, so the screen and the download can't drift. Sparkline reuses the same net-position series (usable −
+  Σ unmet, below £0) as the fan/burndown, so a glance can't contradict the ladder.
+
+**Deferred (fast-follows):** a chosen-subset selector (v1 compares the whole family, matching Compare); per-plan
+sparkline data as a full accessible per-year table (v1 gives the chip word + drill-down figures + CSV + an
+aria-labelled trend). **Pending Rob's browser sign-off** (needs completed family runs — the local DB has none).
+**Next: Phase 4 (survivor-first lever menu).** See docs/PLAN-decision-support.md.
+
 ## 2026-07-05 — Decision-support Phase 2: the "How far can we go?" results panel
 **Context:** with the queued threshold backend built (Phase 1, below), Phase 2 is the decision-maker's view —
 "how far can we move one lever before the money stops lasting?" for someone who is not a numbers person. The

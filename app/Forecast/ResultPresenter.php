@@ -1610,6 +1610,29 @@ final class ResultPresenter
         return round($fraction * 100).'%';
     }
 
+    /**
+     * A probability that the money lasts, bucketed to a plain word band with no decimals —
+     * 94.9% and 95.0% are Monte Carlo noise, so a decision-maker reads "Very likely to last",
+     * not a spurious figure. One home for the banding, so a chip on the combination-comparison
+     * surface and any other word-band readout can never disagree on where the boundaries fall.
+     * `level` (strong→poor) drives the colour + icon the view gives it; the copy is factual and
+     * never uses "safe" (the decision-support neutral-copy guardrail).
+     *
+     * @return array{level: string, word: string}
+     */
+    public static function lastsBand(float $successProbability): array
+    {
+        $p = max(0.0, min(1.0, $successProbability));
+
+        return match (true) {
+            $p >= 0.90 => ['level' => 'strong', 'word' => 'Very likely to last'],
+            $p >= 0.75 => ['level' => 'good', 'word' => 'Likely to last'],
+            $p >= 0.50 => ['level' => 'borderline', 'word' => 'Borderline'],
+            $p >= 0.25 => ['level' => 'weak', 'word' => 'Likely to fall short'],
+            default => ['level' => 'poor', 'word' => 'Very likely to fall short'],
+        };
+    }
+
     public static function variantLabel(ScenarioVariant $variant): string
     {
         return self::LABELS[$variant->value];
