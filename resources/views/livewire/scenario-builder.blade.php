@@ -794,6 +794,18 @@
                                 <p class="mt-1 text-xs text-gray-500">Only applies if you set a year. "Sell the home" models a forced sale that year: the equity is freed into your investments and you rent from then on.</p>
                             </div>
                         </div>
+                        <div class="mt-4">
+                            <label for="property-mortgageRollUpRate" class="{{ $label }}">Lifetime-mortgage roll-up rate (optional, % a year)</label>
+                            <input id="property-mortgageRollUpRate" type="text" inputmode="decimal" placeholder="e.g. 6.5" wire:model="property.mortgageRollUpRate" class="{{ $field }} sm:max-w-xs" @error('property.mortgageRollUpRate') aria-invalid="true" aria-describedby="property-mortgageRollUpRate-error" @enderror>
+                            @error('property.mortgageRollUpRate') <p id="property-mortgageRollUpRate-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                            <p class="mt-1 text-xs text-gray-500">
+                                For an <span class="font-medium">equity-release lifetime mortgage with no monthly payments</span>: the
+                                outstanding balance above rolls up (compounds) at this fixed rate and is repaid from your estate when
+                                the home is eventually sold — capped at the home's value (the No-Negative-Equity Guarantee). Leave blank
+                                for a repayment or interest-serviced mortgage (where the balance stays level and any interest is a spending
+                                line). Try it with and without payments as separate what-ifs to see the effect on what you leave behind.
+                            </p>
+                        </div>
                     </div>
 
                     {{-- Capital gains on sale: only part of the gain is relieved when the home was let

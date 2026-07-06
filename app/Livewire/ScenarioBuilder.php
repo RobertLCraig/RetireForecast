@@ -352,6 +352,9 @@ class ScenarioBuilder extends Component
             // What happens when the mortgage term ends (only acts when a redemption year is set).
             $rules['property.mortgageRedemptionYear'] = ['nullable', 'integer', 'min:2020', 'max:2100'];
             $rules['property.mortgageMaturityAction'] = ['nullable', Rule::in(['refinance', 'repay_from_capital', 'forced_sale'])];
+            // Lifetime-mortgage (equity release) roll-up rate: fixed-for-life, so a sane band. Empty = a
+            // static/serviced mortgage (the balance does not roll up).
+            $rules['property.mortgageRollUpRate'] = ['nullable', 'numeric', 'min:0', 'max:20'];
             // Capital-gains history (only meaningful when the home was ever let — see the wizard).
             $rules['property.cgtHistory.purchasePrice'] = $money;
             $rules['property.cgtHistory.improvementCosts'] = $money;
@@ -621,6 +624,9 @@ class ScenarioBuilder extends Component
         if ($this->hasProperty) {
             $this->property['mortgageRedemptionYear'] ??= '';
             $this->property['mortgageMaturityAction'] ??= 'refinance';
+            // A property saved before the lifetime-mortgage input existed has no key; default it
+            // empty (a static/serviced mortgage — the balance does not roll up).
+            $this->property['mortgageRollUpRate'] ??= '';
         }
 
         // Every spend line carries an explicit `included` flag so its on/off checkbox binds to a
@@ -1417,7 +1423,7 @@ class ScenarioBuilder extends Component
         return [
             'currentValue' => '', 'ownership' => 'outright', 'everLet' => false,
             'outstandingMortgage' => '', 'runningCosts' => '', 'growthAssumptionOverride' => '', 'ownershipShare' => '',
-            'mortgageRedemptionYear' => '', 'mortgageMaturityAction' => 'refinance',
+            'mortgageRedemptionYear' => '', 'mortgageMaturityAction' => 'refinance', 'mortgageRollUpRate' => '',
             'cgtHistory' => self::blankCgtHistory(),
         ];
     }

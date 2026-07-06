@@ -1079,6 +1079,23 @@ final class ResultPresenter
             $notes[] = ['kind' => 'mortgage_redemption', 'text' => $text];
         }
 
+        // (c2) An equity-release lifetime mortgage rolling up with no payments: the balance
+        // compounds and is repaid from the estate, so state the projected end balance and what it
+        // leaves behind — otherwise the (gross) total-wealth line would flatter a plan whose home
+        // equity has quietly been consumed by the rolled-up interest (factual, not advice).
+        $rollUp = $home?->mortgageRollUpRate;
+        if ($home !== null && $rollUp !== null && $mortgage !== null && $mortgage->isPositive()) {
+            $finalYear = $forecast->years[count($forecast->years) - 1];
+            $rate = rtrim(rtrim(number_format($rollUp->asPercent(), 2), '0'), '.');
+            $notes[] = ['kind' => 'lifetime_mortgage_rollup', 'text' => "This home is modelled as an equity-release lifetime mortgage rolling up at {$rate}% a year with no "
+                ."payments: the {$mortgage->format()} balance compounds untouched and is repaid from the estate when the "
+                .'home is finally sold (capped at the home’s value — you can never owe more than it). By '
+                ."{$forecast->finalCalendarYear} it grows to about {$finalYear->mortgageBalance()->format()} in today’s money, "
+                ."so of the home’s {$finalYear->propertyWealth->format()} only about {$finalYear->homeEquity()->format()} would "
+                .'be left to inherit. Freeing the monthly payment helps the money last, but the rolled-up interest is what it '
+                .'costs what you leave behind — compare this against servicing the interest to see the trade-off.'];
+        }
+
         // (d) Cohabiting-couple survivor caveats. The married/civil-partner survivor rights the
         // engine implicitly assumes do NOT extend to a cohabiting partner, so flag where the
         // forecast may overstate what the survivor actually receives (no silent overstatement).

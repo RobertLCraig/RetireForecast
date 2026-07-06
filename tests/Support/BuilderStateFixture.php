@@ -58,7 +58,7 @@ final class BuilderStateFixture
             'hasProperty' => true,
             'property' => ['currentValue' => '525000', 'ownership' => 'mortgaged', 'everLet' => false,
                 'outstandingMortgage' => '48000', 'runningCosts' => '6400', 'growthAssumptionOverride' => '1', 'ownershipShare' => '100',
-                'mortgageRedemptionYear' => '', 'mortgageMaturityAction' => 'refinance'],
+                'mortgageRedemptionYear' => '', 'mortgageMaturityAction' => 'refinance', 'mortgageRollUpRate' => ''],
             'housing' => ['salePrice' => '525000', 'buyPrice' => '320000', 'annualRent' => '18000',
                 'rentInflationReal' => '0.5', 'movingCosts' => '9500',
                 'sellingCosts' => ['estate_agent' => ['label' => 'Estate agent', 'basis' => 'percent', 'value' => '1.5']]],

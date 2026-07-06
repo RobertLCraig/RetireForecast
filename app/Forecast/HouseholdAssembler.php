@@ -479,6 +479,7 @@ final class HouseholdAssembler
             mortgageRedemptionYear: $this->intOrNull($p['mortgageRedemptionYear'] ?? null),
             mortgageMaturityAction: MortgageMaturityAction::from($p['mortgageMaturityAction'] ?? 'refinance'),
             isLet: (bool) ($p['isLet'] ?? false),
+            mortgageRollUpRate: $this->percent($p['mortgageRollUpRate'] ?? null),
         );
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Forecast;
 
+use RetireForecast\FinanceEngine\Iht\EstateValuer;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Support\Warning;
 
@@ -81,12 +82,43 @@ final class YearResult
         public readonly array $incomeBySource = [],
         public readonly array $warnings = [],
         public readonly ?Money $investmentGrowth = null,
+        public readonly ?Money $mortgageBalance = null,
     ) {}
 
     /** The full target spend was met in this year (nothing went unfunded). */
     public function fullSpendMet(): bool
     {
         return $this->unmetSpend->isZero();
+    }
+
+    /**
+     * The outstanding mortgage on the home this year (real money, zero if none). Non-zero and
+     * GROWING when a lifetime mortgage rolls up unpaid; level when it is repaid/serviced.
+     */
+    public function mortgageBalance(): Money
+    {
+        return $this->mortgageBalance ?? Money::zero();
+    }
+
+    /**
+     * Home equity net of the mortgage, floored at zero (the No-Negative-Equity Guarantee: a
+     * rolled-up balance above the home's value is not a negative estate) — the same definition
+     * {@see EstateValuer} uses at death.
+     */
+    public function homeEquity(): Money
+    {
+        return $this->propertyWealth->minus($this->mortgageBalance())->minZero();
+    }
+
+    /**
+     * Net worth: liquid + pension + home EQUITY (property net of the mortgage, NNEG-floored) —
+     * derived from its parts, so it can never drift from the reported legs. Equals
+     * {@see $totalWealth} when there is no mortgage; below it (by the debt) when one is owed,
+     * which is what makes an unpaid lifetime-mortgage roll-up visible in the wealth line.
+     */
+    public function netWealth(): Money
+    {
+        return $this->liquidWealth->plus($this->pensionWealth)->plus($this->homeEquity());
     }
 
     /** This year's capital growth left in the invested pots (zero if not tracked). */
@@ -103,7 +135,7 @@ final class YearResult
             $this->grossIncome, $this->totalTax, $this->netIncome, $this->spendTarget,
             $this->essentialSpend, $this->shortfallFunded, $this->unmetSpend, $this->essentialsMet,
             $this->liquidWealth, $this->pensionWealth, $this->propertyWealth, $this->totalWealth,
-            $this->incomeBySource, $this->warnings, $investmentGrowth,
+            $this->incomeBySource, $this->warnings, $investmentGrowth, $this->mortgageBalance,
         );
     }
 }

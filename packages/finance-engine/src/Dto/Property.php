@@ -31,6 +31,15 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * pension-age means test: its equity (value − outstanding mortgage) counts as ASSESSABLE
  * capital, so — like selling — letting it out erodes Pension Credit and can cross the £16,000
  * Housing/Council-Tax-support cliff. Default false = they occupy it (exempt, the common case).
+ *
+ * $mortgageRollUpRate models a lifetime mortgage (equity release): a FIXED, fixed-for-life
+ * NOMINAL interest rate at which the $outstandingMortgage balance ROLLS UP (compounds) each
+ * year when no payments are made — the balance is repaid from the estate on death/sale/care,
+ * capped at the home's value by the Equity Release Council No-Negative-Equity Guarantee. Null
+ * (the default) = the balance is STATIC, as before: a repayment or interest-serviced mortgage
+ * (RIO), whose interest — if any — is entered as an expense line, not accrued here. Set it only
+ * for the no-payments roll-up case; an interest-serviced lifetime mortgage keeps the balance
+ * level, so it leaves this null and carries the interest as an expense (like a RIO).
  */
 final class Property
 {
@@ -47,5 +56,6 @@ final class Property
         public readonly ?int $mortgageRedemptionYear = null,
         public readonly MortgageMaturityAction $mortgageMaturityAction = MortgageMaturityAction::Refinance,
         public readonly bool $isLet = false,
+        public readonly ?Percent $mortgageRollUpRate = null,
     ) {}
 }

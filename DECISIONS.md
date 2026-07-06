@@ -3,6 +3,42 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-06 — Equity-release lifetime mortgage: a rolling-up (compounding, unpaid) mortgage in the engine
+**Context:** Modelling the V2 couple taking a lifetime mortgage with no payments (vs servicing the interest) needed
+something the engine did not have: a mortgage whose balance COMPOUNDS unpaid and is repaid from the estate. The
+engine held `outstandingMortgage` as a static figure — never accrued — so a roll-up could only be faked with a
+hand-computed balance (lossy: wrong across the Monte Carlo's varying death ages, invisible in headline wealth, no
+No-Negative-Equity cap). Rob chose to build it properly rather than approximate (accuracy over less work); it also
+fills the equity-release GAP already flagged in the competitive-gap analysis + docs/PLAN.md backlog.
+
+**Decision — one nullable `Property::mortgageRollUpRate` (fixed nominal Percent).** Null = the balance is static,
+exactly as before (a repayment/interest-serviced mortgage, whose interest — if any — stays an expense line); set = a
+lifetime mortgage that rolls up. Orthogonal to `mortgageRedemptionYear`/`mortgageMaturityAction` (a lifetime mortgage
+sets no redemption year — it is repaid on death/sale/care). Mapped through the assembler, builder (blankProperty +
+validation + loadState backfill + a UI input + the `BuilderStateFixture` — the four-place new-field move) and a
+results note.
+
+**Decision — accrue at the FIXED NOMINAL rate in `PathProjector::growState`, NNEG-capped at the home value.** The
+engine works nominally internally (deflated to real for reporting) and a lifetime-mortgage rate is a fixed nominal
+contractual rate, so the balance compounds at the entered rate directly each year with NO inflation interaction
+(correct fixed-for-life behaviour), capped at the share-scaled home value each year (the Equity Release Council
+No-Negative-Equity Guarantee — never owe more than the home). The grown balance already flows into the estate/IHT
+(`EstateValuer` subtracts it, flooring home equity at zero = NNEG at death). Guard: `LifetimeMortgageRollUpTest`
+(compounding to the penny, NNEG cap, estate erosion, reconciliation).
+
+**Decision — surface net worth as a reconciled `YearResult` addition, NOT by changing `totalWealth`.** `totalWealth`
+keeps its long-standing gross-of-mortgage definition (unchanged for every existing scenario); a new `mortgageBalance`
+leg + derived `netWealth()`/`homeEquity()` (home equity NNEG-floored, mirroring `EstateValuer`) make the debt
+visible. Without it a roll-up MISLEADS — gross total wealth flatters it (not paying the mortgage preserves liquid
+assets), so on the V2 base the roll-up reads £530k gross but £212k net. Plus an `inputNotes` roll-up flag stating the
+projected end balance and what it leaves to heirs.
+
+**Why:** A lifetime mortgage's entire decision content is the trade-off between freeing cashflow now and the
+compounding debt hollowing out the inheritance; only a real accrual (not a static figure) shows it, and only a net
+figure keeps the wealth line honest. Deterministic V2 read: the roll-up frees ~£7,080/yr so the money never depletes
+(base depletes 2045) but cuts the estate ~£371k → ~£201k. Built the two V2 what-ifs (roll-up vs serviced) on it.
+**Status:** active.
+
 ## 2026-07-06 — Decision-support Phase 4 (part): the care-on/off "pinned" lever (fifth/last survivor-menu lever) + the first settings-flipping lever
 **Context:** The last lever of the Phase-4 menu, and a different shape from the rest. Late-life care is an
 off-by-default six-figure fat tail; left out, it silently flatters every other threshold on the page, so the

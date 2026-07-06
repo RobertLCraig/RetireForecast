@@ -88,6 +88,7 @@ see Known divergences.)
 | ownership_share | Percent | bps | no | default 100%; **consumed 2026-07-03** — the household's beneficial share of a home held with others (tenants in common). Whole-property figures are entered; the share scales the household's wealth, running costs, means-test capital, IHT, and sale proceeds/CGT (HMRC apportions gain + proceeds by beneficial share). Null = wholly owned |
 | running_costs | Money 🔒 | pence/yr | yes | maintenance + insurance + council tax |
 | growth_assumption | Percent | bps/yr | yes | |
+| mortgage_roll_up_rate | Percent | bps/yr | yes | **2026-07-06** — a lifetime-mortgage (equity-release) roll-up rate: fixed nominal, fixed for life. Null = static balance (repayment/serviced, the prior behaviour). Set = the `outstanding_mortgage` COMPOUNDS unpaid in `PathProjector::growState`, NNEG-capped at the home value, repaid from the estate (feeds IHT). See DECISIONS 2026-07-06 |
 
 ### Account
 | Field | Type | Units | Nullable | Notes |
@@ -334,7 +335,10 @@ Recorded here so the rebuild does not fork the model:
   **2026-07-01** added **`YearResult::investmentGrowth`** (nullable Money, real terms) — the year's CAPITAL
   appreciation left in the pots (share/fund growth; separate from the taxed `investment_income` paid out), so
   the ladder can show where wealth grows beyond income; `growState` returns it, deflated by next year's price
-  level for the real purchasing-power gain (DECISIONS 2026-07-01). **Still app-side (not yet built):** the
+  level for the real purchasing-power gain (DECISIONS 2026-07-01). **2026-07-06** added **`YearResult::mortgageBalance`**
+  (nullable Money, real terms) + derived **`netWealth()`** / **`homeEquity()`** (home equity NNEG-floored, mirroring
+  `EstateValuer`) so an equity-release roll-up's compounding debt is visible; `totalWealth` stays gross of the mortgage
+  (unchanged definition), net worth is derived from the reported legs (DECISIONS 2026-07-06). **Still app-side (not yet built):** the
   **PLSA benchmark** (→ C4).
 - ✅ **BUILT (2026-06-29, adviser-legibility presentation layer).** Two small **additive engine** outputs feed the
   legibility layer, each a single source the app only reads: (1) **`ForecastResult::deathCalendarYears`**

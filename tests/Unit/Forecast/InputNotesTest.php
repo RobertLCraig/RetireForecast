@@ -129,6 +129,60 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('£208,000', $flag[0]['text']);
     }
 
+    public function test_a_rolling_up_lifetime_mortgage_is_flagged_with_its_estate_effect(): void
+    {
+        // An equity-release lifetime mortgage with no payments: the note must state the rate and
+        // what the compounding balance leaves behind, so the (gross) wealth line can't quietly
+        // flatter a plan whose home equity the rolled-up interest has consumed.
+        $notes = $this->notes([
+            'householdName' => 'Roll-up', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Pat', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'name' => 'Lee', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230'],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '230'],
+            ],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => [
+                'currentValue' => '350000', 'ownership' => 'mortgaged', 'outstandingMortgage' => '118000',
+                'mortgageRollUpRate' => '6.5',
+            ],
+        ]);
+
+        $flag = array_values(array_filter($notes, fn (array $n): bool => $n['kind'] === 'lifetime_mortgage_rollup'));
+        $this->assertCount(1, $flag);
+        $this->assertStringContainsString('rolling up at 6.5% a year', $flag[0]['text']);
+        $this->assertStringContainsString('left to inherit', $flag[0]['text']);
+    }
+
+    public function test_a_static_mortgage_raises_no_roll_up_note(): void
+    {
+        // No roll-up rate ⇒ a repayment/serviced mortgage ⇒ no roll-up note (no noise).
+        $notes = $this->notes([
+            'householdName' => 'Serviced', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Pat', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'name' => 'Lee', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230'],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '230'],
+            ],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => [
+                'currentValue' => '350000', 'ownership' => 'mortgaged', 'outstandingMortgage' => '118000',
+            ],
+        ]);
+
+        $this->assertNotContains('lifetime_mortgage_rollup', array_column($notes, 'kind'));
+    }
+
     public function test_a_cohabiting_couple_with_a_db_survivor_pension_is_flagged(): void
     {
         // A DB scheme's survivor pension usually goes to a spouse/civil partner, not a cohabitant,

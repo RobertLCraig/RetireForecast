@@ -4,8 +4,17 @@
 
 **Stage:** active
 **Status:** Phase D go-live, **feature-complete for personal use**; the adviser-legibility workstream and the whole **post-v1 enhancement backlog are built** (annuitisation, historical stress-test, ONS mortality-refresh guardrail, care-cost risk — plus **Lane B forced-housing now complete** (in-place forced sale built 2026-07-03) + Lane C withdrawal-sequencing *core*, #5/#6 handed off). The tool runs in **personal-use advice mode** (`config('compliance.personal_use')` = the flagged regulatory line — set false before any public release). What remains is Rob's **browser verification / sign-off**, the **public-release blockers**, and **optional refinements** — see What's next + Current state.
-_Last updated: 2026-07-06 (**decision-support Phase 4 lever menu is COMPLETE — the fifth/last lever: care on/off
-"pinned"**. `Sweep\Lever\CareModellingLever` is the first lever that flips a **setting** (`ForecastSettings::modelCareCost`
+_Last updated: 2026-07-06 (**equity-release lifetime mortgage now modelled + two V2 what-ifs built.** A new nullable
+`Property::mortgageRollUpRate` makes an unpaid lifetime-mortgage balance **roll up** — compounding at its fixed nominal
+rate in `PathProjector::growState`, **NNEG-capped** at the home value, feeding the IHT estate; a reconciled
+`YearResult::mortgageBalance` + `netWealth()`/`homeEquity()` make the debt visible (gross `totalWealth` would flatter a
+roll-up — V2 base reads £530k gross vs £212k net). Fills the flagged equity-release gap; guard `LifetimeMortgageRollUpTest`
++ two `InputNotesTest` cases. Built two Stay-put delta-children — **roll-up (no payments)** vs **interest-serviced** —
+both at 6.5%: deterministic read is the roll-up frees ~£7,080/yr so the money never depletes (base depletes 2045) but
+cuts the estate ~£371k → ~£201k. A **YCC part-time (min-wage) what-if** was built earlier today too. Scenarios captured in
+the gitignored docs/SCENARIO-V2.local.md; MC run + browser review pending. DECISIONS + DATA-MODEL 2026-07-06. **Earlier
+2026-07-06: decision-support Phase 4 lever menu is COMPLETE — the fifth/last lever: care on/off
+"pinned".** `Sweep\Lever\CareModellingLever` is the first lever that flips a **setting** (`ForecastSettings::modelCareCost`
 via a new `withModelCareCost` wither), a **binary** over a two-point grid [0,1], `LeverDirection::Unknown`. It is a
 genuine **pin-and-compare, not a monotone sweep**: turning care on inserts RNG draws before the return path, so care-off
 vs care-on are NOT common-random-numbers comparable (two independent samples; per-component RNG substreams stay deferred
@@ -223,6 +232,19 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-07-06 (equity-release lifetime mortgage + two V2 what-ifs; a YCC part-time what-if earlier)_ — Started from a V2
+advisory question (can YCC draw a pension while working part-time; tax implications) — answered it (past SPA: no earnings
+limit touches the pension, no NI on earnings, the real lever is means-tested Pension Credit) and built a **YCC part-time
+min-wage** delta-child (#26). Then the ask: a **Lifetime Mortgage "no payments" vs "they pay"** pair. A mapping subagent
+confirmed the engine held a mortgage as a **static** balance (equity release a flagged GAP), and web research pinned 2026
+LTM terms (rates ~6.2–7.2% fixed-for-life; max release at age 66 ~30% ≈ £105k; NNEG; optional payments). Rob chose
+**build-it-properly** over a lossy approximation. Built the engine capability (`Property::mortgageRollUpRate` accruing
+nominally in `growState` with an NNEG cap; reconciled `YearResult::netWealth`/`mortgageBalance`/`homeEquity`; an
+`inputNotes` roll-up flag; a builder input) + `LifetimeMortgageRollUpTest`; then the two Stay-put delta-children (#27
+roll-up, #28 serviced). Whole suite green; Pint clean. **Concurrency:** a concurrent session left `docs/PLAN.md` dirty
+(an "under-spending" backlog item) — left untouched and NOT staged (commit only my files, per [[concurrent-session-split]]).
+DECISIONS + DATA-MODEL updated. **Next:** run the Monte Carlo on #26/#27/#28 for the trustworthy read; browser sign-off.
 
 _2026-07-06 (decision-support Phase 4 — the fifth/last lever: care on/off "pinned"; menu complete)_ — Continued straight
 on (ultracode on). Grounded the lever with a **4-agent understanding→design workflow** (care modelling / sweep-CRN

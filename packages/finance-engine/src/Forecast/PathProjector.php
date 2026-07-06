@@ -491,6 +491,9 @@ final class PathProjector
             'rentFactor' => 1.0,
             'rentInflationReal' => $settings->rentInflationReal?->asFraction() ?? 0.0,
             'propertyGrowthReal' => $household->primaryResidence?->growthAssumptionOverride?->asFraction(),
+            // A lifetime-mortgage roll-up rate (fixed nominal, fixed for life); null = the balance
+            // is static (a repayment/interest-serviced mortgage), the existing behaviour.
+            'mortgageRollUpRate' => $household->primaryResidence?->mortgageRollUpRate?->asFraction(),
             'giaOverrideYield' => $giaOverrideYield,   // per-person balance-weighted override rate
             'giaOverrideShare' => $giaOverrideShare,   // per-person share of GIA under an override
         ];
@@ -905,6 +908,7 @@ final class PathProjector
             propertyWealth: $propertyReal,
             totalWealth: $liquidReal->plus($pensionReal)->plus($propertyReal),
             incomeBySource: array_map($r, $src),
+            mortgageBalance: $r($state['mortgageOutstanding']),
         );
     }
 
@@ -1831,6 +1835,16 @@ final class PathProjector
         // The whole-property value tracks the same growth, so a forced sale reads the grown
         // whole figure for its CGT gain (share value / share, without the rounding drift).
         $state['propertyWhole'] = (int) round($state['propertyWhole'] * (1.0 + $propertyNominal));
+
+        // A lifetime mortgage (equity release) rolls up: with no payments the balance compounds
+        // at its fixed nominal rate each year. It is repaid from the estate on death/sale, capped
+        // at the home's value by the No-Negative-Equity Guarantee — so cap the (share-scaled)
+        // balance at the (share-scaled) home value. A null rate leaves the balance static (a
+        // repayment/interest-serviced mortgage, whose interest is an expense line, not accrued).
+        if ($state['mortgageRollUpRate'] !== null && $state['mortgageOutstanding'] > 0) {
+            $rolled = (int) round($state['mortgageOutstanding'] * (1.0 + $state['mortgageRollUpRate']));
+            $state['mortgageOutstanding'] = min($rolled, $state['property']);
+        }
 
         $rentNominal = (1.0 + $state['rentInflationReal']) * (1.0 + $infl) - 1.0;
 
