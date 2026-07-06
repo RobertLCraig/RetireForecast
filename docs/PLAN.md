@@ -403,6 +403,45 @@ simplifications explicitly.
 spine: MC-based bracketing, the 2-D frontier, crossing semantics) → phases 1–6 (backend → simple view →
 comparison → survivor levers → frontier → assistant) + the open questions + the reuse-vs-build map.
 
+### The under-spending case (2026-07-06) — from an FCA-planner case study, post-v1 backlog
+Prompted by James Shack's video *"Why You'll Never Actually Spend Your Retirement Savings"*
+([youtube.com/watch?v=IYaFO7FGBwc](https://www.youtube.com/watch?v=IYaFO7FGBwc)), a case study of "Mark" (63,
+single/divorced, ~£1.3m across pensions + ISAs, spending only £30k/yr). It is strong **external validation** — an
+FCA-regulated planner independently lands on our exact framing (for disciplined savers the real risk is
+*under*-spending, and the April-2027 pensions-in-estate IHT change is the lever that makes it visceral) and on our
+exact numbers: fed a Mark-consistent estate, our `InheritanceTaxCalculator` reproduces his headline IHT bill **to
+the penny** (£280k today → £660k once pensions enter the estate, our engine additionally showing the RNRB tapering
+£175k→£125k as the estate crosses £2m), and his "stress-test against 100 years of real data → survived 97%, median
+ended £1.5m" is exactly the construct our `HistoricalBacktester` (JST 1871–2020) already computes. The video also
+exposes three genuine gaps, ranked:
+
+- **Phased spend / the "smile" — PROMOTE from deferred to the next engine piece (was flagged K / line ~595).** This
+  is the one feature blocking a *full* reproduction of the video: Mark's plan is £60k/yr to 75 then £40k, and
+  `ExpenseProfile` today holds a single flat real spend + one-off lumps with **no age-banded path anywhere in the
+  engine**. It is not just a fidelity nicety — it is an **accuracy issue that biases us toward the very error the
+  video warns about**: a flat-real-to-death spend *understates* how much can be safely spent early, manufacturing
+  under-spending. Needs an age-banded spend path on `ExpenseProfile` (feeding `PathProjector`, the MC and the
+  `HistoricalBacktester`), which is also what the already-listed "hand-draw the smile" editor (competitive-gap
+  framing bullet) would drive. Golden-master + reconciliation tested (banded sum reconciles like the flat total).
+- **Lifetime gifting lever (net-new).** Mark's actual *resolution* was to give to children/grandchildren **now** —
+  shifting the bequest earlier (when it changes their lives, not at 60) and cutting IHT. We model no gifting at all
+  (no PET / 7-year taper anywhere). A gifting lever is both a decision-support lever *and* an IHT-completeness item:
+  a dated gift reduces the estate (immediately for exempt gifts / gifts out of surplus income, on the 7-year PET
+  taper otherwise) and reduces liquid wealth in the projection. Pairs naturally with the IHT toggle + the "how far
+  can we go?" frontier.
+- **Under-spender headline reframe (framing on output we already compute).** For a household drawing well under a
+  sustainable rate, flip the default headline from "will you run out?" to "you are very likely to leave £X unspent
+  and £Y to HMRC — you could safely spend more." Uses the surplus/shortfall + terminal-wealth + IHT figures we
+  already produce; advice-mode copy only (personal-use). Aligns with the existing framing/legibility bullets.
+- **Withdrawal-rate population context — NOTE ONLY, defer to Rob (previously declined).** The video opens with FCA
+  drawdown data (median 3.6%; half of >£250k pots draw <4%, a quarter <2%). An *implied-withdrawal-rate diagnostic*
+  was **declined 2026-06-30** (Rob found the diagnostics framing unhelpful). The video's use is subtly different — a
+  *population benchmark* in the PLSA-comparator mould rather than an academic ratio — but do **not** resurrect it as
+  built scope without Rob's call; recorded here only so the provenance is one place.
+
+Fuller write-up (transcript, the reproduction run, the mapping) can go to a `docs/RESEARCH-under-spending-*.md` if
+the gifting lever or the smile is picked up.
+
 ### Delta-research backlog (2026-07-02) — communication, household, adviser outputs, a11y, methodology
 A second research wave over the five topics the competitive scan left as residuals/gaps. Full findings +
 sources + the adversarial source-check: **[docs/RESEARCH-delta-2026-07-02.md](RESEARCH-delta-2026-07-02.md)**.

@@ -4,7 +4,11 @@
 
 **Stage:** active
 **Status:** Phase D go-live, **feature-complete for personal use**; the adviser-legibility workstream and the whole **post-v1 enhancement backlog are built** (annuitisation, historical stress-test, ONS mortality-refresh guardrail, care-cost risk — plus **Lane B forced-housing now complete** (in-place forced sale built 2026-07-03) + Lane C withdrawal-sequencing *core*, #5/#6 handed off). The tool runs in **personal-use advice mode** (`config('compliance.personal_use')` = the flagged regulatory line — set false before any public release). What remains is Rob's **browser verification / sign-off**, the **public-release blockers**, and **optional refinements** — see What's next + Current state.
-_Last updated: 2026-07-06 (**equity-release lifetime mortgage now modelled + two V2 what-ifs built.** A new nullable
+_Last updated: 2026-07-06 (**validated the engine against James Shack's "Mark" under-spending case study** — our IHT
+reproduces his £280k→£660k headline (pensions in-estate from Apr 2027) **to the penny**, and his 100-year stress-test is
+our `HistoricalBacktester` construct. Logged the gaps it exposed to docs/PLAN.md "The under-spending case": phased-spend /
+the **"smile"** (promoted to the next engine piece), a net-new **lifetime-gifting lever**, an under-spender headline
+reframe. **Docs-only, no code change.** Earlier 2026-07-06: **equity-release lifetime mortgage now modelled + two V2 what-ifs built.** A new nullable
 `Property::mortgageRollUpRate` makes an unpaid lifetime-mortgage balance **roll up** — compounding at its fixed nominal
 rate in `PathProjector::growState`, **NNEG-capped** at the home value, feeding the IHT estate; a reconciled
 `YearResult::mortgageBalance` + `netWealth()`/`homeEquity()` make the debt visible (gross `totalWealth` would flatter a
@@ -178,6 +182,7 @@ Open decisions and parked work, off the immediate go-live path (which is under W
 - [ ] **Demo couple's anonymised figures** — Rob supplies later, entered via the UI, not hardcoded (field list in docs/PLAN.md "Data Rob supplies").
 - [ ] **External-review enhancement backlog** (post-v1, not blocking) — docs/PLAN.md "External review triage" (cashflow timeline, longevity-distribution visual, stress-test panel, what-if sliders, v2 annuitisation + care-cost stochasticity). Declined items recorded in DECISIONS 2026-06-25.
 - [ ] **Delta-research backlog (2026-07-02)** — docs/PLAN.md "Delta-research backlog" + docs/RESEARCH-delta-2026-07-02.md. The **data-integrity fixes are all done** (the five collected-but-unconsumed inputs; DATA-MODEL "Known divergences" — survivor DB pension, per-person salary growth, DB commutation, NI category, ownership share; 2026-07-02/07-03). Remaining: the user-facing-copy fixes are now **done** (the "Survivor fraction" field + the **care-off silence** — a "care isn't modelled" heads-up landed 2026-07-04), then the uncertainty-communication + household-composition + methodology + a11y items in the Delta-research backlog. Then, by value: uncertainty-communication upgrades; the **third-adult-contributing-to-upkeep** scope item (Rob's back-burner ask — BoardContribution stream + HouseholdMember, no third planning subject); a user-facing **/methodology** page; an adviser/Pension-Wise output pack; **WCAG 2.2 AA** + mobile to a public bar; and the JST-stops-at-2020 stress-test data gap. **Household scope decided: no third full planning subject** (DECISIONS 2026-07-02).
+- [ ] **The under-spending case (2026-07-06)** — docs/PLAN.md "The under-spending case". Backlog from an FCA-planner case study (which validated our IHT to the penny + confirmed the historical-stress-test method): promote **phased spend / the "smile"** to the next engine piece (an `ExpenseProfile` age-banded path — also unblocks the "hand-draw the smile" editor and a full reproduction of the video, and fixes a flat-real bias that *understates* safe early spend), a net-new **lifetime-gifting lever** (PET / 7-yr taper; both a decision-support lever and an IHT-completeness item), and an **under-spender headline reframe**. Withdrawal-rate population context is note-only (the diagnostic was declined 2026-06-30).
 - [ ] **In-app local-model assistant (2026-07-03)** — **ALL THREE PHASES BUILT** (see Current state; pending Rob's browser sign-off). docs/RESEARCH-local-assistant.md + docs/PLAN.md "In-app local-model assistant" + DECISIONS 2026-07-03. A local (Ollama) results-page "chatbot" that **explains + captures, never predicts/calculates/builds**: (1) ✅ grounded scenario-explainer (also on the **Compare page**, comparison-aware via a shared `AssistantContext` + `ComparisonContext`), (2) ✅ methodology doc-RAG (curated corpus + docs/METHODOLOGY.md / the `/methodology` page — see LA-9), (3) ✅ idea capture — the "Ideas" tab, the model's **only** write (`assistant_backlog_items`, append-only + attributed + reversible; it never builds; `assistant:backlog` lists the queue for human promotion). Two guardrails — G1 figure-grounding, G2 runtime phrasing partition — the latter a flagged public-release blocker. **Remaining = Rob's browser sign-off + optional fast-follows** (streaming, per-plan Monte Carlo on Compare, a side-nav entry, the /methodology-page enhancements in PLAN).
 
 ## How to pick up
@@ -232,6 +237,23 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-07-06 (modelled the James Shack "Mark" under-spending case study; logged the gaps to the PLAN backlog)_ — From a
+"what can we learn / do we get the same answers?" question on James Shack's video *"Why You'll Never Actually Spend Your
+Retirement Savings"* (a UK, FCA-planner case study of "Mark": 63, single, ~£1.3m across pensions + ISAs, spending only
+£30k/yr). Pulled the transcript (youtube-transcript-api), reconstructed a Mark-consistent estate, and ran it through the
+real `InheritanceTaxCalculator`: reproduced his headline IHT **to the penny** — £280k today → £660k once pensions enter
+the estate (our engine additionally showing the RNRB taper £175k→£125k as the estate crosses £2m). Confirmed his "survived
+97% of 100 years, median £1.5m" is exactly our `HistoricalBacktester` (JST 1871–2020) construct. Strong external
+validation of the decision-support thesis (under-spending is the real risk for good savers; the Apr-2027 pensions-in-estate
+IHT change is the lever). Exposed three gaps, written to **docs/PLAN.md "The under-spending case (2026-07-06)"**: (1)
+**phased spend / the "smile"** — promoted from deferred to the next engine piece (blocks a full reproduction, and a
+flat-real spend *understates* safe early spend, manufacturing under-spending); (2) a net-new **lifetime-gifting lever**
+(no PET/taper today — Mark's actual resolution); (3) an **under-spender headline reframe**. Withdrawal-rate population
+context recorded note-only (the implied-withdrawal-rate diagnostic was declined 2026-06-30). **Docs-only — no engine/app
+change.** Transcript + the IHT reproduction script left in scratchpad; a `docs/RESEARCH-under-spending-*.md` is its home if
+the smile/gifting is picked up. **Concurrency:** ran alongside the equity-release session; staged only my `docs/PLAN.md` +
+this HANDOVER, per [[concurrent-session-split]].
 
 _2026-07-06 (equity-release lifetime mortgage + two V2 what-ifs; a YCC part-time what-if earlier)_ — Started from a V2
 advisory question (can YCC draw a pension while working part-time; tax implications) — answered it (past SPA: no earnings
