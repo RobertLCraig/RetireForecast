@@ -3,6 +3,53 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-06 — Decision-support Phase 4 (part): the defer-the-survivor's-State-Pension lever + a State Pension deferral correctness fix (fourth survivor lever)
+**Context:** The fourth survivor lever, "defer the *survivor's* State Pension" — reusing the per-person `lever_param`
+parameterisation the longevity lever built. Building it surfaced a **modelling gap that had to be fixed first**: the
+engine modelled deferral as a **free uplift** — it paid the uplifted rate from State Pension age with **no forgone
+income and no delayed claim** (`PathProjector::statePensionIncome` gated on `spaYear`; METHODOLOGY documented it the
+same way). On that model deferring is always beneficial, so the lever would be trivially monotone and would tell the
+decision-makers "defer as much as possible" — wrong (new-State-Pension deferral only pays back if you live ~17+ years
+past State Pension age; no lump-sum option post-2016), and directly contradicting the plan's S3 spine, which assumes
+SP-deferral is **non-monotone** (the non-monotonicity *is* the forgone-income cost). Rob chose (asked): **fix the model
+first, then build the lever** (accuracy over less work).
+
+**Decision — model deferral as a delayed CLAIM, not a free uplift.** A new per-person `spClaimYear = spaYear +
+round(deferralWeeks / 52)` gates the paid State Pension in `PathProjector`; the pension pays **nothing** during the
+deferral window (the forgone income) and the uplifted rate from the later start. **`spaYear` itself is unchanged** and
+still governs the NI cut-off and the Pension Credit qualifying-age gate — deferring delays *claiming*, not *reaching*
+State Pension age. **Pension Credit notional add-back:** a paused deferred pension still counts as assessable income for
+Pension Credit during the window (DWP treats it as income you could be drawing), so `meansTestedBenefitNominal` adds the
+notional undeferred amount back — deferring cannot conjure Pension Credit it would not otherwise get (a completeness
+guard, per the data-integrity rule). The **results-page "State Pension starts" milestone** (`ResultPresenter::milestones`)
+now lands on the claim year too, so the milestone and the income line agree. No existing scenario shifts (all live data
+defers 0; the `full` fixture's 8 weeks rounds to 0 years). Engine tests pin the trade-off: forgone income in the window,
+the uplift from the later start, and an **early death after deferring is a net lifetime loss** — the shape that makes the
+lever non-monotone.
+
+**Decision — a per-person `StatePensionDeferralLever`, `LeverDirection::Unknown`, CRN-safe.** New engine
+`Sweep\Lever\StatePensionDeferralLever` (constructed with a person id) sets that person's `deferralWeeks` (+ an immutable
+`StatePensionEntitlement::withDeferralWeeks`); the lever sweeps in **years** (grid 0–5), converted to weeks. Everyone
+else, and every non-State pension, passes through untouched. `LeverKey::StatePensionDeferral` ('sp_deferral'); wired
+through `buildLever`/`defaultGrid` + the presenter's value-label ("N years later" / "claim on time") and trade-off
+caption; the `ThresholdExplorer` menu offers one entry per person **who holds a State Pension**, gated to a couple
+("How long <person> defers their State Pension").
+- **Direction is `Unknown`, not monotone** — a little deferral helps a long-lived survivor, too much loses more forgone
+  years than the uplift returns. Must not be monotone-fit; the caption points at the full sweep.
+- **Resolved the flagged RNG modelling call — CRN-safe (as the longevity one turned out to be).** The lever changes only
+  a deterministic figure (an uplift + a shifted claim year); it touches neither the mortality draws nor the return path,
+  so common random numbers stay aligned across the grid. `Unknown` stands purely on non-monotonicity, not on RNG. (The
+  plan had *assumed* SP-deferral desyncs RNG — it does not; don't assume, verify.)
+
+**Why:** Whose-State-Pension-to-defer is the survivor-cliff insight (the survivor's raises the floor they lean on after
+the first death; the first-dier's is largely wasted — a State Pension is not inherited). A lever resting on a free-lunch
+model would give misleading decision-support to the exact non-numbers audience the feature is for, so the correctness fix
+was load-bearing, not optional. The headline completeness test now lands: **deferring the survivor's State Pension raises
+the survivor-year income floor while deferring the first-dier's does not** (read through the `incomeFloor` survivor-year
+twin). **One survivor lever remains** (care-on/off pinned — a binary, not CRN-comparable). See
+[docs/PLAN-decision-support.md](docs/PLAN-decision-support.md) + [[data-consistency-reconciliation]] + [[accuracy-over-less-work]].
+**Status:** active
+
 ## 2026-07-05 — Decision-support Phase 4 (part): the per-person longevity sweep lever (third survivor lever) + per-person lever parameterisation
 **Context:** The third lever of the survivor menu, and the first that is *parameterised by which person* it moves.
 The tool already had a combined "live 10 years longer" bump (a QuickWhatIf that offsets everyone). The Phase-4 insight

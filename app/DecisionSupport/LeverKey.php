@@ -20,6 +20,7 @@ enum LeverKey: string
     case SurvivorDbFraction = 'survivor_db_fraction';
     case SurvivorAnnuityFraction = 'survivor_annuity_fraction';
     case PersonLongevity = 'person_longevity';
+    case StatePensionDeferral = 'sp_deferral';
 
     public function label(): string
     {
@@ -29,9 +30,11 @@ enum LeverKey: string
             self::EssentialSpend => 'Your essential spending',
             self::SurvivorDbFraction => "Your DB pension's survivor share",
             self::SurvivorAnnuityFraction => "Your annuity's survivor share",
-            // Generic fallback; the explorer names the specific person ("How long Alex lives"),
-            // since this lever is parameterised by which person it targets.
+            // Generic fallbacks; the explorer names the specific person ("How long Alex lives",
+            // "How long Alex defers their State Pension"), since these levers are parameterised by
+            // which person they target.
             self::PersonLongevity => 'How long one of you lives',
+            self::StatePensionDeferral => 'How long one of you defers the State Pension',
         };
     }
 }

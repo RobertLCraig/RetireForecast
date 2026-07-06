@@ -352,6 +352,7 @@ final class PathProjector
     {
         $baseAge = [];
         $spaYear = [];
+        $spClaimYear = [];
         $cash = [];
         $gia = [];
         $giaBasis = [];
@@ -367,6 +368,12 @@ final class PathProjector
             $birthYear = (int) $person->dob->format('Y');
             $baseAge[$person->id] = $settings->baseYear - $birthYear;
             $spaYear[$person->id] = (int) StatePensionAge::for($person->dob)->dateReached->format('Y');
+            // Deferring the State Pension delays the CLAIM (not State Pension age itself): the
+            // person forgoes payments for the deferral period, then draws the uplifted rate from
+            // the later start. Modelled by shifting the claim year by whole years of deferral; the
+            // uplift itself is applied by the calculator from the deferral weeks. Age (spaYear)
+            // still governs the NI cut-off and the Pension Credit qualifying-age gate.
+            $spClaimYear[$person->id] = $spaYear[$person->id] + $this->deferralYears($household, $person->id);
             $cash[$person->id] = 0;
             $gia[$person->id] = 0;
             $giaBasis[$person->id] = 0;
@@ -450,6 +457,7 @@ final class PathProjector
             'baseYear' => $settings->baseYear,
             'baseAge' => $baseAge,
             'spaYear' => $spaYear,
+            'spClaimYear' => $spClaimYear,
             'cash' => $cash,
             'gia' => $gia,
             'giaBasis' => $giaBasis,
@@ -614,7 +622,7 @@ final class PathProjector
 
             // Guaranteed pension / other income, kept split by source.
             $db = $this->dbIncome($household, $person->id, $age, $state['dbFactor']);
-            $sp = $this->statePensionIncome($household, $person->id, $calendarYear, $state['spaYear'][$person->id], $state['spFactor']);
+            $sp = $this->statePensionIncome($household, $person->id, $calendarYear, $state['spClaimYear'][$person->id], $state['spFactor']);
             $otherTaxable = $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: true);
             $taxFreeStream = $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: false);
 
@@ -931,6 +939,13 @@ final class PathProjector
                 return 0;
             }
             $assessableAnnual += $taxablePerPerson[$person->id];
+            // A paused (deferred) State Pension is still assessable income for Pension Credit — count
+            // the notional undeferred amount during the deferral window, since the paid figure is 0
+            // there (deferring must not conjure Pension Credit it wouldn't otherwise get).
+            $assessableAnnual += $this->notionalDeferredStatePensionNominal(
+                $household, $person->id, $calendarYear,
+                $state['spaYear'][$person->id], $state['spClaimYear'][$person->id], $state['spFactor'],
+            );
             $disabled = $disabled || $person->receivesDisabilityBenefit;
         }
 
@@ -1006,9 +1021,12 @@ final class PathProjector
         return $total;
     }
 
-    private function statePensionIncome(Household $household, string $pid, int $calendarYear, int $spaYear, float $spFactor): int
+    private function statePensionIncome(Household $household, string $pid, int $calendarYear, int $spClaimYear, float $spFactor): int
     {
-        if ($calendarYear < $spaYear) {
+        // Nothing is paid before the claim year: at State Pension age if undeferred, later by the
+        // deferral period if deferring — the forgone income is what makes deferral a genuine
+        // trade-off (an early death after deferring is a net lifetime loss), not a free uplift.
+        if ($calendarYear < $spClaimYear) {
             return 0;
         }
         foreach ($household->pensions as $pension) {
@@ -1016,6 +1034,47 @@ final class PathProjector
                 $base = $pension->weeklyForecast !== null
                     ? $this->statePension->fromWeeklyForecast($pension->weeklyForecast, $pension->deferralWeeks)
                     : $this->statePension->fromQualifyingYears($pension->qualifyingYears ?? 0, $pension->deferralWeeks);
+
+                return (int) round($base->annual->pence * $spFactor);
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Whole years of State Pension deferral for a person (0 if none): the deferral weeks on their
+     * entitlement rounded to whole years, since the projection steps a year at a time. The claim
+     * year is State Pension age plus this.
+     */
+    private function deferralYears(Household $household, string $pid): int
+    {
+        foreach ($household->pensions as $pension) {
+            if ($pension instanceof StatePensionEntitlement && $pension->ownerId === $pid && $pension->deferralWeeks > 0) {
+                return (int) round($pension->deferralWeeks / $this->config->statePension->weeksPerYear);
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * The person's notional undeferred State Pension for the Pension Credit assessable-income test
+     * during their deferral window (State Pension age reached but the claim not yet started): 0
+     * outside that window. DWP treats a deferred State Pension as income you could be receiving, so
+     * deferring must not silently boost Pension Credit while the claim is paused. Uprated by the
+     * running triple-lock factor, like the paid figure.
+     */
+    private function notionalDeferredStatePensionNominal(Household $household, string $pid, int $calendarYear, int $spaYear, int $spClaimYear, float $spFactor): int
+    {
+        if ($calendarYear < $spaYear || $calendarYear >= $spClaimYear) {
+            return 0;
+        }
+        foreach ($household->pensions as $pension) {
+            if ($pension instanceof StatePensionEntitlement && $pension->ownerId === $pid) {
+                $base = $pension->weeklyForecast !== null
+                    ? $this->statePension->fromWeeklyForecast($pension->weeklyForecast)
+                    : $this->statePension->fromQualifyingYears($pension->qualifyingYears ?? 0);
 
                 return (int) round($base->annual->pence * $spFactor);
             }

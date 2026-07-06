@@ -212,6 +212,10 @@ final class ThresholdPresenter
             LeverKey::PersonLongevity => ($n = (int) round($value)) === 0
                 ? 'about average'
                 : sprintf('%+d years', $n),
+            // Whole years of State Pension deferral; 0 reads as "claim on time".
+            LeverKey::StatePensionDeferral => ($d = (int) round($value)) === 0
+                ? 'claim on time'
+                : $d.($d === 1 ? ' year later' : ' years later'),
         };
     }
 
@@ -239,6 +243,10 @@ final class ThresholdPresenter
             // partner (their pension keeps paying) and hurts when it is the survivor leaning on a
             // thinner income. So point at the full sweep for the shape rather than a single line.
             LeverKey::PersonLongevity => 'Living longer moves the odds both ways here — it helps when it is the better-provided partner and hurts when it is the survivor leaning on a thinner income. Read the full sweep below for the shape rather than a single limit.',
+            // Deferral is a trade-off, not a one-way limit: forgoing the pension now for an uplifted
+            // rate later pays off if the person lives well past the later start (the likely survivor)
+            // and loses out if they do not. Point at the full sweep for the shape.
+            LeverKey::StatePensionDeferral => 'Deferring the State Pension trades income now for a higher amount later — it helps if that person lives well past the later start (the likely survivor leaning on it) and costs more than it returns if they do not. Read the full sweep below for the shape rather than a single limit.',
         };
     }
 

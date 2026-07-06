@@ -233,13 +233,19 @@ benefit (never inventing one), gated in `ThresholdExplorer` to a couple with the
   / `DcPension::withAnnuityPurchase`) sweeps `AnnuityPurchase::survivorFraction` 0–100% on annuities that are already
   joint-life (never turns a single-life annuity joint-life at a single-life rate). `LeverKey::SurvivorAnnuityFraction`.
 
-See DECISIONS 2026-07-05. **What remains of the menu (three levers):** **per-person longevity** (split from the
-combined bump), **defer-the-survivor's-SP** (whose-SP-to-defer is the insight), and **care-on/off-pinned** — each a
-new engine `SweepLever` wired into `LeverKey` + `LeverThresholdService::buildLever` + the `ThresholdExplorer` menu,
-with the CRN/monotonicity calls the statistical-discipline section demands (per-person longevity and SP-deferral
-change RNG consumption → `LeverDirection::Unknown`; verify the MC sampler honours `LongevityAdjustment`). The headline
-test still owed lands with the SP lever: deferring the survivor's SP raises the floor while deferring the first-dier's
-does not.
+See DECISIONS 2026-07-05. Since built (2026-07-05/06): **per-person longevity** (`PersonLongevityLever`, the first
+per-person-parameterised lever) and **defer-the-survivor's-SP** (`StatePensionDeferralLever`, per-person). Both are
+`LeverDirection::Unknown` (non-monotone) but turned out **CRN-safe** — the flagged "these desync RNG" assumption was
+wrong for both: the longevity offset applies after the mortality draw, and the SP-deferral lever only scales a
+deterministic figure, so neither changes the draw count. The **SP-deferral lever required a correctness fix first**:
+the engine modelled deferral as a free uplift (uplifted rate from State Pension age, no forgone income), which would
+have made the lever monotone and misleading. It now models deferral as a **delayed claim** (forgone income in the
+window, uplifted rate from the later start, `spClaimYear = spaYear + round(deferralWeeks/52)` in `PathProjector`, a
+Pension-Credit notional add-back, the SP milestone on the claim year) — so the lever is genuinely non-monotone, and the
+headline test lands: **deferring the survivor's SP raises the survivor-year floor while deferring the first-dier's does
+not** (`SurvivorStatePensionDeferralTest`). See DECISIONS 2026-07-06. **What remains of the menu (one lever):**
+**care-on/off-pinned** (a binary — turning care on adds RNG draws, so the two states are NOT CRN-comparable: pin-and-
+compare, not a monotone sweep).
 
 ### Phase 5 — The 2-D frontier (the flagship visual)
 Render the parametric threshold (S2) as a small **family of curves** or a **success heatmap with the 95% iso-line**

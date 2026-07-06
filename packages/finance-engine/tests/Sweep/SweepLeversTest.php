@@ -21,6 +21,7 @@ use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
+use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -30,6 +31,7 @@ use RetireForecast\FinanceEngine\Sweep\Lever\BuyPriceLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\EssentialSpendLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\PersonLongevityLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\RetirementAgeLever;
+use RetireForecast\FinanceEngine\Sweep\Lever\StatePensionDeferralLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\SurvivorAnnuityFractionLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\SurvivorDbFractionLever;
 use RetireForecast\FinanceEngine\Sweep\LeverDirection;
@@ -193,6 +195,67 @@ final class SweepLeversTest extends TestCase
         $longerDeath = $forecaster->forecast($longer, $assumptions, $this->settings())->deathCalendarYears['p1'];
 
         $this->assertGreaterThan($peerDeath, $longerDeath, 'living 12 years longer pushes the modelled death year later in the forecast');
+    }
+
+    public function test_the_sp_deferral_lever_defers_only_the_named_person(): void
+    {
+        $household = $this->dbCouple();
+        $lever = new StatePensionDeferralLever('p2');
+
+        $applied = $lever->apply($household, $this->settings(), 3)->household;
+
+        $this->assertSame(156, $this->sp($applied, 'p2')->deferralWeeks, 'the named person defers the swept years, converted to weeks (3 × 52)');
+        $this->assertSame(0, $this->sp($applied, 'p1')->deferralWeeks, 'the other partner is untouched — whose State Pension to defer is the choice');
+
+        // You cannot defer for a negative time: a negative sweep value clamps to no deferral.
+        $this->assertSame(0, $this->sp($lever->apply($household, $this->settings(), -2)->household, 'p2')->deferralWeeks);
+
+        // Non-monotone: a little deferral helps a long-lived survivor, too much loses more forgone
+        // years than the uplift returns — so it must never be monotone-fit.
+        $this->assertSame(LeverDirection::Unknown, $lever->direction());
+    }
+
+    public function test_deferring_the_state_pension_reaches_the_forecast(): void
+    {
+        // Completeness: the swept deferral must actually delay real modelled income, not sit inert on
+        // the DTO. p1 (born 1963) reaches State Pension age in 2030; deferring three years pushes the
+        // claim to 2033, so in 2031 the undeferred household is drawing p1's State Pension and the
+        // deferred one is not — the lever demonstrably bites through the deterministic forecast.
+        $household = $this->workingCouple();
+        $forecaster = new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable);
+        $assumptions = AssumptionSetLibrary::default();
+        $lever = new StatePensionDeferralLever('p1');
+
+        $undeferred = $lever->apply($household, $this->settings(), 0)->household;
+        $deferred = $lever->apply($household, $this->settings(), 3)->household;
+
+        $spUndeferred = $this->spIncomeAt($forecaster->forecast($undeferred, $assumptions, $this->settings()), 2031);
+        $spDeferred = $this->spIncomeAt($forecaster->forecast($deferred, $assumptions, $this->settings()), 2031);
+
+        $this->assertGreaterThan(0, $spUndeferred, 'the undeferred State Pension is in payment in 2031');
+        $this->assertLessThan($spUndeferred, $spDeferred, 'deferring removes the forgone years from the forecast income');
+    }
+
+    /** The State Pension entitlement owned by $ownerId in $household. */
+    private function sp(Household $household, string $ownerId): StatePensionEntitlement
+    {
+        foreach ($household->pensions as $pension) {
+            if ($pension instanceof StatePensionEntitlement && $pension->ownerId === $ownerId) {
+                return $pension;
+            }
+        }
+        $this->fail("no State Pension for {$ownerId}");
+    }
+
+    /** Total household State Pension income in $calendarYear from a forecast. */
+    private function spIncomeAt(ForecastResult $forecast, int $calendarYear): int
+    {
+        foreach ($forecast->years as $year) {
+            if ($year->calendarYear === $calendarYear) {
+                return $year->incomeBySource['state_pension']->pence;
+            }
+        }
+        $this->fail("no forecast year {$calendarYear}");
     }
 
     /** The Defined Benefit pension owned by $ownerId in $household. */

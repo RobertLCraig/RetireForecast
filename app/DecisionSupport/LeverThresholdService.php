@@ -16,6 +16,7 @@ use RetireForecast\FinanceEngine\Sweep\Lever\BuyPriceLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\EssentialSpendLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\PersonLongevityLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\RetirementAgeLever;
+use RetireForecast\FinanceEngine\Sweep\Lever\StatePensionDeferralLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\SurvivorAnnuityFractionLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\SurvivorDbFractionLever;
 use RetireForecast\FinanceEngine\Sweep\SweepEngine;
@@ -114,6 +115,7 @@ final class LeverThresholdService
             LeverKey::SurvivorDbFraction => new SurvivorDbFractionLever,
             LeverKey::SurvivorAnnuityFraction => new SurvivorAnnuityFractionLever,
             LeverKey::PersonLongevity => new PersonLongevityLever($leverParam ?? $scenario->toHousehold()->persons[0]->id),
+            LeverKey::StatePensionDeferral => new StatePensionDeferralLever($leverParam ?? $scenario->toHousehold()->persons[0]->id),
         };
     }
 
@@ -147,6 +149,10 @@ final class LeverThresholdService
             // longer one — the survivor-cliff case being "what if the survivor lives well beyond
             // average"; the grid is the same whichever person the lever targets.
             LeverKey::PersonLongevity => self::linspace(-5.0, 15.0, 11),
+            // State Pension deferral: 0 to 5 whole years (you can defer as long as you like, but
+            // beyond a few years the forgone income rarely pays back within a normal lifespan).
+            // Same grid whichever person the lever targets.
+            LeverKey::StatePensionDeferral => self::linspace(0.0, 5.0, 6),
         };
     }
 

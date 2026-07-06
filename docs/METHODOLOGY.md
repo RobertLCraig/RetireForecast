@@ -97,7 +97,11 @@ bakes in no age/rate table), level or inflation-linked, single or joint life.
 - **State Pension age** is derived from date of birth using the legislated timetable (66, rising to
   67 for those born 1960–61, and towards 68 for those born 1977–78).
 - Entitlement comes from your own forecast weekly amount, or is estimated pro-rata from qualifying
-  years (nothing below 10 years; the full amount at 35). **Deferral** adds 1% for every 9 weeks.
+  years (nothing below 10 years; the full amount at 35). **Deferral** delays the claim: the pension
+  is not paid during the deferral period (that income is forgone), and the later, uplifted rate — 1%
+  more for every 9 weeks deferred — is drawn for life from the delayed start. So deferring only pays
+  off if you live well past that start; a deferred pension still counts as income for Pension Credit
+  while paused (you cannot gain Pension Credit by deferring).
 - Over the projection the **triple lock** is modelled as a proxy: the pension rises each year by the
   greater of inflation or 2.5%.
 

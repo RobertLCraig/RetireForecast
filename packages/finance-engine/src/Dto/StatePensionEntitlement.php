@@ -32,4 +32,14 @@ final class StatePensionEntitlement implements Pension
     {
         return PensionType::State;
     }
+
+    /**
+     * A copy deferring the State Pension by $weeks (never negative): the person forgoes payments
+     * for that period and draws an uplifted rate from the later claim. The lever that sweeps
+     * "how long to defer the survivor's State Pension" uses this to set one person's deferral.
+     */
+    public function withDeferralWeeks(int $weeks): self
+    {
+        return new self($this->ownerId, $this->weeklyForecast, $this->qualifyingYears, max(0, $weeks));
+    }
 }

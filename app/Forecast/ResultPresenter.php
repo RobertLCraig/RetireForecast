@@ -19,6 +19,7 @@ use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
+use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestOutcome;
 use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestResult;
@@ -882,9 +883,13 @@ final class ResultPresenter
                 $add($birthYear + $accessAge, $accessAge, "{$name} starts taking their pension", 'pension_access');
             }
 
-            // State Pension start — the SPA computed from DOB (single source).
+            // State Pension start — the SPA computed from DOB (single source), pushed out by any
+            // whole years of deferral, because a deferred pension is not received (nor shown) until
+            // the later claim. The engine delays the paid income the same way, so the milestone and
+            // the line agree.
             $spaYear = (int) StatePensionAge::for($person->dob)->dateReached->format('Y');
-            $add($spaYear, $spaYear - $birthYear, "{$name}'s State Pension starts", 'state_pension');
+            $claimYear = $spaYear + self::statePensionDeferralYears($household, $person->id);
+            $add($claimYear, $claimYear - $birthYear, "{$name}'s State Pension starts", 'state_pension');
 
             // Modelled death — the engine's single-source death year.
             $deathYear = $forecast->deathCalendarYears[$person->id] ?? null;
@@ -1116,6 +1121,22 @@ final class ResultPresenter
         }
 
         return $ages === [] ? null : min($ages);
+    }
+
+    /**
+     * Whole years a person defers their State Pension (0 if none): the deferral weeks on their
+     * entitlement rounded to whole years, matching the engine's annual claim-year shift so the
+     * milestone lands on the same year the paid income starts. DWP annualises at 52 weeks.
+     */
+    private static function statePensionDeferralYears(Household $household, string $personId): int
+    {
+        foreach ($household->pensions as $pension) {
+            if ($pension instanceof StatePensionEntitlement && $pension->ownerId === $personId && $pension->deferralWeeks > 0) {
+                return (int) round($pension->deferralWeeks / 52);
+            }
+        }
+
+        return 0;
     }
 
     /**

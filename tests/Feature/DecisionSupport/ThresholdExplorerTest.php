@@ -226,6 +226,67 @@ final class ThresholdExplorerTest extends TestCase
             ->assertDontSee('@endif');       // no leaked Blade directive
     }
 
+    public function test_it_offers_a_per_person_sp_deferral_lever_for_each_person_in_a_couple(): void
+    {
+        // The rich fixture is a couple, both holding a State Pension — so "whose State Pension to
+        // defer" is a real survivor question, one lever per person.
+        $scenario = ScenarioFixture::rich($this->user);
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->assertSee('How long Person 1 defers their State Pension')
+            ->assertSee('How long Person 2 defers their State Pension');
+    }
+
+    public function test_it_hides_the_sp_deferral_lever_for_a_single_person(): void
+    {
+        // A lone person's deferral is a plain income-timing choice, not a survivor question, so the
+        // explorer offers no per-person State Pension deferral lever.
+        $scenario = ScenarioFixture::fromState($this->user, array_replace(
+            ['step' => 5, 'name' => 'Solo', 'baseTaxYear' => '2026-27', 'variant' => 'rent', 'ihtModelled' => false, 'assumptionSetId' => null],
+            BuilderStateFixture::minimalValid(),
+        ));
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->assertSee('Your essential spending')
+            ->assertDontSee('defers their State Pension');
+    }
+
+    public function test_finding_the_limit_on_sp_deferral_records_which_person(): void
+    {
+        Queue::fake();
+        $scenario = ScenarioFixture::rich($this->user);
+
+        $component = Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->call('setLever', 'sp_deferral:p2') // the composite menu id names the person
+            ->assertSet('lever', 'sp_deferral:p2')
+            ->call('findLimit');
+
+        $threshold = ThresholdResult::findOrFail($component->get('thresholdId'));
+        $this->assertSame(LeverKey::StatePensionDeferral->value, $threshold->lever_key);
+        $this->assertSame('p2', $threshold->lever_param);
+    }
+
+    public function test_a_completed_sp_deferral_threshold_paints_without_error(): void
+    {
+        // Exercises the presenter's StatePensionDeferral arms (the "N years later" value labels + the
+        // trade-off caption) and the leverParam round-trip on a non-monotone (Unknown) lever.
+        $scenario = ScenarioFixture::rich($this->user);
+
+        $threshold = app(ThresholdRunner::class)->request(
+            $scenario, LeverKey::StatePensionDeferral, SweepMetric::Essentials, 0.90, [0.0, 2.0, 4.0], 40, leverParam: 'p2',
+        )->fresh();
+        $this->assertSame(SimulationStatus::Done, $threshold->status);
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->set('lever', 'sp_deferral:p2')
+            ->set('leverValue', 2)
+            ->set('thresholdId', $threshold->id)
+            ->assertOk()
+            ->assertSee('Show the full sweep')
+            ->assertSee('2 years later')      // the value label from the StatePensionDeferral arm
+            ->assertDontSee('@endif');        // no leaked Blade directive
+    }
+
     public function test_a_threshold_id_from_another_user_does_not_load(): void
     {
         $mine = ScenarioFixture::rich($this->user);

@@ -15,6 +15,7 @@ use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
+use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Sweep\SweepMetric;
 
 /**
@@ -241,6 +242,21 @@ class ThresholdExplorer extends Component
             }
         }
 
+        // Deferring one partner's State Pension — one entry per person who actually has a State
+        // Pension, only for a couple. Whose SP to defer is the insight: deferring the likely
+        // SURVIVOR's raises the floor they lean on after the first death, while the first-dier's is
+        // largely wasted (a State Pension is not inherited). A lone person's deferral is a plain
+        // income-timing choice, not a survivor question.
+        if (count($household->persons) >= 2) {
+            foreach ($household->persons as $i => $person) {
+                if (! $this->hasStatePension($person->id)) {
+                    continue;
+                }
+                $name = $person->name !== null && $person->name !== '' ? $person->name : 'Person '.($i + 1);
+                $add(LeverKey::StatePensionDeferral, $person->id, "How long {$name} defers their State Pension");
+            }
+        }
+
         return $choices;
     }
 
@@ -318,6 +334,22 @@ class ThresholdExplorer extends Component
             if ($pension instanceof DcPension
                 && $pension->annuityPurchase !== null
                 && $pension->annuityPurchase->survivorFraction !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether $personId holds a State Pension entitlement — the thing the deferral lever moves. The
+     * couple gate lives at the call site (whose SP to defer is only a survivor question for a
+     * couple); this just refuses to offer the lever for a person with no State Pension to defer.
+     */
+    private function hasStatePension(string $personId): bool
+    {
+        foreach ($this->scenario->toHousehold()->pensions as $pension) {
+            if ($pension instanceof StatePensionEntitlement && $pension->ownerId === $personId) {
                 return true;
             }
         }
