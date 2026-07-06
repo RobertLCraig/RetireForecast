@@ -24,6 +24,8 @@ final class EssentialSpendLever implements SweepLever
     public function apply(Household $household, ForecastSettings $settings, float $value): SweepInputs
     {
         $e = $household->expenseProfile;
+        // Set the essential floor to a flat swept value; carry the discretionary path (its smile,
+        // if any) through unchanged so the lever never silently flattens it.
         $profile = new ExpenseProfile(
             Money::fromPence((int) round($value * 100)),
             $e->discretionaryAnnualSpend,
@@ -32,6 +34,7 @@ final class EssentialSpendLever implements SweepLever
             $e->propertyCosts,
             $e->employmentCosts,
             $e->mortgageCosts,
+            discretionarySpendPath: $e->discretionarySpendPath,
         );
 
         return new SweepInputs(

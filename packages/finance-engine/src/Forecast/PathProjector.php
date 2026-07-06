@@ -720,11 +720,18 @@ final class PathProjector
 
         $survivor = $aliveCount === 1 ? $household->expenseProfile->survivorSpendFactor->asFraction() : 1.0;
 
+        // Spend is read at the reference person's age this year, so an age-banded plan (the
+        // "smile") steps with age. The reference is the first-declared person — the same
+        // convention as the one-off costs below, and the same flagged v1 limit (a couple with
+        // very different ages tracks person 1). A flat plan has one band, so every age returns
+        // the one figure — byte-identical to the pre-smile engine.
+        $referenceAge = $ages[array_key_first($ages)] ?? 0;
+
         // Employment-linked costs (e.g. commuting) are charged only while someone is still
         // earning; once everyone has retired they stop. They are essential, so drop them from
         // both the target and the essential floor in years no one works.
-        $targetPence = $household->expenseProfile->targetAnnualSpend()->pence;
-        $essentialPence = $household->expenseProfile->essentialAnnualSpend->pence;
+        $targetPence = $household->expenseProfile->targetAnnualSpendAt($referenceAge)->pence;
+        $essentialPence = $household->expenseProfile->essentialAnnualSpendAt($referenceAge)->pence;
         if (! $this->anyoneWorking($household, $alive, $state, $yearIndex)) {
             $employment = $household->expenseProfile->employmentCosts()->pence;
             $targetPence = max(0, $targetPence - $employment);

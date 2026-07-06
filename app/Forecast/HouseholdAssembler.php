@@ -26,6 +26,7 @@ use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\Sex;
+use RetireForecast\FinanceEngine\Dto\SpendPath;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
 use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
@@ -191,7 +192,7 @@ final class HouseholdAssembler
     private function expenseProfile(array $state): ExpenseProfile
     {
         $e = $state['expense'] ?? [];
-        [$essential, $discretionary] = $this->essentialAndDiscretionary($state);
+        [$essentialPath, $discretionaryPath] = $this->essentialAndDiscretionary($state);
 
         // Contingent costs (option b): the portions of spend tied to a condition, summed from
         // the spend lines whose condition (explicit override, else auto-classified by label)
@@ -204,8 +205,8 @@ final class HouseholdAssembler
         $employmentCosts = $this->sumLines($lines, fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_working');
 
         return new ExpenseProfile(
-            essentialAnnualSpend: $essential,
-            discretionaryAnnualSpend: $discretionary,
+            essentialAnnualSpend: $essentialPath->startAmount(),
+            discretionaryAnnualSpend: $discretionaryPath->startAmount(),
             survivorSpendFactor: $this->percent($e['survivorFactor'] ?? null) ?? Percent::fromPercent(70),
             oneOffCosts: array_map(fn (array $c): array => [
                 'atAge' => (int) $c['atAge'],
@@ -215,6 +216,8 @@ final class HouseholdAssembler
             propertyCosts: $propertyCosts->isPositive() ? $propertyCosts : null,
             employmentCosts: $employmentCosts->isPositive() ? $employmentCosts : null,
             mortgageCosts: $mortgageCosts->isPositive() ? $mortgageCosts : null,
+            essentialSpendPath: $essentialPath,
+            discretionarySpendPath: $discretionaryPath,
         );
     }
 
@@ -268,13 +271,14 @@ final class HouseholdAssembler
     }
 
     /**
-     * The essential floor and the discretionary spend on top, derived from the 3-tier
-     * line items when present (essential = sum of essential lines; discretionary = sum
-     * of discretionary lines + *spent* self-investment), else from the legacy flat
-     * totals.
+     * The essential floor and the discretionary spend on top as age-varying paths, derived
+     * from the 3-tier line items when present (essential = sum of essential line paths;
+     * discretionary = sum of discretionary line paths + *spent* self-investment), else from
+     * the legacy flat totals as flat paths. Each path is the exact sum of its line paths at
+     * every age — the reconciliation invariant, extended from a scalar sum to a per-age sum.
      *
      * @param  array<string, mixed>  $state
-     * @return array{0: Money, 1: Money}
+     * @return array{0: SpendPath, 1: SpendPath}
      */
     private function essentialAndDiscretionary(array $state): array
     {
@@ -283,16 +287,71 @@ final class HouseholdAssembler
             $e = $state['expense'] ?? [];
 
             return [
-                $this->moneyRequired($e['essential'] ?? null),
-                $this->money($e['discretionary'] ?? null) ?? Money::zero(),
+                SpendPath::flat($this->moneyRequired($e['essential'] ?? null)),
+                SpendPath::flat($this->money($e['discretionary'] ?? null) ?? Money::zero()),
             ];
         }
 
-        $essential = $this->sumLines($lines, fn (array $l): bool => ($l['category'] ?? '') === 'essential');
-        $discretionary = $this->sumLines($lines, fn (array $l): bool => ($l['category'] ?? '') === 'discretionary'
+        $essential = $this->sumLinePaths($lines, fn (array $l): bool => ($l['category'] ?? '') === 'essential');
+        $discretionary = $this->sumLinePaths($lines, fn (array $l): bool => ($l['category'] ?? '') === 'discretionary'
             || (($l['category'] ?? '') === 'self_investment' && ! ($l['savedAsAsset'] ?? false)));
 
         return [$essential, $discretionary];
+    }
+
+    /**
+     * The age-varying path for a single expense line. A line whose spend changes with age
+     * carries `bands` — change breakpoints `{fromAge, amount}` at ages above the start — on top
+     * of its base `amount` (which holds from the start until the first band). Only an
+     * *always*-condition line may smile: a contingent cost (mortgage / service charge / commute)
+     * is flat and stops by its condition, so a band on it is ignored (a v1 limit — contingent
+     * costs do not smile). A line with no bands is a flat path at its amount.
+     *
+     * @param  array<string, mixed>  $line
+     */
+    private function linePath(array $line): SpendPath
+    {
+        $base = Money::fromPence($this->toPence((string) ($line['amount'] ?? '0')));
+        $bands = $line['bands'] ?? [];
+
+        if (! is_array($bands) || $bands === [] || $this->lineCondition($line) !== 'always') {
+            return SpendPath::flat($base);
+        }
+
+        // The base holds from age 0 (so it covers every pre-band age); each band steps from its
+        // own age. Bands at or below 0 would collide with the base band, so they are dropped.
+        $breakpoints = [['fromAge' => 0, 'amount' => $base]];
+        foreach ($bands as $band) {
+            $fromAge = (int) ($band['fromAge'] ?? 0);
+            if ($fromAge <= 0) {
+                continue;
+            }
+            $breakpoints[] = [
+                'fromAge' => $fromAge,
+                'amount' => Money::fromPence($this->toPence((string) ($band['amount'] ?? '0'))),
+            ];
+        }
+
+        return SpendPath::fromBands($breakpoints);
+    }
+
+    /**
+     * The sum of the paths of the lines matching the predicate — a per-age total that reconciles
+     * to the sum of the lines at every age. Zero (flat) when no line matches.
+     *
+     * @param  list<array<string, mixed>>  $lines
+     * @param  callable(array<string, mixed>): bool  $predicate
+     */
+    private function sumLinePaths(array $lines, callable $predicate): SpendPath
+    {
+        $path = SpendPath::flat(Money::zero());
+        foreach ($lines as $line) {
+            if ($predicate($line)) {
+                $path = $path->plus($this->linePath($line));
+            }
+        }
+
+        return $path;
     }
 
     /**

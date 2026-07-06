@@ -110,6 +110,18 @@ inflation_linked (bool), start_age (int), end_age (int?). `disability_benefit` (
 target_annual_spend (Money 🔒/yr), essential_portion (Money 🔒 — the floor for "success"),
 discretionary_portion (Money 🔒), inflation_basis (enum), one_off_costs (OneOff[]:
 care/SDLT/etc.), survivor_spend_factor (Percent, spend change on first death, default ~70%).
+**Age-varying spend / the "smile" (2026-07-06):** essential and discretionary spend each also
+carry a `SpendPath` (`src/Dto/SpendPath.php`) — a piecewise-constant **real** path held as
+ordered `{fromAge, amount}` bands, keyed by the **reference (first-declared) person's age** (the
+same convention/limit as `one_off_costs`). The `essential_portion`/`discretionary_portion`
+scalars are the **headline** (first-band) figures — identical to before for a flat plan, and the
+figure the non-age-aware consumers read — while the projector reads `…AnnualSpendAt(refAge)`. The
+scalar is always the path's first band (enforced in the constructor: **one home**, no drift). A
+flat plan has one-band paths, so every scalar and age lookup returns the one value — byte-identical
+to the pre-smile engine. `SpendPath::plus` sums two paths band-for-band, so an aggregate path is
+the exact per-age sum of its line paths (reconciliation). Represents every industry form (a flat
+spend, a go-go/slow-go/no-go step, a Basu per-category schedule, a Blanchett %/yr decline); see
+DECISIONS 2026-07-06.
 **Contingent costs (2026-06-29, #1; extended 2026-07-01):** `propertyCosts`, `mortgageCosts` and
 `employmentCosts` (all Money?) are the conditional portions of the spend, carried as **marked
 subsets** of essential (not second totals), so the engine can stop charging each when its
@@ -285,7 +297,12 @@ Recorded here so the rebuild does not fork the model:
   (`structurallyDiffers`) and directed to the base or a new forecast.
 - ✅ **CORE BUILT (2026-06-26, Phase C1). Expenditure → 3-tier line items:** `builder_state.expenseLines`,
   each `{id, label, amount(annual £ string), category ∈ essential|discretionary|self_investment, savedAsAsset
-  (bool), condition?}`, is the **single source** of spend. **(2026-06-29, #1)** an optional `condition ∈
+  (bool), condition?, bands?}`, is the **single source** of spend. **(2026-07-06, the smile)** an optional
+  `bands: list<{fromAge, amount(£ string)}>` gives a line an age-varying path — the base `amount` holds from the
+  start, each band steps from its age; the assembler builds a `SpendPath` per line (`[{0, amount}, …bands]`) and
+  sums them per-age into the `ExpenseProfile` essential/discretionary paths (reconciliation: aggregate == Σ line
+  paths at every age). **Only an `always`-condition line may smile** (a contingent cost — mortgage/service
+  charge/commute — is flat; a band on it is ignored, a flagged v1 limit). **(2026-06-29, #1)** an optional `condition ∈
   always|while_owning_home|while_working` is the contingent-cost override; when absent the `HouseholdAssembler`
   **auto-classifies by label** (mortgage / service charge → while-owning; commute → while-working; else always)
   and aggregates the contingent lines into `ExpenseProfile::propertyCosts`/`employmentCosts` (above). The `HouseholdAssembler` derives the engine `ExpenseProfile`

@@ -3,6 +3,51 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-06 — Age-varying spend (the "smile"): a per-line, piecewise-real `SpendPath` in the engine
+**Context:** `ExpenseProfile` held a single flat-real essential + discretionary spend with no age-banded path anywhere
+in the engine. That is not just a fidelity gap — flat-real-to-death **understates** how much can be safely spent
+early (spend actually declines through retirement — Blanchett's "smile": ~1%/yr real to a ~26%-below trough at ~84,
+then a late health-cost uptick), so a flat plan **manufactures the very under-spending** the FCA-planner case study
+(James Shack's "Mark", logged in PLAN "The under-spending case" 2026-07-06) warns about, and it **biases the
+buy/rent/downsize verdicts** the tool exists to compute. Rob promoted it to the next engine piece and chose the
+**per-line-item** scope; the representation was researched (below) and delegated to me.
+
+**Research (the industry norm).** No single universal form, but for a per-line model the market converges on
+**per-item, age-bounded amounts** = piecewise breakpoints per line: **Voyant** (UK adviser market-leader) — stepped
+expenditure with per-item start/end ages; **Kitces/Basu "age banding"** (the most accurate method) — decline modelled
+**per category**, because the *composition* shifts (travel/leisure fall, healthcare rises); **RightCapital** — a
+go-go/slow-go/no-go convenience layer (start age + % per phase) over the same idea; **Blanchett** — a %/yr real-decline
+curve at the aggregate level. Fuller write-up: docs/RESEARCH-under-spending-smile.md.
+
+**Decision — one representation: a `SpendPath` value object, a piecewise-constant real path of `{fromAge, amount}`
+bands.** It is a strict superset of every industry form (a flat spend = one band; Mark's £60k→£40k@75 = two;
+go-go/slow-go/no-go = three; a Basu per-category schedule = however many; a Blanchett curve = a band per year), it is
+exactly what the future "hand-draw the smile" editor emits, and convenience templates (%/yr, phases) compile *down to*
+bands so the store stays general. Reconciliation-friendly by construction: `amountAt` is a pure lookup and `plus` sums
+two paths band-for-band, so an aggregate path is the exact per-age sum of its line paths — the same "line items are the
+source, totals derived" discipline, extended from a scalar sum to a per-age sum.
+
+**Decision — per-line-item scope subsumes "discretionary only".** Each expense line carries its own optional path
+(`builder_state.expenseLines[].bands`); essentials that stay flat simply carry no band, discretionary that fades
+carries a declining one. This is the accurate choice precisely because it captures *composition shift*, which an
+aggregate smile only approximates. **Only an `always`-condition line may smile** — a contingent cost (mortgage /
+service charge / commute) is flat and stops by its condition, so a band on it is ignored (a flagged v1 limit: contingent
+costs don't fade with age). The separately-modelled care spell (`CareCostSampler`) already provides the late-life
+upturn, so the engine models the down-slope; the late rise is care, not a discretionary band.
+
+**Decision — the scalar is the path's first band (one home, no drift).** `ExpenseProfile` keeps the
+`essentialAnnualSpend`/`discretionaryAnnualSpend` `Money` scalars as the **headline** (start-band) figures — the value
+every non-age-aware consumer (benchmarks, presenters, sweep levers, ~30 construction sites) already reads — and adds
+the canonical `SpendPath` alongside, defaulting to `flat(scalar)`. The constructor **throws** if a supplied path's
+first band disagrees with the scalar; a caller building a path derives the scalar from `SpendPath::startAmount`. The
+projector reads spend at the **reference (first-declared) person's age** each year (same convention/limit as
+`oneOffCosts`). A flat plan has one-band paths → every scalar and lookup returns the one value → **byte-identical to the
+pre-smile engine** (the whole suite stayed green with no test edits at each slice). The Monte Carlo and
+`HistoricalBacktester` inherit the smile for free (both run through `PathProjector`). Guards: `SpendPathTest`,
+`SpendingSmileTest` (projector steps at the band age, essentials hold, reconciles), `SpendingSmileAssemblerTest`
+(aggregate == Σ line paths at every age; only always-lines smile). **Built engine-first (slices 1–4); the builder UI +
+result surfacing follow.**
+
 ## 2026-07-06 — Equity-release lifetime mortgage: a rolling-up (compounding, unpaid) mortgage in the engine
 **Context:** Modelling the V2 couple taking a lifetime mortgage with no payments (vs servicing the interest) needed
 something the engine did not have: a mortgage whose balance COMPOUNDS unpaid and is repaid from the estate. The
