@@ -3,6 +3,14 @@
     $th = 'border-b border-gray-200 px-3 py-2 text-left font-medium text-gray-700';
     $td = 'border-b border-gray-100 px-3 py-2 text-gray-800';
 
+    // Word-band chip styling for the care two-state cards (icon + colour never carry meaning alone).
+    $careBandColour = [
+        'strong' => 'bg-emerald-100 text-emerald-800', 'good' => 'bg-emerald-100 text-emerald-800',
+        'borderline' => 'bg-amber-100 text-amber-800',
+        'weak' => 'bg-red-100 text-red-800', 'poor' => 'bg-red-100 text-red-800',
+    ];
+    $careBandIcon = ['strong' => '✓', 'good' => '✓', 'borderline' => '≈', 'weak' => '⚠', 'poor' => '⚠'];
+
     // The green→red meter split point (as a %), and which side is on-track.
     $crossingPct = $meter && $meter['crossingFrac'] !== null ? round($meter['crossingFrac'] * 100, 1) : null;
     $green = '#86efac';
@@ -70,64 +78,75 @@
         @endforeach
     </div>
 
-    {{-- The slider: dragging redraws the deterministic line (a server round-trip, debounced). --}}
-    <div class="mt-4">
-        <div class="flex items-baseline justify-between">
-            <label for="lever-slider" class="text-sm font-medium text-gray-800">{{ $selectedLabel }}</label>
-            <span class="text-sm font-semibold text-gray-900" aria-live="polite">{{ $slider['valueLabel'] }}</span>
+    {{-- Continuous levers only: the slider + instant deterministic line. Care is a binary
+         (off vs on) with no ordered range to drag, so it shows none of this — see its two-state
+         readout under "the limit" below. --}}
+    @unless ($isCare)
+        {{-- The slider: dragging redraws the deterministic line (a server round-trip, debounced). --}}
+        <div class="mt-4">
+            <div class="flex items-baseline justify-between">
+                <label for="lever-slider" class="text-sm font-medium text-gray-800">{{ $selectedLabel }}</label>
+                <span class="text-sm font-semibold text-gray-900" aria-live="polite">{{ $slider['valueLabel'] }}</span>
+            </div>
+            <input id="lever-slider" type="range" wire:model.live.debounce.400ms="leverValue"
+                min="{{ $slider['min'] }}" max="{{ $slider['max'] }}" step="{{ $slider['step'] }}"
+                class="mt-2 w-full accent-blue-600"
+                aria-valuetext="{{ $slider['valueLabel'] }}">
+            <div class="flex justify-between text-xs text-gray-500">
+                <span>{{ \App\DecisionSupport\ThresholdPresenter::formatLeverValue($leverKey, (float) $slider['min']) }}</span>
+                <span>{{ \App\DecisionSupport\ThresholdPresenter::formatLeverValue($leverKey, (float) $slider['max']) }}</span>
+            </div>
         </div>
-        <input id="lever-slider" type="range" wire:model.live.debounce.400ms="leverValue"
-            min="{{ $slider['min'] }}" max="{{ $slider['max'] }}" step="{{ $slider['step'] }}"
-            class="mt-2 w-full accent-blue-600"
-            aria-valuetext="{{ $slider['valueLabel'] }}">
-        <div class="flex justify-between text-xs text-gray-500">
-            <span>{{ \App\DecisionSupport\ThresholdPresenter::formatLeverValue($leverKey, (float) $slider['min']) }}</span>
-            <span>{{ \App\DecisionSupport\ThresholdPresenter::formatLeverValue($leverKey, (float) $slider['max']) }}</span>
-        </div>
-    </div>
 
-    {{-- The instant deterministic net-position line. Keyed on the lever + value so a drag
-         replaces the subtree and re-inits the chart with the new line; wire:ignore inside keeps
-         the threshold poll from disturbing the canvas. --}}
-    <div class="mt-4" wire:key="np-{{ $selectedLever }}-{{ $slider['value'] }}">
-        <div wire:ignore>
-            <div x-data="chart(@js($netPosition['options']))" role="img"
-                aria-label="Central-estimate net position over time at {{ $slider['valueLabel'] }}. The figures are in the table below."></div>
+        {{-- The instant deterministic net-position line. Keyed on the lever + value so a drag
+             replaces the subtree and re-inits the chart with the new line; wire:ignore inside keeps
+             the threshold poll from disturbing the canvas. --}}
+        <div class="mt-4" wire:key="np-{{ $selectedLever }}-{{ $slider['value'] }}">
+            <div wire:ignore>
+                <div x-data="chart(@js($netPosition['options']))" role="img"
+                    aria-label="Central-estimate net position over time at {{ $slider['valueLabel'] }}. The figures are in the table below."></div>
+            </div>
         </div>
-    </div>
-    <p class="mt-1 text-xs text-gray-500">
-        A single central estimate (one likely path), not the full range — it updates instantly as you drag.
-        @if ($netPosition['runsOutYear'])
-            On this estimate the money runs short around <strong>{{ $netPosition['runsOutYear'] }}</strong>; the line dips below £0 to show the shortfall.
-        @else
-            On this estimate the money lasts to the end.
-        @endif
-    </p>
+        <p class="mt-1 text-xs text-gray-500">
+            A single central estimate (one likely path), not the full range — it updates instantly as you drag.
+            @if ($netPosition['runsOutYear'])
+                On this estimate the money runs short around <strong>{{ $netPosition['runsOutYear'] }}</strong>; the line dips below £0 to show the shortfall.
+            @else
+                On this estimate the money lasts to the end.
+            @endif
+        </p>
 
-    <details class="mt-3">
-        <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers behind this line</summary>
-        <div class="mt-2 max-h-72 overflow-auto" tabindex="0">
-            <table class="w-full text-sm">
-                <caption class="sr-only">Central-estimate net position (real pounds) by calendar year at {{ $slider['valueLabel'] }}</caption>
-                <thead>
-                    <tr>
-                        <th scope="col" class="{{ $th }}">Year</th>
-                        <th scope="col" class="{{ $th }}">Net position</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($netPosition['rows'] as $row)
+        <details class="mt-3">
+            <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers behind this line</summary>
+            <div class="mt-2 max-h-72 overflow-auto" tabindex="0">
+                <table class="w-full text-sm">
+                    <caption class="sr-only">Central-estimate net position (real pounds) by calendar year at {{ $slider['valueLabel'] }}</caption>
+                    <thead>
                         <tr>
-                            <th scope="row" class="{{ $td }} font-medium">{{ $row['year'] }}</th>
-                            <td class="{{ $td }}">{{ $row['net'] ?? '—' }}</td>
+                            <th scope="col" class="{{ $th }}">Year</th>
+                            <th scope="col" class="{{ $th }}">Net position</th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </details>
+                    </thead>
+                    <tbody>
+                        @foreach ($netPosition['rows'] as $row)
+                            <tr>
+                                <th scope="row" class="{{ $td }} font-medium">{{ $row['year'] }}</th>
+                                <td class="{{ $td }}">{{ $row['net'] ?? '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </details>
+    @else
+        <p class="mt-4 text-sm text-gray-700">
+            This one is a straight before/after, not a dial: run it to see the same plan simulated with the
+            late-life care-fee tail left out and put in, side by side.
+        </p>
+    @endunless
 
-    {{-- The limit: the queued Monte Carlo threshold + its green→red meter. --}}
+    {{-- The limit: the queued Monte Carlo threshold + its green→red meter (or, for care, the
+         two-state before/after). --}}
     <div class="mt-6 border-t border-gray-100 pt-5">
         @if (! $threshold || ($threshold->status !== \App\Enums\SimulationStatus::Done && $threshold->status->isTerminal()))
             @if ($threshold && $threshold->status === \App\Enums\SimulationStatus::Failed)
@@ -137,7 +156,7 @@
             @endif
             <button type="button" wire:click="findLimit"
                 class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-                Find the limit for “{{ $selectedLabel }}”
+                {{ $isCare ? 'Compare care off vs care on' : 'Find the limit for “'.$selectedLabel.'”' }}
             </button>
             <p class="mt-1 text-xs text-gray-500">Runs the full Monte&nbsp;Carlo across the range in the background — a minute or so.</p>
         @elseif (! $threshold->status->isTerminal())
@@ -156,6 +175,72 @@
                         Still waiting for a background worker. If you're running locally, start one with <code class="font-mono">php artisan queue:work</code>.
                     </p>
                 @endif
+            </div>
+        @elseif ($isCare && $careComparison)
+            {{-- Care: a pinned before/after. Two independently-seeded runs, read side by side —
+                 no meter, no line between them (there is no "half of care"). --}}
+            <div aria-live="polite">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    @foreach ($careComparison['states'] as $state)
+                        <div class="{{ $card }}">
+                            <h3 class="text-sm font-semibold text-gray-900">{{ $state['label'] }}</h3>
+                            <div class="mt-3 flex items-center gap-1" role="img"
+                                aria-label="About {{ $state['pictograph']['filled'] }} in 10 possible futures the money covers the essentials to the end, {{ $state['label'] }}.">
+                                @for ($i = 0; $i < $state['pictograph']['filled']; $i++)
+                                    <span class="h-4 w-4 rounded-full bg-emerald-500" aria-hidden="true"></span>
+                                @endfor
+                                @for ($i = 0; $i < $state['pictograph']['empty']; $i++)
+                                    <span class="h-4 w-4 rounded-full border border-gray-300 bg-white" aria-hidden="true"></span>
+                                @endfor
+                            </div>
+                            <p class="mt-2 text-sm text-gray-800">
+                                In about <strong>{{ $state['pictograph']['filled'] }} of 10</strong> futures the money covers the essentials to the end.
+                            </p>
+                            <span class="mt-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-medium {{ $careBandColour[$state['band']['level']] ?? 'bg-gray-100 text-gray-800' }}">
+                                <span aria-hidden="true">{{ $careBandIcon[$state['band']['level']] ?? '•' }}</span>
+                                {{ $state['band']['word'] }}
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+
+                <p class="mt-3 text-sm text-gray-800">{{ $careComparison['deltaCaption'] }}</p>
+                <p class="mt-2 text-xs text-gray-500">{{ $careComparison['caption'] }}</p>
+                <button type="button" wire:click="findLimit" class="mt-2 text-xs text-blue-700 underline">Recompute</button>
+
+                {{-- Analyst drill-down: each state's success probability with its confidence interval + CSV. --}}
+                <details class="mt-4">
+                    <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers</summary>
+                    <div class="mt-2 flex items-center justify-between">
+                        <p class="text-xs text-gray-500">Each state is a full Monte&nbsp;Carlo run; the range is its 95% confidence interval. The two runs use independent random draws, so read the difference as real only when the ranges do not overlap.</p>
+                        <a href="{{ $csvUrl }}" class="text-sm text-blue-700 underline">Download CSV</a>
+                    </div>
+                    <div class="mt-2 overflow-x-auto" tabindex="0">
+                        <table class="w-full text-sm">
+                            <caption class="sr-only">Chance the money lasts with care fees left out vs modelled, each with its 95% confidence interval and paths</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="{{ $th }}">Care fees</th>
+                                    <th scope="col" class="{{ $th }}">Chance it lasts</th>
+                                    <th scope="col" class="{{ $th }}">Low</th>
+                                    <th scope="col" class="{{ $th }}">High</th>
+                                    <th scope="col" class="{{ $th }}">Paths</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($careComparison['states'] as $state)
+                                    <tr>
+                                        <th scope="row" class="{{ $td }} font-medium">{{ $state['key'] === 'on' ? 'Modelled' : 'Not modelled' }}</th>
+                                        <td class="{{ $td }}">{{ round($state['p'] * 100, 1) }}%</td>
+                                        <td class="{{ $td }}">{{ round($state['ciLow'] * 100, 1) }}%</td>
+                                        <td class="{{ $td }}">{{ round($state['ciHigh'] * 100, 1) }}%</td>
+                                        <td class="{{ $td }}">{{ number_format($state['paths']) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
             </div>
         @elseif ($meter)
             {{-- The meter: how far the lever can move before the odds slip below target. --}}

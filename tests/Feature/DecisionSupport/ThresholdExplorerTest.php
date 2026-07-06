@@ -287,6 +287,67 @@ final class ThresholdExplorerTest extends TestCase
             ->assertDontSee('@endif');        // no leaked Blade directive
     }
 
+    public function test_it_offers_the_care_lever_ungated_for_a_couple_and_a_single_person(): void
+    {
+        // Care risk is off by default and applies to anyone — so unlike the survivor levers it is
+        // offered whether the household is a couple or a lone person.
+        $couple = ScenarioFixture::rich($this->user);
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $couple])
+            ->assertSee('Whether care fees are modelled');
+
+        $solo = ScenarioFixture::fromState($this->user, array_replace(
+            ['step' => 5, 'name' => 'Solo', 'baseTaxYear' => '2026-27', 'variant' => 'rent', 'ihtModelled' => false, 'assumptionSetId' => null],
+            BuilderStateFixture::minimalValid(),
+        ));
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $solo])
+            ->assertSee('Whether care fees are modelled');
+    }
+
+    public function test_finding_the_care_comparison_stores_the_binary_grid(): void
+    {
+        Queue::fake();
+        $scenario = ScenarioFixture::rich($this->user);
+
+        $component = Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->call('setLever', 'care')
+            ->assertSet('lever', 'care')
+            ->call('findLimit');
+
+        // The care sweep is a two-point pinned before/after: a categorical [off, on] grid, household-wide.
+        $threshold = ThresholdResult::findOrFail($component->get('thresholdId'));
+        $this->assertSame(LeverKey::Care->value, $threshold->lever_key);
+        $this->assertNull($threshold->lever_param);
+        // Stored grid round-trips through JSON, so the two whole-number points come back as int 0/1
+        // (functionally identical — the lever reads value >= 0.5).
+        $this->assertEquals([0.0, 1.0], $threshold->grid);
+    }
+
+    public function test_a_completed_care_comparison_paints_two_states_and_no_meter(): void
+    {
+        $scenario = ScenarioFixture::rich($this->user);
+
+        // A small, fast care sweep to Done (two 40-path runs, off and on).
+        $threshold = app(ThresholdRunner::class)->request(
+            $scenario, LeverKey::Care, SweepMetric::Essentials, 0.90, [0.0, 1.0], 40,
+        )->fresh();
+        $this->assertSame(SimulationStatus::Done, $threshold->status);
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->set('lever', 'care')
+            ->set('thresholdId', $threshold->id)
+            ->assertOk()
+            // The two-state before/after — never a slider, meter or interpolated "limit".
+            ->assertSee('Care fees not modelled')
+            ->assertSee('Care fees modelled')
+            ->assertSee('two separate simulated futures')     // the pin-and-compare caption
+            ->assertSee('Download CSV')
+            ->assertDontSee('On track at this setting')       // no meter (that is a continuous-lever readout)
+            ->assertDontSee('id="lever-slider"', escape: false) // no slider
+            ->assertDontSee('the money stays on track up to')  // no meterCaption
+            ->assertDontSee('safe')                            // the neutral-copy guardrail
+            ->assertDontSee('@endif');                         // no leaked Blade directive
+    }
+
     public function test_a_threshold_id_from_another_user_does_not_load(): void
     {
         $mine = ScenarioFixture::rich($this->user);

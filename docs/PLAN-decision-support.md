@@ -218,13 +218,13 @@ and so understates this exact risk: add a **survivor-year twin** off `deathCalen
   **Tests:** deferring the survivor's SP raises the floor while deferring the first-dier's does not (completeness);
   care-on lowers the ceiling; the incomeFloor survivor-year twin reconciles to the ladder's survivor rows.
 
-**Phase 4 is PART-BUILT (2026-07-05).** The **survivor-cliff story** is done: `ResultPresenter::incomeFloor()` gained a
+**Phase 4 is BUILT (survivor-cliff story + all 5 levers; 2026-07-05/06).** The **survivor-cliff story** is done: `ResultPresenter::incomeFloor()` gained a
 **survivor-year twin** (`floorAt()` extracted as the one definition; the twin reads the deepest survivor year off the
 same `YearResult`, so it reconciles to the ladder's survivor rows) + the signed coverage `cliff`, surfaced as a factual
 before/after **dumbbell** on the results page (+ a PDF survivor line). Tested (twin reconciles; the cliff drops when a
 State Pension is lost at the first death; single → no twin). See DECISIONS 2026-07-05.
 
-**The survivor lever menu is now part-built.** Two survivor-share levers shipped (2026-07-05), both monotone
+**The survivor lever menu is now complete (5 of 5); it was built up over 2026-07-05/06 in this order.** Two survivor-share levers shipped first (2026-07-05), both monotone
 `Increasing` + CRN-safe (they touch neither mortality nor returns) and both varying only an *existing* survivor
 benefit (never inventing one), gated in `ThresholdExplorer` to a couple with the relevant provision:
 - **DB survivor fraction** — `Sweep\Lever\SurvivorDbFractionLever` (+ `DbPension::withSpousePensionFraction`) sweeps
@@ -243,9 +243,20 @@ have made the lever monotone and misleading. It now models deferral as a **delay
 window, uplifted rate from the later start, `spClaimYear = spaYear + round(deferralWeeks/52)` in `PathProjector`, a
 Pension-Credit notional add-back, the SP milestone on the claim year) — so the lever is genuinely non-monotone, and the
 headline test lands: **deferring the survivor's SP raises the survivor-year floor while deferring the first-dier's does
-not** (`SurvivorStatePensionDeferralTest`). See DECISIONS 2026-07-06. **What remains of the menu (one lever):**
-**care-on/off-pinned** (a binary — turning care on adds RNG draws, so the two states are NOT CRN-comparable: pin-and-
-compare, not a monotone sweep).
+not** (`SurvivorStatePensionDeferralTest`). See DECISIONS 2026-07-06.
+
+Finally **care-on/off-pinned** (`CareModellingLever`, 2026-07-06) — the last lever, now built, so **the Phase-4 lever
+menu is complete (5 of 5)**. It is the first lever that flips a **setting** (`ForecastSettings::modelCareCost` via a new
+`withModelCareCost` wither), a **binary** over a two-point grid [0,1], `LeverDirection::Unknown`. Turning care on inserts
+RNG draws before the return path, so the two states are NOT CRN-comparable — a genuine **pin-and-compare, not a monotone
+sweep** (per-component RNG substreams that would make it a precise CRN difference stay deferred per Phase 0). So the app
+**branches** for this lever: no slider/meter/S-curve/crossing (an interpolated "63% of care" limit is meaningless),
+instead a two-state before/after (`ThresholdPresenter::careComparison`) — each state a pictograph + word-band + its own
+Wilson CI + paths, the delta read qualitatively (real only when the CIs separate). Offered **ungated** (care risk is
+off-by-default and applies to a lone person too). Tests: flips only the setting; the wither preserves every other
+setting; care-on lowers the ceiling + the care tail reaches the result (`careImpact` completeness); the menu offers it
+ungated; the binary grid is stored; the two-state render carries no slider/meter and no banned "safe" copy. See DECISIONS
+2026-07-06.
 
 ### Phase 5 — The 2-D frontier (the flagship visual)
 Render the parametric threshold (S2) as a small **family of curves** or a **success heatmap with the 95% iso-line**

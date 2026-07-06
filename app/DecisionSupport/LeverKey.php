@@ -21,6 +21,7 @@ enum LeverKey: string
     case SurvivorAnnuityFraction = 'survivor_annuity_fraction';
     case PersonLongevity = 'person_longevity';
     case StatePensionDeferral = 'sp_deferral';
+    case Care = 'care';
 
     public function label(): string
     {
@@ -35,6 +36,8 @@ enum LeverKey: string
             // which person they target.
             self::PersonLongevity => 'How long one of you lives',
             self::StatePensionDeferral => 'How long one of you defers the State Pension',
+            // A binary, not a sweep — whether the late-life care-fee tail is in the picture.
+            self::Care => 'Whether care fees are modelled',
         };
     }
 }

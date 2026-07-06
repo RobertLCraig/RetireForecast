@@ -29,7 +29,9 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * $modelCareCost, when true, makes the Monte Carlo sample a late-life care spell per
  * person (see {@see CareCostSampler}), so the
  * distribution reflects the fat-tail risk of care fees. Default false, so existing
- * runs are unchanged; the deterministic and historical views never model care.
+ * runs are unchanged; the deterministic and historical views never model care. The
+ * decision-support care lever flips this off vs on via {@see withModelCareCost} to pin
+ * the two futures side by side.
  *
  * $sellingCosts is the cost basis for an in-projection forced sale (a home whose mortgage
  * is called for redemption with {@see MortgageMaturityAction::ForcedSale}):
@@ -66,5 +68,19 @@ final class ForecastSettings
     public function allocation(): PortfolioAllocation
     {
         return $this->allocation ?? PortfolioAllocation::cautious40_60();
+    }
+
+    /**
+     * A copy with the late-life care-cost modelling toggled. Every other setting is preserved, so
+     * the two states differ only in whether the Monte Carlo samples a care spell — the pin the
+     * decision-support care lever compares off against on.
+     */
+    public function withModelCareCost(bool $on): self
+    {
+        return new self(
+            $this->baseYear, $this->baseTaxYear, $this->drawdownStrategy, $this->allocation,
+            $this->freezeEndYear, $this->annualRent, $this->rentInflationReal, $on,
+            $this->sellingCosts, $this->modelIht, $this->homeToDescendants,
+        );
     }
 }

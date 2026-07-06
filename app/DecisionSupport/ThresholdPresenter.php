@@ -216,7 +216,74 @@ final class ThresholdPresenter
             LeverKey::StatePensionDeferral => ($d = (int) round($value)) === 0
                 ? 'claim on time'
                 : $d.($d === 1 ? ' year later' : ' years later'),
+            // A categorical toggle, not a number on a scale — 1 = care modelled, 0 = not.
+            LeverKey::Care => $value >= 0.5 ? 'care fees modelled' : 'care fees not modelled',
         };
+    }
+
+    /**
+     * The care-on/off "pinned before/after" view model — the honest way to read a lever that is a
+     * binary, not a sweep. It takes the two points (care off = value 0, care on = value 1) and, for
+     * each, a 10-dot natural-frequency pictograph + a plain word-band + its own Monte Carlo
+     * confidence interval and path count. It deliberately ignores {@see ThresholdOutcome::$crossing}
+     * (an interpolated "limit" between off and on is meaningless — there is no such thing as 63% of
+     * care being modelled) and never renders a slider, meter or connecting line.
+     *
+     * Because turning care on inserts extra random draws that desync the return stream, the two
+     * states are two INDEPENDENT samples, not a common-random-numbers pair — so the difference
+     * carries the full sampling noise of two runs. The delta is therefore read qualitatively: as a
+     * real drop only when the two confidence intervals clearly separate, and as "about the same"
+     * when they overlap (never a bare percentage the noise could invent).
+     *
+     * @return array{states: list<array{key: string, label: string, p: float, pictograph: array{filled: int, empty: int, runsOutYear: ?int}, band: array{level: string, word: string}, ciLow: float, ciHigh: float, paths: int}>, separated: bool, delta: string, deltaCaption: string, caption: string}|null
+     */
+    public static function careComparison(ThresholdOutcome $outcome): ?array
+    {
+        $off = null;
+        $on = null;
+        foreach ($outcome->curve->points as $point) {
+            if ($point->leverValue < 0.5) {
+                $off = $point;
+            } else {
+                $on = $point;
+            }
+        }
+        if ($off === null || $on === null) {
+            return null; // a malformed (non-binary) care curve — the caller invites a recompute
+        }
+
+        $state = static fn (string $key, string $label, $p): array => [
+            'key' => $key,
+            'label' => $label,
+            'p' => $p->successProbability,
+            'pictograph' => self::pictograph($p->successProbability, null),
+            'band' => ResultPresenter::lastsBand($p->successProbability),
+            'ciLow' => $p->ciLow,
+            'ciHigh' => $p->ciHigh,
+            'paths' => $p->paths,
+        ];
+
+        // The two estimates clearly separate when care-off's lower bound sits above care-on's upper
+        // bound — only then is the drop bigger than the noise of two independent runs.
+        $separated = $off->ciLow > $on->ciHigh;
+        $delta = $separated ? 'lower' : ($on->ciLow > $off->ciHigh ? 'higher' : 'similar');
+
+        $deltaCaption = match ($delta) {
+            'lower' => 'Modelling the care-fee tail clearly lowers the chance the money lasts here: the two futures are far enough apart to read the drop as real, not noise.',
+            'higher' => 'On these runs the care-modelled odds came out no worse — care rarely bit hard enough on this household to move the picture. Read the two as about the same.',
+            default => 'The two estimates came out close on these figures — closer than the gap two independent runs vary by, so this pinned comparison cannot tell them apart. That means the care tail did not clearly move the odds here, not that it carries no risk.',
+        };
+
+        return [
+            'states' => [
+                $state('off', 'Care fees not modelled', $off),
+                $state('on', 'Care fees modelled', $on),
+            ],
+            'separated' => $separated,
+            'delta' => $delta,
+            'deltaCaption' => $deltaCaption,
+            'caption' => 'Care off and care on are two separate simulated futures, not the same paths with a bill added on — so read the two side by side, not as a line between them. Care is left out by default because most people never face it; but left out, its six-figure tail quietly flatters every other limit on this page.',
+        ];
     }
 
     private static function meterCaption(LeverKey $lever, Crossing $crossing, bool $increasing): string

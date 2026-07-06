@@ -98,50 +98,64 @@ class ThresholdExplorer extends Component
         $choice = $this->currentChoice();
         $lever = $choice['key'];
         $param = $choice['param'];
+        // Care is a binary pin-and-compare, not a monotone sweep: it shows no slider, no live line,
+        // no meter and no S-curve (those all imply an ordered lever with an interpolated limit that
+        // does not exist for an off/on toggle) — it branches to a two-state before/after readout.
+        $isCare = $lever === LeverKey::Care;
         $grid = $this->grid($lever);
         $value = $this->clampedValue($lever, $grid);
 
-        // The instant deterministic net-position line at the current lever value.
-        $forecast = app(LeverThresholdService::class)->deterministicForecastAt($this->scenario, $lever, $value, $param);
-        $netPosition = ThresholdPresenter::netPosition(
-            $forecast,
-            $this->scenario->toHousehold(),
-            'Central estimate at '.ThresholdPresenter::formatLeverValue($lever, $value),
-        );
-
-        // The queued Monte Carlo threshold (if requested): its meter + full sweep once done.
         $threshold = $this->currentThreshold();
+        $outcome = ($threshold !== null && $threshold->status === SimulationStatus::Done)
+            ? $threshold->thresholdOutcome()
+            : null;
+        $csvUrl = $outcome !== null ? route('scenarios.threshold.csv', [$this->scenario, $threshold]) : null;
+
+        $netPosition = null;
+        $slider = null;
         $meter = null;
         $sCurve = null;
-        $csvUrl = null;
-        if ($threshold !== null && $threshold->status === SimulationStatus::Done) {
-            $outcome = $threshold->thresholdOutcome();
+        $careComparison = null;
+
+        if ($isCare) {
+            // Two independently-seeded runs (care off vs on), read side by side — never interpolated.
+            $careComparison = $outcome !== null ? ThresholdPresenter::careComparison($outcome) : null;
+        } else {
+            // The instant deterministic net-position line at the current lever value.
+            $forecast = app(LeverThresholdService::class)->deterministicForecastAt($this->scenario, $lever, $value, $param);
+            $netPosition = ThresholdPresenter::netPosition(
+                $forecast,
+                $this->scenario->toHousehold(),
+                'Central estimate at '.ThresholdPresenter::formatLeverValue($lever, $value),
+            );
+            $slider = [
+                'min' => $grid[0],
+                'max' => end($grid),
+                'step' => $this->step($grid),
+                'value' => $value,
+                'valueLabel' => ThresholdPresenter::formatLeverValue($lever, $value),
+            ];
             if ($outcome !== null) {
                 $meter = ThresholdPresenter::meter($outcome, $lever, $value);
                 $sCurve = ThresholdPresenter::sCurve($outcome, $lever);
-                $csvUrl = route('scenarios.threshold.csv', [$this->scenario, $threshold]);
             }
         }
 
         return view('livewire.threshold-explorer', [
             'leverKey' => $lever,
+            'isCare' => $isCare,
             // The selected menu id + its person-aware label: the id marks the active button (a
             // per-person lever's id carries the person, so it can't match on the bare LeverKey),
             // and the label names the specific person ("How long Alex lives").
             'selectedLever' => $choice['id'],
             'selectedLabel' => $choice['label'],
             'levers' => $this->leverOptions(),
-            'slider' => [
-                'min' => $grid[0],
-                'max' => end($grid),
-                'step' => $this->step($grid),
-                'value' => $value,
-                'valueLabel' => ThresholdPresenter::formatLeverValue($lever, $value),
-            ],
+            'slider' => $slider,
             'netPosition' => $netPosition,
             'threshold' => $threshold,
             'meter' => $meter,
             'sCurve' => $sCurve,
+            'careComparison' => $careComparison,
             'csvUrl' => $csvUrl,
             // Headline: the current plan's Monte Carlo odds as a natural-frequency pictograph
             // (year-first, never a bare %). Null until a full forecast has run.
@@ -256,6 +270,12 @@ class ThresholdExplorer extends Component
                 $add(LeverKey::StatePensionDeferral, $person->id, "How long {$name} defers their State Pension");
             }
         }
+
+        // Whether the late-life care-fee tail is modelled — a binary (off vs on), ungated: care risk
+        // is off by default and applies to a lone person as much as a couple. It sits last because it
+        // is a sensitivity check on the other levers (that six-figure tail flatters every ceiling when
+        // it is left out), not a change to the plan itself.
+        $add(LeverKey::Care);
 
         return $choices;
     }

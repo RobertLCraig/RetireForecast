@@ -13,6 +13,7 @@ use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\Sweep\Lever\BuyPriceLever;
+use RetireForecast\FinanceEngine\Sweep\Lever\CareModellingLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\EssentialSpendLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\PersonLongevityLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\RetirementAgeLever;
@@ -116,6 +117,7 @@ final class LeverThresholdService
             LeverKey::SurvivorAnnuityFraction => new SurvivorAnnuityFractionLever,
             LeverKey::PersonLongevity => new PersonLongevityLever($leverParam ?? $scenario->toHousehold()->persons[0]->id),
             LeverKey::StatePensionDeferral => new StatePensionDeferralLever($leverParam ?? $scenario->toHousehold()->persons[0]->id),
+            LeverKey::Care => new CareModellingLever,
         };
     }
 
@@ -153,6 +155,9 @@ final class LeverThresholdService
             // beyond a few years the forgone income rarely pays back within a normal lifespan).
             // Same grid whichever person the lever targets.
             LeverKey::StatePensionDeferral => self::linspace(0.0, 5.0, 6),
+            // Care: a categorical toggle, NOT a range — exactly two points, 0 = care not modelled,
+            // 1 = care modelled. The two are a pinned before/after, never interpolated.
+            LeverKey::Care => [0.0, 1.0],
         };
     }
 

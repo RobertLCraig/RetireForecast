@@ -58,6 +58,31 @@ final class ThresholdCsvExportTest extends TestCase
         $this->assertStringContainsString('62.00', $csv);        // a swept grid value
     }
 
+    public function test_the_care_csv_is_a_pinned_before_after_with_no_interpolated_threshold(): void
+    {
+        // The care lever is a binary pin-and-compare, so its CSV must NOT print a crossing verdict
+        // or an interpolated "threshold estimate" (63% of care modelled is meaningless) — it states
+        // the two states plainly and names them, not a bare 0/1.
+        $scenario = ScenarioFixture::rich($this->user);
+        $run = app(ThresholdRunner::class)
+            ->request($scenario, LeverKey::Care, SweepMetric::Essentials, 0.90, [0.0, 1.0], 40)
+            ->fresh();
+
+        $csv = implode("\n", array_map(fn (array $row): string => implode('|', $row), ThresholdCsvExporter::rows($run)));
+
+        // Still carries the disclaimer + provenance, like every export.
+        $this->assertStringContainsString('guidance only, not financial advice', $csv);
+        $this->assertStringContainsString('Paths per point', $csv);
+
+        // No crossing / interpolated threshold — instead a plain before/after statement + named states.
+        $this->assertStringNotContainsString('Verdict', $csv);
+        $this->assertStringNotContainsString('Threshold estimate', $csv);
+        $this->assertStringContainsString('pinned before/after', $csv);
+        $this->assertStringContainsString('State', $csv); // the grid header names the states, not "Lever value"
+        $this->assertStringContainsString('care fees not modelled', $csv);
+        $this->assertStringContainsString('care fees modelled', $csv);
+    }
+
     public function test_the_owner_can_download_the_threshold_csv(): void
     {
         $run = $this->computedThreshold();

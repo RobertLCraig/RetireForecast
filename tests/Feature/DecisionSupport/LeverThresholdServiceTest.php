@@ -111,6 +111,29 @@ final class LeverThresholdServiceTest extends TestCase
         $longevity = $service->defaultGrid(LeverKey::PersonLongevity, $household, $action);
         $this->assertSame(-5.0, $longevity[0]);
         $this->assertSame(15.0, end($longevity));
+
+        // Care: a categorical toggle, exactly two points (off, on) — not a range to bracket.
+        $this->assertSame([0.0, 1.0], $service->defaultGrid(LeverKey::Care, $household, $action));
+    }
+
+    public function test_a_scenario_computes_a_care_off_vs_on_comparison(): void
+    {
+        $scenario = ScenarioFixture::rich(User::factory()->create());
+
+        $outcome = $this->service()->compute(
+            $scenario,
+            LeverKey::Care,
+            SweepMetric::Essentials,
+            targetProbability: 0.90,
+            grid: [0.0, 1.0],
+            nPaths: 60,
+        );
+
+        // Exactly two pinned states, labelled as the care toggle, read as a before/after (not monotone).
+        $this->assertSame(LeverKey::Care, $outcome->lever);
+        $this->assertSame('whether care fees are modelled', $outcome->curve->leverName);
+        $this->assertSame([0.0, 1.0], array_map(fn ($p) => $p->leverValue, $outcome->curve->points));
+        $this->assertSame(LeverDirection::Unknown, $outcome->curve->direction);
     }
 
     public function test_a_scenario_computes_a_per_person_longevity_threshold(): void

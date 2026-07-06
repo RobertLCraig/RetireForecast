@@ -3,6 +3,53 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-06 — Decision-support Phase 4 (part): the care-on/off "pinned" lever (fifth/last survivor-menu lever) + the first settings-flipping lever
+**Context:** The last lever of the Phase-4 menu, and a different shape from the rest. Late-life care is an
+off-by-default six-figure fat tail; left out, it silently flatters every other threshold on the page, so the
+lever exists to show how much of the odds that tail actually moves. Grounded by a 4-agent workflow (understand
+care modelling / the sweep-CRN machinery / the app threshold surface / the toggle + plan intent → a synthesised
+design). The two "decisions for Rob" the design surfaced were **already settled by the approved plan** (the plan's
+Phase-4 line says "pin-and-compare, not a monotone sweep"; Phase 0 explicitly **defers** per-component RNG
+substreams), so they were followed, not re-litigated.
+
+**Decision — a binary `CareModellingLever` flipping a SETTING, not the household; a pin-and-compare, not a sweep.**
+New engine `Sweep\Lever\CareModellingLever` toggles `ForecastSettings::modelCareCost` over a two-point grid
+[0.0, 1.0] (0 = not modelled, 1 = modelled) — the first lever that flips a **setting** rather than mutating the
+household (`SweepInputs` already carries settings; `SweepEngine::sweep` already feeds them to the simulator, and
+`Simulator` builds the `CareCostSampler` only when the flag is on, so the flip alone turns care on — no simulator
+change). New immutable `ForecastSettings::withModelCareCost(bool)`. It sets both states **explicitly** (threshold
+0.5), independent of the scenario's own care setting, so the readout is always a clean off-vs-on. `LeverKey::Care`
+('care'), wired through `buildLever`/`defaultGrid` + the whole existing queued `ThresholdRunner`/`ThresholdResult`
+store/cache/CSV pipeline unchanged (a 2-point grid needs nothing new there).
+
+**Decision — `LeverDirection::Unknown`, and the two states are NOT common-random-numbers comparable.** Turning care
+on inserts extra draws (a per-person Bernoulli always, + duration + type on a hit) **between** the death draw and
+the investment-return path (`Simulator` draws lifespans → care spells → returns), so on the same seed the two
+states' return streams **desync** — care-off and care-on are two INDEPENDENT samples, not a like-for-like pair.
+So it is never monotone-fit, and the difference carries the full sampling noise of two runs. The app layer therefore
+**branches** for this lever: no slider, no live line, no green→red meter, no S-curve, and it deliberately **ignores
+`ThresholdOutcome::crossing`** (an interpolated "63% of care" limit is meaningless). Instead `ThresholdPresenter::careComparison`
+renders a two-state before/after — each state a 10-dot pictograph + word-band + its own Wilson CI + path count — and
+reads the delta **qualitatively**: a real drop only when the two CIs clearly separate, "about the same" when they
+overlap (never a bare percentage the noise could invent). The CSV likewise omits the crossing and names the two
+states. Copy states plainly it is a pinned before/after, not the same paths with a bill added. **Per-component RNG
+substreams (which would make the two states a precise CRN difference) stay deferred** per the plan — building
+pin-and-compare now does not preclude them later.
+
+**Decision — offered ungated (single or couple).** Unlike the survivor levers, care risk applies to a lone person
+as much as a couple and is off by default, so the menu offers it always (household-wide id, no `lever_param`); it
+sits last as a sensitivity check on the other levers.
+
+**Why:** A binary presented as a *sweepable threshold* would draw a line through "off" and "on" and print a
+meaningless interpolated limit, misleading the exact non-numbers audience the feature serves. The honest shape for a non-CRN-comparable binary is a pinned before/after with each side's own
+uncertainty shown — which is what the plan asked for. Tested: the lever flips only the setting (household untouched —
+reconciliation) and is `Unknown`; the wither preserves every other setting (no drift); modelling care **lowers the
+ceiling** and the care tail **reaches the result** (`careImpact` share > 0 — per-source completeness, no silent
+drop) at the production 2,000 paths; the menu offers care ungated (single + couple); `findLimit` stores the binary
+[0,1] grid; a completed care threshold paints the two states with no slider/meter/S-curve and no banned "safe"
+wording. **Phase 4's lever menu is now complete (5 of 5).** See [docs/PLAN-decision-support.md](docs/PLAN-decision-support.md)
++ [[data-consistency-reconciliation]]. **Status:** active
+
 ## 2026-07-06 — Decision-support Phase 4 (part): the defer-the-survivor's-State-Pension lever + a State Pension deferral correctness fix (fourth survivor lever)
 **Context:** The fourth survivor lever, "defer the *survivor's* State Pension" — reusing the per-person `lever_param`
 parameterisation the longevity lever built. Building it surfaced a **modelling gap that had to be fixed first**: the
