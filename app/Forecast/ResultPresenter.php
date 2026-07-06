@@ -1116,6 +1116,26 @@ final class ResultPresenter
             $notes[] = ['kind' => 'cohabiting_state_pension', 'text' => 'A cohabiting partner cannot inherit any State Pension (that right is for a spouse or civil partner only), and this tool does not model inheriting State Pension for anyone: each person\'s State Pension stops on their death.'];
         }
 
+        // Spending "smile": spend varies with age rather than staying flat. Surface it so the
+        // later-year change reads as intended, not as a bug, and name whose age it steps on.
+        $profile = $household->expenseProfile;
+        if ($profile->hasSmile()) {
+            $bandAges = [];
+            foreach ([...$profile->essentialSpendPath->bands, ...$profile->discretionarySpendPath->bands] as $band) {
+                if ($band['fromAge'] > 0) {
+                    $bandAges[] = $band['fromAge'];
+                }
+            }
+            if ($bandAges !== []) {
+                $lateAge = max($bandAges);
+                $start = $profile->targetAnnualSpend();
+                $late = $profile->targetAnnualSpendAt($lateAge);
+                $direction = $late->lessThan($start) ? 'steps down' : ($late->greaterThan($start) ? 'steps up' : 'changes');
+                $refName = self::personLabel($household->persons[0], 0);
+                $notes[] = ['kind' => 'spending_smile', 'text' => "Your spending changes with age (a \"smile\"): the forecast {$direction} your spend with age rather than holding it flat, from {$start->format()} a year now to {$late->format()} by age {$lateAge} (today's money). The age steps track {$refName}."];
+            }
+        }
+
         return $notes;
     }
 

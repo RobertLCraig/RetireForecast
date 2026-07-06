@@ -319,17 +319,20 @@ final class HouseholdAssembler
         }
 
         // The base holds from age 0 (so it covers every pre-band age); each band steps from its
-        // own age. Bands at or below 0 would collide with the base band, so they are dropped.
-        $breakpoints = [['fromAge' => 0, 'amount' => $base]];
+        // own age. Bands at or below 0 would collide with the base band, so they are dropped; a
+        // duplicate age coalesces to the last entry (never a crash on hand-entered data).
+        $byAge = [0 => $base];
         foreach ($bands as $band) {
             $fromAge = (int) ($band['fromAge'] ?? 0);
             if ($fromAge <= 0) {
                 continue;
             }
-            $breakpoints[] = [
-                'fromAge' => $fromAge,
-                'amount' => Money::fromPence($this->toPence((string) ($band['amount'] ?? '0'))),
-            ];
+            $byAge[$fromAge] = Money::fromPence($this->toPence((string) ($band['amount'] ?? '0')));
+        }
+
+        $breakpoints = [];
+        foreach ($byAge as $fromAge => $amount) {
+            $breakpoints[] = ['fromAge' => $fromAge, 'amount' => $amount];
         }
 
         return SpendPath::fromBands($breakpoints);

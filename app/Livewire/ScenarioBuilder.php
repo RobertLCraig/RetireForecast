@@ -275,6 +275,12 @@ class ScenarioBuilder extends Component
             'expenseLines.*.condition' => ['nullable', Rule::in(['', 'always', 'while_owning_home', 'while_mortgaged', 'while_working'])],
             // A line switched off is excluded from the forecast but kept so it can be switched back on.
             'expenseLines.*.included' => ['boolean'],
+            // Optional age bands giving a line's spend a "smile": the base amount holds from the
+            // start, then steps to each band's amount from that age. Only an always-condition line
+            // smiles (the assembler ignores bands on a contingent cost). Blank rows are dropped on save.
+            'expenseLines.*.bands' => ['nullable', 'array'],
+            'expenseLines.*.bands.*.fromAge' => ['nullable', 'integer', 'min:1', 'max:110'],
+            'expenseLines.*.bands.*.amount' => $money,
 
             'oneOffCosts.*.atAge' => ['required', 'integer', 'min:0', 'max:110'],
             'oneOffCosts.*.amount' => $moneyReq,
@@ -764,6 +770,19 @@ class ScenarioBuilder extends Component
                 unset($line['included']);
             }
 
+            // Age bands are sparse: keep only fully-entered rows ({fromAge, amount} both set), and
+            // drop the key entirely when none remain — so a line with no smile, and a what-if that
+            // changes nothing, record no spurious delta (mirrors the include flag).
+            $bands = array_values(array_filter(
+                $line['bands'] ?? [],
+                static fn (array $b): bool => trim((string) ($b['fromAge'] ?? '')) !== '' && trim((string) ($b['amount'] ?? '')) !== '',
+            ));
+            if ($bands === []) {
+                unset($line['bands']);
+            } else {
+                $line['bands'] = $bands;
+            }
+
             return $line;
         }, $this->expenseLines);
 
@@ -1119,6 +1138,30 @@ class ScenarioBuilder extends Component
     }
 
     /**
+     * For each spend line, whether it may carry an age-band "smile": only a line the engine would
+     * charge every year smiles — its resolved condition (explicit override, else the auto-classified
+     * one) is `always` — and a *saved* self-investment line is not spend at all. So a contingent cost
+     * (mortgage / commute) shows no band editor, matching the assembler, which ignores bands on it.
+     * Keyed by line index to match the inputs' wire:model.
+     *
+     * @return array<int, bool>
+     */
+    private function spendBandable(): array
+    {
+        $out = [];
+        foreach ($this->expenseLines as $i => $line) {
+            $explicit = (string) ($line['condition'] ?? '');
+            $resolved = in_array($explicit, ['always', 'while_owning_home', 'while_mortgaged', 'while_working'], true)
+                ? $explicit
+                : HouseholdAssembler::autoCondition($line);
+            $isSavedSelfInvestment = ($line['category'] ?? '') === 'self_investment' && ($line['savedAsAsset'] ?? false);
+            $out[$i] = $resolved === 'always' && ! $isSavedSelfInvestment;
+        }
+
+        return $out;
+    }
+
+    /**
      * Live tier subtotals for the Spending step, derived from the lines for display
      * (the authoritative exact-pence derivation lives in {@see HouseholdAssembler}).
      * Essential = essential lines; discretionary = discretionary + *spent* self-
@@ -1170,6 +1213,24 @@ class ScenarioBuilder extends Component
     {
         unset($this->expenseLines[$i]);
         $this->expenseLines = array_values($this->expenseLines);
+    }
+
+    /** Add a blank "spending changes with age" band to a line (the smile editor). */
+    public function addSpendBand(int $i): void
+    {
+        if (! isset($this->expenseLines[$i])) {
+            return;
+        }
+        $this->expenseLines[$i]['bands'][] = ['fromAge' => '', 'amount' => ''];
+    }
+
+    public function removeSpendBand(int $i, int $j): void
+    {
+        if (! isset($this->expenseLines[$i]['bands'][$j])) {
+            return;
+        }
+        unset($this->expenseLines[$i]['bands'][$j]);
+        $this->expenseLines[$i]['bands'] = array_values($this->expenseLines[$i]['bands']);
     }
 
     public function addOneOff(): void
@@ -1331,6 +1392,8 @@ class ScenarioBuilder extends Component
             'expenseTotals' => $this->expenseTotals(),
             // What each spend line's "Applies" Auto setting infers from its label, shown beside it.
             'conditionHints' => $this->conditionHints(),
+            // Whether each spend line may carry an age-band "smile" (an always-charged spend line).
+            'spendBandable' => $this->spendBandable(),
             // Live, indicative CGT readout for the home's capital-gains wizard (null = not shown).
             'cgtPreview' => $this->cgtPreview(),
             'importProfiles' => array_map(static fn ($p): array => [

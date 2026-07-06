@@ -415,14 +415,20 @@ the penny** (£280k today → £660k once pensions enter the estate, our engine 
 ended £1.5m" is exactly the construct our `HistoricalBacktester` (JST 1871–2020) already computes. The video also
 exposes three genuine gaps, ranked:
 
-- **Phased spend / the "smile" — PROMOTE from deferred to the next engine piece (was flagged K / line ~595).** This
-  is the one feature blocking a *full* reproduction of the video: Mark's plan is £60k/yr to 75 then £40k, and
-  `ExpenseProfile` today holds a single flat real spend + one-off lumps with **no age-banded path anywhere in the
-  engine**. It is not just a fidelity nicety — it is an **accuracy issue that biases us toward the very error the
-  video warns about**: a flat-real-to-death spend *understates* how much can be safely spent early, manufacturing
-  under-spending. Needs an age-banded spend path on `ExpenseProfile` (feeding `PathProjector`, the MC and the
-  `HistoricalBacktester`), which is also what the already-listed "hand-draw the smile" editor (competitive-gap
-  framing bullet) would drive. Golden-master + reconciliation tested (banded sum reconciles like the flat total).
+- **Phased spend / the "smile" — ✅ BUILT (2026-07-06).** Was the accuracy gap: a flat-real-to-death spend
+  *understates* how much can be safely spent early, manufacturing the very under-spending the video warns about (and
+  biasing the buy/rent/downsize verdicts). Now modelled as a per-line, piecewise-real `SpendPath` (`{fromAge, amount}`
+  bands) — the representation chosen after researching the industry norm (Voyant per-item age bands, Kitces/Basu
+  per-category age banding, RightCapital phases, Blanchett's curve; **docs/RESEARCH-under-spending-smile.md**). Each
+  expense line carries its own optional path (`builder_state.expenseLines[].bands`); the assembler sums them per-age
+  into the `ExpenseProfile` essential/discretionary paths, the projector charges at the reference person's age, and the
+  MC + `HistoricalBacktester` inherit it. Builder band editor + an input-sanity note surface it; ladder/preview/PDF
+  reflect it automatically. A flat plan stays byte-identical. Reconciliation + golden-master tested. See DECISIONS
+  2026-07-06. **v1 limits (flagged):** bands key off the first-declared person's age; only always-condition lines
+  smile (contingent costs stay flat); the *late-life rise* is modelled by the separate care spell, not a band.
+  Remaining fast-follows: the **"hand-draw the smile" editor** + %/yr-and-phase templates (UI conveniences over the
+  same band store); what-if delta **highlighting** of band changes (bands round-trip + forecast correctly, but a
+  changed band is not yet ringed like a scalar edit).
 - **Lifetime gifting lever (net-new).** Mark's actual *resolution* was to give to children/grandchildren **now** —
   shifting the bequest earlier (when it changes their lives, not at 60) and cutting IHT. We model no gifting at all
   (no PET / 7-year taper anywhere). A gifting lever is both a decision-support lever *and* an IHT-completeness item:

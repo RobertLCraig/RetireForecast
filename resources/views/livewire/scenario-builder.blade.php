@@ -961,6 +961,35 @@
                                     </div>
                                 </div>
                             @endunless
+
+                            {{-- Spending changes with age (the "smile"): the £/year above holds from the
+                                 start, and each change takes effect from that age (the first person's age).
+                                 Shown only for an always-charged spend line — a contingent cost is flat and
+                                 stops by its condition, so the assembler ignores bands on it. --}}
+                            @if ($spendBandable[$i] ?? false)
+                                <div class="sm:col-span-12 rounded-md bg-gray-50 p-2">
+                                    @if (count($line['bands'] ?? []) > 0)
+                                        <p class="text-xs text-gray-600">Spending changes with age (today's money). Each change applies from that age onward.</p>
+                                        <div class="mt-1 space-y-1">
+                                            @foreach ($line['bands'] ?? [] as $j => $band)
+                                                <div wire:key="band-{{ $line['id'] ?? $i }}-{{ $j }}" class="flex flex-wrap items-center gap-2">
+                                                    <span class="text-xs text-gray-600">From age</span>
+                                                    <input type="text" inputmode="numeric" wire:model="expenseLines.{{ $i }}.bands.{{ $j }}.fromAge" class="{{ $field }} w-20" @error('expenseLines.'.$i.'.bands.'.$j.'.fromAge') aria-invalid="true" @enderror>
+                                                    <span class="text-xs text-gray-600">spend £</span>
+                                                    <input type="text" inputmode="decimal" wire:model="expenseLines.{{ $i }}.bands.{{ $j }}.amount" class="{{ $field }} w-28" @error('expenseLines.'.$i.'.bands.'.$j.'.amount') aria-invalid="true" @enderror>
+                                                    <span class="text-xs text-gray-600">/ year</span>
+                                                    <button type="button" wire:click="removeSpendBand({{ $i }}, {{ $j }})" class="text-xs text-red-700 underline">Remove</button>
+                                                    @error('expenseLines.'.$i.'.bands.'.$j.'.fromAge') <span class="w-full text-xs text-red-700">{{ $message }}</span> @enderror
+                                                    @error('expenseLines.'.$i.'.bands.'.$j.'.amount') <span class="w-full text-xs text-red-700">{{ $message }}</span> @enderror
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                    <button type="button" wire:click="addSpendBand({{ $i }})" class="mt-1 text-xs text-indigo-700 underline">
+                                        {{ count($line['bands'] ?? []) > 0 ? '+ Add another age change' : '+ Does this change as you age?' }}
+                                    </button>
+                                </div>
+                            @endif
                         </div>
                     @endforeach
                 </div>

@@ -38,6 +38,45 @@ final class InputNotesTest extends TestCase
         return ResultPresenter::inputNotes($household, $forecast);
     }
 
+    public function test_a_spending_smile_is_surfaced_as_a_note_naming_the_reference_person(): void
+    {
+        // Born 1958 ⇒ age 68 in 2026; discretionary spend steps £8k → £3k from age 78 (a "smile").
+        $notes = $this->notes([
+            'householdName' => 'Smiler', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Robin', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'expenseLines' => [
+                ['id' => 'e1', 'amount' => '15000', 'category' => 'essential'],
+                ['id' => 'd1', 'amount' => '8000', 'category' => 'discretionary', 'bands' => [['fromAge' => 78, 'amount' => '3000']]],
+            ],
+            'expense' => ['survivorFactor' => '70'],
+        ]);
+
+        $kinds = array_column($notes, 'kind');
+        $this->assertContains('spending_smile', $kinds);
+        $text = $notes[array_search('spending_smile', $kinds, true)]['text'];
+        $this->assertStringContainsString('steps down', $text);
+        $this->assertStringContainsString('age 78', $text);
+        $this->assertStringContainsString('Robin', $text);
+    }
+
+    public function test_a_flat_plan_raises_no_spending_smile_note(): void
+    {
+        $notes = $this->notes([
+            'householdName' => 'Flat', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Alex', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]);
+
+        $this->assertNotContains('spending_smile', array_column($notes, 'kind'));
+    }
+
     public function test_a_retirement_age_at_or_below_current_age_flags_no_salary(): void
     {
         // Born 1960 ⇒ age 66 in 2026; employed with a retirement age of 60 ⇒ no salary modelled.
