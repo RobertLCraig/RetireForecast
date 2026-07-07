@@ -297,6 +297,21 @@ partition (`OutputPhrasing`); "safe/optimal/should" stay banned in the auto-stat
   after an input edit until recomputed. **Tests:** G1 refuses an ungrounded/stale threshold; G2 blocks directive
   phrasing in guidance mode.
 
+**Phase 6 is BUILT (2026-07-07) — the feature is complete (Phases 0–6).** `App\DecisionSupport\ThresholdFacts`
+turns the scenario's Done `ThresholdResult`s into `AssistantFact`s — but ONLY rows whose stored `inputs_hash` still
+`hash_equals` a hash recomputed from the row's own parameters against the scenario's CURRENT effective form-state
+(the belt-and-braces the risk note demanded; the test pins the exact bypass case, a direct state edit that leaves
+the row alive yet mutes it). The facts join `ScenarioContext` via a new `$extraFacts` hook, so they are both model
+context and G1 allow-list: fresh → "up to about £27,000" answers grounded; stale → the SAME sentence is refused by
+`FigureGrounding` with no new guard code. One wording home per limit: 1-D facts reuse
+`ThresholdPresenter::meterCaption` (now public), frontier facts reuse `FrontierPresenter`'s both-levers-pinned
+summary + chips, care reuses the pinned before/after — and `OutputPhrasing::violations` is asserted empty on the
+generated fact text. No fresh limits → an honest "none computed for the current inputs yet" fact. The context also
+now **volunteers the survivor cliff** (income-floor facts off the one `ResultPresenter::incomeFloor()` definition:
+both-alive floor, survivor-year twin, the cliff in coverage points) plus new starter questions ("What happens to
+the survivor's income…", a "How far can we go?" group, the buy-price question gated to a plan that buys). See
+DECISIONS 2026-07-07 (Phase 6).
+
 ### Deferred — family / board contribution as a lever (needs a modelling home)
 `IncomeStream` is fixed-`startAge`; the child money is meant to start *when the first partner dies* (a *sampled*
 year), which no stream can trigger, and a tax-free stream keeps **full** Pension Credit **plus** the money (a

@@ -402,8 +402,9 @@ simplifications explicitly.
 **Staged build plan:** [docs/PLAN-decision-support.md](PLAN-decision-support.md) — Phase 0 (the correctness
 spine: MC-based bracketing, the 2-D frontier, crossing semantics) → phases 1–6 (backend → simple view →
 comparison → survivor levers → frontier → assistant) + the open questions + the reuse-vs-build map.
-**Phases 0–5 are BUILT** (Phase 5, the 2-D trade-off map, 2026-07-07 — see the staged plan + DECISIONS
-2026-07-07); Phase 6 (assistant tie-in) remains.
+**All phases (0–6) are BUILT — the feature is complete** (Phase 5, the 2-D trade-off map, and Phase 6, the
+hash-gated assistant tie-in, both 2026-07-07 — see the staged plan + DECISIONS 2026-07-07), pending Rob's
+browser sign-off.
 
 ### The under-spending case (2026-07-06) — from an FCA-planner case study, post-v1 backlog
 Prompted by James Shack's video *"Why You'll Never Actually Spend Your Retirement Savings"*

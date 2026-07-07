@@ -13,6 +13,7 @@ use App\Assistant\MethodologyRetriever;
 use App\Assistant\OllamaChatClient;
 use App\Assistant\OllamaEmbeddingClient;
 use App\Assistant\ScenarioContext;
+use App\DecisionSupport\ThresholdFacts;
 use App\Enums\ScenarioStatus;
 use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ResultPresenter;
@@ -187,9 +188,17 @@ class ScenarioAssistant extends Component
                     'Could my money run out, and how likely is that?',
                     'What if investment returns are lower than assumed?',
                     'What if one of us lives a lot longer than expected?',
+                    'What happens to the survivor\'s income when the first of us dies?',
                     'What could paying for care later in life do to the plan?',
                     'How does inflation affect what I can spend?',
                 ],
+            ],
+            [
+                'heading' => 'How far can we go?',
+                'questions' => array_values(array_filter([
+                    'What limits have been computed for this plan, and what do they say?',
+                    $this->plansABuy() ? 'How much can we spend on a new home before the plan stops holding up?' : null,
+                ])),
             ],
             [
                 'heading' => 'Tax and the home',
@@ -211,6 +220,14 @@ class ScenarioAssistant extends Component
     private function isSellStrategy(): bool
     {
         return $this->scenario->variant->value !== 'stay_put';
+    }
+
+    /** Whether the plan funds a purchase (the buy-price limit question only makes sense then) — the same gate the explorer's buy-price lever uses. */
+    private function plansABuy(): bool
+    {
+        $action = $this->scenario->toHousingAction();
+
+        return $action->salePrice->isPositive() && ($action->buyPrice?->isPositive() ?? false);
     }
 
     /**
@@ -259,7 +276,9 @@ class ScenarioAssistant extends Component
 
     /**
      * The single-scenario context (results page): this plan's headline, year-by-year ladder, Monte
-     * Carlo probabilities, lump-sum tax shock and home-sale waterfall.
+     * Carlo probabilities, lump-sum tax shock, home-sale waterfall, income floor + survivor cliff,
+     * and (Phase 6) the computed "how far can we go" limits — hash-matched to the CURRENT inputs by
+     * {@see ThresholdFacts}, so a stale limit never enters the context or the grounding allow-list.
      */
     private function scenarioContext(): ScenarioContext
     {
@@ -271,6 +290,7 @@ class ScenarioAssistant extends Component
             $this->simulationResult(),
             app(LumpSumTaxShock::class)->assess($this->scenario),
             $this->saleExplainer($forecaster),
+            app(ThresholdFacts::class)->for($this->scenario),
         );
     }
 

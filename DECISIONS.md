@@ -3,6 +3,39 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-07 — Decision-support Phase 6: the assistant states computed limits, gated by a live inputs-hash match
+**Context:** The final phase of docs/PLAN-decision-support.md. The assistant must be able to answer "how much can
+we spend on a house?" with the computed, banded limit — but the plan's hard rule is that it *states* thresholds and
+never calculates one, and its known failure mode (risk note) is confidently restating a STALE threshold after an
+input edit.
+
+**Decision — freshness is decided by recomputing the inputs hash, not by trusting the row's existence.** A new
+`App\DecisionSupport\ThresholdFacts` resolves the scenario's Done `ThresholdResult`s and, per row, recomputes the
+Phase-1 inputs hash from the row's own stored parameters (lever, param, condition pair, metric, target, grid,
+paths) against the scenario's CURRENT effective form-state + engine version + seed; only a `hash_equals` match may
+produce a fact. Builder edits already delete threshold rows (Phase 1's invalidation) — this is the belt-and-braces
+the plan demanded before the assistant may voice a figure, and the test pins the exact belt-and-braces case: a
+direct builder-state edit that bypasses the delete leaves the row in place, yet the limit never surfaces.
+
+**Decision — a stale limit is excluded from the context, so G1 does the refusing.** The facts are appended to
+`ScenarioContext` (a new `$extraFacts` hook), which is BOTH the model's context and the grounding allow-list — one
+home. While fresh, the model's "up to about £27,000" sentence is grounded and answers; after an edit the same
+sentence contains a figure absent from the allow-list, so `FigureGrounding` (G1) refuses it mechanically. No new
+guard code: staleness handling composes out of the existing guardrail. When nothing fresh exists, a single honest
+"none computed for the current inputs yet" fact makes the model say so instead of improvising.
+
+**Decision — one wording home per limit.** The 1-D fact reuses `ThresholdPresenter::meterCaption` (made public) —
+the SAME sentence the meter shows; the frontier fact reuses `FrontierPresenter`'s both-levers-pinned summary +
+column chips; the care fact reuses `careComparison` (a pinned before/after with each state's CI — never an
+interpolated limit). So panel and assistant can never disagree, and the neutral-phrasing guardrails (no
+"safe"/"should", limits always an "about" band, G2 `OutputPhrasing` runs on every reply) hold in one place —
+asserted directly on the generated fact text.
+
+**Also — the context now volunteers the survivor cliff.** `ScenarioContext` gained income-floor facts from the one
+`ResultPresenter::incomeFloor()` definition: the both-alive floor, the survivor-year twin and the cliff (coverage
+points lost at the first death), plus a starter question — the binding risk a reader rarely knows to ask about.
+**Status:** active (decision-support Phases 0–6 all built; feature complete pending Rob's browser sign-off)
+
 ## 2026-07-07 — Decision-support Phase 5: the 2-D frontier as a heatmap riding the ThresholdResult record
 **Context:** Phases 0–4 of docs/PLAN-decision-support.md are built; Phase 5 renders the engine's parametric
 threshold (S2, `SweepEngine::frontier`) — the buy-price ceiling as a function of retirement age — because a

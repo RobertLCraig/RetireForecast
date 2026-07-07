@@ -286,7 +286,13 @@ final class ThresholdPresenter
         ];
     }
 
-    private static function meterCaption(LeverKey $lever, Crossing $crossing, bool $increasing): string
+    /**
+     * The one neutral sentence for a lever's crossing — shared by the meter (below) and the
+     * assistant's threshold facts ({@see ThresholdFacts}), so the panel and
+     * the assistant state the SAME wording for the same limit and neither can drift into
+     * recommendation phrasing alone.
+     */
+    public static function meterCaption(LeverKey $lever, Crossing $crossing, bool $increasing): string
     {
         if ($crossing->verdict === CrossingVerdict::AlreadyOnTrack) {
             return 'The money stays on track right across the range you explored — this lever is not the constraint here.';

@@ -54,9 +54,13 @@ final class ScenarioContext implements AssistantContext
     /**
      * Build the context by running the scenario's central deterministic forecast, optionally with
      * a completed Monte Carlo run's aggregate ({@see SimulationResult}) for the probability/range
-     * figures. Null simulation = no run yet; the deterministic view still stands.
+     * figures. Null simulation = no run yet; the deterministic view still stands. $extraFacts are
+     * pre-built app-layer facts appended verbatim (decision-support Phase 6 passes the scenario's
+     * fresh computed lever limits here — see `App\DecisionSupport\ThresholdFacts`).
+     *
+     * @param  list<AssistantFact>  $extraFacts
      */
-    public static function for(Scenario $scenario, ScenarioForecaster $forecaster, ?SimulationResult $simulation = null, ?array $taxShock = null, ?array $saleExplainer = null): self
+    public static function for(Scenario $scenario, ScenarioForecaster $forecaster, ?SimulationResult $simulation = null, ?array $taxShock = null, ?array $saleExplainer = null, array $extraFacts = []): self
     {
         return self::fromForecast(
             $scenario->name,
@@ -65,20 +69,23 @@ final class ScenarioContext implements AssistantContext
             $simulation,
             $taxShock,
             $saleExplainer,
+            $extraFacts,
         );
     }
 
     /**
      * Build the facts from a forecast result (+ optional Monte Carlo aggregate + optional pension
-     * lump-sum tax shock + optional home-sale waterfall). Pure — no container, no I/O — so it is
-     * unit-testable from hand-built inputs. $taxShock is the {@see LumpSumTaxShock} array and
-     * $saleExplainer is the {@see ResultPresenter::saleExplainer()} array (both already-formatted),
-     * each null when it does not apply (no lump sum / not a sell strategy).
+     * lump-sum tax shock + optional home-sale waterfall + optional pre-built extra facts). Pure —
+     * no container, no I/O — so it is unit-testable from hand-built inputs. $taxShock is the
+     * {@see LumpSumTaxShock} array and $saleExplainer is the {@see ResultPresenter::saleExplainer()}
+     * array (both already-formatted), each null when it does not apply (no lump sum / not a sell
+     * strategy).
      *
      * @param  array<string, mixed>|null  $taxShock
      * @param  array<string, mixed>|null  $saleExplainer
+     * @param  list<AssistantFact>  $extraFacts
      */
-    public static function fromForecast(string $title, string $strategyLabel, ForecastResult $forecast, ?SimulationResult $simulation = null, ?array $taxShock = null, ?array $saleExplainer = null): self
+    public static function fromForecast(string $title, string $strategyLabel, ForecastResult $forecast, ?SimulationResult $simulation = null, ?array $taxShock = null, ?array $saleExplainer = null, array $extraFacts = []): self
     {
         $facts = [
             new AssistantFact('Plan', $title),
@@ -104,6 +111,11 @@ final class ScenarioContext implements AssistantContext
             $facts[] = new AssistantFact('Modelled late-life care cost on this path (today\'s money)', $care->format());
         }
 
+        // The income floor + the survivor cliff (decision-support Phase 6: the assistant
+        // volunteers this — the binding risk for a couple is what the FIRST death does to the
+        // survivor's guaranteed income, and a reader rarely thinks to ask).
+        $facts = [...$facts, ...self::incomeFloorFacts($forecast)];
+
         if ($simulation !== null) {
             $facts = [...$facts, ...self::monteCarloFacts($simulation)];
         } else {
@@ -121,7 +133,49 @@ final class ScenarioContext implements AssistantContext
             $facts = [...$facts, ...self::saleFacts($saleExplainer)];
         }
 
+        $facts = [...$facts, ...$extraFacts];
+
         return new self($title, $facts, self::renderLadder($forecast), $simulation !== null);
+    }
+
+    /**
+     * The essentials-vs-guaranteed-income floor as facts — and, for a couple, the survivor-year
+     * twin + the cliff (how many points of coverage the first death removes). Reuses the
+     * already-formatted {@see ResultPresenter::incomeFloor()} (the ONE definition both floors
+     * read), so the assistant's figures are the income-floor panel's. Empty when the projection
+     * has no mature year to read.
+     *
+     * @return list<AssistantFact>
+     */
+    private static function incomeFloorFacts(ForecastResult $forecast): array
+    {
+        $floor = ResultPresenter::incomeFloor($forecast);
+        if ($floor === null) {
+            return [];
+        }
+
+        $describe = static fn (array $f): string => "Guaranteed-for-life income {$f['secureIncome']} covers {$f['coveragePct']}% of essential spending {$f['essentialSpend']}"
+            .($f['fullyCovered']
+                ? ' — essentials fully covered by guaranteed income.'
+                : ($f['gap'] !== null ? " — the remaining {$f['gap']} must come from savings and investments." : '.'));
+
+        $facts = [new AssistantFact(
+            "Income floor — guaranteed income vs essentials ({$floor['year']}, both alive)",
+            $describe($floor),
+        )];
+
+        if ($floor['survivor'] !== null) {
+            $cliff = '';
+            if ($floor['cliff'] !== null && $floor['cliff'] > 0) {
+                $cliff = " The survivor cliff: guaranteed-income coverage of essentials falls by {$floor['cliff']} percentage points at the first death — a risk worth raising with Pension Wise or an adviser.";
+            }
+            $facts[] = new AssistantFact(
+                "Income floor — the survivor's year ({$floor['survivor']['year']}, after the first death)",
+                $describe($floor['survivor']).$cliff,
+            );
+        }
+
+        return $facts;
     }
 
     /**
