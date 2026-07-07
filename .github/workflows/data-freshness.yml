@@ -1,0 +1,45 @@
+# Scheduled data-freshness guardrail: aging or drifted statutory / mortality figures fail loudly.
+#
+# figures:freshness  — every supported tax year's gov.uk figures must carry a verified_on
+#                      within 12 months (source: TaxYearRegistry; DECISIONS 2026-06-30).
+# mortality:refresh  — the embedded ONS mortality grid must match its JSON source cell-for-cell
+#                      and have been verified within 24 months (DECISIONS 2026-07-01).
+# Both commands exit non-zero on staleness or drift, which fails this run and GitHub notifies.
+#
+# NB GitHub pauses cron schedules after ~60 days without repo activity; workflow_dispatch
+# always works. Scheduled runs use the default branch's copy of this file.
+name: data-freshness
+
+on:
+  schedule:
+    - cron: '0 6 1 * *' # monthly: 06:00 UTC on the 1st
+  workflow_dispatch:
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: sqlite3, pdo_sqlite, mbstring, intl, bcmath, gd
+          coverage: none
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Prepare the app
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+
+      - name: Statutory tax figures are fresh (verified within 12 months)
+        run: php artisan figures:freshness
+
+      - name: ONS mortality data matches its source and is fresh (within 24 months)
+        run: php artisan mortality:refresh

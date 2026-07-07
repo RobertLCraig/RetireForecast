@@ -3,6 +3,24 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-08 — Freshness guardrails wired into a scheduled CI run (monthly, not push-triggered)
+**Context:** `figures:freshness` (gov.uk statutory figures, 12-month window; 2026-06-30) and
+`mortality:refresh` (ONS grid in-sync with its JSON source + 24-month window; 2026-07-01) existed
+as on-demand commands only — nothing ran them unattended, so aging figures would rot silently.
+The plan's "CI / data hygiene" item asked for a scheduled/CI run.
+
+**Decision:** a dedicated GitHub Actions workflow (`.github/workflows/data-freshness.yml`) runs
+both commands **on a monthly cron (06:00 UTC on the 1st) + manual dispatch**, failing the run on
+any non-zero exit. Deliberately **not** push-triggered: both checks are time-based (staleness
+windows of 12/24 months — a monthly tick is ample resolution), and the only push-sensitive part
+(the embedded mortality grid drifting from its JSON source) is already guarded per-push by the
+unit-tested in-sync check, so push runs would add noise, not signal. NB GitHub pauses cron on
+repos inactive ~60 days; the workflow lands on GitHub only when Rob next pushes.
+
+**Also:** the public `/methodology` page (2026-07-03) joined the Pa11y CI sweep (`.pa11yci.json`)
+— it was the one public page added after the sweep was configured; it passes.
+**Status:** active
+
 ## 2026-07-07 — Decision-support Phase 6: the assistant states computed limits, gated by a live inputs-hash match
 **Context:** The final phase of docs/PLAN-decision-support.md. The assistant must be able to answer "how much can
 we spend on a house?" with the computed, banded limit — but the plan's hard rule is that it *states* thresholds and
