@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\DecisionSupport;
 
+use App\DecisionSupport\FrontierCsvExporter;
 use App\DecisionSupport\LeverKey;
 use App\DecisionSupport\ThresholdCsvExporter;
 use App\DecisionSupport\ThresholdRunner;
@@ -81,6 +82,38 @@ final class ThresholdCsvExportTest extends TestCase
         $this->assertStringContainsString('State', $csv); // the grid header names the states, not "Lever value"
         $this->assertStringContainsString('care fees not modelled', $csv);
         $this->assertStringContainsString('care fees modelled', $csv);
+    }
+
+    public function test_a_frontier_csv_carries_both_levers_the_iso_line_and_every_cell(): void
+    {
+        $scenario = ScenarioFixture::rich($this->user);
+        $run = app(ThresholdRunner::class)->requestFrontier(
+            $scenario, LeverKey::BuyPrice, LeverKey::RetirementAge, SweepMetric::Essentials, 0.90,
+            thresholdGrid: [150_000.0, 250_000.0], conditionGrid: [62.0, 70.0], paths: 30,
+        )->fresh();
+
+        $csv = implode("\n", array_map(fn (array $row): string => implode('|', $row), FrontierCsvExporter::rows($run)));
+
+        // The disclaimer + both lever identities + per-cell provenance travel with the figures.
+        $this->assertStringContainsString('guidance only, not financial advice', $csv);
+        $this->assertStringContainsString('Lever swept', $csv);
+        $this->assertStringContainsString('Lever held', $csv);
+        $this->assertStringContainsString('Paths per cell', $csv);
+
+        // The iso-line block (per held value, a banded verdict) and the long-format cell grid.
+        $this->assertStringContainsString('Held value', $csv);
+        $this->assertStringContainsString('62.00', $csv);      // a held value
+        $this->assertStringContainsString('150000.00', $csv);  // a swept cell value
+        $this->assertStringContainsString('CI low', $csv);
+
+        // The shared route serves the frontier export for a frontier record.
+        $response = $this->get(route('scenarios.threshold.csv', [$scenario, $run]));
+        $response->assertOk();
+        $this->assertStringContainsString(
+            'frontier-buy_price-by-retirement_age.csv',
+            (string) $response->headers->get('Content-Disposition'),
+        );
+        $this->assertStringContainsString('Lever held', $response->streamedContent());
     }
 
     public function test_the_owner_can_download_the_threshold_csv(): void

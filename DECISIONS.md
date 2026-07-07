@@ -3,6 +3,45 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-07 — Decision-support Phase 5: the 2-D frontier as a heatmap riding the ThresholdResult record
+**Context:** Phases 0–4 of docs/PLAN-decision-support.md are built; Phase 5 renders the engine's parametric
+threshold (S2, `SweepEngine::frontier`) — the buy-price ceiling as a function of retirement age — because a
+single-lever threshold prints as if it were unconditional ("£260k" hides "at 67; £300k at 70"). The spec offered
+two forms: a family of curves or a success heatmap with the target iso-line.
+
+**Decision — heatmap, with the iso-line emerging from the cells (never drawn beside them).** The frontier keeps
+**every measured cell**: `FrontierPoint` now carries its full per-column `SweepCurve` alongside the crossing, and
+the UI renders the whole grid as a tinted table (each cell's success % as text; the on-track tint flips at the
+target). The "iso-line" is therefore the visible boundary in the very cells it is derived from — the crossing is
+`findCrossing` of the carried curve (engine-tested equal), so map and line cannot disagree. A curve family would
+have re-plotted the same data less legibly for the non-numbers reader and hidden the per-cell evidence.
+
+**Decision — a frontier is the SAME record kind, not a new store.** It rides `ThresholdResult` with two additive
+nullable columns (`condition_lever_key`, `condition_grid`) as the discriminator (null = 1-D). Both join the inputs
+hash, so a 1-D threshold and a frontier over the same lever can never answer for each other, and an identical
+re-request is a cache hit. This buys the whole Phase-1 machinery for free: builder-edit invalidation (the delete
+cascade), live progress + cancel (`SweepEngine::frontier` gained a per-cell `onProgress` — the longest run in the
+app never runs silently), the awaiting-worker hint, and the owner-scoped CSV route (the controller branches to
+`FrontierCsvExporter`). The payload readers are strict: `thresholdOutcome()` is null on a frontier row and
+`frontierOutcome()` null on a 1-D row — the column pair decides, never payload sniffing.
+
+**Decision — cost is bounded by construction.** The condition axis defaults to a deliberately **coarse** grid
+(`defaultConditionGrid`: five held values over the 1-D span — every column costs a full common-random-numbers
+sweep) and the queued run defaults to `FRONTIER_DEFAULT_PATHS` = 1,000 paths/cell, half the 1-D density: a cell's
+95% Wilson interval is still ≈±2 points near a 90% success rate — tight enough to band each column's crossing —
+and the ~45-cell map stays minutes on a queued worker. Both are recorded provenance and overridable. The care
+toggle is refused on either axis (a categorical pin-and-compare has no range to sweep or hold), and a same-lever
+pair is refused (the second `apply` would overwrite the first). v1 pairs household-wide levers; the UI offers the
+headline pair only (buy price × retirement age), gated to a scenario where both axes are live (a configured buy +
+someone still working).
+
+**Correctness pin (the spec's test):** a frontier column is **byte-identical** to the Phase-1 1-D compute run on a
+scenario that actually *holds* the condition (same pinned seed; `LeverThresholdServiceTest`) — the iso-line is the
+1-D threshold repeated per held value, provably. The summary sentence pins BOTH levers ("up to about £X with
+retirement at age A, and up to about £Y at age B") and the Phase-2 guardrails extend here: "safe" never appears,
+ceilings are always "about" a banded value, colour never carries meaning alone.
+**Status:** active (Phase 5 built; remaining: Phase 6 assistant tie-in; Rob's browser read of the V2 pair)
+
 ## 2026-07-06 — Age-varying spend (the "smile"): a per-line, piecewise-real `SpendPath` in the engine
 **Context:** `ExpenseProfile` held a single flat-real essential + discretionary spend with no age-banded path anywhere
 in the engine. That is not just a fidelity gap — flat-real-to-death **understates** how much can be safely spent

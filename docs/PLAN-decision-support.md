@@ -266,6 +266,28 @@ table + CSV.
 - **Done when:** the frontier reproduces the V2 pair; the simple summary pins both levers. **Tests:** the
   iso-line matches the per-column 1-D crossings from Phase 1.
 
+**Phase 5 is BUILT (2026-07-07).** The **heatmap** form was chosen over the family-of-curves: every measured cell is
+shown, and the iso-line *emerges as the tint boundary* — derived from the same cells it is drawn over, so the two
+cannot disagree. Engine: `FrontierPoint` now carries its full per-column `SweepCurve` (the cells) beside the crossing,
+and `SweepEngine::frontier` reports per-cell progress (the longest run in the app never runs silently). App:
+`LeverThresholdService::computeFrontier` (the same forecaster resolution + pinned seed as `compute`; refuses a
+same-lever pair and the categorical care toggle on either axis; v1 pairs household-wide levers, headline = buy price ×
+retirement age) + `defaultConditionGrid` (five held values over the 1-D span — every column costs a full sweep). The
+run rides the SAME `ThresholdResult` record: additive `condition_lever_key` + `condition_grid` columns are the
+discriminator (null = 1-D), both join the inputs hash so the two kinds can never answer for each other, and the
+edit-invalidation, live progress, cancel and the owner-scoped CSV route all apply for free. Queued at
+`ThresholdRunner::FRONTIER_DEFAULT_PATHS` = 1,000 paths/cell (half the 1-D density: a cell's Wilson CI is still ≈±2
+points near 90%, and the ~45-cell map stays minutes, not tens). UI: a **"trade-off map"** block on the
+`ThresholdExplorer` panel, offered only when BOTH axes are live levers (a configured buy + someone still working): a
+summary sentence that **pins both levers** ("up to about £X with retirement at age A, and up to about £Y at age B" —
+never an unconditional number), per-column banded chips, and an analyst disclosure holding the full tinted-cell table
+(each cell's percentage as text — colour never carries meaning alone) + a frontier CSV (`FrontierCsvExporter`: both
+levers, per-column banded verdicts, every cell long-format with its CI). The spec's correctness pin landed: a frontier
+column is **byte-identical** to the Phase-1 1-D compute on a scenario that actually holds the condition
+(`LeverThresholdServiceTest`), and engine-side every point's crossing equals `findCrossing` of its own carried curve.
+The "reproduces the V2 pair" read is Rob's browser step (his real scenario + the queue worker). See DECISIONS
+2026-07-07. **Next: Phase 6.**
+
 ### Phase 6 — Assistant tie-in (grounded, staleness-aware)
 Extend `ScenarioContext` with the computed threshold/curve as `AssistantFact`s **only when the inputs hash
 matches** (so `FigureGrounding` G1 can't restate a stale figure). The assistant *states* the threshold in plain

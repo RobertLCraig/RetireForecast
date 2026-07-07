@@ -35,6 +35,15 @@ final class ThresholdRunner
      */
     public const DEFAULT_PATHS = 2_000;
 
+    /**
+     * Paths per CELL for a queued 2-D frontier. A frontier multiplies the 1-D cost by its held
+     * values (~5 columns × ~9-11 cells each), so it runs at half the 1-D density: at 1,000 paths a
+     * cell's 95% Wilson interval is still ≈±2 points near a 90% success rate — tight enough to band
+     * each column's crossing — while the whole map stays a few minutes on a queued worker instead
+     * of tens. Recorded as provenance and overridable like the 1-D count.
+     */
+    public const FRONTIER_DEFAULT_PATHS = 1_000;
+
     public function __construct(
         private readonly LeverThresholdService $service,
         private readonly ScenarioForecaster $forecaster,
@@ -83,12 +92,62 @@ final class ThresholdRunner
     }
 
     /**
+     * The 2-D twin of {@see request}: return an existing frontier for these exact inputs (done, or
+     * already in flight) or queue a fresh one. The condition lever + its held grid join the inputs
+     * hash, so a frontier is cached and invalidated exactly as a 1-D threshold is — and the two can
+     * never answer for each other (a 1-D hash has null condition fields).
+     *
+     * @param  list<float>|null  $thresholdGrid
+     * @param  list<float>|null  $conditionGrid
+     */
+    public function requestFrontier(
+        Scenario $scenario,
+        LeverKey $thresholdLever,
+        LeverKey $conditionLever,
+        SweepMetric $metric,
+        float $targetProbability,
+        ?array $thresholdGrid = null,
+        ?array $conditionGrid = null,
+        ?int $paths = null,
+    ): ThresholdResult {
+        $household = $scenario->toHousehold();
+        $action = $scenario->toHousingAction();
+        $thresholdGrid ??= $this->service->defaultGrid($thresholdLever, $household, $action);
+        $conditionGrid ??= $this->service->defaultConditionGrid($conditionLever, $household, $action);
+        $paths ??= self::FRONTIER_DEFAULT_PATHS;
+        $hash = $this->inputsHash(
+            $scenario, $thresholdLever, $metric, $targetProbability, $thresholdGrid, $paths,
+            conditionLever: $conditionLever, conditionGrid: $conditionGrid,
+        );
+
+        $existing = ThresholdResult::query()
+            ->where('scenario_id', $scenario->id)
+            ->where('inputs_hash', $hash)
+            ->whereIn('status', [SimulationStatus::Done, SimulationStatus::Queued, SimulationStatus::Running])
+            ->latest()
+            ->first();
+
+        if ($existing !== null) {
+            return $existing; // cache hit, or a frontier for these inputs is already running
+        }
+
+        $run = $this->createRun(
+            $scenario, $thresholdLever, $metric, $targetProbability, $thresholdGrid, $paths, $hash,
+            conditionLever: $conditionLever, conditionGrid: $conditionGrid,
+        );
+        RunLeverThreshold::dispatch($run->id);
+
+        return $run;
+    }
+
+    /**
      * The cache key for a sweep: everything that changes the answer. The effective form-state is
      * the single source of truth for every forecast input (household, settings, assumptions), so
      * hashing it plus the engine version and the compute parameters means any input edit, engine
      * bump or parameter change misses the cache and any unchanged re-request hits it.
      *
      * @param  list<float>  $grid
+     * @param  list<float>|null  $conditionGrid
      */
     public function inputsHash(
         Scenario $scenario,
@@ -98,12 +157,18 @@ final class ThresholdRunner
         array $grid,
         int $paths,
         ?string $leverParam = null,
+        ?LeverKey $conditionLever = null,
+        ?array $conditionGrid = null,
     ): string {
         return hash('sha256', json_encode([
             'inputs' => $scenario->effectiveBuilderState(),
             'engine' => ScenarioForecaster::ENGINE_VERSION,
             'lever' => $lever->value,
             'lever_param' => $leverParam,
+            // The frontier's second axis; both null for a 1-D threshold, so the two kinds of run
+            // can never hash to each other.
+            'condition_lever' => $conditionLever?->value,
+            'condition_grid' => $conditionGrid,
             'metric' => $metric->value,
             'target' => $targetProbability,
             'grid' => $grid,
@@ -114,6 +179,7 @@ final class ThresholdRunner
 
     /**
      * @param  list<float>  $grid
+     * @param  list<float>|null  $conditionGrid
      */
     public function createRun(
         Scenario $scenario,
@@ -124,12 +190,16 @@ final class ThresholdRunner
         int $paths,
         string $inputsHash,
         ?string $leverParam = null,
+        ?LeverKey $conditionLever = null,
+        ?array $conditionGrid = null,
     ): ThresholdResult {
         $run = new ThresholdResult([
             'scenario_id' => $scenario->id,
             'user_id' => $scenario->user_id,
             'lever_key' => $lever->value,
             'lever_param' => $leverParam,
+            'condition_lever_key' => $conditionLever?->value,
+            'condition_grid' => $conditionGrid,
             'metric' => $metric->value,
             'target_probability' => $targetProbability,
             'n_paths' => $paths,
@@ -148,9 +218,10 @@ final class ThresholdRunner
     }
 
     /**
-     * Run the sweep, reporting progress and honouring a cancel. Mirrors
-     * {@see SimulationRunner::execute}: a cancel between grid points stops it
-     * cleanly, any other failure lands in Failed with its reason (no silent failure).
+     * Run the sweep — 1-D threshold or 2-D frontier, decided by the record's condition columns —
+     * reporting progress and honouring a cancel. Mirrors {@see SimulationRunner::execute}: a
+     * cancel between grid points (or frontier cells) stops it cleanly, any other failure lands in
+     * Failed with its reason (no silent failure).
      */
     public function execute(ThresholdResult $run): void
     {
@@ -160,23 +231,39 @@ final class ThresholdRunner
 
         $run->update(['status' => SimulationStatus::Running, 'started_at' => now(), 'progress_pct' => 0]);
 
+        $onProgress = function (int $done, int $total) use ($run): void {
+            $pct = min(99, (int) floor($done / max(1, $total) * 100));
+            if ($pct > $run->progress_pct) {
+                $run->update(['progress_pct' => $pct]);
+                $this->assertNotCancelled($run);
+            }
+        };
+
         try {
-            $outcome = $this->service->compute(
-                $run->scenario,
-                $run->leverKey(),
-                $run->metricEnum(),
-                $run->target_probability,
-                grid: $run->grid,
-                nPaths: $run->n_paths,
-                leverParam: $run->lever_param,
-                onProgress: function (int $done, int $total) use ($run): void {
-                    $pct = min(99, (int) floor($done / max(1, $total) * 100));
-                    if ($pct > $run->progress_pct) {
-                        $run->update(['progress_pct' => $pct]);
-                        $this->assertNotCancelled($run);
-                    }
-                },
-            );
+            if ($run->isFrontier()) {
+                $outcome = $this->service->computeFrontier(
+                    $run->scenario,
+                    $run->leverKey(),
+                    $run->conditionLeverKey(),
+                    $run->metricEnum(),
+                    $run->target_probability,
+                    thresholdGrid: $run->grid,
+                    conditionGrid: $run->condition_grid,
+                    nPaths: $run->n_paths,
+                    onProgress: $onProgress,
+                );
+            } else {
+                $outcome = $this->service->compute(
+                    $run->scenario,
+                    $run->leverKey(),
+                    $run->metricEnum(),
+                    $run->target_probability,
+                    grid: $run->grid,
+                    nPaths: $run->n_paths,
+                    leverParam: $run->lever_param,
+                    onProgress: $onProgress,
+                );
+            }
         } catch (RunCancelled) {
             $run->update(['status' => SimulationStatus::Cancelled, 'finished_at' => now()]);
 
@@ -187,7 +274,7 @@ final class ThresholdRunner
             return;
         }
 
-        $run->setThresholdOutcome($outcome)
+        ($outcome instanceof FrontierOutcome ? $run->setFrontierOutcome($outcome) : $run->setThresholdOutcome($outcome))
             ->fill(['status' => SimulationStatus::Done, 'progress_pct' => 100, 'finished_at' => now()])
             ->save();
     }

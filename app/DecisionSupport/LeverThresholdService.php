@@ -6,6 +6,7 @@ namespace App\DecisionSupport;
 
 use App\Forecast\ScenarioForecaster;
 use App\Models\Scenario;
+use InvalidArgumentException;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
@@ -79,6 +80,78 @@ final class LeverThresholdService
         );
 
         return new ThresholdOutcome($lever, $metric, $targetProbability, $curve, $engine->findCrossing($curve, $targetProbability));
+    }
+
+    /**
+     * The 2-D frontier (Phase 5): the $thresholdLever's crossing of $targetProbability at each held
+     * value of $conditionLever — e.g. the buy-price ceiling at each retirement age. Resolves the
+     * scenario exactly as {@see compute} does (same forecaster, same pinned seed), builds BOTH
+     * levers through the same {@see buildLever}, and runs the engine's frontier: per condition
+     * value, a full common-random-numbers sweep of the threshold lever, keeping every measured
+     * cell (the heatmap) and the crossing it implies (the iso-line).
+     *
+     * The two levers must differ (the second `apply` would otherwise overwrite the first), and the
+     * care toggle is refused on either axis — it is a categorical pin-and-compare, not a range a
+     * frontier can hold at or sweep. v1 pairs the household-wide levers only (the headline pair is
+     * buy price × retirement age); the per-person levers keep to the 1-D explorer.
+     *
+     * $onProgress is (cells done, total cells) — a frontier is |conditionGrid| × |thresholdGrid|
+     * Monte Carlo runs, the longest compute in the app, so it is queued and never silent.
+     *
+     * @param  list<float>|null  $thresholdGrid
+     * @param  list<float>|null  $conditionGrid
+     * @param  (callable(int $done, int $total): void)|null  $onProgress
+     */
+    public function computeFrontier(
+        Scenario $scenario,
+        LeverKey $thresholdLever,
+        LeverKey $conditionLever,
+        SweepMetric $metric,
+        float $targetProbability,
+        ?array $thresholdGrid = null,
+        ?array $conditionGrid = null,
+        int $nPaths = 500,
+        ?callable $onProgress = null,
+    ): FrontierOutcome {
+        if ($thresholdLever === $conditionLever) {
+            throw new InvalidArgumentException('A frontier needs two different levers — one swept, one held.');
+        }
+        if ($thresholdLever === LeverKey::Care || $conditionLever === LeverKey::Care) {
+            throw new InvalidArgumentException('The care toggle is a pinned before/after, not a range a frontier can sweep or hold.');
+        }
+
+        $engine = new SweepEngine($this->forecaster->config($scenario));
+        $household = $scenario->toHousehold();
+        $settings = $this->forecaster->settings($scenario);
+        $assumptions = $this->forecaster->assumptions($scenario);
+        $action = $scenario->toHousingAction();
+
+        $thresholdGrid ??= $this->defaultGrid($thresholdLever, $household, $action);
+        $conditionGrid ??= $this->defaultConditionGrid($conditionLever, $household, $action);
+
+        $frontier = $engine->frontier(
+            $household, $settings, $assumptions, new CohortLifeTable,
+            $this->buildLever($scenario, $thresholdLever, $assumptions, $action), $thresholdGrid,
+            $this->buildLever($scenario, $conditionLever, $assumptions, $action), $conditionGrid,
+            $metric, $targetProbability, $nPaths, self::SEED, $onProgress,
+        );
+
+        return new FrontierOutcome($thresholdLever, $conditionLever, $metric, $targetProbability, $frontier);
+    }
+
+    /**
+     * The default HELD grid when a lever is a frontier's condition axis: five evenly-spaced values
+     * over the same span as its 1-D {@see defaultGrid}. Coarser than the swept grid on purpose —
+     * every held value multiplies the frontier's Monte Carlo cost by a full sweep, and five
+     * columns already show how the ceiling shifts across the range.
+     *
+     * @return list<float>
+     */
+    public function defaultConditionGrid(LeverKey $key, Household $household, HousingAction $action): array
+    {
+        $grid = $this->defaultGrid($key, $household, $action);
+
+        return self::linspace($grid[0], (float) end($grid), 5);
     }
 
     /**

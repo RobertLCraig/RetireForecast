@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\DecisionSupport\FrontierPresenter;
 use App\DecisionSupport\LeverKey;
 use App\DecisionSupport\LeverThresholdService;
 use App\DecisionSupport\ThresholdPresenter;
@@ -47,6 +48,9 @@ class ThresholdExplorer extends Component
     /** The queued/completed threshold for the current lever, or null before one is requested. */
     public ?int $thresholdId = null;
 
+    /** The queued/completed 2-D trade-off map (buy price × retirement age), or null before one is requested. */
+    public ?int $frontierId = null;
+
     public function mount(Scenario $scenario): void
     {
         abort_unless($scenario->user_id === auth()->id(), 403);
@@ -84,6 +88,29 @@ class ThresholdExplorer extends Component
     {
         if ($threshold = $this->currentThreshold()) {
             app(ThresholdRunner::class)->cancel($threshold);
+        }
+    }
+
+    /**
+     * Queue the 2-D trade-off map (or hit the cache): the buy-price ceiling at each held
+     * retirement age — Phase 5's answer to "a single limit hides the pairing".
+     */
+    public function mapFrontier(): void
+    {
+        if (! $this->frontierOffered()) {
+            return; // this scenario has no buy to price or no one still working
+        }
+
+        $run = app(ThresholdRunner::class)->requestFrontier(
+            $this->scenario, LeverKey::BuyPrice, LeverKey::RetirementAge, SweepMetric::Essentials, $this->target,
+        );
+        $this->frontierId = $run->id;
+    }
+
+    public function cancelFrontier(): void
+    {
+        if ($frontier = $this->currentFrontier()) {
+            app(ThresholdRunner::class)->cancel($frontier);
         }
     }
 
@@ -141,6 +168,12 @@ class ThresholdExplorer extends Component
             }
         }
 
+        $frontier = $this->currentFrontier();
+        $frontierOutcome = ($frontier !== null && $frontier->status === SimulationStatus::Done)
+            ? $frontier->frontierOutcome()
+            : null;
+        $frontierView = $frontierOutcome !== null ? FrontierPresenter::view($frontierOutcome) : null;
+
         return view('livewire.threshold-explorer', [
             'leverKey' => $lever,
             'isCare' => $isCare,
@@ -157,10 +190,37 @@ class ThresholdExplorer extends Component
             'sCurve' => $sCurve,
             'careComparison' => $careComparison,
             'csvUrl' => $csvUrl,
+            // The 2-D trade-off map (Phase 5): offered only when both its axes are real levers
+            // here; the view model appears once its queued run completes.
+            'frontierOffered' => $this->frontierOffered(),
+            'frontier' => $frontier,
+            'frontierView' => $frontierView,
+            'frontierCsvUrl' => $frontierView !== null ? route('scenarios.threshold.csv', [$this->scenario, $frontier]) : null,
             // Headline: the current plan's Monte Carlo odds as a natural-frequency pictograph
             // (year-first, never a bare %). Null until a full forecast has run.
             'pictograph' => $this->pictograph(),
         ]);
+    }
+
+    /** The frontier record, owner-scoped like {@see currentThreshold} (a tampered id can't load another user's). */
+    private function currentFrontier(): ?ThresholdResult
+    {
+        return $this->frontierId
+            ? ThresholdResult::where('user_id', auth()->id())->where('scenario_id', $this->scenario->id)->find($this->frontierId)
+            : null;
+    }
+
+    /**
+     * Whether the trade-off map is offered: both of its axes must be levers this scenario can
+     * actually move — a configured buy to sweep the price of, and someone still working to hold
+     * the retirement age at. The same gates as the 1-D lever menu, required together.
+     */
+    private function frontierOffered(): bool
+    {
+        $ids = array_column($this->leverChoices(), 'id');
+
+        return in_array(LeverKey::BuyPrice->value, $ids, true)
+            && in_array(LeverKey::RetirementAge->value, $ids, true);
     }
 
     /** The threshold record for the current lever, owner-scoped (a tampered id can't load another user's). */

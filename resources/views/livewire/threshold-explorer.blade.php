@@ -322,6 +322,106 @@
         @endif
     </div>
 
+    {{-- The 2-D trade-off map (Phase 5): the buy-price ceiling at each retirement age, because a
+         single-lever limit reads as unconditional ("£260k" hides "at 67; £300k at 70"). Offered
+         only when both axes are real levers for this scenario. --}}
+    @if ($frontierOffered)
+        <div class="mt-6 border-t border-gray-100 pt-5">
+            <h3 class="text-base font-semibold text-gray-900">The trade-off map: home price × retirement age</h3>
+            <p class="mt-1 text-sm text-gray-600">
+                A single limit hides a pairing: how much the new home can cost depends on when the working
+                partner retires. This maps the two together — every cell of the map is its own full
+                Monte&nbsp;Carlo run on the same pinned draws.
+            </p>
+
+            @if (! $frontier || ($frontier->status !== \App\Enums\SimulationStatus::Done && $frontier->status->isTerminal()))
+                @if ($frontier && $frontier->status === \App\Enums\SimulationStatus::Failed)
+                    <p role="alert" class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">Mapping the trade-off failed: {{ $frontier->error }}</p>
+                @elseif ($frontier && $frontier->status === \App\Enums\SimulationStatus::Cancelled)
+                    <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">That run was cancelled. Try again when ready.</p>
+                @endif
+                <button type="button" wire:click="mapFrontier"
+                    class="mt-3 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                    Map the trade-off
+                </button>
+                <p class="mt-1 text-xs text-gray-500">Runs a full Monte&nbsp;Carlo for every cell of the map in the background — expect several minutes.</p>
+            @elseif (! $frontier->status->isTerminal())
+                <div wire:poll.1500ms="pollThreshold" class="mt-3">
+                    <div class="flex items-center justify-between text-sm text-gray-700">
+                        <span>Mapping the trade-off — {{ ucfirst($frontier->status->value) }} {{ $frontier->progress_pct }}%</span>
+                        <button type="button" wire:click="cancelFrontier" class="text-red-700 underline">Cancel</button>
+                    </div>
+                    <div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-200"
+                        role="progressbar" aria-valuenow="{{ $frontier->progress_pct }}" aria-valuemin="0" aria-valuemax="100"
+                        aria-label="Trade-off map progress">
+                        <div class="h-full bg-blue-600 transition-all" style="width: {{ $frontier->progress_pct }}%"></div>
+                    </div>
+                    @if ($frontier->isAwaitingWorker())
+                        <p role="status" class="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            Still waiting for a background worker. If you're running locally, start one with <code class="font-mono">php artisan queue:work</code>.
+                        </p>
+                    @endif
+                </div>
+            @elseif ($frontierView)
+                <div aria-live="polite">
+                    <p class="mt-3 text-sm text-gray-800">{{ $frontierView['summary'] }}</p>
+
+                    {{-- One chip per held retirement age: the price ceiling there, banded and honest. --}}
+                    <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        @foreach ($frontierView['columns'] as $column)
+                            <div class="rounded-md border border-gray-200 px-3 py-2 text-sm">
+                                <span class="font-medium text-gray-900">{{ ucfirst($column['condition']) }}:</span>
+                                <span class="text-gray-800">{{ $column['chip'] }}</span>
+                                @if ($column['ceiling'] && $column['bandLow'] && $column['bandHigh'])
+                                    <span class="block text-xs text-gray-500">the crossing sits between {{ $column['bandLow'] }} and {{ $column['bandHigh'] }}</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                    <button type="button" wire:click="mapFrontier" class="mt-2 text-xs text-blue-700 underline">Recompute</button>
+
+                    {{-- Analyst drill-down: every measured cell + CSV. The tint boundary IS the
+                         iso-line, and each cell carries its percentage as text (never colour alone). --}}
+                    <details class="mt-4">
+                        <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the full map (the numbers)</summary>
+                        <div class="mt-2 flex items-center justify-between gap-4">
+                            <p class="text-xs text-gray-500">
+                                Each cell is a full Monte&nbsp;Carlo run of {{ number_format($frontierView['pathsPerCell']) }} futures:
+                                the chance the money lasts at that pairing. Tinted cells at or above your
+                                {{ $frontierView['targetPct'] }} target sit on the on-track side; the boundary between the
+                                two tints is the limit.
+                            </p>
+                            <a href="{{ $frontierCsvUrl }}" class="shrink-0 text-sm text-blue-700 underline">Download CSV</a>
+                        </div>
+                        <div class="mt-2 overflow-x-auto" tabindex="0">
+                            <table class="w-full text-sm">
+                                <caption class="sr-only">Chance the money lasts for each pairing of {{ $frontierView['thresholdLabel'] }} and {{ $frontierView['conditionLabel'] }}</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col" class="{{ $th }}">{{ $frontierView['thresholdLabel'] }}</th>
+                                        @foreach ($frontierView['grid']['conditionLabels'] as $label)
+                                            <th scope="col" class="{{ $th }}">{{ ucfirst($label) }}</th>
+                                        @endforeach
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($frontierView['grid']['rows'] as $row)
+                                        <tr>
+                                            <th scope="row" class="{{ $td }} font-medium">{{ $row['label'] }}</th>
+                                            @foreach ($row['cells'] as $cell)
+                                                <td class="{{ $td }} {{ $cell['above'] ? 'bg-emerald-50 text-emerald-900' : 'bg-red-50 text-red-900' }}">{{ $cell['pct'] }}</td>
+                                            @endforeach
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                </div>
+            @endif
+        </div>
+    @endif
+
     <p class="mt-4 text-xs text-gray-500">
         Guidance only, not a personal recommendation. These figures show the consequences of the inputs and assumptions you entered.
         Free, impartial help: <a href="https://www.moneyhelper.org.uk" class="underline">MoneyHelper</a> and Pension&nbsp;Wise.

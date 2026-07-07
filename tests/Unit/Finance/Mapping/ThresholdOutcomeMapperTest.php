@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Finance\Mapping;
 
+use App\DecisionSupport\FrontierOutcome;
 use App\DecisionSupport\LeverKey;
 use App\DecisionSupport\ThresholdOutcome;
 use App\Finance\Mapping\ThresholdOutcomeMapper;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Sweep\Crossing;
 use RetireForecast\FinanceEngine\Sweep\CrossingVerdict;
+use RetireForecast\FinanceEngine\Sweep\Frontier;
+use RetireForecast\FinanceEngine\Sweep\FrontierPoint;
 use RetireForecast\FinanceEngine\Sweep\LeverDirection;
 use RetireForecast\FinanceEngine\Sweep\SweepCurve;
 use RetireForecast\FinanceEngine\Sweep\SweepMetric;
@@ -78,6 +81,63 @@ final class ThresholdOutcomeMapperTest extends TestCase
         $this->assertSame(260_000.0, $round->crossing->lowerLever);
         $this->assertSame(300_000.0, $round->crossing->upperLever);
         $this->assertSame(275_000.0, $round->crossing->estimate);
+    }
+
+    public function test_a_frontier_outcome_round_trips_through_a_json_cycle(): void
+    {
+        $column = static fn (float $condition, float $p1, float $p2): FrontierPoint => new FrontierPoint(
+            conditionValue: $condition,
+            crossing: new Crossing(CrossingVerdict::Crosses, 0.95, 200_000.0, 300_000.0, 250_000.0),
+            curve: new SweepCurve(
+                points: [
+                    new SweepPoint(200_000.0, $p1, $p1 - 0.02, $p1 + 0.02, 400),
+                    new SweepPoint(300_000.0, $p2, $p2 - 0.02, $p2 + 0.02, 400),
+                ],
+                metric: SweepMetric::Essentials,
+                direction: LeverDirection::Decreasing,
+                leverName: 'Buy price',
+                leverUnit: '£',
+                pathsPerPoint: 400,
+                seed: 305_419_896,
+            ),
+        );
+
+        $original = new FrontierOutcome(
+            thresholdLever: LeverKey::BuyPrice,
+            conditionLever: LeverKey::RetirementAge,
+            metric: SweepMetric::Essentials,
+            targetProbability: 0.95,
+            frontier: new Frontier(
+                points: [$column(62.0, 0.98, 0.80), $column(70.0, 0.99, 0.90)],
+                thresholdLeverName: 'Buy price',
+                conditionLeverName: 'Retirement age',
+                metric: SweepMetric::Essentials,
+                targetProbability: 0.95,
+                pathsPerPoint: 400,
+                seed: 305_419_896,
+            ),
+        );
+
+        $round = ThresholdOutcomeMapper::frontierFromArray(
+            json_decode(json_encode(ThresholdOutcomeMapper::frontierToArray($original)), true)
+        );
+
+        // The two lever identities, the bar, and the frontier provenance all survive.
+        $this->assertSame(LeverKey::BuyPrice, $round->thresholdLever);
+        $this->assertSame(LeverKey::RetirementAge, $round->conditionLever);
+        $this->assertSame(0.95, $round->targetProbability);
+        $this->assertSame('Retirement age', $round->frontier->conditionLeverName);
+        $this->assertSame(400, $round->frontier->pathsPerPoint);
+        $this->assertSame(305_419_896, $round->frontier->seed);
+
+        // Every column: the held value, its crossing band, and its full measured curve (the cells).
+        $this->assertCount(2, $round->frontier->points);
+        $this->assertSame(62.0, $round->frontier->points[0]->conditionValue);
+        $this->assertSame(CrossingVerdict::Crosses, $round->frontier->points[0]->crossing->verdict);
+        $this->assertSame(250_000.0, $round->frontier->points[0]->crossing->estimate);
+        $this->assertSame(0.98, $round->frontier->points[0]->curve->points[0]->successProbability);
+        $this->assertSame(0.90, $round->frontier->points[1]->curve->points[1]->successProbability);
+        $this->assertSame(400, $round->frontier->points[1]->curve->points[1]->paths);
     }
 
     public function test_a_no_crossing_verdict_round_trips_with_null_band(): void

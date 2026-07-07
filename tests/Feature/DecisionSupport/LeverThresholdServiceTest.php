@@ -9,6 +9,7 @@ use App\DecisionSupport\LeverThresholdService;
 use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use InvalidArgumentException;
 use RetireForecast\FinanceEngine\Sweep\CrossingVerdict;
 use RetireForecast\FinanceEngine\Sweep\LeverDirection;
 use RetireForecast\FinanceEngine\Sweep\SweepMetric;
@@ -189,6 +190,104 @@ final class LeverThresholdServiceTest extends TestCase
         ]);
 
         return ScenarioFixture::rich($user, ['pensions' => $pensions]);
+    }
+
+    public function test_a_scenario_computes_a_buy_price_by_retirement_age_frontier_with_progress(): void
+    {
+        $scenario = ScenarioFixture::rich(User::factory()->create());
+
+        $progress = [];
+        $outcome = $this->service()->computeFrontier(
+            $scenario,
+            LeverKey::BuyPrice,
+            LeverKey::RetirementAge,
+            SweepMetric::Essentials,
+            targetProbability: 0.90,
+            thresholdGrid: [150_000.0, 250_000.0],
+            conditionGrid: [62.0, 70.0],
+            nPaths: 40,
+            onProgress: function (int $done, int $total) use (&$progress): void {
+                $progress[] = [$done, $total];
+            },
+        );
+
+        // The outcome names both levers and carries the pinned seed as provenance.
+        $this->assertSame(LeverKey::BuyPrice, $outcome->thresholdLever);
+        $this->assertSame(LeverKey::RetirementAge, $outcome->conditionLever);
+        $this->assertSame(0.90, $outcome->targetProbability);
+        $this->assertSame(LeverThresholdService::SEED, $outcome->frontier->seed);
+        $this->assertSame([62.0, 70.0], array_map(fn ($p) => $p->conditionValue, $outcome->frontier->points));
+
+        // Every column keeps its full measured curve — the heatmap's cells, not just the iso-line.
+        foreach ($outcome->frontier->points as $point) {
+            $this->assertCount(2, $point->curve->points);
+        }
+
+        // Progress ticks once per cell against the whole frontier (2 columns × 2 cells).
+        $this->assertSame([[1, 4], [2, 4], [3, 4], [4, 4]], $progress);
+    }
+
+    public function test_a_frontier_column_matches_the_one_dimensional_threshold_at_that_held_value(): void
+    {
+        // The Phase-5 correctness pin (docs/PLAN-decision-support.md): the iso-line is the Phase-1
+        // threshold repeated per held value, so a frontier column must reproduce the 1-D compute on
+        // a scenario that already HOLDS the condition — same pinned seed, byte-identical curve.
+        $user = User::factory()->create();
+        $scenario = ScenarioFixture::rich($user);
+        $grid = [20_000.0, 30_000.0];
+
+        $frontier = $this->service()->computeFrontier(
+            $scenario,
+            LeverKey::EssentialSpend,
+            LeverKey::RetirementAge,
+            SweepMetric::Essentials,
+            targetProbability: 0.90,
+            thresholdGrid: $grid,
+            conditionGrid: [62.0, 70.0],
+            nPaths: 50,
+        );
+
+        // The same plan with retirement at 62 actually entered in the builder state.
+        $people = BuilderStateFixture::full()['people'];
+        $people[0]['plannedRetirementAge'] = '62';
+        $held = ScenarioFixture::rich($user, ['people' => $people]);
+        $oneD = $this->service()->compute($held, LeverKey::EssentialSpend, SweepMetric::Essentials, 0.90, $grid, 50);
+
+        $column = $frontier->frontier->points[0];
+        $this->assertSame(62.0, $column->conditionValue);
+        $this->assertSame(
+            array_map(fn ($p) => $p->successProbability, $oneD->curve->points),
+            array_map(fn ($p) => $p->successProbability, $column->curve->points),
+        );
+        $this->assertEquals($oneD->crossing, $column->crossing);
+    }
+
+    public function test_a_frontier_refuses_a_degenerate_lever_pair(): void
+    {
+        $scenario = ScenarioFixture::rich(User::factory()->create());
+
+        try {
+            $this->service()->computeFrontier($scenario, LeverKey::BuyPrice, LeverKey::BuyPrice, SweepMetric::Essentials, 0.90);
+            $this->fail('the same lever on both axes should be refused');
+        } catch (InvalidArgumentException) {
+            // one swept, one held — they must differ
+        }
+
+        // The care toggle is a categorical pin-and-compare: no range to sweep or hold at.
+        $this->expectException(InvalidArgumentException::class);
+        $this->service()->computeFrontier($scenario, LeverKey::EssentialSpend, LeverKey::Care, SweepMetric::Essentials, 0.90);
+    }
+
+    public function test_the_default_condition_grid_is_a_coarse_span_of_the_lever_range(): void
+    {
+        $scenario = ScenarioFixture::rich(User::factory()->create());
+
+        // Five held values across the same span the 1-D grid sweeps — every extra column costs a
+        // whole Monte Carlo sweep, so the condition axis is deliberately coarser.
+        $grid = $this->service()->defaultConditionGrid(
+            LeverKey::RetirementAge, $scenario->toHousehold(), $scenario->toHousingAction(),
+        );
+        $this->assertSame([55.0, 60.0, 65.0, 70.0, 75.0], $grid);
     }
 
     public function test_a_scenario_computes_a_survivor_db_fraction_threshold(): void

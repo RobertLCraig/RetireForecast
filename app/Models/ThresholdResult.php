@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\DecisionSupport\FrontierOutcome;
 use App\DecisionSupport\LeverKey;
 use App\DecisionSupport\ThresholdOutcome;
 use App\Enums\SimulationStatus;
@@ -19,6 +20,11 @@ use RetireForecast\FinanceEngine\Sweep\SweepMetric;
  * queued run (status + live progress + cancel, mirroring {@see SimulationRun}) AND the stored
  * result: the swept curve + crossing land in the encrypted `payload` once done.
  *
+ * A 2-D frontier (Phase 5) is the same run with `condition_lever_key` + `condition_grid` set:
+ * `lever_key` is swept at each held value of the condition lever and the payload holds the
+ * mapped {@see FrontierOutcome} instead. The column pair is the discriminator — never sniff
+ * the payload shape.
+ *
  * Reproducibility + staleness: the seed is fixed and recorded, the lever grid + path count +
  * engine/tax-year versions + a frozen assumption snapshot are stored, and `inputs_hash` keys
  * the row to the exact inputs it answers — so an identical re-request is a cache hit and a
@@ -26,11 +32,13 @@ use RetireForecast\FinanceEngine\Sweep\SweepMetric;
  *
  * @property string $lever_key
  * @property string|null $lever_param
+ * @property string|null $condition_lever_key
  * @property string $metric
  * @property float $target_probability
  * @property int $n_paths
  * @property int $seed
  * @property array $grid
+ * @property array|null $condition_grid
  * @property string $engine_version
  * @property string $taxyear_config_version
  * @property array $assumption_snapshot
@@ -45,8 +53,8 @@ use RetireForecast\FinanceEngine\Sweep\SweepMetric;
 class ThresholdResult extends Model
 {
     protected $fillable = [
-        'scenario_id', 'user_id', 'lever_key', 'lever_param', 'metric', 'target_probability', 'n_paths', 'seed',
-        'grid', 'engine_version', 'taxyear_config_version', 'assumption_snapshot', 'inputs_hash',
+        'scenario_id', 'user_id', 'lever_key', 'lever_param', 'condition_lever_key', 'metric', 'target_probability', 'n_paths', 'seed',
+        'grid', 'condition_grid', 'engine_version', 'taxyear_config_version', 'assumption_snapshot', 'inputs_hash',
         'status', 'progress_pct', 'payload', 'error', 'started_at', 'finished_at',
     ];
 
@@ -56,6 +64,7 @@ class ThresholdResult extends Model
             'status' => SimulationStatus::class,
             'target_probability' => 'float',
             'grid' => 'encrypted:array',
+            'condition_grid' => 'encrypted:array',
             'assumption_snapshot' => 'encrypted:array',
             'payload' => 'encrypted:array',
             'started_at' => 'datetime',
@@ -95,20 +104,48 @@ class ThresholdResult extends Model
         return LeverKey::from($this->lever_key);
     }
 
+    /** The held (condition) lever of a 2-D frontier run, or null for a 1-D threshold. */
+    public function conditionLeverKey(): ?LeverKey
+    {
+        return $this->condition_lever_key === null ? null : LeverKey::from($this->condition_lever_key);
+    }
+
+    /** Whether this run is a 2-D frontier (lever swept at each held value of a second lever). */
+    public function isFrontier(): bool
+    {
+        return $this->condition_lever_key !== null;
+    }
+
     public function metricEnum(): SweepMetric
     {
         return SweepMetric::from($this->metric);
     }
 
-    /** The computed outcome (curve + crossing), or null while it is still queued/running. */
+    /**
+     * The computed 1-D outcome (curve + crossing) — null while queued/running, and null for a
+     * frontier run (whose payload is a different shape; read {@see FrontierOutcome} instead).
+     */
     public function thresholdOutcome(): ?ThresholdOutcome
     {
-        return $this->payload === null ? null : ThresholdOutcomeMapper::fromArray($this->payload);
+        return $this->payload === null || $this->isFrontier() ? null : ThresholdOutcomeMapper::fromArray($this->payload);
     }
 
     public function setThresholdOutcome(ThresholdOutcome $outcome): static
     {
         $this->payload = ThresholdOutcomeMapper::toArray($outcome);
+
+        return $this;
+    }
+
+    /** The computed 2-D frontier — null while queued/running, and null for a 1-D threshold run. */
+    public function frontierOutcome(): ?FrontierOutcome
+    {
+        return $this->payload === null || ! $this->isFrontier() ? null : ThresholdOutcomeMapper::frontierFromArray($this->payload);
+    }
+
+    public function setFrontierOutcome(FrontierOutcome $outcome): static
+    {
+        $this->payload = ThresholdOutcomeMapper::frontierToArray($outcome);
 
         return $this;
     }

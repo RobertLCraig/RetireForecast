@@ -348,6 +348,85 @@ final class ThresholdExplorerTest extends TestCase
             ->assertDontSee('@endif');                         // no leaked Blade directive
     }
 
+    public function test_it_offers_the_trade_off_map_when_both_axes_apply(): void
+    {
+        // The rich fixture buys a cheaper home AND has a working partner — both axes are live.
+        $scenario = ScenarioFixture::rich($this->user);
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->assertSee('The trade-off map')
+            ->assertSee('Map the trade-off');
+    }
+
+    public function test_it_hides_the_trade_off_map_when_an_axis_is_missing(): void
+    {
+        // A lone retiree who buys nothing: no buy price to sweep, no retirement age to hold.
+        $scenario = ScenarioFixture::fromState($this->user, array_replace(
+            ['step' => 5, 'name' => 'Solo', 'baseTaxYear' => '2026-27', 'variant' => 'rent', 'ihtModelled' => false, 'assumptionSetId' => null],
+            BuilderStateFixture::minimalValid(),
+        ));
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->assertSee('How far can we go?')
+            ->assertDontSee('The trade-off map');
+    }
+
+    public function test_map_frontier_queues_the_frontier_run(): void
+    {
+        Queue::fake();
+        $scenario = ScenarioFixture::rich($this->user);
+
+        $component = Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->call('mapFrontier');
+
+        $this->assertNotNull($component->get('frontierId'));
+        Queue::assertPushed(RunLeverThreshold::class);
+
+        $run = ThresholdResult::where('scenario_id', $scenario->id)->sole();
+        $this->assertTrue($run->isFrontier());
+        $this->assertSame(LeverKey::BuyPrice->value, $run->lever_key);
+        $this->assertSame(LeverKey::RetirementAge->value, $run->condition_lever_key);
+        $this->assertNotEmpty($run->condition_grid);
+    }
+
+    public function test_a_completed_frontier_paints_the_map(): void
+    {
+        $scenario = ScenarioFixture::rich($this->user);
+
+        // A small, fast frontier to Done (2 columns × 2 cells at 30 paths; sync queue runs it inline).
+        $frontier = app(ThresholdRunner::class)->requestFrontier(
+            $scenario, LeverKey::BuyPrice, LeverKey::RetirementAge, SweepMetric::Essentials, 0.90,
+            thresholdGrid: [150_000.0, 250_000.0], conditionGrid: [62.0, 70.0], paths: 30,
+        )->fresh();
+        $this->assertSame(SimulationStatus::Done, $frontier->status);
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->set('frontierId', $frontier->id)
+            ->assertOk()
+            ->assertSee('Show the full map')
+            ->assertSee('Age 62')                 // a held-value column header
+            ->assertSee('£250,000')               // a swept price row label
+            ->assertSee('Download CSV')
+            ->assertDontSee('safe')               // the neutral-copy guardrail
+            ->assertDontSee('@endif');            // no leaked Blade directive
+    }
+
+    public function test_a_frontier_id_from_another_user_does_not_load(): void
+    {
+        $mine = ScenarioFixture::rich($this->user);
+
+        $stranger = User::factory()->create();
+        $theirs = app(ThresholdRunner::class)->requestFrontier(
+            ScenarioFixture::rich($stranger), LeverKey::BuyPrice, LeverKey::RetirementAge, SweepMetric::Essentials, 0.90,
+            thresholdGrid: [150_000.0, 250_000.0], conditionGrid: [62.0, 70.0], paths: 30,
+        )->fresh();
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $mine])
+            ->set('frontierId', $theirs->id)
+            ->assertSee('Map the trade-off')
+            ->assertDontSee('Show the full map');
+    }
+
     public function test_a_threshold_id_from_another_user_does_not_load(): void
     {
         $mine = ScenarioFixture::rich($this->user);

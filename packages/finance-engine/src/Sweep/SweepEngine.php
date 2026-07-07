@@ -101,8 +101,14 @@ final class SweepEngine
      * The two levers must vary different things (else the second `apply` overwrites the first);
      * that is the caller's responsibility, as in Compare's variant construction.
      *
+     * $onProgress, if given, is called after each measured CELL (condition × threshold value) with
+     * (cells done, total cells) — a frontier is |conditionGrid| × |thresholdGrid| Monte Carlo runs,
+     * the longest run this engine performs, so it must never run silently. Throwing aborts, as in
+     * {@see sweep}.
+     *
      * @param  list<float>  $thresholdGrid  the values swept for the threshold lever at each condition
      * @param  list<float>  $conditionGrid  the held values of the condition lever
+     * @param  (callable(int $done, int $total): void)|null  $onProgress
      */
     public function frontier(
         Household $household,
@@ -117,16 +123,22 @@ final class SweepEngine
         float $targetProbability,
         int $nPaths,
         int $seed,
+        ?callable $onProgress = null,
     ): Frontier {
         sort($conditionGrid);
+        $totalCells = count($conditionGrid) * count($thresholdGrid);
+        $cellsDone = 0;
         $points = [];
         foreach ($conditionGrid as $conditionValue) {
             $held = $conditionLever->apply($household, $settings, $conditionValue);
             $curve = $this->sweep(
                 $held->household, $held->settings, $assumptions, $lifeTable,
                 $thresholdLever, $thresholdGrid, $metric, $nPaths, $seed,
+                $onProgress === null ? null : static function () use (&$cellsDone, $totalCells, $onProgress): void {
+                    $onProgress(++$cellsDone, $totalCells);
+                },
             );
-            $points[] = new FrontierPoint($conditionValue, $this->findCrossing($curve, $targetProbability));
+            $points[] = new FrontierPoint($conditionValue, $this->findCrossing($curve, $targetProbability), $curve);
         }
 
         return new Frontier(

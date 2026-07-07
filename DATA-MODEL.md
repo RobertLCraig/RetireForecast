@@ -234,7 +234,12 @@ unbacked `WithdrawalKind` by case name. (The pre-rebuild `households` + `scenari
   `assumption_snapshot` (frozen `AssumptionSet`), and `payload` (the mapped `ThresholdOutcome` =
   swept curve + crossing, null until done; `App\Finance\Mapping\ThresholdOutcomeMapper`). Invalidated
   on scenario edit exactly as `simulation_runs` are (deleted, cascade to children), with the
-  `inputs_hash` as the belt-and-braces so a stale threshold is never surfaced.
+  `inputs_hash` as the belt-and-braces so a stale threshold is never surfaced. **A 2-D frontier
+  (Phase 5, 2026-07-07) is the same row kind:** nullable `condition_lever_key` + encrypted
+  `condition_grid` (the held values) discriminate it (null = 1-D threshold — the columns decide,
+  never payload sniffing); both join the `inputs_hash`, and the payload is then the mapped
+  `FrontierOutcome` (per held value: the crossing + its full measured curve), read via
+  `frontierOutcome()` while `thresholdOutcome()` returns null (and vice versa for 1-D rows).
 
 `ScenarioVariant`, `ScenarioStatus`, `SimulationMode` and `SimulationStatus` are app-level enums
 (the engine takes a Household + HousingAction and does not name the variants). Withdrawals live

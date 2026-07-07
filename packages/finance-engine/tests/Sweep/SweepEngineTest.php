@@ -213,6 +213,47 @@ final class SweepEngineTest extends TestCase
         $this->assertGreaterThan($ceilings[0], end($ceilings), 'more cash affords a higher sustainable spend');
     }
 
+    public function test_each_frontier_point_carries_the_curve_its_crossing_was_read_from(): void
+    {
+        // The frontier's honest rendering is a heatmap of every measured cell with the iso-line on
+        // top, so each point keeps its full per-column curve — and the crossing must be exactly
+        // what findCrossing reads off that curve (the iso-line can never drift from the cells).
+        $thresholdGrid = [24_000.0, 36_000.0, 48_000.0];
+        $frontier = $this->engine()->frontier(
+            $this->cashPoorCouple(), $this->settings(), AssumptionSetLibrary::default(), new CohortLifeTable,
+            new EssentialSpendLever, $thresholdGrid,
+            new StartingCashLever, [100_000.0, 400_000.0],
+            SweepMetric::Essentials, targetProbability: 0.90, nPaths: 150, seed: 4,
+        );
+
+        $this->assertCount(2, $frontier->points);
+        foreach ($frontier->points as $point) {
+            // One measured cell per threshold-grid value...
+            $this->assertCount(count($thresholdGrid), $point->curve->points);
+            // ...and the point's crossing is the one its own curve yields (iso-line == cells).
+            $this->assertEquals($this->engine()->findCrossing($point->curve, 0.90), $point->crossing);
+        }
+    }
+
+    public function test_a_frontier_reports_progress_per_cell(): void
+    {
+        // A frontier is the longest run the engine performs (cells × paths), so it must never run
+        // silently: each measured cell ticks once against the whole frontier's cell count.
+        $ticks = [];
+        $this->engine()->frontier(
+            $this->cashPoorCouple(), $this->settings(), AssumptionSetLibrary::default(), new CohortLifeTable,
+            new EssentialSpendLever, [24_000.0, 36_000.0, 48_000.0],
+            new StartingCashLever, [100_000.0, 400_000.0],
+            SweepMetric::Essentials, targetProbability: 0.90, nPaths: 50, seed: 4,
+            onProgress: function (int $done, int $total) use (&$ticks): void {
+                $ticks[] = [$done, $total];
+            },
+        );
+
+        // 2 condition values × 3 threshold values = 6 cells.
+        $this->assertSame([[1, 6], [2, 6], [3, 6], [4, 6], [5, 6], [6, 6]], $ticks);
+    }
+
     /** A couple with State Pensions but no other assets, spending above their income — success rises with cash. */
     private function cashPoorCouple(): Household
     {

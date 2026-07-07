@@ -144,6 +144,55 @@ final class ThresholdRunnerTest extends TestCase
         $this->assertNull($run->fresh()->thresholdOutcome());
     }
 
+    public function test_a_frontier_request_runs_to_completion_and_round_trips_its_map(): void
+    {
+        $scenario = $this->scenario();
+
+        // Sync queue: the request runs the whole frontier inline through dispatch -> job -> runner.
+        $run = $this->runner()->requestFrontier(
+            $scenario, LeverKey::BuyPrice, LeverKey::RetirementAge, SweepMetric::Essentials, 0.90,
+            thresholdGrid: [150_000.0, 250_000.0], conditionGrid: [62.0, 70.0], paths: 30,
+        )->fresh();
+
+        // The record is a frontier (the condition columns are the discriminator) and is Done.
+        $this->assertTrue($run->isFrontier());
+        $this->assertSame(LeverKey::BuyPrice->value, $run->lever_key);
+        $this->assertSame(LeverKey::RetirementAge, $run->conditionLeverKey());
+        $this->assertEquals([62.0, 70.0], $run->condition_grid);
+        $this->assertSame(SimulationStatus::Done, $run->status);
+        $this->assertSame(100, $run->progress_pct);
+
+        // The payload rehydrates as a frontier — with every column's full curve — and never as a
+        // 1-D threshold (the two readers can't answer for each other).
+        $outcome = $run->frontierOutcome();
+        $this->assertNotNull($outcome);
+        $this->assertSame(LeverKey::BuyPrice, $outcome->thresholdLever);
+        $this->assertSame(LeverKey::RetirementAge, $outcome->conditionLever);
+        $this->assertCount(2, $outcome->frontier->points);
+        $this->assertCount(2, $outcome->frontier->points[0]->curve->points);
+        $this->assertNull($run->thresholdOutcome());
+    }
+
+    public function test_re_requesting_an_identical_frontier_is_a_cache_hit_but_a_1d_threshold_is_not(): void
+    {
+        Queue::fake();
+        $scenario = $this->scenario();
+        $args = [
+            $scenario, LeverKey::RetirementAge, LeverKey::EssentialSpend, SweepMetric::Essentials, 0.90,
+            self::GRID, [20_000.0, 40_000.0], 40,
+        ];
+
+        $first = $this->runner()->requestFrontier(...$args);
+        $second = $this->runner()->requestFrontier(...$args);
+        $this->assertSame($first->id, $second->id); // identical frontier inputs -> the same record
+
+        // A 1-D request sweeping the SAME lever over the SAME grid at the SAME paths differs only
+        // by the (null) condition fields — and still never collides with the frontier's hash.
+        $oneD = $this->request($scenario);
+        $this->assertNotSame($first->id, $oneD->id);
+        $this->assertSame(2, ThresholdResult::count());
+    }
+
     public function test_a_dead_worker_marks_the_threshold_failed(): void
     {
         $scenario = $this->scenario();
