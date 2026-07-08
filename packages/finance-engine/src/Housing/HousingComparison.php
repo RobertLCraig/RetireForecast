@@ -14,6 +14,7 @@ use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\MonteCarlo\Simulator;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -44,6 +45,18 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
 final class HousingComparison
 {
     private const DEFAULT_MOVING_COSTS_PENCE = 200_000; // £2,000
+
+    /**
+     * The standard annual home-maintenance rate applied to a BOUGHT freehold home that has no
+     * explicit running-cost basis — 1% of the home's value a year, the widely-used UK rule of
+     * thumb (Checkatrade 2023: homeowners spent on average ~1% of property value a year on
+     * maintenance; newer homes ~1%, older 1.5-4%, so 1% is conservative). It stops a bought home
+     * being modelled with zero upkeep when the current home is a leasehold flat whose building
+     * maintenance sat inside its service charge (empty runningCosts). A DEFAULT only: a current
+     * home with its own runningCosts scales those instead, and a real chosen property's actual
+     * costs would override it. verified_on 2026-07-08.
+     */
+    private const HOME_MAINTENANCE_RATE_BPS = 100; // 1.00% of value a year
 
     public function __construct(
         private readonly TaxYearConfig $config,
@@ -167,7 +180,7 @@ final class HousingComparison
             ownership: $mortgaged ? OwnershipType::Mortgaged : OwnershipType::Outright,
             isPrimaryResidence: true,
             outstandingMortgage: $mortgaged ? $outcome->mortgage : null,
-            runningCosts: $this->scaledRunningCosts($household, $action, $outcome->buyPrice),
+            runningCosts: $this->newHomeRunningCosts($household, $action, $outcome->buyPrice),
         );
 
         // A mortgaged purchase carries an ongoing interest-only (RIO) payment for life; charge it
@@ -201,14 +214,23 @@ final class HousingComparison
         );
     }
 
-    private function scaledRunningCosts(Household $household, HousingAction $action, Money $buyPrice): ?Money
+    /**
+     * The running (upkeep) costs of the bought home. When the current home carries its own
+     * runningCosts (a house with entered upkeep), scale them to the new home's value. When it
+     * does not — the common case here, a leasehold flat whose building maintenance was inside
+     * its service charge (a while_owning_home spend line, stripped on sale), so its runningCosts
+     * is empty — fall back to the standard {@see HOME_MAINTENANCE_RATE_BPS} of the buy price, so
+     * the freehold purchase is not modelled with zero upkeep. The maintenance default replaces
+     * the service charge the sold flat no longer pays.
+     */
+    private function newHomeRunningCosts(Household $household, HousingAction $action, Money $buyPrice): Money
     {
         $current = $household->primaryResidence?->runningCosts;
-        if ($current === null || $action->salePrice->isZero()) {
-            return $current;
+        if ($current !== null && $current->isPositive() && ! $action->salePrice->isZero()) {
+            return Money::fromPence((int) round($current->pence * $buyPrice->pence / $action->salePrice->pence));
         }
 
-        return Money::fromPence((int) round($current->pence * $buyPrice->pence / $action->salePrice->pence));
+        return $buyPrice->applyRate(Percent::fromBasisPoints(self::HOME_MAINTENANCE_RATE_BPS));
     }
 
     /**

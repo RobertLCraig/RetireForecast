@@ -145,6 +145,13 @@ bucket (a sold home escalates nothing; the mortgage payment is contractual and i
 Builder key `expense.propertyCostsGrowthPct`, stored **sparsely** (absent when blank, so pre-field
 scenarios and unchanged what-ifs record no delta). Surfaced as a results-page input note.
 
+**Bought-home maintenance default (2026-07-08):** the buy variant's new home takes its
+`runningCosts` from `HousingComparison::newHomeRunningCosts` — the current home's `runningCosts`
+scaled pro-rata when it has them, else a standard **1%-of-value** home-maintenance default (the UK
+rule of thumb, sourced in-code), so a freehold bought after selling a leasehold flat (whose upkeep
+was inside its stripped service charge) is not modelled upkeep-free. A real `Property::runningCosts`
+overrides it. See DECISIONS 2026-07-08.
+
 ### Scenario
 household_id, name, variant (`buy_outright` \| `rent` \| `stay_put`),
 housing_action { sale_price (Money), buy_price (Money?), rent_pa (Money?),

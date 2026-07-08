@@ -3,6 +3,43 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-08 — A bought home carries standard maintenance (the buy variant is no longer upkeep-free)
+**Context:** Rob flagged that the sell-and-buy plans model **no ownership costs on the replacement
+home**. Root cause: the buy variant scales the *current* home's `runningCosts` to the new home
+(`scaledRunningCosts`), but the V2 flat's `runningCosts` is empty — its building maintenance sits
+inside the £6,685 **service charge** (a `while_owning_home` spend line, stripped on sale). So a
+freehold house bought for £165k–£300k inherited zero property-specific upkeep, flattering every buy
+plan. Rob's instruction: use the industry standard for now; add exact costs later if a real property
+is chosen.
+**Decision:** `HousingComparison::newHomeRunningCosts` (was `scaledRunningCosts`) — when the current
+home has its own positive `runningCosts` (a house with entered upkeep), scale them pro-rata as
+before; **otherwise apply a standard 1%-of-value home-maintenance default** to the bought home. 1%
+is the widely-used UK rule of thumb ([Checkatrade 2023: homeowners spent ~1% of property value a
+year on maintenance](https://allservices4u.co.uk/understanding-the-1-rule-for-budgeting-property-maintenance/);
+newer homes ~1%, older 1.5–4%, so 1% is conservative). It replaces the service charge the sold flat
+no longer pays, so a bought freehold isn't modelled upkeep-free. A sourced `HOME_MAINTENANCE_RATE_BPS`
+constant in the housing layer (verified_on 2026-07-08); a real property's actual costs override it.
+`ENGINE_VERSION` → `finance-engine/phase-3-home-maintenance`.
+**Why:** accuracy — a zero-upkeep house is not real, and it biased the buy-vs-stay comparison toward
+buying. 1% is defensible and conservative; the lever to enter exact per-property costs already exists
+(`Property::runningCosts`), so this is a sensible default, not a ceiling.
+**Guards:** `HousingComparisonTest` — a current home with runningCosts still scales them; a
+leasehold-flat household (empty runningCosts) buying £250k gets exactly £2,500/yr.
+**v1 flags:** the current leasehold flat keeps its service charge as its building-maintenance proxy
+(no double-count), but a leaseholder's uncovered *internal* maintenance (boiler, decorating) is not
+separately modelled; the 1% is flat-real (no age-driven step). **The sell/buy V2 plans were re-run
+under this stamp.**
+**Status:** active
+
+## 2026-07-08 — A child's regular cash gift is tax-free unless work is exchanged (plan #23)
+**Decision:** Plan #23's £300/mo from the child is modelled **tax-free** (`taxable=false`) and the
+plan renamed "…child £300/mo (tax-free)". Rob confirmed no work is exchanged for it.
+**Why:** a cash gift is not income for the recipient in UK law (no source), so no income tax, and it
+is disregarded in the Pension Credit and care means-test assessments too — the taxable flag had
+understated the plan on all three axes. Only genuine earnings for work done, or (separately) the
+paying child's own close-company tax, would change that; neither applies. See the session Q&A.
+**Status:** active
+
 ## 2026-07-08 — Home-ownership costs can outpace inflation (the service-charge lever)
 **Context:** Rob questioned whether CPI-linked cost growth under-models his service charge, and
 supplied the building's 12-year history (£5,037.10 in 2014 → £6,685.00 in 2026). The analysis cut

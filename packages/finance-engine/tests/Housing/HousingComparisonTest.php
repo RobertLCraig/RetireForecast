@@ -103,6 +103,43 @@ final class HousingComparisonTest extends TestCase
         );
     }
 
+    public function test_a_bought_home_scales_the_current_homes_running_costs_when_it_has_them(): void
+    {
+        // The house-rich couple's £400k home has £4,000/yr running costs; buying a £200k home
+        // scales them pro-rata to £2,000 — the household's own upkeep, not the maintenance default.
+        $buy = $this->comparison()->variantInputs(
+            $this->houseRichCashPoor(),
+            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+            AssumptionSetLibrary::default(),
+            $this->action(),
+        )['buy_outright']['household'];
+
+        $this->assertSame(Money::fromPounds(2_000)->pence, $buy->primaryResidence->runningCosts->pence);
+    }
+
+    public function test_a_bought_home_gets_the_standard_maintenance_default_when_the_flat_had_none(): void
+    {
+        // A leasehold flat whose building maintenance sat inside its service charge has empty
+        // runningCosts. Selling it and buying a £250k freehold must not model zero upkeep: the
+        // bought home carries the standard 1%-of-value maintenance (£2,500/yr), replacing the
+        // service charge the sold flat no longer pays.
+        $flatDweller = new Household(
+            'Leaseholder', RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(20_000), Money::zero(), Percent::fromPercent(70), propertyCosts: Money::fromPounds(6_000)),
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(20_000))],
+            primaryResidence: new Property(currentValue: Money::fromPounds(350_000), ownership: OwnershipType::Outright),
+        );
+        $action = new HousingAction(salePrice: Money::fromPounds(350_000), buyPrice: Money::fromPounds(250_000));
+
+        $buy = $this->comparison()->variantInputs(
+            $flatDweller, new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+            AssumptionSetLibrary::default(), $action,
+        )['buy_outright']['household'];
+
+        $this->assertSame(Money::fromPounds(2_500)->pence, $buy->primaryResidence->runningCosts->pence);
+    }
+
     public function test_comparison_is_reproducible_on_the_same_seed(): void
     {
         $a = $this->comparison()->compare($this->houseRichCashPoor(), new ForecastSettings(baseYear: 2026), AssumptionSetLibrary::default(), $this->action(), 80, seed: 9);
