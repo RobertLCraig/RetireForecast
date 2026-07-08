@@ -72,6 +72,15 @@ final class ExpenseProfile
         public readonly ?Money $mortgageCosts = null,
         ?SpendPath $essentialSpendPath = null,
         ?SpendPath $discretionarySpendPath = null,
+        /**
+         * Optional REAL (above-inflation) annual growth of the $propertyCosts bucket — service
+         * charges and levies have outpaced CPI sector-wide (insurance, building safety), so a
+         * leaseholder can model "CPI + x%" on exactly those lines. The projector compounds it
+         * per projection year on top of the CPI all spend rides. Applies ONLY to $propertyCosts
+         * (a mortgage payment is contractual and does not escalate with it). Null = grows with
+         * CPI like everything else.
+         */
+        public readonly ?Percent $propertyCostsRealGrowth = null,
     ) {
         $this->essentialSpendPath = $this->resolvePath($essentialSpendPath, $essentialAnnualSpend, 'essential');
         $this->discretionarySpendPath = $this->resolvePath($discretionarySpendPath, $discretionaryAnnualSpend, 'discretionary');
@@ -125,6 +134,12 @@ final class ExpenseProfile
         return $this->employmentCosts ?? Money::zero();
     }
 
+    /** The real (above-inflation) growth of the property-costs bucket (zero if none). */
+    public function propertyCostsRealGrowth(): Percent
+    {
+        return $this->propertyCostsRealGrowth ?? Percent::zero();
+    }
+
     /**
      * The same profile with the current home's housing-linked costs removed — for the
      * buy/rent variants, where that home is sold. That means BOTH the ownership costs
@@ -175,6 +190,7 @@ final class ExpenseProfile
             mortgageCosts: $mortgageCosts,
             essentialSpendPath: $essentialPath,
             discretionarySpendPath: $this->discretionarySpendPath,
+            propertyCostsRealGrowth: $this->propertyCostsRealGrowth,
         );
     }
 

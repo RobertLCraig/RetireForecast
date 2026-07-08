@@ -133,6 +133,31 @@ class ScenarioBuilderTest extends TestCase
         $this->assertArrayNotHasKey('annuityRate', $pension);
     }
 
+    public function test_property_costs_growth_stores_sparsely_and_reaches_the_profile(): void
+    {
+        $save = function (callable $mutate) {
+            $component = Livewire::test(ScenarioBuilder::class);
+            foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+                $component->set($key, $value);
+            }
+            $mutate($component);
+            $component->call('save')->assertHasNoErrors();
+
+            return Scenario::latest('id')->firstOrFail();
+        };
+
+        // Blank (the default): no key stored, so a scenario predating the field — and a
+        // what-if that changes nothing — records no spurious delta.
+        $blank = $save(fn ($c) => $c);
+        $this->assertArrayNotHasKey('propertyCostsGrowthPct', $blank->effectiveBuilderState()['expense'] ?? []);
+        $this->assertNull($blank->toHousehold()->expenseProfile->propertyCostsRealGrowth);
+
+        // Set: stored, and demonstrably reaches the engine profile (completeness).
+        $set = $save(fn ($c) => $c->set('expense.propertyCostsGrowthPct', '1.5'));
+        $this->assertSame('1.5', $set->effectiveBuilderState()['expense']['propertyCostsGrowthPct']);
+        $this->assertSame(150, $set->toHousehold()->expenseProfile->propertyCostsRealGrowth?->basisPoints);
+    }
+
     public function test_adding_a_state_pension_defaults_to_the_full_rate_and_renders_the_level_picker(): void
     {
         Livewire::test(ScenarioBuilder::class)

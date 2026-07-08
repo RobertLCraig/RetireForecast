@@ -233,6 +233,28 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertSame(Money::fromPounds(10_000)->pence, $household->expenseProfile->essentialAnnualSpend->pence);
     }
 
+    public function test_property_costs_growth_reaches_the_profile_and_defaults_to_none(): void
+    {
+        // Completeness: the above-CPI growth entered in the builder demonstrably reaches the
+        // engine profile; an absent key (every scenario saved before the field) means none.
+        $state = [
+            'householdName' => 'X',
+            'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1960-01-01', 'sex' => 'male', 'employmentStatus' => 'retired']],
+            'expenseLines' => [
+                ['id' => 'a', 'label' => 'Service Charge', 'amount' => '6000', 'category' => 'essential', 'savedAsAsset' => false],
+            ],
+            'expense' => ['survivorFactor' => '70', 'propertyCostsGrowthPct' => '1.5'],
+        ];
+
+        $profile = (new HouseholdAssembler)->household($state)->expenseProfile;
+        $this->assertSame(150, $profile->propertyCostsRealGrowth?->basisPoints);
+        $this->assertSame(Money::fromPounds(6_000)->pence, $profile->propertyCosts()->pence, 'the bucket the growth applies to');
+
+        unset($state['expense']['propertyCostsGrowthPct']);
+        $this->assertNull((new HouseholdAssembler)->household($state)->expenseProfile->propertyCostsRealGrowth);
+    }
+
     public function test_cgt_history_reduces_the_occupation_timeline_to_months(): void
     {
         // Lived in 2006–2014 (main home), then let to the 2026 sale; jointly owned.

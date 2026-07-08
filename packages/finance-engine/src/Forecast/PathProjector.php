@@ -818,6 +818,20 @@ final class PathProjector
             $essentialPence = max(0, $essentialPence - $propCosts);
         }
 
+        // Home-ownership costs can outpace inflation: the property-costs bucket carries an
+        // optional REAL growth rate, compounded per projection year here in real pence — the
+        // spendFactor below then adds the CPI everyone rides, so the nominal growth is CPI + the
+        // rate. Charged only while the home is still owned: the sell variants strip the bucket
+        // (propertyCosts() is zero) and a forced sale subtracts it above, so the escalation
+        // follows the bucket for free. Added before the survivor/CPI multiply so it is treated
+        // exactly like the base bucket it grows.
+        $propertyGrowth = $household->expenseProfile->propertyCostsRealGrowth()->asFraction();
+        if ($propertyGrowth > 0.0 && ! $state['homeSold']) {
+            $escalation = (int) round($household->expenseProfile->propertyCosts()->pence * ((1.0 + $propertyGrowth) ** $yearIndex - 1.0));
+            $targetPence += $escalation;
+            $essentialPence += $escalation;
+        }
+
         $spendNominal = (int) round($targetPence * $state['spendFactor'] * $survivor)
             + $this->oneOffCostsNominal($household, $ages, $cumInflation)
             + $repayOneOff;

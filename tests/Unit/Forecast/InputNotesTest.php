@@ -62,6 +62,30 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('Robin', $text);
     }
 
+    public function test_above_cpi_property_cost_growth_is_surfaced_as_a_note(): void
+    {
+        // A service charge with an above-inflation growth rate must be visible on the results
+        // page — the later-year squeeze reads as intended, not as a bug (no silent modelling).
+        $notes = $this->notes([
+            'householdName' => 'Leaseholder', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Alex', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'expenseLines' => [
+                ['id' => 'e1', 'amount' => '15000', 'category' => 'essential'],
+                ['id' => 'sc', 'label' => 'Service Charge', 'amount' => '6000', 'category' => 'essential'],
+            ],
+            'expense' => ['survivorFactor' => '70', 'propertyCostsGrowthPct' => '1.5'],
+        ]);
+
+        $kinds = array_column($notes, 'kind');
+        $this->assertContains('property_costs_growth', $kinds);
+        $text = $notes[array_search('property_costs_growth', $kinds, true)]['text'];
+        $this->assertStringContainsString('1.5% a year above inflation', $text);
+        $this->assertStringContainsString('£6,000.00', $text);
+    }
+
     public function test_a_flat_plan_raises_no_spending_smile_note(): void
     {
         $notes = $this->notes([

@@ -137,6 +137,14 @@ explicit override wins):
   mortgage's stop condition is stricter than "while owning".
 - `employmentCosts` (`while_working`) — commuting; the projector drops it in years no one earns.
 
+**Above-CPI property-cost growth (2026-07-08):** `propertyCostsRealGrowth` (Percent?, null = none)
+is an optional **real** annual growth rate on the `propertyCosts` bucket only — service charges and
+levies have outpaced CPI sector-wide, so a leaseholder can model "CPI + x%" on exactly those lines.
+The projector compounds it per projection year on top of the CPI all spend rides; it follows the
+bucket (a sold home escalates nothing; the mortgage payment is contractual and is NOT escalated).
+Builder key `expense.propertyCostsGrowthPct`, stored **sparsely** (absent when blank, so pre-field
+scenarios and unchanged what-ifs record no delta). Surfaced as a results-page input note.
+
 ### Scenario
 household_id, name, variant (`buy_outright` \| `rent` \| `stay_put`),
 housing_action { sale_price (Money), buy_price (Money?), rent_pa (Money?),

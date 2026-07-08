@@ -218,6 +218,9 @@ final class HouseholdAssembler
             mortgageCosts: $mortgageCosts->isPositive() ? $mortgageCosts : null,
             essentialSpendPath: $essentialPath,
             discretionarySpendPath: $discretionaryPath,
+            // Above-CPI growth for the while-owning-home lines (service charge / ground rent /
+            // levies) — a leaseholder's "rises faster than inflation" lever (see ExpenseProfile).
+            propertyCostsRealGrowth: $this->percent($e['propertyCostsGrowthPct'] ?? null),
         );
     }
 

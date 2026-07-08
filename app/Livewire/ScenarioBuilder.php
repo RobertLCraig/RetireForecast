@@ -135,7 +135,7 @@ class ScenarioBuilder extends Component
     public array $people = [];
 
     /** @var array<string, mixed> Holds the survivor factor; essential/discretionary are derived from the lines now. */
-    public array $expense = ['essential' => '', 'discretionary' => '', 'survivorFactor' => '70', 'safetyBufferMonths' => '2'];
+    public array $expense = ['essential' => '', 'discretionary' => '', 'survivorFactor' => '70', 'safetyBufferMonths' => '2', 'propertyCostsGrowthPct' => ''];
 
     /**
      * The 3-tier spending lines — the source of truth for spend (Phase C1). Each:
@@ -263,6 +263,7 @@ class ScenarioBuilder extends Component
 
             'expense.survivorFactor' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'expense.safetyBufferMonths' => ['nullable', 'integer', 'min:0', 'max:60'],
+            'expense.propertyCostsGrowthPct' => ['nullable', 'numeric', 'min:0', 'max:10'],
 
             // Spending is entered as 3-tier line items (the source of truth); the
             // essential/discretionary totals are derived from them, never stored apart.
@@ -640,6 +641,10 @@ class ScenarioBuilder extends Component
         foreach ($this->expenseLines as $i => $line) {
             $this->expenseLines[$i]['included'] = ($line['included'] ?? true) !== false;
         }
+
+        // An expense section saved before the above-CPI growth input existed has no key; default
+        // it empty so the input binds (empty = property costs grow with CPI only, the old model).
+        $this->expense['propertyCostsGrowthPct'] ??= '';
     }
 
     /**
@@ -745,6 +750,13 @@ class ScenarioBuilder extends Component
         if ($this->expenseLines !== []) {
             $expense['essential'] = '';
             $expense['discretionary'] = '';
+        }
+
+        // Store the above-CPI property-costs growth only when set — sparse, like the include
+        // flag, so a base saved before the field existed and a what-if that changes nothing
+        // record no spurious delta.
+        if (($expense['propertyCostsGrowthPct'] ?? '') === '') {
+            unset($expense['propertyCostsGrowthPct']);
         }
 
         // Selling costs are the component breakdown now; never store the legacy single rate

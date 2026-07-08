@@ -3,6 +3,35 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-08 — Home-ownership costs can outpace inflation (the service-charge lever)
+**Context:** Rob questioned whether CPI-linked cost growth under-models his service charge, and
+supplied the building's 12-year history (£5,037.10 in 2014 → £6,685.00 in 2026). The analysis cut
+both ways: over the full window the charge grew **2.4%/yr against ~2.9%/yr CPI** (it *lost* ~0.5%/yr
+real, lagging the 2022–23 surge badly — +0.28% in 2022 against 9.1% CPI — then catching up), but the
+last three years ran ~**4.2%/yr ≈ CPI+1.5 real**, and sector-wide pressures (buildings insurance,
+building safety) make above-CPI leasehold costs a live risk. Rob's ruling: **assume the worst, not
+the best.** The model could not express it: every spend line rode CPI exactly (real-flat), and the
+smile bands deliberately don't apply to contingent lines.
+**Decision:** `ExpenseProfile::propertyCostsRealGrowth` (Percent?, default none) — an optional REAL
+annual growth rate on the **propertyCosts bucket only** (the `while_owning_home` lines: service
+charge / ground rent / levies). The projector compounds it per projection year in real pence before
+the survivor/CPI multiply, so nominal growth is CPI + the rate and the escalation is treated exactly
+like the bucket it grows; it **follows the bucket** (sell variants and a forced sale strip it — no
+phantom escalation on a sold home) and the **mortgage payment is not escalated** (contractual).
+Builder input on the Spending step (`expense.propertyCostsGrowthPct`, sparse — absent when blank, so
+no spurious what-if deltas); a results-page **input note** states the rate and today's bucket so the
+later-year squeeze reads as intended. **The V2 base is set to 1.5%** (the recent-trend real rate;
+children inherit via their deltas; the sell/rent children are naturally inert — their variant
+households own no home with these costs).
+**Why:** accuracy with user control — the household's own 12-year history is the best evidence and
+mildly favours CPI, but Rob prices the downside; a lever beats a baked-in judgement either way. Zero
+growth is byte-identical to the pre-feature engine (guarded).
+**Guards:** `PropertyCostsGrowthTest` (penny-exact compounding; essential floor climbs with it;
+byte-identical at zero; escalation stops at a forced sale; `withoutPropertyCosts` variants never
+escalate), an assembler completeness test (the entered rate demonstrably reaches the profile),
+builder sparse round-trip, and an `InputNotesTest` case.
+**Status:** active
+
 ## 2026-07-08 — Care years are means-tested in the projection (supersedes the gross-fee flag of 2026-07-01)
 **Context:** The 2026-07-01 care build charged the **gross self-funder fee** for every care year and
 flagged the means test as the refinement (`Care\CareMeansTest` existed but nothing in the projection

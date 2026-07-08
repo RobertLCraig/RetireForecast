@@ -1137,6 +1137,14 @@ final class ResultPresenter
             }
         }
 
+        // Above-CPI growth on the home-ownership cost lines: surface that those costs climb in
+        // real terms year on year (the later-year squeeze reads as intended, not as a bug).
+        $propertyGrowth = $profile->propertyCostsRealGrowth();
+        if ($propertyGrowth->asFraction() > 0.0 && $profile->propertyCosts()->isPositive()) {
+            $rate = rtrim(rtrim(number_format($propertyGrowth->asPercent(), 2), '0'), '.');
+            $notes[] = ['kind' => 'property_costs_growth', 'text' => "Home-ownership costs (service charge, ground rent, levies — {$profile->propertyCosts()->format()} a year today) are modelled rising {$rate}% a year above inflation while you own the home, so they climb in real terms over the projection."];
+        }
+
         return $notes;
     }
 

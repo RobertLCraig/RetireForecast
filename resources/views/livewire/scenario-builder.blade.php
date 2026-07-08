@@ -1018,6 +1018,12 @@
                         <p class="mt-1 text-xs text-gray-500">The cashflow ladder flags any year usable money falls below this many months of essential spending. 0 = only flag running out entirely.</p>
                         @error('expense.safetyBufferMonths') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                     </div>
+                    <div>
+                        <label for="expense-propertyCostsGrowthPct" class="{{ $label }}">Home-ownership costs rise above inflation by (% a year)</label>
+                        <input id="expense-propertyCostsGrowthPct" type="text" inputmode="decimal" wire:model="expense.propertyCostsGrowthPct" class="{{ $field }}" placeholder="0" @error('expense.propertyCostsGrowthPct') aria-invalid="true" @enderror>
+                        <p class="mt-1 text-xs text-gray-500">Applies to the spend lines charged while you own the home (service charge, ground rent, levies) — these have outpaced inflation sector-wide. Blank = they rise with inflation like everything else. The mortgage payment is contractual and is not escalated.</p>
+                        @error('expense.propertyCostsGrowthPct') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                    </div>
                 </div>
 
                 <p class="{{ $label }} mt-5 mb-2">One-off costs</p>
