@@ -27,9 +27,10 @@ use RetireForecast\FinanceEngine\Money\Money;
  *
  * v1 simplifications (flagged): the modelled care spell is the final $duration years of life
  * (care need concentrates near death — the engine's cohort deathAge drives timing, rather than
- * ONS health-state life expectancy, a refinement); and the GROSS self-funder cost is charged —
- * once assets fall below the means-test threshold a local authority contributes, which is NOT
- * modelled, so the tail is conservative. See {@see CareMeansTest}.
+ * ONS health-state life expectancy, a refinement). The sampled fee is the GROSS self-funder
+ * cost; the projector then means-tests each care year ({@see CareMeansTest::annualCharge()}),
+ * so once the resident's own assets fall to the capital limit the household bears only the
+ * income-based contribution and the local authority the balance.
  */
 final class CareAssumptions
 {

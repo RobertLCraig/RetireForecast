@@ -193,17 +193,23 @@ high-end), since it varies with longevity and returns.
 
 Later-life care is a fat-tailed risk, so it is modelled explicitly:
 
-- The **means test** thresholds are built in (self-funding above £23,250 of capital; capital ignored
-  below £14,250; a tariff in between). The £86,000 lifetime care cap is **not** modelled — it was
-  cancelled in July 2024.
 - In the **Monte Carlo**, each person has roughly a **1-in-4** chance of a care spell, of typically
   ~2.5 years (capped at 8), placed at the end of life, at self-funder fees (around £1,300 a week
-  residential, £1,600 nursing, from LaingBuisson). The share of futures needing care, and the
-  typical and high-end bills, are shown as a risk panel.
+  residential, £1,600 nursing, from LaingBuisson). The share of futures where care costs the
+  household anything, and the typical and high-end bills it bears, are shown as a risk panel.
+- Each care year is **means-tested** under the DHSC charging rules (England), assessed on the
+  resident's own means: full fees while their own capital is above **£23,250**; capital ignored
+  below **£14,250** with a **tariff** (£1 a week per £250) in between; once below the limit they
+  contribute their income less the **Personal Expenses Allowance** (£31.80 a week, 2026-27) and
+  the local authority pays the balance. The home is disregarded while a partner still lives in
+  it, and assessed once the resident is alone (or the home is let). A partner's own income and
+  savings are never assessable. The £86,000 lifetime care cap is **not** modelled — it was
+  cancelled in July 2024.
 
-To stay deliberately cautious, the projection charges the **gross** self-funder cost — it does not
-apply the means-test relief inside the path. Care is modelled only in the Monte Carlo, with a single
-probability (no split by sex or age).
+Simplifications: care is modelled only in the Monte Carlo, with a single probability (no split by
+sex or age); any Pension Credit award is not counted into the care contribution; the local
+authority is assumed to pay its share at the same fee rate; deferred-payment agreements and the
+12-week property disregard are below the annual grid.
 
 ## How long you might live
 
@@ -287,8 +293,9 @@ An honest list of the current limits (each is flagged in the code):
   7-year taper, trusts, business/agricultural relief, the 36% charity rate, non-descendant beneficiaries,
   or the inherited-pension income-tax interaction. The headline panel values deaths at representative
   ages; a completed Monte Carlo run additionally shows the spread of IHT across futures.
-- **Care:** the projection charges the gross self-funder cost (means-test relief not applied inside
-  the path); one probability, no sex/age split; Monte Carlo only.
+- **Care:** one probability, no sex/age split; Monte Carlo only. The in-path means test does not
+  count Pension Credit into the contribution, assumes the local authority pays at the same fee
+  rate, and skips deferred-payment / 12-week-disregard mechanics (below the annual grid).
 - **Benefits:** Guarantee Credit only (no Savings Credit); the carer addition is not in the live
   forecast.
 - **Monte Carlo:** house-price and salary growth have no volatility; normal returns (no fat tails);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Forecast;
 
 use RetireForecast\FinanceEngine\Benefits\PensionCreditCalculator;
+use RetireForecast\FinanceEngine\Care\CareMeansTest;
 use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
@@ -77,6 +78,8 @@ final class PathProjector
 
     private readonly InheritanceTaxCalculator $iht;
 
+    private readonly CareMeansTest $careMeans;
+
     public function __construct(private readonly TaxYearConfig $config)
     {
         $this->incomeTax = new IncomeTaxCalculator($config);
@@ -84,6 +87,7 @@ final class PathProjector
         $this->statePension = new StatePensionCalculator($config);
         $this->pensionCredit = new PensionCreditCalculator($config);
         $this->iht = new InheritanceTaxCalculator($config);
+        $this->careMeans = new CareMeansTest($config);
     }
 
     public function project(Household $household, ForecastSettings $settings, PathDraws $draws): ForecastResult
@@ -843,18 +847,33 @@ final class PathProjector
         // historical views). Care is an essential outflow, so it lifts both the target and the
         // essential floor and is funded like any spend; the real total is accumulated for the
         // result so the risk is visible, not silently buried in the success rate. careAnnualCost
-        // is in today's money, inflated by spendFactor like the rest of spend.
-        $careReal = 0;
+        // is the gross self-funder fee in today's money, inflated by spendFactor like the rest
+        // of spend — the means test then caps each resident's year at what the household
+        // actually bears (a self-funder pays the full fee; once their own capital falls to the
+        // upper limit the local authority pays the balance above the income-based contribution).
+        // Assessed per person, England's individual assessment: the resident's own accounts,
+        // their own taxable income, and the home only when no partner still lives in it (or it
+        // is let) — see careAssessableCapital.
+        $careChargedNominal = 0;
         foreach ($household->persons as $person) {
-            if ($alive[$person->id] ?? false) {
-                $careReal += $draws->careAnnualCost($person->id, $ages[$person->id]);
+            if (! ($alive[$person->id] ?? false)) {
+                continue;
             }
+            $feeReal = $draws->careAnnualCost($person->id, $ages[$person->id]);
+            if ($feeReal <= 0) {
+                continue;
+            }
+            $careChargedNominal += $this->careMeans->annualCharge(
+                grossAnnualFee: Money::fromPence((int) round($feeReal * $state['spendFactor'])),
+                capital: Money::fromPence($this->careAssessableCapital($household, $state, $person->id, $aliveCount)),
+                assessableAnnualIncome: Money::fromPence($taxablePerPerson[$person->id]),
+                peaUprating: $state['spendFactor'],
+            )->pence;
         }
-        if ($careReal > 0) {
-            $careNominal = (int) round($careReal * $state['spendFactor']);
-            $spendNominal += $careNominal;
-            $essentialNominal += $careNominal;
-            $state['careRealTotal'] += $careReal;
+        if ($careChargedNominal > 0) {
+            $spendNominal += $careChargedNominal;
+            $essentialNominal += $careChargedNominal;
+            $state['careRealTotal'] += (int) round($careChargedNominal / $state['spendFactor']);
         }
 
         // Fund any shortfall from assets per the drawdown strategy.
@@ -976,6 +995,32 @@ final class PathProjector
 
         return $this->pensionCredit->award($applicableWeekly, $assessableIncomeWeekly, $capital)
             ->guaranteeCreditWeekly->pence * $weeksPerYear;
+    }
+
+    /**
+     * The capital assessed against a care-home resident this year (nominal pence). England
+     * assesses the individual: the resident's own accounts (cash / GIA / ISA — the engine's
+     * accounts are individually owned; pension pots are disregarded as capital, matching the
+     * Pension Credit treatment, while drawdown income is assessed as income instead). The home
+     * is disregarded while a partner still lives in it; it counts once the resident lives alone
+     * (the 12-week disregard and deferred-payment mechanics are below the annual grid — equity
+     * funding the fees is the same outcome) or when it is LET (not the main residence, the same
+     * rule the Pension Credit test above applies). A couple's jointly held home splits equally
+     * between them, the individual assessment.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function careAssessableCapital(Household $household, array $state, string $personId, int $aliveCount): int
+    {
+        $capital = ($state['cash'][$personId] ?? 0) + ($state['gia'][$personId] ?? 0) + ($state['isa'][$personId] ?? 0);
+
+        $home = $household->primaryResidence;
+        if ($home !== null && ! $state['homeSold'] && ($aliveCount === 1 || $home->isLet)) {
+            $equity = max(0, $state['property'] - $state['mortgageOutstanding']);
+            $capital += intdiv($equity, max(1, $aliveCount));
+        }
+
+        return $capital;
     }
 
     private function dbIncome(Household $household, string $pid, int $age, float $dbFactor): int

@@ -97,7 +97,7 @@ final class TaxYearRegistry
                 carerAdditionWeekly: Money::of(46, 40),
             ),
             iht: self::ihtParameters(),
-            care: self::careParameters(),
+            care: self::careParameters(personalExpensesAllowanceWeekly: Money::of(30, 65)),
             sources: [
                 'income_tax' => 'https://www.gov.uk/income-tax-rates',
                 'dividends' => 'https://www.gov.uk/tax-on-dividends',
@@ -176,7 +176,7 @@ final class TaxYearRegistry
                 carerAdditionWeekly: Money::of(48, 15),
             ),
             iht: self::ihtParameters(),
-            care: self::careParameters(),
+            care: self::careParameters(personalExpensesAllowanceWeekly: Money::of(31, 80)),
             sources: [
                 'income_tax' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
                 'dividends' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
@@ -299,18 +299,23 @@ final class TaxYearRegistry
     }
 
     /**
-     * Adult social care means-test capital thresholds (England). Verified on 2026-06-27
+     * Adult social care means-test parameters (England). Verified on 2026-06-27
      * (gov.uk + DHSC charging-for-care guidance 2025-26): upper £23,250, lower £14,250,
-     * and £1 a week per £250 of capital between them, all frozen. The £86,000 lifetime
-     * care cap was cancelled in July 2024 and is deliberately not modelled.
+     * and £1 a week per £250 of capital between them, all frozen. The Personal Expenses
+     * Allowance is the per-year exception (uprated with inflation each April): £30.65/wk
+     * 2025-26 → £31.80/wk 2026-27, verified 2026-07-08 against the DHSC LAC charging
+     * circular 2026-27 (gov.uk social-care-charging-for-local-authorities-2026-to-2027).
+     * The £86,000 lifetime care cap was cancelled in July 2024 and is deliberately not
+     * modelled.
      */
-    private static function careParameters(): CareParameters
+    private static function careParameters(Money $personalExpensesAllowanceWeekly): CareParameters
     {
         return new CareParameters(
             upperCapitalLimit: Money::fromPounds(23_250),
             lowerCapitalLimit: Money::fromPounds(14_250),
             tariffStep: Money::fromPounds(250),
             tariffIncomePerStepWeekly: Money::fromPounds(1),
+            personalExpensesAllowanceWeekly: $personalExpensesAllowanceWeekly,
         );
     }
 }

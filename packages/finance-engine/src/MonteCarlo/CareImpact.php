@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\MonteCarlo;
 
+use RetireForecast\FinanceEngine\Care\CareMeansTest;
 use RetireForecast\FinanceEngine\Money\Money;
 
 /**
  * The modelled late-life care-cost risk across a Monte Carlo run: the share of paths in which
  * someone needed residential/nursing care, and — among those paths — the median and p90 total
- * care bill (real, today's money). Present only when care was modelled ({@see
+ * care bill (real, today's money). The bill is what the HOUSEHOLD bears after the means test
+ * ({@see CareMeansTest::annualCharge()}) — a self-funder's
+ * full fee, or the income-based contribution once the resident's own assets fall to the capital
+ * limit. Present only when care was modelled ({@see
  * \RetireForecast\FinanceEngine\Forecast\ForecastSettings::$modelCareCost}); null otherwise, so
  * the risk is shown explicitly rather than buried inside the headline success rate.
  */

@@ -184,10 +184,11 @@ final class Simulator
     }
 
     /**
-     * The modelled care risk: the share of ALL paths in which care occurred, and the median / p90
-     * total care bill AMONG the paths that had care (the conditional cost a household would face).
+     * The modelled care risk: the share of ALL paths in which care cost the household anything
+     * (post-means-test — a rare fully-LA-funded spell does not count), and the median / p90
+     * household-borne care bill AMONG those paths (the conditional cost a household would face).
      *
-     * @param  list<int>  $careCosts  per-path total real care cost (pence), only for paths with care
+     * @param  list<int>  $careCosts  per-path total real care cost (pence), only for paths with a positive cost
      */
     private function careImpact(array $careCosts, int $nPaths): CareImpact
     {

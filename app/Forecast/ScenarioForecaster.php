@@ -36,11 +36,14 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-07-08 (net-wealth): reported total wealth became net of any outstanding
+     * Bumped 2026-07-08 (care-means-test): each care year is now charged at the household-borne
+     * means-tested amount, not the gross self-funder fee — care figures (and success odds on
+     * care-modelling runs) stored under the net-wealth stamp assume gross fees throughout.
+     * Previous bump 2026-07-08 (net-wealth): total wealth became net of any outstanding
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/phase-3-net-wealth';
+    public const ENGINE_VERSION = 'finance-engine/phase-3-care-means-test';
 
     /** The central best-estimate forecast: median death ages, expected returns, no sampling. */
     public function deterministic(Scenario $scenario): ForecastResult

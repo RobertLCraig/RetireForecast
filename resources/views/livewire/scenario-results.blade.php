@@ -294,14 +294,14 @@
                 <p class="mt-1 text-sm text-gray-600">These projections include the chance of needing residential or nursing care in later life. Most people pay nothing, but a minority face very large bills — so this is a <strong>fat tail</strong>, shown as a risk rather than a single expected figure.</p>
                 <dl class="mt-4 grid gap-4 sm:grid-cols-3">
                     <div class="rounded-md bg-gray-50 p-4">
-                        <dt class="text-sm text-gray-500">Chance of needing care</dt>
+                        <dt class="text-sm text-gray-500">Chance care costs you something</dt>
                         <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">{{ $care['sharePct'] }}</dd>
-                        <dd class="mt-1 text-xs text-gray-500">of simulated futures included a care spell for at least one of you.</dd>
+                        <dd class="mt-1 text-xs text-gray-500">of simulated futures included a care spell your household paid towards.</dd>
                     </div>
                     <div class="rounded-md bg-gray-50 p-4">
                         <dt class="text-sm text-gray-500">Typical bill, if it happens</dt>
                         <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">£{{ number_format($care['medianCost']) }}</dd>
-                        <dd class="mt-1 text-xs text-gray-500">median total cost across the futures with care (today's money).</dd>
+                        <dd class="mt-1 text-xs text-gray-500">median your household bears across those futures (today's money), after any local-authority support.</dd>
                     </div>
                     <div class="rounded-md bg-gray-50 p-4">
                         <dt class="text-sm text-gray-500">A high-end bill</dt>
@@ -309,7 +309,7 @@
                         <dd class="mt-1 text-xs text-gray-500">1 in 10 of the with-care futures cost this much or more.</dd>
                     </div>
                 </dl>
-                <p class="mt-3 text-xs text-gray-500">Sourced from LaingBuisson self-funder fees (~£1,300–£1,600/week), PSSRU length-of-stay, and the Dilnot Commission ~1-in-4 lifetime risk. The full self-funder cost is charged; once your assets fall below the means-test threshold a local authority contributes, which this does not yet model (so the figure is conservative).</p>
+                <p class="mt-3 text-xs text-gray-500">Sourced from LaingBuisson self-funder fees (~£1,300–£1,600/week), PSSRU length-of-stay, and the Dilnot Commission ~1-in-4 lifetime risk. Each care year is means-tested under the DHSC charging rules: full fees while the resident's own assets are above £23,250, then a contribution from their income (keeping the Personal Expenses Allowance) with a local authority paying the balance. A partner still living in the home shields it from the assessment.</p>
             </section>
         @endif
 

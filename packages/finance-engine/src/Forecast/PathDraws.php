@@ -43,8 +43,9 @@ interface PathDraws
 
     /**
      * The person's late-life care cost for the given age, in REAL (today's money) pence, or 0 if
-     * they are not in care that year. Non-zero only on Monte Carlo paths where a care spell was
-     * sampled (see {@see CareCostSampler}); the deterministic
+     * they are not in care that year — the GROSS self-funder fee; the projector then applies the
+     * means test to what the household actually bears. Non-zero only on Monte Carlo paths where a
+     * care spell was sampled (see {@see CareCostSampler}); the deterministic
      * and historical drivers return 0, so care is a modelled risk in the distribution, not in the
      * central estimate.
      */

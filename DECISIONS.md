@@ -3,6 +3,50 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-08 — Care years are means-tested in the projection (supersedes the gross-fee flag of 2026-07-01)
+**Context:** The 2026-07-01 care build charged the **gross self-funder fee** for every care year and
+flagged the means test as the refinement (`Care\CareMeansTest` existed but nothing in the projection
+called it). That overstates the care burden on exactly the depleted paths — in England, once a
+resident's own capital falls to £23,250 the local authority pays the balance above an income-based
+contribution — so the "chance the money lasts" on care-modelling runs was biased pessimistic, worst
+where it matters most (the fat tail the panel exists to show). First item of the What's-next
+"optional refinements", picked by value: all 16 V2 plans model care.
+**Decision — assess each care year, per resident, at what the household bears.**
+`CareMeansTest::annualCharge()` is the one home for the charge rule:
+`min(fee, max(0, capital − upper limit) + tariff income + max(0, income − PEA))` — a comfortable
+self-funder pays the full fee; a funded resident contributes income minus the Personal Expenses
+Allowance plus tariff income; the crossing year pays capital down to the limit then contributes from
+income. `PathProjector` applies it per person in care (England's **individual** assessment): the
+resident's **own** accounts (cash/GIA/ISA are per-owner in the engine; pension pots disregarded as
+capital, as in the Pension Credit treatment), their **own** taxable income (income from capital is
+treated as capital under the charging regs — the tariff covers it; AA/DLA excluded, mirroring the
+28-day payment stop), and the home **only** when no partner still occupies it (lone resident) or it
+is let — the same let-home rule as the Pension Credit test, split equally for a couple. Capital
+limits + tariff stay frozen nominal (15th year running, like the PC thresholds); the **PEA is
+uprated with inflation** (as the DHSC circular does each April). `CareParameters` gains the sourced
+`personalExpensesAllowanceWeekly` (£30.65/wk 2025-26, £31.80/wk 2026-27 — DHSC LAC charging circular
+2026-27, verified 2026-07-08). `careCostReal`/`CareImpact` now report the **household-borne** bill;
+`shareOfPathsWithCare` reads "care cost the household anything" (a fully-LA-funded spell — income
+below the PEA — no longer counts, honestly relabelled on the panel). `ENGINE_VERSION` →
+`finance-engine/phase-3-care-means-test`.
+**Why:** accuracy-first — the whole point of the care panel is the tail, and the tail was wrong in
+the conservative direction; "deliberately cautious" is not a licence to misstate a statutory scheme
+the engine already carried the thresholds for. A spouse's resources are never assessable in England,
+so per-person assessment is the correct law, and the engine's per-owner accounts made it free.
+**Guards:** `CareMeansTestTest` pins the charge formula penny-exact (all three regimes, the fee cap,
+the LA-pays-everything floor, the PEA uprating); `CareMeansTestedChargeTest` pins the projection
+(funded resident charged the contribution not the fee; spend steps up by exactly the charge; a
+self-funder's behaviour preserved to the penny; a lone owner's home equity makes them a self-funder;
+a partner in the home shields it; a resident with nothing of their own is fully funded even in a
+wealthy household). Existing property-based care tests (occurrence share, reproducibility,
+care-lowers-success) pass unchanged.
+**Consequences:** stored care-modelling runs (and their success odds) assume gross fees until re-run;
+threshold records re-key via the engine version in the inputs hash. v1 flags: Pension Credit is not
+counted into the contribution; the LA is assumed to pay at the self-funder rate; deferred-payment /
+12-week-disregard mechanics are below the annual grid; a couple both in care simultaneously still
+have the home disregarded.
+**Status:** active (supersedes the "gross self-funder cost is charged" flag of 2026-07-01)
+
 ## 2026-07-08 — All reported wealth is NET of the mortgage (supersedes part of 2026-07-06)
 **Context:** Rob asked Compare "which plan leaves the most money at the end?" and the answer crowned the
 LTM roll-up combination at £595,694.63 — spendable £155,687.59 plus the home at its **gross** value, the

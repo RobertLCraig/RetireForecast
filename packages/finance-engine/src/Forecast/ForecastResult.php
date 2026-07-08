@@ -23,10 +23,12 @@ use RetireForecast\FinanceEngine\Money\Money;
  * layer can read it without re-deriving the death age. A person is modelled alive
  * through that year (their income is still counted) and gone the following year.
  *
- * $careCostReal is the total late-life care cost incurred on this path, in REAL
- * (today's money); null when care is not modelled (the deterministic and historical
- * views, and any Monte Carlo path with no sampled care spell), so the risk stays
- * visible rather than buried in the success rate. See {@see careCostReal()}.
+ * $careCostReal is the total late-life care cost the household bears on this path
+ * (net of the means test — local-authority support once the resident's own assets
+ * fall to the capital limit), in REAL (today's money); null when care is not
+ * modelled (the deterministic and historical views, and any Monte Carlo path with
+ * no sampled care spell), so the risk stays visible rather than buried in the
+ * success rate. See {@see careCostReal()}.
  *
  * $iht is the Inheritance Tax due across the household's deaths (in real terms), or null
  * when IHT is not modelled ({@see ForecastSettings::$modelIht} off) — so turning the toggle

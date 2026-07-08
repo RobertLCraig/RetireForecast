@@ -169,7 +169,7 @@ class ScenarioResultsTest extends TestCase
             ->set('previewPaths', 40)
             ->call('preview')
             ->assertSee('The risk of late-life care costs')
-            ->assertSee('Chance of needing care');
+            ->assertSee('Chance care costs you something');
     }
 
     public function test_the_results_page_shows_the_assumption_sensitivity_overlay(): void

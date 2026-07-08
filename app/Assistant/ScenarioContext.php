@@ -108,7 +108,7 @@ final class ScenarioContext implements AssistantContext
 
         $care = $forecast->careCostReal();
         if (! $care->isZero()) {
-            $facts[] = new AssistantFact('Modelled late-life care cost on this path (today\'s money)', $care->format());
+            $facts[] = new AssistantFact('Modelled household-borne late-life care cost on this path (today\'s money, after the care means test)', $care->format());
         }
 
         // The income floor + the survivor cliff (decision-support Phase 6: the assistant
@@ -292,9 +292,9 @@ final class ScenarioContext implements AssistantContext
         }
 
         if ($s->careImpact !== null) {
-            $facts[] = new AssistantFact('Monte Carlo — chance of needing residential or nursing care', ResultPresenter::formatPercent($s->careImpact->shareOfPathsWithCare));
-            $facts[] = new AssistantFact('Monte Carlo — typical (median) care bill when it happens', $s->careImpact->medianCareCost->format());
-            $facts[] = new AssistantFact('Monte Carlo — high (90th percentile) care bill', $s->careImpact->p90CareCost->format());
+            $facts[] = new AssistantFact('Monte Carlo — chance residential or nursing care costs the household anything (post-means-test)', ResultPresenter::formatPercent($s->careImpact->shareOfPathsWithCare));
+            $facts[] = new AssistantFact('Monte Carlo — typical (median) household-borne care bill when it happens (after any local-authority support)', $s->careImpact->medianCareCost->format());
+            $facts[] = new AssistantFact('Monte Carlo — high (90th percentile) household-borne care bill', $s->careImpact->p90CareCost->format());
         }
 
         return $facts;
