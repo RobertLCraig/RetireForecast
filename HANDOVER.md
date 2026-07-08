@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** Phase D go-live, **feature-complete for personal use**; the adviser-legibility workstream and the whole **post-v1 enhancement backlog are built** (annuitisation, historical stress-test, ONS mortality-refresh guardrail, care-cost risk — plus **Lane B forced-housing now complete** (in-place forced sale built 2026-07-03) + Lane C withdrawal-sequencing *core*, #5/#6 handed off). The tool runs in **personal-use advice mode** (`config('compliance.personal_use')` = the flagged regulatory line — set false before any public release). What remains is Rob's **browser verification / sign-off**, the **public-release blockers**, and **optional refinements** — see What's next + Current state.
-_Last updated: 2026-07-08 evening (all reported wealth is now NET of the mortgage — home equity, the gross-headline bug Rob caught in Compare; all 15 what-ifs renamed to state what they model. Earlier same day: the queued assistant turn; the combined what-if; the freshness CI run. Session log + DECISIONS 2026-07-08.)_
+_Last updated: 2026-07-08 late (care years are now means-tested — the household-borne charge, not the gross self-funder fee — and the V2 family re-run on the new engine stamp. Earlier same day: net-of-mortgage wealth; the 15 what-if renames; the queued assistant turn. Session log + DECISIONS 2026-07-08.)_
 
 ## Multi-agent coordination (lanes CLOSED 2026-07-02 — single-session tree)
 The concurrent A/B/C/D lanes are **closed**; this is a single-session tree again. The full per-lane build record
@@ -184,6 +184,19 @@ On `master`. A GitHub remote exists (`origin` → github.com/RobertLCraig/Retire
 
 ## Session log
 _Newest first. Keep only the recent live window here; older sessions are in `git log` + DECISIONS.md. Per-session figures are dated history and may stay._
+
+_2026-07-08 late (resume: the care means-test tail built; V2 family re-run on the new stamp)_ —
+Resumed from the handover; suite and git reconciled clean, and the "re-run before reading MC wealth"
+carry-over was found already done (16 completed runs on the net-wealth stamp), so the stale note was
+dropped. Then the first What's-next-#3 refinement, picked by value (every V2 plan models care): care
+years are now charged at the household-borne means-tested amount instead of the gross self-funder fee
+(DECISIONS 2026-07-08; the PEA sourced from the DHSC 2026-27 charging circular). The engine stamp
+bumped, so the morning's 16 runs went stale for care figures; the family was re-queued headlessly
+(runs #289–304, the same dispatch Compare's "Re-run all N" makes) and completed on
+`phase-3-care-means-test`. Panel/builder/assistant copy updated to the household-borne reading; the
+methodology doc rewritten for the means test and its v1 flags; the assistant doc index rebuilt (44
+chunks). **The two input questions for Rob below remain open** (the taxable child-help row on the buy
+plan; the £208k redemption figure).
 
 _2026-07-08 evening (Rob caught the gross-wealth headline; all wealth went net; every what-if renamed)_ —
 Compare's "most money at the end" answer credited the LTM roll-up combination with its home **gross**
