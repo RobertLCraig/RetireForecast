@@ -34,8 +34,13 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
  */
 final class ScenarioForecaster
 {
-    /** A stamp recorded on each run so any stored result is auditable back to its inputs. */
-    public const ENGINE_VERSION = 'finance-engine/phase-3';
+    /**
+     * A stamp recorded on each run so any stored result is auditable back to its inputs.
+     * Bumped 2026-07-08 (net-wealth): reported total wealth became net of any outstanding
+     * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
+     * are gross-property and not comparable.
+     */
+    public const ENGINE_VERSION = 'finance-engine/phase-3-net-wealth';
 
     /** The central best-estimate forecast: median death ages, expected returns, no sampling. */
     public function deterministic(Scenario $scenario): ForecastResult

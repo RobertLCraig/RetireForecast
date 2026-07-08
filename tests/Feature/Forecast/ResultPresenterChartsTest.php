@@ -228,7 +228,6 @@ final class ResultPresenterChartsTest extends TestCase
             liquidWealth: $liquidM,
             pensionWealth: $pensionM,
             propertyWealth: Money::zero(),
-            totalWealth: $liquidM->plus($pensionM),
         );
     }
 

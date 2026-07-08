@@ -14,7 +14,9 @@ use RetireForecast\FinanceEngine\Money\Money;
  *
  * Terminal wealth is reported two ways so the asset-rich / cash-poor case reads
  * honestly: $terminalUsableWealth is the spendable part (cash, investments, ISAs
- * and pension pots) and $terminalTotalWealth adds the illiquid primary residence.
+ * and pension pots) and $terminalTotalWealth adds the illiquid primary residence's
+ * EQUITY — net of any outstanding mortgage (NNEG-floored), so a rolled-up lifetime
+ * mortgage erodes it; a lender's share of the bricks is never reported as wealth.
  *
  * $deathCalendarYears is the modelled calendar year of each person's death
  * (personId => birthYear + death age), so the "when does each life event happen"

@@ -80,8 +80,7 @@ final class ScenarioContextTest extends TestCase
             essentialsMet: true,
             liquidWealth: Money::fromPence(18_000_000),   // £180,000.00 spendable
             pensionWealth: Money::zero(),
-            propertyWealth: Money::fromPence(25_000_000),
-            totalWealth: Money::fromPence(43_000_000),    // £430,000.00
+            propertyWealth: Money::fromPence(25_000_000), // total derives to £430,000.00
             incomeBySource: ['state_pension' => Money::fromPence(1_150_200)], // £11,502.00
         );
 

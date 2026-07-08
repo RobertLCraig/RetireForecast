@@ -55,7 +55,7 @@ final class ComparisonContext implements AssistantContext
         $lines[] = '- Essential spending funded every year: '.($forecast->essentialsAlwaysMet ? 'Yes' : 'No');
         $lines[] = '- Full (essential + discretionary) spending funded every year: '.($forecast->fullSpendAlwaysMet ? 'Yes' : 'No');
         $lines[] = '- Spendable wealth left at the end (excludes the home): '.$forecast->terminalUsableWealth->format();
-        $lines[] = '- Total wealth left at the end (includes the home): '.$forecast->terminalTotalWealth->format();
+        $lines[] = '- Total wealth left at the end (includes home equity, net of any mortgage owed): '.$forecast->terminalTotalWealth->format();
 
         return implode("\n", $lines);
     }

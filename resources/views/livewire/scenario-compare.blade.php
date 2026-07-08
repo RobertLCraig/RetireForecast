@@ -95,7 +95,7 @@
                     <th scope="col" class="px-4 py-3">Essentials covered every year</th>
                     <th scope="col" class="px-4 py-3">Money lasts</th>
                     <th scope="col" class="px-4 py-3">Usable wealth left (excl. home)</th>
-                    <th scope="col" class="px-4 py-3">Total wealth left (incl. home)</th>
+                    <th scope="col" class="px-4 py-3">Total wealth left (incl. home equity)</th>
                     @if ($showIht)<th scope="col" class="px-4 py-3">Inheritance tax</th>@endif
                     <th scope="col" class="px-4 py-3"><span class="sr-only">Links</span></th>
                 </tr>

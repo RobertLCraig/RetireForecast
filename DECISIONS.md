@@ -3,6 +3,53 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-08 — All reported wealth is NET of the mortgage (supersedes part of 2026-07-06)
+**Context:** Rob asked Compare "which plan leaves the most money at the end?" and the answer crowned the
+LTM roll-up combination at £595,694.63 — spendable £155,687.59 plus the home at its **gross** value, the
+rolled-up debt (compounding at 6.5% toward the NNEG cap) nowhere in the figure. Every Stay-put plan's
+"total incl. home" was exactly spendable + the same gross home value. The engine tracked the balance
+per-year (`mortgageBalance`/`homeEquity()`/`netWealth()`, 2026-07-06) but the terminal headline
+(`PathProjector` → `terminalTotalWealth`), the Monte Carlo percentiles/fan and every display surface read
+the gross `totalWealth`. The 2026-07-06 call — "surface net worth as an addition, NOT by changing
+`totalWealth`" — kept the misleading figure as the headline; the guard that would have caught it
+(a terminal-headline assertion) didn't exist, only per-year-row assertions.
+
+**Decision — one net definition, derived, everywhere.** `YearResult::totalWealth` is no longer a
+constructor input: it is **derived in the constructor** as liquid + pension + **home equity** (property
+net of the mortgage, NNEG-floored — the same definition `EstateValuer` uses at death). The now-identical
+`netWealth()` is deleted. `terminalTotalWealth`, the Monte Carlo terminal percentiles, fan charts,
+Compare, PDF, CSV, assistant facts and the builder live preview all inherit the net figure from that one
+home; gross property remains visible only as the `propertyWealth` leg (equity-breakdown note). Labels
+change from "incl. home" to "incl. home equity". `ScenarioForecaster::ENGINE_VERSION` bumped to
+`finance-engine/phase-3-net-wealth` (stored phase-3 wealth figures are gross and not comparable).
+**Why:** Rob's ruling — the project exists to show what the household can actually live on; "she can't
+eat the building", and a lender's share of the bricks is not the household's money. Gross-vs-net is the
+lump-sum-tax-shock lesson again (£100 gross pays £20 of food): a total that ignores a liability is not a
+total. Completeness rule applied to liabilities: every debt that should reduce a result must reach it.
+**Guards:** `WealthReconciliationTest` now runs the parts-sum invariant with and without a roll-up
+mortgage and pins that the debt reaches the **terminal headline** (the assertion whose absence let this
+live); `LifetimeMortgageRollUpTest` asserts the headline nets the consumed home.
+**Consequences:** stored Monte Carlo runs hold gross wealth percentiles until re-run (deterministic
+surfaces recompute live and are already net). A **static repayment mortgage now visibly dents total
+wealth to the end** (the engine never amortises a balance — flagged v1 limit; set a redemption year +
+repay-from-capital to clear it, or build amortisation, which needs a rate input).
+**Status:** active (supersedes the "totalWealth stays gross" block of 2026-07-06)
+
+## 2026-07-08 — A scenario's name states what its overrides actually model
+**Context:** The rename audit (same session) found names that misdescribed the model: "Let to Rent +
+Retire 5 years later" contained no letting (it models retire-at-72 + full SP £241/wk + disability benefit
+off); "child helps £330/mo" stores £4,000/yr (£333/mo); "min wage, 1/2 time" stores £12,400; every
+disposal plan silently raises the mortgage owed to £208k. In a Compare table the name IS the finding —
+a wrong name misattributes a result to the wrong lever.
+**Decision:** All 15 what-if children renamed to state their modelled changes (mechanics + figures, e.g.
+"Sell (repay £208k) & buy near kids £300k + child £300/mo (taxable)"). Renames went into each child's
+`overrides['name']` (its one home) + `projectFrom()`; no runs invalidated (a rename changes no input).
+Surfaced for Rob, not changed: the buy plan's child-help is **taxable** while the stay-put ones are
+tax-free (a gift isn't taxable income — likely under-credits that plan); confirm £208k is the true
+redemption figure. Side effect: cached thresholds re-key (the inputs hash covers the whole effective
+state, name included — arguably it shouldn't; open refinement).
+**Status:** active
+
 ## 2026-07-08 — The assistant generation is queued to the worker (the Compare-page 504)
 **Context:** Rob asked the Compare-page assistant a long multi-part question and got a raw nginx 504.
 Two causes stacked: the synchronous v1 design ran the whole Ollama generation inside one Livewire

@@ -36,7 +36,6 @@ final class PensionCreditGuidanceTest extends TestCase
             liquidWealth: Money::zero(),
             pensionWealth: Money::zero(),
             propertyWealth: Money::zero(),
-            totalWealth: Money::zero(),
             incomeBySource: ['means_tested_benefit' => $pensionCredit],
         );
     }

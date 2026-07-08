@@ -71,7 +71,7 @@ final class Simulator
         $ihtTotals = [];          // per path: total IHT due across the household's deaths (real pence); only when IHT is modelled
         $lastSurvivorAges = [];   // per path: the age the longest-living person reaches
         $lastSurvivorYears = [];  // per path: the calendar year the household ends
-        $wealthByYearIndex = [];       // yearIndex => list<int pence> total wealth (incl. home)
+        $wealthByYearIndex = [];       // yearIndex => list<int pence> total wealth (incl. home equity, net of mortgage)
         $usableByYearIndex = [];       // yearIndex => list<int pence> usable wealth (excl. home)
         $netByYearIndex = [];          // yearIndex => list<int pence> net position (usable − cumulative unmet spend)
 

@@ -255,7 +255,7 @@ class ScenarioResultsTest extends TestCase
             ->assertOk()
             ->assertSee('Year-by-year cashflow')
             ->assertSee('Usable (excl. home)')
-            ->assertSee('Total (incl. home)');
+            ->assertSee('Total (incl. home equity)');
     }
 
     public function test_the_results_page_shows_the_spending_plan_and_income_floor_before_any_run(): void
@@ -274,13 +274,13 @@ class ScenarioResultsTest extends TestCase
 
     public function test_a_preview_shows_usable_wealth_alongside_total(): void
     {
-        // Usable wealth (excl. home) must read separately from total (incl. home), so an
-        // asset-rich household that runs out of cash does not look like the wealthiest.
+        // Usable wealth (excl. home) must read separately from total (incl. home equity), so
+        // an asset-rich household that runs out of cash does not look like the wealthiest.
         Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
             ->set('previewPaths', 30)
             ->call('preview')
             ->assertSee('Usable wealth left (excl. home)')
-            ->assertSee('Total wealth left (incl. home)');
+            ->assertSee('Total wealth left (incl. home equity)');
     }
 
     public function test_the_cashflow_ladder_shows_the_scenarios_own_strategy_and_home_sale(): void

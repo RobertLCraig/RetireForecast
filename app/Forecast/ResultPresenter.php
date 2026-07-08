@@ -94,7 +94,8 @@ final class ResultPresenter
      * @param  Collection<string, Result>  $resultsByVariant  keyed by variant value
      * @param  bool  $includeHome  false (default) plots USABLE wealth (excl. the home) —
      *                             the spendable money that actually runs out; true plots
-     *                             TOTAL wealth (incl. the home). The home is an illiquid
+     *                             TOTAL wealth (incl. the home's equity, net of any
+     *                             mortgage owed). The home is an illiquid
      *                             floor that props total up without paying any bills, so
      *                             excl-home is the honest "will it last" view for a couple
      *                             not planning to sell again. The headline cards always
@@ -385,7 +386,7 @@ final class ResultPresenter
             'p90' => $y['p90']->format(),
         ], $series);
 
-        $basisLabel = $usableBasis ? 'Spendable money, excl. home' : 'Total wealth, incl. home';
+        $basisLabel = $usableBasis ? 'Spendable money, excl. home' : 'Total wealth, incl. home equity';
 
         // Anchor the axis at £0 so "do we hit zero?" reads honestly — UNLESS the net-position
         // series dips below zero (a household that runs out), in which case let the axis extend
@@ -556,7 +557,7 @@ final class ResultPresenter
             $lineRows[] = ['year' => $year, 'ages' => $ageByYear[$year] ?? null, 'cells' => $cells];
         }
 
-        $basisLabel = $usableBasis ? 'Median spendable money, excl. home' : 'Median total wealth, incl. home';
+        $basisLabel = $usableBasis ? 'Median spendable money, excl. home' : 'Median total wealth, incl. home equity';
 
         // A strategy whose median future runs out shows a net-position median below £0; let the
         // axis extend negative so that depth is visible rather than clipped to a flat zero.

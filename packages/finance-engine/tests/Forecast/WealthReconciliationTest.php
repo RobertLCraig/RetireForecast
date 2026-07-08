@@ -29,14 +29,16 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
 /**
  * Reconciliation invariant for the wealth boundary: total wealth must always equal the
- * sum of its parts (liquid + pension + property), every year and at the terminal year,
- * and the two terminal headlines the UI leads with (usable vs total) must reconcile to
- * that final year. This is the data-layer integrity rule applied to the forecast output —
- * a stored/reported total can never drift from the components it is built from.
+ * sum of its parts (liquid + pension + home EQUITY, i.e. property net of any mortgage,
+ * NNEG-floored), every year and at the terminal year, and the two terminal headlines the
+ * UI leads with (usable vs total) must reconcile to that final year. This is the
+ * data-layer integrity rule applied to the forecast output — a stored/reported total can
+ * never drift from the components it is built from, and it never counts the lender's
+ * share of the bricks as the household's wealth.
  */
 final class WealthReconciliationTest extends TestCase
 {
-    private function forecast(): ForecastResult
+    private function forecast(bool $withRollUpMortgage = false): ForecastResult
     {
         // A comfortable couple who never deplete, with a home and an ISA, so every wealth
         // leg (liquid, pension, property) is non-trivial throughout the projection.
@@ -58,6 +60,8 @@ final class WealthReconciliationTest extends TestCase
                 currentValue: Money::fromPounds(400_000),
                 ownership: OwnershipType::Outright,
                 runningCosts: Money::fromPounds(3_000),
+                outstandingMortgage: $withRollUpMortgage ? Money::fromPounds(100_000) : null,
+                mortgageRollUpRate: $withRollUpMortgage ? Percent::fromPercent(6.5) : null,
             ),
         );
 
@@ -67,16 +71,51 @@ final class WealthReconciliationTest extends TestCase
 
     public function test_every_year_total_wealth_equals_its_parts(): void
     {
-        $result = $this->forecast();
-        $this->assertNotEmpty($result->years);
+        // Mortgage-free and mortgaged alike: the same one definition must hold.
+        foreach ([false, true] as $withRollUpMortgage) {
+            $result = $this->forecast($withRollUpMortgage);
+            $this->assertNotEmpty($result->years);
+
+            foreach ($result->years as $year) {
+                $this->assertSame(
+                    $year->totalWealth->pence,
+                    $year->liquidWealth->pence + $year->pensionWealth->pence + $year->homeEquity()->pence,
+                    "total wealth must equal liquid + pension + home equity in {$year->calendarYear}",
+                );
+            }
+        }
+    }
+
+    public function test_a_mortgage_is_never_counted_as_the_household_wealth(): void
+    {
+        // Completeness guard for the liability: the rolled-up debt must reach every total —
+        // gross bricks (liquid + pension + property, ignoring the mortgage) would be higher,
+        // and that difference is exactly the (NNEG-capped) balance owed.
+        $result = $this->forecast(withRollUpMortgage: true);
 
         foreach ($result->years as $year) {
             $this->assertSame(
+                $year->liquidWealth->pence + $year->pensionWealth->pence
+                    + max(0, $year->propertyWealth->pence - $year->mortgageBalance()->pence),
                 $year->totalWealth->pence,
+                "the mortgage owed must be netted off total wealth in {$year->calendarYear}",
+            );
+            $this->assertLessThan(
                 $year->liquidWealth->pence + $year->pensionWealth->pence + $year->propertyWealth->pence,
-                "total wealth must equal liquid + pension + property in {$year->calendarYear}",
+                $year->totalWealth->pence,
+                "gross property must never be reported as wealth while a mortgage is owed ({$year->calendarYear})",
             );
         }
+
+        // And the debt reaches the terminal HEADLINE the UI and assistant lead with — the
+        // figure this guard exists for (a roll-up once reached every year row but not this).
+        $terminal = $result->years[array_key_last($result->years)];
+        $this->assertSame($terminal->totalWealth->pence, $result->terminalTotalWealth->pence);
+        $this->assertLessThan(
+            $result->terminalUsableWealth->pence + $terminal->propertyWealth->pence,
+            $result->terminalTotalWealth->pence,
+            'the terminal headline must be net of the rolled-up mortgage, not gross bricks',
+        );
     }
 
     public function test_terminal_headlines_reconcile_to_the_final_year(): void
@@ -87,13 +126,14 @@ final class WealthReconciliationTest extends TestCase
         $this->assertSame($terminal->calendarYear, $result->finalCalendarYear);
         $this->assertSame($terminal->totalWealth->pence, $result->terminalTotalWealth->pence);
 
-        // Usable wealth is the spendable part (liquid + pension); total adds the illiquid home.
+        // Usable wealth is the spendable part (liquid + pension); total adds the illiquid
+        // home's equity (== full property value here: no mortgage in this fixture).
         $this->assertSame(
             $terminal->liquidWealth->pence + $terminal->pensionWealth->pence,
             $result->terminalUsableWealth->pence,
         );
         $this->assertSame(
-            $result->terminalUsableWealth->pence + $terminal->propertyWealth->pence,
+            $result->terminalUsableWealth->pence + $terminal->homeEquity()->pence,
             $result->terminalTotalWealth->pence,
         );
     }

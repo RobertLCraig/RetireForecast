@@ -49,7 +49,7 @@
                     <th class="num">Ran out at some point</th>
                     <th class="num">If so, typically by</th>
                     <th class="num">Median usable (excl. home)</th>
-                    <th class="num">Median total (incl. home)</th>
+                    <th class="num">Median total (incl. home equity)</th>
                 </tr>
             </thead>
             <tbody>
@@ -221,7 +221,7 @@
                 <th class="num">Spend</th>
                 <th class="num">Unmet spend</th>
                 <th class="num">Usable (excl. home)</th>
-                <th class="num">Total (incl. home)</th>
+                <th class="num">Total (incl. home equity)</th>
             </tr>
         </thead>
         <tbody>

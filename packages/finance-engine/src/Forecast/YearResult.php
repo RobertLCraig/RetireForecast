@@ -58,6 +58,16 @@ final class YearResult
     ];
 
     /**
+     * Total wealth: liquid + pension + home EQUITY (property net of the mortgage,
+     * NNEG-floored) — the figure every "includes the home" surface shows. Derived in the
+     * constructor from the reported legs, so it can never drift from them and never
+     * counts bricks a lender already owns: an unpaid lifetime-mortgage roll-up visibly
+     * erodes the wealth line. Gross property remains available as {@see $propertyWealth}
+     * for the equity breakdown; the estate at death nets the same way ({@see EstateValuer}).
+     */
+    public readonly Money $totalWealth;
+
+    /**
      * @param  array<string, int>  $ages  personId => age this year
      * @param  array<string, Money>  $incomeBySource  keyed by {@see INCOME_SOURCES}
      * @param  list<Warning>  $warnings
@@ -78,12 +88,13 @@ final class YearResult
         public readonly Money $liquidWealth,
         public readonly Money $pensionWealth,
         public readonly Money $propertyWealth,
-        public readonly Money $totalWealth,
         public readonly array $incomeBySource = [],
         public readonly array $warnings = [],
         public readonly ?Money $investmentGrowth = null,
         public readonly ?Money $mortgageBalance = null,
-    ) {}
+    ) {
+        $this->totalWealth = $liquidWealth->plus($pensionWealth)->plus($this->homeEquity());
+    }
 
     /** The full target spend was met in this year (nothing went unfunded). */
     public function fullSpendMet(): bool
@@ -110,17 +121,6 @@ final class YearResult
         return $this->propertyWealth->minus($this->mortgageBalance())->minZero();
     }
 
-    /**
-     * Net worth: liquid + pension + home EQUITY (property net of the mortgage, NNEG-floored) —
-     * derived from its parts, so it can never drift from the reported legs. Equals
-     * {@see $totalWealth} when there is no mortgage; below it (by the debt) when one is owed,
-     * which is what makes an unpaid lifetime-mortgage roll-up visible in the wealth line.
-     */
-    public function netWealth(): Money
-    {
-        return $this->liquidWealth->plus($this->pensionWealth)->plus($this->homeEquity());
-    }
-
     /** This year's capital growth left in the invested pots (zero if not tracked). */
     public function investmentGrowth(): Money
     {
@@ -134,7 +134,7 @@ final class YearResult
             $this->yearIndex, $this->calendarYear, $this->ages, $this->aliveCount,
             $this->grossIncome, $this->totalTax, $this->netIncome, $this->spendTarget,
             $this->essentialSpend, $this->shortfallFunded, $this->unmetSpend, $this->essentialsMet,
-            $this->liquidWealth, $this->pensionWealth, $this->propertyWealth, $this->totalWealth,
+            $this->liquidWealth, $this->pensionWealth, $this->propertyWealth,
             $this->incomeBySource, $this->warnings, $investmentGrowth, $this->mortgageBalance,
         );
     }

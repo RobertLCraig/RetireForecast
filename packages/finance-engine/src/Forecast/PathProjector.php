@@ -889,10 +889,11 @@ final class PathProjector
         $liquid = $this->sum($state['cash']) + $this->sum($state['gia']) + $this->sum($state['isa']);
         $pension = $this->totalPots($state);
 
-        // Round each wealth leg once, then derive the total from those rounded parts —
-        // never round the raw sum independently, or total wealth drifts from liquid +
-        // pension + property by a penny (round-of-sum != sum-of-rounds). Data-integrity
-        // rule: a reported total has one definition, built from its components.
+        // Round each wealth leg once; YearResult derives total wealth from those rounded
+        // parts (liquid + pension + home equity net of the mortgage) — never round a raw
+        // sum independently, or the total drifts from its legs by a penny
+        // (round-of-sum != sum-of-rounds). Data-integrity rule: a reported total has one
+        // definition, built from its components.
         $liquidReal = $r($liquid);
         $pensionReal = $r($pension);
         $propertyReal = $r($state['property']);
@@ -913,7 +914,6 @@ final class PathProjector
             liquidWealth: $liquidReal,
             pensionWealth: $pensionReal,
             propertyWealth: $propertyReal,
-            totalWealth: $liquidReal->plus($pensionReal)->plus($propertyReal),
             incomeBySource: array_map($r, $src),
             mortgageBalance: $r($state['mortgageOutstanding']),
         );

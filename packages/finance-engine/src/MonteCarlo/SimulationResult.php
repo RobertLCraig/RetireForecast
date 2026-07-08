@@ -12,11 +12,12 @@ use RetireForecast\FinanceEngine\Money\Money;
  * per-year percentile bands for the fan chart. All money figures are REAL (today's
  * money). $seed is recorded so any run is reproducible.
  *
- * $terminalWealthPercentiles is total wealth (incl. the primary residence);
- * $usableWealthPercentiles is the spendable part (excl. the home), so an asset-rich
- * household whose money runs out does not read as the "wealthiest" outcome.
+ * $terminalWealthPercentiles is total wealth (incl. the primary residence's equity,
+ * net of any outstanding mortgage — NNEG-floored, so a rolled-up lifetime mortgage
+ * erodes it); $usableWealthPercentiles is the spendable part (excl. the home), so an
+ * asset-rich household whose money runs out does not read as the "wealthiest" outcome.
  *
- * $fanChart is the per-year band of TOTAL wealth (incl. home); $usableFanChart is the
+ * $fanChart is the per-year band of TOTAL wealth (incl. home equity); $usableFanChart is the
  * same per-year band of USABLE wealth (excl. home = liquid + pension, the spendable
  * money that actually burns down). The two share calendar years and satisfy usable <=
  * total in every year. Usable is the honest "will it last" series — the home is an

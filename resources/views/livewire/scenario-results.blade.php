@@ -253,10 +253,10 @@
                     @if ($v['usableP50'])
                         <div class="flex justify-between"><dt class="text-gray-600">Usable wealth left (excl. home)</dt><dd class="font-medium">{{ $v['usableP50'] }}</dd></div>
                     @endif
-                    <div class="flex justify-between"><dt class="text-gray-600">Total wealth left (incl. home)</dt><dd class="font-medium">{{ $v['terminalP50'] }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-600">Total wealth left (incl. home equity)</dt><dd class="font-medium">{{ $v['terminalP50'] }}</dd></div>
                 </dl>
             </div>
-            <p class="mt-3 text-xs text-gray-500">"Chance of running out" counts the simulated futures with at least one year your essential spending isn't fully covered by income and savings — a shortfall a future may later recover from as guaranteed income catches up. "Wealth left" is the median amount at the very end. So an option can leave money at the end yet still have run short along the way — and "total wealth left" includes any home you would still own, which stays high even when the usable cash for day-to-day spending has run out.</p>
+            <p class="mt-3 text-xs text-gray-500">"Chance of running out" counts the simulated futures with at least one year your essential spending isn't fully covered by income and savings — a shortfall a future may later recover from as guaranteed income catches up. "Wealth left" is the median amount at the very end. So an option can leave money at the end yet still have run short along the way — and "total wealth left" includes the equity in any home you would still own (its value net of any mortgage still owed), which stays high even when the usable cash for day-to-day spending has run out.</p>
         </section>
 
         {{-- Longevity: how long the money may need to last, read off the joint-life mortality
@@ -355,7 +355,7 @@
             <div class="mt-4" wire:key="fan-chart-{{ $includeHome ? 'incl' : 'excl' }}">
                 <div wire:ignore>
                     <div x-data="chart(@js($fan['options']))" role="img"
-                        aria-label="Fan chart of projected {{ $fan['usableBasis'] ? 'spendable money excluding the home' : 'total wealth including the home' }} by year for {{ $fan['label'] }}. The full figures are in the data table below."></div>
+                        aria-label="Fan chart of projected {{ $fan['usableBasis'] ? 'spendable money excluding the home' : 'total wealth including home equity' }} by year for {{ $fan['label'] }}. The full figures are in the data table below."></div>
                 </div>
             </div>
 
@@ -365,7 +365,7 @@
                 <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers behind this chart</summary>
                 <div class="mt-2 overflow-x-auto" tabindex="0">
                     <table class="w-full text-sm">
-                        <caption class="sr-only">Projected {{ $fan['usableBasis'] ? 'spendable money (excl. home)' : 'total wealth (incl. home)' }} (real pounds) by calendar year and percentile for {{ $fan['label'] }}</caption>
+                        <caption class="sr-only">Projected {{ $fan['usableBasis'] ? 'spendable money (excl. home)' : 'total wealth (incl. home equity)' }} (real pounds) by calendar year and percentile for {{ $fan['label'] }}</caption>
                         <thead>
                             <tr>
                                 <th scope="col" class="{{ $th }}">Year</th>
@@ -493,7 +493,7 @@
                             <th scope="col" class="{{ $th }}">Essentials always met</th>
                             <th scope="col" class="{{ $th }}">Full spend always met</th>
                             <th scope="col" class="{{ $th }}">Money runs out</th>
-                            <th scope="col" class="{{ $th }}">Total wealth by {{ $sensitivity[0]['finalYear'] }} (incl. home)</th>
+                            <th scope="col" class="{{ $th }}">Total wealth by {{ $sensitivity[0]['finalYear'] }} (incl. home equity)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1020,7 +1020,7 @@
 
     {{-- Year-by-year cashflow ladder. The deterministic central projection, so it shows
          immediately: where income comes from each year, the tax on it, the spend it must
-         meet, and the usable (excl. home) vs total (incl. home) wealth carried forward. --}}
+         meet, and the usable (excl. home) vs total (incl. home equity) wealth carried forward. --}}
     @if ($ladder && $ladder['rows'])
         <section id="sec-ladder" aria-labelledby="ladder-heading" class="{{ $card }} scroll-mt-6">
             <div class="flex items-center justify-between">
@@ -1031,7 +1031,7 @@
                 <button type="button" wire:click="downloadLadderCsv" class="text-sm text-blue-700 underline">Download CSV</button>
             </div>
             <p class="mt-1 text-sm text-gray-600">
-                The central best-estimate projection, year by year: where income comes from, the tax on it, the spend it has to meet (split into its essential floor and discretionary remainder), and the usable (excl. home) and total (incl. home) wealth carried forward. Figures are in today's money. This is one illustrative path, not a probability.
+                The central best-estimate projection, year by year: where income comes from, the tax on it, the spend it has to meet (split into its essential floor and discretionary remainder), and the usable (excl. home) and total (incl. home equity, net of any mortgage owed) wealth carried forward. Figures are in today's money. This is one illustrative path, not a probability.
             </p>
 
             {{-- Safety-floor headline: does usable money stay above the user's buffer, dip below it,
@@ -1065,7 +1065,7 @@
                                 <th scope="col" class="{{ $th }} text-right">Investment growth</th>
                             @endif
                             <th scope="col" class="{{ $th }} text-right">Usable (excl. home)</th>
-                            <th scope="col" class="{{ $th }} text-right">Total (incl. home)</th>
+                            <th scope="col" class="{{ $th }} text-right">Total (incl. home equity)</th>
                         </tr>
                     </thead>
                     <tbody>

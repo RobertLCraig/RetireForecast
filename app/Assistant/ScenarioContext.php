@@ -98,7 +98,7 @@ final class ScenarioContext implements AssistantContext
 
         $facts[] = new AssistantFact('Final year of the plan', (string) $forecast->finalCalendarYear);
         $facts[] = new AssistantFact('Spendable wealth left at the end (excludes the home)', $forecast->terminalUsableWealth->format());
-        $facts[] = new AssistantFact('Total wealth left at the end (includes the home)', $forecast->terminalTotalWealth->format());
+        $facts[] = new AssistantFact('Total wealth left at the end (includes home equity, net of any mortgage owed)', $forecast->terminalTotalWealth->format());
         $facts[] = new AssistantFact('Essential spending funded every year', $forecast->essentialsAlwaysMet ? 'Yes' : 'No');
         $facts[] = new AssistantFact('Full (essential + discretionary) spending funded every year', $forecast->fullSpendAlwaysMet ? 'Yes' : 'No');
 
@@ -276,7 +276,7 @@ final class ScenarioContext implements AssistantContext
         // Spendable (excl-home) range where available — the honest series; else total wealth.
         $usable = $s->usableWealthPercentiles !== [];
         $p = $usable ? $s->usableWealthPercentiles : $s->terminalWealthPercentiles;
-        $basis = $usable ? 'spendable wealth left at the end (excludes the home)' : 'total wealth left at the end (includes the home)';
+        $basis = $usable ? 'spendable wealth left at the end (excludes the home)' : 'total wealth left at the end (includes home equity, net of any mortgage owed)';
         if (isset($p['p10'], $p['p50'], $p['p90'])) {
             $facts[] = new AssistantFact("Monte Carlo — {$basis}, pessimistic (10th percentile)", $p['p10']->format());
             $facts[] = new AssistantFact("Monte Carlo — {$basis}, typical (median)", $p['p50']->format());

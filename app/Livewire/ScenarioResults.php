@@ -315,7 +315,7 @@ class ScenarioResults extends Component
             foreach ($ladder['sources'] as $source) {
                 $header[] = $ladder['sourceLabels'][$source];
             }
-            $header = [...$header, 'Tax', 'Spend', 'Essential spend', 'Discretionary spend', 'Unmet spend', 'Investment growth (capital)', 'Usable wealth (excl. home)', 'Total wealth (incl. home)'];
+            $header = [...$header, 'Tax', 'Spend', 'Essential spend', 'Discretionary spend', 'Unmet spend', 'Investment growth (capital)', 'Usable wealth (excl. home)', 'Total wealth (incl. home equity)'];
             fputcsv($out, $header);
 
             foreach ($ladder['rows'] as $row) {

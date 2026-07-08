@@ -139,27 +139,36 @@ final class LifetimeMortgageRollUpTest extends TestCase
             $this->assertLessThanOrEqual($y->propertyWealth->pence, $y->mortgageBalance()->pence);
         }
 
-        // Net worth excludes the consumed home entirely and reconciles from its parts.
+        // Total wealth excludes the consumed home entirely and reconciles from its parts.
         $this->assertSame(
             $last->liquidWealth->plus($last->pensionWealth)->pence,
-            $last->netWealth()->pence,
-            'net worth = liquid + pension when the home equity is gone',
+            $last->totalWealth->pence,
+            'total wealth = liquid + pension when the home equity is gone',
+        );
+
+        // And that consumed home reaches the terminal HEADLINE (the figure the UI, Compare
+        // and the assistant lead with) — not just the year rows.
+        $this->assertSame(
+            $last->totalWealth->pence,
+            $result->terminalTotalWealth->pence,
+            'the terminal headline is the final year\'s net total wealth',
         );
     }
 
-    public function test_net_worth_is_total_wealth_less_the_mortgage(): void
+    public function test_total_wealth_is_net_of_the_mortgage(): void
     {
         $result = $this->forecast($this->couple(500_000, 100_000, Percent::fromPercent(6.5)));
         $y = $result->years[3];
 
-        // netWealth is reconciled from the reported legs (liquid + pension + home equity), and is
-        // below the gross totalWealth by exactly the mortgage owed (home equity still positive here).
+        // Total wealth is reconciled from the reported legs (liquid + pension + home equity):
+        // exactly the mortgage owed below gross bricks (home equity still positive here).
         $this->assertSame(
             $y->liquidWealth->plus($y->pensionWealth)->plus($y->homeEquity())->pence,
-            $y->netWealth()->pence,
+            $y->totalWealth->pence,
         );
-        $this->assertSame($y->totalWealth->minus($y->mortgageBalance())->pence, $y->netWealth()->pence);
-        $this->assertLessThan($y->totalWealth->pence, $y->netWealth()->pence);
+        $gross = $y->liquidWealth->plus($y->pensionWealth)->plus($y->propertyWealth);
+        $this->assertSame($gross->minus($y->mortgageBalance())->pence, $y->totalWealth->pence);
+        $this->assertLessThan($gross->pence, $y->totalWealth->pence);
     }
 
     public function test_a_roll_up_erodes_the_estate_versus_a_serviced_mortgage(): void
@@ -179,10 +188,8 @@ final class LifetimeMortgageRollUpTest extends TestCase
             'an unpaid roll-up leaves a smaller estate than a serviced mortgage',
         );
 
-        // Terminal net worth (net of the grown debt) is lower under the roll-up too — the estate
-        // erosion reaches the wealth line, not just the IHT panel.
-        $rollUpFinal = $rollUp->years[count($rollUp->years) - 1];
-        $servedFinal = $served->years[count($served->years) - 1];
-        $this->assertLessThan($servedFinal->netWealth()->pence, $rollUpFinal->netWealth()->pence);
+        // Terminal total wealth (net of the grown debt) is lower under the roll-up too — the
+        // estate erosion reaches the wealth line, not just the IHT panel.
+        $this->assertLessThan($served->terminalTotalWealth->pence, $rollUp->terminalTotalWealth->pence);
     }
 }
