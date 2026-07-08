@@ -5,28 +5,18 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Assistant\AssistantService;
+use App\Assistant\AssistantTurnRunner;
 use App\Assistant\BacklogCapture;
 use App\Assistant\ChatClient;
-use App\Assistant\ComparisonContext;
-use App\Assistant\DocIndex;
-use App\Assistant\MethodologyRetriever;
 use App\Assistant\OllamaChatClient;
-use App\Assistant\OllamaEmbeddingClient;
-use App\Assistant\ScenarioContext;
-use App\DecisionSupport\ThresholdFacts;
-use App\Enums\ScenarioStatus;
-use App\Forecast\LumpSumTaxShock;
-use App\Forecast\ResultPresenter;
-use App\Forecast\ScenarioForecaster;
-use App\Forecast\WhatIfChanges;
+use App\Enums\SimulationStatus;
+use App\Jobs\RunAssistantTurn;
 use App\Models\AssistantBacklogItem;
-use App\Models\Result;
+use App\Models\AssistantTurn;
 use App\Models\Scenario;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
-use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 
 /**
  * The in-page assistant: a plain-English explainer over THIS scenario's forecast, running on a
@@ -34,9 +24,12 @@ use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
  *
  * It is inert unless `config('assistant.enabled')` is on (so a machine without the local runtime
  * shows nothing). Every figure it may state is engine-derived and re-verified at runtime; the
- * advice-vs-guidance line is the app's own `interpret` gate, passed straight through. The
- * trust-critical work lives in {@see AssistantService} (unit-tested with a fake model); this
- * component is thin glue that builds the local client from config and renders the transcript.
+ * advice-vs-guidance line is the app's own `interpret` gate, resolved for the asking user. The
+ * generation runs on the background worker as a queued {@see AssistantTurn} this panel polls —
+ * a slow local model was outliving the web server's gateway timeout in the synchronous v1 and
+ * surfacing as a raw 504 (2026-07-08). The trust-critical work lives in
+ * {@see AssistantTurnRunner} + {@see AssistantService} (unit-tested
+ * with a fake model); this component is thin glue that queues turns and renders the transcript.
  */
 class ScenarioAssistant extends Component
 {
@@ -68,11 +61,17 @@ class ScenarioAssistant extends Component
 
     /**
      * Forget the conversation and return the panel to its starting (suggested-questions) state.
-     * The transcript is local component state only — nothing is persisted server-side — so this
-     * just clears it.
+     * The transcript is local component state only; the one server-side residue is any queued
+     * {@see AssistantTurn} rows (including a still-pending one — its job then finds nothing and
+     * exits), so those are deleted too.
      */
     public function clear(): void
     {
+        AssistantTurn::query()
+            ->where('user_id', auth()->id())
+            ->where('scenario_id', $this->scenario->id)
+            ->delete();
+        $this->pendingTurnId = null;
         $this->messages = [];
         $this->question = '';
     }
@@ -240,13 +239,18 @@ class ScenarioAssistant extends Component
      */
     public array $messages = [];
 
+    /** The queued turn the panel is waiting on (null = idle). Drives the poll + the Thinking… state. */
+    public ?int $pendingTurnId = null;
+
     /**
      * Ask a question. With no argument it asks the text box; a suggested-question button passes the
      * question as $preset (so a click asks it directly without a round-trip through the input).
+     * The generation is QUEUED as an {@see AssistantTurn} and collected by {@see pollTurn()} — it
+     * runs on the worker, not in this web request.
      */
     public function ask(?string $preset = null): void
     {
-        if (! config('assistant.enabled')) {
+        if (! config('assistant.enabled') || $this->pendingTurnId !== null) {
             return;
         }
 
@@ -255,6 +259,14 @@ class ScenarioAssistant extends Component
             return;
         }
 
+        // Self-heal abandoned rows (browser closed mid-turn). Only clearly stale ones — a
+        // fresh turn may legitimately belong to this scenario open in another tab.
+        AssistantTurn::query()
+            ->where('user_id', auth()->id())
+            ->where('scenario_id', $this->scenario->id)
+            ->where('created_at', '<', now()->subDay())
+            ->delete();
+
         // Capture prior turns as history BEFORE appending this question (the service adds the
         // new question itself, so including it here would double it).
         $history = $this->historyForModel();
@@ -262,165 +274,68 @@ class ScenarioAssistant extends Component
         $this->messages[] = ['role' => 'user', 'text' => $question, 'status' => 'user'];
         $this->question = '';
 
-        $context = $this->compare ? $this->comparisonContext() : $this->scenarioContext();
-        $answer = $this->service()->answer(
-            $context,
-            $question,
-            adviceAllowed: Gate::allows('interpret'),
-            history: $history,
-            methodology: $this->methodologyFor($question),
-        );
+        $turn = AssistantTurn::create([
+            'user_id' => auth()->id(),
+            'scenario_id' => $this->scenario->id,
+            'compare' => $this->compare,
+            'status' => SimulationStatus::Queued,
+            'question' => $question,
+            'history' => $history,
+        ]);
+        RunAssistantTurn::dispatch($turn->id);
 
-        $this->messages[] = ['role' => 'assistant', 'text' => $answer->text, 'status' => $answer->status];
+        $this->pendingTurnId = $turn->id;
     }
 
     /**
-     * The single-scenario context (results page): this plan's headline, year-by-year ladder, Monte
-     * Carlo probabilities, lump-sum tax shock, home-sale waterfall, income floor + survivor cliff,
-     * and (Phase 6) the computed "how far can we go" limits — hash-matched to the CURRENT inputs by
-     * {@see ThresholdFacts}, so a stale limit never enters the context or the grounding allow-list.
+     * Collect the pending turn (the view polls this while one is in flight). A terminal turn's
+     * outcome joins the transcript — answered, refused-with-reason, or failed-with-reason, never
+     * a silent blank — and the row is deleted: the transcript lives only in this component's
+     * state, so nothing conversational persists server-side.
      */
-    private function scenarioContext(): ScenarioContext
+    public function pollTurn(): void
     {
-        $forecaster = app(ScenarioForecaster::class);
+        if ($this->pendingTurnId === null) {
+            return;
+        }
 
-        return ScenarioContext::for(
-            $this->scenario,
-            $forecaster,
-            $this->simulationResult(),
-            app(LumpSumTaxShock::class)->assess($this->scenario),
-            $this->saleExplainer($forecaster),
-            app(ThresholdFacts::class)->for($this->scenario),
-        );
+        $turn = AssistantTurn::query()
+            ->where('user_id', auth()->id())
+            ->find($this->pendingTurnId);
+
+        if ($turn === null) {
+            // Deleted out from under us (e.g. Clear in another tab) — report, don't hang.
+            $this->messages[] = ['role' => 'assistant', 'text' => 'That question was cancelled before it finished.', 'status' => 'unavailable'];
+            $this->pendingTurnId = null;
+
+            return;
+        }
+
+        if (! $turn->status->isTerminal()) {
+            return; // still queued/running — keep polling
+        }
+
+        $this->messages[] = $turn->status === SimulationStatus::Done && $turn->answer !== null
+            ? ['role' => 'assistant', 'text' => $turn->answer['text'], 'status' => $turn->answer['status']]
+            : ['role' => 'assistant', 'text' => "The local assistant couldn't answer: ".($turn->error ?? 'the worker stopped unexpectedly.'), 'status' => 'unavailable'];
+
+        $turn->delete();
+        $this->pendingTurnId = null;
     }
 
-    /**
-     * The comparison context (Compare page): each compared plan's deterministic headline figures, so
-     * the model can answer "which lasts longest / leaves the most / covers essentials?". Built from the
-     * SAME per-variant deterministic forecasts the Compare table renders ({@see ScenarioCompare}), so the
-     * assistant's figures are the table's (provenance).
-     */
-    private function comparisonContext(): ComparisonContext
+    /** The pending turn row, owner-scoped (null when idle) — the view reads its awaiting-worker hint off this. */
+    public function pendingTurn(): ?AssistantTurn
     {
-        $forecaster = app(ScenarioForecaster::class);
-
-        $plans = $this->comparePlans()->map(fn (Scenario $plan): array => [
-            'name' => $plan->name,
-            'variant' => ResultPresenter::variantLabel($plan->variant),
-            'forecast' => $forecaster->deterministicVariants($plan)[$plan->variant->value],
-            'changes' => $this->changeSummary($plan),
-        ])->all();
-
-        return ComparisonContext::fromPlans($plans);
-    }
-
-    /** The base plan first, then its ready what-if children — the same family {@see ScenarioCompare} shows. */
-    private function comparePlans(): Collection
-    {
-        return collect([$this->scenario])->concat(
-            $this->scenario->children()->where('status', ScenarioStatus::Ready)->latest()->get(),
-        );
-    }
-
-    /** A one-line summary of what a what-if changed from its base ('' for the base itself), reusing the
-     *  same {@see WhatIfChanges} the Compare page shows, so the model can explain how the plans differ. */
-    private function changeSummary(Scenario $plan): string
-    {
-        $changes = WhatIfChanges::of($plan);
-
-        return implode('; ', array_map(
-            static fn (array $c): string => trim("{$c['label']} {$c['from']} → {$c['to']}"),
-            $changes,
-        ));
-    }
-
-    /**
-     * The latest completed Monte Carlo run's aggregate for this scenario's own variant, or null
-     * if no run has finished (the deterministic context still stands). Mirrors how the results
-     * page resolves its results ({@see ScenarioResults}).
-     */
-    private function simulationResult(): ?SimulationResult
-    {
-        $run = $this->scenario->latestCompletedRun();
-        if ($run === null) {
+        if ($this->pendingTurnId === null) {
             return null;
         }
 
-        $byVariant = $run->results->keyBy(fn (Result $r): string => $r->variant->value);
-        $result = $byVariant[$this->scenario->variant->value] ?? $run->results->first();
-
-        return $result?->simulationResult();
+        return AssistantTurn::query()
+            ->where('user_id', auth()->id())
+            ->find($this->pendingTurnId);
     }
 
-    /**
-     * The home-sale waterfall for this scenario's strategy, or null when it isn't a sell strategy
-     * ({@see ResultPresenter::saleExplainer()} returns null on a zero sale price). Assembled exactly
-     * as the results page does, so the assistant's figures are the sale-waterfall panel's.
-     *
-     * @return array<string, mixed>|null
-     */
-    private function saleExplainer(ScenarioForecaster $forecaster): ?array
-    {
-        $household = $this->scenario->toHousehold();
-        $action = $this->scenario->toHousingAction();
-        $assumptions = $forecaster->assumptions($this->scenario);
-        $allocation = $forecaster->settings($this->scenario)->allocation();
-        $housing = $forecaster->housingComparison($this->scenario);
-
-        return ResultPresenter::saleExplainer(
-            $housing->saleProceeds($household, $action),
-            $housing->buyOutcome($household, $action),
-            $action,
-            $allocation->blendedRealReturn($assumptions),
-            $assumptions->investmentIncomeYield->asFraction(),
-        );
-    }
-
-    /**
-     * The relevant methodology doc-RAG block for this question (Phase 2), or '' when the index is
-     * absent, nothing clears the relevance threshold, or the local embedder is unreachable. A pure
-     * scenario question adds no doc noise; methodology is additive and is never allowed to break a
-     * scenario answer, so any failure degrades quietly to ''. See {@see MethodologyRetriever}.
-     */
-    private function methodologyFor(string $question): string
-    {
-        $indexPath = (string) config('assistant.doc_index_path');
-        if (! is_file($indexPath)) {
-            return '';
-        }
-
-        try {
-            $data = json_decode((string) file_get_contents($indexPath), true);
-            $chunks = is_array($data) ? ($data['chunks'] ?? []) : [];
-            if (! is_array($chunks) || $chunks === []) {
-                return '';
-            }
-
-            $embedder = new OllamaEmbeddingClient(
-                (string) config('assistant.base_url'),
-                (string) config('assistant.embed_model'),
-                (int) config('assistant.timeout'),
-                (int) config('assistant.probe_timeout'),
-            );
-            $retriever = new MethodologyRetriever(
-                $embedder,
-                DocIndex::fromArray($chunks),
-                (int) config('assistant.retrieval_k'),
-                (float) config('assistant.retrieval_threshold'),
-            );
-
-            return $retriever->retrieve($question);
-        } catch (\Throwable) {
-            return '';
-        }
-    }
-
-    private function service(): AssistantService
-    {
-        return new AssistantService($this->chatClient());
-    }
-
-    /** The local chat client, built from config — shared by the Q&A answerer and the idea-capture structurer. */
+    /** The local chat client, built from config — used by the Ideas tab's idea-capture structurer. */
     private function chatClient(): ChatClient
     {
         return new OllamaChatClient(

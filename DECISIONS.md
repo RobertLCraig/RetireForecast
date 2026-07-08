@@ -3,6 +3,36 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-08 — The assistant generation is queued to the worker (the Compare-page 504)
+**Context:** Rob asked the Compare-page assistant a long multi-part question and got a raw nginx 504.
+Two causes stacked: the synchronous v1 design ran the whole Ollama generation inside one Livewire
+request (up to 120s × 2 guarded attempts) while Herd's nginx applies the default 60s
+`fastcgi_read_timeout`; and the asked capability — "build me a what-if" — is the approved-but-unbuilt
+docs/PLAN-assistant-scenario-editing.md spec, so the best possible outcome was a polite decline the
+timeout then hid. (The requested what-if was hand-built the supported way instead: an ordinary
+delta-child composing the three existing override patterns.)
+
+**Decision — the generation moves to the background worker as a transient `AssistantTurn`.** `ask()`
+persists a queued row (question + prior turns, **encrypted at rest** — it is real household talk) and
+dispatches `RunAssistantTurn` (tries 1, timeout 300s); the panel polls at 1.5s exactly as the results
+page polls a run (same `SimulationStatus` lifecycle, same awaiting-worker hint, so a missing worker is
+loud, not a hung "Thinking…"). The context assembly moved intact from the Livewire component into
+`App\Assistant\AssistantTurnRunner`; guardrails G1/G2 are unchanged. The advice-vs-guidance line is
+resolved with `Gate::forUser(` the turn's owner `)` — a worker has no session, and the answer must
+carry the asker's own `interpret` permission. **Rows are transient, not a transcript:** the poll
+deletes a turn the moment its answer joins the browser-local transcript, Clear deletes leftovers, and
+user/scenario deletion cascades — so no conversational record accrues server-side and GDPR erase needs
+no new step. Every terminal state surfaces with its reason (done / refused / failed / cancelled-out
+-from-under), preserving no-silent-failure. Cost: assistant answers now need `php artisan queue:work`
+running locally — the same operational bar as a full forecast run.
+
+**Also — machine config, outside the repo:** a per-site nginx conf
+(`~/.config/herd/config/valet/Nginx/retireforecast.test.conf`) raises `fastcgi_read_timeout` to 300
+for this site only, keeping the remaining synchronous model call (the Ideas tab's capture) and any
+other slow request safe. Documented in HANDOVER "How to pick up"; delete the file to fall back to
+Herd's catch-all.
+**Status:** active
+
 ## 2026-07-08 — Freshness guardrails wired into a scheduled CI run (monthly, not push-triggered)
 **Context:** `figures:freshness` (gov.uk statutory figures, 12-month window; 2026-06-30) and
 `mortality:refresh` (ONS grid in-sync with its JSON source + 24-month window; 2026-07-01) existed

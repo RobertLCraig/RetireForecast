@@ -65,7 +65,10 @@
             </div>
 
             @if ($tab === 'ask')
-            <div class="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite" aria-atomic="false">
+            {{-- While a queued turn is in flight, poll for its answer (the generation runs on the
+                 background worker, not in the web request — see App\Assistant\AssistantTurnRunner). --}}
+            <div class="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite" aria-atomic="false"
+                @if ($pendingTurnId !== null) wire:poll.1500ms="pollTurn" @endif>
                 @forelse ($messages as $m)
                     @if ($m['role'] === 'user')
                         <div class="flex justify-end">
@@ -109,6 +112,20 @@
                 <div wire:loading wire:target="ask" class="flex justify-start">
                     <p class="rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-500">Thinking…</p>
                 </div>
+                @if ($pendingTurnId !== null)
+                    {{-- The queued turn: Thinking… until the worker finishes it; if it sits queued
+                         with no worker running, say so (no silent hang). --}}
+                    <div wire:loading.remove wire:target="ask" class="flex justify-start">
+                        <div class="max-w-[90%]">
+                            <p class="rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-500">Thinking…</p>
+                            @if ($this->pendingTurn()?->isAwaitingWorker())
+                                <p role="status" class="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                    Still waiting for a background worker. If you're running locally, start one with <code class="font-mono">php artisan queue:work</code>.
+                                </p>
+                            @endif
+                        </div>
+                    </div>
+                @endif
             </div>
 
             <form wire:submit="ask" class="border-t border-gray-200 p-3">
@@ -120,17 +137,19 @@
                         wire:model="question"
                         wire:loading.attr="disabled"
                         wire:target="ask"
+                        @disabled($pendingTurnId !== null)
                         placeholder="Ask a question…"
-                        class="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                        class="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50"
                         autocomplete="off"
                     >
                     <button
                         type="submit"
                         wire:loading.attr="disabled"
                         wire:target="ask"
+                        @disabled($pendingTurnId !== null)
                         class="shrink-0 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                     >
-                        <span wire:loading.remove wire:target="ask">Ask</span>
+                        <span wire:loading.remove wire:target="ask">{{ $pendingTurnId !== null ? '…' : 'Ask' }}</span>
                         <span wire:loading wire:target="ask">…</span>
                     </button>
                 </div>

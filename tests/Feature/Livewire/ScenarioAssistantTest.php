@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Livewire;
 
 use App\Enums\BacklogItemKind;
+use App\Enums\SimulationStatus;
 use App\Livewire\ScenarioAssistant;
 use App\Models\AssistantBacklogItem;
+use App\Models\AssistantTurn;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -85,6 +87,100 @@ final class ScenarioAssistantTest extends TestCase
             ->assertSee('Compare the plans')
             ->assertSee('Which plan leaves the most money at the end?')
             ->assertDontSee('Does my money last, and until when?');   // the single-scenario starters are replaced
+    }
+
+    // --- The queued turn (the generation runs on the worker, the panel polls — 2026-07-08) ---
+    // The test queue is sync, so dispatch executes the turn inline: after ask() the row is
+    // already terminal and pollTurn() collects it — the full queue-and-poll loop in one pass.
+
+    public function test_ask_queues_a_turn_and_the_poll_delivers_the_answer(): void
+    {
+        config(['assistant.enabled' => true]);
+        Http::fake([
+            '*/api/tags' => Http::response(['models' => []]),
+            '*/api/chat' => Http::response(['message' => ['content' => 'Your plan holds up across the years shown.']]),
+        ]);
+
+        $component = Livewire::test(ScenarioAssistant::class, ['scenario' => ScenarioFixture::rich($this->user)])
+            ->set('open', true)
+            ->call('ask', 'Does my money last?')
+            ->assertSee('Does my money last?')      // the user bubble is immediate
+            ->assertSee('Thinking…');               // the pending state renders while the poll waits
+
+        $this->assertNotNull($component->get('pendingTurnId'));
+
+        $component->call('pollTurn')
+            ->assertSee('Your plan holds up across the years shown.')
+            ->assertSet('pendingTurnId', null);
+
+        // The row is transient: deleted the moment its answer joined the (browser-local) transcript.
+        $this->assertDatabaseCount('assistant_turns', 0);
+    }
+
+    public function test_ask_is_inert_when_the_assistant_is_disabled(): void
+    {
+        config(['assistant.enabled' => false]);
+
+        Livewire::test(ScenarioAssistant::class, ['scenario' => ScenarioFixture::rich($this->user)])
+            ->call('ask', 'Does my money last?');
+
+        $this->assertDatabaseCount('assistant_turns', 0);
+    }
+
+    public function test_an_unreachable_model_surfaces_as_a_visible_non_answer(): void
+    {
+        config(['assistant.enabled' => true]);
+        Http::fake(['*' => Http::response('', 500)]);   // Ollama down → the guarded "isn't running" answer
+
+        Livewire::test(ScenarioAssistant::class, ['scenario' => ScenarioFixture::rich($this->user)])
+            ->set('open', true)
+            ->call('ask', 'Does my money last?')
+            ->call('pollTurn')
+            ->assertSee("The local assistant isn't running")
+            ->assertSet('pendingTurnId', null);
+
+        $this->assertDatabaseCount('assistant_turns', 0);
+    }
+
+    public function test_clear_deletes_the_pending_turn_rows(): void
+    {
+        config(['assistant.enabled' => true]);
+        Http::fake([
+            '*/api/tags' => Http::response(['models' => []]),
+            '*/api/chat' => Http::response(['message' => ['content' => 'An answer.']]),
+        ]);
+
+        Livewire::test(ScenarioAssistant::class, ['scenario' => ScenarioFixture::rich($this->user)])
+            ->set('open', true)
+            ->call('ask', 'Does my money last?')
+            ->call('clear')
+            ->assertSet('pendingTurnId', null)
+            ->assertSet('messages', []);
+
+        $this->assertDatabaseCount('assistant_turns', 0);
+    }
+
+    public function test_polling_cannot_read_another_users_turn(): void
+    {
+        $other = User::factory()->create();
+        $theirs = AssistantTurn::create([
+            'user_id' => $other->id,
+            'scenario_id' => ScenarioFixture::rich($other)->id,
+            'compare' => false,
+            'status' => SimulationStatus::Done,
+            'question' => 'Their question',
+            'answer' => ['text' => 'Their private answer', 'status' => 'answered'],
+        ]);
+
+        Livewire::test(ScenarioAssistant::class, ['scenario' => ScenarioFixture::rich($this->user)])
+            ->set('open', true)
+            ->set('pendingTurnId', $theirs->id)
+            ->call('pollTurn')
+            ->assertDontSee('Their private answer')
+            ->assertSet('pendingTurnId', null);
+
+        // Their row is untouched — the poll neither read nor deleted it.
+        $this->assertDatabaseHas('assistant_turns', ['id' => $theirs->id]);
     }
 
     // --- Phase 3: idea capture (the model's only write) ---
