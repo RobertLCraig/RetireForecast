@@ -3,6 +3,32 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-09 — The Monte Carlo is reproducible via CLI but NOT via the `queue:work` worker (open bug)
+**Context:** Chasing a family figure that swung more than 10k-path sampling noise allows, I found the
+**stored Monte Carlo runs do not reproduce**: recomputing a plan at its own stored seed gave a
+different success probability than the stored run — up to **14 points** — for ~9 of 16 plans, with
+*which* plans varying per batch and two adjacent jobs once landing the identical wrong value.
+**What was ruled out (all proven):** the engine is deterministic — the same seed gives byte-identical
+results across 6 independent processes, with and without JIT (so **not JIT**); a fresh `execute()` in
+a CLI process reproduces the correct value; **a CLI loop of all 16 `createRun()`+`execute()` calls in
+one process is 100% reproducible (every gap 0.0)**. The RNG is a seeded `Mt19937`; there is no static
+state, no engine memoization, no unseeded randomness; the job class holds only the run id.
+**Conclusion:** the corruption is specific to the **`queue:work` long-lived daemon's per-job
+machinery** — not the engine, not the code path, not JIT, not SQLite lock errors (those surface as
+exceptions, not wrong values). Some cross-job factor in the worker daemon perturbs the household state
+a run computes on. **Root cause not yet isolated.**
+**Interim resolution:** the V2 family was recomputed via the **CLI loop** (`compute-family-cli`,
+verified all-0.0 gaps) so the stored figures are now correct and canonical. **The app's UI still
+dispatches to `queue:work`, so in-app runs remain affected until fixed.**
+**Recommended fix (to implement):** (1) run MC jobs with **per-job process isolation** — `queue:listen`
+or `queue:work --max-jobs=1` under a supervisor — since a fresh-per-job process (like the CLI loop)
+computes correctly; (2) add an **inputs-hash to `SimulationRun`** exactly as `ThresholdRunner` already
+does, so a run whose stored result no longer matches its inputs is **detected and auto-invalidated**
+(this would have caught the bug immediately and makes any future drift self-healing); (3) as a
+belt-and-braces engine guard, a **reproducibility test that runs the sim after a warm-up loop** (to
+mimic the daemon) and asserts an unchanged result.
+**Status:** OPEN — canonical figures restored via CLI; the `queue:work` fix + inputs-hash are owed.
+
 ## 2026-07-09 — A let property's mortgage interest gets the buy-to-let finance-cost tax reducer
 **Context:** Reviewing why "Let out home & rent elsewhere" (#17) came out 0%, Rob asked whether the
 rental income (£1,800/mo) was counted. It was (£17,500/yr as entered), but two things were off: the
