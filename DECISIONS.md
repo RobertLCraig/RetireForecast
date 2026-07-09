@@ -38,8 +38,19 @@ or move the whole app DB to Postgres/MySQL (SQLite's concurrency limits are the 
 add an **inputs-hash to `SimulationRun`** like `ThresholdRunner` — it catches *staleness* (inputs
 changed) but NOT this bug (identical inputs, wrong result), so it is defence-in-depth, not the fix;
 (3) a reproducibility guard test. Per-job isolation is **ruled out** as a fix.
-**Status:** OPEN — canonical figures restored via CLI; the queued-run fix is owed (top-priority
-correctness item). Root cause not isolated after extensive investigation; likely SQLite + queue driver.
+**RESOLVED 2026-07-09 — moved the app database from SQLite to Postgres.** The hypothesis held: on
+Postgres the **`queue:work` daemon now reproduces every run exactly** (the family re-run through the
+identical queued path gives all-0.0 stored-vs-fresh gaps). SQLite could not handle the `database`
+queue driver's concurrent access (its rollback-journal locking intermittently disturbed a run's
+computation); Postgres' MVCC handles it correctly. **Setup:** local Postgres 18 (`postgres`/`postgres`,
+db `retireforecast`); `.env` `DB_CONNECTION=pgsql` (the old sqlite line kept commented for revert);
+schema via `php artisan migrate`; the SQLite data (users, scenarios incl. the encrypted V2 family,
+runs/results) was copied across verbatim (encrypted `text` columns transfer under the same APP_KEY;
+booleans converted; sequences reset) — a one-off `copy-sqlite-to-pg` script, `database.sqlite`
+retained as `.bak`. **Tests still run on in-memory SQLite** (phpunit.xml) — fast + isolated, and the
+bug was runtime-concurrency, not unit-testable. In-app "Re-run all" is trustworthy again.
+**Status:** RESOLVED (Postgres migration). The inputs-hash on `SimulationRun` remains a nice-to-have
+staleness guard (not needed for this fix).
 
 ## 2026-07-09 — A let property's mortgage interest gets the buy-to-let finance-cost tax reducer
 **Context:** Reviewing why "Let out home & rent elsewhere" (#17) came out 0%, Rob asked whether the
