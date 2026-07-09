@@ -11,6 +11,7 @@ use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
@@ -710,6 +711,27 @@ final class PathProjector
         }
         $grossIncomeNominal += $taxFreeCashNominal + $taxFreeIncomeNominal;
 
+        // Buy-to-let finance-cost restriction (since April 2020): a landlord can no longer deduct
+        // mortgage interest from rental profit, but gets a basic-rate (20%) tax reducer on the
+        // lower of the finance cost and the rental profit. Modelled when the home is LET: the
+        // mortgage interest is charged as spend above (a real outflow, no full deduction), and
+        // here the household tax falls by 20% × min(interest, rental income). Without this the
+        // rent was taxed at the full marginal rate with no relief for the interest — overstating
+        // the tax on a let property. v1: household-level (joint-ownership split not separated),
+        // rental profit approximated by rental income (no other let-expenses modelled), capped at
+        // the tax due (a reducer cannot create a refund).
+        if (($household->primaryResidence?->isLet ?? false) && $household->expenseProfile->mortgageCosts()->isPositive()) {
+            $financeCost = (int) round($household->expenseProfile->mortgageCosts()->pence * $state['spendFactor']);
+            $rentalIncome = $this->rentalIncomeNominal($household, $alive, $ages, $cumInflation);
+            $reducerBase = min($financeCost, $rentalIncome);
+            $credit = min(
+                (int) round($reducerBase * $this->config->incomeTax->basicRate->asFraction()),
+                $totalTaxNominal,
+            );
+            $totalTaxNominal -= $credit;
+            $netCashNominal += $credit;
+        }
+
         // Household spend (nominal), with the survivor factor when only one remains.
         $aliveCount = count(array_filter($alive));
 
@@ -1160,6 +1182,33 @@ final class PathProjector
             if ($stream->ownerId !== $pid || $stream->taxable !== $taxable) {
                 continue;
             }
+            if ($age < $stream->startAge || ($stream->endAge !== null && $age > $stream->endAge)) {
+                continue;
+            }
+            $total += $stream->inflationLinked
+                ? (int) round($stream->grossAnnual->pence * $cumInflation)
+                : $stream->grossAnnual->pence;
+        }
+
+        return $total;
+    }
+
+    /**
+     * The household's rental income this year (nominal), across every living owner — the base for
+     * the buy-to-let finance-cost tax reducer. Only {@see IncomeStreamType::Rental} streams count,
+     * so a generic "other" income is not mistaken for rent.
+     *
+     * @param  array<string, bool>  $alive
+     * @param  array<string, int>  $ages
+     */
+    private function rentalIncomeNominal(Household $household, array $alive, array $ages, float $cumInflation): int
+    {
+        $total = 0;
+        foreach ($household->incomeStreams as $stream) {
+            if ($stream->type !== IncomeStreamType::Rental || ! ($alive[$stream->ownerId] ?? false)) {
+                continue;
+            }
+            $age = $ages[$stream->ownerId] ?? 0;
             if ($age < $stream->startAge || ($stream->endAge !== null && $age > $stream->endAge)) {
                 continue;
             }

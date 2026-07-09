@@ -36,7 +36,10 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-07-08 (home-maintenance): a bought freehold home with no explicit upkeep now
+     * Bumped 2026-07-09 (btl-finance-cost): a let property's mortgage interest now yields the
+     * basic-rate (20%) buy-to-let finance-cost tax reducer, so rental income on a mortgaged let
+     * is no longer taxed with no relief for the interest — let-plan tax stored earlier is too high.
+     * Previous bump 2026-07-08 (home-maintenance): a bought freehold home with no explicit upkeep now
      * carries a standard 1%-of-value maintenance running cost, so buy variants are no longer
      * modelled with zero upkeep — buy-plan figures stored earlier are too favourable.
      * Previous bump 2026-07-08 (care-means-test): each care year is charged at the household-borne
@@ -46,7 +49,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/phase-3-home-maintenance';
+    public const ENGINE_VERSION = 'finance-engine/phase-3-btl-finance-cost';
 
     /** The central best-estimate forecast: median death ages, expected returns, no sampling. */
     public function deterministic(Scenario $scenario): ForecastResult

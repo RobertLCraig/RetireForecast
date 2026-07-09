@@ -3,6 +3,36 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-09 — A let property's mortgage interest gets the buy-to-let finance-cost tax reducer
+**Context:** Reviewing why "Let out home & rent elsewhere" (#17) came out 0%, Rob asked whether the
+rental income (£1,800/mo) was counted. It was (£17,500/yr as entered), but two things were off: the
+entered figure was £17,500/yr not the £21,600/yr Rob intended, and the rent was taxed at the full
+marginal rate with **no relief for the mortgage interest** — wrong for a let property since the April
+2020 finance-cost restriction (landlords deduct nothing but get a basic-rate tax reducer).
+**Decision:** `PathProjector` now applies the **buy-to-let finance-cost reducer** when the primary
+residence is **let** (`isLet`): the household income tax falls by **20% × min(mortgage interest,
+rental income)**, capped at the tax due (a reducer cannot create a refund). The interest is still
+charged as a real cash outflow (the mortgage spend line); only the tax relief was missing. New
+`rentalIncomeNominal` sums only `IncomeStreamType::Rental` streams, so generic "other" income is not
+mistaken for rent. #17's rental set to £1,800/mo (£21,600/yr). `ENGINE_VERSION` →
+`finance-engine/phase-3-btl-finance-cost`. Deterministic effect on #17: depletion 2030 → **2035**
+(rent bump + credit together); it still does not fully last — letting keeps the £208k mortgage AND
+pays rent elsewhere, which no realistic rent covers.
+**Why:** accuracy — taxing rental income with no interest relief overstates a landlord's tax by up to
+20% of the interest (~£3,234/yr here). The rule is real and sourced (finance-cost restriction, fully
+phased in from April 2020).
+**Guards:** `BuyToLetFinanceCostTest` — a let property gets the 20% reducer a residential one does
+not; the base is the lower of interest and rental income.
+**v1 flags:** household-level (joint-ownership split not separated); rental *profit* approximated by
+rental income (no other let-expenses modelled); the reducer's third statutory cap (adjusted total
+income above the personal allowance) is not applied, only the tax-due cap.
+**Not changed (reconsidered):** the let flat still charges the household its council tax + utilities.
+On reflection this is **not** an error — when they let the flat and rent elsewhere they pay occupier
+costs at the *rented* home, and the flat's set is a reasonable proxy for that one set (the tenant
+pays the flat's actual bills). Charging one set of occupier costs is correct; dropping it would
+under-cost.
+**Status:** active
+
 ## 2026-07-08 — A bought home carries standard maintenance (the buy variant is no longer upkeep-free)
 **Context:** Rob flagged that the sell-and-buy plans model **no ownership costs on the replacement
 home**. Root cause: the buy variant scales the *current* home's `runningCosts` to the new home
