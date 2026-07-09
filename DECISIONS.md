@@ -13,21 +13,33 @@ results across 6 independent processes, with and without JIT (so **not JIT**); a
 a CLI process reproduces the correct value; **a CLI loop of all 16 `createRun()`+`execute()` calls in
 one process is 100% reproducible (every gap 0.0)**. The RNG is a seeded `Mt19937`; there is no static
 state, no engine memoization, no unseeded randomness; the job class holds only the run id.
-**Conclusion:** the corruption is specific to the **`queue:work` long-lived daemon's per-job
-machinery** — not the engine, not the code path, not JIT, not SQLite lock errors (those surface as
-exceptions, not wrong values). Some cross-job factor in the worker daemon perturbs the household state
-a run computes on. **Root cause not yet isolated.**
+**Conclusion:** the corruption is specific to the **queued-job execution path** — not the engine, not
+the code path, not JIT, not SQLite lock errors (those surface as exceptions, not wrong values).
+**Further findings (2026-07-09 later):** (a) **per-job process isolation does NOT fix it** —
+`queue:work --once` (a fresh process per job) still produced mismatches, so it is not cross-job daemon
+state accumulation; (b) **instrumentation proved the queue and a direct call compute on BYTE-IDENTICAL
+inputs** — logging `md5(serialize())` of the household, assumptions, action, settings and effective
+builder-state showed the **same hashes** from the worker process and a direct CLI call at the same
+seed, so the queue is **not** reading different scenario state; (c) the corruption is **intermittent**
+— a single instrumented queue run reproduced the correct value, but a 16-job batch reliably has
+several wrong; the wrong values are **un-reproducible at their own seed**. So it is intermittent
+non-reproducible computation in the queued context on identical inputs. **Leading hypothesis:** the
+**`database` queue driver on SQLite** — the CLI loop (no queue at all) is 100% correct while every
+path that goes *through the queue* is intermittently wrong, and SQLite has caused repeated trouble
+this session (the earlier "database is locked" failure). The queue driver's own DB transaction on the
+`jobs` table likely interacts with the job's reads under SQLite. **Root cause still not isolated.**
 **Interim resolution:** the V2 family was recomputed via the **CLI loop** (`compute-family-cli`,
-verified all-0.0 gaps) so the stored figures are now correct and canonical. **The app's UI still
-dispatches to `queue:work`, so in-app runs remain affected until fixed.**
-**Recommended fix (to implement):** (1) run MC jobs with **per-job process isolation** — `queue:listen`
-or `queue:work --max-jobs=1` under a supervisor — since a fresh-per-job process (like the CLI loop)
-computes correctly; (2) add an **inputs-hash to `SimulationRun`** exactly as `ThresholdRunner` already
-does, so a run whose stored result no longer matches its inputs is **detected and auto-invalidated**
-(this would have caught the bug immediately and makes any future drift self-healing); (3) as a
-belt-and-braces engine guard, a **reproducibility test that runs the sim after a warm-up loop** (to
-mimic the daemon) and asserts an unchanged result.
-**Status:** OPEN — canonical figures restored via CLI; the `queue:work` fix + inputs-hash are owed.
+verified all-0.0 gaps) and set as the latest completed runs, so the stored/app-displayed figures are
+correct and canonical. **The app's UI still dispatches to `queue:work`, so in-app "Re-run all" remains
+affected until fixed — avoid it.**
+**Recommended fix (to investigate — NOT yet done):** (1) **move the queue off SQLite** — use the
+`sync` driver (correct but blocking; fine for a personal tool if a spinner is acceptable), or `redis`,
+or move the whole app DB to Postgres/MySQL (SQLite's concurrency limits are the recurring theme); (2)
+add an **inputs-hash to `SimulationRun`** like `ThresholdRunner` — it catches *staleness* (inputs
+changed) but NOT this bug (identical inputs, wrong result), so it is defence-in-depth, not the fix;
+(3) a reproducibility guard test. Per-job isolation is **ruled out** as a fix.
+**Status:** OPEN — canonical figures restored via CLI; the queued-run fix is owed (top-priority
+correctness item). Root cause not isolated after extensive investigation; likely SQLite + queue driver.
 
 ## 2026-07-09 — A let property's mortgage interest gets the buy-to-let finance-cost tax reducer
 **Context:** Reviewing why "Let out home & rent elsewhere" (#17) came out 0%, Rob asked whether the
