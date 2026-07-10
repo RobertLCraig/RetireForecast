@@ -3,6 +3,26 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-10 — Queued Monte Carlo reproducibility independently re-verified on Postgres; a stale pre-migration worker gotcha
+Re-verified the 2026-07-09 SQLite→Postgres fix independently, at Rob's request (a standing trust concern
+about run-to-run variance with no other changes). **Method:** computed an in-process reference for all 18
+scenarios (3 variants × 10,000 paths — the path proven deterministic), then dispatched the whole family
+**twice** through the real `queue:work` daemon (batch 1 = a single worker; batch 2 = **two concurrent
+workers**, deliberately heavier `jobs`-table contention than the original failure ever saw), comparing each
+stored result to the reference on **both** the success probabilities (the original "up to 14 points"
+symptom) **and** a full-payload md5 (catches any single-path drift in any figure). **Result: 108 queued
+variant-results across 36 runs, every one byte-identical — max probability gap 0.0000 points, 0 hash
+mismatches.** The fix holds; in-app "Re-run all" is trustworthy.
+**Operational finding (new):** a `queue:work` daemon started 2026-07-07 (before the migration) was still
+polling the **old SQLite `jobs` table** and processed none of the Postgres jobs — my batch sat unprocessed
+for 10 minutes until a fresh worker drained it. `queue:work` **caches its DB connection at boot**, so every
+worker must be restarted after a `DB_CONNECTION` change or it silently polls the old database (no error —
+jobs just never run; an in-app "Re-run all" would hang). Captured in [[queue-worker-caches-db-connection]].
+**Residue:** the 36 verification runs (ids 437–472, fixed seed 424242) became each family scenario's latest
+completed run and overwrote `result_snapshots`; deleting them was automode-blocked as pre-existing app data,
+so a subsequent in-app "Re-run all" (at canonical seeds) supersedes them. **No code changed** — verification
+scripts stayed in the session scratchpad. Status: RESOLVED remains RESOLVED, now independently confirmed.
+
 ## 2026-07-09 — The Monte Carlo is reproducible via CLI but NOT via the `queue:work` worker (open bug)
 **Context:** Chasing a family figure that swung more than 10k-path sampling noise allows, I found the
 **stored Monte Carlo runs do not reproduce**: recomputing a plan at its own stored seed gave a
