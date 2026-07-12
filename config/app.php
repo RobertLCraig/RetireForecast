@@ -56,6 +56,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | External Origin (Tailscale Serve)
+    |--------------------------------------------------------------------------
+    |
+    | When the app is reached over a private Tailscale tailnet, Tailscale
+    | terminates TLS and reverse-proxies to the app over loopback HTTP under a
+    | different hostname (<machine>.<tailnet>.ts.net). Set this to that full
+    | https origin so generated absolute URLs and auth redirects point back at
+    | the reachable host instead of the local request host. Leave blank for
+    | normal local use (retireforecast.test); nothing changes when it is empty.
+    |
+    */
+
+    'external_url' => env('APP_EXTERNAL_URL'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

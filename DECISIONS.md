@@ -3,6 +3,35 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-12 — Share with family privately via Tailscale Serve, not a Hostinger deploy
+**Goal:** let family view the current (real) scenarios as-is — a private share, explicitly **not** a public
+launch. **Rejected Hostinger** (the SSH offered was shared hosting — port 65002, `u…` user): shared plans
+are **MySQL-only** (no Postgres), cannot keep a persistent `queue:work` daemon, cannot run the Ollama
+assistant, and would force a DB migration + re-entering the encrypted data on a third party + crossing the
+public-compliance line (`COMPLIANCE_PERSONAL_USE`). All cost, no fit for "as-is + private". (The schema *is*
+MySQL-portable — migrations use plain `json()` columns, no pgsql-specific types — so Hostinger stays a
+*possible* target for a future public build; it is just the wrong tool for private family viewing.)
+**Chosen: Tailscale Serve.** The app stays exactly as-is on this machine; reachable only inside the private
+tailnet; the encrypted data never leaves the box. No migration, no rebuild.
+**Wiring (all inert until enabled):**
+- **Serve Host-agnostically:** `php artisan serve --port=8000` + `tailscale serve --bg 8000` (tailnet-only,
+  auto HTTPS on the `*.ts.net` name). Herd/Valet routes by `Host`, so proxying to the Valet vhost would
+  miss the app under the `*.ts.net` hostname — a fixed port sidesteps Host routing and serves this app
+  regardless of Host.
+- **`APP_EXTERNAL_URL`** (new `config('app.external_url')`): when set, `AppServiceProvider` pins absolute
+  URLs/redirects to that https origin (`URL::forceRootUrl` + `forceScheme`) so a login does not bounce to an
+  unreachable local host. Blank = local dev untouched.
+- **Loopback trusted proxy** (`bootstrap/app.php`): trusts `127.0.0.1`/`::1` for `X-Forwarded-For/Port/Proto`
+  **only — not Host** (host cannot be spoofed; it is pinned by the env var), so Laravel sees the request as
+  HTTPS through Tailscale's TLS-terminating proxy.
+- **`APP_DEBUG=false`** while shared, so an error cannot leak the private scenario figures in a stack trace.
+**Operational:** reachable only while the machine is on with `artisan serve` + a queue worker + Tailscale;
+the `tailscale serve` config persists across reboot but `artisan serve`/`queue:work` do not (relaunch them).
+Scenarios are per-user, so family log in with Rob's credentials — there is no read-only share. Stop sharing:
+`tailscale serve --https=443 off`, then blank `APP_EXTERNAL_URL`. The concrete `*.ts.net` URL lives in
+`.env` (gitignored), not here. **This is private sharing, not the public go-live — the public-release
+blockers (set `COMPLIANCE_PERSONAL_USE=false`, tighten CSP, etc.) still stand.**
+
 ## 2026-07-10 — Queued Monte Carlo reproducibility independently re-verified on Postgres; a stale pre-migration worker gotcha
 Re-verified the 2026-07-09 SQLite→Postgres fix independently, at Rob's request (a standing trust concern
 about run-to-run variance with no other changes). **Method:** computed an in-process reference for all 18

@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-10 (queued-Monte-Carlo reproducibility bug independently re-verified as RESOLVED on Postgres; a stale pre-migration queue worker found — restart it)_
+_Last updated: 2026-07-12 (added a private Tailscale-Serve path to share the app with family as-is — no Hostinger migration; see Decisions)_
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -81,6 +81,12 @@ npm run build                        # build assets (public/build is gitignored)
   **A worker started before the 2026-07-09 Postgres move polls the old SQLite jobs table and never processes Postgres jobs — kill and restart it.** The synchronous preview (1 path) needs no worker.
 - **Admin `/admin`** gated on `is_admin` (`php artisan user:make-admin {email}`). **Assistant** inert unless `ASSISTANT_ENABLED=true` (needs Ollama with `qwen3:14b` + the worker; build the doc index once with `php artisan assistant:index-docs`, re-run after editing a curated methodology doc). Register at `/register` + accept the `/welcome` disclaimer; 2FA at `/account/security`. Demo preset: `php artisan db:seed --class=Database\Seeders\DemoScenarioSeeder`.
 - **Machine config (not in repo):** a per-site Herd nginx conf raises this site's gateway timeout to 300s (`~/.config/herd/config/valet/Nginx/retireforecast.test.conf`).
+- **Share with family (private, as-is) — Tailscale Serve, not a public deploy (DECISIONS 2026-07-12).** Set
+  `APP_EXTERNAL_URL` (in `.env`) to this machine's `https://<name>.ts.net`, run `php artisan serve --port=8000`
+  plus a queue worker, then `tailscale serve --bg 8000` (tailnet-only, auto HTTPS). Blank `APP_EXTERNAL_URL`
+  = normal local use; while set, even local browsing generates `*.ts.net` links, so use that URL yourself too.
+  The `tailscale serve` config survives reboot; `artisan serve`/`queue:work` do not — relaunch them. Stop
+  sharing: `tailscale serve --https=443 off`. Family log in with Rob's credentials (scenarios are per-user).
 
 ## Sibling docs
 | Doc | Purpose |
@@ -100,6 +106,19 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-12 (private family sharing via Tailscale Serve — Hostinger rejected)_ —
+Rob wanted family to view the current real scenarios **as-is** (not a public launch). Rejected the offered
+Hostinger box: its SSH is shared hosting (port 65002), which is MySQL-only (no Postgres), cannot run a
+persistent `queue:work` daemon or the Ollama assistant, and would force a DB migration + re-entering the
+encrypted data on a third party + crossing the public-compliance line — all cost, no fit. Chose **Tailscale
+Serve**: the app stays exactly as-is on this machine, reachable only inside the private tailnet, data never
+leaves the box. Wired it up and verified end-to-end (the tailnet URL returns 200 with a valid auto cert):
+serve Host-agnostically on `php artisan serve --port=8000` (Herd/Valet routes by Host and will not match the
+`*.ts.net` name) + `tailscale serve --bg 8000`; new `APP_EXTERNAL_URL` pins absolute URLs/redirects to the
+https origin so logins do not bounce to an unreachable host; `bootstrap/app.php` trusts the loopback proxy
+for the forwarded scheme (not Host); `APP_DEBUG=false` while shared. Family log in with Rob's credentials
+(scenarios are per-user; no read-only share built). See DECISIONS 2026-07-12 + How to pick up.
 
 _2026-07-10 (queued-Monte-Carlo reproducibility independently re-verified; a stale worker found)_ —
 Re-ran and re-verified the run-to-run-variance trust concern on Postgres. Built an independent test: an

@@ -19,6 +19,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             SecurityHeaders::class,
         ]);
+
+        // Trust the loopback reverse proxy (Tailscale Serve → app over 127.0.0.1) so the
+        // forwarded scheme is honoured and Laravel sees the request as HTTPS. Only the
+        // proto/port/for headers are trusted — NOT X-Forwarded-Host — so the public host
+        // cannot be spoofed; the external host is pinned via APP_EXTERNAL_URL instead.
+        $middleware->trustProxies(
+            at: ['127.0.0.1', '::1'],
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
