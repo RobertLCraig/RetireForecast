@@ -42,6 +42,7 @@ final class EssentialSpendLever implements SweepLever
                 $household->name, $household->region, $household->persons, $profile,
                 $household->pensions, $household->accounts, $household->incomeStreams,
                 $household->primaryResidence, $household->relationshipStatus,
+                $household->capitalReceipts, $household->realisedGainsAtStart,
             ),
             $settings,
         );

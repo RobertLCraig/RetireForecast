@@ -7,6 +7,7 @@ namespace Tests\Support;
 use DateTimeImmutable;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
+use RetireForecast\FinanceEngine\Dto\CapitalReceipt;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
@@ -118,6 +119,9 @@ final class HouseholdFixture
             ],
             incomeStreams: [
                 new IncomeStream('p2', IncomeStreamType::Rental, Money::fromPounds(7_200), taxable: true, inflationLinked: true, startAge: 60, endAge: 90),
+            ],
+            capitalReceipts: [
+                new CapitalReceipt('p1', 'Family gift', Money::fromPounds(90_000), 2029),
             ],
             primaryResidence: new Property(
                 currentValue: Money::fromPounds(525_000),

@@ -7,6 +7,8 @@ namespace Tests\Unit\Forecast;
 use App\Forecast\ResultPresenter;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+use RetireForecast\FinanceEngine\Dto\Account;
+use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
@@ -142,21 +144,63 @@ final class SaleExplainerTest extends TestCase
         // Net £392,000 − buy £200,000 − SDLT £1,500 − moving £2,000 = surplus £188,500.
         $this->assertSame(Money::fromPounds(188_500)->format(), $se['buy']['surplus']);
         $this->assertTrue($se['buy']['coversPurchase']);
-        $this->assertNull($se['buy']['shortfall']); // covered → no feasibility flag
+        $this->assertTrue($se['buy']['isFullyFunded']);
+        $this->assertNull($se['buy']['fundedFromSavings']); // proceeds alone cover it
+        $this->assertNull($se['buy']['mortgage']);
+        $this->assertNull($se['buy']['unfundedGap']); // covered → no feasibility flag
     }
 
-    public function test_a_buy_price_above_the_net_proceeds_is_flagged_as_a_shortfall(): void
+    public function test_a_buy_price_above_the_net_proceeds_reports_the_unfunded_gap(): void
     {
-        // A big mortgage leaves little net; the cheaper home still costs more than that frees.
+        // A big mortgage leaves little net; the home bought still costs more than that frees.
         // Net = 400,000 − 350,000 (mortgage) − 8,000 (2%) = £42,000. Buy £200k + £1,500 SDLT +
-        // £2,000 moving = £203,500 → £161,500 short. The surplus is floored at £0, so the plan
-        // must flag it rather than silently "buy" a home it cannot afford from the sale.
+        // £2,000 moving = £203,500 → £161,500 short. With no savings and no buy mortgage, the
+        // whole gap is UNFUNDED — surfaced so the plan visibly fails rather than silently
+        // "buying" a home it cannot pay for.
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(200_000));
         $se = $this->explainer($action, Money::fromPounds(350_000));
 
         $this->assertFalse($se['buy']['coversPurchase']);
+        $this->assertFalse($se['buy']['isFullyFunded']);
         $this->assertSame(Money::fromPounds(0)->format(), $se['buy']['surplus']);
-        $this->assertSame(Money::fromPounds(161_500)->format(), $se['buy']['shortfall']);
+        $this->assertSame(Money::fromPounds(161_500)->format(), $se['buy']['unfundedGap']);
+    }
+
+    public function test_a_buy_funded_from_savings_and_a_mortgage_shows_both_sources(): void
+    {
+        // £60k of cash savings + a 6% RIO: the £161,500 gap is funded £60k from savings first,
+        // the £101,500 remainder borrowed — both shown, nothing unfunded.
+        $comparison = $this->comparison();
+        $household = new Household(
+            'Sale',
+            RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(20_000), Money::fromPounds(2_000), Percent::fromPercent(70)),
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(60_000))],
+            primaryResidence: new Property(
+                currentValue: Money::fromPounds(400_000),
+                ownership: OwnershipType::Mortgaged,
+                outstandingMortgage: Money::fromPounds(350_000),
+            ),
+        );
+        $action = new HousingAction(
+            salePrice: Money::fromPounds(400_000),
+            buyPrice: Money::fromPounds(200_000),
+            buyMortgageRate: Percent::fromPercent(6),
+        );
+        $se = ResultPresenter::saleExplainer(
+            $comparison->saleProceeds($household, $action),
+            $comparison->buyOutcome($household, $action),
+            $action,
+            blendedRealReturn: 0.0176,
+            investmentIncomeYield: 0.02,
+        );
+
+        $this->assertTrue($se['buy']['isFullyFunded']);
+        $this->assertSame(Money::fromPounds(60_000)->format(), $se['buy']['fundedFromSavings']);
+        $this->assertSame(Money::fromPounds(101_500)->format(), $se['buy']['mortgage']);
+        $this->assertSame(Money::fromPounds(101_500)->applyRate(Percent::fromPercent(6))->format(), $se['buy']['mortgageInterest']);
+        $this->assertNull($se['buy']['unfundedGap']);
     }
 
     public function test_the_blended_return_and_income_yield_are_shown_as_percentages(): void

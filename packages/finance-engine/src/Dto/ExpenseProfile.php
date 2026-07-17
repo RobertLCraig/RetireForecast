@@ -195,6 +195,32 @@ final class ExpenseProfile
     }
 
     /**
+     * The same profile with a dated one-off cost appended — e.g. the unfunded part of a home
+     * purchase, charged in the year it falls so money the plan does not have is never conjured
+     * (the year shows a visible shortfall instead). Unlike {@see withoutPropertyCosts} (which
+     * deliberately drops a sold home's cost growth) every other field is preserved, including
+     * $propertyCostsRealGrowth.
+     */
+    public function withOneOffCost(int $atAge, Money $amount, string $label): self
+    {
+        $oneOffs = $this->oneOffCosts;
+        $oneOffs[] = ['atAge' => $atAge, 'amount' => $amount, 'label' => $label];
+
+        return new self(
+            essentialAnnualSpend: $this->essentialAnnualSpend,
+            discretionaryAnnualSpend: $this->discretionaryAnnualSpend,
+            survivorSpendFactor: $this->survivorSpendFactor,
+            oneOffCosts: $oneOffs,
+            propertyCosts: $this->propertyCosts,
+            employmentCosts: $this->employmentCosts,
+            mortgageCosts: $this->mortgageCosts,
+            essentialSpendPath: $this->essentialSpendPath,
+            discretionarySpendPath: $this->discretionarySpendPath,
+            propertyCostsRealGrowth: $this->propertyCostsRealGrowth,
+        );
+    }
+
+    /**
      * Resolve the stored path: the supplied path, else a flat path from the scalar. When a path
      * is supplied its first band MUST equal the scalar headline — the "one home" invariant that
      * keeps the scalar and the path from drifting (a caller derives the scalar from

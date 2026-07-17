@@ -48,6 +48,7 @@ final class PersonLongevityLever implements SweepLever
                 $household->name, $household->region, $persons, $household->expenseProfile,
                 $household->pensions, $household->accounts, $household->incomeStreams,
                 $household->primaryResidence, $household->relationshipStatus,
+                $household->capitalReceipts, $household->realisedGainsAtStart,
             ),
             $settings,
         );

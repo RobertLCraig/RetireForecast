@@ -1,7 +1,12 @@
 <div>
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-semibold text-gray-900">Your forecasts</h1>
-        <a href="{{ route('scenarios.create') }}" class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">New forecast</a>
+        <div class="flex items-center gap-4">
+            @if ($scenarios->isNotEmpty())
+                <a href="{{ route('scenarios.pdf') }}" class="text-sm font-medium text-blue-600 hover:text-blue-700">Export all to PDF</a>
+            @endif
+            <a href="{{ route('scenarios.create') }}" class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">New forecast</a>
+        </div>
     </div>
 
     @if (session('status'))

@@ -127,7 +127,7 @@ final class DisplayedFigureProvenanceTest extends TestCase
         $scenario = $instance->scenario;
 
         $data = app(ScenarioPdfController::class)->data($scenario);
-        $html = view('pdf.results', $data)->render();
+        $html = view('pdf.results', ['reports' => [$data]])->render();
 
         // The PDF's Monte Carlo figures ARE the panel's comparison figures — same presenter,
         // same latest-completed run, so the PDF can't print a run the screen would hide.

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Dto;
 
+use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 
 /**
@@ -22,6 +23,8 @@ final class Household
      * @param  list<Pension>  $pensions
      * @param  list<Account>  $accounts
      * @param  list<IncomeStream>  $incomeStreams
+     * @param  list<CapitalReceipt>  $capitalReceipts
+     * @param  array<string, Money>  $realisedGainsAtStart
      */
     public function __construct(
         public readonly string $name,
@@ -37,6 +40,16 @@ final class Household
         // married/civil-partnership so every existing scenario keeps today's spousal behaviour;
         // ignored for a single-person household. See {@see RelationshipStatus}.
         public readonly RelationshipStatus $relationshipStatus = RelationshipStatus::MarriedOrCivilPartnership,
+        // Documented one-off capital inflows (a family gift, an inheritance, the sale of
+        // something outside the plan), credited to cash in their calendar year. See
+        // {@see CapitalReceipt} — the no-magic-money rule's input for money arriving from
+        // outside the modelled assets.
+        public readonly array $capitalReceipts = [],
+        // GIA gains already realised AT the base date, personId => gain — set only by the
+        // housing buy transform when it funds a purchase gap by selling GIA holdings at year 0.
+        // The projector charges the CGT in year 0 and counts the gain against that year's
+        // annual exempt amount, so a year-0 disposal is taxed exactly once, never silently.
+        public readonly array $realisedGainsAtStart = [],
     ) {}
 
     public function person(string $id): ?Person

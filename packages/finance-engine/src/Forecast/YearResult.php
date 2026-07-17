@@ -42,7 +42,9 @@ final class YearResult
      * investment income (GIA dividends + cash interest paid out, A5); tax-free
      * income (e.g. DLA); means-tested benefit (Pension Credit Guarantee Credit);
      * pension tax-free lump sums; taxable pension drawdown (planned + drawn to meet a
-     * shortfall); and capital drawn from savings/ISA/GIA.
+     * shortfall); capital drawn from savings/ISA/GIA; and documented one-off capital
+     * receipts (a family gift / inheritance / outside-asset sale — tax-free, one-off,
+     * so never part of the secure-income floor).
      */
     public const INCOME_SOURCES = [
         'salary',
@@ -55,6 +57,7 @@ final class YearResult
         'pension_lump_sum',
         'pension_drawdown',
         'asset_drawdown',
+        'capital_receipt',
     ];
 
     /**

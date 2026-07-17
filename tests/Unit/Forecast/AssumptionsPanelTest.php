@@ -102,7 +102,7 @@ final class AssumptionsPanelTest extends TestCase
         $bare = $this->panel(new HousingAction(salePrice: Money::fromPounds(300_000)));
         $bareLabels = array_column($bare['housing'], 'label');
         $this->assertContains('Selling costs', $bareLabels);
-        $this->assertNotContains('Cheaper home to buy', $bareLabels);
+        $this->assertNotContains('Home to buy', $bareLabels);
         $this->assertNotContains('Rent (if renting)', $bareLabels);
 
         // A full housing action surfaces the buy price, rent and moving costs too, and each
@@ -115,7 +115,7 @@ final class AssumptionsPanelTest extends TestCase
             sellingCosts: [new SellingCostComponent('Estate agent', Percent::fromPercent(1.5))],
         ));
         $fullLabels = array_column($full['housing'], 'label');
-        $this->assertContains('Cheaper home to buy', $fullLabels);
+        $this->assertContains('Home to buy', $fullLabels);
         $this->assertContains('Rent if you sell & rent', $fullLabels);
         $this->assertContains('Moving costs', $fullLabels);
         $this->assertContains('Selling cost — Estate agent', $fullLabels);

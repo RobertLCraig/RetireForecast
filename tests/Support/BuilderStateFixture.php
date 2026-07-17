@@ -55,6 +55,9 @@ final class BuilderStateFixture
                 ['id' => 'inc1', 'ownerId' => 'p2', 'type' => 'rental', 'grossAnnual' => '7200', 'taxable' => true,
                     'inflationLinked' => true, 'startAge' => '60', 'endAge' => '90'],
             ],
+            'capitalReceipts' => [
+                ['id' => 'cr1', 'ownerId' => 'p1', 'year' => '2029', 'amount' => '90000', 'label' => 'Family gift'],
+            ],
             'hasProperty' => true,
             'property' => ['currentValue' => '525000', 'ownership' => 'mortgaged', 'everLet' => false,
                 'outstandingMortgage' => '48000', 'runningCosts' => '6400', 'growthAssumptionOverride' => '1', 'ownershipShare' => '100',

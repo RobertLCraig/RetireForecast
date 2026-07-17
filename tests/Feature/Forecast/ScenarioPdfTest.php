@@ -63,7 +63,7 @@ class ScenarioPdfTest extends TestCase
     {
         $scenario = ScenarioFixture::rich($this->user);
 
-        $html = view('pdf.results', app(ScenarioPdfController::class)->data($scenario))->render();
+        $html = view('pdf.results', ['reports' => [app(ScenarioPdfController::class)->data($scenario)]])->render();
 
         $this->assertStringContainsString($scenario->name, $html);
         $this->assertStringContainsString('Guidance only, not financial advice', $html);
@@ -78,9 +78,46 @@ class ScenarioPdfTest extends TestCase
         $scenario = ScenarioFixture::rich($this->user);
         (new SimulationRunner(new ScenarioForecaster))->preview($scenario, paths: 20);
 
-        $html = view('pdf.results', app(ScenarioPdfController::class)->data($scenario))->render();
+        $html = view('pdf.results', ['reports' => [app(ScenarioPdfController::class)->data($scenario)]])->render();
 
         $this->assertStringContainsString('Will the money last?', $html);
         $this->assertStringContainsString('Essentials always met', $html);
+    }
+
+    public function test_export_all_streams_a_single_pdf(): void
+    {
+        ScenarioFixture::rich($this->user);
+        ScenarioFixture::rich($this->user);
+
+        $response = $this->get(route('scenarios.pdf'));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_export_all_includes_every_ready_scenario_and_only_the_owners(): void
+    {
+        $first = ScenarioFixture::rich($this->user);
+        $first->update(['name' => 'First plan']);
+        $second = ScenarioFixture::rich($this->user);
+        $second->update(['name' => 'Second plan']);
+        $draft = ScenarioFixture::rich($this->user);
+        $draft->update(['name' => 'Unfinished draft', 'status' => ScenarioStatus::Draft]);
+        $other = ScenarioFixture::rich(User::factory()->create());
+        $other->update(['name' => 'Someone elses plan']);
+
+        $reports = app(ScenarioPdfController::class)->reports($this->user);
+        $html = view('pdf.results', ['reports' => $reports])->render();
+
+        $this->assertStringContainsString('First plan', $html);
+        $this->assertStringContainsString('Second plan', $html);
+        $this->assertStringNotContainsString('Unfinished draft', $html);
+        $this->assertStringNotContainsString('Someone elses plan', $html);
+    }
+
+    public function test_export_all_with_nothing_ready_is_not_found(): void
+    {
+        $this->get(route('scenarios.pdf'))->assertNotFound();
     }
 }

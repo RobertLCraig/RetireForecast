@@ -711,6 +711,23 @@ final class PathProjector
         }
         $grossIncomeNominal += $taxFreeCashNominal + $taxFreeIncomeNominal;
 
+        // Documented one-off capital receipts ({@see Household::$capitalReceipts} — a family
+        // gift / inheritance / outside-asset sale) land in their calendar year, inflated to
+        // that year's prices, as tax-free spendable cash: a gift is not income, so it joins
+        // neither the tax pass nor the means test's assessable income (the banked cash raises
+        // tariff income from the following year instead, as in reality). If the owner has died
+        // the household still receives it; any unspent residue banks to the first living
+        // person's cash via the ordinary surplus path below.
+        foreach ($household->capitalReceipts as $receipt) {
+            if ($receipt->calendarYear !== $calendarYear) {
+                continue;
+            }
+            $amount = (int) round($receipt->amount->pence * $cumInflation);
+            $netCashNominal += $amount;
+            $grossIncomeNominal += $amount;
+            $src['capital_receipt'] += $amount;
+        }
+
         // Buy-to-let finance-cost restriction (since April 2020): a landlord can no longer deduct
         // mortgage interest from rental profit, but gets a basic-rate (20%) tax reducer on the
         // lower of the finance cost and the rental profit. Modelled when the home is LET: the
@@ -912,11 +929,29 @@ final class PathProjector
             $state['careRealTotal'] += (int) round($careChargedNominal / $state['spendFactor']);
         }
 
+        // CGT on GIA gains realised AT the base date ({@see Household::$realisedGainsAtStart} —
+        // a year-0 purchase savings draw that sold GIA holdings). Charged up-front here, before
+        // the shortfall is funded, so a CGT bill the year's cash cannot cover is itself funded
+        // (or surfaces as unmet spend) like any other cost. The seed gains are then passed into
+        // fundShortfall so the annual exempt amount is shared ONCE between the seed and any
+        // in-year disposal — a year-0 disposal is taxed exactly once, never twice, never free.
+        $seedGains = [];
+        if ($yearIndex === 0 && $household->realisedGainsAtStart !== []) {
+            foreach ($household->realisedGainsAtStart as $pid => $gain) {
+                $seedGains[$pid] = $gain->pence;
+            }
+            $seedCgt = $this->capitalGainsTax($seedGains, $taxablePerPerson, $alive);
+            if ($seedCgt > 0) {
+                $totalTaxNominal += $seedCgt;
+                $netCashNominal -= $seedCgt;
+            }
+        }
+
         // Fund any shortfall from assets per the drawdown strategy.
         $shortfall = $spendNominal - $netCashNominal;
         $fundedNominal = 0;
         if ($shortfall > 0) {
-            $funded = $this->fundShortfall($household, $settings, $state, $alive, $ages, $taxablePerPerson, $shortfall, $thresholdFactor, $benefitNominal > 0);
+            $funded = $this->fundShortfall($household, $settings, $state, $alive, $ages, $taxablePerPerson, $shortfall, $thresholdFactor, $benefitNominal > 0, $seedGains);
             $fundedNominal = $funded['funded'];
             $totalTaxNominal += $funded['extraTax'];
             $src['pension_drawdown'] += $funded['fromPension'];
@@ -1456,15 +1491,20 @@ final class PathProjector
      * @param  array<string, int>  $taxablePerPerson
      * @return array{funded: int, extraTax: int, fromPension: int, fromAssets: int}
      */
-    private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $ages, array $taxablePerPerson, int $shortfall, float $thresholdFactor = 1.0, bool $onGuaranteeCredit = false): array
+    private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $ages, array $taxablePerPerson, int $shortfall, float $thresholdFactor = 1.0, bool $onGuaranteeCredit = false, array $seedGains = []): array
     {
         $remaining = $shortfall;
         $funded = 0;
         $extraTax = 0;
         $fromPension = 0; // gross pension withdrawn to meet the shortfall
         $fromAssets = 0;  // capital drawn from cash/GIA/ISA
-        // GIA gains realised this year by disposals, per person (feeds CGT below).
+        // GIA gains realised this year by disposals, per person (feeds CGT below). Seeded with
+        // any gains a year-0 purchase draw already realised ($seedGains, pence), so the AEA
+        // headroom in drawGiaToAea accounts for them — shared once, never granted twice.
         $realisedGain = array_fill_keys(array_map(fn ($p): string => $p->id, $household->persons), 0);
+        foreach ($seedGains as $pid => $gain) {
+            $realisedGain[$pid] = ($realisedGain[$pid] ?? 0) + $gain;
+        }
 
         $strategy = $settings->drawdownStrategy;
         $params = $this->config->incomeTax;
@@ -1637,6 +1677,12 @@ final class PathProjector
         // drawdown sources by exactly the tax in a disposal year — pinned by a reconciliation
         // test. Do not "restore" the source totals here or the cashflow ladder stops balancing.
         $cgt = $this->capitalGainsTax($realisedGain, $taxablePerPerson, $alive);
+        if ($seedGains !== []) {
+            // The seed's own CGT was already charged up-front in projectYear; charge only the
+            // increment the in-year disposals add on top of it (the AEA and the rate bands are
+            // judged on the combined gain, so the increment is exact, never double-counted).
+            $cgt -= $this->capitalGainsTax($seedGains, $taxablePerPerson, $alive);
+        }
         if ($cgt > 0) {
             $extraTax += $cgt;
             $remaining = $cgt;

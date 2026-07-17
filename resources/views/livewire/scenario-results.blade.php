@@ -967,17 +967,29 @@
                 </div>
                 @if ($se['buy'])
                     <div class="rounded-md border border-gray-200 p-4">
-                        <h3 class="font-medium text-gray-900">If you sell &amp; buy cheaper</h3>
+                        <h3 class="font-medium text-gray-900">If you sell &amp; buy</h3>
                         <dl class="mt-2 space-y-1 text-sm text-gray-700">
                             <div class="flex justify-between gap-3"><dt>Net proceeds</dt><dd class="tabular-nums">{{ $se['buy']['netProceeds'] }}</dd></div>
-                            <div class="flex justify-between gap-3"><dt>less the cheaper home</dt><dd class="tabular-nums">−{{ $se['buy']['buyPrice'] }}</dd></div>
+                            <div class="flex justify-between gap-3"><dt>less the home bought</dt><dd class="tabular-nums">−{{ $se['buy']['buyPrice'] }}</dd></div>
                             <div class="flex justify-between gap-3"><dt>less stamp duty</dt><dd class="tabular-nums">−{{ $se['buy']['sdlt'] }}</dd></div>
                             <div class="flex justify-between gap-3"><dt>less moving costs</dt><dd class="tabular-nums">−{{ $se['buy']['movingCosts'] }}</dd></div>
+                            @if ($se['buy']['fundedFromSavings'])
+                                <div class="flex justify-between gap-3"><dt>plus from your savings (cash → GIA → ISA)</dt><dd class="tabular-nums">+{{ $se['buy']['fundedFromSavings'] }}</dd></div>
+                            @endif
+                            @if ($se['buy']['mortgage'])
+                                <div class="flex justify-between gap-3"><dt>plus interest-only mortgage{{ $se['buy']['mortgageInterest'] ? ' (~'.$se['buy']['mortgageInterest'].'/yr interest)' : '' }}</dt><dd class="tabular-nums">+{{ $se['buy']['mortgage'] }}</dd></div>
+                            @endif
+                            @if ($se['buy']['unfundedGap'])
+                                <div class="flex justify-between gap-3 font-semibold text-red-700"><dt>Unfunded gap</dt><dd class="tabular-nums">{{ $se['buy']['unfundedGap'] }}</dd></div>
+                            @endif
                             <div class="flex justify-between gap-3 border-t border-gray-200 pt-1 font-semibold text-gray-900"><dt>Surplus invested</dt><dd class="tabular-nums">{{ $se['buy']['surplus'] }}</dd></div>
                         </dl>
-                        @unless ($se['buy']['coversPurchase'])
-                            <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800" role="note">Buying at {{ $se['buy']['buyPrice'] }} needs <strong>{{ $se['buy']['shortfall'] }} more</strong> than this sale frees — it isn't affordable from the sale alone. The forecast caps the surplus at £0 and buys anyway, so you'd need that extra capital from elsewhere.</p>
-                        @endunless
+                        @if ($se['buy']['fundedFromSavings'] && $se['buy']['isFullyFunded'])
+                            <p class="mt-3 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-900" role="note">{{ $se['buy']['fundedFromSavings'] }} of this purchase is funded from your savings, drawn cash → GIA → ISA (never pensions). That money leaves the plan on day one{{ $se['buy']['mortgage'] ? ', and the rest of the gap is borrowed' : '' }}.</p>
+                        @endif
+                        @if ($se['buy']['unfundedGap'])
+                            <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800" role="alert"><strong>{{ $se['buy']['unfundedGap'] }} of this purchase has no funding source.</strong> The sale proceeds{{ $se['buy']['fundedFromSavings'] ? ' and all your savings' : '' }} don't cover it and no mortgage is configured, so the forecast charges the gap as an unmet cost in year one — the plan fails until that money is documented (a mortgage, a receipt, or a cheaper home).</p>
+                        @endif
                     </div>
                 @endif
             </div>

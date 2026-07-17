@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-12 (added a private Tailscale-Serve path to share the app with family as-is — no Hostinger migration; see Decisions)_
+_Last updated: 2026-07-16 (no-magic-money purchase funding + documented capital receipts built — see Decisions 2026-07-16; also the host-conditional Tailscale pin)_
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -43,7 +43,15 @@ Full log + rationale: [DECISIONS.md](DECISIONS.md). The load-bearing "don't reli
 ## Current state
 The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md)** (each item also has a dated DECISIONS entry + git history). High level:
 - **Done — everything through the post-v1 backlog is built:** the HMRC-accurate deterministic engine (income tax + NI; the pension lump-sum suite incl. Month-1 emergency tax + reclaim; State Pension; SDLT/CGT/PRR; means-tested benefits; IHT; care) + Monte Carlo with stochastic joint-life mortality; the full app (encrypted DTO persistence, Fortify auth, GDPR, Filament, queued runs with progress/cancel, Livewire UI + charts, spreadsheet import, PDF export, 2FA, CSP); the rebuild (Phases A–D); the adviser-legibility presentation layer; **decision-support (Phases 0–6)** — lever thresholds, the "How far can we go?" panel, combination comparison, the survivor-cliff story + 5 levers, the 2-D trade-off map, the hash-gated assistant tie-in; the **local-model assistant** (grounded explainer + methodology doc-RAG + idea capture); **IHT wired into the forecast** (+ relationship status); the **care means-test tail**; the **age-varying spending smile**; the **equity-release lifetime mortgage**; the **BTL finance-cost tax reducer**. Nearly all of the post-2026-06-29 cluster **awaits Rob's browser sign-off** (What's next #1).
-- **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **the £118k stay-put mortgage is a DELIBERATE paydown design — read that doc before touching any V2 figure.**
+- **Done 2026-07-16 — no-magic-money purchase funding (DECISIONS 2026-07-16):** a buy above the sale proceeds is
+  funded savings-first (cash → GIA → ISA, never pensions; the RIO borrows only the remainder); anything unfunded is
+  charged as a year-0 cost so the plan **visibly fails** instead of being handed the home for free (the old
+  floor-the-surplus behaviour is gone); a year-0 GIA draw pays real CGT. New **`CapitalReceipt`** builder input
+  (step 3) models documented one-off money from outside the plan (family gift / outside-asset sale) — the ladder
+  shows it as "One-off receipt". Awaits browser sign-off with the rest (What's next #1).
+- **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **the £118k stay-put mortgage is a DELIBERATE paydown design — read that doc before touching any V2 figure.** The base's
+  "~£90k found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
+  (year 2026, the real source as the label) — see the V2 doc's note.
 - **Operational note (found 2026-07-10):** a `queue:work` daemon started **before** the 2026-07-09 Postgres migration keeps polling the old SQLite `jobs` table and processes **no** Postgres jobs — an in-app "Re-run all" hangs against it. **Restart every queue worker after the DB change** (`queue:work` caches its DB connection at boot). See How to pick up.
 - **Known bugs:** none open. The queued-Monte-Carlo reproducibility bug is **RESOLVED** (Postgres) and **independently re-verified 2026-07-10** (Session log). Documented v1 scope limits (all flagged in code) live in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" — e.g. Scotland income tax throws; emergency tax models the over-deduction magnitude, not PAYE-table pennies; a repayment mortgage's balance is modelled static (set `mortgageRedemptionYear` + repay-from-capital to clear it); house/salary growth deterministic inside the Monte Carlo.
 
@@ -61,6 +69,11 @@ The whole post-v1 backlog is built. What remains:
 - [ ] **The stale queue worker** — restart it (then in-app "Re-run all" works; see How to pick up).
 - [ ] **Spreadsheet import** — the line-item expense-category data-model decision; re-verify IWT CSP vs a real export.
 - [ ] **Demo couple's anonymised figures** — Rob supplies later, entered via the UI, not hardcoded.
+- [ ] **Re-model the V2 base's ~£90k paydown as a capital receipt** (Rob, in the UI): builder step 3 → One-off
+  capital receipts → year 2026, £90,000, label = the real source, owner = the receiving partner — then re-run.
+- [ ] **PDF report has no buy-funding block** — the funding waterfall (savings / mortgage / unfunded gap) is on
+  results/Compare/assistant but the PDF doesn't render the sale explainer at all; deferred (PDF files carried
+  uncommitted work from another session).
 - [ ] **Not blocking** — the Delta-research backlog (docs/RESEARCH-delta-2026-07-02.md); the under-spending case (docs/PLAN.md); the third-adult-contributing-to-upkeep scope item; a /methodology enhancement + an adviser/Pension-Wise output pack; WCAG 2.2 AA + mobile to a public bar.
 
 ## How to pick up
@@ -81,10 +94,11 @@ npm run build                        # build assets (public/build is gitignored)
   **A worker started before the 2026-07-09 Postgres move polls the old SQLite jobs table and never processes Postgres jobs — kill and restart it.** The synchronous preview (1 path) needs no worker.
 - **Admin `/admin`** gated on `is_admin` (`php artisan user:make-admin {email}`). **Assistant** inert unless `ASSISTANT_ENABLED=true` (needs Ollama with `qwen3:14b` + the worker; build the doc index once with `php artisan assistant:index-docs`, re-run after editing a curated methodology doc). Register at `/register` + accept the `/welcome` disclaimer; 2FA at `/account/security`. Demo preset: `php artisan db:seed --class=Database\Seeders\DemoScenarioSeeder`.
 - **Machine config (not in repo):** a per-site Herd nginx conf raises this site's gateway timeout to 300s (`~/.config/herd/config/valet/Nginx/retireforecast.test.conf`).
-- **Share with family (private, as-is) — Tailscale Serve, not a public deploy (DECISIONS 2026-07-12).** Set
-  `APP_EXTERNAL_URL` (in `.env`) to this machine's `https://<name>.ts.net`, run `php artisan serve --port=8000`
-  plus a queue worker, then `tailscale serve --bg 8000` (tailnet-only, auto HTTPS). Blank `APP_EXTERNAL_URL`
-  = normal local use; while set, even local browsing generates `*.ts.net` links, so use that URL yourself too.
+- **Share with family (private, as-is) — Tailscale Serve, not a public deploy (DECISIONS 2026-07-12 + 07-16).**
+  Set `APP_EXTERNAL_URL` (in `.env`) to this machine's `https://<name>.ts.net`, run `php artisan serve --port=8000`
+  plus a queue worker, then `tailscale serve --bg 8000` (tailnet-only, auto HTTPS). The URL pin is
+  host-conditional (2026-07-16): family traffic under the `*.ts.net` host gets pinned https URLs while local
+  browsing at `retireforecast.test` keeps its own — both work at once, no env toggling needed.
   The `tailscale serve` config survives reboot; `artisan serve`/`queue:work` do not — relaunch them. Stop
   sharing: `tailscale serve --https=443 off`. Family log in with Rob's credentials (scenarios are per-user).
 
@@ -106,6 +120,20 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-16 (no magic money: purchase-funding waterfall + documented capital receipts)_ —
+Rob: scenarios that buy a home "seem to magic up the money required — show it accurately, without money
+appearing without a documented income source (e.g. sale residual, income from work/kids)". Root cause: a
+cash-only buy above the proceeds floored the surplus at £0 and still granted the home at full price (phantom
+equity, flagged in the UI but silently modelled); savings were never drawn; no input existed for money arriving
+from outside the plan. Built (all per DECISIONS 2026-07-16, Rob's three design calls made explicitly): the
+savings-first funding waterfall with the loud unfunded-gap year-0 failure; real year-0 CGT on the GIA slice a
+purchase draw sells (one shared AEA, exact-pence tests via the engine's own primitives); the `CapitalReceipt`
+input end-to-end (engine → projector → builder step 3 → ladder → assistant). Fixed in passing: `withHousing`
+dropped `relationshipStatus` (cohabiting buy/rent variants silently reverted to married IHT). The Compare
+burndown now shows an unfunded mansion plunging £-millions negative — verified as the honest net-position line
+(usable minus cumulative unmet), not a bug. PDF surfaces untouched (uncommitted work from a concurrent session
+in those files — stage selectively). Suite green throughout; pint clean.
 
 _2026-07-12 (private family sharing via Tailscale Serve — Hostinger rejected)_ —
 Rob wanted family to view the current real scenarios **as-is** (not a public launch). Rejected the offered

@@ -7,6 +7,8 @@ namespace RetireForecast\FinanceEngine\Tests\Sweep;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\Account;
+use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\AnnuityPurchase;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
@@ -122,6 +124,43 @@ final class SweepLeversTest extends TestCase
             'buying cheaper (more invested surplus) should not lower success',
         );
         $this->assertSame(LeverDirection::Decreasing, $lever->direction());
+    }
+
+    public function test_buy_price_worsens_outcomes_monotonically_across_all_funding_regimes(): void
+    {
+        // As the swept price rises the purchase moves through the funding regimes: surplus
+        // invested → savings drawn → mortgage-funded (rate set) or unfunded (no rate). The
+        // outcome must only worsen with price across every regime boundary, or the
+        // decreasing-direction threshold search (LeverDirection::Decreasing) would mis-read.
+        // Deterministic on purpose: regime boundaries are exact, no sampling noise.
+        $base = $this->homeOwningCouple();
+        $household = new Household(
+            $base->name, $base->region, $base->persons, $base->expenseProfile, $base->pensions,
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(50_000))],
+            primaryResidence: $base->primaryResidence,
+        );
+        $comparison = new HousingComparison(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable);
+        $forecaster = new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable);
+        $assumptions = AssumptionSetLibrary::default();
+
+        foreach ([Percent::fromPercent(6), null] as $rate) {
+            $action = new HousingAction(salePrice: Money::fromPounds(500_000), buyMortgageRate: $rate);
+            $lever = new BuyPriceLever($comparison, $assumptions, $action);
+
+            $prevWealth = PHP_INT_MAX;
+            $prevUnmet = -1;
+            foreach ([200_000.0, 500_000.0, 600_000.0, 700_000.0] as $price) {
+                $inputs = $lever->apply($household, $this->settings(), $price);
+                $forecast = $forecaster->forecast($inputs->household, $assumptions, $inputs->settings);
+
+                $wealth = $forecast->terminalUsableWealth->pence;
+                $unmet = $forecast->years[0]->unmetSpend->pence;
+                $label = ($rate === null ? 'cash-only' : 'mortgaged')." at £{$price}";
+                $this->assertLessThanOrEqual($prevWealth, $wealth, "usable wealth must not rise with the buy price ({$label})");
+                $this->assertGreaterThanOrEqual($prevUnmet, $unmet, "year-0 unmet spend must not fall with the buy price ({$label})");
+                [$prevWealth, $prevUnmet] = [$wealth, $unmet];
+            }
+        }
     }
 
     public function test_the_survivor_db_fraction_lever_moves_only_schemes_that_offer_a_survivor_pension(): void

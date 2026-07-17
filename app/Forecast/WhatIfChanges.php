@@ -109,7 +109,7 @@ final class WhatIfChanges
     private const ROW_TYPE = [
         'people' => 'Person', 'pensions' => 'Pension', 'accounts' => 'Account',
         'incomeStreams' => 'Income', 'oneOffCosts' => 'One-off cost', 'expenseLines' => 'Spending line',
-        'withdrawals' => 'Pension withdrawal',
+        'withdrawals' => 'Pension withdrawal', 'capitalReceipts' => 'Capital receipt',
     ];
 
     /**
@@ -235,7 +235,7 @@ final class WhatIfChanges
 
         return match ($collection) {
             'people' => (string) ($row['name'] ?? '') ?: Str::upper($rowId),
-            'expenseLines', 'oneOffCosts' => (string) ($row['label'] ?? '') ?: $fallback,
+            'expenseLines', 'oneOffCosts', 'capitalReceipts' => (string) ($row['label'] ?? '') ?: $fallback,
             'pensions' => match ((string) ($row['subtype'] ?? '')) {
                 'state' => 'State Pension', 'dc' => 'DC pension', 'db' => 'DB pension', default => $fallback,
             },

@@ -106,6 +106,14 @@ inflation_linked (bool), start_age (int), end_age (int?). `disability_benefit` (
 — the assembler forces `taxable = false` for it, so it is disregarded from income tax and the Pension Credit means test
 (DECISIONS 2026-07-01).
 
+### CapitalReceipt (added 2026-07-16 — the no-magic-money input)
+owner_person_id, label (string — what the money is and where it comes from), amount (Money 🔒, today's money),
+calendar_year (int). A **documented one-off capital inflow** (family gift / inheritance / outside-asset sale):
+money from outside the modelled assets is *entered* here, never assumed. Credited to cash in its calendar year
+(inflated to that year's prices), reported as the `capital_receipt` income source on the ladder; tax-free, not
+means-test income (the banked cash raises tariff income from the following year), **never** part of the
+secure-income floor. Builder-state `capitalReceipts` rows; `Household::$capitalReceipts` on the DTO.
+
 ### ExpenseProfile
 target_annual_spend (Money 🔒/yr), essential_portion (Money 🔒 — the floor for "success"),
 discretionary_portion (Money 🔒), inflation_basis (enum), one_off_costs (OneOff[]:
@@ -386,9 +394,11 @@ Recorded here so the rebuild does not fork the model:
   legibility layer, each a single source the app only reads: (1) **`ForecastResult::deathCalendarYears`**
   (`array<personId, int>` = birthYear + modelled death age, computed once in `PathProjector` from the draws; default
   `[]`) — the canonical "when does each person die", powering the milestones + input-sanity notes without
-  re-deriving the death age; (2) **`Housing\HousingPurchase`** (a reconciled value object beside `HousingProceeds`:
-  `netProceeds − buyPrice − stampDuty − movingCosts = surplus`) — the single source of the buy-side surplus, read by
-  `HousingComparison::buyVariant` and the sale-explainer. The results-page **view-models** (`ResultPresenter::saleExplainer`
+  re-deriving the death age; (2) **`Housing\HousingPurchase`** (a reconciled value object beside `HousingProceeds`) —
+  the single source of the buy-side funding decomposition, read by `HousingComparison::buyVariant` and the
+  sale-explainer. **2026-07-16 — the full funding identity, asserted in its constructor** (a non-reconciling
+  decomposition cannot be constructed): `netProceeds + fundedFromSavings + mortgage + unfundedGap ==
+  buyPrice + stampDuty + movingCosts + surplus` (see the no-magic-money workstream below). The results-page **view-models** (`ResultPresenter::saleExplainer`
   / `assumptionsPanel` / `milestones` / `inputNotes`, plus the ladder's essential/discretionary split) are app-side
   presentation derived from these + the household — they add **no** persisted entity and **no** canonical-shape change.
 
@@ -399,8 +409,8 @@ workstream". The canonical-shape additions below are now materialised (see `git 
 from the original plan, flagged inline:
 - ✅ **(A) Means-tested benefits in the forecast.** Engine `Benefits\PensionCreditCalculator` (Guarantee Credit
   to the Standard Minimum Guarantee + Severe Disability / Carer additions; capital tariff via the existing
-  `CapitalAssessment`). **`YearResult` gains an income source `means_tested_benefit`** (one of the 10 canonical
-  `YearResult::INCOME_SOURCES` — completeness guard covers each). A **disability flag** is added to `Person` (or `Household`):
+  `CapitalAssessment`). **`YearResult` gains an income source `means_tested_benefit`** (one of the canonical
+  `YearResult::INCOME_SOURCES`, 11 since `capital_receipt` was added 2026-07-16 — completeness guard covers each). A **disability flag** is added to `Person` (or `Household`):
   e.g. `receivesDisabilityBenefit: bool` (+ a derived "severe disability" qualifier), driving the SDP and the
   DLA/AA passport. The benefit is a **household-level** credit computed each projected year from that year's
   assessable income + assessable capital (liquid wealth, home excluded), so it erodes/restores dynamically and
@@ -416,12 +426,16 @@ from the original plan, flagged inline:
   entered rent from then on. The post-sale rent + selling-cost basis ride on the new `ForecastSettings::$sellingCosts`
   (+ `annualRent`/`rentInflationReal`), populated by `ScenarioForecaster::settings()` for a ForcedSale scenario only,
   since the projector has no `HousingAction` (DECISIONS 2026-07-03). *Open:* the one-off **path scope** field.
-- ✅ **(C) Feasibility** is a **derived** result note (no stored field): `HousingComparison` exposes whether a buy
-  price exceeds net proceeds (and the gap), surfaced by `ResultPresenter` as an input-sanity note. **Buy-with-a-mortgage
-  (2026-07-03):** `HousingAction` gained `buyMortgageRate: Percent?` (builder `housing.buyMortgageRate`); when set and
-  the buy costs more than the sale frees, the shortfall is funded by an interest-only (RIO) mortgage on the new home
-  (`HousingPurchase::$mortgage`; interest charged via `ExpenseProfile::withMortgageCosts`) instead of flooring the
-  surplus — so the feasibility note reads "funded by a £X mortgage" rather than "unaffordable" (DECISIONS 2026-07-03).
+- ✅ **(C) Feasibility** is a **derived** result note (no stored field): `HousingComparison` exposes the purchase's
+  funding decomposition, surfaced by `ResultPresenter`. **Buy-with-a-mortgage (2026-07-03):** `HousingAction` gained
+  `buyMortgageRate: Percent?` (builder `housing.buyMortgageRate`). **Superseded by the funding waterfall
+  (2026-07-16, no-magic-money):** a buy above the proceeds is funded savings-first (cash+Premium Bonds → GIA → ISA,
+  never pensions — `Housing\SavingsFunding`, the drawn accounts actually reduced in the variant household), then the
+  RIO mortgage takes the *post-savings remainder* (interest via `ExpenseProfile::withMortgageCosts`); anything left is
+  `HousingPurchase::$unfundedGap`, charged as a year-0 one-off cost (`ExpenseProfile::withOneOffCost`) so the plan
+  visibly fails (`unmetSpend` > 0) instead of being handed the home for free. A GIA draw realises its pro-rata gain
+  (`Household::$realisedGainsAtStart`) and the projector charges the CGT in year 0, sharing one AEA with any in-year
+  disposal (DECISIONS 2026-07-16).
 - ✅ **(D) Input clarity** is mostly **builder-state / UI**, not canonical-shape: a per-input **pay frequency** is a
   form concern (stored annual, so the DTO is unchanged). The tax-free-benefit type was **upgraded** from the planned
   `IncomeStream{type: other, taxable: false}` to a first-class `IncomeStreamType::DisabilityBenefit` (structurally

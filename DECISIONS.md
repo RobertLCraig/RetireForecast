@@ -3,6 +3,70 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-16 — No magic money: the purchase-funding waterfall + documented capital receipts
+**Context:** Rob spotted that scenarios which buy a home "magic up" the money. Confirmed: a cash-only buy above
+the net proceeds floored the surplus at £0 and still handed the household the home at full price, owned outright —
+the shortfall appeared from nowhere as home equity, inflating that plan's wealth (2026-07-03 below described the
+mechanism but only added the RIO route; the cash-only case kept a UI flag over a silently-modelled buy). Savings
+were never drawn to fund a gap even when the household had them, the RIO borrowed the *entire* gap, and there was
+no way to model a documented one-off receipt (a family gift / outside-asset sale) — the real V2 base's ~£90k
+paydown is literally "assumed from outside the modelled assets". **Rob's rule: money never appears in any scenario
+without a documented source** (sale residual, savings, work income, family contribution, a mortgage).
+
+**Decisions (Rob's, via structured options):**
+1. **Funding waterfall, savings first:** a purchase gap is funded net proceeds → liquid savings, drawn
+   automatically cash+Premium Bonds → GIA → ISA (never pensions — a forced pension draw would trigger tax/MPAA;
+   model that explicitly if wanted), persons in declaration order → the RIO mortgage takes the **post-savings
+   remainder** (only when `buyMortgageRate` is set) → any residue is the **unfunded gap**.
+2. **An unfunded buy still projects but visibly fails:** the gap is charged as a year-0 one-off cost
+   (`ExpenseProfile::withOneOffCost`, "Unfunded purchase shortfall", the RepayFromCapital precedent — it charges
+   the spend target, not the essential floor), so year 0 shows `unmetSpend` ≥ the gap and every surface flags it.
+   Nuance (accepted as *accurate*): the in-projection shortfall machinery may then fund some of it from pensions,
+   grossed-up and taxed — the "never pensions" rule applies to the automatic pre-projection waterfall only.
+3. **`CapitalReceipt` input** (owner, label/source, amount in today's money, calendar year): the documented way
+   money from outside the plan enters — credited to cash in its year, a new 11th canonical income source
+   `capital_receipt` on the ladder, tax-free, disregarded as means-test income (the banked cash raises tariff
+   income from the following year), **excluded from `SECURE_SOURCES`** (one-off ≠ income floor). A dead owner's
+   receipt still reaches the household (inflows pool; the surplus convention); after the last death it is never
+   realised. Rob re-models the V2 £90k with it in the UI (label = the real source).
+
+**How (engine first, one home per figure):** `Housing\SavingsFunding` (pure static draw; a GIA draw realises the
+pro-rata gain via the single `disposeGiaSlice` definition and reduces the carried `unrealisedGain`, so the basis
+stays exact); `HousingPurchase` gains `fundedFromSavings` + `unfundedGap` and **asserts the extended identity in
+its constructor** — `netProceeds + fundedFromSavings + mortgage + unfundedGap == buyPrice + SDLT + moving +
+surplus` — so a non-reconciling decomposition cannot exist; `HousingComparison::fundingFor` is the ONE home both
+`buyOutcome` (figures) and `buyVariant` (the projected household, accounts actually reduced) read, so the reported
+split and the projected money can never disagree. **Year-0 CGT is real:** the realised gain seeds
+`Household::$realisedGainsAtStart`; the projector charges it up-front in year 0 and shares ONE annual exempt
+amount with any in-year disposal (incremental closing charge) — a year-0 disposal is taxed exactly once, never
+free. New `Household::$capitalReceipts` + both fields threaded through every positional rebuild (six sweep levers +
+`withHousing` — guarded by a lever-rebuild test). **Fixed in passing:** `withHousing` dropped `relationshipStatus`,
+silently reverting a cohabiting couple's buy/rent variants to married IHT treatment.
+
+**Consequences:** the RIO mortgage now borrows less when savings exist (2026-07-03's "borrow the whole gap" is
+superseded); a buy variant's accounts are genuinely spent (means-test capital falls — correct); the Compare
+burndown's net-position line shows an unfunded buy plunging £-millions negative (usable minus cumulative unmet) —
+that is the honest picture, not a bug. Sweep monotonicity across all four funding regimes (surplus → savings →
+mortgaged → unfunded) is pinned. Presentation: the sale-explainer buy block shows the full funding split; savings-
+funded reads as a neutral note, an unfunded gap as a loud red failure on results/Compare/assistant; the builder
+gains a step-3 "One-off capital receipts" repeater. PDF surfaces deferred (uncommitted PDF work in the tree).
+Tests: reconciliation identities, waterfall order, exact year-0 CGT (via the engine's own `cgtOnGain`), per-source
+completeness (a receipt and a savings draw each demonstrably reach the forecast), builder delta round-trip.
+
+## 2026-07-16 — The external-origin pin is host-conditional, not global
+The 2026-07-12 `APP_EXTERNAL_URL` pin (below) was unconditional: while set, *every* request — including
+local dev at `retireforecast.test` — generated `*.ts.net` asset/link URLs, so the local site rendered as
+bare unstyled HTML whenever sharing was enabled (and whenever `artisan serve`/Tailscale were down, those
+URLs were dead too). Verified empirically that **Tailscale Serve preserves the original `*.ts.net` Host
+header** when proxying to the loopback backend (it also adds `X-Forwarded-For/Proto/Host` and
+`Tailscale-User-*`). So the pin now applies **only when the incoming request's Host matches the configured
+external host** — family traffic gets pinned https URLs, local dev keeps its own, both work simultaneously
+with no env toggling. Still spoof-safe without trusting `X-Forwarded-Host`: a forged Host merely opts in
+to the legitimately *configured* origin; no request-supplied value is ever used in generated URLs. In
+console (artisan, queue workers, tests) the bound request's host is `localhost`, which never matches, so
+the pin stays off there — same net effect as before for URL generation outside HTTP. Guarded by
+`ExternalUrlPinTest`.
+
 ## 2026-07-12 — Share with family privately via Tailscale Serve, not a Hostinger deploy
 **Goal:** let family view the current (real) scenarios as-is — a private share, explicitly **not** a public
 launch. **Rejected Hostinger** (the SSH offered was shared hosting — port 65002, `u…` user): shared plans

@@ -31,12 +31,18 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('interpret', fn (User $user): bool => (bool) config('compliance.personal_use') || $user->can_interpret);
 
         // Remote family access over a private Tailscale tailnet: Tailscale terminates TLS
-        // and proxies to the app over loopback HTTP under the *.ts.net hostname. Pin every
-        // absolute URL/redirect to that external https origin so a login does not bounce to
-        // an unreachable host. Inert until APP_EXTERNAL_URL is set — local dev at
-        // retireforecast.test is untouched. Paired with the loopback trustProxies in
+        // and proxies to the app over loopback HTTP, preserving the original *.ts.net Host
+        // header (verified 2026-07-16). Pin absolute URLs/redirects to the external https
+        // origin ONLY for requests that actually arrive under that host, so a login does not
+        // bounce to an unreachable host — while local dev at retireforecast.test keeps its
+        // own URLs even when sharing is live. Spoof-safe without trusting X-Forwarded-Host:
+        // a forged Host merely opts in to the legitimately configured origin; no
+        // request-supplied value is ever used. Paired with the loopback trustProxies in
         // bootstrap/app.php (which supplies the HTTPS scheme from the proxy).
-        if ($externalUrl = config('app.external_url')) {
+        // (In console — artisan, queue workers, tests — the bound request's host is
+        // localhost, which never matches a *.ts.net name, so the pin stays off there.)
+        $externalUrl = config('app.external_url');
+        if ($externalUrl && $this->app['request']->getHost() === parse_url($externalUrl, PHP_URL_HOST)) {
             URL::forceRootUrl($externalUrl);
             URL::forceScheme('https');
         }

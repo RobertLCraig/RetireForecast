@@ -207,7 +207,9 @@ final class ScenarioContextTest extends TestCase
             'rent' => ['invested' => '£274,000.00', 'annualRent' => null],
             'buy' => [
                 'netProceeds' => '£274,000.00', 'buyPrice' => '£165,000.00', 'sdlt' => '£800.00',
-                'movingCosts' => '£1,500.00', 'surplus' => '£106,700.00', 'coversPurchase' => true, 'shortfall' => null,
+                'movingCosts' => '£1,500.00', 'surplus' => '£106,700.00', 'coversPurchase' => true,
+                'isFullyFunded' => true, 'fundedFromSavings' => null, 'mortgage' => null,
+                'mortgageInterest' => null, 'unfundedGap' => null,
             ],
             'blendedReturnPct' => '3.5%', 'incomeYieldPct' => '2.0%',
         ];
@@ -219,6 +221,41 @@ final class ScenarioContextTest extends TestCase
         $this->assertStringContainsString('£106,700.00', $block);   // surplus left to invest
 
         $this->assertSame([], FigureGrounding::ungrounded('You pocket £274,000.00 and have £106,700.00 to invest after buying.', $block, ''));
+    }
+
+    public function test_the_purchase_funding_waterfall_reaches_the_prompt_including_an_unfunded_gap(): void
+    {
+        $forecast = new ForecastResult([], true, false, 2026, Money::fromPence(1), Money::fromPence(1), 2058);
+
+        // A buy above the proceeds: part savings-funded, part mortgaged, part UNFUNDED — each
+        // documented source (and the failure) must be a groundable fact the assistant can cite.
+        $sale = [
+            'sellingCostsAssumed' => false,
+            'sellingCostBreakdown' => [],
+            'cgtDetail' => null,
+            'proceeds' => [
+                'salePrice' => '£400,000.00', 'mortgage' => '£118,000.00', 'hasMortgage' => true,
+                'sellingCosts' => '£8,000.00', 'cgt' => '£0.00', 'cgtCharged' => false,
+                'netProceeds' => '£274,000.00', 'clearsCosts' => true,
+            ],
+            'rent' => ['invested' => '£274,000.00', 'annualRent' => null],
+            'buy' => [
+                'netProceeds' => '£274,000.00', 'buyPrice' => '£500,000.00', 'sdlt' => '£15,000.00',
+                'movingCosts' => '£1,500.00', 'surplus' => '£0.00', 'coversPurchase' => false,
+                'isFullyFunded' => false, 'fundedFromSavings' => '£60,000.00', 'mortgage' => '£100,000.00',
+                'mortgageInterest' => '£6,000.00', 'unfundedGap' => '£82,500.00',
+            ],
+            'blendedReturnPct' => '3.5%', 'incomeYieldPct' => '2.0%',
+        ];
+
+        $block = ScenarioContext::fromForecast('My Plan', 'Sell and buy', $forecast, null, null, $sale)->promptBlock();
+
+        $this->assertStringContainsString('£60,000.00', $block);       // savings drawn
+        $this->assertStringContainsString('£100,000.00', $block);      // mortgage taken
+        $this->assertStringContainsString('£82,500.00', $block);       // the unfunded gap
+        $this->assertStringContainsString('UNFUNDED', $block);          // named as a failure, not a source
+
+        $this->assertSame([], FigureGrounding::ungrounded('£82,500.00 of the purchase is unfunded, with £60,000.00 drawn from savings.', $block, ''));
     }
 
     public function test_care_cost_appears_only_when_modelled(): void

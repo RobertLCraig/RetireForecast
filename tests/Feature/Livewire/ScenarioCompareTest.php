@@ -248,9 +248,9 @@ class ScenarioCompareTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
         $base = ScenarioFixture::rich($user);
-        // A "sell & buy cheaper" what-if whose buy price dwarfs the sale proceeds — the engine
-        // would floor the surplus at £0 and "buy" anyway, so Compare must flag the shortfall
-        // rather than let an unaffordable plan sit in the comparison unmarked.
+        // A "sell & buy" what-if whose buy price dwarfs the sale proceeds AND the household's
+        // savings, with no buy mortgage — the unfunded gap must be flagged on the row (and the
+        // engine charges it as a failed year-0 cost) rather than let the plan sit unmarked.
         $this->childOf($base, $user, ['variant' => 'buy_outright', 'housing.buyPrice' => '5000000'], 'Buy a mansion');
 
         Livewire::test(ScenarioCompare::class, ['scenario' => $base])
@@ -259,7 +259,7 @@ class ScenarioCompareTest extends TestCase
 
                 return $row !== null && $row['buyShortfall'] !== null;
             })
-            ->assertSee('more than the sale frees');
+            ->assertSee('of this purchase is unfunded');
     }
 
     public function test_a_plan_within_its_means_carries_no_buy_shortfall_flag(): void
@@ -270,7 +270,7 @@ class ScenarioCompareTest extends TestCase
 
         Livewire::test(ScenarioCompare::class, ['scenario' => $base])
             ->assertViewHas('plans', fn ($plans): bool => $plans->every(fn (array $p): bool => $p['buyShortfall'] === null))
-            ->assertDontSee('more than the sale frees');
+            ->assertDontSee('of this purchase is unfunded');
     }
 
     public function test_compare_is_owner_scoped(): void

@@ -9,6 +9,7 @@ use App\Forecast\WithdrawalStrategyComparison;
 use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\BuilderStateFixture;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
@@ -85,6 +86,56 @@ class ScenarioForecasterTest extends TestCase
         $this->assertLessThan(
             $stay->years[0]->propertyWealth->pence,
             $variants['buy_outright']->years[0]->propertyWealth->pence,
+        );
+    }
+
+    public function test_a_capital_receipt_reaches_the_forecast(): void
+    {
+        $user = User::factory()->create();
+        $forecaster = new ScenarioForecaster;
+
+        // The rich fixture carries a £90k family gift in 2029; the same scenario without it
+        // must be visibly poorer — a documented receipt that did not reach the result would
+        // be a silent drop (per-source completeness).
+        $with = $forecaster->deterministic(ScenarioFixture::rich($user));
+        $without = $forecaster->deterministic(ScenarioFixture::rich($user, ['capitalReceipts' => []]));
+
+        $withYears = [];
+        foreach ($with->years as $year) {
+            $withYears[$year->calendarYear] = $year;
+        }
+        // Visible on the ladder in its year (real money — ±1p inflation round-trip).
+        $this->assertEqualsWithDelta(90_000_00, $withYears[2029]->incomeBySource['capital_receipt']->pence, 1);
+        $this->assertSame(0, $withYears[2028]->incomeBySource['capital_receipt']->pence);
+
+        $this->assertGreaterThan(
+            $without->terminalTotalWealth->pence,
+            $with->terminalTotalWealth->pence,
+            'the banked receipt must leave the household visibly better off',
+        );
+    }
+
+    public function test_savings_drawn_to_fund_a_buy_reach_the_forecast(): void
+    {
+        $user = User::factory()->create();
+        $forecaster = new ScenarioForecaster;
+
+        // A £700k buy far exceeds the sale proceeds AND the fixture's £145k of liquid savings
+        // (no buy mortgage configured): the savings are drained into the purchase and the
+        // remainder is an unfunded gap that fails year 0 loudly — never free home equity.
+        $variants = $forecaster->deterministicVariants(
+            ScenarioFixture::rich($user, ['housing' => array_replace(
+                BuilderStateFixture::full()['housing'], ['buyPrice' => '700000'],
+            )]),
+        );
+        $buy = $variants['buy_outright'];
+        $stay = $variants['stay_put'];
+
+        $this->assertGreaterThan(0, $buy->years[0]->unmetSpend->pence, 'the unfunded gap surfaces as year-0 unmet spend');
+        $this->assertLessThan(
+            $stay->years[0]->liquidWealth->pence,
+            $buy->years[0]->liquidWealth->pence,
+            'the liquid savings were actually spent on the home',
         );
     }
 

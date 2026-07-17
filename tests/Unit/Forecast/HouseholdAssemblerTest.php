@@ -138,6 +138,30 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertSame(500_000, $household->incomeStreams[2]->grossAnnual->pence);   // £5,000 × 1
     }
 
+    public function test_capital_receipts_map_to_the_engine_dto(): void
+    {
+        // A documented one-off receipt: owner, calendar year, amount (today's money) and the
+        // label that says where the money comes from — the no-magic-money input.
+        $household = (new HouseholdAssembler)->household([
+            'householdName' => 'Gift', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '10000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'capitalReceipts' => [
+                ['id' => 'cr1', 'ownerId' => 'p1', 'year' => '2029', 'amount' => '90000', 'label' => 'Family gift'],
+                ['id' => 'cr2', 'ownerId' => 'p1', 'year' => '2031', 'amount' => '5000.50'], // label optional
+            ],
+        ]);
+
+        $this->assertCount(2, $household->capitalReceipts);
+        $this->assertSame('p1', $household->capitalReceipts[0]->ownerId);
+        $this->assertSame(2029, $household->capitalReceipts[0]->calendarYear);
+        $this->assertSame(90_000_00, $household->capitalReceipts[0]->amount->pence);
+        $this->assertSame('Family gift', $household->capitalReceipts[0]->label);
+        $this->assertSame('', $household->capitalReceipts[1]->label);
+        $this->assertSame(5_000_50, $household->capitalReceipts[1]->amount->pence);
+    }
+
     public function test_a_disability_benefit_income_is_forced_tax_free_whatever_the_flag_says(): void
     {
         // The type is the single source of truth for a tax-free benefit: DLA / AA / PIP are

@@ -42,6 +42,9 @@ final class BuyVsRentCompare
 
         $meaningful = [
             'stay_put' => true,
+            // A positive buy price is enough to spawn the buy child: if the purchase cannot be
+            // funded (proceeds + savings + mortgage), the child now visibly fails in year one
+            // rather than being silently granted the home, so it is never misleading to show.
             'buy_outright' => self::positive($housing['buyPrice'] ?? null),
             'rent' => self::positive($housing['annualRent'] ?? null),
         ];

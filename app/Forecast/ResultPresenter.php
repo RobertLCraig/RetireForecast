@@ -70,6 +70,8 @@ final class ResultPresenter
         'pension_lump_sum' => 'Pension tax-free cash',
         'pension_drawdown' => 'Pension drawdown',
         'asset_drawdown' => 'Savings drawn',
+        // One-off, so deliberately NOT in SECURE_SOURCES: a gift never inflates the income floor.
+        'capital_receipt' => 'One-off receipt',
     ];
 
     /**
@@ -1481,7 +1483,9 @@ final class ResultPresenter
      *  - the proceeds waterfall: sale price − outstanding mortgage − selling costs − CGT
      *    (£0 on a main home via PRR in v1) = net proceeds;
      *  - if selling and renting: the full net proceeds are invested;
-     *  - if selling and buying cheaper: net − buy price − SDLT − moving = the surplus invested;
+     *  - if selling and buying: net − buy price − SDLT − moving = the surplus invested; a buy
+     *    above the proceeds is funded from documented sources only (savings drawn, then an
+     *    interest-only mortgage), and anything left is reported as the unfunded gap;
      *  - and the assumption the invested money then grows at (the blended real return), with
      *    a share paid out each year as taxable income (the income yield) rather than sitting idle.
      *
@@ -1491,7 +1495,7 @@ final class ResultPresenter
      * Returns null when no sale is configured (sale price zero) — e.g. a stay-put plan — so
      * the section simply does not render. Factual throughout, never a recommendation.
      *
-     * @return array{sellingCostsAssumed: bool, sellingCostBreakdown: list<array{label: string, value: string, detail: ?string}>, cgtDetail: ?array{gain: string, relievedGain: string, chargeableGain: string, allowanceUsed: string, taxableGain: string, ratePct: string}, proceeds: array{salePrice: string, mortgage: string, hasMortgage: bool, sellingCosts: string, cgt: string, cgtCharged: bool, netProceeds: string, clearsCosts: bool}, rent: array{invested: string, annualRent: ?string}, buy: ?array{netProceeds: string, buyPrice: string, sdlt: string, movingCosts: string, surplus: string, coversPurchase: bool}, blendedReturnPct: string, incomeYieldPct: string}|null
+     * @return array{sellingCostsAssumed: bool, sellingCostBreakdown: list<array{label: string, value: string, detail: ?string}>, cgtDetail: ?array{gain: string, relievedGain: string, chargeableGain: string, allowanceUsed: string, taxableGain: string, ratePct: string}, proceeds: array{salePrice: string, mortgage: string, hasMortgage: bool, sellingCosts: string, cgt: string, cgtCharged: bool, netProceeds: string, clearsCosts: bool}, rent: array{invested: string, annualRent: ?string}, buy: ?array{netProceeds: string, buyPrice: string, sdlt: string, movingCosts: string, surplus: string, coversPurchase: bool, isFullyFunded: bool, fundedFromSavings: ?string, mortgage: ?string, mortgageInterest: ?string, unfundedGap: ?string}, blendedReturnPct: string, incomeYieldPct: string}|null
      */
     public static function saleExplainer(
         HousingProceeds $proceeds,
@@ -1552,10 +1556,12 @@ final class ResultPresenter
                 'invested' => $proceeds->netProceeds->format(),
                 'annualRent' => $action->annualRent !== null && $action->annualRent->isPositive() ? $action->annualRent->format() : null,
             ],
-            // Sell & buy cheaper: only when a buy price is set (otherwise the plan is rent-only).
-            // `shortfall` (feasibility flag) = how much the buy + its costs exceed the net proceeds
-            // when they don't cover it — the engine floors the surplus at £0 and buys anyway, so
-            // this makes an unaffordable "buy cheaper" visible rather than silently modelled.
+            // Sell & buy: only when a buy price is set (otherwise the plan is rent-only). Every
+            // pound of the purchase traces to a documented source (the engine's funding
+            // waterfall): the net proceeds, then savings drawn (cash → GIA → ISA), then an
+            // interest-only mortgage — and anything left is the `unfundedGap`, money the plan
+            // does NOT have, which the forecast charges as a year-0 cost so the plan visibly
+            // fails rather than being handed the home for free.
             'buy' => $purchase->buyPrice->isPositive() ? [
                 'netProceeds' => $purchase->netProceeds->format(),
                 'buyPrice' => $purchase->buyPrice->format(),
@@ -1563,8 +1569,13 @@ final class ResultPresenter
                 'movingCosts' => $purchase->movingCosts->format(),
                 'surplus' => $purchase->surplus->format(),
                 'coversPurchase' => $purchase->coversPurchase(),
-                'shortfall' => $purchase->coversPurchase() ? null
-                    : $purchase->buyPrice->plus($purchase->stampDuty)->plus($purchase->movingCosts)->minus($purchase->netProceeds)->format(),
+                'isFullyFunded' => $purchase->isFullyFunded(),
+                'fundedFromSavings' => $purchase->fundedFromSavings->isPositive() ? $purchase->fundedFromSavings->format() : null,
+                'mortgage' => $purchase->mortgage->isPositive() ? $purchase->mortgage->format() : null,
+                'mortgageInterest' => ($purchase->mortgage->isPositive() && $action->buyMortgageRate !== null)
+                    ? $purchase->mortgage->applyRate($action->buyMortgageRate)->format()
+                    : null,
+                'unfundedGap' => $purchase->unfundedGap->isPositive() ? $purchase->unfundedGap->format() : null,
             ] : null,
             'blendedReturnPct' => self::ratePct($blendedRealReturn * 100),
             'incomeYieldPct' => self::ratePct($investmentIncomeYield * 100),
@@ -1638,7 +1649,7 @@ final class ResultPresenter
             $housing[] = ['label' => 'Moving costs', 'value' => $action->movingCosts->format()];
         }
         if ($action->buyPrice !== null && $action->buyPrice->isPositive()) {
-            $housing[] = ['label' => 'Cheaper home to buy', 'value' => $action->buyPrice->format()];
+            $housing[] = ['label' => 'Home to buy', 'value' => $action->buyPrice->format()];
         }
         if ($action->annualRent !== null && $action->annualRent->isPositive()) {
             $housing[] = ['label' => 'Rent if you sell & rent', 'value' => $action->annualRent->format().' a year (projected renting cost, not current)'];

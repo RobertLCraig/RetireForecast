@@ -11,6 +11,7 @@ use App\Forecast\ScenarioForecaster;
 use App\Models\Result;
 use App\Models\Scenario;
 use App\Models\SimulationRun;
+use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -29,9 +30,44 @@ class ScenarioPdfController extends Controller
         // A draft has no runnable result; there is nothing to print.
         abort_if($scenario->status === ScenarioStatus::Draft, 404);
 
-        $pdf = Pdf::loadView('pdf.results', $this->data($scenario));
+        $pdf = Pdf::loadView('pdf.results', ['reports' => [$this->data($scenario)]]);
 
         return $pdf->download("retireforecast-scenario-{$scenario->id}.pdf");
+    }
+
+    /**
+     * Every ready scenario in one PDF — bases newest-first (the dashboard's order), each
+     * followed by its what-if children, one report per page. Drafts have nothing to print
+     * and are excluded, as on the single download.
+     */
+    public function downloadAll(): Response
+    {
+        $reports = $this->reports(auth()->user());
+
+        abort_if($reports === [], 404);
+
+        $pdf = Pdf::loadView('pdf.results', ['reports' => $reports]);
+
+        return $pdf->download('retireforecast-all-scenarios.pdf');
+    }
+
+    /**
+     * One report data set per ready scenario, in export order. Public so the view-render
+     * test exercises the exact data the export produces.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function reports(User $user): array
+    {
+        return $user->scenarios()
+            ->where('status', ScenarioStatus::Ready)
+            ->whereNull('parent_scenario_id')
+            ->with(['children' => fn ($q) => $q->where('status', ScenarioStatus::Ready)->latest()])
+            ->latest()
+            ->get()
+            ->flatMap(fn (Scenario $base) => collect([$base])->concat($base->children))
+            ->map(fn (Scenario $scenario): array => $this->data($scenario))
+            ->all();
     }
 
     /**

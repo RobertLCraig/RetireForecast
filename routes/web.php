@@ -51,6 +51,7 @@ Route::middleware('auth')->group(function () {
     // one reaches a result without first seeing the framing.
     Route::middleware(EnsureDisclaimerAcknowledged::class)->group(function () {
         Route::get('/dashboard', Dashboard::class)->name('dashboard');
+        Route::get('/scenarios/pdf', [ScenarioPdfController::class, 'downloadAll'])->name('scenarios.pdf');
         Route::get('/scenarios/create', ScenarioBuilder::class)->name('scenarios.create');
         Route::get('/scenarios/{scenario}/edit', ScenarioBuilder::class)->name('scenarios.edit');
         Route::get('/scenarios/{scenario}/child', ScenarioBuilder::class)->name('scenarios.child');

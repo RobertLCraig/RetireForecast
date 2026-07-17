@@ -90,6 +90,23 @@ class BuilderStateDeltaTest extends TestCase
         $this->assertEquals($edited['oneOffCosts'], $merged['oneOffCosts']);
     }
 
+    public function test_a_capital_receipt_row_adds_and_removes_through_diff_and_merge(): void
+    {
+        // The receipts collection is a row list like any other: a what-if adding a documented
+        // receipt stores the row whole at its id path; removing the base's stores the sentinel.
+        $base = BuilderStateFixture::full();
+        $edited = $base;
+        $edited['capitalReceipts'][] = ['id' => 'cr9', 'ownerId' => 'p2', 'year' => '2032', 'amount' => '25000', 'label' => 'Car sale'];
+        array_shift($edited['capitalReceipts']); // drop the base's cr1
+
+        $overrides = BuilderStateDelta::diff($base, $edited);
+        $this->assertSame(BuilderStateDelta::REMOVED, $overrides['capitalReceipts.cr1']);
+        $this->assertSame(['id' => 'cr9', 'ownerId' => 'p2', 'year' => '2032', 'amount' => '25000', 'label' => 'Car sale'], $overrides['capitalReceipts.cr9']);
+
+        $merged = BuilderStateDelta::merge($base, $overrides);
+        $this->assertSame(['cr9'], array_column($merged['capitalReceipts'], 'id'));
+    }
+
     public function test_a_removed_row_round_trips_through_diff_and_merge(): void
     {
         $base = BuilderStateFixture::full();

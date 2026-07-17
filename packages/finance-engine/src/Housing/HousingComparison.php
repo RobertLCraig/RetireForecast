@@ -38,9 +38,12 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  * surplus (or full proceeds when renting) goes into an invested account that then
  * follows the chosen allocation.
  *
+ * A buy above the net proceeds is funded from documented sources only: the household's
+ * liquid savings, then an interest-only (RIO) mortgage when configured; any remainder is
+ * an unfunded gap charged as a year-0 cost so the plan visibly fails ({@see fundingFor}).
+ *
  * v1 simplifications (documented): the additional-property SDLT surcharge is not applied
- * (a straight replacement of the main residence); a buy price above the net proceeds is
- * not modelled (downsizing is assumed).
+ * (a straight replacement of the main residence).
  */
 final class HousingComparison
 {
@@ -118,7 +121,7 @@ final class HousingComparison
 
         return [
             'stay_put' => ['household' => $household, 'settings' => $settings],
-            'buy_outright' => ['household' => $this->buyVariant($household, $action), 'settings' => $settings],
+            'buy_outright' => ['household' => $this->buyVariant($household, $action, $settings), 'settings' => $settings],
             'rent' => ['household' => $this->rentVariant($household, $netProceeds), 'settings' => $this->rentSettings($settings, $assumptions, $action)],
         ];
     }
@@ -143,11 +146,28 @@ final class HousingComparison
     }
 
     /**
-     * Decompose the buy-cheaper leg into the surplus that ends up invested (single source —
-     * {@see HousingPurchase}). Public so the figure can be surfaced and reconciled rather
+     * Decompose the buy leg into how the purchase is funded (single source —
+     * {@see HousingPurchase}). Public so the figures can be surfaced and reconciled rather
      * than recomputed: {@see buyVariant} reads it, and so does any UI breakdown.
      */
     public function buyOutcome(Household $household, HousingAction $action): HousingPurchase
+    {
+        return $this->fundingFor($household, $action)['purchase'];
+    }
+
+    /**
+     * The ONE home of the purchase-funding waterfall. A purchase above the net sale
+     * proceeds is funded from documented sources only, in order: the household's liquid
+     * savings (drawn cash → GIA → ISA, never pensions — {@see SavingsFunding}), then an
+     * interest-only (RIO) mortgage when a rate is configured; anything left is the
+     * unfunded gap, which {@see buyVariant} charges as a year-0 one-off cost so the plan
+     * visibly fails rather than being handed the home for free. Both {@see buyOutcome}
+     * (the surfaced figures) and {@see buyVariant} (the projected household) read this,
+     * so the reported decomposition and the accounts actually drawn can never disagree.
+     *
+     * @return array{purchase: HousingPurchase, accounts: list<Account>, realisedGains: array<string, Money>}
+     */
+    private function fundingFor(Household $household, HousingAction $action): array
     {
         $netProceeds = $this->saleProceeds($household, $action)->netProceeds;
         $buyPrice = $action->buyPrice ?? Money::zero();
@@ -155,24 +175,48 @@ final class HousingComparison
         $moving = $action->movingCosts ?? Money::fromPence(self::DEFAULT_MOVING_COSTS_PENCE);
         $totalCost = $buyPrice->plus($sdlt)->plus($moving);
 
-        // If a buy mortgage is available and the purchase costs more than the cash the sale
-        // frees, the shortfall is borrowed (interest-only) rather than flooring the surplus to
-        // zero and pretending the home was bought for free. Otherwise it is an outright buy: any
-        // excess cash is the invested surplus, and an unaffordable buy stays flagged.
-        if ($action->buyMortgageRate !== null && $totalCost->pence > $netProceeds->pence) {
-            $mortgage = $totalCost->minus($netProceeds);
-            $surplus = Money::zero();
-        } else {
-            $mortgage = Money::zero();
-            $surplus = $netProceeds->minus($totalCost)->minZero();
+        $gap = $totalCost->minus($netProceeds)->minZero();
+        if (! $gap->isPositive()) {
+            // The proceeds cover everything; the excess is the invested surplus.
+            return [
+                'purchase' => new HousingPurchase(
+                    $netProceeds, $buyPrice, $sdlt, $moving,
+                    surplus: $netProceeds->minus($totalCost),
+                    mortgage: Money::zero(),
+                    fundedFromSavings: Money::zero(),
+                    unfundedGap: Money::zero(),
+                ),
+                'accounts' => $household->accounts,
+                'realisedGains' => [],
+            ];
         }
 
-        return new HousingPurchase($netProceeds, $buyPrice, $sdlt, $moving, $surplus, $mortgage);
+        // Savings first (own money before interest-bearing debt), then the mortgage takes
+        // whatever the savings couldn't cover — only when a rate is configured. Any residue
+        // is the unfunded gap, reported never absorbed.
+        $funding = SavingsFunding::draw($household, $gap);
+        $remainder = $gap->minus($funding->drawn);
+        $mortgage = $action->buyMortgageRate !== null ? $remainder : Money::zero();
+
+        return [
+            'purchase' => new HousingPurchase(
+                $netProceeds, $buyPrice, $sdlt, $moving,
+                surplus: Money::zero(),
+                mortgage: $mortgage,
+                fundedFromSavings: $funding->drawn,
+                unfundedGap: $remainder->minus($mortgage),
+            ),
+            'accounts' => $funding->accounts,
+            'realisedGains' => $funding->realisedGains,
+        ];
     }
 
-    private function buyVariant(Household $household, HousingAction $action): Household
+    private function buyVariant(Household $household, HousingAction $action, ForecastSettings $settings): Household
     {
-        $outcome = $this->buyOutcome($household, $action);
+        ['purchase' => $outcome, 'accounts' => $accounts, 'realisedGains' => $gains] = $this->fundingFor($household, $action);
+        // GIA gains realised by the year-0 savings draw, carried so the projector charges the
+        // CGT in year 0 (against that year's annual exempt amount) — a disposal is never free.
+        $realisedGains = array_filter($gains, fn (Money $gain): bool => $gain->isPositive());
         $mortgaged = $outcome->mortgage->isPositive();
 
         $newProperty = new Property(
@@ -191,7 +235,19 @@ final class HousingComparison
             ? $outcome->mortgage->applyRate($action->buyMortgageRate)
             : null;
 
-        return $this->withHousing($household, $newProperty, $outcome->surplus, $interest);
+        // Any unfunded part of the purchase is charged as a year-0 one-off cost: money the plan
+        // does not have is never conjured into home equity — the projection shows the year-0
+        // shortfall (unmet spend) and the plan visibly fails until the gap is funded. Keyed to
+        // the FIRST person's base-year age, the one-off convention the projector fires on.
+        $oneOffCost = $outcome->unfundedGap->isPositive()
+            ? [
+                'atAge' => $settings->baseYear - (int) $household->persons[0]->dob->format('Y'),
+                'amount' => $outcome->unfundedGap,
+                'label' => 'Unfunded purchase shortfall',
+            ]
+            : null;
+
+        return $this->withHousing($household, $newProperty, $outcome->surplus, $interest, $accounts, $oneOffCost, $realisedGains);
     }
 
     private function rentVariant(Household $household, Money $netProceeds): Household
@@ -238,10 +294,19 @@ final class HousingComparison
      * new invested (GIA) account for the first person. $mortgageInterest, when set, is the
      * ongoing interest-only payment on a mortgage taken to fund a buy above the proceeds; it is
      * added back as the new home's mortgage cost (the old home's was stripped below).
+     * $accounts, when given, replaces the household's accounts — a savings-funded buy passes
+     * the post-draw balances so the money spent on the home actually leaves the plan.
+     * $oneOffCost, when given, is a dated lump charge appended to the profile — the unfunded
+     * part of a purchase, charged so it surfaces as a shortfall instead of appearing for free.
+     * $realisedGains carries the GIA gains a year-0 savings draw realised, per person, so the
+     * projector charges the CGT in year 0.
+     *
+     * @param  array{atAge: int, amount: Money, label: string}|null  $oneOffCost
+     * @param  array<string, Money>  $realisedGains
      */
-    private function withHousing(Household $household, ?Property $property, Money $investedCash, ?Money $mortgageInterest = null): Household
+    private function withHousing(Household $household, ?Property $property, Money $investedCash, ?Money $mortgageInterest = null, ?array $accounts = null, ?array $oneOffCost = null, array $realisedGains = []): Household
     {
-        $accounts = $household->accounts;
+        $accounts ??= $household->accounts;
         if ($investedCash->isPositive()) {
             $accounts[] = new Account($household->persons[0]->id, AccountType::Gia, $investedCash);
         }
@@ -254,6 +319,9 @@ final class HousingComparison
         if ($mortgageInterest !== null && $mortgageInterest->isPositive()) {
             $profile = $profile->withMortgageCosts($mortgageInterest);
         }
+        if ($oneOffCost !== null) {
+            $profile = $profile->withOneOffCost($oneOffCost['atAge'], $oneOffCost['amount'], $oneOffCost['label']);
+        }
 
         return new Household(
             name: $household->name,
@@ -264,6 +332,9 @@ final class HousingComparison
             accounts: $accounts,
             incomeStreams: $household->incomeStreams,
             primaryResidence: $property,
+            relationshipStatus: $household->relationshipStatus,
+            capitalReceipts: $household->capitalReceipts,
+            realisedGainsAtStart: $realisedGains,
         );
     }
 }

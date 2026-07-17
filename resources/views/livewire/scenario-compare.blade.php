@@ -124,7 +124,7 @@
                         <td class="px-4 py-3 text-gray-700">
                             {{ $plan['variant'] }}
                             @if ($plan['buyShortfall'])
-                                <span class="mt-1 block text-xs font-medium text-amber-700">⚠ Buying needs {{ $plan['buyShortfall'] }} more than the sale frees — not affordable from the sale alone.</span>
+                                <span class="mt-1 block text-xs font-medium text-red-700">⚠ {{ $plan['buyShortfall'] }} of this purchase is unfunded — no documented source covers it, so the plan fails in year one until it is funded.</span>
                             @endif
                             @if ($plan['buyMortgage'])
                                 <span class="mt-1 block text-xs text-gray-600">{{ $plan['buyMortgage'] }}</span>

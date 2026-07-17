@@ -343,10 +343,11 @@ class ScenarioCompare extends Component
     }
 
     /**
-     * For a "sell & buy cheaper" plan, how much the purchase (buy price + SDLT + moving) exceeds
-     * the net sale proceeds — the extra capital the household would need from elsewhere, which the
-     * engine otherwise assumes away by flooring the surplus at £0. Null when the plan is not a buy,
-     * or the sale covers it. Read from the single engine source ({@see HousingComparison::buyOutcome}).
+     * For a "sell & buy" plan, the part of the purchase no documented source funds — after the
+     * net proceeds, the savings drawn and any configured buy mortgage. The engine charges this
+     * gap as a year-0 cost (the plan visibly fails), so the row is flagged, not just modelled.
+     * Null when the plan is not a buy or every pound traces to a source. Read from the single
+     * engine source ({@see HousingComparison::buyOutcome}).
      */
     private function buyShortfall(Scenario $plan, ScenarioForecaster $forecaster): ?string
     {
@@ -355,18 +356,16 @@ class ScenarioCompare extends Component
         }
 
         $outcome = $forecaster->housingComparison($plan)->buyOutcome($plan->toHousehold(), $plan->toHousingAction());
-        // Covered from cash, or the gap is funded by a buy mortgage → not an affordability warning.
-        if ($outcome->coversPurchase() || $outcome->mortgage->isPositive()) {
-            return null;
-        }
 
-        return $outcome->buyPrice->plus($outcome->stampDuty)->plus($outcome->movingCosts)->minus($outcome->netProceeds)->format();
+        return $outcome->unfundedGap->isPositive() ? $outcome->unfundedGap->format() : null;
     }
 
     /**
-     * For a "sell & buy cheaper" plan where the purchase costs more than the sale frees and a buy
-     * mortgage funds the gap, a note of the loan taken and its interest-only cost — so a buy above
-     * the proceeds reads as financed, not unaffordable. Null when the plan is not a mortgaged buy.
+     * For a "sell & buy" plan where the purchase costs more than the sale frees, a note of the
+     * documented sources funding the gap — the savings drawn (cash → GIA → ISA) and/or the
+     * interest-only mortgage taken (with its yearly cost) — so a buy above the proceeds reads
+     * as financed by real money, never conjured. Null when the plan is not a buy or the
+     * proceeds alone cover it.
      */
     private function buyMortgage(Scenario $plan, ScenarioForecaster $forecaster): ?string
     {
@@ -376,12 +375,16 @@ class ScenarioCompare extends Component
 
         $action = $plan->toHousingAction();
         $outcome = $forecaster->housingComparison($plan)->buyOutcome($plan->toHousehold(), $action);
-        if (! $outcome->mortgage->isPositive() || $action->buyMortgageRate === null) {
-            return null;
+
+        $parts = [];
+        if ($outcome->fundedFromSavings->isPositive()) {
+            $parts[] = "{$outcome->fundedFromSavings->format()} from savings";
+        }
+        if ($outcome->mortgage->isPositive() && $action->buyMortgageRate !== null) {
+            $interest = $outcome->mortgage->applyRate($action->buyMortgageRate);
+            $parts[] = "a {$outcome->mortgage->format()} interest-only mortgage on the new home (~{$interest->format()}/yr)";
         }
 
-        $interest = $outcome->mortgage->applyRate($action->buyMortgageRate);
-
-        return "Funded by a {$outcome->mortgage->format()} interest-only mortgage on the new home (~{$interest->format()}/yr).";
+        return $parts === [] ? null : 'Funded by '.implode(' + ', $parts).'.';
     }
 }

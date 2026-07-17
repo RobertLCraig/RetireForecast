@@ -725,6 +725,37 @@
             </fieldset>
 
             <fieldset class="{{ $section }}">
+                <legend class="{{ $legend }}">One-off capital receipts</legend>
+                <p class="mt-1 text-sm text-gray-600">A documented lump you expect to receive — a family gift, an inheritance, the sale of something outside this plan. It is added to your cash savings in that year. Money from outside the plan is entered here, never assumed.</p>
+                @foreach ($capitalReceipts as $i => $receipt)
+                    <div wire:key="capital-receipt-{{ $i }}" class="mt-4 grid items-end gap-3 sm:grid-cols-5">
+                        <div>
+                            <label for="capitalReceipts-{{ $i }}-ownerId" class="text-xs text-gray-600">Received by</label>
+                            <select id="capitalReceipts-{{ $i }}-ownerId" wire:model="capitalReceipts.{{ $i }}.ownerId" class="{{ $field }}">
+                                @foreach ($ownerOptions as $o)<option value="{{ $o['id'] }}">{{ $o['label'] }}</option>@endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label for="capitalReceipts-{{ $i }}-year" class="text-xs text-gray-600">Year</label>
+                            <input id="capitalReceipts-{{ $i }}-year" type="text" inputmode="numeric" wire:model="capitalReceipts.{{ $i }}.year" class="{{ $field }}" @error('capitalReceipts.'.$i.'.year') aria-invalid="true" @enderror>
+                            @error('capitalReceipts.'.$i.'.year') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label for="capitalReceipts-{{ $i }}-amount" class="text-xs text-gray-600">Amount (£, today's money)</label>
+                            <input id="capitalReceipts-{{ $i }}-amount" type="text" inputmode="decimal" wire:model="capitalReceipts.{{ $i }}.amount" class="{{ $field }}" @error('capitalReceipts.'.$i.'.amount') aria-invalid="true" @enderror>
+                            @error('capitalReceipts.'.$i.'.amount') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label for="capitalReceipts-{{ $i }}-label" class="text-xs text-gray-600">What / from whom</label>
+                            <input id="capitalReceipts-{{ $i }}-label" type="text" wire:model="capitalReceipts.{{ $i }}.label" class="{{ $field }}" placeholder="e.g. family gift">
+                        </div>
+                        <button type="button" wire:click="removeCapitalReceipt({{ $i }})" class="mb-2 text-sm text-red-700 underline">Remove</button>
+                    </div>
+                @endforeach
+                <button type="button" wire:click="addCapitalReceipt" class="mt-4 rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100">+ Add receipt</button>
+            </fieldset>
+
+            <fieldset class="{{ $section }}">
                 <legend class="{{ $legend }}">Current home</legend>
                 <label class="mt-3 flex items-center gap-2 text-sm text-gray-700">
                     <input type="checkbox" wire:model.live="hasProperty" class="rounded border-gray-300"> The household owns its home
@@ -1068,7 +1099,7 @@
                     <div>
                         <label for="housing-buyMortgageRate" class="{{ $label }}">Buy mortgage rate (%/yr, optional)</label>
                         <input id="housing-buyMortgageRate" type="text" inputmode="decimal" placeholder="e.g. 6" wire:model="housing.buyMortgageRate" class="{{ $field }}">
-                        <p class="mt-1 text-xs text-gray-500">If the new home costs more than the sale frees, the shortfall is funded by an interest-only (retirement interest-only) mortgage at this rate. Blank = buy for cash only.</p>
+                        <p class="mt-1 text-xs text-gray-500">If the new home costs more than the sale frees, the gap is funded first from your savings (cash → GIA → ISA, never pensions), then by an interest-only (retirement interest-only) mortgage at this rate. Blank = no mortgage; any gap your savings can't cover is flagged as unfunded and fails the plan's first year.</p>
                     </div>
                     <div>
                         <label for="housing-annualRent" class="{{ $label }}">Annual rent if renting (£)</label>

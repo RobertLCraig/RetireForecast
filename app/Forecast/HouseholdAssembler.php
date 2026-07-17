@@ -9,6 +9,7 @@ use DateTimeImmutable;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\AnnuityPurchase;
+use RetireForecast\FinanceEngine\Dto\CapitalReceipt;
 use RetireForecast\FinanceEngine\Dto\CgtHistory;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
@@ -85,6 +86,7 @@ final class HouseholdAssembler
             // Relationship status drives the IHT treatment on death; a scenario predating the
             // field (absent key) rehydrates as married, so its forecast is unchanged.
             relationshipStatus: RelationshipStatus::from((string) ($state['relationshipStatus'] ?? 'married_or_civil_partnership')),
+            capitalReceipts: array_map($this->capitalReceipt(...), $state['capitalReceipts'] ?? []),
         );
     }
 
@@ -515,6 +517,20 @@ final class HouseholdAssembler
             inflationLinked: (bool) ($s['inflationLinked'] ?? false),
             startAge: (int) $s['startAge'],
             endAge: $this->intOrNull($s['endAge'] ?? null),
+        );
+    }
+
+    /**
+     * A documented one-off capital receipt (a family gift / inheritance / outside-asset sale):
+     * who receives it, what it is, how much (today's money) and which calendar year it lands.
+     */
+    private function capitalReceipt(array $r): CapitalReceipt
+    {
+        return new CapitalReceipt(
+            ownerId: (string) $r['ownerId'],
+            label: (string) ($r['label'] ?? ''),
+            amount: $this->moneyRequired($r['amount'] ?? null),
+            calendarYear: (int) $r['year'],
         );
     }
 

@@ -204,13 +204,26 @@ final class ScenarioContext implements AssistantContext
 
         if ($s['buy'] !== null) {
             $b = $s['buy'];
-            $facts[] = new AssistantFact('Home sale — buying a cheaper home: purchase price', $b['buyPrice']);
-            $facts[] = new AssistantFact('Home sale — buying a cheaper home: stamp duty', $b['sdlt']);
-            $facts[] = new AssistantFact('Home sale — buying a cheaper home: moving costs', $b['movingCosts']);
+            $facts[] = new AssistantFact('Home sale — buying a home: purchase price', $b['buyPrice']);
+            $facts[] = new AssistantFact('Home sale — buying a home: stamp duty', $b['sdlt']);
+            $facts[] = new AssistantFact('Home sale — buying a home: moving costs', $b['movingCosts']);
             if ($b['coversPurchase']) {
                 $facts[] = new AssistantFact('Home sale — surplus left over to invest after buying', $b['surplus']);
-            } elseif ($b['shortfall'] !== null) {
-                $facts[] = new AssistantFact('Home sale — shortfall: the purchase costs this much more than the proceeds cover', $b['shortfall']);
+            }
+            // The funding waterfall for a buy above the proceeds: savings drawn, then a
+            // mortgage; anything unfunded is a loud failure fact, never silently absorbed.
+            if (($b['fundedFromSavings'] ?? null) !== null) {
+                $facts[] = new AssistantFact('Home sale — purchase part-funded from savings (drawn cash → GIA → ISA, never pensions)', $b['fundedFromSavings']);
+            }
+            if (($b['mortgage'] ?? null) !== null) {
+                $facts[] = new AssistantFact(
+                    'Home sale — purchase part-funded by an interest-only mortgage on the new home'
+                    .(($b['mortgageInterest'] ?? null) !== null ? " (interest ~{$b['mortgageInterest']}/yr for life)" : ''),
+                    $b['mortgage'],
+                );
+            }
+            if (($b['unfundedGap'] ?? null) !== null) {
+                $facts[] = new AssistantFact('Home sale — UNFUNDED gap: this part of the purchase has no documented source, so the forecast charges it as an unmet year-one cost and the plan fails until it is funded', $b['unfundedGap']);
             }
         } elseif (($s['rent']['annualRent'] ?? null) !== null) {
             $facts[] = new AssistantFact('Home sale — proceeds invested (sell & rent)', $s['rent']['invested']);

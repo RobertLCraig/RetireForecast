@@ -389,7 +389,7 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('Investment income yield (nominal)')
             ->assertSee('If you sell: where the money comes from and goes')
             ->assertSee('Net proceeds')
-            ->assertSee('If you sell & buy cheaper')
+            ->assertSee('If you sell & buy')
             ->assertSee('Surplus invested')
             // Life-event milestones (when retire / SP / death happen) make the cashflow legible.
             ->assertSee('When the big events happen')

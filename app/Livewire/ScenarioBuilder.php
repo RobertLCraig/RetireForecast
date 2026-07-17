@@ -79,7 +79,7 @@ class ScenarioBuilder extends Component
         'variant' => 1, 'assumptionSetId' => 1, 'assumptionOverrides' => 1, 'ihtModelled' => 1,
         'homeToDescendants' => 1, 'relationshipStatus' => 1, 'people' => 1,
         'pensions' => 2, 'incomeStreams' => 2,
-        'accounts' => 3, 'property' => 3, 'hasProperty' => 3,
+        'accounts' => 3, 'property' => 3, 'hasProperty' => 3, 'capitalReceipts' => 3,
         'expense' => 4, 'expenseLines' => 4, 'oneOffCosts' => 4,
         'housing' => 5,
     ];
@@ -157,6 +157,17 @@ class ScenarioBuilder extends Component
 
     /** @var list<array<string, mixed>> */
     public array $incomeStreams = [];
+
+    /**
+     * Documented one-off capital receipts — a family gift, an inheritance, the sale of
+     * something outside the plan. Each row states the source (label), who receives it, the
+     * amount (today's money) and the calendar year it lands; the forecast credits it to cash
+     * that year. The no-magic-money input: money from outside the plan is entered here, never
+     * assumed.
+     *
+     * @var list<array<string, mixed>>
+     */
+    public array $capitalReceipts = [];
 
     public bool $hasProperty = true;
 
@@ -334,6 +345,12 @@ class ScenarioBuilder extends Component
             // where it comes from). Purely a visual aid — the assembler never reads it, so it
             // reaches no engine figure; bounded only to keep the stored payload sane.
             'incomeStreams.*.note' => ['nullable', 'string', 'max:120'],
+
+            'capitalReceipts.*.ownerId' => ['required', Rule::in($ids)],
+            'capitalReceipts.*.year' => ['required', 'integer', 'min:2020', 'max:2100'],
+            'capitalReceipts.*.amount' => $moneyReq,
+            // What the money is and where it comes from — the documentation half of the input.
+            'capitalReceipts.*.label' => ['nullable', 'string', 'max:120'],
 
             'housing.salePrice' => $moneyReq,
             'housing.buyPrice' => $money,
@@ -700,7 +717,7 @@ class ScenarioBuilder extends Component
      */
     private function normaliseRowIds(): void
     {
-        foreach (['pensions', 'accounts', 'incomeStreams', 'oneOffCosts', 'expenseLines'] as $collection) {
+        foreach (['pensions', 'accounts', 'incomeStreams', 'capitalReceipts', 'oneOffCosts', 'expenseLines'] as $collection) {
             foreach ($this->{$collection} as $i => $row) {
                 if (($row['id'] ?? '') === '') {
                     $this->{$collection}[$i]['id'] = $this->newRowId();
@@ -829,6 +846,7 @@ class ScenarioBuilder extends Component
             'pensions' => $pensions,
             'accounts' => $this->accounts,
             'incomeStreams' => $this->incomeStreams,
+            'capitalReceipts' => $this->capitalReceipts,
             'hasProperty' => $this->hasProperty,
             'property' => $property,
             'housing' => $housing,
@@ -1122,6 +1140,17 @@ class ScenarioBuilder extends Component
     {
         unset($this->incomeStreams[$i]);
         $this->incomeStreams = array_values($this->incomeStreams);
+    }
+
+    public function addCapitalReceipt(): void
+    {
+        $this->capitalReceipts[] = ['id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'year' => '', 'amount' => '', 'label' => ''];
+    }
+
+    public function removeCapitalReceipt(int $i): void
+    {
+        unset($this->capitalReceipts[$i]);
+        $this->capitalReceipts = array_values($this->capitalReceipts);
     }
 
     /**
@@ -1462,7 +1491,7 @@ class ScenarioBuilder extends Component
 
         $valid = array_column($this->people, 'id');
         $fallback = $valid[0] ?? 'p1';
-        foreach (['pensions', 'accounts', 'incomeStreams'] as $collection) {
+        foreach (['pensions', 'accounts', 'incomeStreams', 'capitalReceipts'] as $collection) {
             foreach ($this->{$collection} as $i => $row) {
                 if (! in_array($row['ownerId'] ?? null, $valid, true)) {
                     $this->{$collection}[$i]['ownerId'] = $fallback;
