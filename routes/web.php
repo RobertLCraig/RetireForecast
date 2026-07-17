@@ -10,6 +10,7 @@ use App\Http\Controllers\ScenarioPdfController;
 use App\Http\Controllers\ThresholdCsvController;
 use App\Http\Middleware\EnsureDisclaimerAcknowledged;
 use App\Livewire\AccountSecurity;
+use App\Livewire\Affordability;
 use App\Livewire\Dashboard;
 use App\Livewire\ScenarioBuilder;
 use App\Livewire\ScenarioCompare;
@@ -58,6 +59,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/scenarios/{scenario}/what-if/quick', [QuickWhatIfController::class, 'store'])->name('scenarios.whatif.quick');
         Route::post('/scenarios/{scenario}/compare/housing', [BuyVsRentController::class, 'store'])->name('scenarios.compare.housing');
         Route::get('/scenarios/{scenario}/compare', ScenarioCompare::class)->name('scenarios.compare');
+        Route::get('/scenarios/{scenario}/afford', Affordability::class)->name('scenarios.afford');
         Route::get('/scenarios/{scenario}/compare/csv', [CombinationCsvController::class, 'download'])->name('scenarios.compare.csv');
         Route::get('/scenarios/{scenario}/results', ScenarioResults::class)->name('scenarios.results');
         Route::get('/scenarios/{scenario}/results/pdf', [ScenarioPdfController::class, 'download'])->name('scenarios.results.pdf');

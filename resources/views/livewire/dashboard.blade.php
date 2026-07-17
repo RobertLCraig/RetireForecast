@@ -43,6 +43,9 @@
                             </div>
                         </div>
                         <div class="ml-4 flex shrink-0 items-center gap-3 text-sm font-medium text-blue-600">
+                            @if ($scenario->children->isNotEmpty())
+                                <a href="{{ route('scenarios.afford', $scenario) }}" class="rounded-md bg-green-600 px-3 py-1.5 text-white hover:bg-green-700">What can I afford?</a>
+                            @endif
                             <a href="{{ route('scenarios.child', $scenario) }}" class="hover:text-blue-700">Create what-if</a>
                             @if ($scenario->children->isNotEmpty())
                                 <a href="{{ route('scenarios.compare', $scenario) }}" class="hover:text-blue-700">Compare</a>

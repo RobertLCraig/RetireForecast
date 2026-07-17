@@ -3,6 +3,36 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-17 — "What you can afford": the plain-English affordability screen
+**Context:** The engine is trustworthy but the app is hard to communicate to the elder couple it models — no
+patience for ladders, fan charts and Monte Carlo. They want one answer: "what can I / should I do?". Rob asked for
+a screen showing only the plans that actually work, with the limits tested (can they afford £2,000/mo rent if they
+sell for £290k?).
+
+**Decisions:**
+1. **New `/scenarios/{base}/afford` surface** (`App\Livewire\Affordability` + the pure `App\Forecast\AffordabilityAssessment`
+   presenter), base-centric like Compare. It reduces the base + every what-if child to one plain yes/no — do the
+   *essentials* (the must-pay floor) stay paid to the end? — leads with the plans that pass, and collapses (never
+   hides) the ones that fail, each showing the year it runs short and why. A factual "bottom line" names the
+   strongest working plan; a directive "lean towards" sentence is added only behind the walled-off `interpret`
+   ability (on in personal-use mode), exactly as `Interpretation`/Compare, so the guidance-only partition holds
+   when off.
+2. **Verdict = the deterministic central projection** (fast, synchronous, covers every plan incl. brand-new
+   what-ifs with no stored run). Because that path is optimistic for this survivor-cliff household, each plan's
+   stored full Monte Carlo success ("how sure") is shown ALONGSIDE the verdict when a run exists — never instead of
+   it — and a one-click **Check how sure** queues the full runs (reusing `SimulationRunner`, then hands off to
+   Compare's existing progress UI). Tiers: *comfortable* (full budget lasts) > *essentials covered* (floor lasts,
+   extras don't) > *fails*. "Works" = essentials met every year.
+3. **No canonical-shape change:** pure presentation over the engine's own `ForecastResult`/`SimulationResult`; no
+   new persisted entity, no new DTO field.
+
+**Finding (the £290k / £2,000-mo question):** selling and renting at £2,000/mo fails at any realistic sale price —
+runs out 2037 on a £290k sale (2040 even on £350k); the affordable rent ceiling on a £290k sale is ~£1,000/mo (and
+even that is tight — essentials only). Selling to *buy* cheaper (£165k) survives even the pessimistic £290k price
+with ~£82k left, and is the strongest plan overall (£135k left / 87% MC on the base £350k sale). Renting forfeits
+~£41k lifetime Pension Credit plus CGT. Five limit-test what-ifs added to the V2 family in the app (DB scenarios
+33–37; app data, not repo data — see docs/SCENARIO-V2.local.md).
+
 ## 2026-07-16 — No magic money: the purchase-funding waterfall + documented capital receipts
 **Context:** Rob spotted that scenarios which buy a home "magic up" the money. Confirmed: a cash-only buy above
 the net proceeds floored the surplus at £0 and still handed the household the home at full price, owned outright —

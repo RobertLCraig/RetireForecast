@@ -12,6 +12,7 @@
                 <span wire:loading.remove wire:target="runFullFamily">{{ $familyRun['active'] ? 'Running…' : 'Re-run all '.$plans->count().' (full 10k)' }}</span>
                 <span wire:loading wire:target="runFullFamily">Queuing…</span>
             </button>
+            <a href="{{ route('scenarios.afford', $base) }}" class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">What can I afford?</a>
             <a href="{{ route('scenarios.child', $base) }}" class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Create a what-if</a>
             <a href="{{ route('dashboard') }}" class="text-sm font-medium text-blue-600 hover:text-blue-700">Back to forecasts</a>
         </div>
