@@ -81,8 +81,9 @@ The whole post-v1 backlog is built. What remains:
 - [ ] **Re-model the V2 base's ~£90k paydown as a capital receipt** (Rob, in the UI): builder step 3 → One-off
   capital receipts → year 2026, £90,000, label = the real source, owner = the receiving partner — then re-run.
 - [ ] **PDF report has no buy-funding block** — the funding waterfall (savings / mortgage / unfunded gap) is on
-  results/Compare/assistant but the PDF doesn't render the sale explainer at all; deferred (PDF files carried
-  uncommitted work from another session).
+  results/Compare/assistant but the PDF still doesn't render the sale explainer at all. The PDF partials work is now
+  committed (318506c, `resources/views/pdf/partials/report.blade.php`), so this is a real feature gap to build, no
+  longer blocked on uncommitted work.
 - [ ] **Not blocking** — the Delta-research backlog (docs/RESEARCH-delta-2026-07-02.md); the under-spending case (docs/PLAN.md); the third-adult-contributing-to-upkeep scope item; a /methodology enhancement + an adviser/Pension-Wise output pack; WCAG 2.2 AA + mobile to a public bar.
 
 ## How to pick up
