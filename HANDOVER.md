@@ -110,8 +110,9 @@ missing time-series charts** ([docs/PLAN-output-inflation-and-charts.md](docs/PL
 DRAFT — from the 2026-07-18 adversarial review; the correctness items A1 (care rides flat CPI — copy the
 `propertyCostsRealGrowth` pattern) and A2 (care absent from the deterministic path the Affordability screen
 reads) rank high by the accuracy-first rule; the six charts are all buildable from existing `YearResult`
-fields — a presenter/Blade job, not an engine change. Six open questions need Rob's call before those slices
-ship); withdrawal-sequencing #5/#6 (docs/PLAN-withdrawal-sequencing.md, gated on two modelling calls from
+fields — a presenter/Blade job, not an engine change. All six modelling open-questions are now resolved by a
+sourced research pass — most-adverse defaults, each user-editable — bar one residual State-Pension judgement
+flag for Rob); withdrawal-sequencing #5/#6 (docs/PLAN-withdrawal-sequencing.md, gated on two modelling calls from
 Rob); multi-property (docs/PLAN-multi-property.md, DRAFT); assistant scenario-editing
 (docs/PLAN-assistant-scenario-editing.md, approved scope, not built).
 
@@ -185,9 +186,16 @@ number, every chart doubled by an inline table; (3) **only one time-series chart
 `YearResult` — six more charts are a presenter/Blade job, not an engine change. Wrote
 **docs/PLAN-output-inflation-and-charts.md** (Part A correctness / Part B legibility / Part C charts; each
 decision carries reasoning + a research link; six open questions flagged for Rob; build order + files-to-touch
-map). **No code changed** — plan + handover/sibling-doc index only. Noted the concurrent session's
-`21e0efe feat(care): sex-differentiated care probability` had just landed (distinct from this plan's care
-*inflation* items); re-checked git before editing per [[concurrent-session-split]]. Nothing committed yet.
+map). Noted the concurrent session's `21e0efe feat(care): sex-differentiated care probability` had just landed
+(distinct from this plan's care *inflation* items); re-checked git before editing per [[concurrent-session-split]].
+**Then resolved all six of the plan's open modelling questions** via a three-way parallel research pass (care;
+return distribution; triple lock + probability wording) — Rob delegated the calls ("not my field", saved as
+[[adverse-default-user-editable]]): research the industry figure, default to the **most adverse** where several
+are defensible, expose each as a user-editable UI control. Sourced defaults landed in the plan (care inflation
+CPI+2%; care-stress variant ON not expected-value-averaged, adverse fees/duration from LaingBuisson/PSSRU;
+Student-t d.o.f. 3 + negative skew + a stagflation inflation↔return coupling; State Pension CPI-only — the one
+place adverse departs from current law, flagged; probability word-bands reserving "on track" for ≥80%). **No
+code changed** — plan + handover/sibling-doc index only.
 
 _2026-07-18 (sex-differentiated late-life care probability in the Monte Carlo)_ —
 Picked up What's next #3. Chose the care sex-split over CGT deemed-occupation absences (near-moot for the V2 couple's

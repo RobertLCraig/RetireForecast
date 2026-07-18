@@ -6,8 +6,11 @@
 > committed slices per the build order; honour the reconciliation/completeness bar (CLAUDE.md).
 > Each decision below carries its reasoning and a research link — keep that discipline when you build
 > (every figure lands in `docs/ASSUMPTIONS.md` / a `TaxYear` record with a `source` + `verified_on`,
-> not as a magic number). **This is a plan, not a locked decision** — the open questions marked
-> *Decide* need Rob's call (or the executing agent's, recorded in DECISIONS) before that slice ships.
+> not as a magic number). **The six original open questions are now resolved** (2026-07-18 research pass) by
+> Rob's standing rule: research the industry figure, default to the **most adverse** where several are
+> defensible, and expose every one as a **user-editable UI control** with the sourced alternatives
+> ([[adverse-default-user-editable]]). See "Decisions resolved by research". One residual judgement flag
+> (the A4 State-Pension default) is surfaced there for Rob to overrule at build time if he wishes.
 
 ## Why / motivating findings
 
@@ -57,10 +60,16 @@ and null-safe) to a **care real-growth rate**:
 - Optionally generalise to an **essentials real-growth** rate later (energy/food) — but ship care first;
   it carries the most money and the clearest evidence.
 
-**Decide (Rob):** the shipped figure. The 10%/20% headlines are recent NLW/NI spikes, **not** a long-run
-assumption. Propose a **long-run care real growth of ~+2% real (CPI + 2%)** as the default, flagged in
-`ASSUMPTIONS.md` as a judgement call (the same treatment as house-growth's +1% real), with a note that
-recent years ran far hotter. Sets B/C can carry a higher figure. *Confirm the figure + source stamp.*
+**Resolved (2026-07-18 research) — default CPI + 2% real, long-run; user-editable.** Care fees are ~60–75%
+staff cost pinned to the National Living Wage, which government ratchets deliberately above prices; PSSRU/LSE
+and OBR long-term social-care projections escalate care unit costs on **earnings/productivity (~2% real above
+CPI)**, not CPI, and median care-worker pay is up ~23% real since 2015/16. The recent ~10%/yr (≈CPI+4–5%)
+run-rate is an NLW + employer-NI spike, **not** a standing assumption. Defensible standing range 1.5–3% real;
+most adverse of the plausible standing values → **CPI + 2%** default, with a time-limited "care-cost shock"
+(CPI+4–5% for the first few years) offered as an option. Sources:
+[King's Fund Social Care 360](https://www.kingsfund.org.uk/insight-and-analysis/long-reads/social-care-360-expenditure),
+[PSSRU/LSE Wittenberg long-term care projections](https://eprints.lse.ac.uk/88376/1/Wittenberg_Adult%20Social%20Care_Published.pdf),
+[cashflow-planning inflation guidance](https://www.truthsoftware.co.uk/cashflow-assumptions-inflation/).
 
 ### A2. Put an expected care cost in the deterministic path
 
@@ -72,14 +81,37 @@ couple who can't read the fans — is computed on a path that omits their bigges
 **Why it's wrong.** It's not just inaccurate, it's *falsely reassuring* for the least numerate reader —
 the worst failure mode for this tool.
 
-**Target shape (two options — Decide).**
-- **(a) Expected-value care in the deterministic path.** Charge a probability-weighted care cost
-  (P(care) × typical cost, placed at end of life) as a deterministic one-off. Simple, always-present,
-  but blends a lumpy tail risk into a smooth central line.
-- **(b) Keep deterministic care-free but make the omission loud + always show the MC care panel beside the
-  verdict**, and add a deterministic "with a typical care spell" toggle/variant. Honest about the lumpiness.
-- **Recommendation:** (b) as the floor (cheap, honest), (a) as a follow-on refinement. Either way, the
-  Affordability verdict must not read "Yes, lasts for life" while silently ignoring care. Ties to B1.
+**Resolved (2026-07-18 research) — an explicit care-stress variant, ON by default, beside a clearly-labelled
+care-free base; NOT expected-value averaging.** This is what the FCA frame and the professional cashflow
+tools (Voyant, CashCalc, Timeline) do: care is a user-toggled late-life stress scenario shown *alongside* the
+base, never a small probability-weighted amount smeared into the central line. Averaging a severely
+right-skewed tail (most people little/no care; ~1 in 10 face >£100k) is both unrealistic — almost nobody
+experiences the average — and *falsely reassuring*, understating the very person in the tail the projection
+exists to protect. So: (1) keep the central line care-free but **labelled** ("assumes no residential care");
+(2) render, adjacent and visible by default, a **care-stress scenario** on the adverse parameters below ("if
+you need N years of nursing care at £X/wk from age Y, your money lasts until Z"); the Affordability verdict
+must never read "Yes, lasts for life" beside a silently care-free path. A probability-weighted "typical
+outcome" view is offered as an *option*, captioned as **not** a safety margin. Sources:
+[FCA cashflow-modelling guidance](https://www.fca.org.uk/firms/undertaking-cashflow-modelling-demonstrate-suitability-retirement-related-advice),
+[Voyant plan settings](https://support.planwithvoyant.com/hc/en-us/articles/360044947012-About-Plan-Settings).
+
+**Care parameters — adverse defaults (feed both the care-stress variant and the existing MC care model).**
+The Monte-Carlo care *probability* is already sex-differentiated (committed `21e0efe`); these set the
+*adverse* fee / duration / onset defaults, each user-editable:
+
+| Parameter | Adverse default | Central alternative | Source |
+|---|---|---|---|
+| Nursing self-funder fee | **£1,800/wk** (top-decile / dementia-nursing) | £1,594/wk national avg | LaingBuisson 35th ed (Feb 2025) |
+| Residential self-funder fee | **£1,300/wk** | £1,278/wk national avg | LaingBuisson 35th ed |
+| Spell length | **~4 yr** (upper tail) + an 8–10 yr long-stay option | ~2.5 yr (mean) | PSSRU (mean 29.7m); BUPA (~27% >3 yr) |
+| Prob. of a residential/nursing spell | **~50%+ (women's end)** | ~33% blended | AU/US lifetime-admission analogues |
+| Real fee escalation | **CPI + 2%** (per A1) | CPI + 1% | see A1 |
+| Regional loading | London/SE **+25–35%** available | national avg | LaingBuisson regional spread |
+
+Current tool fees (£1,300 residential / £1,600 nursing) are confirmed accurate for 2025
+([LaingBuisson 35th ed](https://www.laingbuisson.com/press-releases/one-in-seven-independent-nursing-homes-charge-over-1800-a-week-to-new-admissions-as-increases-to-the-national-living-wage-uplifts-and-employers-national-insurance-contributions-drive-care-h/));
+nudge to ~£1,400 / ~£1,750 for 2026/27 at the observed ~10%/yr. The UK lifetime *care-home admission*
+probability is proxied from AU/US analogues (no clean UK headline exists) — caveat it in the UI.
 
 ### A3. Fat-tailed returns (the MC left tail is optimistic)
 
@@ -93,34 +125,65 @@ drops far more often than a normal predicts. A headline "90% success" from a thi
 90% from the world that produced 1973–74 or 2008.
 - [Kitces — fat tails vs safe withdrawal rates](https://www.kitces.com/blog/monte-carlo-analysis-risk-fat-tails-vs-safe-withdrawal-rates-rolling-historical-returns/), [Quant Decoded — when Monte Carlo fails](https://quantdecoded.com/en/when-monte-carlo-fails-retirement-planning-pitfalls), Blanchett, Finke & Pfau (2017) "Planning for a More Expensive Retirement".
 
-**Target shape.** Opt-in fat tails, same null-safe contract as the stochastic-growth work
-(DECISIONS 2026-07-18): an `AssumptionSet::returnTailDegreesOfFreedom` (`?int`, null = normal, the
-back-compat default). When set, `ReturnModel` draws asset shocks from a **Student-t** with that d.o.f.
-(scaled to preserve the target volatility), so lower d.o.f. → heavier tails. The historical stress-test
-already gives a fat-tailed cross-check; this brings the *headline* MC into line.
+**Target shape.** `AssumptionSet::returnTailDegreesOfFreedom` (`?int`) + a negative-skew parameter.
+`ReturnModel` draws asset shocks from a **Student-t** (scaled to preserve the target volatility), so lower
+d.o.f. → heavier tails. The field stays nullable **for back-compat with stored runs** (null = normal, so old
+snapshots reproduce byte-identically and a user can pick Normal), but — per the adverse-default rule — the
+**shipped presets set d.o.f. = 3**, so a new forecast is fat-tailed by default.
 
-**Decide (Rob):** whether to ship it *on* by default (more honest, but every stored success probability
-shifts down and needs a re-run) or ship it *off* with a compare overlay. Given the byte-identical-reproduce
-discipline, propose **off by default (null), documented, with a "stress the tails" toggle** — mirroring how
-DMS/OBR ship as overlays rather than replacing the default.
+**Resolved (2026-07-18 research) — default fat tails ON: Student-t, d.o.f. 3 ("severe") + negative skew,
+Cholesky-correlated; plus a stagflation coupling.** A plain Gaussian is the acknowledged *convenience*
+baseline the whole tail-risk literature exists to correct; the NAIC/Academy equity economic-scenario-generator
+"stylised facts" require fat tails, negative skew and volatility clustering, and retail analogues (Retirement
+Lab) ship Student-t d.o.f. 3 "severe" / 5 "moderate". Empirical equity-return d.o.f. sits at ~3–7 (the large
+negative left tail ~2–5). Most adverse defensible → **d.o.f. 3 + negative (Fernandez–Steel) skew**.
+- **A3b — stagflation coupling (the current independent-inflation draw is the weakest link for a UK tool).**
+  The UK's worst real-return decade (1970s) was inflation-driven; drawing inflation independently of real
+  returns makes joint stagflation near-impossible and understates sequence risk. Draw inflation **jointly,
+  negatively correlated with real returns (~−0.3 to −0.5)** so stagflation can occur, and let the stock–bond
+  correlation move positive in high-inflation draws (diversification fails exactly when inflation is high).
+- **Honest caveat (must be in the UI copy).** i.i.d. fat-tailed draws omit **mean reversion**; Kitces argues
+  this makes i.i.d. MC *overstate* multi-year catastrophe. A **block bootstrap** (3–5-yr blocks) captures
+  *both* empirical fat tails and serial dependence and is the academic favourite — offer it as the "honest
+  middle" and show the same plan under multiple engines side-by-side so the reader sees the spread.
+- **Effect:** ~+10–17pp higher 30-yr failure at a 4% withdrawal vs the current Normal — this is *why* the tool
+  defaults pessimistic. Sources:
+  [Kitces — fat tails vs SWR](https://www.kitces.com/blog/monte-carlo-analysis-risk-fat-tails-vs-safe-withdrawal-rates-rolling-historical-returns/),
+  [NAIC/Academy equity-ESG stylised facts](https://content.naic.org/sites/default/files/inline-files/ESG%20Stylized%20Facts%20for%20Equity%20(final)%20(3).pdf),
+  [Baltussen et al., stagflation regimes (FAJ 2023)](https://www.tandfonline.com/doi/full/10.1080/0015198X.2023.2185066),
+  [Retirement Lab methodology](https://retirement-lab.com/how-it-works/).
 
-### A4. Triple lock — restore the earnings leg (directional; lower priority)
+### A4. State Pension uprating — the current rule is neither faithful nor adverse
 
-**Finding.** The triple lock is modelled as `max(inflation, 2.5%)` (`docs/METHODOLOGY.md`), dropping the
-**earnings-growth** leg.
+**Finding.** The tool uprates the State Pension by `max(CPI, 2.5%)` (`docs/METHODOLOGY.md`). That is **not**
+the most adverse option and it is not the faithful one either: long-run, the **earnings** leg (dropped here)
+usually binds, while the 2.5% floor makes the current rule *more* generous than pure CPI in low-inflation
+years. So it sits awkwardly between the two.
 
-**Why it matters.** Earnings has been the *binding* leg repeatedly (8.5% in Apr-2024). Over 2010–2023 the
-state pension rose 60% vs prices 42% / earnings 40% — the lock adds a persistent wedge the OBR puts at
-~+0.58pp/yr above earnings. Dropping the earnings leg **understates** guaranteed income — note this pulls
-*opposite* to A1–A3 (it makes plans look worse, so it's a smaller safety concern, but it's still wrong).
-- [House of Commons Library — the triple lock](https://commonslibrary.parliament.uk/the-triple-lock-how-will-state-pensions-be-uprated-in-future/), [IFS R272 — triple lock costs & uncertainty](https://ifs.org.uk/sites/default/files/2023-09/R272-The-triple-lock-costs-and-uncertainty.pdf).
+**Why it matters + what "most adverse" means here (⚠️ the one place adverse ≠ current law — Rob please
+note).** For a household *relying on* State Pension income, **lower uprating is the adverse case**. UK
+long-run projections assume positive real earnings growth, so the ranking most-generous→most-adverse is
+`full triple lock ≥ earnings+wedge ≥ double lock ≥ earnings-only ≥ CPI-only`. Per the adverse-default rule
+the default is therefore **CPI-only (a prices link)** — the lowest defensible long-run uprating. **Caveat
+(must be in the UI copy):** earnings-linking is the current *statutory minimum* (Pensions Act 2014 s.5), so a
+CPI-only default assumes a future government legislates the earnings link away — a genuine policy risk (the
+OBR baseline still assumes the full triple lock continues, and warns it drives over half the projected
+State-Pension-cost rise to the 2070s), but a departure from *today's* law. If you would rather the default
+respect current law, the most-adverse **legally-consistent** choice is **earnings-only**. Recommend CPI-only
+as the adverse default with earnings-only offered as the "legal floor" option.
 
-**Target shape (Decide).** Two ways, in effort order:
-- **(a) A simple triple-lock wedge:** uprate the state pension at CPI + a small fixed real wedge
-  (~0.5%/yr, OBR-sourced). Cheap, captures the long-run drift, no new stochastic coupling.
-- **(b) Model the earnings leg properly:** `max(inflation, inflation + realSalaryGrowthDraw, 2.5%)`, reusing
-  the salary-growth draw already added 2026-07-18. More faithful, but couples SP to the earnings shock.
-- **Recommendation:** (a) for v1 (sourced, simple, robust); flag (b) as a refinement.
+- Faithful modelling note: the truest representation of the *actual* triple lock in a real-earnings framework
+  is **earnings + a wedge** — OBR puts the wedge at **~0.58pp/yr** (data since 1993) or **~1.04pp/yr** (since
+  2011); IFS finds moving triple→double lock changes little long-run because earnings usually binds.
+- Sources:
+  [OBR Fiscal Risks & Sustainability (Jul 2026)](https://obr.uk/frs/fiscal-risks-and-sustainability-july-2026/),
+  [IFS R272 — triple lock costs & uncertainty](https://ifs.org.uk/sites/default/files/2023-09/R272-The-triple-lock-costs-and-uncertainty.pdf),
+  [IFS — triple vs double lock does little long-run](https://ifs.org.uk/articles/moving-triple-double-lock-does-little-long-run-state-pension-affordability),
+  [House of Commons Library — the triple lock](https://commonslibrary.parliament.uk/the-triple-lock-how-will-state-pensions-be-uprated-in-future/).
+
+**UI options (most-generous → most-adverse):** full triple lock `max(earnings, CPI, 2.5%)` · earnings + wedge
+(0.58pp / 1.04pp) · double lock `max(earnings, CPI)` · earnings-only (legal floor) · **CPI-only (adverse
+default)**.
 
 ---
 
@@ -140,8 +203,27 @@ guaranteed-income-floor framing.
 Promote a **verdict layer** to the default post-run view (the `/afford` screen already exists — reuse it),
 but fix its honesty gap: **lead with the Monte-Carlo probability**, not the deterministic yes/no. A green
 "Yes, this lasts" next to a hidden ~55% is the most misleading surface in the app (the handover's own
-"honesty gap" note). Show the deterministic path as the *expected* case beside a plain-word probability
-band ("roughly a coin toss" / "very likely"), and surface the care panel next to it (ties to A2).
+"honesty gap" note). Show the deterministic path as the *expected* case beside a plain-word probability band,
+and surface the care panel next to it (ties to A2).
+
+**Resolved (2026-07-18 research) — conservative word bands; reserve green/"on track" for ≥80%.** The industry
+benchmark is MoneyGuidePro's **Confidence Zone (70–90%)**; the adviser norm (Kitces) treats ~70% as the
+*floor* of "acceptable," not "comfortable." Per the adverse rule, anchor the "on track" floor higher (80%) so
+a coin-flip lands firmly in "at risk." Follow Kitces' reframing: present it as a **probability of needing to
+adjust**, not "chance of running out," and always pair it with the shortfall size and the guaranteed-income
+floor (State Pension + any DB/annuity).
+
+| Success probability | Plain-English band | Colour | Meaning for the couple |
+|---|---|---|---|
+| **≥ 90%** | Very secure | Green | Highly likely to last; you may even be able to spend a little more or leave more behind. |
+| **80–89%** | On track | Green | Holds up well in the large majority of futures — the target zone. |
+| **70–79%** | Broadly on track — keep under review | Amber | Usually fine, but a bad run of years could need modest spending cuts. Revisit yearly. |
+| **50–69%** | At risk | Orange/Red | Too close to a coin-flip. Likely to need real changes — lower spending, or lean on guaranteed income. *(55% lands here.)* |
+| **< 50%** | Unlikely on the current plan | Red | More likely than not to fall short as planned. Needs a rethink now. |
+
+Sources: [Envestnet MoneyGuide Confidence Zone](https://soundmindinvesting.com/articles/will-your-retirement-nest-egg-last-how-to-use-moneyguidepro-to-find-out),
+[Kitces — reframing retirement risk as over/under-spending](https://www.kitces.com/blog/retirement-income-risk-monte-carlo-probability-sucess-over-under-spend/),
+[Schwab — stress-testing your plan](https://www.schwab.com/learn/story/stress-testing-your-retirement-plan).
 
 ### B2. Collapse the 18 sections into ~4 tabs/accordions
 
@@ -193,14 +275,32 @@ chart's table.
 
 ---
 
-## Open questions / decisions needed (Rob or the executing agent — record in DECISIONS)
+## Decisions resolved by research (2026-07-18)
 
-1. **A1 care real-growth figure** — propose CPI + 2% real default (flagged judgement call), sets B/C higher. *Decide + source-stamp.*
-2. **A2 deterministic care** — expected-value in the central path, or care-free + loud omission + MC panel + a "with a care spell" variant. *Decide.*
-3. **A3 fat tails** — ship on-by-default (re-runs every stored result) or off with a "stress the tails" overlay. *Decide.*
-4. **A4 triple lock** — simple CPI+wedge (recommended) vs full earnings-leg modelling. *Decide.*
-5. **B1 probability wording** — the plain-word bands for the verdict (map probability → words); pass the banned-phrasing lint (advice mode is on, but keep it factual). *Decide the bands.*
-6. **Scope split** — Part A (correctness) can ship independently and first; Parts B/C are a separable UX workstream. Confirm the order (recommend A1/A2 → C1/C2/C3 → B1 → rest).
+The six original open questions were resolved by Rob's standing rule — **research the industry figure; where
+several are defensible, default to the most adverse; expose every one as a user-editable UI control with the
+sourced alternatives** ([[adverse-default-user-editable]]). The per-item sections above hold the reasoning +
+sources; this table is the consolidated **builder-control spec** (default = the shipped preset; alternatives =
+the selectable options). Every figure gets a `source` + `verified_on` stamp in `ASSUMPTIONS.md` when built.
+
+| Assumption | Adverse default (shipped) | User-selectable alternatives |
+|---|---|---|
+| Care real inflation (A1) | **CPI + 2%** | CPI+0 / +1 / +3; time-limited "care shock" CPI+4–5% |
+| Care in the forecast (A2) | **Care-stress variant ON**, beside a labelled care-free base | care-free only; probability-weighted "typical" (captioned) |
+| Care fees / spell (A2) | **£1,800 nursing / £1,300 residential /wk, ~4 yr, ~50%+ incidence** | national-avg fees; ~2.5 yr; ~33% incidence; 8–10 yr long-stay; regional loading |
+| Return distribution (A3) | **Student-t d.o.f. 3 + negative skew** | Normal; t(5) moderate; block bootstrap; (later) regime-switching |
+| Inflation coupling (A3b) | **Joint, −0.3…−0.5 vs real returns** (stagflation possible) | independent (current); regime-switching |
+| State Pension uprating (A4) | **CPI-only** (⚠️ see residual flag) | full triple lock; earnings+wedge; double lock; earnings-only |
+| Probability wording (B1) | **Green/"on track" only ≥80%; 50–69% = "At risk"** | (fixed bands; see B1 table) |
+
+**Residual judgement flag for Rob (the only one that isn't a pure figure):** the **A4 State Pension default**
+is the one place "most adverse" departs from *current law* — CPI-only assumes a future government repeals the
+statutory earnings link. Per the rule I've set **CPI-only** as the adverse default, with **earnings-only**
+offered as the "respects today's law" option. If you'd rather the default not presume a law change, switch the
+default to earnings-only; either way both are selectable. Flag noted so you can overrule at build time.
+
+**Scope / build order** (resolved): Part A ships independently and first; Parts B/C are a separable UX
+workstream. Recommended order is in "Build order" below (A1/A2 → C1/C2/C3 → B1 → rest).
 
 ## Tests (the reconciliation / completeness bar)
 
