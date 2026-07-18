@@ -8,6 +8,7 @@
         body { color: #1f2937; font-size: 11px; line-height: 1.4; }
         h1 { font-size: 20px; margin: 0 0 2px; }
         h2 { font-size: 14px; margin: 18px 0 6px; border-bottom: 1px solid #d1d5db; padding-bottom: 3px; }
+        h3 { font-size: 12px; margin: 10px 0 2px; }
         .meta { color: #6b7280; font-size: 10px; }
         .disclaimer { border: 1px solid #d1d5db; background: #f9fafb; padding: 8px 10px; margin: 12px 0; font-size: 10px; }
         .disclaimer strong { color: #374151; }

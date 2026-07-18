@@ -188,6 +188,76 @@
         Outside-London figures; London is higher. A general yardstick, not a recommendation.</p>
 @endif
 
+@if ($saleExplainer)
+    @php($se = $saleExplainer)
+    <h2>If you sell: where the money comes from and goes</h2>
+    <p class="muted">Selling the current home is assumed at {{ $se['proceeds']['salePrice'] }}. After the costs of
+        selling, this is what is left to invest — and, if buying a cheaper home, what is left over after that
+        purchase. Figures in today's money.</p>
+    <table>
+        <tbody>
+            <tr><td>Sale price</td><td class="num">{{ $se['proceeds']['salePrice'] }}</td></tr>
+            @if ($se['proceeds']['hasMortgage'])
+                <tr><td>less outstanding mortgage</td><td class="num">−{{ $se['proceeds']['mortgage'] }}</td></tr>
+            @endif
+            <tr><td>less selling costs{{ $se['sellingCostsAssumed'] ? ' (assumed)' : '' }}</td><td class="num">−{{ $se['proceeds']['sellingCosts'] }}</td></tr>
+            @unless ($se['sellingCostsAssumed'])
+                @foreach ($se['sellingCostBreakdown'] as $line)
+                    <tr><td class="muted">&nbsp;&nbsp;{{ $line['label'] }}@if ($line['detail']) ({{ $line['detail'] }})@endif</td><td class="num">−{{ $line['value'] }}</td></tr>
+                @endforeach
+            @endunless
+            <tr><td>less capital gains tax{{ $se['proceeds']['cgtCharged'] ? '' : ' (main home, fully relieved)' }}</td><td class="num">−{{ $se['proceeds']['cgt'] }}</td></tr>
+            @if ($se['cgtDetail'])
+                <tr><td class="muted" colspan="2">Gain {{ $se['cgtDetail']['gain'] }}, less {{ $se['cgtDetail']['relievedGain'] }} private-residence relief = {{ $se['cgtDetail']['chargeableGain'] }} chargeable; less {{ $se['cgtDetail']['allowanceUsed'] }} allowance = {{ $se['cgtDetail']['taxableGain'] }} taxed at {{ $se['cgtDetail']['ratePct'] }}.</td></tr>
+            @endif
+            <tr><td><strong>Net proceeds</strong></td><td class="num"><strong>{{ $se['proceeds']['netProceeds'] }}</strong></td></tr>
+        </tbody>
+    </table>
+    @unless ($se['proceeds']['clearsCosts'])
+        <p class="note">On these figures the sale does not cover the mortgage and selling costs, so there are no net proceeds to invest.</p>
+    @endunless
+
+    <p class="muted"><strong>If you sell &amp; rent:</strong> all {{ $se['rent']['invested'] }} of the net proceeds is
+        invested.@if ($se['rent']['annualRent']) The rent for a home to rent instead — {{ $se['rent']['annualRent'] }} a
+        year, in today's money — is then paid from income (a projected future cost, not one you pay now).@endif</p>
+
+    @if ($se['buy'])
+        <h3>If you sell &amp; buy</h3>
+        <table>
+            <tbody>
+                <tr><td>Net proceeds</td><td class="num">{{ $se['buy']['netProceeds'] }}</td></tr>
+                <tr><td>less the home bought</td><td class="num">−{{ $se['buy']['buyPrice'] }}</td></tr>
+                <tr><td>less stamp duty</td><td class="num">−{{ $se['buy']['sdlt'] }}</td></tr>
+                <tr><td>less moving costs</td><td class="num">−{{ $se['buy']['movingCosts'] }}</td></tr>
+                @if ($se['buy']['fundedFromSavings'])
+                    <tr><td>plus from your savings (cash &rarr; GIA &rarr; ISA)</td><td class="num">+{{ $se['buy']['fundedFromSavings'] }}</td></tr>
+                @endif
+                @if ($se['buy']['mortgage'])
+                    <tr><td>plus interest-only mortgage{{ $se['buy']['mortgageInterest'] ? ' (~'.$se['buy']['mortgageInterest'].'/yr interest)' : '' }}</td><td class="num">+{{ $se['buy']['mortgage'] }}</td></tr>
+                @endif
+                @if ($se['buy']['unfundedGap'])
+                    <tr><td><strong>Unfunded gap</strong></td><td class="num"><strong>{{ $se['buy']['unfundedGap'] }}</strong></td></tr>
+                @endif
+                <tr><td><strong>Surplus invested</strong></td><td class="num"><strong>{{ $se['buy']['surplus'] }}</strong></td></tr>
+            </tbody>
+        </table>
+        @if ($se['buy']['unfundedGap'])
+            <p class="note"><strong>{{ $se['buy']['unfundedGap'] }} of this purchase has no funding source.</strong> The
+                sale proceeds{{ $se['buy']['fundedFromSavings'] ? ' and all your savings' : '' }} don't cover it and no
+                mortgage is configured, so the forecast charges the gap as an unmet cost in year one — the plan fails
+                until that money is documented (a mortgage, a receipt, or a cheaper home).</p>
+        @elseif ($se['buy']['fundedFromSavings'])
+            <p class="note">{{ $se['buy']['fundedFromSavings'] }} of this purchase is funded from savings, drawn
+                cash &rarr; GIA &rarr; ISA (never pensions). That money leaves the plan on day
+                one{{ $se['buy']['mortgage'] ? ', and the rest of the gap is borrowed' : '' }}.</p>
+        @endif
+    @endif
+
+    <p class="muted">Invested money is not left idle: it grows at the blended real return of
+        {{ $se['blendedReturnPct'] }} a year (above inflation); about {{ $se['incomeYieldPct'] }} of the value is paid
+        out each year as taxable income, the rest is capital growth. The cashflow below shows how it is drawn on.</p>
+@endif
+
 <h2>Cashflow projection (central estimate)</h2>
 <p class="muted">Real terms, to {{ $ladder['finalYear'] }}. The full income-by-source breakdown is in the CSV
     export on the results page.</p>

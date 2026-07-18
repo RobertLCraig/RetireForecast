@@ -81,9 +81,19 @@ class ScenarioPdfController extends Controller
         // Deterministic projections, exactly as the results page does, so the printed figures
         // match the screen: the cashflow ladder follows the scenario's own chosen strategy (the
         // page's default), while the income floor reads the raw (stay-put) household.
-        $variants = app(ScenarioForecaster::class)->deterministicVariants($scenario);
+        $forecaster = app(ScenarioForecaster::class);
+        $variants = $forecaster->deterministicVariants($scenario);
         $ladderForecast = $variants[$scenario->variant->value] ?? $variants['stay_put'];
         $forecast = $variants['stay_put'];
+
+        // Sale-explainer inputs, built from the same engine decomposition + presenter the
+        // results page uses, so the printed funding waterfall cannot drift from the screen.
+        // Deterministic; the presenter returns null (section hidden) when no sale is configured.
+        $household = $scenario->toHousehold();
+        $action = $scenario->toHousingAction();
+        $housing = $forecaster->housingComparison($scenario);
+        $assumptions = $forecaster->assumptions($scenario);
+        $allocation = $forecaster->settings($scenario)->allocation();
 
         // The SAME run the results page presents (latest completed), so the PDF can never
         // print a Monte Carlo summary the screen is hiding.
@@ -94,20 +104,30 @@ class ScenarioPdfController extends Controller
             'generatedAt' => now()->format('j F Y'),
             'shock' => app(LumpSumTaxShock::class)->assess($scenario),
             'budget' => ResultPresenter::expenseBreakdown($scenario->effectiveBuilderState()),
-            'plsa' => ResultPresenter::plsaBenchmark($scenario->toHousehold()),
+            'plsa' => ResultPresenter::plsaBenchmark($household),
             'incomeFloor' => ResultPresenter::incomeFloor($forecast),
             // Inheritance Tax on the estate (only when the toggle is on) — same deterministic
             // source as the screen, so the printed figure matches.
-            'iht' => ResultPresenter::ihtPanel($forecast->iht, $scenario->toHousehold()),
+            'iht' => ResultPresenter::ihtPanel($forecast->iht, $household),
             'ladder' => ResultPresenter::ladder($ladderForecast, $scenario->safetyBufferMonths()),
+            // Where a configured sale's proceeds come from and go — the funding waterfall
+            // (net proceeds, savings drawn, mortgage, unfunded gap), single-sourced from the
+            // engine's own decomposition and reconciled, exactly as the results page shows it.
+            'saleExplainer' => ResultPresenter::saleExplainer(
+                $housing->saleProceeds($household, $action),
+                $housing->buyOutcome($household, $action),
+                $action,
+                $allocation->blendedRealReturn($assumptions),
+                $assumptions->investmentIncomeYield->asFraction(),
+            ),
             // Monte Carlo headline summary + the run's provenance, only if a completed run
             // exists, so a 1,000-path preview can't masquerade as the 10k report.
             'presented' => $presented,
             'mcRun' => $mcRun,
             // Contextual "get help" contacts: mortgage line when this plan involves a mortgage, CGT
             // line when it would sell a home that was ever let (partial-PRR CGT).
-            'sourcesShowMortgage' => ($scenario->toHousehold()->primaryResidence?->outstandingMortgage?->isPositive() ?? false) || $scenario->toHousingAction()->buyMortgageRate !== null,
-            'sourcesShowCgt' => $scenario->toHousehold()->primaryResidence?->everLet ?? false,
+            'sourcesShowMortgage' => ($household->primaryResidence?->outstandingMortgage?->isPositive() ?? false) || $action->buyMortgageRate !== null,
+            'sourcesShowCgt' => $household->primaryResidence?->everLet ?? false,
         ];
     }
 

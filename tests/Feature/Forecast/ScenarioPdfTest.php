@@ -69,6 +69,12 @@ class ScenarioPdfTest extends TestCase
         $this->assertStringContainsString('Guidance only, not financial advice', $html);
         $this->assertStringContainsString('Spending budget', $html);
         $this->assertStringContainsString('Cashflow projection', $html);
+        // The house-sale funding waterfall, single-sourced from the same presenter the screen
+        // uses: the rich fixture sells & buys, so the "If you sell" block and its net-proceeds
+        // line must print (the PDF must not silently drop the sale explainer — the blocker fixed).
+        $this->assertStringContainsString('If you sell: where the money comes from and goes', $html);
+        $this->assertStringContainsString('Net proceeds', $html);
+        $this->assertStringContainsString('If you sell &amp; buy', $html);
         // Deterministic-only report says so when no Monte Carlo run exists yet.
         $this->assertStringContainsString('No completed Monte Carlo run yet', $html);
     }

@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-17 (plain-English "What you can afford" screen built — see Decisions 2026-07-17)_
+_Last updated: 2026-07-18 (PDF now renders the sale-funding waterfall — the last "Done" open item closed)_
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -58,6 +58,11 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](docs/HANDOV
   Awaits browser sign-off with the rest (What's next #1). **Finding:** sell-and-rent at £2,000/mo fails at any
   realistic sale price (out 2037 on a £290k sale); affordable rent ceiling on a £290k sale ~£1,000/mo; sell-and-buy
   cheaper is the strongest plan. Five limit-test what-ifs added to the app (DB scenarios 33–37, not repo data).
+- **Done 2026-07-18 — PDF sale-funding waterfall:** the downloadable/print report now renders the "If you sell"
+  block (net-proceeds waterfall → sell-&-rent → sell-&-buy funding: savings drawn, mortgage, unfunded-gap failure),
+  built from the SAME `ResultPresenter::saleExplainer` + engine decomposition the results page uses, so print cannot
+  drift from screen. Closes the last PDF open item; guarded by a `ScenarioPdfTest` assertion. Awaits browser sign-off
+  with the rest (What's next #1).
 - **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **the £118k stay-put mortgage is a DELIBERATE paydown design — read that doc before touching any V2 figure.** The base's
   "~£90k found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
   (year 2026, the real source as the label) — see the V2 doc's note.
@@ -80,10 +85,6 @@ The whole post-v1 backlog is built. What remains:
 - [ ] **Demo couple's anonymised figures** — Rob supplies later, entered via the UI, not hardcoded.
 - [ ] **Re-model the V2 base's ~£90k paydown as a capital receipt** (Rob, in the UI): builder step 3 → One-off
   capital receipts → year 2026, £90,000, label = the real source, owner = the receiving partner — then re-run.
-- [ ] **PDF report has no buy-funding block** — the funding waterfall (savings / mortgage / unfunded gap) is on
-  results/Compare/assistant but the PDF still doesn't render the sale explainer at all. The PDF partials work is now
-  committed (318506c, `resources/views/pdf/partials/report.blade.php`), so this is a real feature gap to build, no
-  longer blocked on uncommitted work.
 - [ ] **Not blocking** — the Delta-research backlog (docs/RESEARCH-delta-2026-07-02.md); the under-spending case (docs/PLAN.md); the third-adult-contributing-to-upkeep scope item; a /methodology enhancement + an adviser/Pension-Wise output pack; WCAG 2.2 AA + mobile to a public bar.
 
 ## How to pick up
@@ -130,6 +131,17 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-18 (PDF sale-funding waterfall — last PDF gap closed)_ —
+The buy-funding waterfall (net proceeds → savings → mortgage → unfunded gap) rendered on results/Compare/assistant
+but the PDF summary omitted the sale explainer entirely. Fixed by mirroring the screen, not re-deriving: added the
+same `ResultPresenter::saleExplainer(...)` call to `ScenarioPdfController::data()` (fed by the scenario's own
+`housingComparison`/`assumptions`/`allocation`, deterministic, null when no sale is configured) and an "If you sell"
+section to `pdf/partials/report.blade.php`, placed just before the cashflow ladder to match the on-screen money-flow
+order. Used only the inline `@php(...)` form (block/inline mixing is the known Blade raw-block gotcha); added an `h3`
+rule to the PDF stylesheet. Guarded with a `ScenarioPdfTest` assertion (the rich fixture sells & buys). Full suite
+green, pint clean; the `%PDF` download test confirms DomPDF renders the new markup. No shape change, no DECISIONS
+entry (mechanical parity with the screen under the existing displayed-figure-provenance rule).
 
 _2026-07-17 ("What you can afford" screen + affordability limit-tests)_ —
 Rob: the current tool is good for him but hard to communicate to the elder couple — "they just want a this-is-what-
