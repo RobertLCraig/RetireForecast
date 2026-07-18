@@ -18,6 +18,8 @@
             <p class="mt-2 text-base text-gray-700">
                 {{ $bottomLine['workCount'] }} of your {{ $bottomLine['total'] }} plans keep the essentials paid for life.
             </p>
+            {{-- The verdict above is the expected, care-free path; this qualifies it with the care risk (A2). --}}
+            <p class="mt-2 text-base font-medium text-gray-700">🏥 {{ $bottomLine['careCaveat'] }}</p>
         @endif
 
         @if ($anyUnchecked)
@@ -71,6 +73,12 @@
 
                     <p class="mt-3 text-lg leading-relaxed text-gray-900">{{ $card['verdict'] }}</p>
 
+                    {{-- The care-stress companion (A2): the SAME expected path with an adverse ~4-year
+                         nursing spell, so "works for life" is never shown against a care-free path. --}}
+                    <p class="mt-3 rounded-lg px-4 py-3 text-base leading-relaxed {{ $card['careStress']['holds'] ? 'bg-green-50 text-green-900' : 'bg-amber-50 text-amber-900' }}">
+                        🏥 {{ $card['careStress']['verdict'] }}
+                    </p>
+
                     <dl class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div class="rounded-lg bg-gray-50 px-4 py-3">
                             <dt class="text-sm text-gray-500">Money left at the end</dt>
@@ -118,6 +126,7 @@
                             @endif
                         </div>
                         <p class="mt-3 text-base leading-relaxed text-gray-800">{{ $card['verdict'] }}</p>
+                        <p class="mt-2 text-sm leading-relaxed text-gray-600">🏥 {{ $card['careStress']['verdict'] }}</p>
                         @if ($card['mcEssentials'] !== null)
                             <p class="mt-2 text-sm text-gray-500">Full check: essentials last in only {{ $card['mcEssentials'] }} of possible futures.</p>
                         @endif
@@ -135,6 +144,9 @@
             stay covered every year to the end, on the <span class="font-medium">expected path</span> (average investment returns
             and typical lifespans). Where a plan has been through the full check, the “how sure” figure shows how often it lasts
             once we allow for bad luck with returns and living longer — always look at that too before deciding.
+            The <span class="font-medium">🏥 care line</span> on each plan is a separate stress: it shows what would happen if one of you
+            needed about four years of nursing care (~£1,800 a week) later in life. The main verdict assumes no such care,
+            so read the two together — care is the single biggest risk to most plans.
             These are illustrations of the figures you entered, not financial advice.
             For free, impartial help see <a class="underline" href="https://www.moneyhelper.org.uk/" rel="noopener">MoneyHelper</a>
             and <a class="underline" href="https://www.moneyhelper.org.uk/en/pensions-and-retirement/pension-wise" rel="noopener">Pension Wise</a>.

@@ -1,6 +1,7 @@
 # PLAN — output legibility, category inflation, and the missing time-series charts
 
-> **Status: DRAFT spec, ready for a fresh agent. Nothing here is built yet.** Dated 2026-07-18,
+> **Status: DRAFT spec. A1 (care escalates above CPI) and A2 (care-stress in the deterministic path,
+> on the Affordability screen) are BUILT (DECISIONS 2026-07-18); the rest is unbuilt.** Dated 2026-07-18,
 > written from a code-grounded adversarial review of the engine outputs and the Blade output layer
 > (two mapping passes over `packages/finance-engine/src` and `resources/views`). Build in green,
 > committed slices per the build order; honour the reconciliation/completeness bar (CLAUDE.md).

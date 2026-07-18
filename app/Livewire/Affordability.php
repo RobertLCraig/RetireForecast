@@ -82,6 +82,9 @@ class Affordability extends Component
                 'scenario' => $plan,
                 'variant' => $variant,
                 'forecast' => $forecaster->deterministicVariants($plan)[$variant],
+                // The "if significant care is needed" companion, on the same path (A2), so the verdict
+                // is never "lasts for life" against a silently care-free projection.
+                'careStress' => $forecaster->deterministicCareStressVariants($plan)[$variant],
                 'household' => $plan->toHousehold(),
                 'baseYear' => $baseYear,
                 'monthlyRent' => $this->monthlyRent($plan, $variant),

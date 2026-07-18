@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Forecast;
 
+use RetireForecast\FinanceEngine\Care\CareEpisode;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 
@@ -13,6 +14,13 @@ use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
  * (their median age at death from the cohort life table). This is the central
  * "best estimate" projection; the Monte Carlo replaces these constants with sampled
  * sequences and sampled death ages.
+ *
+ * Care is normally absent from the central estimate (it is a Monte Carlo risk, so
+ * {@see careAnnualCost} returns 0). The optional $careEpisodes let a caller inject an
+ * explicit care spell to run the SAME deterministic path as a labelled "if significant
+ * care is needed" stress scenario ({@see DeterministicForecaster::forecastWithCareStress}),
+ * shown beside the care-free base — never averaged into it. Empty (the default) keeps the
+ * path byte-identical to the care-free central estimate.
  */
 final class DeterministicPathDraws implements PathDraws
 {
@@ -32,11 +40,13 @@ final class DeterministicPathDraws implements PathDraws
 
     /**
      * @param  array<string, int>  $deathAges  personId => age at death
+     * @param  array<string, CareEpisode>  $careEpisodes  personId => injected care spell (empty = care-free)
      */
     public function __construct(
         AssumptionSet $set,
         PortfolioAllocation $allocation,
         private readonly array $deathAges,
+        private readonly array $careEpisodes = [],
     ) {
         $this->investmentReturn = $allocation->blendedRealReturn($set);
         $this->cashReturn = $set->assetClasses[count($set->assetClasses) - 1]->expectedRealReturn->asFraction();
@@ -82,10 +92,13 @@ final class DeterministicPathDraws implements PathDraws
         return $this->deathAges[$personId] ?? CohortLifeTable::MAX_AGE;
     }
 
-    /** No care in the central best-estimate projection (care is a Monte Carlo risk). */
+    /**
+     * Care cost this year: 0 for the care-free central estimate, or the injected spell's real fee
+     * when this is run as a care-stress scenario (see the class docblock).
+     */
     public function careAnnualCost(string $personId, int $age): int
     {
-        return 0;
+        return isset($this->careEpisodes[$personId]) ? $this->careEpisodes[$personId]->annualCostAt($age) : 0;
     }
 
     public function careCostRealGrowth(): float

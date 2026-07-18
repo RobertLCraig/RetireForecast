@@ -209,11 +209,18 @@ Later-life care is a fat-tailed risk, so it is modelled explicitly:
   savings are never assessable. The £86,000 lifetime care cap is **not** modelled — it was
   cancelled in July 2024.
 
-Simplifications: care is modelled only in the Monte Carlo — the deterministic central projection
-(and the plain-English affordability verdict it feeds) contains no care, so those read the care-free
-path; the care probability is split by sex but not yet by age; any Pension Credit award is not counted
-into the care contribution; the local authority is assumed to pay its share at the same fee rate;
-deferred-payment agreements and the 12-week property disregard are below the annual grid.
+The **central (best-estimate) projection stays care-free** — care is a risk, not a certainty, so
+folding an averaged amount into the central line would mislead. Instead the "What you can afford"
+screen shows, beside each plan's care-free verdict, an **"if significant care is needed" stress**:
+the same expected path with one adverse ~4-year nursing spell (~£1,800 a week) placed on the
+last-surviving partner, means-tested and escalated like any care cost. So a plain "lasts for life"
+is never shown against a silently care-free path, while the ordering still reflects the expected case.
+
+Simplifications: the care-stress uses fixed adverse parameters (not yet user-editable), and applies
+one spell rather than both partners'; the probabilistic Monte Carlo care model is unchanged; the care
+probability is split by sex but not yet by age; any Pension Credit award is not counted into the care
+contribution; the local authority is assumed to pay its share at the same fee rate; deferred-payment
+agreements and the 12-week property disregard are below the annual grid.
 
 ## How long you might live
 

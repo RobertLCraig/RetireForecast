@@ -107,8 +107,19 @@ cash **−0.5%**.
    remains an unbuilt option — see docs/PLAN-output-inflation-and-charts.md A1). Applies to the sampled
    self-funder fee, compounded to the year the (late-life) spell falls, mirroring the property-costs bucket.
    **Opt-in / null-safe:** a null rate keeps care flat-real, so every pre-existing stored care run reproduces
-   unchanged. User-editable per scenario. Care is still a Monte-Carlo-only risk (putting an expected care
-   cost in the deterministic path is the separate A2 item). **Confirm you're happy with CPI + 2% real.**
+   unchanged. User-editable per scenario. **Confirm you're happy with CPI + 2% real.**
+9. **Deterministic care-stress parameters (A2, added 2026-07-18; verified_on 2026-07-18).** The "What you can
+   afford" screen shows, beside each care-free verdict, an "if significant care is needed" stress:
+   **one 4-year nursing spell at £1,800/wk (self-funder)** on the **last-surviving partner**, ending at their
+   representative death age, means-tested and CPI+2%-escalated. Per the adverse-default rule these are the
+   adverse-but-defensible end: £1,800/wk is LaingBuisson's top-decile / dementia-nursing figure (national
+   average is ~£1,600); 4 years is the upper tail (PSSRU mean ~2.5 yr, ~27% of stays exceed 3 yr). **One
+   spell on the last survivor, not both partners':** a single significant spell still discriminates a strong
+   plan from a weak one, where a both-partners worst case would sink every plan and tell the reader nothing;
+   the last survivor is the adverse means-test position (alone → the home is assessable, no partner income to
+   share the cost). **These are fixed for now — a per-scenario editor (fee / duration / onset) and a
+   probability-weighted "typical" alternative are flagged refinements. Confirm you're happy with the £1,800/wk
+   × 4-year single-spell stress.**
 - FCA Handbook COBS 13 Annex 2 (projection rates): https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html
 - FCA/PwC, "Rates of return for FCA prescribed projections" (2017): https://www.fca.org.uk/publication/research/rates-return-fca-prescribed-projections.pdf
 - UBS Global Investment Returns Yearbook 2025 (DMS): https://www.ubs.com/global/en/investment-bank/insights-and-data/2025/global-investment-returns-yearbook-2025.html

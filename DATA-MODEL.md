@@ -462,9 +462,15 @@ from the original plan, flagged inline:
   most costs as a real spread; care was left riding flat CPI, understating the tool's headline late-life risk.
   `AssumptionSet::careCostRealGrowth` (`?Percent`; null = flat-real, back-compat; shipped presets CPI+2% real)
   now compounds the sampled self-funder fee above CPI to the year the spell falls, mirroring
-  `ExpenseProfile::propertyCostsRealGrowth` (`CareCostInflationTest`). **Still open (A2):** care remains a
-  Monte-Carlo-only risk — the deterministic path (and the Affordability verdict it feeds) still contains no
-  care, so a "lasts for life? Yes" is computed care-free. See docs/PLAN-output-inflation-and-charts.md A2.
+  `ExpenseProfile::propertyCostsRealGrowth` (`CareCostInflationTest`).
+- **Care now appears in the deterministic path as an adverse stress (A2, DECISIONS 2026-07-18).** Care remains
+  absent from the care-free central estimate (still a probabilistic risk in the Monte Carlo), but a labelled
+  "if significant care is needed" stress runs beside it: `DeterministicPathDraws` accepts injected
+  `CareEpisode`s (empty = byte-identical care-free path), and `DeterministicForecaster::forecastWithCareStress`
+  places one adverse ~4-year nursing spell (`CareStressScenario`) on the last-surviving partner. The
+  Affordability screen shows both, so "lasts for life? Yes" is never rendered against a silently care-free
+  path (`DeterministicCareStressTest`, `AffordabilityTest`). **Still open:** a care-stress params UI, a
+  probability-weighted "typical" option, and the stress line on the main results ladder.
 - **Collected-but-not-consumed fields (2026-07-02 doc audit) — ALL CLOSED 2026-07-02/07-03.** Inputs that
   were validated, assembled into DTOs and documented above but read by no engine code — a silent-drop class
   (see the completeness rule in CLAUDE.md), all now wired with a per-source completeness test:

@@ -6,6 +6,7 @@ namespace App\Forecast;
 
 use App\Models\Scenario;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Care\CareStressScenario;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
@@ -93,6 +94,34 @@ final class ScenarioForecaster
 
         return array_map(
             fn (array $variant): ForecastResult => $forecaster->forecast($variant['household'], $assumptions, $variant['settings']),
+            $variants,
+        );
+    }
+
+    /**
+     * The same per-strategy deterministic ladder as {@see deterministicVariants}, but with an adverse
+     * late-life care spell injected (the "if significant care is needed" stress). Shown beside the
+     * care-free ladder so the plain-English affordability verdict is never "lasts for life" against a
+     * silently care-free path (care is a Monte-Carlo-only risk absent from the central estimate). Uses
+     * the same variant inputs, so care-free and care-stress differ only by the injected spell.
+     *
+     * @return array{stay_put: ForecastResult, buy_outright: ForecastResult, rent: ForecastResult}
+     */
+    public function deterministicCareStressVariants(Scenario $scenario): array
+    {
+        $assumptions = $this->assumptions($scenario);
+        $variants = $this->housingComparison($scenario)->variantInputs(
+            $this->household($scenario),
+            $this->settings($scenario),
+            $assumptions,
+            $this->housingAction($scenario),
+        );
+
+        $forecaster = new DeterministicForecaster($this->config($scenario), new CohortLifeTable);
+        $stress = CareStressScenario::adverseDefault();
+
+        return array_map(
+            fn (array $variant): ForecastResult => $forecaster->forecastWithCareStress($variant['household'], $assumptions, $variant['settings'], $stress),
             $variants,
         );
     }

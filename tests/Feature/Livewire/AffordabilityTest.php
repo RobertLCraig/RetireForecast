@@ -62,6 +62,27 @@ class AffordabilityTest extends TestCase
             ->assertViewHas('bottomLine', fn (array $b): bool => $b['best'] !== null && $b['best']['works'] === true);
     }
 
+    public function test_it_surfaces_a_care_stress_verdict_beside_every_plan(): void
+    {
+        // A2: the verdict is the expected, care-free path, so every plan must carry the "if significant
+        // care is needed" companion — the base "lasts for life" is never shown against a silently
+        // care-free projection. Assert the structure reaches the view (completeness) and the copy shows.
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user, ['variant' => 'stay_put', 'name' => 'Keep the home', 'expenseLines.ess1.amount' => '8000']);
+
+        Livewire::test(Affordability::class, ['scenario' => $base])
+            ->assertOk()
+            // Every working plan card carries a non-empty care-stress verdict...
+            ->assertViewHas('working', fn (array $w): bool => $w !== [] && collect($w)->every(
+                fn ($c) => isset($c['careStress']['verdict']) && $c['careStress']['verdict'] !== '' && array_key_exists('holds', $c['careStress']),
+            ))
+            // ...the bottom line qualifies "for life" with the care caveat...
+            ->assertViewHas('bottomLine', fn (array $b): bool => ! empty($b['careCaveat']) && str_contains($b['careCaveat'], 'long-term care'))
+            // ...and the care line is visible to the reader.
+            ->assertSee('nursing care');
+    }
+
     public function test_working_plans_are_ordered_strongest_first(): void
     {
         $user = User::factory()->create();

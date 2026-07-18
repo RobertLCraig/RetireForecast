@@ -3,6 +3,47 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-18 — Care in the deterministic path as an "if care is needed" stress (A2)
+**Context:** Care was a Monte-Carlo-only risk, absent from the deterministic central projection. But the
+plain-English "What you can afford" verdict (built for the elder couple who can't read the fans) and the
+central cashflow ladder run the *deterministic* path — so "do the essentials last for life? **Yes**" was
+computed on a path that omits the household's biggest late-life expense. That is not just inaccurate, it is
+*falsely reassuring* for the least-numerate reader — the worst failure mode for this tool. Second build-order
+item of docs/PLAN-output-inflation-and-charts.md (Part A), following A1.
+
+**Decisions:**
+1. **A care-stress scenario shown BESIDE a labelled care-free base — not expected-value averaging.** This is
+   what the FCA frame and the professional cashflow tools (Voyant, CashCalc, Timeline) do: care is a
+   user-toggled late-life stress shown alongside the base, never a probability-weighted amount smeared into
+   the central line. Averaging a severely right-skewed tail is both unrealistic (almost nobody experiences the
+   average) and falsely reassuring (it understates the very person in the tail the projection exists to
+   protect). So the central line stays care-free but **labelled**, and an adverse care-stress runs beside it.
+2. **The stress is ONE ~4-year nursing spell at £1,800/wk on the last-surviving partner**, ending at their
+   representative death age, means-tested and CPI+2%-escalated through the existing projector care leg (A1).
+   `CareStressScenario::adverseDefault()` holds the params; `DeterministicPathDraws` gains optional injected
+   care episodes (empty = the byte-identical care-free path); `DeterministicForecaster::forecastWithCareStress`
+   builds the end-of-life spell. **Last survivor** = the adverse means-test position (alone, so the home is
+   assessable, no partner income to share the cost) and the more communicable case. **One spell, not both
+   partners':** a single significant spell still discriminates a strong plan from a weak one, where a
+   both-partners worst case would sink every plan and inform nothing. Fee/duration are the adverse-but-
+   defensible end (LaingBuisson top-decile nursing; PSSRU upper-tail duration) per
+   [[adverse-default-user-editable]]; flagged user-editable (a params UI is a later refinement).
+3. **Surfaced on the Affordability screen (feeds B1).** Each plan card carries the care-stress verdict
+   ("even if one of you needed several years of nursing care…" / "…the money would run short in {year}") beside
+   the expected-path verdict; the bottom line qualifies "for life" with a care caveat. The **tier and ordering
+   stay the care-free expected path** (a strong plan still ranks strong) — the stress is shown, never folded
+   into the rank. `ScenarioForecaster::deterministicCareStressVariants` mirrors `deterministicVariants` on the
+   same variant inputs, so care-free and care-stress differ only by the injected spell.
+4. **Still open:** care-stress params UI (edit fee/duration/onset); a probability-weighted "typical outcome"
+   option (captioned as not a safety margin); putting the care-stress line on the main results ladder (this
+   slice scopes it to Affordability). Age-conditioning of onset and a sex split of duration remain the older
+   flagged refinements.
+
+**Guard:** `DeterministicCareStressTest` — the injected spell reaches the central result (positive care cost,
+lower terminal wealth) and can tip a marginal household (State-Pension-covered essentials, modest pot) into an
+essentials shortfall; the care-free path carries no care cost (never averaged in). `AffordabilityTest` — every
+plan card carries a care-stress verdict and the bottom line carries the care caveat (completeness).
+
 ## 2026-07-18 — Care fees escalate above CPI (A1: per-category care cost inflation)
 **Context:** The engine draws one CPI series and models every other cost as a *real spread* over it; only
 property service charges (`ExpenseProfile::propertyCostsRealGrowth`) and rent had their own real rate. **Care

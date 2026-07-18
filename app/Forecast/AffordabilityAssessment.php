@@ -48,14 +48,14 @@ final class AffordabilityAssessment
      * forecast; this decides the verdict, the wording and the ordering (working plans first,
      * most-money-left first within each tier).
      *
-     * @param  list<array{scenario: Scenario, variant: string, forecast: ForecastResult, household: Household, baseYear: int, monthlyRent: ?int, mc: ?SimulationResult}>  $plans
+     * @param  list<array{scenario: Scenario, variant: string, forecast: ForecastResult, careStress: ForecastResult, household: Household, baseYear: int, monthlyRent: ?int, mc: ?SimulationResult}>  $plans
      * @return list<array<string, mixed>>
      */
     public static function cards(array $plans): array
     {
         $cards = array_map(
             fn (array $p): array => self::card(
-                $p['scenario'], $p['variant'], $p['forecast'], $p['household'], $p['baseYear'], $p['monthlyRent'], $p['mc'] ?? null,
+                $p['scenario'], $p['variant'], $p['forecast'], $p['careStress'], $p['household'], $p['baseYear'], $p['monthlyRent'], $p['mc'] ?? null,
             ),
             $plans,
         );
@@ -97,24 +97,33 @@ final class AffordabilityAssessment
         $headline = "{$best['title']}{$rent} keeps the essentials paid for the rest of your life and leaves "
             ."the most money behind ({$best['moneyLeftRough']}). It is the strongest of the plans you entered.";
 
+        // Honesty: this verdict is the expected, care-free path. If even the strongest plan cannot absorb
+        // a significant care need, say so here rather than let "for life" stand unqualified (A2).
+        $careCaveat = $best['careStress']['holds']
+            ? 'This assumes no long-term care; the strongest plan could still absorb a few years of it.'
+            : 'This assumes no long-term care — if it is needed, even this plan would run short (see each plan’s care line below).';
+
         return [
             'workCount' => count($working),
             'total' => count($cards),
             'best' => $best,
             'headline' => $headline,
+            'careCaveat' => $careCaveat,
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    private static function card(Scenario $plan, string $variant, ForecastResult $forecast, Household $household, int $baseYear, ?int $monthlyRent, ?SimulationResult $mc): array
+    private static function card(Scenario $plan, string $variant, ForecastResult $forecast, ForecastResult $careStress, Household $household, int $baseYear, ?int $monthlyRent, ?SimulationResult $mc): array
     {
         $lasts = $forecast->depletionCalendarYear === null;
         $essentialsMet = $forecast->essentialsAlwaysMet;
         $fullMet = $forecast->fullSpendAlwaysMet;
 
         // Tier: comfortable (full budget lasts) > essentials only (floor lasts, extras don't) > fails.
+        // The tier (and the ordering) is the EXPECTED, care-free path — the central estimate — so a
+        // strong plan still ranks strong; the care stress is shown beside it, never folded into the rank.
         [$tier, $tierRank] = match (true) {
             $essentialsMet && $fullMet => ['comfortable', 3],
             $essentialsMet => ['essentials_only', 2],
@@ -148,10 +157,51 @@ final class AffordabilityAssessment
             'moneyLeftPence' => $moneyLeft->pence,
             'moneyLeft' => $moneyLeft->format(),
             'moneyLeftRough' => self::roughPounds($moneyLeft),
+            // The care-stress companion (A2): the SAME expected path with one adverse late-life nursing
+            // spell injected, so a care-free "lasts for life" is never shown alone. The base verdict
+            // above assumes no long-term care; this says what a significant care need would do.
+            'careStress' => self::careStress($careStress, $household, $baseYear),
             // The honest "how sure" figure from a full Monte Carlo run, when one exists for this
             // plan; null prompts the caller to offer a re-run rather than implying certainty.
             'mcEssentials' => $mc !== null ? self::pct($mc->successProbabilityEssentials) : null,
             'mcFullSpend' => $mc !== null ? self::pct($mc->successProbabilityFullSpend) : null,
+        ];
+    }
+
+    /**
+     * The "if significant care is needed" companion verdict for a card: the same expected path with
+     * an adverse ~4-year nursing spell (~£1,800/wk) injected on the last-surviving partner. Not a
+     * probability, not averaged into the headline — a single stress shown beside the care-free base.
+     *
+     * @return array{holds: bool, runsOutYear: ?int, runsOutAges: ?string, yearsFromNow: ?int, careCostRough: string, verdict: string}
+     */
+    private static function careStress(ForecastResult $forecast, Household $household, int $baseYear): array
+    {
+        $holds = $forecast->essentialsAlwaysMet;
+        $runsOutYear = $forecast->depletionCalendarYear;
+        $runsOutAges = $runsOutYear !== null ? self::agesAt($household, $forecast, $runsOutYear) : null;
+        $yearsFromNow = $runsOutYear !== null ? max(0, $runsOutYear - $baseYear) : null;
+
+        if ($holds) {
+            $verdict = 'Even if one of you needed several years of nursing care later in life, the essentials '
+                .'would still be covered — this plan has room for it.';
+        } elseif ($runsOutYear !== null) {
+            $ages = $runsOutAges !== null ? " (when you’d be {$runsOutAges})" : '';
+            $when = $yearsFromNow !== null ? ", about {$yearsFromNow} years from now" : '';
+            $verdict = 'But if one of you needed about four years of nursing care (~£1,800 a week), the money '
+                ."would run short in {$runsOutYear}{$ages}{$when} — care is the biggest risk to this plan.";
+        } else {
+            $verdict = 'But if one of you needed about four years of nursing care (~£1,800 a week), the '
+                .'essentials could not be covered every year — care is the biggest risk to this plan.';
+        }
+
+        return [
+            'holds' => $holds,
+            'runsOutYear' => $runsOutYear,
+            'runsOutAges' => $runsOutAges,
+            'yearsFromNow' => $yearsFromNow,
+            'careCostRough' => self::roughPounds($forecast->careCostReal()),
+            'verdict' => $verdict,
         ];
     }
 
