@@ -1,6 +1,6 @@
 # Economic assumptions — SIGNED OFF 2026-06-24
 
-_Last updated: 2026-07-18 (added stochastic house-price growth: volatility + house-equity correlation)_
+_Last updated: 2026-07-18 (added stochastic salary growth: volatility + salary-equity correlation)_
 
 > **Status: SIGNED OFF by Rob (2026-06-24), adopted as proposed.** Set A (FCA default) is the
 > engine default; Sets B and C ship as runtime compare overlays. Re-verification against source
@@ -53,6 +53,8 @@ cash **−0.5%**.
 | House–equity correlation | 0.20 | 0.20 | 0.20 |
 | Rent inflation (real) | 0.5% | 0.5% | 0.0% |
 | Salary growth (real) | 1.0% | 1.5% | 1.0% |
+| Salary growth volatility (real) | 2.0% | 2.5% | 2.0% |
+| Salary–equity correlation | 0.10 | 0.10 | 0.10 |
 | Investment income yield (nominal) | 2.0% | 2.0% | 2.0% |
 
 ## Judgement calls flagged for Rob (these are the bits to sanity-check)
@@ -78,8 +80,19 @@ cash **−0.5%**.
    the mean), but the fan now widens with the home's value. The **low** correlation is the
    load-bearing choice — it is *why* selling and investing the proceeds diversifies concentrated
    housing risk, so the sell-and-rent option carries different risk from stay-put/buy. **Confirm
-   you're happy with 9%/11% vol and the 0.20 correlation** (both tunable per set). Salary growth
-   stays deterministic in the Monte Carlo (a narrower, lower-value remaining refinement).
+   you're happy with 9%/11% vol and the 0.20 correlation** (both tunable per set).
+7. **Salary growth is now stochastic in the Monte Carlo too (added 2026-07-18).** A still-working
+   household's future pay rises (and the savings/pension contributions the surplus funds) are
+   uncertain, so REAL salary growth now draws a per-year shock. Volatility **2.0%** real (Set B's
+   long-run **2.5%** spans the volatile 1970s–80s real-wage swings): aggregate real earnings growth
+   is far smoother than markets — about half the volatility of GDP growth (SF Fed) and near-acyclical
+   once workforce composition nets out. Correlated to equities at a deliberately **low 0.10** (weaker
+   than housing's 0.20), reflecting that near-acyclicality; the contemporaneous GDP-growth/equity-return
+   link is close to zero. The deterministic central projection is unchanged (it uses the mean); the
+   effect is narrower than housing (it only bites for the working years of a still-earning person), but
+   it stops a working couple's accumulation looking artificially certain. **Confirm you're happy with
+   2.0%/2.5% vol and the 0.10 correlation** (both tunable per set, and opt-in: a null volatility keeps
+   salary deterministic, so every pre-existing stored run reproduces unchanged).
 
 ## Sources (re-verification = the manual review tracked in HANDOVER Open items)
 - FCA Handbook COBS 13 Annex 2 (projection rates): https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html
@@ -89,6 +102,8 @@ cash **−0.5%**.
 - OBR Economic and Fiscal Outlook, March 2026: https://obr.uk/efo/economic-and-fiscal-outlook-march-2026/
 - ONS Private rent and house prices, UK (June 2026): https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/privaterentandhousepricesuk/june2026
 - Jordà, Knoll, Kuvshinov, Schularick & Taylor, "The Rate of Return on Everything, 1870–2015", NBER Working Paper 24112 (housing far less volatile than equities; low equity–housing covariance / diversification gains): https://www.nber.org/papers/w24112
+- Champagne, Kurmann & Stewart, "Dissecting Aggregate Real Wage Fluctuations", FRB San Francisco WP 2011-23 (aggregate real wage growth volatility ~0.51× GDP-growth volatility — far smoother than profits): https://www.frbsf.org/wp-content/uploads/wp11-23bk.pdf
+- ONS, Average weekly earnings in Great Britain (real regular-pay growth series used to sanity-check the ~2% annual real-earnings volatility): https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/bulletins/averageweeklyearningsingreatbritain/january2026
 
 ⚠️ Confidence flags from the research: Barclays Equity Gilt Study exact figures come from
 adviser summaries of the paywalled study; the FCA 2/5/8 + 2% inflation deduction is

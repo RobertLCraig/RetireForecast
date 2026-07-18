@@ -3,6 +3,45 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-18 — Stochastic salary growth in the Monte Carlo
+**Context:** With house growth made stochastic earlier today (the entry below), salary growth was the last
+deterministic straight line in the Monte Carlo — the other half of the flagged v1 limit "house/salary growth
+deterministic inside the Monte Carlo" (DATA-MODEL Known divergences; What's next #3). A still-working household's
+future pay rises, and the savings/pension contributions the surplus funds, are genuinely uncertain, so holding them
+certain understated the spread of what a working couple can accumulate by retirement. Rob picked this up as the
+highest-value remaining accuracy refinement (accuracy is his overriding priority). Supersedes decision 1 of the
+house-growth entry below ("salary growth stays deterministic — noted, not done").
+
+**Decisions:**
+1. **Salary growth is now stochastic in the Monte Carlo**, on exactly the same footing as house growth. `AssumptionSet`
+   gains `salaryGrowthVolatility` (`?Percent`, REAL annual σ) and `salaryEquityCorrelation` (float); `ReturnModel`
+   draws a per-year salary shock correlated to the equity shock; `SampledPathDraws` reads the sampled per-year path.
+   A per-person `Person::salaryGrowth` override still sets a trend, not a risk, so it bypasses the shock (mirroring the
+   per-pot / per-property growth overrides) — no change to that override's behaviour.
+2. **Deliberately LOW salary–equity correlation (0.10), weaker than housing's 0.20.** Aggregate real wage growth is
+   near-acyclical once workforce composition nets out, and the contemporaneous GDP-growth/equity-return link is close
+   to zero, so tying salary tightly to markets would overstate the co-movement. Same scalar-correlation-to-equity
+   construction as house (independent component `√(1−ρ²)`, ρ clamped), not a matrix row.
+3. **Opt-in via a nullable volatility → reproducibility preserved**, identical contract to house. `salaryGrowthVolatility`
+   defaults to `null` = deterministic (the prior behaviour); a null-vol set consumes **no** salary draw, so every
+   existing set, test and stored snapshot is byte-identical. The salary shock is drawn **last** in each year so a
+   null-salary set never touches the house/asset/inflation stream; once salary vol IS on, the extra draw advances the
+   shared stream for later years (fresh runs only — a stored snapshot has no salary vol, so is unaffected). No DB
+   migration: `AssumptionSetMapper` round-trips the pair and a pre-today snapshot hydrates to null.
+4. **Sourced, tunable figures** (docs/ASSUMPTIONS.md): REAL salary-growth volatility **2.0%** (Set B's long-run
+   **2.5%**), salary–equity correlation **0.10**. Grounded in aggregate real wage growth being ~0.51× the volatility of
+   GDP growth and far smoother than profits (Champagne-Kurmann-Stewart, FRB San Francisco WP 2011-23), sanity-checked
+   against the UK ONS real regular-pay series (~2% annual real-earnings volatility). Narrower effect than housing (it
+   only bites during a working person's pre-retirement years), but it stops a working couple's accumulation looking
+   artificially certain. The deterministic central projection is unchanged (uses the mean).
+5. **Minimal app surface:** two new set fields; the assumptions panel gains a salary-volatility "show-your-working" row
+   (only when stochastic), placed after the salary-growth row, exactly as the house-volatility row was added.
+
+**Completeness (the guard):** `StochasticSalaryGrowthTest` proves the salary risk reaches the aggregate — a salary-driven
+still-working couple's terminal total-wealth spread widens under stochastic salary growth vs the deterministic mean, it
+collapses to the flat mean at null vol, the sampled path is reproducible under a seed, and a null-salary set draws
+nothing extra (whole path byte-identical). Not a silent-drop.
+
 ## 2026-07-18 — Stochastic house-price growth in the Monte Carlo
 **Context:** The Monte Carlo held house-price growth deterministic (a straight line at the mean), so a home — the
 largest, most variable slice of this couple's wealth — carried no uncertainty in the fan. That understated the risk

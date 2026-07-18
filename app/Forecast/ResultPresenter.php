@@ -1637,6 +1637,18 @@ final class ResultPresenter
                 'note' => 'the year-to-year spread the Monte Carlo samples house prices over; the central projection uses the mean above',
             ]]);
         }
+        // Same show-your-working for salary: when salary growth is stochastic, surface the volatility
+        // it is sampled over so a working household's earnings spread traces to a stated figure. Placed
+        // right after the salary-growth row (whose index shifts by one if the house row was inserted).
+        if ($set->salaryGrowthVolatility !== null && $set->salaryGrowthVolatility->basisPoints > 0) {
+            $salaryIndex = array_key_first(array_filter($economic, fn (array $row): bool => $row['key'] === 'salaryGrowth'));
+            array_splice($economic, $salaryIndex + 1, 0, [[
+                'key' => 'salaryVolatility',
+                'label' => 'Salary growth volatility (real)',
+                'value' => self::ratePct($set->salaryGrowthVolatility->asPercent()),
+                'note' => 'the year-to-year spread the Monte Carlo samples a working person\'s pay rises over; the central projection uses the mean above',
+            ]]);
+        }
 
         $economic = array_map(
             fn (array $row): array => [...$row, 'edited' => in_array($row['key'], $changed, true)],

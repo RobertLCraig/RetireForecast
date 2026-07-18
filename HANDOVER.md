@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-18 (stochastic house-price growth in the Monte Carlo; PDF sale-funding waterfall)_
+_Last updated: 2026-07-18 (stochastic salary growth in the Monte Carlo — the last deterministic growth line closed)_
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -65,6 +65,15 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](docs/HANDOV
   deterministic projection, every existing set and every stored run are byte-identical (no DB migration). The
   low correlation is the point: it's why sell-and-invest diversifies concentrated housing risk. Salary growth in the
   MC stays deterministic (remaining refinement). Completeness-tested; no browser sign-off needed (engine + fan width).
+- **Done 2026-07-18 — stochastic salary growth in the Monte Carlo (DECISIONS 2026-07-18):** the last deterministic
+  straight line in the MC. A still-working household's future pay rises (and the savings/pension the surplus funds)
+  now carry earnings risk. Same opt-in/null-safe contract as the house change: nullable `AssumptionSet::salaryGrowthVolatility`
+  (+ a deliberately LOW `salaryEquityCorrelation` 0.1, weaker than housing's 0.2 — aggregate real wage growth is
+  near-acyclical), so the deterministic projection, every existing set and every stored run stay byte-identical
+  (no DB migration). Sourced 2.0%/2.5% real vol (SF Fed: real wage growth ~half GDP-growth volatility; ONS sanity
+  check). Completeness-tested (`StochasticSalaryGrowthTest`); sanity magnitudes: a salary-driven working couple's
+  p10–p90 terminal spread widens £104k → £115k at the shipped 2% (median ~unchanged). No browser sign-off needed
+  (engine + fan width). **No MC-growth-determinism divergence remains.**
 - **Done 2026-07-18 — PDF sale-funding waterfall:** the downloadable/print report now renders the "If you sell"
   block (net-proceeds waterfall → sell-&-rent → sell-&-buy funding: savings drawn, mortgage, unfunded-gap failure),
   built from the SAME `ResultPresenter::saleExplainer` + engine decomposition the results page uses, so print cannot
@@ -74,13 +83,13 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](docs/HANDOV
   "~£90k found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
   (year 2026, the real source as the label) — see the V2 doc's note.
 - **Operational note (found 2026-07-10):** a `queue:work` daemon started **before** the 2026-07-09 Postgres migration keeps polling the old SQLite `jobs` table and processes **no** Postgres jobs — an in-app "Re-run all" hangs against it. **Restart every queue worker after the DB change** (`queue:work` caches its DB connection at boot). See How to pick up.
-- **Known bugs:** none open. The queued-Monte-Carlo reproducibility bug is **RESOLVED** (Postgres) and **independently re-verified 2026-07-10** (Session log). Documented v1 scope limits (all flagged in code) live in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" — e.g. Scotland income tax throws; emergency tax models the over-deduction magnitude, not PAYE-table pennies; a repayment mortgage's balance is modelled static (set `mortgageRedemptionYear` + repay-from-capital to clear it); **salary** growth deterministic inside the Monte Carlo (house growth is now stochastic — DECISIONS 2026-07-18).
+- **Known bugs:** none open. The queued-Monte-Carlo reproducibility bug is **RESOLVED** (Postgres) and **independently re-verified 2026-07-10** (Session log). Documented v1 scope limits (all flagged in code) live in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" — e.g. Scotland income tax throws; emergency tax models the over-deduction magnitude, not PAYE-table pennies; a repayment mortgage's balance is modelled static (set `mortgageRedemptionYear` + repay-from-capital to clear it). **House AND salary growth are now both stochastic in the Monte Carlo** (DECISIONS 2026-07-18) — no growth factor is a deterministic straight line any more.
 
 ## What's next (in order)
 The whole post-v1 backlog is built. What remains:
 1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.**
 2. **Public-release blockers** (harmless while private, mandatory before any public launch; each flagged in code): set `config('compliance.personal_use')` false + confirm the guidance-only partition re-applies; swap the stress-test dataset off the CC BY-NC-SA JST source for an OGL/licensed one; tighten the CSP `script-src` to nonces; complete the a11y pass to a public bar.
-3. **Optional refinements to built features** (all flagged v1 limits; pick by value) — care sex/age-split + the means-test v1 flags; CGT deemed-occupation absences; **stochastic salary growth in the Monte Carlo** (house growth now done — DECISIONS 2026-07-18); an annuitisation retirement-month override. See DATA-MODEL "Known divergences" + docs/PLAN.md.
+3. **Optional refinements to built features** (all flagged v1 limits; pick by value) — care sex/age-split + the means-test v1 flags; CGT deemed-occupation absences; an annuitisation retirement-month override. (Both house and salary growth in the Monte Carlo are now stochastic — DECISIONS 2026-07-18.) See DATA-MODEL "Known divergences" + docs/PLAN.md.
 4. **CI / data hygiene (remainder).** The freshness guardrails run monthly in CI (the `data-freshness` workflow; takes effect on GitHub once pushed). Low-value hardening: a tamper-evident run hash, forecast caching.
 
 **Specced-but-unbuilt** (pick up when chosen): withdrawal-sequencing #5/#6 (docs/PLAN-withdrawal-sequencing.md, gated on two modelling calls from Rob); multi-property (docs/PLAN-multi-property.md, DRAFT); assistant scenario-editing (docs/PLAN-assistant-scenario-editing.md, approved scope, not built).
@@ -138,6 +147,22 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-18 (stochastic salary growth in the Monte Carlo — the last deterministic growth line)_ —
+Picked up from What's next #3 (Rob chose it over the public-release blockers and sign-off prep). With house growth
+made stochastic earlier the same day, salary growth was the only remaining deterministic straight line in the MC, so
+a still-working couple's accumulation looked artificially certain. Mirrored the house pattern exactly: `AssumptionSet`
+gains nullable `salaryGrowthVolatility` + `salaryEquityCorrelation` (0.1, deliberately LOWER than housing's 0.2 —
+researched: aggregate real wage growth is near-acyclical, ~0.51× GDP-growth volatility per SF Fed WP 2011-23, ~2% in
+the UK ONS record); `ReturnModel` draws a per-year salary shock correlated to the equity shock, **drawn last** so a
+null-salary set consumes no extra draw and every stored run reproduces byte-identically; `SampledPathDraws` reads the
+sampled path; mapper round-trips the pair with null back-compat; the assumptions panel gains a salary-volatility
+"show-your-working" row. **Corrected an over-claim mid-build:** "drawn last" does NOT keep later years' house/asset
+streams identical when salary vol is on (each extra draw advances the shared RNG for subsequent years) — the real,
+narrower guarantee is that a *null*-salary set draws nothing extra; fixed the docblock and the test to assert exactly
+that. Sourced figures + judgement note in docs/ASSUMPTIONS.md; DECISIONS 2026-07-18 supersedes the house entry's
+"salary stays deterministic". Full suite green (908), pint clean; sanity magnitudes verified via a scratchpad script
+(not committed): shipped-2% widens the p10–p90 spread £104k → £115k, median unchanged.
 
 _2026-07-18 (stochastic house-price growth in the Monte Carlo)_ —
 Highest-value accuracy refinement from What's next #3: house growth was a deterministic straight line in the MC, so

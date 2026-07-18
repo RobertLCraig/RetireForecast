@@ -26,6 +26,16 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * weakly, so selling a home and investing the proceeds genuinely diversifies
  * concentrated housing risk. Sourced defaults + judgement in docs/ASSUMPTIONS.md.
  *
+ * $salaryGrowthVolatility is the same idea for REAL salary growth (null = deterministic
+ * at its mean, the pre-2026-07-18 behaviour). When set, the Monte Carlo draws a per-year
+ * salary-growth shock, correlated to the equity shock by $salaryEquityCorrelation, so a
+ * still-working household's future earnings (and the savings/contributions they fund)
+ * carry earnings risk rather than escalating up a straight line. The correlation is kept
+ * LOW (weaker than housing's): aggregate real wage growth is near-acyclical once workforce
+ * composition nets out, so linking it too tightly to markets would overstate the co-movement.
+ * A per-person Person::salaryGrowth override sets a trend, not a risk, so it bypasses the
+ * shock (as the per-pot / per-property growth overrides bypass their sampled paths).
+ *
  * $investmentIncomeYield is the NOMINAL annual income yield (dividends + interest) of
  * a General Investment Account portfolio. The forecast splits a GIA's total return
  * into this taxable income (taxed each year as dividends) and the remaining capital
@@ -52,6 +62,8 @@ final class AssumptionSet
         public readonly Percent $investmentIncomeYield,
         public readonly ?Percent $houseGrowthVolatility = null,
         public readonly float $houseEquityCorrelation = 0.2,
+        public readonly ?Percent $salaryGrowthVolatility = null,
+        public readonly float $salaryEquityCorrelation = 0.1,
         public readonly bool $isDefault = false,
     ) {}
 
@@ -105,9 +117,9 @@ final class AssumptionSet
 
     /**
      * Clone with selected fields replaced (null = keep current). The non-replaceable
-     * fields (name, source, volatilities, correlations — including house-price volatility
-     * and its equity correlation — isDefault) carry through so a derived "custom" set
-     * keeps its provenance and risk structure.
+     * fields (name, source, volatilities, correlations — including the house-price and
+     * salary-growth volatilities and their equity correlations — isDefault) carry through
+     * so a derived "custom" set keeps its provenance and risk structure.
      *
      * @param  list<AssetClassAssumption>|null  $assetClasses
      */
@@ -132,6 +144,8 @@ final class AssumptionSet
             $investmentIncomeYield ?? $this->investmentIncomeYield,
             $this->houseGrowthVolatility,
             $this->houseEquityCorrelation,
+            $this->salaryGrowthVolatility,
+            $this->salaryEquityCorrelation,
             $this->isDefault,
         );
     }

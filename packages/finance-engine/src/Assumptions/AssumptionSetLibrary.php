@@ -25,6 +25,13 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * Everything, 1870-2015", NBER w24112 — housing far less volatile than equities, with low
  * equity-housing covariance / real diversification gains). See docs/ASSUMPTIONS.md.
  *
+ * $salaryGrowthVolatility + $salaryEquityCorrelation (added 2026-07-18) do the same for
+ * REAL salary growth. Aggregate real earnings growth is far smoother than markets (its
+ * volatility ~half that of GDP growth per the SF Fed, ~2% a year in the UK record; ~2.5%
+ * over the more volatile long run) and near-acyclical once workforce composition nets out,
+ * so a deliberately LOW ~0.1 salary-equity correlation (weaker than housing's). See
+ * docs/ASSUMPTIONS.md.
+ *
  * Three asset classes in a fixed order — global equities, gilts/bonds, cash — so
  * the correlation matrices line up with {@see AssumptionSet::$assetClasses}; the house
  * factor correlates to index 0 (global equities).
@@ -57,6 +64,8 @@ final class AssumptionSetLibrary
             investmentIncomeYield: Percent::fromPercent(2.0),
             houseGrowthVolatility: Percent::fromPercent(9.0),
             houseEquityCorrelation: 0.2,
+            salaryGrowthVolatility: Percent::fromPercent(2.0),
+            salaryEquityCorrelation: 0.1,
             isDefault: true,
         );
     }
@@ -89,6 +98,9 @@ final class AssumptionSetLibrary
             // so a wider house-price spread than the forward-looking sets.
             houseGrowthVolatility: Percent::fromPercent(11.0),
             houseEquityCorrelation: 0.2,
+            // Wider salary spread over the long historical run (the volatile 1970s-80s real-wage swings).
+            salaryGrowthVolatility: Percent::fromPercent(2.5),
+            salaryEquityCorrelation: 0.1,
         );
     }
 
@@ -118,6 +130,8 @@ final class AssumptionSetLibrary
             investmentIncomeYield: Percent::fromPercent(2.0),
             houseGrowthVolatility: Percent::fromPercent(9.0),
             houseEquityCorrelation: 0.2,
+            salaryGrowthVolatility: Percent::fromPercent(2.0),
+            salaryEquityCorrelation: 0.1,
         );
     }
 

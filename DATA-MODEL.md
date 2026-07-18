@@ -171,6 +171,9 @@ name, source_note, asset_classes [{ name, expected_real_return (Percent),
 volatility (Percent) }], correlation_matrix, inflation_mean (Percent), inflation_vol (Percent),
 salary_growth (Percent), house_price_growth (Percent), rent_inflation (Percent),
 investment_income_yield (Percent — nominal GIA income yield, A5; ~2%, ⚠️ verify),
+house_growth_volatility (?Percent, null = deterministic) + house_equity_correlation (float, 0.2),
+salary_growth_volatility (?Percent, null = deterministic) + salary_equity_correlation (float, 0.1)
+(the two stochastic-growth pairs, 2026-07-18; null keeps that factor deterministic so old snapshots reproduce),
 is_default (bool). Shipped presets: FCA-derived (default), DMS/EGS-derived,
 OBR/BoE-inflation-blended. A5: the projector splits a GIA's total return into this taxable
 income (dividends, taxed yearly) + capital growth (CGT on disposal vs the account's
@@ -443,13 +446,15 @@ from the original plan, flagged inline:
   (single-property model — DECISIONS 2026-07-01).
 
 ## Known divergences (to close)
-- **House-price growth in the Monte Carlo — stochastic since 2026-07-18 (DECISIONS 2026-07-18).** Was deterministic
-  (a straight line at the mean), understating the risk of home-heavy plans. `AssumptionSet` now carries
-  `houseGrowthVolatility` (`?Percent`; null = deterministic, the back-compat default) + `houseEquityCorrelation`
-  (float); `ReturnModel` draws a per-year house shock correlated to the equity shock, `SampledPathDraws` reads it.
-  Completeness-tested (`StochasticHouseGrowthTest`: the spread widens, collapses to the mean at zero vol, reproduces
-  under a seed). **Salary growth in the Monte Carlo remains deterministic** — a narrower, lower-value remaining
-  refinement (salary only bites pre-retirement for a working partner).
+- **House-price AND salary growth in the Monte Carlo — both stochastic since 2026-07-18 (DECISIONS 2026-07-18).**
+  Each was deterministic (a straight line at the mean): house growth understated the risk of home-heavy plans,
+  salary growth understated the spread of a still-working couple's accumulation. `AssumptionSet` now carries
+  `houseGrowthVolatility` + `salaryGrowthVolatility` (each `?Percent`; null = deterministic, the back-compat
+  default) with their equity correlations (`houseEquityCorrelation` 0.2 / `salaryEquityCorrelation` 0.1, floats);
+  `ReturnModel` draws a per-year shock for each correlated to the equity shock, `SampledPathDraws` reads them
+  (the salary shock drawn last, so a null-salary set consumes no extra draw and every stored run reproduces
+  byte-identically). Completeness-tested (`StochasticHouseGrowthTest`, `StochasticSalaryGrowthTest`: each spread
+  widens, collapses to the mean at zero vol, reproduces under a seed). No MC-growth-determinism divergence remains.
 - **Collected-but-not-consumed fields (2026-07-02 doc audit) — ALL CLOSED 2026-07-02/07-03.** Inputs that
   were validated, assembled into DTOs and documented above but read by no engine code — a silent-drop class
   (see the completeness rule in CLAUDE.md), all now wired with a per-source completeness test:

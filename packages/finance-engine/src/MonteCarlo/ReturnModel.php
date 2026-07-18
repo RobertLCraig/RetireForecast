@@ -23,7 +23,18 @@ use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
  * house-equity correlation, so a home's value co-varies weakly with markets rather than
  * marching up a straight line. With no house volatility (null) it stays deterministic at
  * its mean — the v1 behaviour — and no house draw is consumed, so those runs are
- * byte-identical to before. Salary growth remains deterministic (a later refinement).
+ * byte-identical to before.
+ *
+ * Salary growth is stochastic on exactly the same footing when the set carries a salary
+ * volatility: a per-year salary shock is drawn, weakly correlated to the equity shock, so
+ * a still-working household's earnings (and the savings they fund) carry earnings risk.
+ * Null salary volatility keeps it deterministic and consumes no draw, so every pre-existing
+ * stored run (whose snapshot has no salary volatility) is byte-identical to before — the
+ * reproducibility guarantee that matters. The salary shock is drawn LAST in each year's
+ * iteration purely as good order: it keeps that year's house/asset/inflation draws ahead of
+ * it (a fresh feature appended at the end), though once salary volatility IS on the extra
+ * draw does advance the shared stream for later years, so a set with BOTH volatilities on
+ * samples fresh house/salary paths together (same distribution, no stored run affected).
  *
  * Returns are lognormal in effect because the projector compounds them
  * multiplicatively; draws are on the return itself (a normal shock), which is a
@@ -48,6 +59,12 @@ final class ReturnModel
 
     private readonly float $houseEquityCorrelation;
 
+    private readonly float $salaryMean;
+
+    private readonly float $salaryVol;
+
+    private readonly float $salaryEquityCorrelation;
+
     public function __construct(
         private readonly AssumptionSet $set,
         private readonly PortfolioAllocation $allocation,
@@ -70,12 +87,18 @@ final class ReturnModel
         $this->houseMean = $set->houseGrowth->asFraction();
         $this->houseVol = $set->houseGrowthVolatility?->asFraction() ?? 0.0;
         $this->houseEquityCorrelation = max(-1.0, min(1.0, $set->houseEquityCorrelation));
+
+        // Salary growth: the same construction as housing (mean always; volatility only when
+        // the set carries one; correlation clamped to [-1, 1]).
+        $this->salaryMean = $set->salaryGrowth->asFraction();
+        $this->salaryVol = $set->salaryGrowthVolatility?->asFraction() ?? 0.0;
+        $this->salaryEquityCorrelation = max(-1.0, min(1.0, $set->salaryEquityCorrelation));
     }
 
     /**
      * Generate $years of returns for one path.
      *
-     * @return array{investment: list<float>, cash: list<float>, inflation: list<float>, house: list<float>}
+     * @return array{investment: list<float>, cash: list<float>, inflation: list<float>, house: list<float>, salary: list<float>}
      */
     public function generatePath(int $years, Randomizer $rng): array
     {
@@ -83,11 +106,13 @@ final class ReturnModel
         $cash = [];
         $inflation = [];
         $house = [];
+        $salary = [];
 
         $weights = $this->allocation->weights;
         $inflMean = $this->set->inflationMean->asFraction();
         $inflVol = $this->set->inflationVolatility->asFraction();
         $houseIndependentScale = sqrt(max(0.0, 1.0 - $this->houseEquityCorrelation ** 2));
+        $salaryIndependentScale = sqrt(max(0.0, 1.0 - $this->salaryEquityCorrelation ** 2));
 
         for ($y = 0; $y < $years; $y++) {
             $u = [];
@@ -115,9 +140,19 @@ final class ReturnModel
             } else {
                 $house[] = $this->houseMean;
             }
+
+            // Salary-growth shock, correlated to the equity shock (z[0]) by rho, drawn LAST so it
+            // never perturbs the house/asset/inflation stream. Only drawn when the set has a salary
+            // volatility, so deterministic-salary sets are byte-identical to before.
+            if ($this->salaryVol > 0.0) {
+                $salaryZ = $this->salaryEquityCorrelation * $z[0] + $salaryIndependentScale * $this->standardNormal($rng);
+                $salary[] = $this->salaryMean + $this->salaryVol * $salaryZ;
+            } else {
+                $salary[] = $this->salaryMean;
+            }
         }
 
-        return ['investment' => $investment, 'cash' => $cash, 'inflation' => $inflation, 'house' => $house];
+        return ['investment' => $investment, 'cash' => $cash, 'inflation' => $inflation, 'house' => $house, 'salary' => $salary];
     }
 
     /** A standard normal draw via Box-Muller from the seeded uniform generator. */

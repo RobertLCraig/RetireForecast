@@ -9,16 +9,16 @@ use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Forecast\PathDraws;
 
 /**
- * One Monte Carlo path's draws: pre-generated correlated return, inflation and
- * house-price sequences plus sampled death ages (and any sampled late-life care
+ * One Monte Carlo path's draws: pre-generated correlated return, inflation, house-price
+ * and salary-growth sequences plus sampled death ages (and any sampled late-life care
  * spells), fed to the same {@see PathProjector} the deterministic forecast uses.
- * House-price growth follows the sampled per-year path (a constant equal to the mean
- * when the set has no house volatility); salary growth uses its expected value in v1.
+ * House-price and salary growth each follow their sampled per-year path (a constant equal
+ * to the mean when the set carries no volatility for that factor).
  */
 final class SampledPathDraws implements PathDraws
 {
     /**
-     * @param  array{investment: list<float>, cash: list<float>, inflation: list<float>, house: list<float>}  $path
+     * @param  array{investment: list<float>, cash: list<float>, inflation: list<float>, house: list<float>, salary: list<float>}  $path
      * @param  array<string, int>  $deathAges
      * @param  array<string, CareEpisode>  $careEpisodes  person id => sampled care spell (empty = no care modelled)
      */
@@ -32,6 +32,7 @@ final class SampledPathDraws implements PathDraws
         $this->incomeYield = $set->investmentIncomeYield->asFraction();
     }
 
+    /** Fallback salary growth (the set mean) for a path generated without a sampled salary series. */
     private readonly float $salaryGrowth;
 
     private readonly float $incomeYield;
@@ -63,7 +64,9 @@ final class SampledPathDraws implements PathDraws
 
     public function salaryGrowthReal(int $yearIndex): float
     {
-        return $this->salaryGrowth;
+        // The sampled salary path (a flat mean when the set has no salary volatility). Falls back to
+        // the set mean only for a legacy path array generated without a 'salary' series.
+        return isset($this->path['salary']) ? $this->at($this->path['salary'], $yearIndex) : $this->salaryGrowth;
     }
 
     public function deathAge(string $personId): int

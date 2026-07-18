@@ -60,6 +60,9 @@ final class AssumptionSetMapper
             // Null = deterministic house growth (not stochastic); preserved through the round-trip.
             'houseGrowthVolatility' => $set->houseGrowthVolatility !== null ? Codec::bps($set->houseGrowthVolatility) : null,
             'houseEquityCorrelation' => $set->houseEquityCorrelation,
+            // Null = deterministic salary growth; preserved through the round-trip (same contract as house).
+            'salaryGrowthVolatility' => $set->salaryGrowthVolatility !== null ? Codec::bps($set->salaryGrowthVolatility) : null,
+            'salaryEquityCorrelation' => $set->salaryEquityCorrelation,
         ];
     }
 
@@ -91,6 +94,10 @@ final class AssumptionSetMapper
             // house growth deterministic, so an old stored run reproduces exactly as before.
             houseGrowthVolatility: isset($payload['houseGrowthVolatility']) ? Codec::percent($payload['houseGrowthVolatility']) : null,
             houseEquityCorrelation: (float) ($payload['houseEquityCorrelation'] ?? 0.2),
+            // Back-compat: a pre-2026-07-18 snapshot has no salary volatility; null keeps its
+            // salary growth deterministic, so an old stored run reproduces exactly as before.
+            salaryGrowthVolatility: isset($payload['salaryGrowthVolatility']) ? Codec::percent($payload['salaryGrowthVolatility']) : null,
+            salaryEquityCorrelation: (float) ($payload['salaryEquityCorrelation'] ?? 0.1),
             isDefault: $isDefault,
         );
     }
