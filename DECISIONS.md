@@ -3,6 +3,44 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-18 — Sex-differentiated late-life care probability in the Monte Carlo
+**Context:** The stochastic late-life care risk (`CareCostSampler`, opt-in via `ForecastSettings::modelCareCost`)
+drew one flat lifetime care probability (0.25) for everyone, even though `Person::sex` was already collected and
+threaded as far as the `Simulator` before being dropped at the sampler boundary. Women's lifetime chance of needing
+residential/nursing care is materially higher than men's — they live longer and more often outlive a co-resident
+carer — so a flat rate understated a woman's (and a two-woman household's) care tail and overstated a man's. Care
+feeds a headline output ("does the money last for life"), and accuracy is the overriding priority, so this was the
+highest-value item on What's next #3 (chosen over CGT deemed-occupation absences — near-moot for a continuously
+occupied main home — and the annuitisation retirement-month override).
+
+**Decisions:**
+1. **Care probability is now sex-differentiated.** `CareAssumptions` replaces the single `probabilityOfCare` float
+   with `probabilityOfCareMale` / `probabilityOfCareFemale` and a `probabilityOfCare(Sex): float` accessor;
+   `CareCostSampler::sampleHousehold`'s people shape gains `sex` and the per-person Bernoulli draws against that
+   person's rate; `Simulator` threads `sex` through the map it already builds. No new persisted field, no data-shape
+   change (`sex` pre-existed on the Person DTO — this closes a collected-but-under-consumed use of it).
+2. **Default rates: male 0.20, female 0.30 (~1.5:1), calibrated to preserve the ~1 in 4 population mean** at an even
+   sex split. The mean stays anchored to the Dilnot Commission / PSSRU "~a quarter of people aged 65 need residential
+   or nursing care"; the ~1.5:1 female:male ratio is a conservative reading of the consistent evidence that women's
+   lifetime care-home use runs well above men's (NHS Digital HSE 2021 "needs help with ≥1 daily task" 28% vs 24%; US
+   lifetime nursing-home use ~38% vs ~21% NEJM 1991, paid LTSS ~55% vs ~38% HHS ASPE). Deliberately keeps a mixed-sex
+   couple's aggregate care risk essentially unchanged (no unexplained drift) while a single-sex household now differs
+   correctly. Sourced in `CareAssumptions` (verified_on 2026-07-18).
+3. **Reproducibility preserved.** The change is a threshold swap, not an extra draw: exactly one Bernoulli per person
+   is still drawn, so the RNG stream is structurally unchanged and a fixed seed still reproduces byte-identically.
+   Stored snapshots are immutable, so only *fresh* care-modelled runs shift (the intended accuracy gain); care is
+   opt-in, so no default/non-care run changes at all.
+4. **Age-conditioning of the onset rate and a sex split of the care *duration* remain flagged refinements.** Timing is
+   already end-of-life anchored (the spell sits in the final duration-years before the sampled death age), so the
+   dominant lever was the incidence probability; duration stays sex-blind (women's stays run somewhat longer — a
+   smaller, flagged effect). Supersedes the "a sex/age-differentiated rate is a flagged refinement" note in the prior
+   `CareAssumptions` sources block.
+
+**Guard:** `CareCostSamplerTest` — `test_the_default_probability_is_higher_for_women_than_men` (asymmetry + the mean
+stays 0.25) and `test_the_sex_split_reaches_care_incidence` (over 2,000 same-seed draws a female cohort incurs care
+more often than an identical male cohort, each tracking its assumed 0.20 / 0.30 within noise — proving the split
+reaches the sampled outcome, not silently dropped).
+
 ## 2026-07-18 — "Hide non-viable plans" toggle on the Compare screen
 **Context:** The Compare screen shows the base plan beside every what-if in one table, one burndown chart and one
 set of Monte-Carlo cards. When several what-ifs run out of money (their usable-wealth line falls below £0), the

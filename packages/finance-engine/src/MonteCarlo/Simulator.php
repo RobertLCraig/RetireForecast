@@ -82,6 +82,7 @@ final class Simulator
             $careEpisodes = $careSampler?->sampleHousehold(
                 array_map(fn (array $person): array => [
                     'id' => $person['id'],
+                    'sex' => $person['sex'],
                     'currentAge' => $person['currentAge'],
                     'deathAge' => $deathAges[$person['id']] ?? CohortLifeTable::MAX_AGE,
                 ], $people),

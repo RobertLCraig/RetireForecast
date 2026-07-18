@@ -293,13 +293,15 @@ An honest list of the current limits (each is flagged in the code):
   7-year taper, trusts, business/agricultural relief, the 36% charity rate, non-descendant beneficiaries,
   or the inherited-pension income-tax interaction. The headline panel values deaths at representative
   ages; a completed Monte Carlo run additionally shows the spread of IHT across futures.
-- **Care:** one probability, no sex/age split; Monte Carlo only. The in-path means test does not
-  count Pension Credit into the contribution, assumes the local authority pays at the same fee
+- **Care:** the lifetime care probability is sex-differentiated (women's chance is materially higher,
+  anchored to the Dilnot/PSSRU ~1 in 4 population mean); age-conditioning of the onset rate and a
+  sex split of the duration remain flagged refinements; Monte Carlo only. The in-path means test does
+  not count Pension Credit into the contribution, assumes the local authority pays at the same fee
   rate, and skips deferred-payment / 12-week-disregard mechanics (below the annual grid).
 - **Benefits:** Guarantee Credit only (no Savings Credit); the carer addition is not in the live
   forecast.
-- **Monte Carlo:** house-price and salary growth have no volatility; normal returns (no fat tails);
-  independent partner deaths; the historical data ends in 2020.
+- **Monte Carlo:** normal returns (no fat tails); independent partner deaths; the historical data
+  ends in 2020. (House-price and salary growth now carry volatility — see the assumptions panel.)
 - **Pensions:** the lump-sum-allowance cap on a DB commutation lump sum is not enforced; contribution
   tax relief is not modelled; one smooth inflation proxy for DB escalation.
 - **Other:** a one-off cost triggers on the first-listed person's age only; a person under 50 is out

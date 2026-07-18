@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Dto;
 
+use RetireForecast\FinanceEngine\Care\CareAssumptions;
+
 /**
- * Biological sex, used only to select the correct ONS mortality table. Kept
- * separate from any other concept because it exists purely for the life-table
- * lookup in the joint-life mortality model.
+ * Biological sex. Drives the two sex-differentiated engine inputs: the ONS mortality
+ * table used in the joint-life model, and the lifetime care probability in the Monte
+ * Carlo ({@see CareAssumptions::probabilityOfCare()}).
  */
 enum Sex: string
 {
