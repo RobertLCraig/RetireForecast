@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-18 (sex-differentiated late-life care probability in the Monte Carlo)_
+_Last updated: 2026-07-18 (adversarial output/inflation review → docs/PLAN-output-inflation-and-charts.md)_
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -105,7 +105,15 @@ The whole post-v1 backlog is built. What remains:
 3. **Optional refinements to built features** (all flagged v1 limits; pick by value) — remaining care flags (age-conditioning of the onset rate + a sex split of the care *duration*; the means-test v1 flags: Pension Credit not counted into the contribution, LA-vs-self-funder fee gap); CGT deemed-occupation absences; an annuitisation retirement-month override. (Done this cluster: both house and salary growth in the Monte Carlo are now stochastic, and the care *probability* is now sex-differentiated — DECISIONS 2026-07-18.) See DATA-MODEL "Known divergences" + docs/PLAN.md.
 4. **CI / data hygiene (remainder).** The freshness guardrails run monthly in CI (the `data-freshness` workflow; takes effect on GitHub once pushed). Low-value hardening: a tamper-evident run hash, forecast caching.
 
-**Specced-but-unbuilt** (pick up when chosen): withdrawal-sequencing #5/#6 (docs/PLAN-withdrawal-sequencing.md, gated on two modelling calls from Rob); multi-property (docs/PLAN-multi-property.md, DRAFT); assistant scenario-editing (docs/PLAN-assistant-scenario-editing.md, approved scope, not built).
+**Specced-but-unbuilt** (pick up when chosen): **output legibility + category (care) inflation + the
+missing time-series charts** ([docs/PLAN-output-inflation-and-charts.md](docs/PLAN-output-inflation-and-charts.md),
+DRAFT — from the 2026-07-18 adversarial review; the correctness items A1 (care rides flat CPI — copy the
+`propertyCostsRealGrowth` pattern) and A2 (care absent from the deterministic path the Affordability screen
+reads) rank high by the accuracy-first rule; the six charts are all buildable from existing `YearResult`
+fields — a presenter/Blade job, not an engine change. Six open questions need Rob's call before those slices
+ship); withdrawal-sequencing #5/#6 (docs/PLAN-withdrawal-sequencing.md, gated on two modelling calls from
+Rob); multi-property (docs/PLAN-multi-property.md, DRAFT); assistant scenario-editing
+(docs/PLAN-assistant-scenario-editing.md, approved scope, not built).
 
 ## Blockers / open questions
 - [ ] **Rob's browser sign-off** on the built cluster (What's next #1) — the gating item.
@@ -153,6 +161,7 @@ npm run build                        # build assets (public/build is gitignored)
 | [CLAUDE.md](CLAUDE.md) | Root orient tripwire + build/test conventions + doc-hygiene rules. |
 | docs/SCENARIO-V2.local.md | **GITIGNORED / PRIVATE:** the real couple's data + core scenario, to re-model after a DB wipe. **Read before touching any V2 figure.** |
 | [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | User-facing engine-computation methodology + "what we don't model" (also the `/methodology` page + the assistant corpus). |
+| [docs/PLAN-output-inflation-and-charts.md](docs/PLAN-output-inflation-and-charts.md) | **DRAFT** spec from the 2026-07-18 adversarial review: output legibility, per-category (care) inflation + fat tails, and the six missing time-series charts. Reasoning + research links per decision. |
 | docs/PLAN-*.md, docs/RESEARCH-*.md | Per-feature specs / build records + research (decision-support, IHT, forced sale, sequencing, multi-property, assistant, stress-test, competitive gap, delta). |
 
 ## Branch status
@@ -160,6 +169,25 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-18 (adversarial output/inflation/charts review → a DRAFT plan)_ —
+Rob asked for an adversarial review of the project + docs (wrong assumptions; data gathered-but-unused; how
+to make the information-heavy output more legible + how other forecasters do it; what charts to add; how
+inflation changes costings). Ran two code-grounded mapping passes (the Blade/ApexCharts output layer; the
+engine's `YearResult`/`SimulationResult` fields vs what any view reads) plus web research for every figure.
+**Findings:** (1) correctness — the engine draws one CPI and models everything else as a real spread, so
+**care fees ride flat CPI** (understating the tool's headline risk; real self-funder fees ran ~10%/yr to
+Dec-2025), care is **absent from every deterministic surface** the Affordability screen reads, MC returns are
+**Gaussian** (left tail optimistic ~10–17pts per the literature), and the triple lock **drops the earnings
+leg**; (2) the results page is ~1,170 lines / 18 sections front-loading up to four banners before the first
+number, every chart doubled by an inline table; (3) **only one time-series chart exists** though
+`incomeBySource` (11 sources/yr), the spend split, wealth legs, tax and mortgage balance are all on
+`YearResult` — six more charts are a presenter/Blade job, not an engine change. Wrote
+**docs/PLAN-output-inflation-and-charts.md** (Part A correctness / Part B legibility / Part C charts; each
+decision carries reasoning + a research link; six open questions flagged for Rob; build order + files-to-touch
+map). **No code changed** — plan + handover/sibling-doc index only. Noted the concurrent session's
+`21e0efe feat(care): sex-differentiated care probability` had just landed (distinct from this plan's care
+*inflation* items); re-checked git before editing per [[concurrent-session-split]]. Nothing committed yet.
 
 _2026-07-18 (sex-differentiated late-life care probability in the Monte Carlo)_ —
 Picked up What's next #3. Chose the care sex-split over CGT deemed-occupation absences (near-moot for the V2 couple's
