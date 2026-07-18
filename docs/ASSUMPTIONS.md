@@ -1,6 +1,6 @@
 # Economic assumptions — SIGNED OFF 2026-06-24
 
-_Last updated: 2026-07-02_
+_Last updated: 2026-07-18 (added stochastic house-price growth: volatility + house-equity correlation)_
 
 > **Status: SIGNED OFF by Rob (2026-06-24), adopted as proposed.** Set A (FCA default) is the
 > engine default; Sets B and C ship as runtime compare overlays. Re-verification against source
@@ -49,6 +49,8 @@ cash **−0.5%**.
 | Inflation mean | 2.0% | 3.0% | 2.0% |
 | Inflation volatility | 1.5% | 4.0% | 1.0% |
 | House growth (real) | 1.0% | 2.5% | 1.0% |
+| House growth volatility (real) | 9% | 11% | 9% |
+| House–equity correlation | 0.20 | 0.20 | 0.20 |
 | Rent inflation (real) | 0.5% | 0.5% | 0.0% |
 | Salary growth (real) | 1.0% | 1.5% | 1.0% |
 | Investment income yield (nominal) | 2.0% | 2.0% | 2.0% |
@@ -68,6 +70,16 @@ cash **−0.5%**.
    slice of a GIA's total return paid as taxable income (dividends/interest), anchored to the
    global-equity dividend yield (~1.3–2%) — a modelling assumption, not a cited point figure.
    Reviewed and kept 2026-06-27.
+6. **House-price growth is now stochastic in the Monte Carlo (added 2026-07-18).** REAL house-price
+   volatility **9%** a year (Set B's long-run **11%** spans the volatile mid-century + 1970s–2000s
+   cycles) — roughly half of equities' ~20%, matching the long-run finding that housing is far less
+   volatile than equities. Modelled as a single **house–equity correlation of 0.20** (low positive)
+   rather than a full extra matrix row: the deterministic central projection is unchanged (it uses
+   the mean), but the fan now widens with the home's value. The **low** correlation is the
+   load-bearing choice — it is *why* selling and investing the proceeds diversifies concentrated
+   housing risk, so the sell-and-rent option carries different risk from stay-put/buy. **Confirm
+   you're happy with 9%/11% vol and the 0.20 correlation** (both tunable per set). Salary growth
+   stays deterministic in the Monte Carlo (a narrower, lower-value remaining refinement).
 
 ## Sources (re-verification = the manual review tracked in HANDOVER Open items)
 - FCA Handbook COBS 13 Annex 2 (projection rates): https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html
@@ -76,6 +88,7 @@ cash **−0.5%**.
 - Barclays Equity Gilt Study 2025: https://www.ib.barclays/news-and-events/equity-gilt-study-2025.html
 - OBR Economic and Fiscal Outlook, March 2026: https://obr.uk/efo/economic-and-fiscal-outlook-march-2026/
 - ONS Private rent and house prices, UK (June 2026): https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/privaterentandhousepricesuk/june2026
+- Jordà, Knoll, Kuvshinov, Schularick & Taylor, "The Rate of Return on Everything, 1870–2015", NBER Working Paper 24112 (housing far less volatile than equities; low equity–housing covariance / diversification gains): https://www.nber.org/papers/w24112
 
 ⚠️ Confidence flags from the research: Barclays Equity Gilt Study exact figures come from
 adviser summaries of the paywalled study; the FCA 2/5/8 + 2% inflation deduction is

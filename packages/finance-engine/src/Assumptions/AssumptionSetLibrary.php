@@ -18,8 +18,16 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * is broadly regime-independent). A modelling assumption, not a statutory figure: it is
  * anchored to the global-equity dividend yield (~1.3-2%), reviewed 2026-06-27 and kept.
  *
+ * $houseGrowthVolatility + $houseEquityCorrelation (added 2026-07-18) make house-price
+ * growth stochastic in the Monte Carlo. REAL UK house-price volatility ~9% a year (about
+ * half of equities' ~20%), and a LOW positive house-equity correlation (~0.2): both from
+ * the long-run record (Jordà-Knoll-Kuvshinov-Schularick-Taylor, "The Rate of Return on
+ * Everything, 1870-2015", NBER w24112 — housing far less volatile than equities, with low
+ * equity-housing covariance / real diversification gains). See docs/ASSUMPTIONS.md.
+ *
  * Three asset classes in a fixed order — global equities, gilts/bonds, cash — so
- * the correlation matrices line up with {@see AssumptionSet::$assetClasses}.
+ * the correlation matrices line up with {@see AssumptionSet::$assetClasses}; the house
+ * factor correlates to index 0 (global equities).
  */
 final class AssumptionSetLibrary
 {
@@ -47,6 +55,8 @@ final class AssumptionSetLibrary
             rentInflation: Percent::fromPercent(0.5),
             salaryGrowth: Percent::fromPercent(1.0),
             investmentIncomeYield: Percent::fromPercent(2.0),
+            houseGrowthVolatility: Percent::fromPercent(9.0),
+            houseEquityCorrelation: 0.2,
             isDefault: true,
         );
     }
@@ -75,6 +85,10 @@ final class AssumptionSetLibrary
             rentInflation: Percent::fromPercent(0.5),
             salaryGrowth: Percent::fromPercent(1.5),
             investmentIncomeYield: Percent::fromPercent(2.0),
+            // The long-run record spans the volatile mid-century + 1970s-2000s housing cycles,
+            // so a wider house-price spread than the forward-looking sets.
+            houseGrowthVolatility: Percent::fromPercent(11.0),
+            houseEquityCorrelation: 0.2,
         );
     }
 
@@ -102,6 +116,8 @@ final class AssumptionSetLibrary
             rentInflation: Percent::fromPercent(0.0),
             salaryGrowth: Percent::fromPercent(1.0),
             investmentIncomeYield: Percent::fromPercent(2.0),
+            houseGrowthVolatility: Percent::fromPercent(9.0),
+            houseEquityCorrelation: 0.2,
         );
     }
 

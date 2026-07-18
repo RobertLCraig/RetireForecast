@@ -14,7 +14,17 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * The engine reads whichever set it is handed and never hard-codes a number; a
  * simulation snapshots the set it used so results stay reproducible. $assetClasses
  * and $correlationMatrix must be in the same order (the matrix is square,
- * symmetric, with 1.0 on the diagonal).
+ * symmetric, with 1.0 on the diagonal); the FIRST asset class is global equities
+ * (index 0), which the house-price factor correlates to (see below).
+ *
+ * $houseGrowthVolatility is the annual standard deviation of REAL house-price growth
+ * (null = house growth is deterministic at its mean, the v1 behaviour). When set, the
+ * Monte Carlo draws a per-year house-price shock, correlated to the equity shock by
+ * $houseEquityCorrelation. A single house-equity correlation (rather than a full extra
+ * matrix row) keeps the asset-class matrix contract intact and captures the one
+ * economically load-bearing linkage: UK house and equity real returns co-move only
+ * weakly, so selling a home and investing the proceeds genuinely diversifies
+ * concentrated housing risk. Sourced defaults + judgement in docs/ASSUMPTIONS.md.
  *
  * $investmentIncomeYield is the NOMINAL annual income yield (dividends + interest) of
  * a General Investment Account portfolio. The forecast splits a GIA's total return
@@ -40,6 +50,8 @@ final class AssumptionSet
         public readonly Percent $rentInflation,
         public readonly Percent $salaryGrowth,
         public readonly Percent $investmentIncomeYield,
+        public readonly ?Percent $houseGrowthVolatility = null,
+        public readonly float $houseEquityCorrelation = 0.2,
         public readonly bool $isDefault = false,
     ) {}
 
@@ -93,8 +105,9 @@ final class AssumptionSet
 
     /**
      * Clone with selected fields replaced (null = keep current). The non-replaceable
-     * fields (name, source, volatilities, correlations, isDefault) carry through so a
-     * derived "custom" set keeps its provenance and risk structure.
+     * fields (name, source, volatilities, correlations — including house-price volatility
+     * and its equity correlation — isDefault) carry through so a derived "custom" set
+     * keeps its provenance and risk structure.
      *
      * @param  list<AssetClassAssumption>|null  $assetClasses
      */
@@ -117,6 +130,8 @@ final class AssumptionSet
             $rentInflation ?? $this->rentInflation,
             $salaryGrowth ?? $this->salaryGrowth,
             $investmentIncomeYield ?? $this->investmentIncomeYield,
+            $this->houseGrowthVolatility,
+            $this->houseEquityCorrelation,
             $this->isDefault,
         );
     }

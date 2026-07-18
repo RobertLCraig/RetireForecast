@@ -9,15 +9,16 @@ use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Forecast\PathDraws;
 
 /**
- * One Monte Carlo path's draws: pre-generated correlated return and inflation
- * sequences plus sampled death ages (and any sampled late-life care spells), fed to
- * the same {@see PathProjector} the deterministic forecast uses. House-price and
- * salary growth use their expected values in v1.
+ * One Monte Carlo path's draws: pre-generated correlated return, inflation and
+ * house-price sequences plus sampled death ages (and any sampled late-life care
+ * spells), fed to the same {@see PathProjector} the deterministic forecast uses.
+ * House-price growth follows the sampled per-year path (a constant equal to the mean
+ * when the set has no house volatility); salary growth uses its expected value in v1.
  */
 final class SampledPathDraws implements PathDraws
 {
     /**
-     * @param  array{investment: list<float>, cash: list<float>, inflation: list<float>}  $path
+     * @param  array{investment: list<float>, cash: list<float>, inflation: list<float>, house: list<float>}  $path
      * @param  array<string, int>  $deathAges
      * @param  array<string, CareEpisode>  $careEpisodes  person id => sampled care spell (empty = no care modelled)
      */
@@ -27,12 +28,9 @@ final class SampledPathDraws implements PathDraws
         private readonly array $deathAges,
         private readonly array $careEpisodes = [],
     ) {
-        $this->houseGrowth = $set->houseGrowth->asFraction();
         $this->salaryGrowth = $set->salaryGrowth->asFraction();
         $this->incomeYield = $set->investmentIncomeYield->asFraction();
     }
-
-    private readonly float $houseGrowth;
 
     private readonly float $salaryGrowth;
 
@@ -60,7 +58,7 @@ final class SampledPathDraws implements PathDraws
 
     public function houseGrowthReal(int $yearIndex): float
     {
-        return $this->houseGrowth;
+        return $this->at($this->path['house'], $yearIndex);
     }
 
     public function salaryGrowthReal(int $yearIndex): float

@@ -57,6 +57,9 @@ final class AssumptionSetMapper
             'rentInflation' => Codec::bps($set->rentInflation),
             'salaryGrowth' => Codec::bps($set->salaryGrowth),
             'investmentIncomeYield' => Codec::bps($set->investmentIncomeYield),
+            // Null = deterministic house growth (not stochastic); preserved through the round-trip.
+            'houseGrowthVolatility' => $set->houseGrowthVolatility !== null ? Codec::bps($set->houseGrowthVolatility) : null,
+            'houseEquityCorrelation' => $set->houseEquityCorrelation,
         ];
     }
 
@@ -84,6 +87,10 @@ final class AssumptionSetMapper
             salaryGrowth: Codec::percent($payload['salaryGrowth']),
             // Back-compat: a pre-A5 snapshot has no income yield; default to 2.0% (200 bps).
             investmentIncomeYield: Codec::percent($payload['investmentIncomeYield'] ?? 200),
+            // Back-compat: a pre-2026-07-18 snapshot has no house volatility; null keeps its
+            // house growth deterministic, so an old stored run reproduces exactly as before.
+            houseGrowthVolatility: isset($payload['houseGrowthVolatility']) ? Codec::percent($payload['houseGrowthVolatility']) : null,
+            houseEquityCorrelation: (float) ($payload['houseEquityCorrelation'] ?? 0.2),
             isDefault: $isDefault,
         );
     }

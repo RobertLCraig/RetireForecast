@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-18 (PDF now renders the sale-funding waterfall — the last "Done" open item closed)_
+_Last updated: 2026-07-18 (stochastic house-price growth in the Monte Carlo; PDF sale-funding waterfall)_
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -58,6 +58,13 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](docs/HANDOV
   Awaits browser sign-off with the rest (What's next #1). **Finding:** sell-and-rent at £2,000/mo fails at any
   realistic sale price (out 2037 on a £290k sale); affordable rent ceiling on a £290k sale ~£1,000/mo; sell-and-buy
   cheaper is the strongest plan. Five limit-test what-ifs added to the app (DB scenarios 33–37, not repo data).
+- **Done 2026-07-18 — stochastic house-price growth in the Monte Carlo (DECISIONS 2026-07-18):** house growth was a
+  deterministic straight line in the MC, so a home (the biggest, most variable slice of wealth) carried no risk and
+  home-heavy plans looked artificially certain. Now the MC draws a per-year house shock (sourced 9%/11% real vol,
+  low ~0.2 house–equity correlation). Opt-in via a nullable `AssumptionSet::houseGrowthVolatility`, so the
+  deterministic projection, every existing set and every stored run are byte-identical (no DB migration). The
+  low correlation is the point: it's why sell-and-invest diversifies concentrated housing risk. Salary growth in the
+  MC stays deterministic (remaining refinement). Completeness-tested; no browser sign-off needed (engine + fan width).
 - **Done 2026-07-18 — PDF sale-funding waterfall:** the downloadable/print report now renders the "If you sell"
   block (net-proceeds waterfall → sell-&-rent → sell-&-buy funding: savings drawn, mortgage, unfunded-gap failure),
   built from the SAME `ResultPresenter::saleExplainer` + engine decomposition the results page uses, so print cannot
@@ -67,13 +74,13 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](docs/HANDOV
   "~£90k found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
   (year 2026, the real source as the label) — see the V2 doc's note.
 - **Operational note (found 2026-07-10):** a `queue:work` daemon started **before** the 2026-07-09 Postgres migration keeps polling the old SQLite `jobs` table and processes **no** Postgres jobs — an in-app "Re-run all" hangs against it. **Restart every queue worker after the DB change** (`queue:work` caches its DB connection at boot). See How to pick up.
-- **Known bugs:** none open. The queued-Monte-Carlo reproducibility bug is **RESOLVED** (Postgres) and **independently re-verified 2026-07-10** (Session log). Documented v1 scope limits (all flagged in code) live in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" — e.g. Scotland income tax throws; emergency tax models the over-deduction magnitude, not PAYE-table pennies; a repayment mortgage's balance is modelled static (set `mortgageRedemptionYear` + repay-from-capital to clear it); house/salary growth deterministic inside the Monte Carlo.
+- **Known bugs:** none open. The queued-Monte-Carlo reproducibility bug is **RESOLVED** (Postgres) and **independently re-verified 2026-07-10** (Session log). Documented v1 scope limits (all flagged in code) live in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" — e.g. Scotland income tax throws; emergency tax models the over-deduction magnitude, not PAYE-table pennies; a repayment mortgage's balance is modelled static (set `mortgageRedemptionYear` + repay-from-capital to clear it); **salary** growth deterministic inside the Monte Carlo (house growth is now stochastic — DECISIONS 2026-07-18).
 
 ## What's next (in order)
 The whole post-v1 backlog is built. What remains:
 1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.**
 2. **Public-release blockers** (harmless while private, mandatory before any public launch; each flagged in code): set `config('compliance.personal_use')` false + confirm the guidance-only partition re-applies; swap the stress-test dataset off the CC BY-NC-SA JST source for an OGL/licensed one; tighten the CSP `script-src` to nonces; complete the a11y pass to a public bar.
-3. **Optional refinements to built features** (all flagged v1 limits; pick by value) — care sex/age-split + the means-test v1 flags; CGT deemed-occupation absences; stochastic house/salary growth in the Monte Carlo; an annuitisation retirement-month override. See DATA-MODEL "Known divergences" + docs/PLAN.md.
+3. **Optional refinements to built features** (all flagged v1 limits; pick by value) — care sex/age-split + the means-test v1 flags; CGT deemed-occupation absences; **stochastic salary growth in the Monte Carlo** (house growth now done — DECISIONS 2026-07-18); an annuitisation retirement-month override. See DATA-MODEL "Known divergences" + docs/PLAN.md.
 4. **CI / data hygiene (remainder).** The freshness guardrails run monthly in CI (the `data-freshness` workflow; takes effect on GitHub once pushed). Low-value hardening: a tamper-evident run hash, forecast caching.
 
 **Specced-but-unbuilt** (pick up when chosen): withdrawal-sequencing #5/#6 (docs/PLAN-withdrawal-sequencing.md, gated on two modelling calls from Rob); multi-property (docs/PLAN-multi-property.md, DRAFT); assistant scenario-editing (docs/PLAN-assistant-scenario-editing.md, approved scope, not built).
@@ -131,6 +138,22 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-18 (stochastic house-price growth in the Monte Carlo)_ —
+Highest-value accuracy refinement from What's next #3: house growth was a deterministic straight line in the MC, so
+the home carried no risk and stay-put/buy plans looked artificially certain vs sell-and-rent (whose invested proceeds
+were already stochastic) — wrong for a tool whose whole point is a housing decision under uncertainty. Researched
+sourced figures (real house vol ~9%, low ~0.2 house–equity correlation, per JST "Rate of Return on Everything"
+NBER w24112 — housing far less volatile than equities, low equity–housing covariance / diversification gains).
+Implemented: `AssumptionSet` gains `houseGrowthVolatility` (`?Percent`) + `houseEquityCorrelation` (float);
+`ReturnModel` draws a per-year house shock correlated to the equity shock (single scalar correlation, not a 4th
+matrix row — keeps the asset-class matrix contract); `SampledPathDraws` reads the sampled house path; presets +
+mapper + assumptions panel updated. **Key design for safety: nullable vol = opt-in** — a null-vol set draws no house
+shock, so the deterministic projection, all existing sets/tests and every stored run are byte-identical (no DB
+migration, MC reproducibility preserved). Completeness-tested (`StochasticHouseGrowthTest`): a £500k-home couple's
+terminal spread widens p10–p90 £169k → £759k (median ~unchanged), collapses to the mean at zero vol, reproduces under
+a seed. Salary growth in the MC left deterministic (narrower, lower value). Full suite green, pint clean. Sanity-run
+magnitudes verified via a scratchpad script (not committed).
 
 _2026-07-18 (PDF sale-funding waterfall — last PDF gap closed)_ —
 The buy-funding waterfall (net proceeds → savings → mortgage → unfunded gap) rendered on results/Compare/assistant

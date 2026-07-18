@@ -443,6 +443,13 @@ from the original plan, flagged inline:
   (single-property model — DECISIONS 2026-07-01).
 
 ## Known divergences (to close)
+- **House-price growth in the Monte Carlo — stochastic since 2026-07-18 (DECISIONS 2026-07-18).** Was deterministic
+  (a straight line at the mean), understating the risk of home-heavy plans. `AssumptionSet` now carries
+  `houseGrowthVolatility` (`?Percent`; null = deterministic, the back-compat default) + `houseEquityCorrelation`
+  (float); `ReturnModel` draws a per-year house shock correlated to the equity shock, `SampledPathDraws` reads it.
+  Completeness-tested (`StochasticHouseGrowthTest`: the spread widens, collapses to the mean at zero vol, reproduces
+  under a seed). **Salary growth in the Monte Carlo remains deterministic** — a narrower, lower-value remaining
+  refinement (salary only bites pre-retirement for a working partner).
 - **Collected-but-not-consumed fields (2026-07-02 doc audit) — ALL CLOSED 2026-07-02/07-03.** Inputs that
   were validated, assembled into DTOs and documented above but read by no engine code — a silent-drop class
   (see the completeness rule in CLAUDE.md), all now wired with a per-source completeness test:

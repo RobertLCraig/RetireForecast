@@ -1626,6 +1626,18 @@ final class ResultPresenter
             ['key' => 'salaryGrowth', 'label' => 'Salary growth (real)', 'value' => self::ratePct($set->salaryGrowth->asPercent()), 'note' => 'a year above inflation'],
             ['key' => 'incomeYield', 'label' => 'Investment income yield (nominal)', 'value' => self::ratePct($set->investmentIncomeYield->asPercent()), 'note' => 'the part of the return paid out and taxed each year; the rest is capital growth'],
         ];
+        // Show-your-working for the fan's width: when house growth is stochastic, surface the
+        // volatility it is sampled over so the home-equity spread traces to a stated figure
+        // rather than appearing from nowhere. Not user-overridable, so it never flags as edited.
+        if ($set->houseGrowthVolatility !== null && $set->houseGrowthVolatility->basisPoints > 0) {
+            array_splice($economic, 3, 0, [[
+                'key' => 'houseVolatility',
+                'label' => 'House price growth volatility (real)',
+                'value' => self::ratePct($set->houseGrowthVolatility->asPercent()),
+                'note' => 'the year-to-year spread the Monte Carlo samples house prices over; the central projection uses the mean above',
+            ]]);
+        }
+
         $economic = array_map(
             fn (array $row): array => [...$row, 'edited' => in_array($row['key'], $changed, true)],
             $economic,

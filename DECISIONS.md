@@ -3,6 +3,41 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-18 — Stochastic house-price growth in the Monte Carlo
+**Context:** The Monte Carlo held house-price growth deterministic (a straight line at the mean), so a home — the
+largest, most variable slice of this couple's wealth — carried no uncertainty in the fan. That understated the risk
+of the stay-put and buy options relative to sell-and-rent (whose invested proceeds were already stochastic): a
+home-heavy plan looked artificially certain. This was the flagged v1 limit "house/salary growth deterministic inside
+the Monte Carlo" (DATA-MODEL Known divergences; What's next #3). The tool's whole purpose is a housing decision under
+uncertainty, so this is the highest-value accuracy refinement (accuracy is Rob's overriding priority).
+
+**Decisions:**
+1. **House growth is now stochastic in the Monte Carlo**, drawn per year from the same seeded RNG. `AssumptionSet`
+   gains `houseGrowthVolatility` (`?Percent`, REAL annual σ) and `houseEquityCorrelation` (float). `ReturnModel`
+   draws a house shock correlated to the equity shock; `SampledPathDraws` reads the sampled per-year house path.
+   Salary growth stays deterministic (a narrower, lower-value remaining refinement — noted, not done).
+2. **Single house–equity correlation, not a full extra matrix row.** House is not an asset class in the allocation,
+   and adding a 4th matrix row breaks the `assetClasses`-ordered contract. A scalar correlation to the equity shock
+   (index 0) captures the one load-bearing linkage — the *low* (~0.2) co-movement that makes selling-and-investing a
+   genuine diversification of concentrated housing risk — with one extra draw per year. The independent component is
+   `√(1−ρ²)`, ρ clamped to [−1, 1].
+3. **Opt-in via a nullable volatility → reproducibility preserved.** `houseGrowthVolatility` defaults to `null` =
+   deterministic house growth (the v1 behaviour), and a null-vol set consumes **no** house draw, so every existing
+   set, test and stored snapshot is byte-identical to before. Only the shipped presets set a real vol, so only they
+   become stochastic. No DB migration: `AssumptionSetMapper` round-trips the new fields and a pre-2026-07-18 snapshot
+   hydrates to null (deterministic), keeping old queued runs reproducible.
+4. **Sourced, tunable figures** (same standard as every other assumption; docs/ASSUMPTIONS.md): REAL house-price
+   volatility **9%** (Set B's long-run **11%**), house–equity correlation **0.20**, from the long-run record
+   (Jordà-Knoll-Kuvshinov-Schularick-Taylor, NBER w24112: housing far less volatile than equities, low equity–housing
+   covariance). The deterministic central projection is unchanged (uses the mean); only the fan widens.
+5. **No canonical-shape churn to the app:** the two new set fields are the only additions; the assumptions panel
+   surfaces the house volatility (show-your-working) so the fan's width traces to a stated figure.
+
+**Completeness (the guard):** `StochasticHouseGrowthTest` proves the house risk reaches the aggregate — a
+home-owning couple's terminal total-wealth spread widens under stochastic house growth vs the deterministic mean
+(a home-dominated £500k example: p10–p90 spread £169k → £759k, median ~unchanged), that it collapses to the flat
+mean at zero/null vol, and that the sampled path is reproducible under a seed. Not a silent-drop.
+
 ## 2026-07-17 — "What you can afford": the plain-English affordability screen
 **Context:** The engine is trustworthy but the app is hard to communicate to the elder couple it models — no
 patience for ladders, fan charts and Monte Carlo. They want one answer: "what can I / should I do?". Rob asked for
