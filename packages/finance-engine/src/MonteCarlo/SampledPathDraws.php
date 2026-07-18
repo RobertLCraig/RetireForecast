@@ -30,12 +30,15 @@ final class SampledPathDraws implements PathDraws
     ) {
         $this->salaryGrowth = $set->salaryGrowth->asFraction();
         $this->incomeYield = $set->investmentIncomeYield->asFraction();
+        $this->careCostRealGrowth = $set->careCostRealGrowth()->asFraction();
     }
 
     /** Fallback salary growth (the set mean) for a path generated without a sampled salary series. */
     private readonly float $salaryGrowth;
 
     private readonly float $incomeYield;
+
+    private readonly float $careCostRealGrowth;
 
     public function investmentRealReturn(int $yearIndex): float
     {
@@ -77,6 +80,11 @@ final class SampledPathDraws implements PathDraws
     public function careAnnualCost(string $personId, int $age): int
     {
         return isset($this->careEpisodes[$personId]) ? $this->careEpisodes[$personId]->annualCostAt($age) : 0;
+    }
+
+    public function careCostRealGrowth(): float
+    {
+        return $this->careCostRealGrowth;
     }
 
     /**

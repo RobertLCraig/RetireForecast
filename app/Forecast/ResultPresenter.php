@@ -1625,6 +1625,7 @@ final class ResultPresenter
             ['key' => 'rentGrowth', 'label' => 'Rent growth (real)', 'value' => self::ratePct($set->rentInflation->asPercent()), 'note' => 'a year above inflation'],
             ['key' => 'salaryGrowth', 'label' => 'Salary growth (real)', 'value' => self::ratePct($set->salaryGrowth->asPercent()), 'note' => 'a year above inflation'],
             ['key' => 'incomeYield', 'label' => 'Investment income yield (nominal)', 'value' => self::ratePct($set->investmentIncomeYield->asPercent()), 'note' => 'the part of the return paid out and taxed each year; the rest is capital growth'],
+            ['key' => 'careCostGrowth', 'label' => 'Care cost growth (real)', 'value' => self::ratePct($set->careCostRealGrowth()->asPercent()), 'note' => 'how fast care-home fees rise above inflation; care outruns general prices, so a late-life care spell costs more the later it falls'],
         ];
         // Show-your-working for the fan's width: when house growth is stochastic, surface the
         // volatility it is sampled over so the home-equity spread traces to a stated figure

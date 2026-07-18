@@ -3,6 +3,41 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-18 — Care fees escalate above CPI (A1: per-category care cost inflation)
+**Context:** The engine draws one CPI series and models every other cost as a *real spread* over it; only
+property service charges (`ExpenseProfile::propertyCostsRealGrowth`) and rent had their own real rate. **Care
+fees rode flat CPI** — the sampled self-funder fee was applied in real terms with no above-CPI escalation.
+Care is the single largest fat-tail cost in the model *and* the fastest-inflating major category in UK
+retirement (self-funder fees ran ~10%/yr to Dec-2025, ~20% over two years — several points above CPI), so a
+tool whose whole purpose is to surface care and longevity risk was *understating the cost of exactly that
+risk*. First build-order item of docs/PLAN-output-inflation-and-charts.md (Part A correctness), and the
+highest-value item by the accuracy-first rule.
+
+**Decisions:**
+1. **`AssumptionSet::careCostRealGrowth` (`?Percent`, null = flat-real).** The projector compounds the sampled
+   care fee at CPI + this real rate to the year the (late-life) spell falls, mirroring the proven, null-safe
+   `propertyCostsRealGrowth` mechanism exactly (`PathProjector` care leg — a `(1+g)^yearIndex` real escalation
+   before the means test). Threaded through the `PathDraws` interface (`careCostRealGrowth(): float`) so all
+   three drivers expose it uniformly; care is Monte-Carlo-only, so it bites only on sampled paths for now.
+2. **Shipped default CPI + 2% real across all presets; user-editable.** Care fees are ~60–75% National-Living-
+   Wage-pinned staff cost, which government ratchets deliberately above prices; PSSRU/LSE + OBR long-term
+   social-care projections escalate care unit costs on earnings/productivity (~2% real above CPI). The recent
+   ~10%/yr is an NLW + employer-NI spike, not a standing assumption; defensible standing range 1.5–3% real.
+   Per the adverse-default rule ([[adverse-default-user-editable]]) the shipped value is the most adverse of the
+   plausible standing values (**CPI + 2%**), exposed as the seventh editable economic assumption
+   (`assumptionOverrides.careCostGrowth`) with the sourced alternatives. A time-limited "care shock" (CPI+4–5%)
+   remains an unbuilt option. Sourced in `AssumptionSetLibrary` + docs/ASSUMPTIONS.md (verified_on 2026-07-18).
+3. **Null-safe / byte-identical.** A null rate keeps care flat-real (the pre-change behaviour); the mapper
+   round-trips the field and hydrates a pre-A1 snapshot to null, so every stored care run reproduces exactly.
+   New runs from the presets carry 2%. No DB migration.
+4. **A2 (care in the deterministic path) remains open.** Care is still Monte-Carlo-only, so the affordability
+   verdict still reads a care-free path — the next build-order item. This decision only fixes *how fast* care
+   fees rise, not *where* they appear.
+
+**Guard:** `CareCostInflationTest` — the escalation compounds by the expected `(1.02)^yearIndex` factor; a null
+(and an explicit zero) rate is byte-identical to the pre-feature engine across the whole wealth path.
+`MappingRoundTripTest` — the rate reaches storage (completeness) and a pre-A1 snapshot hydrates to null (back-compat).
+
 ## 2026-07-18 — Sex-differentiated late-life care probability in the Monte Carlo
 **Context:** The stochastic late-life care risk (`CareCostSampler`, opt-in via `ForecastSettings::modelCareCost`)
 drew one flat lifetime care probability (0.25) for everyone, even though `Person::sex` was already collected and

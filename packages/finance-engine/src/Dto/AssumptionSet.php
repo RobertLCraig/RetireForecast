@@ -42,6 +42,16 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * growth (taxed as CGT only on disposal), so an unwrapped holding carries its real tax
  * drag. The ~2% is a modelling assumption (not a statutory figure), anchored to the
  * global-equity dividend yield (FTSE All-World ~1.3-2%); reviewed 2026-06-27 and kept.
+ *
+ * $careCostRealGrowth is the REAL (above-CPI) annual escalation of self-funder care
+ * fees (null = flat-real, the pre-2026-07-18 behaviour, kept so an old stored run
+ * reproduces byte-identically). The engine draws one CPI series and models every other
+ * cost as a real spread over it; care is the fastest-inflating major category in UK
+ * retirement (largely National-Living-Wage-pinned staff cost, ratcheted above prices),
+ * so leaving it flat-real understated the tool's headline late-life risk. When set, the
+ * projector compounds the sampled care fee at CPI + this rate to the year the spell
+ * falls, mirroring {@see ExpenseProfile::propertyCostsRealGrowth}. Sourced default +
+ * judgement (CPI + 2%) in docs/ASSUMPTIONS.md.
  */
 final class AssumptionSet
 {
@@ -64,8 +74,15 @@ final class AssumptionSet
         public readonly float $houseEquityCorrelation = 0.2,
         public readonly ?Percent $salaryGrowthVolatility = null,
         public readonly float $salaryEquityCorrelation = 0.1,
+        public readonly ?Percent $careCostRealGrowth = null,
         public readonly bool $isDefault = false,
     ) {}
+
+    /** The real (above-CPI) escalation of self-funder care fees (zero if none). */
+    public function careCostRealGrowth(): Percent
+    {
+        return $this->careCostRealGrowth ?? Percent::zero();
+    }
 
     /**
      * A copy with every asset class's expected real return shifted by $delta (basis
@@ -115,6 +132,11 @@ final class AssumptionSet
         return $this->copy(investmentIncomeYield: $value);
     }
 
+    public function withCareCostRealGrowth(Percent $value): self
+    {
+        return $this->copy(careCostRealGrowth: $value);
+    }
+
     /**
      * Clone with selected fields replaced (null = keep current). The non-replaceable
      * fields (name, source, volatilities, correlations — including the house-price and
@@ -130,6 +152,7 @@ final class AssumptionSet
         ?Percent $rentInflation = null,
         ?Percent $salaryGrowth = null,
         ?Percent $investmentIncomeYield = null,
+        ?Percent $careCostRealGrowth = null,
     ): self {
         return new self(
             $this->name,
@@ -146,6 +169,7 @@ final class AssumptionSet
             $this->houseEquityCorrelation,
             $this->salaryGrowthVolatility,
             $this->salaryEquityCorrelation,
+            $careCostRealGrowth ?? $this->careCostRealGrowth,
             $this->isDefault,
         );
     }

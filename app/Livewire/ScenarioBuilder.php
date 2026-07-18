@@ -256,6 +256,9 @@ class ScenarioBuilder extends Component
             'assumptionOverrides.rentGrowth' => ['nullable', 'numeric', 'between:-15,30'],
             'assumptionOverrides.salaryGrowth' => ['nullable', 'numeric', 'between:-15,30'],
             'assumptionOverrides.incomeYield' => ['nullable', 'numeric', 'between:0,30'],
+            // Care fees only ever rise in real terms (labour-cost driven); a small negative is
+            // permitted for a deliberate optimistic stress, capped like the other growth figures.
+            'assumptionOverrides.careCostGrowth' => ['nullable', 'numeric', 'between:-5,15'],
 
             'people' => ['required', 'array', 'min:1', 'max:2'],
             'people.*.dob' => ['required', 'date', 'before:today'],
@@ -1413,6 +1416,7 @@ class ScenarioBuilder extends Component
                 ['key' => 'rentGrowth', 'label' => 'Rent growth (real)', 'note' => 'a year above inflation'],
                 ['key' => 'salaryGrowth', 'label' => 'Salary growth (real)', 'note' => 'a year above inflation'],
                 ['key' => 'incomeYield', 'label' => 'Investment income yield (nominal)', 'note' => 'the part of the return paid out and taxed each year'],
+                ['key' => 'careCostGrowth', 'label' => 'Care cost growth (real)', 'note' => 'how fast care-home fees rise above inflation (they outrun general prices)'],
             ],
             // The chosen preset's current figures, so each editable assumption shows the
             // value it would override as its placeholder (and updates when the set changes).

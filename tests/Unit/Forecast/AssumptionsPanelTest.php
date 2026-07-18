@@ -73,12 +73,15 @@ final class AssumptionsPanelTest extends TestCase
         $this->assertContains('Salary growth (real)', $labels);
         $this->assertContains('Investment income yield (nominal)', $labels);
         $this->assertContains('Inflation (CPI)', $labels);
+        $this->assertContains('Care cost growth (real)', $labels);
 
         // The default set's figures, surfaced exactly.
         $this->assertSame('2%', $this->value($economic, 'Inflation'));
         $this->assertSame('1%', $this->value($economic, 'House price growth'));
         $this->assertSame('0.5%', $this->value($economic, 'Rent growth'));
         $this->assertSame('2%', $this->value($economic, 'Investment income yield'));
+        // Care fees escalate at CPI + 2% real (the adverse-default from the research pass).
+        $this->assertSame('2%', $this->value($economic, 'Care cost growth'));
     }
 
     public function test_the_mix_describes_what_the_blended_return_is_weighted_from(): void

@@ -174,6 +174,9 @@ investment_income_yield (Percent — nominal GIA income yield, A5; ~2%, ⚠️ v
 house_growth_volatility (?Percent, null = deterministic) + house_equity_correlation (float, 0.2),
 salary_growth_volatility (?Percent, null = deterministic) + salary_equity_correlation (float, 0.1)
 (the two stochastic-growth pairs, 2026-07-18; null keeps that factor deterministic so old snapshots reproduce),
+care_cost_real_growth (?Percent, null = flat-real care fees; shipped presets CPI+2% real, 2026-07-18 —
+the projector compounds the sampled care fee above CPI to the year the spell falls; null keeps care flat so
+old care snapshots reproduce),
 is_default (bool). Shipped presets: FCA-derived (default), DMS/EGS-derived,
 OBR/BoE-inflation-blended. A5: the projector splits a GIA's total return into this taxable
 income (dividends, taxed yearly) + capital growth (CGT on disposal vs the account's
@@ -183,7 +186,7 @@ tax-free. Mapper defaults a pre-A5 snapshot's yield to 2.0%.
 **User-editable custom set (2026-06-29).** A scenario may tune the chosen preset's economic
 figures into a derived custom set. The edits live in `builder_state` under
 `assumptionOverrides`: a **sparse map** of `{ investmentGrowth, inflation, houseGrowth,
-rentGrowth, salaryGrowth, incomeYield }` => percentage string, holding **only the figures the
+rentGrowth, salaryGrowth, incomeYield, careCostGrowth }` => percentage string, holding **only the figures the
 user changed** (an absent key keeps following the preset, so a re-source flows through — the
 same base ⊕ overrides discipline as a delta-child, merged by `BuilderStateDelta`). The engine
 `AssumptionSet` gains pure `with*` derivations (`withRealReturnShift` for the blended-real
@@ -455,6 +458,13 @@ from the original plan, flagged inline:
   (the salary shock drawn last, so a null-salary set consumes no extra draw and every stored run reproduces
   byte-identically). Completeness-tested (`StochasticHouseGrowthTest`, `StochasticSalaryGrowthTest`: each spread
   widens, collapses to the mean at zero vol, reproduces under a seed). No MC-growth-determinism divergence remains.
+- **Care fees now escalate above CPI (A1, DECISIONS 2026-07-18).** The engine draws one CPI series and models
+  most costs as a real spread; care was left riding flat CPI, understating the tool's headline late-life risk.
+  `AssumptionSet::careCostRealGrowth` (`?Percent`; null = flat-real, back-compat; shipped presets CPI+2% real)
+  now compounds the sampled self-funder fee above CPI to the year the spell falls, mirroring
+  `ExpenseProfile::propertyCostsRealGrowth` (`CareCostInflationTest`). **Still open (A2):** care remains a
+  Monte-Carlo-only risk — the deterministic path (and the Affordability verdict it feeds) still contains no
+  care, so a "lasts for life? Yes" is computed care-free. See docs/PLAN-output-inflation-and-charts.md A2.
 - **Collected-but-not-consumed fields (2026-07-02 doc audit) — ALL CLOSED 2026-07-02/07-03.** Inputs that
   were validated, assembled into DTOs and documented above but read by no engine code — a silent-drop class
   (see the completeness rule in CLAUDE.md), all now wired with a per-source completeness test:

@@ -37,6 +37,8 @@ final class HistoricalSequenceDraws implements PathDraws
 
     private readonly float $incomeYield;
 
+    private readonly float $careCostRealGrowth;
+
     private readonly float $weightEquity;
 
     private readonly float $weightBond;
@@ -58,6 +60,7 @@ final class HistoricalSequenceDraws implements PathDraws
         $this->houseGrowth = $set->houseGrowth->asFraction();
         $this->salaryGrowth = $set->salaryGrowth->asFraction();
         $this->incomeYield = $set->investmentIncomeYield->asFraction();
+        $this->careCostRealGrowth = $set->careCostRealGrowth()->asFraction();
         $this->weightEquity = $allocation->weights[0] ?? 0.0;
         $this->weightBond = $allocation->weights[1] ?? 0.0;
         $this->weightCash = $allocation->weights[2] ?? 0.0;
@@ -113,5 +116,10 @@ final class HistoricalSequenceDraws implements PathDraws
     public function careAnnualCost(string $personId, int $age): int
     {
         return 0;
+    }
+
+    public function careCostRealGrowth(): float
+    {
+        return $this->careCostRealGrowth;
     }
 }

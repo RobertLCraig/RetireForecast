@@ -111,6 +111,11 @@ final class CareMeansTestedChargeTest extends TestCase
 
                 return $from !== null && $age >= $from ? CareMeansTestedChargeTest::FEE_REAL : 0;
             }
+
+            public function careCostRealGrowth(): float
+            {
+                return 0.0;
+            }
         };
     }
 

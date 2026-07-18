@@ -195,8 +195,11 @@ Later-life care is a fat-tailed risk, so it is modelled explicitly:
 
 - In the **Monte Carlo**, each person has roughly a **1-in-4** chance of a care spell, of typically
   ~2.5 years (capped at 8), placed at the end of life, at self-funder fees (around £1,300 a week
-  residential, £1,600 nursing, from LaingBuisson). The share of futures where care costs the
-  household anything, and the typical and high-end bills it bears, are shown as a risk panel.
+  residential, £1,600 nursing, from LaingBuisson). Those fees **rise faster than general prices**:
+  care is largely National-Living-Wage-pinned staff cost, so the fee escalates at **CPI + 2% real**
+  (editable per scenario) to the year the spell falls — a late-life spell therefore costs more the
+  later it occurs. The share of futures where care costs the household anything, and the typical and
+  high-end bills it bears, are shown as a risk panel.
 - Each care year is **means-tested** under the DHSC charging rules (England), assessed on the
   resident's own means: full fees while their own capital is above **£23,250**; capital ignored
   below **£14,250** with a **tariff** (£1 a week per £250) in between; once below the limit they
@@ -206,10 +209,11 @@ Later-life care is a fat-tailed risk, so it is modelled explicitly:
   savings are never assessable. The £86,000 lifetime care cap is **not** modelled — it was
   cancelled in July 2024.
 
-Simplifications: care is modelled only in the Monte Carlo, with a single probability (no split by
-sex or age); any Pension Credit award is not counted into the care contribution; the local
-authority is assumed to pay its share at the same fee rate; deferred-payment agreements and the
-12-week property disregard are below the annual grid.
+Simplifications: care is modelled only in the Monte Carlo — the deterministic central projection
+(and the plain-English affordability verdict it feeds) contains no care, so those read the care-free
+path; the care probability is split by sex but not yet by age; any Pension Credit award is not counted
+into the care contribution; the local authority is assumed to pay its share at the same fee rate;
+deferred-payment agreements and the 12-week property disregard are below the annual grid.
 
 ## How long you might live
 

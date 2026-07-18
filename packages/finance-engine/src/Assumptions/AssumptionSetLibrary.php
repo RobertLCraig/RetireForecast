@@ -32,6 +32,13 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * so a deliberately LOW ~0.1 salary-equity correlation (weaker than housing's). See
  * docs/ASSUMPTIONS.md.
  *
+ * $careCostRealGrowth (added 2026-07-18) escalates self-funder care fees at CPI + 2% real
+ * across all sets — care is ~60-75% National-Living-Wage-pinned staff cost, which government
+ * ratchets deliberately above prices, and PSSRU/LSE + OBR long-term social-care projections
+ * escalate care unit costs on earnings/productivity (~2% real above CPI). The most adverse of
+ * the defensible standing range (1.5-3% real); user-editable, with the sourcing + judgement in
+ * docs/ASSUMPTIONS.md.
+ *
  * Three asset classes in a fixed order — global equities, gilts/bonds, cash — so
  * the correlation matrices line up with {@see AssumptionSet::$assetClasses}; the house
  * factor correlates to index 0 (global equities).
@@ -66,6 +73,7 @@ final class AssumptionSetLibrary
             houseEquityCorrelation: 0.2,
             salaryGrowthVolatility: Percent::fromPercent(2.0),
             salaryEquityCorrelation: 0.1,
+            careCostRealGrowth: Percent::fromPercent(2.0),
             isDefault: true,
         );
     }
@@ -101,6 +109,7 @@ final class AssumptionSetLibrary
             // Wider salary spread over the long historical run (the volatile 1970s-80s real-wage swings).
             salaryGrowthVolatility: Percent::fromPercent(2.5),
             salaryEquityCorrelation: 0.1,
+            careCostRealGrowth: Percent::fromPercent(2.0),
         );
     }
 
@@ -132,6 +141,7 @@ final class AssumptionSetLibrary
             houseEquityCorrelation: 0.2,
             salaryGrowthVolatility: Percent::fromPercent(2.0),
             salaryEquityCorrelation: 0.1,
+            careCostRealGrowth: Percent::fromPercent(2.0),
         );
     }
 

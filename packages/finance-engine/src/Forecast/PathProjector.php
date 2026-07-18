@@ -907,6 +907,13 @@ final class PathProjector
         // Assessed per person, England's individual assessment: the resident's own accounts,
         // their own taxable income, and the home only when no partner still lives in it (or it
         // is let) — see careAssessableCapital.
+        // Care fees are the fastest-inflating major late-life cost (largely National-Living-Wage-
+        // pinned staff cost, ratcheted above prices), so they carry an optional REAL escalation on
+        // top of the CPI everyone rides — compounded per projection year here in real pence, exactly
+        // as the property-costs bucket is above. Zero rate = flat-real (the sampled fee times CPI),
+        // the pre-2026-07-18 behaviour, so a null-careCostRealGrowth set reproduces byte-identically.
+        $careGrowth = $draws->careCostRealGrowth();
+        $careEscalation = $careGrowth > 0.0 ? (1.0 + $careGrowth) ** $yearIndex : 1.0;
         $careChargedNominal = 0;
         foreach ($household->persons as $person) {
             if (! ($alive[$person->id] ?? false)) {
@@ -916,6 +923,7 @@ final class PathProjector
             if ($feeReal <= 0) {
                 continue;
             }
+            $feeReal = (int) round($feeReal * $careEscalation);
             $careChargedNominal += $this->careMeans->annualCharge(
                 grossAnnualFee: Money::fromPence((int) round($feeReal * $state['spendFactor'])),
                 capital: Money::fromPence($this->careAssessableCapital($household, $state, $person->id, $aliveCount)),

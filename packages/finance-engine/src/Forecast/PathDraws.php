@@ -50,4 +50,13 @@ interface PathDraws
      * central estimate.
      */
     public function careAnnualCost(string $personId, int $age): int;
+
+    /**
+     * The REAL (above-CPI) annual escalation of self-funder care fees, as a fraction (e.g.
+     * 0.02 for CPI + 2%), or 0.0 for flat-real. The projector compounds the sampled care fee
+     * ({@see careAnnualCost}) at this rate to the year the spell falls, so care — the fastest-
+     * inflating major late-life cost — rises faster than the general CPI drawn by
+     * {@see inflation}. See {@see AssumptionSet::$careCostRealGrowth}.
+     */
+    public function careCostRealGrowth(): float;
 }

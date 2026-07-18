@@ -11,10 +11,12 @@ _Last updated: 2026-07-18 (added stochastic salary growth: volatility + salary-e
 
 ## Runtime editability (2026-06-29 / 2026-07-02)
 The signed-off presets are the sourced **baseline**, no longer the only figures a forecast can use:
-- **User-derived custom sets (2026-06-29):** the six economic assumptions are editable on builder
-  step 1, stored as a sparse `assumptionOverrides` delta on the chosen preset (empty = the preset,
-  so a re-sourced preset flows through). Applied once in `ScenarioForecaster::assumptions()`; the
-  results panel labels a tuned set **(customised)** and marks each user-set figure.
+- **User-derived custom sets (2026-06-29; care cost growth added 2026-07-18):** the seven economic
+  assumptions (investment growth, inflation, house growth, rent growth, salary growth, income yield,
+  care cost growth) are editable on builder step 1, stored as a sparse `assumptionOverrides` delta on
+  the chosen preset (empty = the preset, so a re-sourced preset flows through). Applied once in
+  `ScenarioForecaster::assumptions()`; the results panel labels a tuned set **(customised)** and marks
+  each user-set figure.
 - **Per-asset overrides (2026-07-02):** `DcPension::growthAssumptionOverride`,
   `Property::growthAssumptionOverride` and `Account::yield` let an individual asset depart from
   the set's figure (wired + completeness-tested — DECISIONS 2026-07-02).
@@ -56,6 +58,7 @@ cash **−0.5%**.
 | Salary growth volatility (real) | 2.0% | 2.5% | 2.0% |
 | Salary–equity correlation | 0.10 | 0.10 | 0.10 |
 | Investment income yield (nominal) | 2.0% | 2.0% | 2.0% |
+| Care cost growth (real, above CPI) | 2.0% | 2.0% | 2.0% |
 
 ## Judgement calls flagged for Rob (these are the bits to sanity-check)
 1. **Cash real volatility set to 2%, not DMS's 7.5%.** DMS's 7.5% is mostly historical
@@ -93,8 +96,19 @@ cash **−0.5%**.
    it stops a working couple's accumulation looking artificially certain. **Confirm you're happy with
    2.0%/2.5% vol and the 0.10 correlation** (both tunable per set, and opt-in: a null volatility keeps
    salary deterministic, so every pre-existing stored run reproduces unchanged).
-
-## Sources (re-verification = the manual review tracked in HANDOVER Open items)
+8. **Care fees escalate at CPI + 2% real (added 2026-07-18; verified_on 2026-07-18).** The engine draws
+   one CPI series and models most costs as a real spread over it; care was the exception left riding flat
+   CPI, which understated the tool's headline late-life risk. Care-home fees are ~60–75% staff cost pinned
+   to the **National Living Wage**, which government ratchets deliberately above prices, and PSSRU/LSE and
+   OBR long-term social-care projections escalate care unit costs on **earnings/productivity (~2% real above
+   CPI)**, not CPI. The recent ~10%/yr run-rate (≈CPI+4–5%) is an NLW + employer-NI spike, **not** a standing
+   assumption; the defensible standing range is 1.5–3% real. Per the adverse-default rule the shipped value
+   is the **most adverse of the plausible standing values, CPI + 2%** (a time-limited "care shock" at CPI+4–5%
+   remains an unbuilt option — see docs/PLAN-output-inflation-and-charts.md A1). Applies to the sampled
+   self-funder fee, compounded to the year the (late-life) spell falls, mirroring the property-costs bucket.
+   **Opt-in / null-safe:** a null rate keeps care flat-real, so every pre-existing stored care run reproduces
+   unchanged. User-editable per scenario. Care is still a Monte-Carlo-only risk (putting an expected care
+   cost in the deterministic path is the separate A2 item). **Confirm you're happy with CPI + 2% real.**
 - FCA Handbook COBS 13 Annex 2 (projection rates): https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html
 - FCA/PwC, "Rates of return for FCA prescribed projections" (2017): https://www.fca.org.uk/publication/research/rates-return-fca-prescribed-projections.pdf
 - UBS Global Investment Returns Yearbook 2025 (DMS): https://www.ubs.com/global/en/investment-bank/insights-and-data/2025/global-investment-returns-yearbook-2025.html
@@ -104,6 +118,9 @@ cash **−0.5%**.
 - Jordà, Knoll, Kuvshinov, Schularick & Taylor, "The Rate of Return on Everything, 1870–2015", NBER Working Paper 24112 (housing far less volatile than equities; low equity–housing covariance / diversification gains): https://www.nber.org/papers/w24112
 - Champagne, Kurmann & Stewart, "Dissecting Aggregate Real Wage Fluctuations", FRB San Francisco WP 2011-23 (aggregate real wage growth volatility ~0.51× GDP-growth volatility — far smoother than profits): https://www.frbsf.org/wp-content/uploads/wp11-23bk.pdf
 - ONS, Average weekly earnings in Great Britain (real regular-pay growth series used to sanity-check the ~2% annual real-earnings volatility): https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/bulletins/averageweeklyearningsingreatbritain/january2026
+- King's Fund, Social Care 360 — expenditure and provider fees (care unit-cost drivers): https://www.kingsfund.org.uk/insight-and-analysis/long-reads/social-care-360-expenditure
+- PSSRU/LSE (Wittenberg et al.), long-term care expenditure projections (care unit costs escalated on earnings/productivity, ~2% real above prices): https://eprints.lse.ac.uk/88376/1/Wittenberg_Adult%20Social%20Care_Published.pdf
+- LaingBuisson, "Care of Older People" UK market report — self-funder fee inflation (~10%/yr to Dec-2025, ~20% over two years; NLW + employer-NI driven): https://www.laingbuisson.com/press-releases/older-people-forced-to-pay-nearly-20-more-for-their-care-as-fees-skyrocket-over-the-last-two-years/
 
 ⚠️ Confidence flags from the research: Barclays Equity Gilt Study exact figures come from
 adviser summaries of the paywalled study; the FCA 2/5/8 + 2% inflation deduction is

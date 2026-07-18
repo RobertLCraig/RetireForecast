@@ -29,7 +29,7 @@ use RetireForecast\FinanceEngine\Money\Percent;
 final class AssumptionOverrides
 {
     /** The override keys, in the same order the read-only assumptions panel lists them. */
-    public const KEYS = ['investmentGrowth', 'inflation', 'houseGrowth', 'rentGrowth', 'salaryGrowth', 'incomeYield'];
+    public const KEYS = ['investmentGrowth', 'inflation', 'houseGrowth', 'rentGrowth', 'salaryGrowth', 'incomeYield', 'careCostGrowth'];
 
     /**
      * Derive the effective assumption set: the preset overlaid with the user's filled
@@ -61,6 +61,9 @@ final class AssumptionOverrides
         if (self::filled($overrides, 'incomeYield')) {
             $set = $set->withInvestmentIncomeYield(self::percent($overrides['incomeYield']));
         }
+        if (self::filled($overrides, 'careCostGrowth')) {
+            $set = $set->withCareCostRealGrowth(self::percent($overrides['careCostGrowth']));
+        }
 
         return $set;
     }
@@ -81,6 +84,7 @@ final class AssumptionOverrides
             'rentGrowth' => self::format($set->rentInflation->asPercent()),
             'salaryGrowth' => self::format($set->salaryGrowth->asPercent()),
             'incomeYield' => self::format($set->investmentIncomeYield->asPercent()),
+            'careCostGrowth' => self::format($set->careCostRealGrowth()->asPercent()),
         ];
     }
 

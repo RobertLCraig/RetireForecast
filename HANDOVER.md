@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-18 (adversarial output/inflation review → docs/PLAN-output-inflation-and-charts.md)_
+_Last updated: 2026-07-18 (A1 built: care fees escalate at CPI+2% real — first slice of the output/inflation plan)_
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -74,6 +74,14 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](docs/HANDOV
   check). Completeness-tested (`StochasticSalaryGrowthTest`); sanity magnitudes: a salary-driven working couple's
   p10–p90 terminal spread widens £104k → £115k at the shipped 2% (median ~unchanged). No browser sign-off needed
   (engine + fan width). **No MC-growth-determinism divergence remains.**
+- **Done 2026-07-18 — care fees escalate above CPI (A1, DECISIONS 2026-07-18):** the engine drew one CPI series
+  and modelled care as a flat-real cost, so care — the fastest-inflating major UK retirement category — rode flat
+  CPI and understated the tool's headline late-life risk. New `AssumptionSet::careCostRealGrowth` (`?Percent`;
+  null = flat-real, back-compat; shipped presets CPI+2% real, sourced/adverse-default, user-editable as the 7th
+  economic assumption) compounds the sampled self-funder fee above CPI to the year the spell falls, mirroring
+  `propertyCostsRealGrowth`. Null-safe: every stored care run reproduces byte-identically (`CareCostInflationTest`,
+  `MappingRoundTripTest`). First slice of docs/PLAN-output-inflation-and-charts.md; **A2 (care in the deterministic
+  path) is the next item.** No browser sign-off needed (engine + a panel row).
 - **Done 2026-07-18 — sex-differentiated late-life care probability (DECISIONS 2026-07-18):** the stochastic care
   risk drew one flat 0.25 lifetime probability for everyone though `Person::sex` was already threaded to the
   `Simulator` before being dropped at the sampler. Now `CareAssumptions` carries male 0.20 / female 0.30 (~1.5:1,
@@ -105,15 +113,17 @@ The whole post-v1 backlog is built. What remains:
 3. **Optional refinements to built features** (all flagged v1 limits; pick by value) — remaining care flags (age-conditioning of the onset rate + a sex split of the care *duration*; the means-test v1 flags: Pension Credit not counted into the contribution, LA-vs-self-funder fee gap); CGT deemed-occupation absences; an annuitisation retirement-month override. (Done this cluster: both house and salary growth in the Monte Carlo are now stochastic, and the care *probability* is now sex-differentiated — DECISIONS 2026-07-18.) See DATA-MODEL "Known divergences" + docs/PLAN.md.
 4. **CI / data hygiene (remainder).** The freshness guardrails run monthly in CI (the `data-freshness` workflow; takes effect on GitHub once pushed). Low-value hardening: a tamper-evident run hash, forecast caching.
 
-**Specced-but-unbuilt** (pick up when chosen): **output legibility + category (care) inflation + the
-missing time-series charts** ([docs/PLAN-output-inflation-and-charts.md](docs/PLAN-output-inflation-and-charts.md),
-DRAFT — from the 2026-07-18 adversarial review; the correctness items A1 (care rides flat CPI — copy the
-`propertyCostsRealGrowth` pattern) and A2 (care absent from the deterministic path the Affordability screen
-reads) rank high by the accuracy-first rule; the six charts are all buildable from existing `YearResult`
-fields — a presenter/Blade job, not an engine change. All six modelling open-questions are now resolved by a
-sourced research pass — most-adverse defaults, each user-editable — bar one residual State-Pension judgement
-flag for Rob); withdrawal-sequencing #5/#6 (docs/PLAN-withdrawal-sequencing.md, gated on two modelling calls from
-Rob); multi-property (docs/PLAN-multi-property.md, DRAFT); assistant scenario-editing
+**Specced-but-partly-built** (pick up when chosen): **output legibility + category (care) inflation + the
+missing time-series charts** ([docs/PLAN-output-inflation-and-charts.md](docs/PLAN-output-inflation-and-charts.md);
+open questions resolved by the 2026-07-18 research pass, most-adverse defaults each user-editable, bar one
+residual State-Pension judgement flag for Rob). **A1 (care escalates above CPI) is now built (above).** Next by
+the accuracy-first rule is **A2 — put an expected care cost in the deterministic path** (an explicit care-stress
+variant beside a labelled care-free base; care is absent from every deterministic surface the Affordability
+screen reads, so "lasts for life? Yes" is currently computed care-free). Then the six time-series charts (all
+buildable from existing `YearResult` fields — a presenter/Blade job, not an engine change), then B1 verdict-first,
+then A3 fat tails / A4 State-Pension uprating. Build order in the plan's "Build order" section.
+Other unbuilt specs: withdrawal-sequencing #5/#6 (docs/PLAN-withdrawal-sequencing.md, gated on two modelling
+calls from Rob); multi-property (docs/PLAN-multi-property.md, DRAFT); assistant scenario-editing
 (docs/PLAN-assistant-scenario-editing.md, approved scope, not built).
 
 ## Blockers / open questions
@@ -170,6 +180,24 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-18 (A1: care fees escalate above CPI — first slice of the output/inflation plan)_ —
+Resumed and picked up docs/PLAN-output-inflation-and-charts.md build-order #1 (the highest-value item by the
+accuracy-first rule now the plan's open questions are resolved). The engine drew one CPI series and modelled care
+as a flat-real cost, so care — the fastest-inflating major UK retirement category (self-funder fees ran ~10%/yr to
+Dec-2025) — rode flat CPI and understated the tool's headline late-life risk. Copied the proven, null-safe
+`propertyCostsRealGrowth` mechanism exactly: new `AssumptionSet::careCostRealGrowth` (`?Percent`), threaded through
+the `PathDraws` interface (all three drivers) and escalated in the `PathProjector` care leg by `(1+g)^yearIndex`
+before the means test. Shipped default **CPI + 2% real** across all presets (sourced most-adverse standing value —
+care is NLW-pinned staff cost, PSSRU/OBR escalate care unit costs on earnings ~2% real; the ~10%/yr run-rate is an
+NLW+NI spike, not standing), exposed as the **7th user-editable economic assumption** (`careCostGrowth`) per the
+adverse-default-user-editable rule. Null-safe throughout: null keeps care flat-real, the mapper hydrates a pre-A1
+snapshot to null, so every stored care run reproduces byte-identically; new runs carry 2%. Guarded by
+`CareCostInflationTest` (compounds by the expected factor; null/zero byte-identical) + `MappingRoundTripTest`
+(reaches storage; pre-A1 → null). Fixed a stale METHODOLOGY caveat in passing (care probability is split by sex,
+contradicting an adjacent "no split by sex or age" line). Full suite green (913 + 1 advice-mode skip; +2 tests),
+pint clean. **A2 (care in the deterministic path) is the next build-order item** — care is still MC-only, so the
+Affordability verdict still reads a care-free path.
 
 _2026-07-18 (adversarial output/inflation/charts review → a DRAFT plan)_ —
 Rob asked for an adversarial review of the project + docs (wrong assumptions; data gathered-but-unused; how

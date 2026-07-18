@@ -63,6 +63,8 @@ final class AssumptionSetMapper
             // Null = deterministic salary growth; preserved through the round-trip (same contract as house).
             'salaryGrowthVolatility' => $set->salaryGrowthVolatility !== null ? Codec::bps($set->salaryGrowthVolatility) : null,
             'salaryEquityCorrelation' => $set->salaryEquityCorrelation,
+            // Null = flat-real care fees (no above-CPI escalation); preserved through the round-trip.
+            'careCostRealGrowth' => $set->careCostRealGrowth !== null ? Codec::bps($set->careCostRealGrowth) : null,
         ];
     }
 
@@ -98,6 +100,9 @@ final class AssumptionSetMapper
             // salary growth deterministic, so an old stored run reproduces exactly as before.
             salaryGrowthVolatility: isset($payload['salaryGrowthVolatility']) ? Codec::percent($payload['salaryGrowthVolatility']) : null,
             salaryEquityCorrelation: (float) ($payload['salaryEquityCorrelation'] ?? 0.1),
+            // Back-compat: a pre-A1 snapshot has no care escalation; null keeps care fees flat-real,
+            // so an old stored care run reproduces its byte-identical result.
+            careCostRealGrowth: isset($payload['careCostRealGrowth']) ? Codec::percent($payload['careCostRealGrowth']) : null,
             isDefault: $isDefault,
         );
     }
