@@ -39,6 +39,13 @@ class ScenarioCompare extends Component
 {
     public Scenario $base;
 
+    /**
+     * When on, plans whose usable-wealth line falls below £0 at any point (they run out of
+     * spendable money — the deterministic depletion the "Money lasts: No" column reports) are
+     * dropped from every surface here, so the reader can focus on the plans that actually last.
+     */
+    public bool $hideNonViable = false;
+
     /** How many plans the last "re-run all" click queued (0 = none yet). */
     public int $familyQueued = 0;
 
@@ -105,7 +112,25 @@ class ScenarioCompare extends Component
         // results-page ladder uses) AND its latest completed Monte Carlo result. Shared by the
         // deterministic table, the burndown overlay, and the Phase-3 combination comparison, and
         // built the same way the CSV download builds its plan set, so nothing can drift.
-        $plansData = CombinationComparisonData::assemble($this->base, $forecaster);
+        $plansDataFull = CombinationComparisonData::assemble($this->base, $forecaster);
+
+        // The base's own forecast drives the shared milestone annotations even when the base row
+        // is itself hidden by the filter below, so capture it before any hide filter is applied.
+        $baseForecast = $plansDataFull[0]['forecast'];
+
+        // "Non-viable" = the deterministic usable-wealth line falls below £0 at some point (the plan
+        // runs out of spendable money — the same depletion the "Money lasts: No" column reports and
+        // the burndown draws crossing the axis). The toggle drops those plans from every surface
+        // here (table, burndown, Monte-Carlo cards) so nothing conjured shows beside the plans that
+        // last. The toggle itself only appears when there is at least one non-viable plan to hide.
+        $isNonViable = static fn (array $pf): bool => $pf['forecast']->depletionCalendarYear !== null;
+        $anyNonViable = collect($plansDataFull)->contains($isNonViable);
+
+        $plansData = $this->hideNonViable
+            ? array_values(array_filter($plansDataFull, static fn (array $pf): bool => ! $isNonViable($pf)))
+            : $plansDataFull;
+        $hiddenCount = count($plansDataFull) - count($plansData);
+
         $forecasts = collect($plansData);
 
         $plans = $forecasts->map(fn (array $pf): array => $this->summarise($pf['scenario'], $pf['forecast'], $forecaster));
@@ -113,7 +138,6 @@ class ScenarioCompare extends Component
         // Mark the big life events on the comparison chart, from the base plan's timeline (deaths,
         // retirements, State Pension starts are shared across the compared plans; the home sale is
         // the base's). The same annotations the single-scenario charts carry.
-        $baseForecast = $forecasts->first()['forecast'];
         $annotations = ResultPresenter::milestoneAnnotations(ResultPresenter::milestones(
             $this->base->toHousehold(),
             $baseForecast,
@@ -155,6 +179,13 @@ class ScenarioCompare extends Component
         return view('livewire.scenario-compare', [
             'base' => $this->base,
             'plans' => $plans,
+            // The "hide non-viable" toggle: whether any plan is non-viable (so the control shows
+            // at all), whether it is on, how many rows it is currently hiding, and the full plan
+            // count (so the "Re-run all" button still names every plan — the run covers them all).
+            'anyNonViable' => $anyNonViable,
+            'hideNonViable' => $this->hideNonViable,
+            'hiddenCount' => $hiddenCount,
+            'planCount' => count($plansDataFull),
             'burndown' => $burndown,
             'narrative' => $narrative,
             'sourcesShowMortgage' => $showMortgage,

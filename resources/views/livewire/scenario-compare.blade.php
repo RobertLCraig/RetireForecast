@@ -9,7 +9,7 @@
                 @disabled($familyRun['active'])
                 class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50"
                 title="Queue a fresh 10,000-path Monte Carlo run for every plan here — handy after a model change so each plan's results page shows current figures.">
-                <span wire:loading.remove wire:target="runFullFamily">{{ $familyRun['active'] ? 'Running…' : 'Re-run all '.$plans->count().' (full 10k)' }}</span>
+                <span wire:loading.remove wire:target="runFullFamily">{{ $familyRun['active'] ? 'Running…' : 'Re-run all '.$planCount.' (full 10k)' }}</span>
                 <span wire:loading wire:target="runFullFamily">Queuing…</span>
             </button>
             <a href="{{ route('scenarios.afford', $base) }}" class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">What can I afford?</a>
@@ -23,6 +23,21 @@
         running a full simulation. A what-if changes one or more values on the base plan; everything it does not
         change tracks the base.
     </p>
+
+    {{-- Hide non-viable plans: those whose usable-wealth line falls below £0 at any point (the
+         money runs out). Shown only when there is at least one such plan to hide. --}}
+    @if ($anyNonViable)
+        <label class="mt-4 inline-flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" wire:model.live="hideNonViable"
+                   class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+            <span>Hide non-viable plans <span class="text-gray-500">(any that run out of money before the end of the projection)</span></span>
+        </label>
+        @if ($hideNonViable && $hiddenCount > 0)
+            <p class="mt-1 text-xs text-gray-500" role="status">
+                Hiding {{ $hiddenCount }} non-viable {{ $hiddenCount === 1 ? 'plan' : 'plans' }} that {{ $hiddenCount === 1 ? 'runs' : 'run' }} out of money.
+            </p>
+        @endif
+    @endif
 
     {{-- Live progress for the "re-run all" batch: each plan's 10,000-path run, polled until
          every one lands in a terminal state, so a background Monte Carlo run is never silent.
@@ -153,7 +168,9 @@
         </table>
     </div>
 
-    @if ($plans->count() === 1)
+    @if ($plans->count() === 0)
+        <p class="mt-4 text-sm text-gray-500">Every plan runs out of money before the end of the projection, so all are hidden. Untick “Hide non-viable plans” to see them.</p>
+    @elseif ($planCount === 1)
         <p class="mt-4 text-sm text-gray-500">This plan has no what-ifs yet. Create one to see its figures beside the base.</p>
     @endif
 
@@ -174,9 +191,15 @@
             Figures are in today's money. These are consequences, not a recommendation.
         </p>
 
-        <div class="mt-4" wire:ignore>
-            <div x-data="chart(@js($burndown['options']))" role="img"
-                aria-label="Line chart of usable wealth (excluding the home) by year for each plan. The full figures are in the data table below."></div>
+        {{-- Key on the (non-ignored) outer div so toggling "hide non-viable" replaces the subtree
+             and re-inits the chart with the filtered series; wire:ignore inside keeps every poll
+             from disturbing the live canvas. Without the key the wire:ignore'd chart would keep
+             plotting the plans the server already dropped. --}}
+        <div class="mt-4" wire:key="burndown-{{ $hideNonViable ? 'viable' : 'all' }}">
+            <div wire:ignore>
+                <div x-data="chart(@js($burndown['options']))" role="img"
+                    aria-label="Line chart of usable wealth (excluding the home) by year for each plan. The full figures are in the data table below."></div>
+            </div>
         </div>
 
         <details class="mt-4">

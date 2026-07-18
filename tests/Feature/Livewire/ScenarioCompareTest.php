@@ -273,6 +273,45 @@ class ScenarioCompareTest extends TestCase
             ->assertDontSee('of this purchase is unfunded');
     }
 
+    public function test_hide_non_viable_drops_plans_that_run_out_of_money(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user);
+        // A what-if that spends far beyond any income, so its usable money is exhausted before the
+        // end of the projection — a non-viable plan whose burndown line falls below £0.
+        $this->childOf($base, $user, ['expenseLines.ess1.amount' => '500000'], 'Runs out');
+
+        $component = Livewire::test(ScenarioCompare::class, ['scenario' => $base]);
+
+        // The non-viable plan — and the toggle offering to hide it — show by default.
+        $component->assertSee('Runs out')
+            ->assertSee('Hide non-viable plans')
+            ->assertViewHas('anyNonViable', true);
+
+        // The fixture must actually contain a non-viable plan for this test to mean anything.
+        $plans = collect($component->viewData('plans'));
+        $this->assertTrue($plans->contains(fn (array $p): bool => ! $p['moneyLasts']), 'expected a non-viable plan');
+        $viableNames = $plans->filter(fn (array $p): bool => $p['moneyLasts'])->pluck('name')->values()->all();
+
+        // Turning the toggle on removes exactly the non-viable plans from the table.
+        $component->set('hideNonViable', true)
+            ->assertDontSee('Runs out')
+            ->assertViewHas('hiddenCount', 1)
+            ->assertViewHas('plans', fn ($shown): bool => $shown->pluck('name')->values()->all() === $viableNames);
+    }
+
+    public function test_the_toggle_is_absent_when_every_plan_is_viable(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user); // no plan runs out → nothing to hide
+
+        Livewire::test(ScenarioCompare::class, ['scenario' => $base])
+            ->assertViewHas('anyNonViable', false)
+            ->assertDontSee('Hide non-viable plans');
+    }
+
     public function test_compare_is_owner_scoped(): void
     {
         $owner = User::factory()->create();

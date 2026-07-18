@@ -3,6 +3,31 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-18 — "Hide non-viable plans" toggle on the Compare screen
+**Context:** The Compare screen shows the base plan beside every what-if in one table, one burndown chart and one
+set of Monte-Carlo cards. When several what-ifs run out of money (their usable-wealth line falls below £0), the
+reader has to eyeball which plans actually last against the ones that don't, and the burndown chart is crowded with
+lines diving through the axis. A simple filter to focus on the plans that survive was wanted.
+
+**Decisions:**
+1. **"Non-viable" is defined as deterministic depletion:** a plan whose usable-wealth line falls below £0 at some
+   point in the deterministic projection (`YearResult`/forecast `depletionCalendarYear !== null`) — the same
+   depletion the "Money lasts: No" column reports and the burndown draws crossing the axis. Not a Monte-Carlo
+   probability threshold: the filter is a factual "this plan runs out on the expected path", consistent across the
+   table, chart and cards from one definition.
+2. **Pure presentation, no shape change.** A `ScenarioCompare::$hideNonViable` bool filters the assembled plan set
+   (`CombinationComparisonData::assemble`) in `render()` only; the engine, DTOs and stored runs are untouched. The
+   base plan's forecast still drives the shared milestone annotations even when the base row is itself filtered out
+   (captured before the hide filter). "Re-run all" still names and queues **every** plan (`planCount`), not just the
+   visible ones — hiding is a view convenience, never a change to what gets run.
+3. **The toggle only appears when there is at least one non-viable plan to hide** (`anyNonViable`), and an empty-state
+   line covers the all-hidden case. The burndown wrapper is `wire:key`ed on the filter state so toggling replaces the
+   `wire:ignore`d chart subtree and re-inits ApexCharts with the filtered series (without the key the ignored canvas
+   would keep plotting the dropped plans).
+
+**Guard:** `ScenarioCompareTest` — `test_hide_non_viable_drops_plans_that_run_out_of_money` (a spend-beyond-income
+what-if is dropped, exactly the viable names remain) and `test_the_toggle_is_absent_when_every_plan_is_viable`.
+
 ## 2026-07-18 — Stochastic salary growth in the Monte Carlo
 **Context:** With house growth made stochastic earlier today (the entry below), salary growth was the last
 deterministic straight line in the Monte Carlo — the other half of the flagged v1 limit "house/salary growth

@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-18 (stochastic salary growth in the Monte Carlo — the last deterministic growth line closed)_
+_Last updated: 2026-07-18 ("hide non-viable plans" toggle on the Compare screen)_
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -74,6 +74,12 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](docs/HANDOV
   check). Completeness-tested (`StochasticSalaryGrowthTest`); sanity magnitudes: a salary-driven working couple's
   p10–p90 terminal spread widens £104k → £115k at the shipped 2% (median ~unchanged). No browser sign-off needed
   (engine + fan width). **No MC-growth-determinism divergence remains.**
+- **Done 2026-07-18 — "Hide non-viable plans" toggle on Compare (DECISIONS 2026-07-18):** a checkbox that drops any
+  plan whose usable-wealth line falls below £0 (runs out of money on the deterministic path) from the Compare table,
+  burndown chart and Monte-Carlo cards, so the reader can focus on the plans that last. Shown only when there is a
+  non-viable plan to hide; "Re-run all" still queues every plan, not just the visible ones; the burndown is re-keyed
+  so the `wire:ignore`d chart re-renders the filtered series. Pure presentation, no shape change. Awaits browser
+  sign-off with the rest (What's next #1).
 - **Done 2026-07-18 — PDF sale-funding waterfall:** the downloadable/print report now renders the "If you sell"
   block (net-proceeds waterfall → sell-&-rent → sell-&-buy funding: savings drawn, mortgage, unfunded-gap failure),
   built from the SAME `ResultPresenter::saleExplainer` + engine decomposition the results page uses, so print cannot
@@ -147,6 +153,15 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-18 ("hide non-viable plans" toggle on Compare)_ —
+Resumed to find a complete, green, uncommitted feature in the tree (the handover said "nothing mid-edit"): a
+Compare-screen checkbox that hides plans whose usable-wealth line falls below £0 (deterministic depletion) from the
+table, burndown and MC cards. Confirmed it coherent + green (`ScenarioCompareTest` 16/16), Rob confirmed it was this
+work to land, so committed it: pint clean, added the DECISIONS entry + handover Done bullet. "Non-viable" is defined
+off the deterministic `depletionCalendarYear` (same as the "Money lasts: No" column), not an MC probability; pure
+presentation, no shape change; "Re-run all" still queues every plan; the burndown is `wire:key`ed so the ignored
+chart re-inits with the filtered series. Toggle shows only when a non-viable plan exists.
 
 _2026-07-18 (stochastic salary growth in the Monte Carlo — the last deterministic growth line)_ —
 Picked up from What's next #3 (Rob chose it over the public-release blockers and sign-off prep). With house growth
