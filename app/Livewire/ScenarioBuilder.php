@@ -382,6 +382,8 @@ class ScenarioBuilder extends Component
             // Lifetime-mortgage (equity release) roll-up rate: fixed-for-life, so a sane band. Empty = a
             // static/serviced mortgage (the balance does not roll up).
             $rules['property.mortgageRollUpRate'] = ['nullable', 'numeric', 'min:0', 'max:20'];
+            // Voluntary annual overpayment on a rolled-up lifetime mortgage (slows the roll-up); empty = none.
+            $rules['property.mortgageOverpayment'] = ['nullable', 'numeric', 'min:0', 'max:1000000'];
             // Capital-gains history (only meaningful when the home was ever let — see the wizard).
             $rules['property.cgtHistory.purchasePrice'] = $money;
             $rules['property.cgtHistory.improvementCosts'] = $money;
@@ -654,6 +656,7 @@ class ScenarioBuilder extends Component
             // A property saved before the lifetime-mortgage input existed has no key; default it
             // empty (a static/serviced mortgage — the balance does not roll up).
             $this->property['mortgageRollUpRate'] ??= '';
+            $this->property['mortgageOverpayment'] ??= '';
         }
 
         // Every spend line carries an explicit `included` flag so its on/off checkbox binds to a
@@ -1532,6 +1535,7 @@ class ScenarioBuilder extends Component
             'currentValue' => '', 'ownership' => 'outright', 'everLet' => false,
             'outstandingMortgage' => '', 'runningCosts' => '', 'growthAssumptionOverride' => '', 'ownershipShare' => '',
             'mortgageRedemptionYear' => '', 'mortgageMaturityAction' => 'refinance', 'mortgageRollUpRate' => '',
+            'mortgageOverpayment' => '',
             'cgtHistory' => self::blankCgtHistory(),
         ];
     }

@@ -3,6 +3,29 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-19 — Voluntary overpayments on a rolled-up lifetime mortgage
+**Context:** The equity-release roll-up mechanic (`Property::mortgageRollUpRate`, 2026-07-06) compounded the
+balance untouched — it could model "no payments" but not the common product feature of penny-free voluntary
+overpayments (typically up to ~10% of the loan a year) that slow the roll-up. A real equity-release proposal
+being evaluated hinged on exactly this ("you could overpay £1,000/mo"), and modelling it faithfully — the
+balance held near-flat vs ballooning — needed engine support, not just commentary.
+
+**Decisions:**
+1. **`Property::mortgageOverpaymentAnnual` (`?Money`, null = pure roll-up).** A FIXED-nominal amount subtracted
+   from the balance each year in `PathProjector::growState` **after** the roll-up compounds and after the NNEG
+   cap, floored at zero. Applies only when `mortgageRollUpRate` is set (a serviced/RIO mortgage has no rolling
+   balance to overpay). Null/absent reproduces the pre-change roll-up byte-for-byte.
+2. **The cash to fund it is modelled separately, on the "Mortgage" expense line.** The engine reduces the
+   balance; the household must still find the money, entered as the mortgage expense outflow. The two together
+   are the honest trade-off — the estate is better preserved, but the cashflow that pays for it can push the
+   money to run out sooner — rather than a free balance reduction. (Minor known wrinkle: the expense line
+   inflates with CPI while the balance reduction is fixed-nominal, a small conservatism on the cash cost.)
+3. **Builder-wired as an optional field** (blank default, validation, loadState backfill, `BuilderStateFixture`)
+   per the new-field discipline, so a blank value never perturbs a delta-child what-if.
+
+**Guard:** `LifetimeMortgageRollUpTest` — a £5,000/yr overpayment reduces the balance by exactly that after each
+year's compounding (penny-exact), and holds the balance strictly below the pure roll-up every year.
+
 ## 2026-07-18 — Care in the deterministic path as an "if care is needed" stress (A2)
 **Context:** Care was a Monte-Carlo-only risk, absent from the deterministic central projection. But the
 plain-English "What you can afford" verdict (built for the elder couple who can't read the fans) and the

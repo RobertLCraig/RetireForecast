@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-18 (A2 built: care in the deterministic path as an "if care is needed" stress on the Affordability screen)_
+_Last updated: 2026-07-19 (lifetime-mortgage voluntary overpayments — engine support for the roll-up)_
 
 ## Goal & success criteria
 Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -74,6 +74,13 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](docs/HANDOV
   check). Completeness-tested (`StochasticSalaryGrowthTest`); sanity magnitudes: a salary-driven working couple's
   p10–p90 terminal spread widens £104k → £115k at the shipped 2% (median ~unchanged). No browser sign-off needed
   (engine + fan width). **No MC-growth-determinism divergence remains.**
+- **Done 2026-07-19 — voluntary overpayments on a rolled-up lifetime mortgage (DECISIONS 2026-07-19):** the
+  equity-release roll-up could only model "no payments"; now `Property::mortgageOverpaymentAnnual` (`?Money`,
+  null = pure roll-up) subtracts a fixed-nominal overpayment from the balance each year after it compounds
+  (NNEG-capped, floored at 0), so overpaying a lifetime mortgage slows the roll-up and preserves the estate.
+  The cash to fund it rides on the "Mortgage" expense line, so the model shows the honest trade-off (lower
+  balance vs the cashflow that pays for it). Builder-wired as an optional field; `LifetimeMortgageRollUpTest`
+  (penny-exact + strictly-lower-than-pure-roll-up). Built to evaluate a real equity-release proposal.
 - **Done 2026-07-18 — care in the deterministic path as an "if care is needed" stress (A2, DECISIONS 2026-07-18):**
   care was Monte-Carlo-only, so the plain-English Affordability verdict ("lasts for life? Yes") was computed on a
   care-free path — falsely reassuring for the least-numerate reader. Now `DeterministicPathDraws` accepts injected

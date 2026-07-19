@@ -53,7 +53,7 @@ final class LifetimeMortgageRollUpTest extends TestCase
      * £{$homeValue} home carrying a £{$mortgage} mortgage that either rolls up at $rollUpRate or
      * stays static (null).
      */
-    private function couple(int $homeValue, int $mortgage, ?Percent $rollUpRate): Household
+    private function couple(int $homeValue, int $mortgage, ?Percent $rollUpRate, ?Money $overpayment = null): Household
     {
         return new Household(
             'Equity release',
@@ -77,6 +77,7 @@ final class LifetimeMortgageRollUpTest extends TestCase
                 OwnershipType::Outright,
                 outstandingMortgage: Money::fromPounds($mortgage),
                 mortgageRollUpRate: $rollUpRate,
+                mortgageOverpaymentAnnual: $overpayment,
             ),
             relationshipStatus: RelationshipStatus::MarriedOrCivilPartnership,
         );
@@ -110,6 +111,35 @@ final class LifetimeMortgageRollUpTest extends TestCase
 
         // And it genuinely grows (not a static balance dressed up).
         $this->assertGreaterThan($balances[0], $balances[5]);
+    }
+
+    public function test_a_voluntary_overpayment_slows_the_roll_up_to_the_penny(): void
+    {
+        // £100k at 6.5% on a £500k home, overpaying £5,000/yr: each year the balance grows at the
+        // rate then the fixed overpayment pays some back — next == round(prev × 1.065) − 500,000p.
+        $result = $this->forecast($this->couple(500_000, 100_000, Percent::fromPercent(6.5), Money::fromPounds(5_000)));
+
+        $balances = array_map(static fn ($y) => $y->mortgageBalance()->pence, $result->years);
+        for ($i = 0; $i < 5; $i++) {
+            $expected = max(0, (int) round($balances[$i] * 1.065) - 500_000);
+            $this->assertSame($expected, $balances[$i + 1], "year {$i}→".($i + 1).' roll-up net of the overpayment');
+        }
+    }
+
+    public function test_an_overpayment_leaves_a_smaller_balance_than_pure_roll_up(): void
+    {
+        // Same roll-up, one overpaying £5,000/yr: the overpaid balance is strictly lower every year,
+        // so the estate is better preserved (the point of overpaying a lifetime mortgage).
+        $pure = $this->forecast($this->couple(500_000, 100_000, Percent::fromPercent(6.5)));
+        $overpaid = $this->forecast($this->couple(500_000, 100_000, Percent::fromPercent(6.5), Money::fromPounds(5_000)));
+
+        $pureBalances = array_map(static fn ($y) => $y->mortgageBalance()->pence, $pure->years);
+        $overpaidBalances = array_map(static fn ($y) => $y->mortgageBalance()->pence, $overpaid->years);
+
+        // From the first roll-up year on, overpaying keeps the balance below the pure roll-up.
+        for ($i = 1; $i < 6; $i++) {
+            $this->assertLessThan($pureBalances[$i], $overpaidBalances[$i], "year {$i}: overpayment holds the balance lower");
+        }
     }
 
     public function test_a_static_mortgage_does_not_roll_up(): void

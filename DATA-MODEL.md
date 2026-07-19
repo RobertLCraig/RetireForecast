@@ -89,6 +89,7 @@ see Known divergences.)
 | running_costs | Money 🔒 | pence/yr | yes | maintenance + insurance + council tax |
 | growth_assumption | Percent | bps/yr | yes | |
 | mortgage_roll_up_rate | Percent | bps/yr | yes | **2026-07-06** — a lifetime-mortgage (equity-release) roll-up rate: fixed nominal, fixed for life. Null = static balance (repayment/serviced, the prior behaviour). Set = the `outstanding_mortgage` COMPOUNDS unpaid in `PathProjector::growState`, NNEG-capped at the home value, repaid from the estate (feeds IHT). See DECISIONS 2026-07-06 |
+| mortgage_overpayment | Money 🔒 | pence/yr | yes | **2026-07-19** — a voluntary FIXED-nominal annual overpayment on a rolled-up lifetime mortgage (only meaningful when `mortgage_roll_up_rate` is set): subtracted from the balance each year AFTER the roll-up compounds, floored at 0, so it slows the roll-up and preserves the estate. Null/0 = pure roll-up. The cash to fund it is a separate outflow (a "Mortgage" expense line of the same amount), so the two together show the honest trade-off: a lower balance bought with cashflow the household must find. See DECISIONS 2026-07-19 |
 
 ### Account
 | Field | Type | Units | Nullable | Notes |

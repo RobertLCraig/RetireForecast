@@ -40,6 +40,15 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * (RIO), whose interest — if any — is entered as an expense line, not accrued here. Set it only
  * for the no-payments roll-up case; an interest-serviced lifetime mortgage keeps the balance
  * level, so it leaves this null and carries the interest as an expense (like a RIO).
+ *
+ * $mortgageOverpaymentAnnual is a voluntary annual overpayment on a rolled-up lifetime mortgage:
+ * many products allow penalty-free overpayments (typically up to ~10% of the loan a year) that
+ * reduce the balance, slowing the roll-up. It is a FIXED NOMINAL amount subtracted from the balance
+ * each year AFTER the roll-up compounds (the balance grows at the rate, then the overpayment pays
+ * some back). Applies only when $mortgageRollUpRate is set (a serviced/RIO mortgage has no rolling
+ * balance to overpay); null (the default) = pure roll-up, no overpayment. The cash to fund it is a
+ * separate outflow (a "Mortgage" expense line of the same amount), so the two together model an
+ * overpayment honestly: the balance falls, but the household must find the money to pay it.
  */
 final class Property
 {
@@ -57,5 +66,6 @@ final class Property
         public readonly MortgageMaturityAction $mortgageMaturityAction = MortgageMaturityAction::Refinance,
         public readonly bool $isLet = false,
         public readonly ?Percent $mortgageRollUpRate = null,
+        public readonly ?Money $mortgageOverpaymentAnnual = null,
     ) {}
 }

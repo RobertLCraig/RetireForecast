@@ -561,6 +561,7 @@ final class HouseholdAssembler
             mortgageMaturityAction: MortgageMaturityAction::from($p['mortgageMaturityAction'] ?? 'refinance'),
             isLet: (bool) ($p['isLet'] ?? false),
             mortgageRollUpRate: $this->percent($p['mortgageRollUpRate'] ?? null),
+            mortgageOverpaymentAnnual: $this->money($p['mortgageOverpayment'] ?? null),
         );
     }
 

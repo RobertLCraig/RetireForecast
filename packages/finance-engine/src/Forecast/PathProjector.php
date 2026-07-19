@@ -499,6 +499,9 @@ final class PathProjector
             // A lifetime-mortgage roll-up rate (fixed nominal, fixed for life); null = the balance
             // is static (a repayment/interest-serviced mortgage), the existing behaviour.
             'mortgageRollUpRate' => $household->primaryResidence?->mortgageRollUpRate?->asFraction(),
+            // A voluntary fixed-nominal annual overpayment that reduces a rolled-up lifetime-mortgage
+            // balance (null/0 = pure roll-up). The cash to fund it rides on the Mortgage expense line.
+            'mortgageOverpaymentAnnual' => $household->primaryResidence?->mortgageOverpaymentAnnual?->pence ?? 0,
             'giaOverrideYield' => $giaOverrideYield,   // per-person balance-weighted override rate
             'giaOverrideShare' => $giaOverrideShare,   // per-person share of GIA under an override
         ];
@@ -2012,7 +2015,9 @@ final class PathProjector
         // repayment/interest-serviced mortgage, whose interest is an expense line, not accrued).
         if ($state['mortgageRollUpRate'] !== null && $state['mortgageOutstanding'] > 0) {
             $rolled = (int) round($state['mortgageOutstanding'] * (1.0 + $state['mortgageRollUpRate']));
-            $state['mortgageOutstanding'] = min($rolled, $state['property']);
+            // A voluntary overpayment pays some of the (grown) balance back down each year, slowing
+            // the roll-up. Fixed nominal, floored at zero; the cash for it is the Mortgage expense line.
+            $state['mortgageOutstanding'] = max(0, min($rolled, $state['property']) - $state['mortgageOverpaymentAnnual']);
         }
 
         $rentNominal = (1.0 + $state['rentInflationReal']) * (1.0 + $infl) - 1.0;
