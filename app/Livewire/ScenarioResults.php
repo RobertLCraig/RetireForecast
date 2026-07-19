@@ -413,6 +413,17 @@ class ScenarioResults extends Component
             }
         }
 
+        // The three hero time-series charts (income staircase / wealth composition / costs)
+        // for the selected strategy — built from the SAME deterministic forecast the ladder
+        // reads, so they can't drift from it. Overlay the same life-event verticals the ladder
+        // milestones mark, so a step change (retirement, State Pension, a sale) is legible.
+        $ladderMilestones = ResultPresenter::milestones($household, $ladderForecast, homeSold: $homeSold);
+        $timeSeries = ResultPresenter::timeSeriesCharts($ladderForecast);
+        $milestoneAnnotations = ResultPresenter::milestoneAnnotations($ladderMilestones);
+        foreach (['income', 'wealth', 'costs'] as $chartKey) {
+            $timeSeries[$chartKey]['options']['annotations']['xaxis'] = $milestoneAnnotations;
+        }
+
         return view('livewire.scenario-results', [
             'run' => $run,
             'resultsRun' => $resultsRun,
@@ -457,6 +468,9 @@ class ScenarioResults extends Component
             // Deterministic year-by-year cashflow ladder (income by source -> tax -> spend
             // -> wealth) for the selected housing strategy. Shows immediately, before any run.
             'ladder' => ResultPresenter::ladder($ladderForecast, $this->scenario->safetyBufferMonths()),
+            // The three hero time-series charts for the selected strategy (income / wealth /
+            // costs over time), each with a <details> table twin reconciling to the ladder.
+            'timeSeries' => $timeSeries,
             // Live what-if sliders: a throwaway deterministic re-forecast with the adjustments applied.
             'canMakeWhatIf' => ! $this->scenario->isChild(),
             'sliderSummary' => $this->sliderSummary(),
@@ -467,7 +481,7 @@ class ScenarioResults extends Component
             // Life-event milestones (when each person retires / SP starts / takes a pension /
             // dies, and — for a sell strategy — when the home is sold), so the year-by-year
             // cashflow is legible: what drives each step change.
-            'milestones' => ResultPresenter::milestones($household, $ladderForecast, homeSold: $homeSold),
+            'milestones' => $ladderMilestones,
             // Input-sanity heads-up where an entered value did something drastic (no salary
             // because retirement age <= current age; a death floored to the base year).
             'inputNotes' => ResultPresenter::inputNotes($household, $forecast),

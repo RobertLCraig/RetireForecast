@@ -828,6 +828,241 @@ final class ResultPresenter
         return false;
     }
 
+    /**
+     * The validated 8-slot categorical palette (dataviz reference instance, light
+     * surface, in stacking order — worst adjacent CVD ΔE 9.1) plus a neutral "Other"
+     * grey. Used for the stacked-area time-series charts; the three sub-3:1 slots
+     * (magenta / yellow / aqua) meet the relief rule via the <details> table twin every
+     * chart ships. Assigned in slot order so adjacency stays CVD-safe.
+     */
+    private const SERIES_COLOURS = ['#2a78d6', '#008300', '#e87ba4', '#eda100', '#1baf7a', '#eb6834', '#4a3aa7', '#e34948'];
+
+    private const OTHER_COLOUR = '#898781';
+
+    /**
+     * The three hero time-series charts (C1 income staircase, C2 wealth composition,
+     * C3 costs over time), each a stacked-area ApexCharts blob over the deterministic
+     * projection years plus a reconciling <details> table. Built from the SAME
+     * {@see ForecastResult::$years} the cashflow {@see ladder()} reads, so a chart can
+     * never drift from the ladder (one definition — asserted in the reconciliation test).
+     *
+     * All figures are REAL (today's money), like the ladder and fan; a stacked band is
+     * therefore always ≥ £0 (incomes, wealth legs and spend are each non-negative), so the
+     * axis anchors at zero with no shortfall band. The C1 stack is capped at the palette's
+     * eight hues: if more than eight income sources occur across the horizon, the
+     * smallest-contributing fold into a neutral "Other" band on the CHART — the income
+     * table + CSV still list every source, so nothing is silently dropped (completeness).
+     *
+     * @return array{income: array<string, mixed>, wealth: array<string, mixed>, costs: array<string, mixed>}
+     */
+    public static function timeSeriesCharts(ForecastResult $forecast): array
+    {
+        // The per-year age labels for the x-axis, straight from the engine's own per-year
+        // ages (YearResult::ages), so the chart axis reads the same ages the ladder does.
+        $ageByYear = [];
+        foreach ($forecast->years as $year) {
+            $ageByYear[$year->calendarYear] = implode(' / ', $year->ages);
+        }
+
+        return [
+            'income' => self::incomeStaircase($forecast, $ageByYear),
+            'wealth' => self::wealthComposition($forecast, $ageByYear),
+            'costs' => self::costsOverTime($forecast, $ageByYear),
+        ];
+    }
+
+    /**
+     * C1 — the income staircase: a stacked area of every income source that occurs, over
+     * time, so the salary → DB → State-Pension → drawdown handover reads at a glance.
+     *
+     * @return array{options: array<string, mixed>, sources: list<string>, sourceLabels: array<string, string>, rows: list<array<string, mixed>>, folded: list<string>}
+     */
+    private static function incomeStaircase(ForecastResult $forecast, array $ageByYear): array
+    {
+        // Every source that pays out in some year, in canonical order (no silent drop).
+        $active = array_values(array_filter(
+            YearResult::INCOME_SOURCES,
+            fn (string $source): bool => self::sourceOccurs($forecast, $source),
+        ));
+
+        // Cap the CHART at the eight palette hues: keep the eight largest by horizon-total
+        // (canonical order preserved), fold any remainder into a single "Other" band. The
+        // table below still carries every source, so completeness is never lost.
+        $charted = $active;
+        $folded = [];
+        if (count($active) > count(self::SERIES_COLOURS)) {
+            $totals = [];
+            foreach ($active as $source) {
+                $sum = Money::zero();
+                foreach ($forecast->years as $year) {
+                    $sum = $sum->plus($year->incomeBySource[$source] ?? Money::zero());
+                }
+                $totals[$source] = $sum->pence;
+            }
+            arsort($totals);
+            $keep = array_slice(array_keys($totals), 0, count(self::SERIES_COLOURS));
+            $charted = array_values(array_filter($active, fn (string $s): bool => in_array($s, $keep, true)));
+            $folded = array_values(array_filter($active, fn (string $s): bool => ! in_array($s, $keep, true)));
+        }
+
+        $series = [];
+        $colours = [];
+        foreach ($charted as $i => $source) {
+            $series[] = [
+                'name' => self::SOURCE_LABELS[$source],
+                'data' => array_map(
+                    fn (YearResult $y): array => ['x' => $y->calendarYear, 'y' => self::pounds($y->incomeBySource[$source] ?? Money::zero())],
+                    $forecast->years,
+                ),
+            ];
+            $colours[] = self::SERIES_COLOURS[$i];
+        }
+        if ($folded !== []) {
+            $series[] = [
+                'name' => 'Other income',
+                'data' => array_map(function (YearResult $y) use ($folded): array {
+                    $sum = Money::zero();
+                    foreach ($folded as $source) {
+                        $sum = $sum->plus($y->incomeBySource[$source] ?? Money::zero());
+                    }
+
+                    return ['x' => $y->calendarYear, 'y' => self::pounds($sum)];
+                }, $forecast->years),
+            ];
+            $colours[] = self::OTHER_COLOUR;
+        }
+
+        // The complete per-source table (every active source, canonical order) — the
+        // accessible source of truth the chart is a progressive enhancement over. The total
+        // is the sum of the sources (the stacked height), which spans more than the taxable
+        // grossIncome (it includes tax-free cash, savings drawn and one-off receipts).
+        $rows = array_map(function (YearResult $y) use ($active): array {
+            $income = [];
+            $total = Money::zero();
+            foreach ($active as $source) {
+                $amount = $y->incomeBySource[$source] ?? Money::zero();
+                $income[$source] = $amount->format();
+                $total = $total->plus($amount);
+            }
+
+            return ['year' => $y->calendarYear, 'ages' => implode(' / ', $y->ages), 'income' => $income, 'total' => $total->format()];
+        }, $forecast->years);
+
+        return [
+            'options' => self::stackedArea($series, $colours, 'Income (real £)', $ageByYear),
+            'sources' => $active,
+            'sourceLabels' => self::SOURCE_LABELS,
+            'rows' => $rows,
+            'folded' => $folded,
+        ];
+    }
+
+    /**
+     * C2 — where your wealth is: a stacked area of the three wealth legs (pension, liquid
+     * savings, home equity) over time. The three sum to {@see YearResult::$totalWealth} by
+     * construction, so the stack total is the net-worth line.
+     *
+     * @return array{options: array<string, mixed>, rows: list<array<string, mixed>>}
+     */
+    private static function wealthComposition(ForecastResult $forecast, array $ageByYear): array
+    {
+        $legs = [
+            ['name' => 'Pensions', 'get' => fn (YearResult $y): Money => $y->pensionWealth],
+            ['name' => 'Savings & investments', 'get' => fn (YearResult $y): Money => $y->liquidWealth],
+            ['name' => 'Home equity', 'get' => fn (YearResult $y): Money => $y->homeEquity()],
+        ];
+
+        $series = [];
+        foreach ($legs as $leg) {
+            $series[] = [
+                'name' => $leg['name'],
+                'data' => array_map(
+                    fn (YearResult $y): array => ['x' => $y->calendarYear, 'y' => self::pounds(($leg['get'])($y))],
+                    $forecast->years,
+                ),
+            ];
+        }
+
+        $rows = array_map(fn (YearResult $y): array => [
+            'year' => $y->calendarYear,
+            'ages' => implode(' / ', $y->ages),
+            'pension' => $y->pensionWealth->format(),
+            'liquid' => $y->liquidWealth->format(),
+            'homeEquity' => $y->homeEquity()->format(),
+            'total' => $y->totalWealth->format(),
+        ], $forecast->years);
+
+        return [
+            'options' => self::stackedArea($series, array_slice(self::SERIES_COLOURS, 0, 3), 'Wealth (real £)', $ageByYear),
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * C3 — costs over time: a stacked area of essential vs discretionary spend, so the
+     * age-varying spending smile is legible. The two sum to {@see YearResult::$spendTarget}
+     * (discretionary = target − essential, floored), the same split the ladder itemises.
+     *
+     * @return array{options: array<string, mixed>, rows: list<array<string, mixed>>}
+     */
+    private static function costsOverTime(ForecastResult $forecast, array $ageByYear): array
+    {
+        $discretionary = fn (YearResult $y): Money => $y->spendTarget->minus($y->essentialSpend)->minZero();
+
+        $series = [
+            [
+                'name' => 'Essential',
+                'data' => array_map(fn (YearResult $y): array => ['x' => $y->calendarYear, 'y' => self::pounds($y->essentialSpend)], $forecast->years),
+            ],
+            [
+                'name' => 'Discretionary',
+                'data' => array_map(fn (YearResult $y): array => ['x' => $y->calendarYear, 'y' => self::pounds($discretionary($y))], $forecast->years),
+            ],
+        ];
+
+        $rows = array_map(fn (YearResult $y): array => [
+            'year' => $y->calendarYear,
+            'ages' => implode(' / ', $y->ages),
+            'essential' => $y->essentialSpend->format(),
+            'discretionary' => $discretionary($y)->format(),
+            'total' => $y->spendTarget->format(),
+        ], $forecast->years);
+
+        return [
+            'options' => self::stackedArea($series, array_slice(self::SERIES_COLOURS, 0, 2), 'Spending (real £)', $ageByYear),
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * A stacked-area ApexCharts option blob shared by the three time-series charts: real
+     * pounds on a £-abbreviated y-axis anchored at zero, the calendar-year x-axis relabelled
+     * with ages ({@see agesByYear}), a 1px surface stroke between bands (the marks spec's
+     * surface gap), and the same `moneyAxis` / `ageByYear` flags {@see \resources\js\charts.js}
+     * resolves client-side. Milestone x-axis annotations are merged in by the caller.
+     *
+     * @param  list<array<string, mixed>>  $series
+     * @param  list<string>  $colours
+     * @return array<string, mixed>
+     */
+    private static function stackedArea(array $series, array $colours, string $yTitle, array $ageByYear): array
+    {
+        return [
+            'chart' => ['type' => 'area', 'stacked' => true, 'height' => 340, 'toolbar' => ['show' => false]],
+            'colors' => $colours,
+            'series' => $series,
+            'dataLabels' => ['enabled' => false],
+            'stroke' => ['curve' => 'straight', 'width' => 1, 'colors' => ['#ffffff']],
+            'fill' => ['type' => 'solid', 'opacity' => 0.85],
+            'markers' => ['size' => 0],
+            'moneyAxis' => true,
+            'ageByYear' => $ageByYear === [] ? null : $ageByYear,
+            'xaxis' => ['type' => 'numeric', 'tickAmount' => 8, 'decimalsInFloat' => 0, 'title' => ['text' => 'Calendar year']],
+            'yaxis' => ['min' => 0, 'forceNiceScale' => true, 'title' => ['text' => $yTitle]],
+            'legend' => ['position' => 'top'],
+        ];
+    }
+
     /** When same-year milestones tie, order them by life sequence (sale → work → pension → death). */
     private const MILESTONE_ORDER = ['house_sale' => -1, 'retirement' => 0, 'pension_access' => 1, 'state_pension' => 2, 'death' => 3];
 

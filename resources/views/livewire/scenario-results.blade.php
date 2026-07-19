@@ -23,6 +23,7 @@
         ['id' => 'sec-assumptions', 'label' => 'Assumptions used', 'show' => true],
         ['id' => 'sec-sale', 'label' => 'If you sell', 'show' => (bool) $saleExplainer],
         ['id' => 'sec-milestones', 'label' => 'Life events', 'show' => (bool) $milestones],
+        ['id' => 'sec-money-over-time', 'label' => 'Money over time', 'show' => ! empty($timeSeries['income']['rows'])],
         ['id' => 'sec-ladder', 'label' => 'Year-by-year cashflow', 'show' => ! empty($ladder['rows'])],
         ['id' => 'sec-explore', 'label' => 'Build a what-if', 'show' => $canMakeWhatIf],
         ['id' => 'sec-how-far', 'label' => 'How far can we go?', 'show' => true],
@@ -1029,6 +1030,12 @@
                 @endforeach
             </ul>
         </section>
+    @endif
+
+    {{-- The three hero time-series charts (income / wealth / costs over time), each with its
+         <details> table twin — the pictures for the same figures the ladder below lists. --}}
+    @if (! empty($timeSeries['income']['rows']))
+        @include('livewire.partials.time-series-charts')
     @endif
 
     {{-- Year-by-year cashflow ladder. The deterministic central projection, so it shows

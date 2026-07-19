@@ -3,6 +3,39 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-19 — The three hero time-series charts (C1 income, C2 wealth, C3 costs)
+**Context:** An adversarial review (2026-07-18, docs/PLAN-output-inflation-and-charts.md Part C) found that
+nearly every chart a user would want already has its data computed per year on `YearResult` and thrown at a
+table instead of a picture — only one time-series chart (the Monte-Carlo wealth fan) existed. Third build-order
+item of that plan (the presentation slice, after A1/A2 correctness).
+
+**Decisions:**
+1. **Three stacked-area charts on the deterministic projection**, added as a "Money over time" section before
+   the year-by-year cashflow ladder: **C1 income staircase** (every income source stacked over time — the
+   salary → DB → State-Pension → drawdown handover), **C2 wealth composition** (pensions / savings &
+   investments / home equity, summing to net worth), **C3 costs** (essential vs discretionary, showing the
+   age-varying spending smile). Presenter + Blade only, **no engine change** — all figures already on
+   `YearResult`.
+2. **Built from the SAME `ForecastResult->years` the ladder reads** (`ResultPresenter::timeSeriesCharts()`), so
+   a chart can never drift from the ladder table (one definition). Each chart ships its `<details>` table twin
+   (the accessible source of truth; the canvas is a progressive enhancement) and reconciles to the ladder
+   cell-for-cell — guarded by `TimeSeriesChartsTest` (income cols sum to the total; wealth legs sum to net
+   worth; essential + discretionary = spend; all cross-checked against the ladder).
+3. **Real (today's-money) terms only**, like the ladder and fan; every stacked band is therefore ≥ £0, so the
+   axis anchors at zero with no shortfall band. **The nominal-pounds toggle (also in the plan's slice #3) is
+   deferred** to its own slice: showing nominal figures needs the engine's internal pre-deflation values
+   exposed, and re-deriving them by re-inflating in the presenter would duplicate the projector's deflation
+   logic and risk drift (violating the one-definition rule) — so it is an engine decision, not a presenter one.
+4. **Categorical colour from the validated dataviz reference palette** (eight-hue set, documented stacking
+   order, CVD-checked on the app's white surface via `scripts/validate_palette.js`); the three sub-3:1 light
+   slots meet the relief rule via the `<details>` table twin. The C1 stack **caps at the eight palette hues**:
+   if more than eight income sources occur, the smallest-contributing fold into a neutral "Other" band on the
+   CHART only — the table + CSV still list every source, so completeness holds (no silent drop). The same
+   life-event milestone verticals the ladder marks are overlaid on all three charts.
+
+**Guard:** `TimeSeriesChartsTest` (reconciliation to the ladder + net-worth/spend totals; non-negative stacked
+pounds; the >8-source fold keeps every source in the table). `ScenarioResultsTest` renders the new section.
+
 ## 2026-07-19 — Voluntary overpayments on a rolled-up lifetime mortgage
 **Context:** The equity-release roll-up mechanic (`Property::mortgageRollUpRate`, 2026-07-06) compounded the
 balance untouched — it could model "no payments" but not the common product feature of penny-free voluntary
