@@ -41,12 +41,12 @@ _Last updated: 2026-07-03 (built)_
 ## What this is, and the gap it closes
 `MortgageMaturityAction::ForcedSale` means "the home cannot be kept — it must be sold" (BTL breach,
 a forced redemption with no refinance). Today it is **a no-op in the projection**: the projector
-handles only `RepayFromCapital` ([PathProjector.php:461](../packages/finance-engine/src/Forecast/PathProjector.php#L461));
+handles only `RepayFromCapital` ([PathProjector.php:461](../../packages/finance-engine/src/Forecast/PathProjector.php#L461));
 `ForcedSale`'s enum doc says _"v1 directs this to the sell variants"_
-([MortgageMaturityAction.php:18-20](../packages/finance-engine/src/Dto/MortgageMaturityAction.php#L18-L20)),
+([MortgageMaturityAction.php:18-20](../../packages/finance-engine/src/Dto/MortgageMaturityAction.php#L18-L20)),
 and the results page just shows an **input note** telling the user to weigh the sell-and-rent /
 buy-cheaper what-ifs on Compare
-([ResultPresenter.php:899](../app/Forecast/ResultPresenter.php#L899)).
+([ResultPresenter.php:899](../../app/Forecast/ResultPresenter.php#L899)).
 
 So a base / "stay put" projection with `ForcedSale` **keeps the home forever** — physically
 impossible, the exact plausible-but-wrong outcome the project guards against. The existing sell
@@ -61,14 +61,14 @@ what-if needed to see the realistic path).
 
 ## The event (design)
 Add a **forced-sale event** in `PathProjector::projectYear`, parallel to the RepayFromCapital block
-([PathProjector.php:451-468](../packages/finance-engine/src/Forecast/PathProjector.php#L451-L468)),
+([PathProjector.php:451-468](../../packages/finance-engine/src/Forecast/PathProjector.php#L451-L468)),
 that fires once at the redemption year when `mortgageMaturityAction === ForcedSale`. It sells the home
 and flips the household onto a renting footing **from that year on** via a new `state['homeSold']`
 flag:
 
 At the sale year:
 1. **Sale price = the grown property value** this year (`state['property']`, which `growState`
-   appreciates each year — [PathProjector.php:1320](../packages/finance-engine/src/Forecast/PathProjector.php#L1320)),
+   appreciates each year — [PathProjector.php:1320](../../packages/finance-engine/src/Forecast/PathProjector.php#L1320)),
    NOT the year-0 `HousingAction::salePrice`.
 2. **Net proceeds = sale price − outstanding mortgage − selling costs − CGT.** Reuse the engine's
    single source where possible: selling costs at the engine default (2%) or the entered rate; CGT via
@@ -82,16 +82,16 @@ At the sale year:
    (drawable now the estate-inheritance fix has landed). Set its cost basis = proceeds (no latent gain).
 
 From the sale year on (gate on `state['homeSold']`):
-5. **Stop the property running costs** ([PathProjector.php:493-494](../packages/finance-engine/src/Forecast/PathProjector.php#L493-L494))
+5. **Stop the property running costs** ([PathProjector.php:493-494](../../packages/finance-engine/src/Forecast/PathProjector.php#L493-L494))
    and the `propertyCosts` + `mortgageCosts` contingent spend (the home is gone) — reuse the
    `while_mortgaged` / `while_owning_home` drop machinery just added.
 6. **Charge rent** from that year (see Open question 1 for the rent level). The rent leg today keys off
    `settings->annualRent` for the whole projection
-   ([PathProjector.php:485-486](../packages/finance-engine/src/Forecast/PathProjector.php#L485-L486)) —
+   ([PathProjector.php:485-486](../../packages/finance-engine/src/Forecast/PathProjector.php#L485-L486)) —
    generalise it to also start when `homeSold` becomes true mid-projection.
 7. **The freed proceeds are assessable capital** for Pension Credit from the sale year (they are no
    longer the exempt main residence) — the same rule the `isLet` case already applies
-   ([PathProjector.php:619](../packages/finance-engine/src/Forecast/PathProjector.php#L619)); extend
+   ([PathProjector.php:619](../../packages/finance-engine/src/Forecast/PathProjector.php#L619)); extend
    that condition to `|| homeSold`.
 
 ## Decisions (resolved by Rob, 2026-07-01)
@@ -120,7 +120,7 @@ From the sale year on (gate on `state['homeSold']`):
 
 ## Touch-points (once the decisions are made)
 - **State** — add `state['homeSold'] = false` in `initialState()`
-  ([PathProjector.php:225-236](../packages/finance-engine/src/Forecast/PathProjector.php#L225-L236)).
+  ([PathProjector.php:225-236](../../packages/finance-engine/src/Forecast/PathProjector.php#L225-L236)).
 - **Event** — the forced-sale block in `projectYear` (after the RepayFromCapital block).
 - **`ForecastSettings` / rent** — let rent start mid-projection when `homeSold` (not only the year-0
   `annualRent` leg).

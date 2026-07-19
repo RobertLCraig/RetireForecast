@@ -249,7 +249,7 @@ scraping.
 ### Competitive gap analysis (2026-06-30) — post-v1 backlog additions
 A full-market scan (UK providers, robo/aggregator apps, independent consumer tools, prosumer/FIRE tools,
 UK adviser cashflow software, and the FCA framing) is captured in
-**[docs/RESEARCH-competitive-gap-analysis.md](RESEARCH-competitive-gap-analysis.md)**. Conclusion: the engine
+**[docs/RESEARCH-competitive-gap-analysis.md](../research/RESEARCH-competitive-gap-analysis.md)**. Conclusion: the engine
 already matches/beats the field (only Timeline also has stochastic mortality; no UK consumer tool combines a
 stochastic engine + HMRC tax + housing). The gaps are a **decumulation-policy + framing layer**. The genuinely
 **new, aligned** items (the existing triage above already covers the historical stress-test panel, what-if
@@ -453,7 +453,7 @@ the gifting lever or the smile is picked up.
 
 ### Delta-research backlog (2026-07-02) — communication, household, adviser outputs, a11y, methodology
 A second research wave over the five topics the competitive scan left as residuals/gaps. Full findings +
-sources + the adversarial source-check: **[docs/RESEARCH-delta-2026-07-02.md](RESEARCH-delta-2026-07-02.md)**.
+sources + the adversarial source-check: **[docs/RESEARCH-delta-2026-07-02.md](../research/RESEARCH-delta-2026-07-02.md)**.
 Conclusion: the engine is (again) not the gap — these are **presentation, disclosure and a small scope**
 items. Ranked by value × on-brand fit. **All stay education/guidance-side (banned-phrasing lint); directive
 forms behind `compliance.personal_use`.**
@@ -593,7 +593,7 @@ the couple's figures: DECISIONS 2026-06-30 (forced-mortgage pressure-test; input
 
 ### Sector-informed build plan (2026-06-25) — edit/clone/compare, line-item expenditure, drill-down
 Research into how the cashflow-modelling sector solves these (Voyant/Timeline/CashCalc + PLSA/SMPI)
-is captured in **[docs/RESEARCH-cashflow-modelling.md](RESEARCH-cashflow-modelling.md)**. These are
+is captured in **[docs/RESEARCH-cashflow-modelling.md](../research/RESEARCH-cashflow-modelling.md)**. These are
 solved problems — we follow the proven shape and customise. Agreed build order:
 
 **0. Checkpoint** ✅ done (commit `2b5abc8`). **Rebuild authorised (2026-06-25):** the scenario +
@@ -928,8 +928,8 @@ per-year spend — pending his browser sign-off. His browser pass then set the r
 Rob's ask: let the wizard **ingest uploaded documents** (bank statements, credit-card statements,
 payslips, benefit/State-Pension statements), **pre-fill** every field it can extract, then **ask only
 the remainder** — and build the budget from **what the household actually spends**, not "average user"
-national figures. Full design + sector evidence: **[docs/RESEARCH-document-import.md](RESEARCH-document-import.md)**.
-This is the correct framing of the [Ollama/local-AI question](RESEARCH-document-import.md): the model's
+national figures. Full design + sector evidence: **[docs/RESEARCH-document-import.md](../research/RESEARCH-document-import.md)**.
+This is the correct framing of the [Ollama/local-AI question](../research/RESEARCH-document-import.md): the model's
 job here is **wrangling, not predicting**, and most of the feature is **deterministic matching**.
 
 Key calls (settled in DECISIONS 2026-06-28):
@@ -966,7 +966,7 @@ hallucination, data exfiltration, actuals-as-retirement-budget, PDF mis-read).
 ### In-app local-model assistant (2026-07-03) — Phases 1–2 BUILT, Phase 3 SPECCED, post-v1
 Rob's ask: an in-page **"chatbot"** on a **local AI model** that (1) answers questions about the loaded
 scenario + the project, (2) queues research requests, and (3) is the interface for building the
-feature/task list. Full spec + feasibility: **[docs/RESEARCH-local-assistant.md](RESEARCH-local-assistant.md)**.
+feature/task list. Full spec + feasibility: **[docs/RESEARCH-local-assistant.md](../research/RESEARCH-local-assistant.md)**.
 The correct framing (inherited from the document-import local-AI stance above): the model **explains and
 captures, never predicts or calculates** — every number it says comes from the engine.
 

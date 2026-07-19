@@ -26,7 +26,7 @@ Route::get('/', function () {
 })->name('home');
 
 // How the tool computes its figures. Public education/guidance content (no user data), rendered
-// from docs/METHODOLOGY.md — the same source the local assistant's doc-RAG indexes.
+// from docs/spec/METHODOLOGY.md — the same source the local assistant's doc-RAG indexes.
 Route::get('/methodology', [MethodologyController::class, 'show'])->name('methodology');
 
 Route::middleware('auth')->group(function () {

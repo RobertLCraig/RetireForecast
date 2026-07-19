@@ -896,7 +896,7 @@ reconciliation) and is `Unknown`; the wither preserves every other setting (no d
 ceiling** and the care tail **reaches the result** (`careImpact` share > 0 — per-source completeness, no silent
 drop) at the production 2,000 paths; the menu offers care ungated (single + couple); `findLimit` stores the binary
 [0,1] grid; a completed care threshold paints the two states with no slider/meter/S-curve and no banned "safe"
-wording. **Phase 4's lever menu is now complete (5 of 5).** See [docs/PLAN-decision-support.md](docs/PLAN-decision-support.md)
+wording. **Phase 4's lever menu is now complete (5 of 5).** See [docs/PLAN-decision-support.md](build/PLAN-decision-support.md)
 + [[data-consistency-reconciliation]]. **Status:** active
 
 ## 2026-07-06 — Decision-support Phase 4 (part): the defer-the-survivor's-State-Pension lever + a State Pension deferral correctness fix (fourth survivor lever)
@@ -943,7 +943,7 @@ model would give misleading decision-support to the exact non-numbers audience t
 was load-bearing, not optional. The headline completeness test now lands: **deferring the survivor's State Pension raises
 the survivor-year income floor while deferring the first-dier's does not** (read through the `incomeFloor` survivor-year
 twin). **One survivor lever remains** (care-on/off pinned — a binary, not CRN-comparable). See
-[docs/PLAN-decision-support.md](docs/PLAN-decision-support.md) + [[data-consistency-reconciliation]] + [[accuracy-over-less-work]].
+[docs/PLAN-decision-support.md](build/PLAN-decision-support.md) + [[data-consistency-reconciliation]] + [[accuracy-over-less-work]].
 **Status:** active
 
 ## 2026-07-05 — Decision-support Phase 4 (part): the per-person longevity sweep lever (third survivor lever) + per-person lever parameterisation
@@ -989,7 +989,7 @@ threshold; the explorer offers one lever per person for a couple and none for a 
 `lever_key`+`lever_param`; the same lever on different people is a distinct cache key; a completed longevity threshold
 paints "+8 years" with no leaked directive). **Two survivor levers remain** (defer-the-survivor's-SP — reuses this
 parameterisation and lands the "deferring the survivor's SP raises the floor, the first-dier's does not" test — and
-care-on/off). See [docs/PLAN-decision-support.md](docs/PLAN-decision-support.md) + [[new-builder-field-delta-gotcha]].
+care-on/off). See [docs/PLAN-decision-support.md](build/PLAN-decision-support.md) + [[new-builder-field-delta-gotcha]].
 **Status:** active
 
 ## 2026-07-05 — Decision-support Phase 4 (part): the joint-life-annuity survivor-share sweep lever (second survivor lever)
@@ -1196,7 +1196,7 @@ Sources carry `verified_on: 2026-07-04`.
 **Context:** the `ihtModelled` toggle was collected-but-unconsumed — stored, validated, shown in what-if diffs +
 the GDPR export, but read by no forecast, so turning it on changed nothing. A silent drop of exactly the class the
 completeness rule (CLAUDE.md) exists to catch. `InheritanceTaxCalculator` was complete + tested but called only by
-its own test and the Filament tax-audit page. Built per [docs/PLAN-iht-and-relationship-status.md](docs/PLAN-iht-and-relationship-status.md)
+its own test and the Filament tax-audit page. Built per [docs/PLAN-iht-and-relationship-status.md](build/PLAN-iht-and-relationship-status.md)
 in six green slices (see `git log`).
 
 **Decision — wire it in, and make it relationship-status aware.** `ForecastSettings::modelIht` drives `PathProjector`
@@ -1233,8 +1233,8 @@ divergences" (now closed) + docs/METHODOLOGY.md.
 ## 2026-07-04 — Assistant may assemble a reviewable what-if (a narrow, deliberate widening of "the model never builds")
 **Context:** Rob asked whether the local-model assistant could **create scenarios** — ask targeted questions about
 what to change from the base, then fill it in — and, on an explicit request, update the base. This reverses a rule
-recorded emphatically in [docs/RESEARCH-local-assistant.md](docs/RESEARCH-local-assistant.md) (§0/§3, risk A4),
-[config/assistant.php](config/assistant.php) and DECISIONS 2026-07-03: the model *"never builds; its only write is a
+recorded emphatically in [docs/RESEARCH-local-assistant.md](research/RESEARCH-local-assistant.md) (§0/§3, risk A4),
+[config/assistant.php](../config/assistant.php) and DECISIONS 2026-07-03: the model *"never builds; its only write is a
 backlog append"* (A4: *"Rob has ruled building out entirely"*).
 
 **Decision — widen it, narrowly and by design (Rob's call).** The assistant may assemble a **reviewable what-if**
@@ -1256,7 +1256,7 @@ stale-run surfacing). Mostly a new *producer* of the existing delta shape — re
 `{name, overrides}`, `QuickWhatIfController` persistence, `WhatIfChanges` for the confirm. New pieces: a **closed
 edit-target menu** (C2, so the model selects a real path, never fabricates one), a `BacklogCapture`-shaped extraction,
 and the input-grounding guard **C1**. Full spec, guardrails (C1–C5) and risks in
-**[docs/PLAN-assistant-scenario-editing.md](docs/PLAN-assistant-scenario-editing.md)**.
+**[docs/PLAN-assistant-scenario-editing.md](build/PLAN-assistant-scenario-editing.md)**.
 
 **Status:** spec approved, **not built**. When built, update the "never builds" wording in RESEARCH-local-assistant.md
 (§0/§3/A4) + the `config/assistant.php` header to the narrowed form. Guidance-only phrasing (G2) still wraps every
@@ -1289,7 +1289,7 @@ the engine implicitly assumes married (`settleEstates`; the calculator's `nilRat
 there's no field to say otherwise — so a cohabiting couple is over-relieved. Adding a relationship field *now*
 would just create another inert input; it earns its keep only when IHT is actually computed. So the unit of work
 is **"wire IHT into the forecast (consume the toggle), relationship-status aware"** — fully specced for a fresh
-agent in **[docs/PLAN-iht-and-relationship-status.md](docs/PLAN-iht-and-relationship-status.md)** (the
+agent in **[docs/PLAN-iht-and-relationship-status.md](build/PLAN-iht-and-relationship-status.md)** (the
 calculator is done; only wiring + an `EstateValuer` + a `relationshipStatus` input + a results panel remain).
 Not built this session.
 
@@ -1569,10 +1569,10 @@ fast-follows. **Phases 2–3 remain specced.** See docs/RESEARCH-local-assistant
 ## 2026-07-03 — In-app local-model assistant: explain + capture only, it never builds
 **Context:** Rob wants an in-page **"chatbot"** on a **local AI model** to (1) answer questions about the
 loaded scenario + the project, (2) queue research requests, and (3) be the interface for building the
-feature/task list. Investigated feasibility ([docs/RESEARCH-local-assistant.md](docs/RESEARCH-local-assistant.md)).
+feature/task list. Investigated feasibility ([docs/RESEARCH-local-assistant.md](research/RESEARCH-local-assistant.md)).
 Two findings de-risk it: the project **already settled a local-AI stance** in the 2026-06-28 document-import
 investigation (*"wrangling and explaining, not predicting"*; never the source of a number; local-only;
-walled off — [docs/RESEARCH-document-import.md](docs/RESEARCH-document-import.md) §2), and the **runtime is
+walled off — [docs/RESEARCH-document-import.md](research/RESEARCH-document-import.md) §2), and the **runtime is
 already present** (Ollama on `localhost:11434` with tool-calling models + `nomic-embed-text`). The honest
 reframe: only the **scenario-explainer** has unique in-app value; "queue research / build the task list" is
 thin NL→structured-item capture, where a 14B local model doing real research/planning would be strictly
@@ -1906,7 +1906,7 @@ the data scrub restores the no-client-data-in-the-repo invariant. Full suite gre
 
 ## 2026-07-01 — Mortgage payment stops after a repay-from-capital redemption (built — the last Lane-B deferred item)
 **Decision:** Built the `while_mortgaged` expense condition per
-[docs/PLAN-mortgage-payment-stop.md](docs/PLAN-mortgage-payment-stop.md), removing the v1 simplification flagged in
+[docs/PLAN-mortgage-payment-stop.md](build/PLAN-mortgage-payment-stop.md), removing the v1 simplification flagged in
 `PathProjector`. A mortgage payment line now auto-classifies to `while_mortgaged` (not `while_owning_home`), summed
 into a new `ExpenseProfile::mortgageCosts` marked subset; the projector **drops it once the mortgage is redeemed**
 (`RepayFromCapital`), so a repay-and-stay path is no longer charged both the one-off repayment **and** the ongoing
@@ -2602,7 +2602,7 @@ see the basis of, or change." Research into how existing **free** tools handle t
 rent-vs-buy calculator, Guiide, the Actuaries Longevity Illustrator, Honest Math) backs every call: the universal
 pattern is **sensible sourced defaults + every assumption overridable + live update**, buy-vs-rent as its *own*
 focused comparison, and costs as editable line items. Full findings + the free-tools shortlist:
-[docs/RESEARCH-editable-assumptions-ux.md](docs/RESEARCH-editable-assumptions-ux.md). Notably we are already *ahead*
+[docs/RESEARCH-editable-assumptions-ux.md](research/RESEARCH-editable-assumptions-ux.md). Notably we are already *ahead*
 on longevity (ONS cohort mortality + the per-person lever + the on-screen modelled death year) — the gap there is UX
 (surface + edit), not modelling.
 **Sequencing (proposed, to confirm):** (1) #1 contingent costs (option b) — the correctness fix that unblocks an
@@ -2766,7 +2766,7 @@ spendable view.
 **ingest uploaded documents** (bank statements, credit-card statements, payslips, benefit/State-Pension
 statements), **pre-fill** every extractable field, and **ask only the remainder**, building the budget from
 the household's **actual** spending rather than "average user" national figures. Design + sector evidence:
-[docs/RESEARCH-document-import.md](docs/RESEARCH-document-import.md); plan entry: docs/PLAN.md
+[docs/RESEARCH-document-import.md](research/RESEARCH-document-import.md); plan entry: docs/PLAN.md
 "Statement-driven onboarding + document import". The load-bearing calls:
 (1) **Transfer-matching is deterministic-only.** Rob's £1,258 case — a card-payment credit matched by an
 equal-and-opposite current-account debit — is an **internal transfer** and must be **excluded from spend**,
@@ -3205,7 +3205,7 @@ already have ids). Editing a saved scenario, spawning a child, and comparing all
 form-state: edit reloads it, a child stores overrides against it, compare runs base + child.
 **Why:** Confirmed with Rob — lightweight "tweak 1–2 parameters" children are exactly the what-if UX he
 wants, and it is the market-leader pattern (Voyant's copy-on-write — "changing an item breaks the link
-for that item only"; see [docs/RESEARCH-cashflow-modelling.md](docs/RESEARCH-cashflow-modelling.md) §1).
+for that item only"; see [docs/RESEARCH-cashflow-modelling.md](research/RESEARCH-cashflow-modelling.md) §1).
 **Delta over full-copy specifically to avoid forking:** a full copy duplicates the whole base into every
 child, so a later base fix leaves children stale — they **fork** — the exact "same quantity in two places
 that drifts" the data-layer guardrails exist to prevent. A delta keeps the base as the single source; a
@@ -3414,7 +3414,7 @@ deliberate, separate regulated-perimeter decision. Refines, does not supersede,
 
 ## 2026-06-25 — External-review triage: what we adopt, and three declines
 **Decision:** A second-opinion review (MS Copilot, from the doc set) was triaged into the post-v1
-backlog in [docs/PLAN.md](docs/PLAN.md) ("External review triage"). We **decline** three of its
+backlog in [docs/PLAN.md](build/PLAN.md) ("External review triage"). We **decline** three of its
 suggestions as over-engineering or misaligned for a local-first single-user tool: (1) **per-row /
 envelope encryption** — the blast-radius case assumes a multi-tenant server, but the whole SQLite DB
 *and* the Laravel app key live on one personal machine, so app-key `encrypted:array` is right-sized;
@@ -3565,7 +3565,7 @@ April-2027 tension. A cautious 40/60 suits a retired household relying on the po
 **Status:** active
 
 ## 2026-06-24 — Assumption figures signed off (adopted as proposed)
-**Decision:** Rob signed off the researched figures in [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md)
+**Decision:** Rob signed off the researched figures in [docs/ASSUMPTIONS.md](spec/ASSUMPTIONS.md)
 as proposed. Set A (FCA real returns + DMS vols) is the engine default; Sets B (DMS
 historical) and C (OBR/BoE) ship as compare overlays. Includes the flagged judgement calls:
 cash real vol overridden to 2% (inflation modelled separately), Eq–Cash/Bond–Cash

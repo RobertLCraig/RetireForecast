@@ -17,8 +17,8 @@ final class HandoverHygieneTest extends TestCase
 {
     private function doc(): string
     {
-        $path = base_path('HANDOVER.md');
-        $this->assertFileExists($path, 'HANDOVER.md is missing.');
+        $path = base_path('docs/HANDOVER.md');
+        $this->assertFileExists($path, 'docs/HANDOVER.md is missing.');
 
         return (string) file_get_contents($path);
     }

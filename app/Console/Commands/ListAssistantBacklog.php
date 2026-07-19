@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 /**
  * Lists the ideas the assistant captured to the work queue (Phase 3), so a human (or Claude Code) can
- * review them and promote the worthwhile ones into the real backlog (docs/PLAN.md) by hand. The model
+ * review them and promote the worthwhile ones into the real backlog (docs/build/PLAN.md) by hand. The model
  * only ever queues here; promotion and building stay a human act. Read-only — it never edits anything.
  */
 class ListAssistantBacklog extends Command
@@ -52,7 +52,7 @@ class ListAssistantBacklog extends Command
             ])->all(),
         );
 
-        $this->info($items->count().' captured idea(s). Promote worthwhile ones into docs/PLAN.md by hand; clear them from the panel or the DB when done.');
+        $this->info($items->count().' captured idea(s). Promote worthwhile ones into docs/build/PLAN.md by hand; clear them from the panel or the DB when done.');
 
         return self::SUCCESS;
     }

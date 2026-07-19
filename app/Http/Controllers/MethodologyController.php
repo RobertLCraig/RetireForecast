@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 /**
  * The public methodology page: how RetireForecast computes its figures, rendered from the single
- * source `docs/METHODOLOGY.md`. That one document is BOTH this page AND part of the local
+ * source `docs/spec/METHODOLOGY.md`. That one document is BOTH this page AND part of the local
  * assistant's methodology corpus (config `assistant.methodology_docs`), so "how does it model X?"
  * has one home — the page a reader can open and the passage the assistant retrieves are the same words.
  *
@@ -20,7 +20,7 @@ class MethodologyController extends Controller
 {
     public function show(): View
     {
-        $path = base_path('docs/METHODOLOGY.md');
+        $path = base_path('docs/spec/METHODOLOGY.md');
         abort_unless(is_file($path), 404);
 
         // Render is pure function of the file; cache it keyed by the file's mtime so an edited doc

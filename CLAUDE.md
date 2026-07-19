@@ -1,9 +1,9 @@
 # RetireForecast — agent instructions
 
-**Orient before changing anything.** Read HANDOVER.md first; it indexes this project's
-docs (PRD.md, DATA-MODEL.md, DECISIONS.md, and the full plan at docs/PLAN.md). Restate the
-goal, success criteria, and data shape before proposing changes. Do not act on a partial
-read. This follows the global project documentation standard.
+**Orient before changing anything.** Read docs/HANDOVER.md first; it indexes this project's
+docs (docs/PRD.md, docs/DATA-MODEL.md, docs/DECISIONS.md, and the full plan at
+docs/build/PLAN.md). Restate the goal, success criteria, and data shape before proposing
+changes. Do not act on a partial read. This follows the global project documentation standard.
 
 ## Conventions
 - **Run from the project root** (`C:\Dev\RetireForecast`). The test runner shells out to a

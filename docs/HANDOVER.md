@@ -1,13 +1,13 @@
 # HANDOVER: RetireForecast — UK retirement / downsizing forecast tool
 
-> A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue refining the calculation engine and the app around it. Read [docs/PLAN.md](docs/PLAN.md) first (the full approved plan + scope). The detailed per-feature build record is archived in [docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md).
+> A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue refining the calculation engine and the app around it. Read [docs/PLAN.md](build/PLAN.md) first (the full approved plan + scope). The detailed per-feature build record is archived in [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md).
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
 _Last updated: 2026-07-19 (three hero time-series charts — income staircase, wealth composition, costs)_
 
 ## Goal & success criteria
-Full plan: [docs/PLAN.md](docs/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
+Full plan: [docs/PLAN.md](build/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
 - **Goal:** let an older couple (one working, one retired) model whether to sell their home and either buy somewhere cheaper outright (invest the surplus) or sell and rent (invest all proceeds), plus the consequences of pension lump-sum withdrawals and whether their money lasts for life.
 - **Headline outputs:** (1) the pension lump-sum tax shock (25% tax-free, marginal tax on the rest, the Month-1 emergency-tax overpayment + reclaim); (2) running-out-of-money / longevity risk via Monte Carlo.
 - **Success for Rob's own use:** a working **local** site where he enters a real couple, runs buy-vs-rent, and reads a trustworthy forecast. **No hardcoded client data in the repo.** Possible free public release later.
@@ -41,7 +41,7 @@ Full log + rationale: [DECISIONS.md](DECISIONS.md). The load-bearing "don't reli
 - **UI = hand-rolled Livewire 4** (Filament admin-only); form input → engine DTOs via the unit-tested `HouseholdAssembler`.
 
 ## Current state
-The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md)** (each item also has a dated DECISIONS entry + git history). High level:
+The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md)** (each item also has a dated DECISIONS entry + git history). High level:
 - **Done — everything through the post-v1 backlog is built:** the HMRC-accurate deterministic engine (income tax + NI; the pension lump-sum suite incl. Month-1 emergency tax + reclaim; State Pension; SDLT/CGT/PRR; means-tested benefits; IHT; care) + Monte Carlo with stochastic joint-life mortality; the full app (encrypted DTO persistence, Fortify auth, GDPR, Filament, queued runs with progress/cancel, Livewire UI + charts, spreadsheet import, PDF export, 2FA, CSP); the rebuild (Phases A–D); the adviser-legibility presentation layer; **decision-support (Phases 0–6)** — lever thresholds, the "How far can we go?" panel, combination comparison, the survivor-cliff story + 5 levers, the 2-D trade-off map, the hash-gated assistant tie-in; the **local-model assistant** (grounded explainer + methodology doc-RAG + idea capture); **IHT wired into the forecast** (+ relationship status); the **care means-test tail**; the **age-varying spending smile**; the **equity-release lifetime mortgage**; the **BTL finance-cost tax reducer**. Nearly all of the post-2026-06-29 cluster **awaits Rob's browser sign-off** (What's next #1).
 - **Done 2026-07-16 — no-magic-money purchase funding (DECISIONS 2026-07-16):** a buy above the sale proceeds is
   funded savings-first (cash → GIA → ISA, never pensions; the RIO borrows only the remainder); anything unfunded is
@@ -141,7 +141,7 @@ The whole post-v1 backlog is built. What remains:
 4. **CI / data hygiene (remainder).** The freshness guardrails run monthly in CI (the `data-freshness` workflow; takes effect on GitHub once pushed). Low-value hardening: a tamper-evident run hash, forecast caching.
 
 **Specced-but-partly-built** (pick up when chosen): **output legibility + category (care) inflation + the
-missing time-series charts** ([docs/PLAN-output-inflation-and-charts.md](docs/PLAN-output-inflation-and-charts.md);
+missing time-series charts** ([docs/PLAN-output-inflation-and-charts.md](build/PLAN-output-inflation-and-charts.md);
 open questions resolved by the 2026-07-18 research pass, most-adverse defaults each user-editable, bar one
 residual State-Pension judgement flag for Rob). **A1 (care escalates above CPI), A2 (care-stress in the
 deterministic path) and C1+C2+C3 (the three hero time-series charts) are now built (above).** Still open from
@@ -192,22 +192,22 @@ npm run build                        # build assets (public/build is gitignored)
 ## Sibling docs
 | Doc | Purpose |
 |-----|---------|
-| [docs/PLAN.md](docs/PLAN.md) | The full approved plan. Source of truth for scope, data model, tax rules, Monte Carlo design, phasing. |
-| [docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md) | The detailed per-feature build record ("Done" bullets) + older session log, trimmed out of this doc 2026-07-10. |
+| [docs/PLAN.md](build/PLAN.md) | The full approved plan. Source of truth for scope, data model, tax rules, Monte Carlo design, phasing. |
+| [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) | The detailed per-feature build record ("Done" bullets) + older session log, trimmed out of this doc 2026-07-10. |
 | [DATA-MODEL.md](DATA-MODEL.md) | Canonical data shape; materialised-vs-planned; "Known divergences" (the full v1-limit list). |
 | [DECISIONS.md](DECISIONS.md) | Append-only decision log with rationale. |
 | [PRD.md](PRD.md) | Goal, success criteria, scope, non-goals, open questions. |
-| [CLAUDE.md](CLAUDE.md) | Root orient tripwire + build/test conventions + doc-hygiene rules. |
+| [CLAUDE.md](../CLAUDE.md) | Root orient tripwire + build/test conventions + doc-hygiene rules. |
 | docs/SCENARIO-V2.local.md | **GITIGNORED / PRIVATE:** the real couple's data + core scenario, to re-model after a DB wipe. **Read before touching any V2 figure.** |
-| [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | User-facing engine-computation methodology + "what we don't model" (also the `/methodology` page + the assistant corpus). |
-| [docs/PLAN-output-inflation-and-charts.md](docs/PLAN-output-inflation-and-charts.md) | **DRAFT** spec from the 2026-07-18 adversarial review: output legibility, per-category (care) inflation + fat tails, and the six missing time-series charts. Reasoning + research links per decision. |
+| [docs/METHODOLOGY.md](spec/METHODOLOGY.md) | User-facing engine-computation methodology + "what we don't model" (also the `/methodology` page + the assistant corpus). |
+| [docs/PLAN-output-inflation-and-charts.md](build/PLAN-output-inflation-and-charts.md) | **DRAFT** spec from the 2026-07-18 adversarial review: output legibility, per-category (care) inflation + fat tails, and the six missing time-series charts. Reasoning + research links per decision. |
 | docs/PLAN-*.md, docs/RESEARCH-*.md | Per-feature specs / build records + research (decision-support, IHT, forced sale, sequencing, multi-property, assistant, stress-test, competitive gap, delta). |
 
 ## Branch status
 On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. **Pushing to `master` is gated — needs Rob's explicit go-ahead.** Otherwise commit directly to `master` (personal local-first project, no PR flow). **Re-check `git status` / `git log` before any commit or push.** The pre-rebuild prototype is tagged `prototype-v1` (a8f1f68). Use `git log` for history (not restated here — it drifts).
 
 ## Session log
-_Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+_Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) + git log + DECISIONS._
 
 _2026-07-19 (C1/C2/C3: the three hero time-series charts)_ —
 Resumed and picked up build-order #3 of docs/PLAN-output-inflation-and-charts.md (A1/A2 done). The review found
@@ -429,4 +429,4 @@ identical queued path now reproduces exactly. Also this session: the let plan (#
 BTL finance-cost tax reducer with rental at £1,800/mo (depletion 2030 → 2035, still fails). See DECISIONS
 2026-07-09.
 
-_Older sessions folded into [docs/HANDOVER-ARCHIVE.md](docs/HANDOVER-ARCHIVE.md)._
+_Older sessions folded into [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md)._

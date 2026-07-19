@@ -6,7 +6,7 @@
 **Stage:** active
 _Last updated: 2026-07-02_
 
-Full implementation plan and scope source of truth: [docs/PLAN.md](docs/PLAN.md). This PRD
+Full implementation plan and scope source of truth: [docs/PLAN.md](build/PLAN.md). This PRD
 is the orientation layer; the plan holds the exhaustive data model, UK rule set, Monte Carlo
 design and phasing.
 

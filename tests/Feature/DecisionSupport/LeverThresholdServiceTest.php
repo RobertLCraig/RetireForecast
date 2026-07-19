@@ -229,7 +229,7 @@ final class LeverThresholdServiceTest extends TestCase
 
     public function test_a_frontier_column_matches_the_one_dimensional_threshold_at_that_held_value(): void
     {
-        // The Phase-5 correctness pin (docs/PLAN-decision-support.md): the iso-line is the Phase-1
+        // The Phase-5 correctness pin (docs/build/PLAN-decision-support.md): the iso-line is the Phase-1
         // threshold repeated per held value, so a frontier column must reproduce the 1-D compute on
         // a scenario that already HOLDS the condition — same pinned seed, byte-identical curve.
         $user = User::factory()->create();

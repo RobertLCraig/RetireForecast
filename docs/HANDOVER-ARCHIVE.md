@@ -12,9 +12,9 @@ lives in `git log` + DECISIONS.md (2026-06-30 / 07-01). High level: **Lane A** p
 (annuitisation, historical stress-test, ONS mortality-refresh, care-cost stochasticity) — complete; **Lane B**
 forced-housing workstream (means-tested benefits, mortgage-redemption + payment-stop, feasibility flags, input
 clarity, **in-place forced sale**) — **complete** (the forced sale built 2026-07-03,
-[docs/PLAN-in-place-forced-sale.md](PLAN-in-place-forced-sale.md)); **Lane C** withdrawal sequencing — core
-shipped, #5/#6 handed off ([docs/PLAN-withdrawal-sequencing.md](PLAN-withdrawal-sequencing.md)); **Lane D**
-multi-property — docs-only DRAFT awaiting Rob ([docs/PLAN-multi-property.md](PLAN-multi-property.md)). If lanes ever
+[docs/PLAN-in-place-forced-sale.md](build/PLAN-in-place-forced-sale.md)); **Lane C** withdrawal sequencing — core
+shipped, #5/#6 handed off ([docs/PLAN-withdrawal-sequencing.md](build/PLAN-withdrawal-sequencing.md)); **Lane D**
+multi-property — docs-only DRAFT awaiting Rob ([docs/PLAN-multi-property.md](build/PLAN-multi-property.md)). If lanes ever
 reopen, honour [[concurrent-session-split]] (re-check `git` first, commit only your files, never push without Rob's
 go-ahead). `PathProjector` was the cross-lane contention point.
 

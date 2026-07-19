@@ -9,7 +9,7 @@ _Last updated: 2026-07-02_
 > re-researched (see that scan + [RESEARCH-cashflow-modelling.md](RESEARCH-cashflow-modelling.md) +
 > [RESEARCH-editable-assumptions-ux.md](RESEARCH-editable-assumptions-ux.md)). Every load-bearing claim
 > below was **adversarially source-checked**; corrections from that pass are folded in and the residual
-> caveats flagged. Net-new backlog items land in [PLAN.md](PLAN.md) "Delta-research backlog (2026-07-02)".
+> caveats flagged. Net-new backlog items land in [PLAN.md](../build/PLAN.md) "Delta-research backlog (2026-07-02)".
 > UK-only throughout; US findings are marked and used only for directional patterns.
 
 ---

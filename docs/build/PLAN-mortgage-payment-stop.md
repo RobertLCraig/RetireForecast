@@ -24,7 +24,7 @@ the engine repays the outstanding balance as a one-off outflow **but keeps charg
 monthly mortgage for the rest of the plan: a double-count that understates a "repay and stay" plan.
 
 The gap is called out in code as a v1 simplification at
-[PathProjector.php:456-457](../packages/finance-engine/src/Forecast/PathProjector.php#L456-L457):
+[PathProjector.php:456-457](../../packages/finance-engine/src/Forecast/PathProjector.php#L456-L457):
 _"the ongoing mortgage payment in the spend is not separately stopped after repayment (it is bundled with the
 other property costs)."_ This plan removes that simplification.
 
@@ -61,7 +61,7 @@ subset with its own stop condition.
 ## Touch-points (exact, current anchors)
 
 ### Engine (framework-free — no `App\`/`Illuminate\`)
-1. **`ExpenseProfile`** ([src/Dto/ExpenseProfile.php](../packages/finance-engine/src/Dto/ExpenseProfile.php))
+1. **`ExpenseProfile`** ([src/Dto/ExpenseProfile.php](../../packages/finance-engine/src/Dto/ExpenseProfile.php))
    - Add constructor param `?Money $mortgageCosts = null` (after `employmentCosts`, keep it trailing/defaulted
      so named-arg construction elsewhere is unaffected).
    - Add accessor `mortgageCosts(): Money` returning `$this->mortgageCosts ?? Money::zero()`.
@@ -75,14 +75,14 @@ subset with its own stop condition.
      (`HousingComparison::withHousing`) and any test that names it — otherwise keep the name and just widen it.
 
 2. **`PathProjector::projectYear`**
-   ([src/Forecast/PathProjector.php](../packages/finance-engine/src/Forecast/PathProjector.php))
+   ([src/Forecast/PathProjector.php](../../packages/finance-engine/src/Forecast/PathProjector.php))
    - The redemption block at
-     [L458-468](../packages/finance-engine/src/Forecast/PathProjector.php#L458-L468) already sets
+     [L458-468](../../packages/finance-engine/src/Forecast/PathProjector.php#L458-L468) already sets
      `$state['mortgageRepaid'] = true` in the redemption year.
    - **After** that block and **before** `$spendNominal` is computed at
-     [L470](../packages/finance-engine/src/Forecast/PathProjector.php#L470), drop the mortgage payment once
+     [L470](../../packages/finance-engine/src/Forecast/PathProjector.php#L470), drop the mortgage payment once
      the mortgage is gone — **mirror the employment-cost drop** at
-     [L445-449](../packages/finance-engine/src/Forecast/PathProjector.php#L445-L449):
+     [L445-449](../../packages/finance-engine/src/Forecast/PathProjector.php#L445-L449):
      ```php
      // Once the mortgage is redeemed its ongoing payment stops (unlike service charge / ground
      // rent, which continue while the home is owned). Drop the while_mortgaged spend from the
@@ -94,37 +94,37 @@ subset with its own stop condition.
      }
      ```
    - Update the v1-simplification comment at
-     [L456-457](../packages/finance-engine/src/Forecast/PathProjector.php#L456-L457) — it is now handled, not
+     [L456-457](../../packages/finance-engine/src/Forecast/PathProjector.php#L456-L457) — it is now handled, not
      deferred.
    - `Refinance` leaves `mortgageRepaid` false, so the payment correctly continues; a stay-put home with no
      redemption year also keeps `mortgageRepaid` false, so nothing changes there.
 
 3. **`HousingComparison::withHousing`**
-   ([src/Housing/HousingComparison.php](../packages/finance-engine/src/Housing/HousingComparison.php)) — no
+   ([src/Housing/HousingComparison.php](../../packages/finance-engine/src/Housing/HousingComparison.php)) — no
    change needed **if** you widen `withoutPropertyCosts()` in place (it already calls it). If you rename the
    method, update the call here. Verify the sell variants still drop the mortgage (the existing
    `ContingentCostsTest` asserts sell-variant property costs are £0 — see Tests).
 
 ### App layer
-4. **`HouseholdAssembler`** ([app/Forecast/HouseholdAssembler.php](../app/Forecast/HouseholdAssembler.php))
+4. **`HouseholdAssembler`** ([app/Forecast/HouseholdAssembler.php](../../app/Forecast/HouseholdAssembler.php))
    - `autoCondition()`
-     ([L241-256](../app/Forecast/HouseholdAssembler.php#L241-L256)): move the **`mortgage`** keyword out of the
+     ([L241-256](../../app/Forecast/HouseholdAssembler.php#L241-L256)): move the **`mortgage`** keyword out of the
      `while_owning_home` group into a new `while_mortgaged` classification. Keep `service charge`, `ground
      rent`, `factor fee` on `while_owning_home`.
    - `lineCondition()` allowed-list
-     ([L226](../app/Forecast/HouseholdAssembler.php#L226)): add `'while_mortgaged'` to the `in_array(...)`.
+     ([L226](../../app/Forecast/HouseholdAssembler.php#L226)): add `'while_mortgaged'` to the `in_array(...)`.
    - `expenseProfile()`
-     ([L186-212](../app/Forecast/HouseholdAssembler.php#L186-L212)): sum `while_mortgaged` lines into
+     ([L186-212](../../app/Forecast/HouseholdAssembler.php#L186-L212)): sum `while_mortgaged` lines into
      `mortgageCosts` (alongside the existing `propertyCosts` / `employmentCosts` sums) and pass it to the
      `ExpenseProfile` constructor.
 
-5. **`ScenarioBuilder` validation** ([app/Livewire/ScenarioBuilder.php](../app/Livewire/ScenarioBuilder.php))
+5. **`ScenarioBuilder` validation** ([app/Livewire/ScenarioBuilder.php](../../app/Livewire/ScenarioBuilder.php))
    - `expenseLines.*.condition` rule at
-     [L258](../app/Livewire/ScenarioBuilder.php#L258): add `'while_mortgaged'` to `Rule::in([...])`.
+     [L258](../../app/Livewire/ScenarioBuilder.php#L258): add `'while_mortgaged'` to `Rule::in([...])`.
 
-6. **Builder blade** ([resources/views/livewire/scenario-builder.blade.php](../resources/views/livewire/scenario-builder.blade.php))
+6. **Builder blade** ([resources/views/livewire/scenario-builder.blade.php](../../resources/views/livewire/scenario-builder.blade.php))
    - The condition `<select>` at
-     [L859-864](../resources/views/livewire/scenario-builder.blade.php#L859-L864): add
+     [L859-864](../../resources/views/livewire/scenario-builder.blade.php#L859-L864): add
      `<option value="while_mortgaged">Only while the mortgage runs</option>`. The existing "Auto" hint
      (`$conditionHints`) reads `HouseholdAssembler::autoCondition()`, so a "Mortgage" line will now hint
      "while the mortgage runs" automatically — check the hint text maps the new value to readable copy

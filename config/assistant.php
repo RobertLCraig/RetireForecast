@@ -61,10 +61,10 @@ return [
     // the purpose-written engine-computation doc (also the public /methodology page — one source, two homes).
     // Filenames, matched case-insensitively; empty = every *.md (minus *.local.md).
     'methodology_docs' => [
-        'METHODOLOGY.md',
-        'ASSUMPTIONS.md',
-        'MORTALITY.md',
-        'RESEARCH-stress-test-and-official-sources.md',
+        'spec/METHODOLOGY.md',
+        'spec/ASSUMPTIONS.md',
+        'spec/MORTALITY.md',
+        'research/RESEARCH-stress-test-and-official-sources.md',
     ],
 
     // Retrieval shape: how many chunks to attach, and the minimum cosine similarity to attach any. With a

@@ -17,8 +17,8 @@ changed. Needs a DECISIONS entry at build/checkpoint._
 
 ## 0. This changes a recorded decision — name it first
 
-The assistant was built under an emphatic rule, stated in [RESEARCH-local-assistant.md](RESEARCH-local-assistant.md)
-(§0, §3, risk A4), [config/assistant.php](../config/assistant.php) and DECISIONS 2026-07-03:
+The assistant was built under an emphatic rule, stated in [RESEARCH-local-assistant.md](../research/RESEARCH-local-assistant.md)
+(§0, §3, risk A4), [config/assistant.php](../../config/assistant.php) and DECISIONS 2026-07-03:
 
 > *"The model may only append to the dev backlog. It never builds anything, never edits code, never
 > offers to build."* — and A4 records *"Rob has ruled building out entirely."*
@@ -54,21 +54,21 @@ Almost every piece is built; this is a new **producer** of the delta a what-if a
 confirm step. The reused machinery:
 
 - **The delta-child model** — a child stores a sparse `overrides` map (dot-path → leaf value) over its
-  base; [BuilderStateDelta](../app/Forecast/BuilderStateDelta.php) `diff`/`merge`/`valueAt`/`orphans`,
+  base; [BuilderStateDelta](../../app/Forecast/BuilderStateDelta.php) `diff`/`merge`/`valueAt`/`orphans`,
   row-lists addressed by **stable id**, with **add** (whole row) and **remove** (`REMOVED` sentinel)
   support. This is exactly the shape our output must produce.
-- **The programmatic-what-if precedent** — [QuickWhatIf](../app/Forecast/QuickWhatIf.php) already edits
-  base form-state and `diff`s it to `{name, overrides}`; [QuickWhatIfController](../app/Http/Controllers/QuickWhatIfController.php)
+- **The programmatic-what-if precedent** — [QuickWhatIf](../../app/Forecast/QuickWhatIf.php) already edits
+  base form-state and `diff`s it to `{name, overrides}`; [QuickWhatIfController](../../app/Http/Controllers/QuickWhatIfController.php)
   already **persists that as a Ready child** (`new Scenario` → `parent_scenario_id` → `overrides` →
   `builder_state=[]` → `projectFrom(effectiveBuilderState())` → `save`). Our conversational path
   produces the **same `{name, overrides}` shape**, so persistence is a straight reuse (extract the
   child-creation into a shared `WhatIfWriter::create()`).
-- **The confirm/echo-back diff** — [WhatIfChanges](../app/Forecast/WhatIfChanges.php)`::compute(baseState,
+- **The confirm/echo-back diff** — [WhatIfChanges](../../app/Forecast/WhatIfChanges.php)`::compute(baseState,
   overrides)` already turns an override map into a readable `{label, from, to}` list. This **is** the
   confirmation card ("Retirement age 66 → 68; Essentials £28,000 → £32,000").
-- **The panel + guardrail spine** — [ScenarioAssistant](../app/Livewire/ScenarioAssistant.php) (tabs,
-  local `ChatClient`, transcript), [AssistantService](../app/Assistant/AssistantService.php) (G1/G2,
-  one-corrective-retry-then-refuse), [BacklogCapture](../app/Assistant/BacklogCapture.php) (the
+- **The panel + guardrail spine** — [ScenarioAssistant](../../app/Livewire/ScenarioAssistant.php) (tabs,
+  local `ChatClient`, transcript), [AssistantService](../../app/Assistant/AssistantService.php) (G1/G2,
+  one-corrective-retry-then-refuse), [BacklogCapture](../../app/Assistant/BacklogCapture.php) (the
   NL→structured-item pattern, with a never-lose-the-input fallback) are all directly analogous.
 
 ## 3. Architecture

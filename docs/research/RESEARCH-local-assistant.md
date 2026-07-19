@@ -28,7 +28,7 @@ guardrails tested, each phase verified end-to-end against `qwen3:14b` (+ `nomic-
 ## 1. This is not greenfield — it inherits a settled stance
 
 The 2026-06-28 local-AI / Ollama investigation ([RESEARCH-document-import.md](RESEARCH-document-import.md),
-folded into [PLAN.md](PLAN.md)) already settled the doctrine this feature must obey:
+folded into [PLAN.md](../build/PLAN.md)) already settled the doctrine this feature must obey:
 
 - *"The valuable use of a model is **wrangling and explaining, not predicting**."*
 - **The model is never the source of a number.** LLMs are non-deterministic and unreliable at finance
@@ -105,7 +105,7 @@ pretending to be a research/coding agent.
 **Two retrieval modes is the crucial call.** Scenario/figure questions use **tool-calls, never
 embeddings** — the user's own numbers must come structured from the engine so they cannot be
 hallucinated. Embedding-RAG is for *methodology* ("how do you model emergency tax?") over the small
-`docs/` corpus. This mirrors [Interpretation.php](../app/Compliance/Interpretation.php), which already
+`docs/` corpus. This mirrors [Interpretation.php](../../app/Compliance/Interpretation.php), which already
 produces sentences strictly from computed figures and even reuses `ResultPresenter::formatPercent` so an
 interpreted figure is byte-identical to the panel's.
 
@@ -201,14 +201,14 @@ Autonomous, but **safe by construction** — it honours "no silent failure" and 
 ## 8. Sources
 
 - Prior settled stance (local-only, wrangling-not-predicting, never the source of numbers):
-  [docs/RESEARCH-document-import.md](RESEARCH-document-import.md) §2 + DI-6/DI-7; [docs/PLAN.md](PLAN.md)
+  [docs/RESEARCH-document-import.md](RESEARCH-document-import.md) §2 + DI-6/DI-7; [docs/PLAN.md](../build/PLAN.md)
   "Statement-driven onboarding" key calls.
 - LLM arithmetic / hallucination in finance (why the model never sources a figure):
   [Deficiency of LLMs in Finance — Hallucination (arXiv)](https://arxiv.org/pdf/2311.15548),
   [FAITH: tabular hallucinations in finance (arXiv)](https://arxiv.org/pdf/2508.05201).
 - Local-LLM finance / privacy (why local-only): [DZone — private LLM finance analyzer](https://dzone.com/articles/local-llm-finance-tracker).
-- The existing walls this reuses: [app/Compliance/Interpretation.php](../app/Compliance/Interpretation.php),
-  [app/Compliance/OutputPhrasing.php](../app/Compliance/OutputPhrasing.php),
-  [config/compliance.php](../config/compliance.php).
+- The existing walls this reuses: [app/Compliance/Interpretation.php](../../app/Compliance/Interpretation.php),
+  [app/Compliance/OutputPhrasing.php](../../app/Compliance/OutputPhrasing.php),
+  [config/compliance.php](../../config/compliance.php).
 </content>
 </invoke>

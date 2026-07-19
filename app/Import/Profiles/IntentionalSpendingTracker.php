@@ -8,7 +8,7 @@ namespace App\Import\Profiles;
  * Nischa's Intentional Spending Tracker — a three-bucket monthly tracker (Fundamentals ->
  * essential, Fun -> discretionary, Future -> savings/contributions). The published sheet
  * is email-gated, so its exact layout needs a sample export to map; uncalibrated until
- * then. See docs/PLAN.md "External review triage".
+ * then. See docs/build/PLAN.md "External review triage".
  */
 final class IntentionalSpendingTracker extends UncalibratedProfile
 {
