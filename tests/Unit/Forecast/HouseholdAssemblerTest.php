@@ -368,6 +368,31 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertSame(1, $terms->firstPaymentMonth);
     }
 
+    public function test_the_bought_homes_own_costs_and_growth_reach_the_housing_action(): void
+    {
+        // Completeness: a park home's pitch fee and its NEGATIVE growth must reach the engine, or
+        // the option is silently modelled as an ordinary appreciating freehold with 1% upkeep.
+        $state = BuilderStateFixture::full();
+        $state['housing']['buyRunningCosts'] = '3000';
+        $state['housing']['buyGrowthReal'] = '-8';
+
+        $action = (new HouseholdAssembler)->housingAction($state['housing']);
+
+        $this->assertSame(300_000, $action->buyRunningCosts?->pence);
+        $this->assertSame(-800, $action->buyGrowthOverride?->basisPoints, 'a negative rate must survive the mapping');
+    }
+
+    public function test_absent_bought_home_costs_and_growth_leave_the_engine_defaults(): void
+    {
+        $state = BuilderStateFixture::full();
+        unset($state['housing']['buyRunningCosts'], $state['housing']['buyGrowthReal']);
+
+        $action = (new HouseholdAssembler)->housingAction($state['housing']);
+
+        $this->assertNull($action->buyRunningCosts);
+        $this->assertNull($action->buyGrowthOverride);
+    }
+
     public function test_cgt_history_reduces_the_occupation_timeline_to_months(): void
     {
         // Lived in 2006–2014 (main home), then let to the 2026 sale; jointly owned.

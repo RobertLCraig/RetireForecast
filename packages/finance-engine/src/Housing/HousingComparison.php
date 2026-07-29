@@ -225,6 +225,9 @@ final class HousingComparison
             isPrimaryResidence: true,
             outstandingMortgage: $mortgaged ? $outcome->mortgage : null,
             runningCosts: $this->newHomeRunningCosts($household, $action, $outcome->buyPrice),
+            // A bought home can grow at its own real rate, INCLUDING a negative one — a park home
+            // depreciates. Null keeps the assumption set's house growth, as before.
+            growthAssumptionOverride: $action->buyGrowthOverride,
         );
 
         // A mortgaged purchase carries an ongoing interest-only (RIO) payment for life; charge it
@@ -281,6 +284,13 @@ final class HousingComparison
      */
     private function newHomeRunningCosts(Household $household, HousingAction $action, Money $buyPrice): Money
     {
+        // An explicit figure wins over any derivation: some homes' costs bear no relation to their
+        // value (a park home's pitch fee is a flat annual charge, which the 1%-of-value proxy below
+        // can understate by thousands).
+        if ($action->buyRunningCosts !== null) {
+            return $action->buyRunningCosts;
+        }
+
         $current = $household->primaryResidence?->runningCosts;
         if ($current !== null && $current->isPositive() && ! $action->salePrice->isZero()) {
             return Money::fromPence((int) round($current->pence * $buyPrice->pence / $action->salePrice->pence));

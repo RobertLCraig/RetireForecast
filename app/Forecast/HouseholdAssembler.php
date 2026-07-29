@@ -102,6 +102,9 @@ final class HouseholdAssembler
             movingCosts: $this->money($h['movingCosts'] ?? null),
             sellingCosts: $this->sellingCosts($h),
             buyMortgageRate: $this->percent($h['buyMortgageRate'] ?? null),
+            buyRunningCosts: $this->money($h['buyRunningCosts'] ?? null),
+            // May be NEGATIVE: a park home depreciates. percent() must not clamp it.
+            buyGrowthOverride: $this->percent($h['buyGrowthReal'] ?? null),
         );
     }
 

@@ -358,6 +358,10 @@ class ScenarioBuilder extends Component
             'housing.salePrice' => $moneyReq,
             'housing.buyPrice' => $money,
             'housing.buyMortgageRate' => $rate,
+            'housing.buyRunningCosts' => $money,
+            // Deliberately NOT $rate: that band is 0-upwards, and a depreciating home needs a
+            // negative real growth rate. -25%/yr is well beyond any defensible depreciation.
+            'housing.buyGrowthReal' => ['nullable', 'numeric', 'min:-25', 'max:25'],
             'housing.annualRent' => $money,
             'housing.rentInflationReal' => $rate,
             'housing.movingCosts' => $money,
@@ -677,6 +681,12 @@ class ScenarioBuilder extends Component
             $this->property['mortgageRepaymentInitialMonths'] ??= '';
             $this->property['mortgageRepaymentRevertRate'] ??= '';
         }
+
+        // A scenario saved before the bought-home cost/growth inputs existed has neither key;
+        // default them empty, which is exactly the old behaviour (derive the running cost, and
+        // grow the new home at the assumption set's house rate).
+        $this->housing['buyRunningCosts'] ??= '';
+        $this->housing['buyGrowthReal'] ??= '';
 
         // Every spend line carries an explicit `included` flag so its on/off checkbox binds to a
         // real boolean; a line saved before the toggle existed (no flag) defaults to included.
@@ -1647,6 +1657,9 @@ class ScenarioBuilder extends Component
     {
         return [
             'salePrice' => '', 'buyPrice' => '', 'buyMortgageRate' => '', 'annualRent' => '',
+            // The bought home's own running cost (e.g. a park home's pitch fee) and its own real
+            // growth, which MAY BE NEGATIVE (a park home depreciates). Empty = derive as before.
+            'buyRunningCosts' => '', 'buyGrowthReal' => '',
             'rentInflationReal' => '', 'movingCosts' => '',
             'sellingCosts' => self::defaultSellingCosts(),
         ];

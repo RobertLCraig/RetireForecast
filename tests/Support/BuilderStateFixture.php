@@ -67,6 +67,7 @@ final class BuilderStateFixture
                 'mortgageRepaymentRate' => '', 'mortgageRepaymentInitialMonths' => '', 'mortgageRepaymentRevertRate' => ''],
             'housing' => ['salePrice' => '525000', 'buyPrice' => '320000', 'annualRent' => '18000',
                 'rentInflationReal' => '0.5', 'movingCosts' => '9500',
+                'buyRunningCosts' => '', 'buyGrowthReal' => '',
                 'sellingCosts' => ['estate_agent' => ['label' => 'Estate agent', 'basis' => 'percent', 'value' => '1.5']]],
         ];
     }

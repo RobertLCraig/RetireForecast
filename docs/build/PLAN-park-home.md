@@ -5,7 +5,18 @@
 > in `CLAUDE.md` (framework-free engine, integer pence, reconciliation invariants, completeness
 > tests, tests green on every commit).
 
-**Stage:** DRAFT — scoped, not built. Deferred while a concurrent session lands Pension Credit bug fixes.
+**Stage:** ✅ BUILT (2026-07-30) — kept as the build record. See DECISIONS 2026-07-30.
+
+> **Built as specified.** Both gaps closed by two optional `HousingAction` fields
+> (`buyRunningCosts`, `buyGrowthOverride`, the latter accepting NEGATIVE rates), a depreciation
+> honesty note, and four scenarios (£150k Tring / £128k Wokingham, each with and without the £80k art
+> sale). Guarded by `DepreciatingHomePurchaseTest` (the home must actually lose value; an explicit
+> running cost must REPLACE the 1% default, not add to it; both-null is byte-identical).
+>
+> **The park home is the strongest option in the family**: £128k Wokingham + the £80k art sale
+> supports **£1,235/mo** of free spending against sell-and-buy-cheaper's £865/mo, and £128k works
+> **without** the art sale (£931/mo). £150k Tring needs the art sale to complete at all — no mortgage
+> is available on a park home, and the £46,412 gap exceeds their savings.
 **Owner lane:** housing options (same family as `PLAN-in-place-forced-sale.md` / `PLAN-multi-property.md`).
 _Last updated: 2026-07-29 (scoped from research; no code changed)_
 

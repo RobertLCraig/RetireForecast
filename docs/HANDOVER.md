@@ -178,6 +178,16 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   answer. **V2 finding: sell & buy cheaper £865/mo, lifetime mortgage £652/mo, YCC-to-72 £212/mo, and
   every other plan (incl. the LiveMore stay-put base and both £80k art-sale variants) fails at zero
   discretionary spend** — the stay-put mortgage leaves no holiday budget at all.
+- **Done 2026-07-30 — the park-home option: a bought home that costs what it costs and LOSES value
+  (DECISIONS 2026-07-30, [docs/build/PLAN-park-home.md](build/PLAN-park-home.md)):** two optional
+  `HousingAction` fields (`buyRunningCosts`, `buyGrowthOverride` — the latter accepting **negative**
+  rates), a `home_depreciates` honesty note, and four new scenarios (£150k Tring / £128k Wokingham,
+  each ± the £80k art sale). **The park home is now the strongest plan in the family** — £128k
+  Wokingham + art sale gives **£1,235/mo** free spending vs sell-and-buy-cheaper's £865/mo, and £128k
+  works without the art sale (£931/mo); £150k Tring can't complete at all, since no mortgage is
+  available on a park home and the £46,412 gap exceeds their savings. **A full scenario audit ran
+  clean** (see Session log) — variant labels, orphaned overrides, the mortgage line, monthly-figure
+  reconciliation, depreciation reaching the result, and unfunded purchases being charged.
 - **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **read that doc before touching any V2 figure.** The base's
   "money found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
   (year 2026, the real source as the label) — see the V2 doc's note. It now needs **~£49,495**, not ~£90k.
@@ -311,6 +321,28 @@ protection gap promoted to #3** (death-in-service confirmed in force — and it 
 cliff-edge RF is well placed to surface). Personal detail (DOB, scheme, cover) deliberately kept **out** of the
 tracked plan per [[pii-leaks-into-tracked-files]] — it lives in the gitignored SCENARIO-V2 doc. **No code
 changed**; no DECISIONS entry per the established convention (a DRAFT plan earns its entry when built).
+
+_2026-07-30 (the park-home option built, then a full scenario audit)_ —
+Built [docs/build/PLAN-park-home.md](build/PLAN-park-home.md) after committing the spendable view
+(`8f5b650`). Two optional `HousingAction` fields close both gaps; `buyGrowthOverride` accepts **negative**
+rates, so `housing.buyGrowthReal` gets its own validation band (−25..25) rather than the 0-upwards `$rate`
+rule. Added four scenarios (ids 51–54). **Corrected my own earlier claim to Rob:** I had written that the
+cruise "only exists in plans that don't involve that mortgage" and treated the park home as settled — wrong,
+since a park home is a sell-and-buy with **no mortgage at all**, the opposite category. Rob pushed back and
+was right; his ~£1,300/mo instinct was if anything conservative (the freed outgoings are ~£1,750/mo: the
+£1,318.54 instalment plus £682.11 of service charge and levy, less the £250 pitch fee).
+**Also fixed a display defect Rob found on the live results page:** a repayment mortgage's "Mortgage" spend
+line is deliberately zeroed (the schedule owns the payment), and echoing that £0 back read as "the mortgage
+isn't being charged". Verified the charge is correct first (the year-on-year difference IS the instalment
+once deflated — my first comparison script wrongly compared nominal to real), then made the budget panel
+show the schedule's own first-full-year instalment, tag it as computed, and count it in the totals.
+**Then audited all 14 scenarios** on six checks: variant column vs modelled variant, orphaned overrides,
+the mortgage line vs what is charged, monthly-figure reconciliation every year, a depreciating home
+actually depreciating *and* raising its note, and an unfunded purchase being charged rather than conjured.
+Three initial flags were **my audit check being naive, not bugs** — an unfunded gap need not surface as
+unmet spend, because the year's income and savings may legitimately cover it (that is the point of charging
+it); corrected the check to assert the gap lands in the year's spend instead. **Audit clean.** Full suite
+green (979), pint clean. Awaits browser sign-off.
 
 _2026-07-30 (spendable view: available capital, monthly allowance, and a solved affordable-spend figure)_ —
 Built [docs/build/PLAN-spendable-view.md](build/PLAN-spendable-view.md) after the other session's Pension

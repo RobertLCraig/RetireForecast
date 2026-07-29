@@ -1154,6 +1154,27 @@
                         <input id="housing-buyMortgageRate" type="text" inputmode="decimal" placeholder="e.g. 6" wire:model="housing.buyMortgageRate" class="{{ $field }}">
                         <p class="mt-1 text-xs text-gray-500">If the new home costs more than the sale frees, the gap is funded first from your savings (cash → GIA → ISA, never pensions), then by an interest-only (retirement interest-only) mortgage at this rate. Blank = no mortgage; any gap your savings can't cover is flagged as unfunded and fails the plan's first year.</p>
                     </div>
+                    {{-- The bought home's own costs and growth. Needed for anything that is not an
+                         ordinary appreciating freehold — a park home has a flat pitch fee and LOSES
+                         value, which the defaults (1% of value, house-price growth) get backwards. --}}
+                    <div>
+                        <label for="housing-buyRunningCosts" class="{{ $label }}">New home's running costs (£/yr, optional)</label>
+                        <input id="housing-buyRunningCosts" type="text" inputmode="decimal" placeholder="e.g. 3000" wire:model.blur="housing.buyRunningCosts" class="{{ $field }}" @error('housing.buyRunningCosts') aria-invalid="true" @enderror>
+                        @error('housing.buyRunningCosts') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                        <p class="mt-1 text-xs text-gray-500">Maintenance, insurance, council tax — or a <strong>park home's pitch fee</strong>. Blank = we scale your current home's running costs by price, or assume 1% of value a year for upkeep.</p>
+                    </div>
+                    <div>
+                        <label for="housing-buyGrowthReal" class="{{ $label }}">New home's growth (real %/yr, optional)</label>
+                        <input id="housing-buyGrowthReal" type="text" inputmode="decimal" placeholder="e.g. -8" wire:model.blur="housing.buyGrowthReal" class="{{ $field }}" @error('housing.buyGrowthReal') aria-invalid="true" @enderror>
+                        @error('housing.buyGrowthReal') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                        <p class="mt-1 text-xs text-gray-500">
+                            Above inflation. Blank = the same house-price growth as everything else.
+                            <strong>Enter a negative number for a home that loses value</strong> — a
+                            <strong>park home</strong> typically does, because the build standard is revised every
+                            8–10 years and the site owner takes up to 10% of the sale price. That erodes what you'd
+                            leave behind, so it must be modelled, not assumed away.
+                        </p>
+                    </div>
                     <div>
                         <label for="housing-annualRent" class="{{ $label }}">Annual rent if renting (£)</label>
                         <input id="housing-annualRent" type="text" inputmode="decimal" wire:model="housing.annualRent" class="{{ $field }}">

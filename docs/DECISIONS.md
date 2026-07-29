@@ -40,6 +40,46 @@ Pension Credit, confined to the both-alive years) is recorded in the gitignored 
 `PathProjectorTest` (one disabled partner → £0; both → couple rate; a caring partner → carer addition) +
 `PensionCreditCalculatorTest` (single vs couple rate; carer). Full suite green.
 
+## 2026-07-30 — A bought home can cost what it costs, and can LOSE value (the park-home option)
+**Context:** Rob asked to consider a park home between Wokingham and Tring. Research
+([docs/build/PLAN-park-home.md](build/PLAN-park-home.md)) established that the *holiday*-park version is
+not legally possible as a housing plan (a holiday home cannot be a main residence; the owner must be
+registered elsewhere) but the *residential* park-home version is squarely in budget — and that the
+engine could not model it at all: a bought home could only appreciate at the assumption set's house
+rate, with running costs derived as 1% of value.
+
+**Decisions:**
+1. **Two optional `HousingAction` fields, not a new "park home" type.** `buyRunningCosts` (?Money) and
+   `buyGrowthOverride` (?Percent, **may be negative**). *Rationale:* no new DTO or enum, it composes
+   with everything already built (Pension Credit disregard, IHT, care means test), and the same two
+   fields model a short-lease flat or any depreciating home. Follows the `buyMortgageRate` precedent.
+2. **An explicit running cost REPLACES the derivation, never adds to it.** *Rationale:* a pitch fee is
+   a flat annual charge unrelated to value; the 1%-of-value proxy understated it by £1,500/yr on a
+   £150k home. Adding them would double-count upkeep — asserted against.
+3. **Negative growth is a first-class case, and it must announce itself.** New `home_depreciates`
+   input note stating the rate, what the home is worth by the end, and that the 10% sale commission is
+   excluded. *Rationale:* a reader's mental model of a home is that it appreciates, so a quietly
+   falling wealth line reads as a bug — or goes unnoticed. Same honesty treatment as the
+   lifetime-mortgage roll-up.
+4. **Default depreciation -8%/yr real, user-editable, with four sensitivities shipped.** *Rationale:*
+   the evidence is weak and partisan — "90% over 10 years" (≈-20%/yr) comes from campaigning sites,
+   "3–6%/yr" from manufacturer marketing and partly the US "park model" market. -8% is the
+   adverse-but-defensible midpoint per [[adverse-default-user-editable]]; at that rate a £150k home is
+   worth ~£22k after 23 years.
+5. **A correction recorded against this plan's own earlier draft:** pitch fees are **CPI**-linked by
+   statute, not RPI, since the Mobile Homes (Pitch Fees) Act 2023 (in force 2 July 2023). The engine's
+   flat-real treatment is therefore already correct and the escalation limitation previously flagged
+   **does not exist**.
+
+**Consequences.** The park home is the **strongest option in the V2 family**: £128k Wokingham + the
+£80k art sale supports **£1,235/mo** of free spending (vs sell-and-buy-cheaper's £865/mo), and the
+£128k version works **without** the art sale (£931/mo). £150k Tring cannot complete without it — **no
+mortgage is available on a park home** (you own the structure, not the pitch), so the £46,412 gap has
+to be cash and exceeds their savings. The trade is the estate: -8%/yr plus up to 10% resale commission.
+
+**Not modelled (flagged):** the 10% resale commission (bites only on an actual resale); above-CPI pitch
+drift via "agreed park improvements"; site-closure and pitch-agreement risk (qualitative).
+
 ## 2026-07-30 — "Available capital" + "monthly allowance", and a SOLVED affordable-spend figure
 **Context:** Rob: *"we really need to highlight 'Available capital' and 'budgeted monthly allowance' for
 each year, for each scenario, to compare how much they should plan to be able to spend."* It arose from

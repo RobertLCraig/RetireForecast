@@ -475,6 +475,14 @@ from the original plan, flagged inline:
   neutral across the plans being compared**. The £20,000 overall cap and the April-2027 22% charge on
   S&S-ISA cash both bind; the April-2027 cash-ISA cut to £12,000 does not apply to a 65+ saver. Specced as
   A3 of the same plan.
+- **A bought home can now carry its own cost and its own (possibly NEGATIVE) growth — CLOSED
+  2026-07-30 (DECISIONS 2026-07-30).** `HousingAction::$buyRunningCosts` + `$buyGrowthOverride`. The
+  bought home previously always appreciated at the assumption-set house rate with running costs derived
+  as 1% of value, so a **park home** (flat pitch fee, depreciating) could not be modelled at all and
+  looked strictly better than it is. Both null = byte-identical to before
+  (`DepreciatingHomePurchaseTest`). **Still open:** the up-to-10% resale commission a site owner takes
+  is not modelled (it bites only on an actual resale, e.g. a forced sale for care), and above-CPI pitch
+  drift via "agreed park improvements" is not modelled.
 - **OPEN — `usableWealth` counts pre-tax pension money as cash (found 2026-07-30).** The ladder's
   `usableWealth`, the burndown chart and the safety-buffer check all use `liquidWealth + pensionWealth`,
   so £100,000 of pension is treated as £100,000 available when drawing it is taxable (worth perhaps

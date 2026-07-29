@@ -1372,7 +1372,7 @@ final class ResultPresenter
      *
      * @return list<array{kind: string, text: string}>
      */
-    public static function inputNotes(Household $household, ForecastResult $forecast): array
+    public static function inputNotes(Household $household, ForecastResult $forecast, ?HousingAction $housingAction = null): array
     {
         if ($forecast->years === []) {
             return [];
@@ -1463,6 +1463,24 @@ final class ResultPresenter
                 .'is why the mortgage line shrinks down the ladder); and it does NOT fall if one of you dies — the survivor owes the '
                 .'lender exactly the same amount out of a smaller income, which is usually where a later-life mortgage becomes '
                 .'unaffordable. Lender fees and any early-repayment charge are not included here.'];
+        }
+
+        // (c4) A home that LOSES value. A bought home can carry a negative real growth rate (a park
+        // home depreciates), and a reader's whole mental model of a home is that it appreciates — so
+        // state it, with what the home is worth by the end. Without this the wealth line quietly
+        // falls and looks like a bug, or worse, goes unnoticed (factual, not advice).
+        $buyGrowth = $housingAction?->buyGrowthOverride;
+        if ($buyGrowth !== null && $buyGrowth->basisPoints < 0 && $home !== null) {
+            $finalYear = $forecast->years[count($forecast->years) - 1];
+            $rate = rtrim(rtrim(number_format(abs($buyGrowth->asPercent()), 2), '0'), '.');
+            $notes[] = ['kind' => 'home_depreciates', 'text' => "This home is modelled as LOSING value — {$rate}% a year "
+                .'above inflation, rather than rising like an ordinary house. That is the realistic assumption for a '
+                .'park home: they are built to a standard revised every 8–10 years, which makes an older one hard to '
+                ."resell, and the site owner is entitled to up to 10% of the sale price. By {$forecast->finalCalendarYear} "
+                ."it is worth about {$finalYear->propertyWealth->format()} in today's money. The lower running costs may "
+                .'well be worth it while you live there — but the trade is that far less is left to inherit, so compare '
+                .'this against a plan that keeps bricks-and-mortar before deciding. The 10% sale commission is not '
+                .'included in these figures.'];
         }
 
         // (d) Cohabiting-couple survivor caveats. The married/civil-partner survivor rights the

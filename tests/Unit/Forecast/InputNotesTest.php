@@ -8,7 +8,9 @@ use App\Forecast\HouseholdAssembler;
 use App\Forecast\ResultPresenter;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
+use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
@@ -35,7 +37,16 @@ final class InputNotesTest extends TestCase
             new CohortLifeTable,
         ))->forecast($household, AssumptionSetLibrary::default(), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'));
 
-        return ResultPresenter::inputNotes($household, $forecast);
+        return ResultPresenter::inputNotes($household, $forecast, (new HouseholdAssembler)->housingAction($state['housing'] ?? []));
+    }
+
+    /** The deterministic forecast for a household, for the notes that need the action passed too. */
+    private function forecastFor(Household $household): ForecastResult
+    {
+        return (new DeterministicForecaster(
+            TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi),
+            new CohortLifeTable,
+        ))->forecast($household, AssumptionSetLibrary::default(), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'));
     }
 
     public function test_a_spending_smile_is_surfaced_as_a_note_naming_the_reference_person(): void
@@ -258,6 +269,58 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('clears in 2042', $flag[0]['text']);
         $this->assertStringContainsString('over 16 years', $flag[0]['text']);
         $this->assertStringContainsString('does NOT fall if one of you dies', $flag[0]['text']);
+    }
+
+    public function test_a_home_that_loses_value_is_flagged_with_what_it_leaves_behind(): void
+    {
+        // A reader's whole mental model of a home is that it appreciates. A park home does not, and
+        // the wealth line quietly falling must be explained, not left to look like a bug.
+        $state = [
+            'householdName' => 'Park home', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
+            'people' => [['id' => 'p1', 'name' => 'Pat', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => ['currentValue' => '350000', 'ownership' => 'outright'],
+            'housing' => ['salePrice' => '350000', 'buyPrice' => '150000', 'buyGrowthReal' => '-8'],
+        ];
+
+        $household = (new HouseholdAssembler)->household($state);
+        $forecast = $this->forecastFor($household);
+        $action = (new HouseholdAssembler)->housingAction($state['housing']);
+
+        $notes = ResultPresenter::inputNotes($household, $forecast, $action);
+        $flag = array_values(array_filter($notes, fn (array $n): bool => $n['kind'] === 'home_depreciates'));
+
+        $this->assertCount(1, $flag);
+        $this->assertStringContainsString('LOSING value', $flag[0]['text']);
+        $this->assertStringContainsString('8% a year', $flag[0]['text']);
+        $this->assertStringContainsString('10% of the sale price', $flag[0]['text']);
+        $this->assertStringContainsString('less is left to inherit', $flag[0]['text']);
+    }
+
+    public function test_an_ordinary_purchase_raises_no_depreciation_note(): void
+    {
+        $state = [
+            'householdName' => 'Ordinary', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
+            'people' => [['id' => 'p1', 'name' => 'Pat', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => ['currentValue' => '350000', 'ownership' => 'outright'],
+            'housing' => ['salePrice' => '350000', 'buyPrice' => '150000'],
+        ];
+
+        $household = (new HouseholdAssembler)->household($state);
+        $notes = ResultPresenter::inputNotes(
+            $household,
+            $this->forecastFor($household),
+            (new HouseholdAssembler)->housingAction($state['housing']),
+        );
+
+        $this->assertSame([], array_values(array_filter($notes, fn (array $n): bool => $n['kind'] === 'home_depreciates')));
     }
 
     public function test_a_static_mortgage_raises_no_repayment_note(): void
