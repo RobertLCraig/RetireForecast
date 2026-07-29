@@ -49,6 +49,15 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * balance to overpay); null (the default) = pure roll-up, no overpayment. The cash to fund it is a
  * separate outflow (a "Mortgage" expense line of the same amount), so the two together model an
  * overpayment honestly: the balance falls, but the household must find the money to pay it.
+ *
+ * $repaymentTerms models the third mortgage shape — an ordinary capital-and-interest
+ * ("repayment") mortgage that AMORTISES $outstandingMortgage to zero over a term
+ * ({@see RepaymentMortgageTerms}). When set, the engine owns both the balance and the payment:
+ * the balance follows the amortisation schedule, and the fixed-nominal instalment REPLACES the
+ * "Mortgage" expense line (which is dropped, so the two can never double-count). Null (the
+ * default) leaves the pre-existing behaviour untouched — a static or rolled-up balance whose
+ * payment, if any, is the expense line. Mutually exclusive with $mortgageRollUpRate: a loan
+ * cannot both amortise and roll up.
  */
 final class Property
 {
@@ -67,5 +76,10 @@ final class Property
         public readonly bool $isLet = false,
         public readonly ?Percent $mortgageRollUpRate = null,
         public readonly ?Money $mortgageOverpaymentAnnual = null,
-    ) {}
+        public readonly ?RepaymentMortgageTerms $repaymentTerms = null,
+    ) {
+        if ($repaymentTerms !== null && $mortgageRollUpRate !== null) {
+            throw new \InvalidArgumentException('A mortgage cannot both amortise (repaymentTerms) and roll up (mortgageRollUpRate) — choose one.');
+        }
+    }
 }

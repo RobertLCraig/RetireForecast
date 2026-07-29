@@ -384,6 +384,16 @@ class ScenarioBuilder extends Component
             $rules['property.mortgageRollUpRate'] = ['nullable', 'numeric', 'min:0', 'max:20'];
             // Voluntary annual overpayment on a rolled-up lifetime mortgage (slows the roll-up); empty = none.
             $rules['property.mortgageOverpayment'] = ['nullable', 'numeric', 'min:0', 'max:1000000'];
+            // Capital-and-interest ("repayment") mortgage: the term switches amortisation on, so
+            // the balance falls to zero over it and the instalment is charged until it does. Empty
+            // term = the pre-existing interest-only / roll-up behaviour. 600 months = 50 years.
+            $rules['property.mortgageRepaymentTermMonths'] = ['nullable', 'integer', 'min:1', 'max:600'];
+            $rules['property.mortgageRepaymentStartYear'] = ['nullable', 'integer', 'min:1980', 'max:2100'];
+            $rules['property.mortgageRepaymentStartMonth'] = ['nullable', 'integer', 'min:1', 'max:12'];
+            $rules['property.mortgageRepaymentRate'] = ['nullable', 'numeric', 'min:0', 'max:20'];
+            // The initial deal length in months; must leave at least one month to revert into.
+            $rules['property.mortgageRepaymentInitialMonths'] = ['nullable', 'integer', 'min:1', 'max:599'];
+            $rules['property.mortgageRepaymentRevertRate'] = ['nullable', 'numeric', 'min:0', 'max:20'];
             // Capital-gains history (only meaningful when the home was ever let — see the wizard).
             $rules['property.cgtHistory.purchasePrice'] = $money;
             $rules['property.cgtHistory.improvementCosts'] = $money;
@@ -657,6 +667,15 @@ class ScenarioBuilder extends Component
             // empty (a static/serviced mortgage — the balance does not roll up).
             $this->property['mortgageRollUpRate'] ??= '';
             $this->property['mortgageOverpayment'] ??= '';
+            // A property saved before the repayment-mortgage inputs existed has none of these
+            // keys; default them empty, which is exactly the old behaviour (no term = the balance
+            // does not amortise, and the "Mortgage" expense line remains the payment).
+            $this->property['mortgageRepaymentTermMonths'] ??= '';
+            $this->property['mortgageRepaymentStartYear'] ??= '';
+            $this->property['mortgageRepaymentStartMonth'] ??= '';
+            $this->property['mortgageRepaymentRate'] ??= '';
+            $this->property['mortgageRepaymentInitialMonths'] ??= '';
+            $this->property['mortgageRepaymentRevertRate'] ??= '';
         }
 
         // Every spend line carries an explicit `included` flag so its on/off checkbox binds to a
@@ -1536,6 +1555,11 @@ class ScenarioBuilder extends Component
             'outstandingMortgage' => '', 'runningCosts' => '', 'growthAssumptionOverride' => '', 'ownershipShare' => '',
             'mortgageRedemptionYear' => '', 'mortgageMaturityAction' => 'refinance', 'mortgageRollUpRate' => '',
             'mortgageOverpayment' => '',
+            // Capital-and-interest ("repayment") mortgage terms. All empty = the pre-existing
+            // shapes (a static interest-only balance, or a lifetime-mortgage roll-up); a term
+            // switches amortisation on. Empty defaults, so a what-if child's delta is unaffected.
+            'mortgageRepaymentTermMonths' => '', 'mortgageRepaymentStartYear' => '', 'mortgageRepaymentStartMonth' => '',
+            'mortgageRepaymentRate' => '', 'mortgageRepaymentInitialMonths' => '', 'mortgageRepaymentRevertRate' => '',
             'cgtHistory' => self::blankCgtHistory(),
         ];
     }

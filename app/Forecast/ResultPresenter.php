@@ -34,6 +34,7 @@ use RetireForecast\FinanceEngine\MonteCarlo\CareImpact;
 use RetireForecast\FinanceEngine\MonteCarlo\IhtDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\LongevityDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
+use RetireForecast\FinanceEngine\Property\AmortisationSchedule;
 use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
 use RetireForecast\FinanceEngine\Support\WarningCode;
 
@@ -1334,6 +1335,33 @@ final class ResultPresenter
                 .'costs what you leave behind — compare this against servicing the interest to see the trade-off.'];
         }
 
+        // (c3) An ordinary capital-and-interest mortgage: unlike the two shapes above, the balance
+        // amortises to zero and the instalment is charged as an essential cost until it does. It is
+        // usually the single biggest claim on the household's cashflow, and three of its properties
+        // are counter-intuitive enough to state outright rather than leave implicit: the payment is
+        // fixed in cash terms (so it costs less in today's money every year), it does NOT shrink
+        // when one partner dies, and it stops dead at the end of the term (factual, not advice).
+        $repaymentTerms = $home?->repaymentTerms;
+        if ($home !== null && $repaymentTerms !== null && $mortgage !== null && $mortgage->isPositive()) {
+            $schedule = AmortisationSchedule::for($mortgage, $repaymentTerms);
+            $instalments = self::distinctInstalments($schedule);
+            $years = (int) round($repaymentTerms->termMonths / 12);
+            $clears = $schedule->finalPaymentYear();
+
+            $payment = count($instalments) > 1
+                ? "{$instalments[0]} a month, stepping to {$instalments[1]} when the fixed deal ends,"
+                : "{$instalments[0]} a month,";
+
+            $notes[] = ['kind' => 'repayment_mortgage', 'text' => 'This home is modelled as a repayment (capital and interest) mortgage of '
+                ."{$mortgage->format()} over {$years} years. The instalment is {$payment} charged as an essential cost until the loan "
+                ."clears in {$clears} — after which the home is owned outright and the payment stops. Over the term you repay "
+                ."{$schedule->totalRepaid()->format()} in all, of which {$schedule->totalInterest()->format()} is interest. Two things "
+                .'to read carefully: the instalment is fixed in cash terms, so it costs a little less in today’s money every year (that '
+                .'is why the mortgage line shrinks down the ladder); and it does NOT fall if one of you dies — the survivor owes the '
+                .'lender exactly the same amount out of a smaller income, which is usually where a later-life mortgage becomes '
+                .'unaffordable. Lender fees and any early-repayment charge are not included here.'];
+        }
+
         // (d) Cohabiting-couple survivor caveats. The married/civil-partner survivor rights the
         // engine implicitly assumes do NOT extend to a cohabiting partner, so flag where the
         // forecast may overstate what the survivor actually receives (no silent overstatement).
@@ -2030,5 +2058,29 @@ final class ResultPresenter
     public static function strategyLabel(string $variant): string
     {
         return self::LABELS[$variant] ?? $variant;
+    }
+
+    /**
+     * The distinct monthly instalments of an amortising mortgage, in the order they are charged —
+     * one per rate tier (a 5-year fix then a reversion rate gives two). The final instalment is
+     * trued up by pennies to clear the balance exactly, so it is excluded: it is an artefact of
+     * rounding, not a payment the borrower would recognise from their illustration.
+     *
+     * @return list<string> formatted money, e.g. ['£1,318.54', '£1,384.65']
+     */
+    private static function distinctInstalments(AmortisationSchedule $schedule): array
+    {
+        $rows = $schedule->rows();
+        $out = [];
+        $seen = null;
+
+        foreach (array_slice($rows, 0, max(0, count($rows) - 1)) as $row) {
+            if ($row['payment'] !== $seen) {
+                $seen = $row['payment'];
+                $out[] = Money::fromPence($row['payment'])->format();
+            }
+        }
+
+        return $out === [] ? [Money::fromPence($rows[0]['payment'] ?? 0)->format()] : $out;
     }
 }

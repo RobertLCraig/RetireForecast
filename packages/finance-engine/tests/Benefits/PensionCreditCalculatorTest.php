@@ -59,9 +59,10 @@ final class PensionCreditCalculatorTest extends TestCase
         $this->assertSame(0, $result->guaranteeCreditWeekly->pence);
     }
 
-    public function test_the_severe_disability_addition_lifts_the_guarantee(): void
+    public function test_the_severe_disability_addition_for_a_couple_uses_the_couple_rate(): void
     {
-        // Couple guarantee £363.25 + £86.05 SDP = £449.30; income £406 → £43.30 a week.
+        // A qualifying couple (BOTH partners on a disability benefit) gets the SDP at the couple
+        // rate = 2 × £86.05 = £172.10. Guarantee £363.25 + £172.10 = £535.35; income £406 → £129.35.
         $result = $this->calculator()->assess(
             isCouple: true,
             assessableIncomeWeekly: Money::fromPounds(406),
@@ -69,7 +70,34 @@ final class PensionCreditCalculatorTest extends TestCase
             severeDisability: true,
         );
 
-        $this->assertSame(4_330, $result->guaranteeCreditWeekly->pence);
+        $this->assertSame(12_935, $result->guaranteeCreditWeekly->pence);
+    }
+
+    public function test_the_severe_disability_addition_for_a_single_person_uses_the_single_rate(): void
+    {
+        // A single disabled pensioner gets the SDP at the single rate £86.05. Guarantee £238.00 +
+        // £86.05 = £324.05; income £190 → £134.05 a week.
+        $result = $this->calculator()->assess(
+            isCouple: false,
+            assessableIncomeWeekly: Money::of(190, 0),
+            assessableCapital: Money::zero(),
+            severeDisability: true,
+        );
+
+        $this->assertSame(13_405, $result->guaranteeCreditWeekly->pence);
+    }
+
+    public function test_the_carer_addition_lifts_the_guarantee(): void
+    {
+        // The carer addition £48.15 lifts the couple guarantee to £411.40; income £406 → £5.40 a week.
+        $result = $this->calculator()->assess(
+            isCouple: true,
+            assessableIncomeWeekly: Money::fromPounds(406),
+            assessableCapital: Money::zero(),
+            carer: true,
+        );
+
+        $this->assertSame(540, $result->guaranteeCreditWeekly->pence);
     }
 
     public function test_capital_tariff_income_erodes_the_award_the_downsizing_trap(): void

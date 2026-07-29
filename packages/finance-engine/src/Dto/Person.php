@@ -39,6 +39,15 @@ final class Person
          * they are alive, and (the passport to) higher entitlement. Default false.
          */
         public readonly bool $receivesDisabilityBenefit = false,
+        /**
+         * Whether this person provides 35+ hours a week of care to a partner who receives a
+         * qualifying disability benefit, giving them (underlying) entitlement to Carer's
+         * Allowance and so the Pension Credit carer addition while both are alive. Underlying
+         * entitlement does NOT reduce the cared-for partner's disability benefit or their
+         * severe-disability addition — only *paid* Carer's Allowance would. Default false
+         * (the cautious assumption: it is claimed, not assumed). See DECISIONS 2026-07-29.
+         */
+        public readonly bool $caresForPartner = false,
     ) {}
 
     /** The same person with a different planned retirement age (immutable; e.g. a sweep lever). */
@@ -56,6 +65,7 @@ final class Person
             $this->name,
             $this->longevity,
             $this->receivesDisabilityBenefit,
+            $this->caresForPartner,
         );
     }
 
@@ -74,6 +84,7 @@ final class Person
             $this->name,
             $longevity,
             $this->receivesDisabilityBenefit,
+            $this->caresForPartner,
         );
     }
 }

@@ -31,4 +31,6 @@ Thumbs.db
 /storage/app/import-samples/
 
 # Local scenario captures — real people's data to re-model from, never commit.
+# (.json covers raw builder_state / overrides exports taken before a scenario rebuild.)
 /docs/*.local.md
+/docs/*.local.json

@@ -23,10 +23,14 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  * tax year's weeks for an annual figure. {@see PensionCreditResult}.
  *
  * v1 scope (flagged): Guarantee Credit only (no Savings Credit, largely closed to those
- * reaching State Pension age after April 2016); the severe-disability/carer additions are
- * applied from a flag, not the full eligibility rules (the Carer's-Allowance interaction
- * with the SDP, and the "lives alone" test, are not modelled); the qualifying-age and
- * mixed-age-couple gate is the caller's responsibility.
+ * reaching State Pension age after April 2016). The severe-disability and carer additions
+ * take booleans that mean "the household qualifies": the caller (the projector) applies the
+ * eligibility rules (for the SDP a couple needs BOTH partners on a qualifying disability
+ * benefit) and this class applies the right amount (couple rate = twice the single rate).
+ * Still not modelled: the "no non-dependant
+ * adult / lives alone" SDP test beyond the partner; the *paid*-Carer's-Allowance-removes-the-SDP
+ * interaction (the modelled carer route is underlying entitlement, which does not remove it);
+ * the qualifying-age and mixed-age-couple gate is the caller's responsibility.
  */
 final class PensionCreditCalculator
 {
@@ -41,6 +45,12 @@ final class PensionCreditCalculator
      * The weekly appropriate minimum guarantee for the household: the Standard Minimum
      * Guarantee (single or couple) plus the severe-disability / carer additions when they
      * apply. This is the income level Guarantee Credit tops the household up to.
+     *
+     * $severeDisability / $carer mean "the household qualifies" (the caller owns the
+     * eligibility test). The severe-disability addition is paid at the couple rate (twice
+     * the single rate) for a qualifying couple — where both partners receive a qualifying
+     * disability benefit — and at the single rate otherwise. The carer addition is a single
+     * flat amount.
      */
     public function applicableAmountWeekly(bool $isCouple, bool $severeDisability = false, bool $carer = false): Money
     {
@@ -51,7 +61,8 @@ final class PensionCreditCalculator
             : $benefits->standardMinimumGuaranteeSingleWeekly;
 
         if ($severeDisability) {
-            $amount = $amount->plus($benefits->severeDisabilityAdditionWeekly);
+            $sdp = $benefits->severeDisabilityAdditionWeekly;
+            $amount = $amount->plus($isCouple ? $sdp->times(2) : $sdp);
         }
         if ($carer) {
             $amount = $amount->plus($benefits->carerAdditionWeekly);

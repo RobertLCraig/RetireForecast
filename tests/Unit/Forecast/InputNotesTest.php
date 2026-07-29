@@ -222,6 +222,64 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('left to inherit', $flag[0]['text']);
     }
 
+    public function test_a_repayment_mortgage_is_flagged_with_its_instalment_and_clearing_year(): void
+    {
+        // The ESIS quote: £160,000 over 16 years, 6.23% fixed for 60 months then 7.24%. The note
+        // must state the instalment, the step when the deal reverts, and the year it clears — and
+        // must call out the two properties a reader gets wrong (fixed in cash terms; unchanged for
+        // a survivor), because that is where a later-life repayment mortgage becomes unaffordable.
+        $notes = $this->notes([
+            'householdName' => 'Repayment', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Pat', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'name' => 'Lee', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230'],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '230'],
+            ],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => [
+                'currentValue' => '400000', 'ownership' => 'mortgaged', 'outstandingMortgage' => '160000',
+                'mortgageRepaymentTermMonths' => '192', 'mortgageRepaymentStartYear' => '2026',
+                'mortgageRepaymentStartMonth' => '9', 'mortgageRepaymentRate' => '6.23',
+                'mortgageRepaymentInitialMonths' => '60', 'mortgageRepaymentRevertRate' => '7.24',
+            ],
+        ]);
+
+        $flag = array_values(array_filter($notes, fn (array $n): bool => $n['kind'] === 'repayment_mortgage'));
+        $this->assertCount(1, $flag);
+
+        // The instalments are the lender's own, to the penny, and the step is named.
+        $this->assertStringContainsString('£1,318.54 a month', $flag[0]['text']);
+        $this->assertStringContainsString('stepping to £1,384.65', $flag[0]['text']);
+        $this->assertStringContainsString('clears in 2042', $flag[0]['text']);
+        $this->assertStringContainsString('over 16 years', $flag[0]['text']);
+        $this->assertStringContainsString('does NOT fall if one of you dies', $flag[0]['text']);
+    }
+
+    public function test_a_static_mortgage_raises_no_repayment_note(): void
+    {
+        // No term ⇒ an interest-only / RIO shape ⇒ no amortisation note (no noise).
+        $notes = $this->notes([
+            'householdName' => 'Serviced', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Pat', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => [
+                'currentValue' => '350000', 'ownership' => 'mortgaged', 'outstandingMortgage' => '118000',
+            ],
+        ]);
+
+        $this->assertSame([], array_values(array_filter($notes, fn (array $n): bool => $n['kind'] === 'repayment_mortgage')));
+    }
+
     public function test_a_static_mortgage_raises_no_roll_up_note(): void
     {
         // No roll-up rate ⇒ a repayment/serviced mortgage ⇒ no roll-up note (no noise).

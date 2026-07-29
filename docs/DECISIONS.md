@@ -3,6 +3,99 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-29 — Pension Credit severe-disability addition: the couple-eligibility rule (+ carer addition)
+**Context:** a review of the Pension Credit modelling (prompted by a benefits check for the private V2 household —
+figures in the gitignored SCENARIO/BENEFITS docs) surfaced an error. `PathProjector::meansTestedBenefitNominal()`
+set a single `$disabled` flag true if **any living** household member received a disability benefit, and fed it
+straight into the **severe-disability addition (SDP)** flag of `PensionCreditCalculator` (the `carer` flag was
+never passed). But the SDP couple rule (confirmed:
+[Turn2us](https://www.turn2us.org.uk/get-support/information-for-your-situation/severe-disability-premium/can-i-get-a-severe-disability-premium),
+[entitledto](https://www.entitledto.co.uk/help/disability-premiums-in-benefits), verified 2026-07-29) is that a
+**couple qualifies only when BOTH partners** receive a qualifying disability benefit (or the other is registered
+blind) — a non-disabled co-resident partner blocks it. So a couple with one disabled partner should get **£0**,
+not the single rate the engine was adding.
+
+**Decisions:**
+1. **SDP eligibility now follows the household rule.** A *single* disabled pensioner qualifies (single rate); a
+   *couple* qualifies only when *both* partners receive a qualifying disability benefit, and then at the **couple
+   rate = 2× single** (`applicableAmountWeekly` doubles the addition for a couple). *Rationale:* accuracy-first —
+   the old flag over-credited every one-disabled-partner couple, in the reassuring direction.
+2. **The carer addition is wired.** New engine field `Person::caresForPartner` (default false — the cautious
+   assumption: claimed, not assumed); when a living member cares for a living partner who receives a qualifying
+   disability benefit, the projector passes the `carer` flag and the £48.15/wk carer addition applies. Underlying
+   entitlement (the modelled route) does **not** remove the disabled partner's SDP — only *paid* Carer's Allowance
+   would, which is not modelled. *Rationale:* for the common one-disabled-partner couple the correct addition is
+   the carer one, not the SDP.
+3. **App-builder exposure of `caresForPartner` is deferred.** The engine field defaults false, so no stored
+   scenario or what-if child delta changes ([[new-builder-field-delta-gotcha]] bites only on non-empty defaults),
+   and it is immaterial to V2 (below). *Rationale:* the correctness fix (SDP) flows through existing data with no
+   app change; exposing the carer flag in the UI is a separate, low-value-for-V2 follow-up.
+
+**Impact:** the fix removes the spurious both-alive-years SDP. For a one-disabled-partner couple whose combined
+State Pension sits between the plain couple guarantee (£363.25/wk) and guarantee-plus-SDP, the model was awarding
+Pension Credit in every both-alive year that should be £0; once a partner dies the survivor (not disabled) already
+carried no SDP, so those years are unchanged. The carer addition is immaterial where both-alive income already
+exceeds the carer-boosted guarantee. The quantified effect on the private V2 base (a material cut to lifetime
+Pension Credit, confined to the both-alive years) is recorded in the gitignored benefits doc. Guarded by
+`PathProjectorTest` (one disabled partner → £0; both → couple rate; a caring partner → carer addition) +
+`PensionCreditCalculatorTest` (single vs couple rate; carer). Full suite green.
+
+## 2026-07-29 — Repayment (capital & interest) mortgages amortise; the V2 Stay-put base moves onto a real quote
+**Context:** Rob produced a real indicative quote for the V2 couple — a LiveMore Capital ESIS dated 29 July 2026
+(via broker "When The Bank Says No"): **£160,000 over 16 years, capital & interest**, 6.23% fixed for 60 months
+(£1,318.54/mo) then 7.24% SVR for 132 (£1,384.65/mo), first payment September 2026, cleared August 2042. The
+Stay-put base modelled a **hypothetical** instead: ~£90k found from outside pays the £208k buy-to-let down to
+£118k, refinanced as a retirement interest-only loan at 6% = £7,080/yr, balance static for ever. The engine
+could not represent the quote at all: a repayment mortgage's balance was **static** (see DATA-MODEL "Known
+divergences"), so the only shapes available were interest-only and equity-release roll-up.
+
+**Decisions:**
+1. **Model the repayment mortgage properly rather than approximate it.** New `RepaymentMortgageTerms` +
+   `MortgageRatePeriod` DTOs and an `AmortisationSchedule` calculator: month-by-month, integer pence, monthly
+   rate = **nominal annual / 12** (the UK lender convention, not an effective-rate conversion), the instalment
+   recomputed at each rate tier as the annuity clearing the then-balance over the then-remaining term (which is
+   what produces the step a lender illustrates), and the final instalment trued up so the loan lands exactly on
+   zero. *Rationale:* accuracy-first. Approximating with the existing roll-up + overpayment mechanism (annual
+   compounding) drifts, cannot express two rate tiers, and never reaches zero.
+2. **The schedule owns BOTH the balance and the payment.** The old "Mortgage" expense line is **dropped** when
+   terms are set, so the two can never double-count, and the instalment is added **after** the CPI and survivor
+   multiplies. *Rationale:* three properties an expense line gets wrong, each in the reassuring direction or
+   worse — a mortgage payment is **fixed nominal** (an expense line is a real figure the projector re-inflates
+   annually), it does **not** shrink by the survivor factor when a partner dies (the lender wants the same
+   instalment from a smaller income — precisely where a later-life mortgage becomes unaffordable), and it
+   **stops** at the end of the term.
+3. **The loan amount keeps one home.** The terms carry no principal; the schedule amortises
+   `Property::$outstandingMortgage`. *Rationale:* the data-integrity rule — a balance must never be able to
+   drift from the loan the rest of the forecast sees.
+4. **Mutually exclusive with `mortgageRollUpRate`** — the `Property` constructor throws. *Rationale:* a loan
+   cannot both amortise and roll up; failing loudly beats a silent precedence rule (and it caught four
+   real scenarios that would otherwise have been silently wrong — see 6).
+5. **Pinned to the lender's own illustration, as a worked example.** The ESIS repayment table is asserted
+   against directly: both monthly instalments exact, every quoted balance **within 21p over 16 years**, total
+   interest within 11p, zero at term. *Rationale:* the same standard as the HMRC worked examples — an
+   independently produced schedule, not a self-consistent fixture. The residual is the lender's own per-month
+   rounding (its interest and balance columns disagree by a penny on row 1).
+6. **The V2 Stay-put base moves onto the real quote (Rob's call), and all children inherit** — except seven
+   that model a *different mortgage product* and therefore cannot: the two let-to-let children (17, 32 — a
+   £208k interest-only BTL at £16,170.96/yr) and the five equity-release children (27, 28, 31, 38, 39 — lifetime
+   mortgages). Those get an explicit `property.mortgageRepaymentTermMonths = ''` override. *Rationale:* not a
+   preference — four of them **threw** under decision 4, and the other three would silently have had a
+   residential C&I product imposed on a loan that is not one.
+
+**Consequences.** The base's `mortgageRedemptionYear` is cleared (this remortgage *is* the answer to the
+December-2026 redemption call, so no unmodelled maturity event remains). **The quote is unaffordable on the
+modelled figures:** the instalment (£15,822/yr, then £16,616/yr) is carried while both partners live, but from
+the first death (~2035) the survivor is on ~£11.7k/yr against £16,616/yr, so the plan **runs short in 2036**
+versus 2043 on the old RIO base, and stays ~£15k/yr short every year until the loan clears. What it buys is the
+other side: the debt is gone by 2042 and terminal net wealth is **£440,007 vs £365,177** (+£74,830). This is
+the survivor-affordability constraint the 2026-07-03 RIO research already put at £45–85k of borrowing — £160k
+is roughly twice it. It also needs **~£49,495 found up front** (£48,000 to close the gap to the £208k
+redemption, plus £95 + £1,400 of broker fees) against the ~£42k Rob has said is realistically available.
+
+**Not modelled (flagged):** lender fees, the £100 redemption fee, early-repayment charges (5% then 4%), and the
+10%/yr penalty-free overpayment allowance — `mortgage_overpayment` applies only to a roll-up, so an amortising
+loan has no overpayment input.
+
 ## 2026-07-19 — The three hero time-series charts (C1 income, C2 wealth, C3 costs)
 **Context:** An adversarial review (2026-07-18, docs/PLAN-output-inflation-and-charts.md Part C) found that
 nearly every chart a user would want already has its data computed per year on `YearResult` and thrown at a

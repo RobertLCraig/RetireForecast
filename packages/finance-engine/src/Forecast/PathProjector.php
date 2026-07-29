@@ -27,6 +27,7 @@ use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Pension\WithdrawalKind;
+use RetireForecast\FinanceEngine\Property\AmortisationSchedule;
 use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
 use RetireForecast\FinanceEngine\StatePension\StatePensionCalculator;
 use RetireForecast\FinanceEngine\Support\Warning;
@@ -458,6 +459,16 @@ final class PathProjector
 
         $propertyShare = $household->primaryResidence?->ownershipShare?->asFraction() ?? 1.0;
 
+        // An ordinary capital-and-interest mortgage amortises to zero over its term. Build the
+        // month-by-month schedule once here (it depends only on the loan and its terms, never on
+        // the path), so every year can read its opening balance and its fixed-nominal instalment.
+        // Null = the pre-existing shapes: a static balance, or a lifetime-mortgage roll-up.
+        $repaymentTerms = $household->primaryResidence?->repaymentTerms;
+        $repaymentSchedule = $repaymentTerms === null ? null : AmortisationSchedule::for(
+            $household->primaryResidence?->outstandingMortgage ?? Money::zero(),
+            $repaymentTerms,
+        );
+
         return [
             'baseYear' => $settings->baseYear,
             'baseAge' => $baseAge,
@@ -473,7 +484,13 @@ final class PathProjector
             // Value and mortgage are entered whole and scaled to the household's share here, so every
             // downstream use (wealth, the means test, IHT, growth) reflects only the share it owns.
             'property' => (int) round(($household->primaryResidence?->currentValue->pence ?? 0) * $propertyShare),
-            'mortgageOutstanding' => (int) round(($household->primaryResidence?->outstandingMortgage?->pence ?? 0) * $propertyShare),
+            // An amortising loan reads its balance from the schedule (the base year's opening
+            // balance), so a mortgage already part-way through its term starts where it really is.
+            'mortgageOutstanding' => (int) round(
+                ($repaymentSchedule?->openingBalanceIn($settings->baseYear)->pence
+                    ?? $household->primaryResidence?->outstandingMortgage?->pence
+                    ?? 0) * $propertyShare
+            ),
             'ownershipShare' => $propertyShare,
             // The whole-property (un-scaled) value, grown in lockstep with the share value. A
             // forced sale needs the whole figure to compute CGT on the household's share of the
@@ -502,6 +519,9 @@ final class PathProjector
             // A voluntary fixed-nominal annual overpayment that reduces a rolled-up lifetime-mortgage
             // balance (null/0 = pure roll-up). The cash to fund it rides on the Mortgage expense line.
             'mortgageOverpaymentAnnual' => $household->primaryResidence?->mortgageOverpaymentAnnual?->pence ?? 0,
+            // The amortisation schedule of a capital-and-interest mortgage; null = a static or
+            // rolled-up balance. When set it owns BOTH the balance and the payment.
+            'repaymentSchedule' => $repaymentSchedule,
             'giaOverrideYield' => $giaOverrideYield,   // per-person balance-weighted override rate
             'giaOverrideShare' => $giaOverrideShare,   // per-person share of GIA under an override
         ];
@@ -740,8 +760,14 @@ final class PathProjector
         // the tax on a let property. v1: household-level (joint-ownership split not separated),
         // rental profit approximated by rental income (no other let-expenses modelled), capped at
         // the tax due (a reducer cannot create a refund).
-        if (($household->primaryResidence?->isLet ?? false) && $household->expenseProfile->mortgageCosts()->isPositive()) {
-            $financeCost = (int) round($household->expenseProfile->mortgageCosts()->pence * $state['spendFactor']);
+        // The relievable finance cost is mortgage INTEREST only — capital repaid never attracts
+        // relief. An amortising loan knows its own interest for the year (falling as the balance
+        // falls); otherwise the whole Mortgage expense line is interest (an interest-only loan),
+        // inflated like the spend it rides on.
+        $financeCost = $state['repaymentSchedule'] !== null
+            ? (int) round($state['repaymentSchedule']->interestIn($calendarYear)->pence * $state['ownershipShare'])
+            : (int) round($household->expenseProfile->mortgageCosts()->pence * $state['spendFactor']);
+        if (($household->primaryResidence?->isLet ?? false) && $financeCost > 0) {
             $rentalIncome = $this->rentalIncomeNominal($household, $alive, $ages, $cumInflation);
             $reducerBase = min($financeCost, $rentalIncome);
             $credit = min(
@@ -845,7 +871,12 @@ final class PathProjector
         // Once the mortgage is redeemed its ongoing payment stops (unlike service charge / ground
         // rent, which continue while the home is owned) — drop the while_mortgaged spend from the
         // redemption year on. Sell variants already removed it via withoutPropertyCosts.
-        if ($state['mortgageRepaid']) {
+        //
+        // The same "Mortgage" expense line is dropped ALWAYS when the home carries a
+        // capital-and-interest mortgage: there the engine charges the amortisation schedule's own
+        // fixed-nominal instalment instead (added below, after the CPI and survivor multiplies),
+        // so the schedule is the single definition of the payment and the two cannot double-count.
+        if ($state['mortgageRepaid'] || $state['repaymentSchedule'] !== null) {
             $mortgagePay = $household->expenseProfile->mortgageCosts()->pence;
             $targetPence = max(0, $targetPence - $mortgagePay);
             $essentialPence = max(0, $essentialPence - $mortgagePay);
@@ -878,6 +909,20 @@ final class PathProjector
             + $this->oneOffCostsNominal($household, $ages, $cumInflation)
             + $repayOneOff;
         $essentialNominal = (int) round($essentialPence * $state['spendFactor'] * $survivor);
+
+        // A capital-and-interest mortgage instalment is added HERE, after the CPI and survivor
+        // multiplies, because it is neither: it is FIXED NOMINAL (a £1,318.54 instalment is
+        // £1,318.54 in year 16, falling in real terms), and the survivor owes the lender exactly
+        // what the couple owed — a death does not shrink it the way it shrinks the food bill. It
+        // is an essential cost (the alternative is repossession), it steps when the deal rate
+        // reverts, and it stops dead at the end of the term, when the schedule returns zero.
+        if ($state['repaymentSchedule'] !== null && ! $state['mortgageRepaid'] && ! $state['homeSold']) {
+            $instalmentNominal = (int) round(
+                $state['repaymentSchedule']->paymentIn($calendarYear)->pence * $state['ownershipShare']
+            );
+            $spendNominal += $instalmentNominal;
+            $essentialNominal += $instalmentNominal;
+        }
 
         // Rent (the "sell and rent" leg) is an essential cost with its own inflation. It applies
         // once the household no longer owns a home: always for a year-0 rent variant (no
@@ -1023,8 +1068,10 @@ final class PathProjector
     /**
      * Pension Credit Guarantee Credit for the household this year, as annual nominal pence.
      * It tops the household's assessable income up to the appropriate minimum guarantee
-     * (single or couple, plus the severe-disability addition when a living member receives a
-     * disability benefit), paid only once every living member has reached State Pension age
+     * (single or couple, plus the severe-disability addition when the household qualifies —
+     * a single disabled member, or a couple where both are disabled — and the carer addition
+     * when a living member cares for a disabled partner), paid only once every living member
+     * has reached State Pension age
      * (the qualifying-age / mixed-age-couple gate). Assessable income is the household's
      * taxable income (State Pension, pensions, earnings, drawdown); disability benefits and
      * actual investment income are disregarded — capital is assessed via the tariff instead,
@@ -1042,7 +1089,7 @@ final class PathProjector
 
         // Qualifying-age gate: every living member must be at/over State Pension age.
         $assessableAnnual = 0;
-        $disabled = false;
+        $living = [];
         foreach ($household->persons as $person) {
             if (! ($alive[$person->id] ?? false)) {
                 continue;
@@ -1058,7 +1105,37 @@ final class PathProjector
                 $household, $person->id, $calendarYear,
                 $state['spaYear'][$person->id], $state['spClaimYear'][$person->id], $state['spFactor'],
             );
-            $disabled = $disabled || $person->receivesDisabilityBenefit;
+            $living[$person->id] = $person;
+        }
+
+        // Severe-disability addition: a single disabled pensioner qualifies on their own
+        // benefit (single rate); a COUPLE qualifies only when BOTH partners receive a
+        // qualifying disability benefit (a non-disabled co-resident partner blocks it — the
+        // disabled partner is not "living alone"), and then at the couple rate. So one
+        // partner on DLA in a couple gives no addition, not the single rate.
+        $disabledCount = 0;
+        foreach ($living as $person) {
+            if ($person->receivesDisabilityBenefit) {
+                $disabledCount++;
+            }
+        }
+        $severeDisability = $aliveCount === 1 ? $disabledCount === 1 : $disabledCount >= 2;
+
+        // Carer addition: a living member with (underlying) entitlement to Carer's Allowance —
+        // i.e. caring for a living partner who receives a qualifying disability benefit. This is
+        // the correct addition where a couple has one disabled partner and the other cares for
+        // them; it does not remove the disabled partner's own severe-disability addition.
+        $carer = false;
+        foreach ($living as $carerId => $person) {
+            if (! $person->caresForPartner) {
+                continue;
+            }
+            foreach ($living as $partnerId => $partner) {
+                if ($partnerId !== $carerId && $partner->receivesDisabilityBenefit) {
+                    $carer = true;
+                    break 2;
+                }
+            }
         }
 
         $assessableIncomeWeekly = Money::fromPence((int) round($assessableAnnual / $weeksPerYear));
@@ -1072,7 +1149,7 @@ final class PathProjector
         }
         $capital = Money::fromPence($capitalPence);
 
-        $applicableBase = $this->pensionCredit->applicableAmountWeekly($aliveCount === 2, $disabled);
+        $applicableBase = $this->pensionCredit->applicableAmountWeekly($aliveCount === 2, $severeDisability, $carer);
         $applicableWeekly = Money::fromPence((int) round($applicableBase->pence * $state['spFactor']));
 
         return $this->pensionCredit->award($applicableWeekly, $assessableIncomeWeekly, $capital)
@@ -2018,6 +2095,17 @@ final class PathProjector
             // A voluntary overpayment pays some of the (grown) balance back down each year, slowing
             // the roll-up. Fixed nominal, floored at zero; the cash for it is the Mortgage expense line.
             $state['mortgageOutstanding'] = max(0, min($rolled, $state['property']) - $state['mortgageOverpaymentAnnual']);
+        }
+
+        // A capital-and-interest mortgage instead AMORTISES: next year opens on whatever the
+        // schedule says is left after this year's instalments, reaching zero at the end of the
+        // term. Read, never accrued — the schedule is the single definition of the balance. A
+        // mortgage already cleared (redeemed early, or the home sold) stays cleared.
+        if ($state['repaymentSchedule'] !== null && ! $state['mortgageRepaid'] && ! $state['homeSold']) {
+            $state['mortgageOutstanding'] = (int) round(
+                $state['repaymentSchedule']->openingBalanceIn($state['baseYear'] + $yearIndex + 1)->pence
+                    * $state['ownershipShare']
+            );
         }
 
         $rentNominal = (1.0 + $state['rentInflationReal']) * (1.0 + $infl) - 1.0;

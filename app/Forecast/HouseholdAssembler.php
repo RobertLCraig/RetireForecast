@@ -21,11 +21,13 @@ use RetireForecast\FinanceEngine\Dto\IncomeStream;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
+use RetireForecast\FinanceEngine\Dto\MortgageRatePeriod;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
+use RetireForecast\FinanceEngine\Dto\RepaymentMortgageTerms;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\SpendPath;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
@@ -562,6 +564,47 @@ final class HouseholdAssembler
             isLet: (bool) ($p['isLet'] ?? false),
             mortgageRollUpRate: $this->percent($p['mortgageRollUpRate'] ?? null),
             mortgageOverpaymentAnnual: $this->money($p['mortgageOverpayment'] ?? null),
+            repaymentTerms: $this->repaymentTermsFrom($p, $saleYear),
+        );
+    }
+
+    /**
+     * The terms of a capital-and-interest ("repayment") mortgage, from the builder's mortgage
+     * inputs. Null — the common case — leaves the pre-existing shapes untouched: a static balance
+     * (interest-only / RIO, whose interest is a "Mortgage" expense line) or a lifetime-mortgage
+     * roll-up.
+     *
+     * The term is what switches it on: without a term there is nothing to amortise over. The
+     * amount borrowed is NOT taken here — it is `outstandingMortgage` on the same property, the
+     * one home for "what is owed", so the schedule can never amortise a different loan from the
+     * one the rest of the forecast sees.
+     *
+     * A lender quotes an initial deal rate for a fixed number of months and then a reversion rate
+     * for the rest of the term; an empty reversion rate (or no initial period) means one rate
+     * throughout.
+     */
+    private function repaymentTermsFrom(array $p, int $baseYear): ?RepaymentMortgageTerms
+    {
+        $termMonths = $this->intOrNull($p['mortgageRepaymentTermMonths'] ?? null);
+        if ($termMonths === null || $termMonths < 1) {
+            return null;
+        }
+
+        $initialRate = $this->percent($p['mortgageRepaymentRate'] ?? null) ?? Percent::zero();
+        $initialMonths = $this->intOrNull($p['mortgageRepaymentInitialMonths'] ?? null);
+        $revertRate = $this->percent($p['mortgageRepaymentRevertRate'] ?? null);
+
+        // Two tiers only when there is both a deal length and a different rate to revert to, and
+        // the deal is shorter than the term (otherwise the initial rate simply runs throughout).
+        $periods = $initialMonths !== null && $initialMonths > 0 && $initialMonths < $termMonths && $revertRate !== null
+            ? [new MortgageRatePeriod($initialRate, $initialMonths), new MortgageRatePeriod($revertRate)]
+            : [new MortgageRatePeriod($initialRate)];
+
+        return new RepaymentMortgageTerms(
+            termMonths: $termMonths,
+            firstPaymentYear: $this->intOrNull($p['mortgageRepaymentStartYear'] ?? null) ?? $baseYear,
+            firstPaymentMonth: $this->intOrNull($p['mortgageRepaymentStartMonth'] ?? null) ?? 1,
+            ratePeriods: $periods,
         );
     }
 

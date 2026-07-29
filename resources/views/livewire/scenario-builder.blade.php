@@ -837,6 +837,59 @@
                                 line). Try it with and without payments as separate what-ifs to see the effect on what you leave behind.
                             </p>
                         </div>
+
+                        {{-- A capital-and-interest ("repayment") mortgage. Entering a term switches
+                             amortisation on: the balance above falls to zero over the term and the
+                             instalment is worked out and charged for you, replacing any "Mortgage"
+                             spending line. Blank term = the interest-only behaviour above. --}}
+                        <div class="mt-4 border-t border-gray-200 pt-4">
+                            <h4 class="font-medium text-gray-900">Repayment (capital &amp; interest) mortgage</h4>
+                            <p class="mt-1 text-xs text-gray-600">
+                                Fill this in from a lender's illustration (an ESIS / "key facts" sheet) to model an
+                                <span class="font-medium">ordinary repayment mortgage</span>: we work out the monthly
+                                instalment, charge it as an essential cost, and reduce the balance above to zero over the
+                                term — after which you own the home outright and the payment stops. Leave the term blank
+                                for an interest-only or lifetime mortgage. <span class="font-medium">Don't also add a
+                                "Mortgage" spending line</span> — the instalment replaces it, so it can't be double-counted.
+                            </p>
+                            <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                <div>
+                                    <label for="property-mortgageRepaymentTermMonths" class="{{ $label }}">Term (months)</label>
+                                    <input id="property-mortgageRepaymentTermMonths" type="text" inputmode="numeric" placeholder="e.g. 192 (16 years)" wire:model.blur="property.mortgageRepaymentTermMonths" class="{{ $field }}" @error('property.mortgageRepaymentTermMonths') aria-invalid="true" aria-describedby="property-mortgageRepaymentTermMonths-error" @enderror>
+                                    @error('property.mortgageRepaymentTermMonths') <p id="property-mortgageRepaymentTermMonths-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label for="property-mortgageRepaymentStartYear" class="{{ $label }}">First payment year</label>
+                                    <input id="property-mortgageRepaymentStartYear" type="text" inputmode="numeric" placeholder="e.g. 2026" wire:model.blur="property.mortgageRepaymentStartYear" class="{{ $field }}" @error('property.mortgageRepaymentStartYear') aria-invalid="true" aria-describedby="property-mortgageRepaymentStartYear-error" @enderror>
+                                    @error('property.mortgageRepaymentStartYear') <p id="property-mortgageRepaymentStartYear-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label for="property-mortgageRepaymentStartMonth" class="{{ $label }}">First payment month (1&ndash;12)</label>
+                                    <input id="property-mortgageRepaymentStartMonth" type="text" inputmode="numeric" placeholder="e.g. 9 (September)" wire:model.blur="property.mortgageRepaymentStartMonth" class="{{ $field }}" @error('property.mortgageRepaymentStartMonth') aria-invalid="true" aria-describedby="property-mortgageRepaymentStartMonth-error" @enderror>
+                                    @error('property.mortgageRepaymentStartMonth') <p id="property-mortgageRepaymentStartMonth-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label for="property-mortgageRepaymentRate" class="{{ $label }}">Interest rate (% a year)</label>
+                                    <input id="property-mortgageRepaymentRate" type="text" inputmode="decimal" placeholder="e.g. 6.23" wire:model.blur="property.mortgageRepaymentRate" class="{{ $field }}" @error('property.mortgageRepaymentRate') aria-invalid="true" aria-describedby="property-mortgageRepaymentRate-error" @enderror>
+                                    @error('property.mortgageRepaymentRate') <p id="property-mortgageRepaymentRate-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label for="property-mortgageRepaymentInitialMonths" class="{{ $label }}">Deal length (months, optional)</label>
+                                    <input id="property-mortgageRepaymentInitialMonths" type="text" inputmode="numeric" placeholder="e.g. 60 (5-year fix)" wire:model.blur="property.mortgageRepaymentInitialMonths" class="{{ $field }}" @error('property.mortgageRepaymentInitialMonths') aria-invalid="true" aria-describedby="property-mortgageRepaymentInitialMonths-error" @enderror>
+                                    @error('property.mortgageRepaymentInitialMonths') <p id="property-mortgageRepaymentInitialMonths-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label for="property-mortgageRepaymentRevertRate" class="{{ $label }}">Rate after the deal (% a year, optional)</label>
+                                    <input id="property-mortgageRepaymentRevertRate" type="text" inputmode="decimal" placeholder="e.g. 7.24" wire:model.blur="property.mortgageRepaymentRevertRate" class="{{ $field }}" @error('property.mortgageRepaymentRevertRate') aria-invalid="true" aria-describedby="property-mortgageRepaymentRevertRate-error" @enderror>
+                                    @error('property.mortgageRepaymentRevertRate') <p id="property-mortgageRepaymentRevertRate-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                </div>
+                            </div>
+                            <p class="mt-2 text-xs text-gray-500">
+                                Leave the deal length and reversion rate blank if one rate runs for the whole term. If you
+                                set both, the payment is recalculated when the deal ends &mdash; exactly as a lender's
+                                illustration shows it stepping up.
+                            </p>
+                        </div>
                     </div>
 
                     {{-- Capital gains on sale: only part of the gain is relieved when the home was let

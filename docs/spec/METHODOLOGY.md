@@ -150,9 +150,11 @@ surprise:
   includes the equity of a **let** former home — so selling or letting your home can erode the credit
   dynamically, year by year.
 
-Not modelled: Savings Credit (Guarantee Credit only); Housing Benefit / Council Tax Support are never
-*awarded*, only their loss above £16,000 is flagged; the carer addition is not carried into the live
-forecast.
+The severe-disability addition applies where the household qualifies — a single disabled pensioner, or a
+couple where **both** partners receive a qualifying disability benefit (a non-disabled partner blocks it) —
+and a carer addition where a partner cares for a disabled partner. Not modelled: Savings Credit (Guarantee
+Credit only); Housing Benefit / Council Tax Support are never *awarded*, only their loss above £16,000 is
+flagged; the carer addition is supported by the engine but not yet exposed as a builder input.
 
 ## Inheritance tax
 
@@ -273,7 +275,13 @@ Each projected year the engine:
 4. Meets the household's spending — an essential floor plus discretionary spending, with costs that
    switch off when they should (mortgage costs when the mortgage ends, property costs when the home
    is sold, commuting when work stops), a survivor spending factor, one-off costs, rent and care.
-5. Handles mortgage-maturity events (refinance, repay from capital, or a forced sale in place).
+5. Handles mortgage-maturity events (refinance, repay from capital, or a forced sale in place), and
+   models the three shapes a mortgage can take: **interest-only** (the balance stays level and the
+   interest is a spending line), **equity-release roll-up** (the balance compounds unpaid and is
+   repaid from the estate, capped at the home's value), and **repayment / capital & interest** (the
+   balance amortises to zero over the term and the instalment stops when it does). A repayment
+   instalment is treated as what it is — **fixed in cash terms**, so it costs less in real money each
+   year, and **unchanged when one partner dies**, unlike ordinary household spending.
 6. Funds any shortfall by the chosen **withdrawal strategy**, grossing pension withdrawals up for
    tax; invests any surplus.
 7. Charges capital gains tax on any GIA disposal, and on death passes the estate to the survivor (so
@@ -309,8 +317,14 @@ An honest list of the current limits (each is flagged in the code):
   sex split of the duration remain flagged refinements; Monte Carlo only. The in-path means test does
   not count Pension Credit into the contribution, assumes the local authority pays at the same fee
   rate, and skips deferred-payment / 12-week-disregard mechanics (below the annual grid).
-- **Benefits:** Guarantee Credit only (no Savings Credit); the carer addition is not in the live
-  forecast.
+- **Mortgages:** no lender or broker **fees**, arrangement/redemption charges or **early-repayment
+  charges** are modelled anywhere, so the cost of taking or leaving a deal is understated. On a
+  repayment mortgage there is no input for **overpayments** (the overpayment input applies only to an
+  equity-release roll-up), and a variable reversion rate is modelled as a single fixed rate for the
+  rest of the term rather than a rate that moves.
+- **Benefits:** Guarantee Credit only (no Savings Credit); the severe-disability addition follows the
+  couple-eligibility rule (both partners must be on a qualifying disability benefit); the carer addition is
+  supported by the engine but not yet exposed as a builder input.
 - **Monte Carlo:** normal returns (no fat tails); independent partner deaths; the historical data
   ends in 2020. (House-price and salary growth now carry volatility — see the assumptions panel.)
 - **Pensions:** the lump-sum-allowance cap on a DB commutation lump sum is not enforced; contribution

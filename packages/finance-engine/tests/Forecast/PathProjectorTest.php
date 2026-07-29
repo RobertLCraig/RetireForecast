@@ -95,11 +95,11 @@ final class PathProjectorTest extends TestCase
      * @param  list<Pension>  $pensions
      * @param  list<Account>  $accounts
      */
-    private function couple(ExpenseProfile $expense, array $pensions = [], array $accounts = [], ?Person $override1 = null, array $incomeStreams = []): Household
+    private function couple(ExpenseProfile $expense, array $pensions = [], array $accounts = [], ?Person $override1 = null, array $incomeStreams = [], ?Person $override2 = null): Household
     {
         // Both born 1958: aged 68 in 2026 (over State Pension age).
         $p1 = $override1 ?? new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired);
-        $p2 = new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired);
+        $p2 = $override2 ?? new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired);
 
         return new Household('Test', RegionProfile::EnglandWalesNi, [$p1, $p2], $expense, $pensions, $accounts, $incomeStreams);
     }
@@ -155,25 +155,53 @@ final class PathProjectorTest extends TestCase
         $this->assertSame(0, $year0->incomeBySource['means_tested_benefit']->pence);
     }
 
-    public function test_the_disability_flag_unlocks_the_severe_disability_addition(): void
+    public function test_the_severe_disability_addition_needs_both_partners_disabled(): void
     {
         $expense = new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70));
         $pensions = [
             new StatePensionEntitlement('p1', weeklyForecast: Money::of(203, 0)),
             new StatePensionEntitlement('p2', weeklyForecast: Money::of(203, 0)),
         ];
+        $pc = fn (Household $h): int => $this->forecaster()->forecast($h, $this->flatAssumptions(), $this->settings())
+            ->years[0]->incomeBySource['means_tested_benefit']->pence;
+
+        $disabledP1 = new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired, receivesDisabilityBenefit: true);
+        $disabledP2 = new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired, receivesDisabilityBenefit: true);
 
         // £406/wk exceeds the plain £363.25 couple guarantee → no Pension Credit.
-        $able = $this->couple($expense, $pensions);
-        $this->assertSame(0, $this->forecaster()->forecast($able, $this->flatAssumptions(), $this->settings())
-            ->years[0]->incomeBySource['means_tested_benefit']->pence);
+        $this->assertSame(0, $pc($this->couple($expense, $pensions)));
 
-        // Flagging one partner as receiving a disability benefit adds the £86.05/wk severe-
-        // disability addition, lifting the guarantee to £449.30 → £43.30/wk = £2,251.60 a year.
-        $disabledP1 = new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired, receivesDisabilityBenefit: true);
-        $withSdp = $this->couple($expense, $pensions, override1: $disabledP1);
-        $this->assertSame(4_330 * 52, $this->forecaster()->forecast($withSdp, $this->flatAssumptions(), $this->settings())
-            ->years[0]->incomeBySource['means_tested_benefit']->pence);
+        // ONE disabled partner in a couple gives NO severe-disability addition (the non-disabled
+        // co-resident blocks it — Turn2us: both partners must get a qualifying benefit). Income
+        // still exceeds the plain guarantee → £0. This is the couple-SDP fix (was wrongly £86.05).
+        $this->assertSame(0, $pc($this->couple($expense, $pensions, override1: $disabledP1)));
+
+        // BOTH partners disabled → the SDP at the COUPLE rate (2 × £86.05 = £172.10), lifting the
+        // guarantee to £535.35 → £129.35/wk = £6,726.20 a year.
+        $this->assertSame(12_935 * 52, $pc($this->couple($expense, $pensions, override1: $disabledP1, override2: $disabledP2)));
+    }
+
+    public function test_a_partner_who_cares_for_a_disabled_partner_unlocks_the_carer_addition(): void
+    {
+        $expense = new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70));
+        $pensions = [
+            new StatePensionEntitlement('p1', weeklyForecast: Money::of(203, 0)),
+            new StatePensionEntitlement('p2', weeklyForecast: Money::of(203, 0)),
+        ];
+        $pc = fn (Household $h): int => $this->forecaster()->forecast($h, $this->flatAssumptions(), $this->settings())
+            ->years[0]->incomeBySource['means_tested_benefit']->pence;
+
+        // p2 receives a disability benefit; p1 provides the care (underlying entitlement to
+        // Carer's Allowance). The carer addition £48.15 lifts the £363.25 guarantee to £411.40 →
+        // £5.40/wk = £280.80 a year.
+        $disabledP2 = new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired, receivesDisabilityBenefit: true);
+        $carerP1 = new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired, caresForPartner: true);
+
+        // Disabled partner but NO carer flag → one disabled partner, no SDP, no carer → income
+        // £406 exceeds the plain guarantee → £0.
+        $this->assertSame(0, $pc($this->couple($expense, $pensions, override2: $disabledP2)));
+        // Add the caring partner → the carer addition applies.
+        $this->assertSame(540 * 52, $pc($this->couple($expense, $pensions, override1: $carerP1, override2: $disabledP2)));
     }
 
     public function test_a_let_home_counts_as_assessable_capital_and_erodes_pension_credit(): void

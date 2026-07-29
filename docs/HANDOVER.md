@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-29 (adviser-parity plan: three OPEN correctness gaps found — fees, pension tax relief, ISA caps)_
+_Last updated: 2026-07-29 (Pension Credit severe-disability-addition couple-rule fix + V2 benefits check; earlier today: adviser-parity plan, repayment mortgages, V2 rebuild)_
 
 ## Goal & success criteria
 Full plan: [docs/build/PLAN.md](build/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -127,11 +127,50 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   built from the SAME `ResultPresenter::saleExplainer` + engine decomposition the results page uses, so print cannot
   drift from screen. Closes the last PDF open item; guarded by a `ScenarioPdfTest` assertion. Awaits browser sign-off
   with the rest (What's next #1).
-- **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **the £118k stay-put mortgage is a DELIBERATE paydown design — read that doc before touching any V2 figure.** The base's
-  "~£90k found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
-  (year 2026, the real source as the label) — see the V2 doc's note.
+- **Done 2026-07-29 — repayment (capital & interest) mortgages amortise (DECISIONS 2026-07-29):** the engine
+  modelled a repayment mortgage's balance as **static** and its payment as an ordinary expense line, so it
+  inflated a contractually fixed instalment with CPI, shrank it by the survivor factor on a death, never
+  stopped it at the end of the term, and understated net wealth + the IHT estate by every pound of capital
+  repaid. New `Property::$repaymentTerms` (`RepaymentMortgageTerms` + `MortgageRatePeriod`) and an
+  `AmortisationSchedule` now own **both** legs — the balance amortises to zero and the fixed-nominal
+  instalment is charged as essential spend (added after the CPI/survivor multiplies), **replacing** the
+  "Mortgage" expense line. Mutually exclusive with `mortgageRollUpRate` (throws). Pinned to a real lender
+  illustration — the LiveMore ESIS of 2026-07-29 reproduces **within 21p at any row over 16 years**, both
+  monthly instalments exact. Null terms = byte-identical, no migration. Closes the DATA-MODEL divergence.
+- **Done 2026-07-29 — the V2 Stay-put base moved onto the real LiveMore quote:** the base's hypothetical
+  "£90k found → £118k RIO at £7,080/yr" is replaced by the actual quote (**£160k over 16 years, C&I**,
+  £1,318.54/mo then £1,384.65/mo). **Finding: it does not work** — affordable while both live, but the
+  survivor carries £16,616/yr on ~£11.7k/yr, so the plan runs short in **2036** (was 2043), ~£15k/yr short
+  until the loan clears in 2042; against that, terminal net wealth is **+£74,830** because the debt is
+  genuinely repaid. It also needs ~£49,495 up front vs the ~£42k realistically available. Seven children that
+  model a *different* mortgage product (17, 32 let-to-let; 27, 28, 31, 38, 39 lifetime mortgages) carry an
+  explicit blank-term override; all others inherit. Figures + the entry recipe are in the gitignored
+  `docs/SCENARIO-V2.local.md`.
+- **Done 2026-07-29 — the V2 what-if family was cleared and rebuilt (Rob's call):** 23 children on drifting
+  premises replaced by 9, organised around the three identifiable ways to keep the flat (repayment mortgage /
+  lifetime mortgage / let-to-let) plus levers and two sell comparators. The previous 24 scenarios are backed
+  up in full at the gitignored `docs/scenario-backup-2026-07-29.local.json`. **Finding: only two plans never
+  run short** — the lifetime mortgage (which survives by consuming the whole estate) and sell-and-buy-cheaper;
+  and **no lever rescues the LiveMore mortgage** (YCC working 5 more years moves the shortfall 2036 → 2042; an
+  £80k art/jewellery sale buys 1–4 years). One **speculative** input is flagged in the set: the let-to-let BTL
+  rate (6.5%, no quote behind it). Figures + sources in the private V2 doc.
+- **Done 2026-07-29 — Pension Credit severe-disability-addition follows the couple rule (DECISIONS 2026-07-29):**
+  `PathProjector::meansTestedBenefitNominal` applied the severe-disability addition (SDP) whenever **any** living
+  member received a disability benefit, so a couple with **one** disabled partner wrongly got it. Real rule
+  (Turn2us): a couple qualifies only when **both** partners receive a qualifying disability benefit (or the other
+  is registered blind). Fix: SDP now needs a single disabled pensioner or a both-disabled couple (**couple rate =
+  2× single**); a new `Person::caresForPartner` flag wires the **carer addition** (the correct addition for a
+  one-disabled-partner couple, via underlying entitlement, which does not remove any SDP). Quantified on the
+  private V2 base before/after (figures in the gitignored benefits doc): a material cut to lifetime Pension
+  Credit, confined to the both-alive years (survivor years were already SDP-free, unchanged). Engine-only; `caresForPartner`
+  **builder-UI exposure deferred** (defaults false, no scenario/child-delta affected, immaterial to V2). Guarded
+  by `PathProjectorTest` + `PensionCreditCalculatorTest`. Full benefits check for the couple is in the gitignored
+  `docs/BENEFITS-CHECK-V2.local.md`.
+- **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **read that doc before touching any V2 figure.** The base's
+  "money found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
+  (year 2026, the real source as the label) — see the V2 doc's note. It now needs **~£49,495**, not ~£90k.
 - **Operational note (found 2026-07-10):** a `queue:work` daemon started **before** the 2026-07-09 Postgres migration keeps polling the old SQLite `jobs` table and processes **no** Postgres jobs — an in-app "Re-run all" hangs against it. **Restart every queue worker after the DB change** (`queue:work` caches its DB connection at boot). See How to pick up.
-- **Known bugs:** none open. The queued-Monte-Carlo reproducibility bug is **RESOLVED** (Postgres) and **independently re-verified 2026-07-10** (Session log). Documented v1 scope limits (all flagged in code) live in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" — e.g. Scotland income tax throws; emergency tax models the over-deduction magnitude, not PAYE-table pennies; a repayment mortgage's balance is modelled static (set `mortgageRedemptionYear` + repay-from-capital to clear it). **House AND salary growth are now both stochastic in the Monte Carlo** (DECISIONS 2026-07-18) — no growth factor is a deterministic straight line any more.
+- **Known bugs:** none open. The queued-Monte-Carlo reproducibility bug is **RESOLVED** (Postgres) and **independently re-verified 2026-07-10** (Session log). Documented v1 scope limits (all flagged in code) live in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" — e.g. Scotland income tax throws; emergency tax models the over-deduction magnitude, not PAYE-table pennies. **A repayment mortgage now amortises properly** (DECISIONS 2026-07-29 — the static-balance divergence is CLOSED; lender fees, ERCs and the 10%/yr overpayment allowance remain unmodelled). **House AND salary growth are now both stochastic in the Monte Carlo** (DECISIONS 2026-07-18) — no growth factor is a deterministic straight line any more.
 
 ## What's next (in order)
 The whole post-v1 backlog is built. What remains:
@@ -203,8 +242,11 @@ npm run build                        # build assets (public/build is gitignored)
 | [PRD.md](PRD.md) | Goal, success criteria, scope, non-goals, open questions. |
 | [CLAUDE.md](../CLAUDE.md) | Root orient tripwire + build/test conventions + doc-hygiene rules. |
 | docs/SCENARIO-V2.local.md | **GITIGNORED / PRIVATE:** the real couple's data + core scenario, to re-model after a DB wipe. **Read before touching any V2 figure.** |
+| docs/BENEFITS-CHECK-V2.local.md | **GITIGNORED / PRIVATE:** full benefits check for the couple (DLA/CA/AA interaction, carer-underlying-entitlement action, SMI loan vs equity release, Council Tax + Pension Credit gateways) + the Pension Credit engine-fix cross-ref. |
 | [docs/spec/METHODOLOGY.md](spec/METHODOLOGY.md) | User-facing engine-computation methodology + "what we don't model" (also the `/methodology` page + the assistant corpus). |
 | [docs/build/PLAN-output-inflation-and-charts.md](build/PLAN-output-inflation-and-charts.md) | **DRAFT** spec from the 2026-07-18 adversarial review: output legibility, per-category (care) inflation + fat tails, and the six missing time-series charts. Reasoning + research links per decision. |
+| [docs/build/PLAN-spendable-view.md](build/PLAN-spendable-view.md) | **DRAFT** spec: per-year, per-scenario **"available capital"** and **"monthly allowance"** — the two figures a non-financial reader plans against, and the one that answers "what can we afford to spend?". Presenter-only. Also records a correctness issue: `usableWealth` counts pre-tax pension as cash. |
+| [docs/build/PLAN-park-home.md](build/PLAN-park-home.md) | **DRAFT** spec: park homes as a bought home that DEPRECIATES. Holds the 2026-07-29 research (Wokingham–Tring listings, pitch fees, Pension Credit treatment, why the "holiday home + cruise" version is ruled out) and the two-field engine gap that blocks it. |
 | docs/build/PLAN-*.md, docs/research/RESEARCH-*.md | Per-feature specs / build records + research (decision-support, IHT, forced sale, sequencing, multi-property, assistant, stress-test, competitive gap, delta). |
 
 ## Branch status
@@ -212,6 +254,25 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-29 (V2 benefits check + Pension Credit severe-disability-addition couple-rule fix)_ —
+Rob asked which benefits the V2 couple could claim, then whether claiming Carer's Allowance or Attendance
+Allowance would cut FRC's DLA, then for a full benefit check. Researched against authoritative sources (Turn2us,
+Age UK, entitledto, gov.uk; verified 2026-07-29): **neither CA (underlying entitlement) nor YCC's own AA reduces
+FRC's DLA** — the only interaction is the Severe Disability Premium, which *paid* CA would remove but underlying
+entitlement does not, and which this one-disabled-partner couple does not get anyway. Wrote a durable benefits
+check to the gitignored `docs/BENEFITS-CHECK-V2.local.md` (benefit × life-phase table; the safe
+carer-underlying-entitlement action; SMI-loan at 3.66% vs the equity-release proposals; Council Tax reductions;
+Pension Credit gateways). While checking the engine's Pension Credit modelling, **found and fixed a real bug**:
+`PathProjector::meansTestedBenefitNominal` OR-ed a per-person disability flag into the household SDP decision, so a
+couple with one disabled partner wrongly received the addition. Fixed to the couple rule (both partners must
+qualify → couple rate = 2× single) and wired the carer addition via a new `Person::caresForPartner` flag.
+**Measured on the private V2 base before/after** (figures in the gitignored benefits doc): a material lifetime
+Pension Credit overstatement removed, entirely the both-alive years (survivor years were already SDP-free).
+Engine-only; DECISIONS + DATA-MODEL + METHODOLOGY updated; full suite green (954 pass, 1 advice-mode skip).
+`caresForPartner` builder-UI exposure deferred (defaults false, immaterial to V2). **Not committed:** the tree
+also carries the concurrent session's uncommitted repayment-mortgage + park-home work, which shares
+`PathProjector.php` and the doc files, so a clean split needs coordination (see [[concurrent-session-split]]).
 
 _2026-07-29 (adviser-parity plan — three open correctness gaps found; no code changed)_ —
 Rob asked what could be learned from a Damien Talks Money Q&A video (28 Jul 2026), then widened it to "what
@@ -238,6 +299,50 @@ protection gap promoted to #3** (death-in-service confirmed in force — and it 
 cliff-edge RF is well placed to surface). Personal detail (DOB, scheme, cover) deliberately kept **out** of the
 tracked plan per [[pii-leaks-into-tracked-files]] — it lives in the gitignored SCENARIO-V2 doc. **No code
 changed**; no DECISIONS entry per the established convention (a DRAFT plan earns its entry when built).
+
+_2026-07-29 (real repayment mortgages; the V2 Stay-put base moved onto the LiveMore quote)_ —
+Rob supplied a real indicative quote (LiveMore Capital ESIS, 29 July 2026, via broker When The Bank Says No):
+**£160,000 over 16 years, capital & interest**, 6.23% fixed for 60 months then 7.24% SVR. The engine could not
+represent it — a repayment mortgage's balance was **static**, and its payment was an ordinary expense line, so
+the model inflated a contractually fixed instalment with CPI, shrank it by the survivor factor on a death,
+never stopped it at the term end, and understated wealth/estate by all capital repaid. Built the real thing
+(accuracy-first, not an approximation): `RepaymentMortgageTerms` + `MortgageRatePeriod` DTOs and an
+`AmortisationSchedule` (monthly, nominal-rate/12, instalment recomputed at each rate tier, final payment trued
+up to land on zero), with the schedule owning **both** the balance and the payment and dropping the "Mortgage"
+expense line so they cannot double-count. The loan amount stays in one home (`outstandingMortgage`); amortising
+and rolling up are mutually exclusive (the DTO **throws**). **Pinned to the lender's own table as a worked
+example** — every quoted balance within **21p over 16 years**, both instalments (£1,318.54 / £1,384.65) exact,
+total interest within 11p. Wired through assembler + builder (6 new fields, all defaulting empty so no child
+delta shifts) + a results-page modelling note. Then moved base 9 onto the quote, per Rob's call to let children
+inherit. **The mutual-exclusion throw earned its keep:** testing every child against the proposed base *before*
+writing found **4 that broke outright** (27, 31, 38, 39 — lifetime mortgages) and **3 that would have changed
+silently** (17, 32 let-to-let; 28), so those seven carry an explicit blank-term override. Also caught myself
+measuring the sell/rent children with `deterministic()`, which ignores the housing variant — the trap already
+flagged in this handover; re-measured via `deterministicVariants()`, after which they correctly read as
+unchanged. **Verdict on the quote: it does not work** — the survivor carries £16,616/yr on ~£11.7k/yr, so the
+plan runs short in **2036** (was 2043) and stays ~£15k/yr short to 2042, though terminal wealth is **+£74,830**
+because the debt is actually repaid; and it needs ~£49,495 up front against ~£42k realistically available.
+Full suite green, pint clean. Awaits browser sign-off.
+
+_2026-07-29 (V2 what-if family cleared and rebuilt around the three keep-the-flat options)_ —
+Rob: "clean up the scenarios and restart, based on the 3 easily identifiable options." Backed up all 24
+scenarios to the gitignored `docs/scenario-backup-2026-07-29.local.json` (added `/docs/*.local.json` to
+.gitignore first — only `*.local.md` was covered, so a raw export would have been committed with real
+financial data), deleted the 23 children, and rebuilt 9 via the same path the app uses
+(`QuickWhatIfController`: empty `builder_state`, sparse `overrides`, `projectFrom()` for the structural
+columns — two NOT-NULL columns caught a hand-rolled first attempt). The set: lifetime mortgage / let-to-let /
+YCC working +2, +4, +5 years / the £80k art-and-jewellery sale modelled BOTH ways (funding the remortgage gap
+vs additional, Rob's call) / and — Rob's call against the original three-option brief — sell-and-buy-cheaper
+and sell-and-rent kept as comparators, which proved right: they are the only plans that work. Verified
+completeness rather than assuming: rental income reaches the forecast as taxable, both £80k receipts land, 47's
+spend is **exactly** £49,495 above 48's, and the salary really extends to 2029/2031/2032. **Findings: only the
+lifetime mortgage (estate consumed to £63,587) and sell-and-buy-cheaper (£303,506) never run short, and no
+lever rescues the LiveMore mortgage** — +5 working years moves the shortfall 2036 → 2042, the £80k sale buys
+1–4 years. Two judgement calls flagged in the V2 doc: the **let-to-let BTL rate is speculative** (6.5%, chosen
+above the ~4.4% best-buy / ~5.75% market average because at 66 and 80 they need a specialist later-life
+lender), and a **£160k lifetime mortgage is likely unavailable** (max release is governed by the younger
+borrower — the adviser's own quote capped at £144k). Also flagged: **CGT on chattels is not modelled**, so both
+£80k children are optimistic by whatever tax the paintings and jewellery attract. No code changed.
 
 _2026-07-19 (doc-structure migration to the canonical layout)_ —
 Ran the Project-Doc-Standard migration (triggered by `/handover save`). The four anchors moved from the repo

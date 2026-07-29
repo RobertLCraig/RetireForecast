@@ -89,6 +89,7 @@ see Known divergences.)
 | running_costs | Money 🔒 | pence/yr | yes | maintenance + insurance + council tax |
 | growth_assumption | Percent | bps/yr | yes | |
 | mortgage_roll_up_rate | Percent | bps/yr | yes | **2026-07-06** — a lifetime-mortgage (equity-release) roll-up rate: fixed nominal, fixed for life. Null = static balance (repayment/serviced, the prior behaviour). Set = the `outstanding_mortgage` COMPOUNDS unpaid in `PathProjector::growState`, NNEG-capped at the home value, repaid from the estate (feeds IHT). See DECISIONS 2026-07-06 |
+| repayment_terms | RepaymentMortgageTerms | | yes | **2026-07-29** — the terms of an ordinary capital-and-interest ("repayment") mortgage: `term_months`, `first_payment_year`/`_month`, and an ordered list of `MortgageRatePeriod` rate tiers (annual nominal rate + months; the last open-ended). Null = the two pre-existing shapes (static balance, or roll-up) — every stored scenario is byte-identical. Set = `AmortisationSchedule` owns BOTH legs: the `outstanding_mortgage` amortises to zero over the term, and the fixed-nominal instalment is charged as essential spend, REPLACING the "Mortgage" expense line (dropped, so the two cannot double-count). **Mutually exclusive with `mortgage_roll_up_rate`** (the DTO throws). The instalment is added after the CPI and survivor multiplies — it does not inflate, and does not shrink on a death. The amount borrowed is NOT restated here: it is `outstanding_mortgage`, one home for the debt. See DECISIONS 2026-07-29 |
 | mortgage_overpayment | Money 🔒 | pence/yr | yes | **2026-07-19** — a voluntary FIXED-nominal annual overpayment on a rolled-up lifetime mortgage (only meaningful when `mortgage_roll_up_rate` is set): subtracted from the balance each year AFTER the roll-up compounds, floored at 0, so it slows the roll-up and preserves the estate. Null/0 = pure roll-up. The cash to fund it is a separate outflow (a "Mortgage" expense line of the same amount), so the two together show the honest trade-off: a lower balance bought with cashflow the household must find. See DECISIONS 2026-07-19 |
 
 ### Account
@@ -424,6 +425,11 @@ from the original plan, flagged inline:
   fires the £16k Housing/Council-Tax-Support cliff in-projection. CTR itself stays out (locally set) — modelled as
   the cliff/passport, flagged. **Refinement (2026-07-01):** a `Property::isLet` flag means a **let** home's equity
   joins assessable capital (it is no longer the exempt main residence) — so "let out & rent" erodes benefit like a sale.
+  **Correction (2026-07-29, DECISIONS):** the severe-disability addition now follows the household rule — a single
+  disabled pensioner (single rate) or a couple where **both** partners receive a qualifying disability benefit
+  (couple rate = 2× single); one disabled partner in a couple no longer wrongly triggers it. New engine field
+  `Person::caresForPartner: bool` wires the **carer addition** (a partner caring for a disabled partner); it
+  defaults false and is **not yet a builder input** (app-UI exposure deferred), so no stored scenario changes.
 - ✅ **(B) Mortgage redemption.** `Property` gained `mortgageRedemptionYear: int?` and `mortgageMaturityAction:
   enum {refinance | repay_from_capital | forced_sale}`. The projector tracks the mortgage **balance** (new state) and
   applies the action at maturity. Stopping the bundled mortgage *payment* after a repay is **built** (the
@@ -469,6 +475,19 @@ from the original plan, flagged inline:
   neutral across the plans being compared**. The £20,000 overall cap and the April-2027 22% charge on
   S&S-ISA cash both bind; the April-2027 cash-ISA cut to £12,000 does not apply to a 65+ saver. Specced as
   A3 of the same plan.
+- **A repayment mortgage now amortises — CLOSED 2026-07-29 (DECISIONS 2026-07-29).** The balance of a
+  capital-and-interest mortgage was modelled **static** (the workaround was `mortgageRedemptionYear` +
+  repay-from-capital, which yanks the whole balance out of capital in one year), and its payment was an
+  ordinary expense line — so the model inflated a contractually fixed instalment with CPI, shrank it by the
+  survivor factor on a death, never stopped it at the end of the term, and understated net wealth and the IHT
+  estate by every pound of capital repaid. `Property::$repaymentTerms` + `AmortisationSchedule` now model it
+  properly (monthly amortisation, nominal-rate/12, payment recomputed at each rate tier, final instalment
+  trued up to land on zero). Pinned to a real lender illustration: the LiveMore ESIS of 29 July 2026 (£160,000
+  / 192 months / 6.23% for 60 then 7.24%) reproduces **to within 21p at any row over 16 years**, with both
+  monthly instalments (£1,318.54, £1,384.65) exact — `AmortisationScheduleTest`, `RepaymentMortgageForecastTest`.
+  Null terms = byte-identical to before. **Still open:** lender fees, early-repayment charges and the
+  10%/yr penalty-free overpayment allowance are not modelled (an overpayment on an amortising loan has no
+  input — `mortgage_overpayment` applies only to a roll-up).
 - **House-price AND salary growth in the Monte Carlo — both stochastic since 2026-07-18 (DECISIONS 2026-07-18).**
   Each was deterministic (a straight line at the mean): house growth understated the risk of home-heavy plans,
   salary growth understated the spread of a still-working couple's accumulation. `AssumptionSet` now carries

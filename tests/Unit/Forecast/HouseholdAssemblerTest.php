@@ -279,6 +279,95 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertNull((new HouseholdAssembler)->household($state)->expenseProfile->propertyCostsRealGrowth);
     }
 
+    /**
+     * @return array<string, mixed> builder state for a home carrying the ESIS quote's mortgage
+     */
+    private function repaymentMortgageState(array $propertyOverrides = []): array
+    {
+        return [
+            'householdName' => 'X',
+            'region' => 'england_wales_ni',
+            'baseTaxYear' => '2026-27',
+            'people' => [['id' => 'p1', 'dob' => '1960-01-01', 'sex' => 'male', 'employmentStatus' => 'retired']],
+            'expenseLines' => [
+                ['id' => 'a', 'label' => 'Food', 'amount' => '6000', 'category' => 'essential', 'savedAsAsset' => false],
+            ],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => array_merge([
+                'currentValue' => '400000',
+                'ownership' => 'mortgaged',
+                'outstandingMortgage' => '160000',
+                'mortgageRepaymentTermMonths' => '192',
+                'mortgageRepaymentStartYear' => '2026',
+                'mortgageRepaymentStartMonth' => '9',
+                'mortgageRepaymentRate' => '6.23',
+                'mortgageRepaymentInitialMonths' => '60',
+                'mortgageRepaymentRevertRate' => '7.24',
+            ], $propertyOverrides),
+        ];
+    }
+
+    public function test_repayment_mortgage_terms_reach_the_engine_property(): void
+    {
+        // Completeness: every field of a lender's illustration entered in the builder must reach
+        // the engine, or the amortisation silently models a different loan from the quoted one.
+        $property = (new HouseholdAssembler)->household($this->repaymentMortgageState())->primaryResidence;
+
+        $terms = $property?->repaymentTerms;
+        $this->assertNotNull($terms);
+        $this->assertSame(192, $terms->termMonths);
+        $this->assertSame(2026, $terms->firstPaymentYear);
+        $this->assertSame(9, $terms->firstPaymentMonth);
+        $this->assertSame(2042, $terms->finalPaymentYear());
+
+        $this->assertCount(2, $terms->ratePeriods, 'a deal rate then a reversion rate');
+        $this->assertSame(623, $terms->ratePeriods[0]->annualRate->basisPoints);
+        $this->assertSame(60, $terms->ratePeriods[0]->months);
+        $this->assertSame(724, $terms->ratePeriods[1]->annualRate->basisPoints);
+        $this->assertNull($terms->ratePeriods[1]->months, 'the reversion runs to the end of the term');
+
+        // The loan amount has ONE home — the outstanding mortgage, never restated in the terms.
+        $this->assertSame(16_000_000, $property->outstandingMortgage?->pence);
+    }
+
+    public function test_no_repayment_term_leaves_the_mortgage_on_its_pre_existing_shape(): void
+    {
+        // Every scenario saved before these fields existed has no term: the balance must stay
+        // static (interest-only / RIO), exactly as before.
+        $state = $this->repaymentMortgageState(['mortgageRepaymentTermMonths' => '']);
+        $this->assertNull((new HouseholdAssembler)->household($state)->primaryResidence?->repaymentTerms);
+
+        unset($state['property']['mortgageRepaymentTermMonths']);
+        $this->assertNull((new HouseholdAssembler)->household($state)->primaryResidence?->repaymentTerms);
+    }
+
+    public function test_one_rate_for_the_whole_term_makes_a_single_rate_period(): void
+    {
+        // No deal length / no reversion rate = the entered rate runs throughout.
+        $state = $this->repaymentMortgageState([
+            'mortgageRepaymentInitialMonths' => '',
+            'mortgageRepaymentRevertRate' => '',
+        ]);
+
+        $terms = (new HouseholdAssembler)->household($state)->primaryResidence?->repaymentTerms;
+        $this->assertCount(1, $terms->ratePeriods);
+        $this->assertSame(623, $terms->ratePeriods[0]->annualRate->basisPoints);
+        $this->assertNull($terms->ratePeriods[0]->months);
+    }
+
+    public function test_a_missing_first_payment_date_falls_back_to_the_base_year(): void
+    {
+        $state = $this->repaymentMortgageState([
+            'mortgageRepaymentStartYear' => '',
+            'mortgageRepaymentStartMonth' => '',
+        ]);
+
+        $terms = (new HouseholdAssembler)->household($state)->primaryResidence?->repaymentTerms;
+        $this->assertSame(2026, $terms->firstPaymentYear, 'the scenario base year');
+        $this->assertSame(1, $terms->firstPaymentMonth);
+    }
+
     public function test_cgt_history_reduces_the_occupation_timeline_to_months(): void
     {
         // Lived in 2006–2014 (main home), then let to the 2026 sale; jointly owned.
