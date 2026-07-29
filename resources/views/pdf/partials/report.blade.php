@@ -134,7 +134,7 @@
             @foreach ($tier['lines'] as $line)
                 <tr>
                     <td>{{ $tier['label'] }}</td>
-                    <td>{{ $line['label'] }}@if ($line['saved']) <span class="muted">(saved)</span>@endif</td>
+                    <td>{{ $line['label'] }}@if ($line['saved']) <span class="muted">(saved)</span>@endif@if ($line['computed'] ?? false) <span class="muted">(from your mortgage terms)</span>@endif</td>
                     <td class="num">{{ $line['amount'] }}</td>
                 </tr>
             @endforeach
@@ -260,7 +260,9 @@
 
 <h2>Cashflow projection (central estimate)</h2>
 <p class="muted">Real terms, to {{ $ladder['finalYear'] }}. The full income-by-source breakdown is in the CSV
-    export on the results page.</p>
+    export on the results page. <strong>To spend / month</strong> is what the plan can actually fund that year, divided by
+    twelve (not what it targets). <strong>Available capital</strong> is cash and investments only — the home is excluded
+    because it cannot be spent while lived in, and pension money is excluded because drawing it is taxable.</p>
 <table>
     <thead>
         <tr>
@@ -269,6 +271,8 @@
             <th class="num">Tax</th>
             <th class="num">Spend</th>
             <th class="num">Unmet spend</th>
+            <th class="num">To spend / month</th>
+            <th class="num">Available capital</th>
             <th class="num">Usable (excl. home)</th>
             <th class="num">Total (incl. home equity)</th>
         </tr>
@@ -281,6 +285,8 @@
                 <td class="num">{{ $row['tax'] }}</td>
                 <td class="num">{{ $row['spend'] }}</td>
                 <td class="num">{{ $row['shortfall'] ?? '—' }}</td>
+                <td class="num">{{ $row['monthlyAllowance'] }}</td>
+                <td class="num">{{ $row['availableCapital'] }}</td>
                 <td class="num">{{ $row['usableWealth'] }}</td>
                 <td class="num">{{ $row['totalWealth'] }}</td>
             </tr>

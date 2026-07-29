@@ -17,6 +17,7 @@ enum LeverKey: string
     case BuyPrice = 'buy_price';
     case RetirementAge = 'retirement_age';
     case EssentialSpend = 'essential_spend';
+    case DiscretionarySpend = 'discretionary_spend';
     case SurvivorDbFraction = 'survivor_db_fraction';
     case SurvivorAnnuityFraction = 'survivor_annuity_fraction';
     case PersonLongevity = 'person_longevity';
@@ -29,6 +30,7 @@ enum LeverKey: string
             self::BuyPrice => 'How much you spend on a new home',
             self::RetirementAge => 'When you retire',
             self::EssentialSpend => 'Your essential spending',
+            self::DiscretionarySpend => 'What you spend on things you choose',
             self::SurvivorDbFraction => "Your DB pension's survivor share",
             self::SurvivorAnnuityFraction => "Your annuity's survivor share",
             // Generic fallbacks; the explorer names the specific person ("How long Alex lives",

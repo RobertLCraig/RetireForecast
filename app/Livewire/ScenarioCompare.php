@@ -365,6 +365,10 @@ class ScenarioCompare extends Component
             'finalYear' => $forecast->finalCalendarYear,
             'usableWealth' => $forecast->terminalUsableWealth->format(),
             'totalWealth' => $forecast->terminalTotalWealth->format(),
+            // The two figures a reader plans against, so plans can be compared on what they could
+            // actually SPEND rather than on terminal wealth (which includes a home they can't
+            // spend). Includes the survivor step-down — where these households actually fail.
+            'spendable' => ResultPresenter::spendableSummary($forecast),
             // Inheritance Tax due across the household's deaths, when this plan models it (else null).
             'ihtDue' => $forecast->iht?->total->format(),
             'orphans' => $plan->orphanedOverrides(),

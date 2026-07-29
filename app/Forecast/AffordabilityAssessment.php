@@ -55,7 +55,7 @@ final class AffordabilityAssessment
     {
         $cards = array_map(
             fn (array $p): array => self::card(
-                $p['scenario'], $p['variant'], $p['forecast'], $p['careStress'], $p['household'], $p['baseYear'], $p['monthlyRent'], $p['mc'] ?? null,
+                $p['scenario'], $p['variant'], $p['forecast'], $p['careStress'], $p['household'], $p['baseYear'], $p['monthlyRent'], $p['mc'] ?? null, $p['sustainable'] ?? null,
             ),
             $plans,
         );
@@ -115,7 +115,7 @@ final class AffordabilityAssessment
     /**
      * @return array<string, mixed>
      */
-    private static function card(Scenario $plan, string $variant, ForecastResult $forecast, ForecastResult $careStress, Household $household, int $baseYear, ?int $monthlyRent, ?SimulationResult $mc): array
+    private static function card(Scenario $plan, string $variant, ForecastResult $forecast, ForecastResult $careStress, Household $household, int $baseYear, ?int $monthlyRent, ?SimulationResult $mc, ?array $sustainable): array
     {
         $lasts = $forecast->depletionCalendarYear === null;
         $essentialsMet = $forecast->essentialsAlwaysMet;
@@ -161,6 +161,16 @@ final class AffordabilityAssessment
             // spell injected, so a care-free "lasts for life" is never shown alone. The base verdict
             // above assumes no long-term care; this says what a significant care need would do.
             'careStress' => self::careStress($careStress, $household, $baseYear),
+            // What this plan actually leaves them to live on each month — the question the reader
+            // came with, and the one a yes/no verdict alone does not answer. Includes the drop once
+            // one partner is left, which is where these plans diverge most.
+            'spendable' => ResultPresenter::spendableSummary($forecast),
+            // The SOLVED answer to "how much could we spend on things we choose?" — the most this
+            // plan could fund every year without ever falling short. Null = the plan cannot cover
+            // essentials at any level of restraint, which is a different thing from "£0 spare".
+            'affordableFreeSpendMonthly' => $sustainable === null ? null : $sustainable['monthly']->format(),
+            'affordableFreeSpendAnnual' => $sustainable === null ? null : $sustainable['annual']->format(),
+            'affordableFreeSpendUncapped' => $sustainable['ceilingHit'] ?? false,
             // The honest "how sure" figure from a full Monte Carlo run, when one exists for this
             // plan; null prompts the caller to offer a re-run rather than implying certainty.
             'mcEssentials' => $mc !== null ? self::pct($mc->successProbabilityEssentials) : null,

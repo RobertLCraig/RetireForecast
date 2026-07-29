@@ -40,6 +40,56 @@ Pension Credit, confined to the both-alive years) is recorded in the gitignored 
 `PathProjectorTest` (one disabled partner → £0; both → couple rate; a caring partner → carer addition) +
 `PensionCreditCalculatorTest` (single vs couple rate; carer). Full suite green.
 
+## 2026-07-30 — "Available capital" + "monthly allowance", and a SOLVED affordable-spend figure
+**Context:** Rob: *"we really need to highlight 'Available capital' and 'budgeted monthly allowance' for
+each year, for each scenario, to compare how much they should plan to be able to spend."* It arose from
+the park-home work, where "what annual holiday budget can they afford?" turned out to be the **output**
+of the exercise. Spec: [docs/build/PLAN-spendable-view.md](build/PLAN-spendable-view.md).
+
+**Decisions:**
+1. **One definition, in `ResultPresenter::spendableFor(YearResult)`**, read by the ladder, Compare, the
+   affordability screen, the CSV and the PDF — so a figure cannot drift between surfaces (the existing
+   displayed-figure-provenance rule, now extended to these columns in `DisplayedFigureProvenanceTest`).
+2. **"Available capital" is `liquidWealth` ONLY** — cash + GIA + ISA. Home equity is excluded (it cannot
+   be spent while lived in) and **pension money is carried separately, labelled taxable**. *Rationale:*
+   the ladder's existing `usableWealth` adds liquid + pension at face value, so it counts £100k of
+   pension as £100k in the hand. Deliberately NOT reused here.
+3. **"Monthly allowance" is what the plan can FUND** (`spendTarget − unmetSpend`), not what it targets.
+   *Rationale:* `spendTarget` is an input echoed back; in a short year it promises money the household
+   does not have.
+4. **Divide once, derive the remainder.** Monthly figures are `intdiv(annual, 12)`; "free to choose" is
+   `allowance − essential`, not a third independent division. *Rationale:* three separate `intdiv`s let
+   the parts disagree with their own total by a penny — caught in development on a year with a 1p
+   shortfall. Same total-must-equal-its-parts rule as everywhere else.
+5. **A solved "most you could spend" figure — `App\DecisionSupport\SustainableSpend`.** Everything above
+   is **bounded by the entered budget**, so it can only ever say whether the plan worked, never what
+   they could afford. New `DiscretionarySpendLever` (mirroring `EssentialSpendLever`) plus a
+   **deterministic bisection** finds the highest discretionary spend at which the plan still holds.
+   Synchronous (~20 forecasts, milliseconds) — **no queue worker needed**, unlike the Monte Carlo
+   threshold explorer.
+6. **The bar is "full budget funded EVERY year, and money never runs out".** *Rationale:* an
+   essentials-only bar was tried and is **degenerate** — where income alone covers the essential floor,
+   essentials are met however large a discretionary budget is set (the excess just goes unfunded), so
+   the search is insensitive to the lever and runs to its ceiling. This resolves the open question the
+   plan posed. Documented in code so it is not reintroduced.
+7. **Variant-aware.** The scenario's housing choice is applied first, then the lever — so a sell-and-rent
+   plan is searched as a renter. *Rationale:* `deterministicForecastAt` models the stay-put path, a live
+   trap in this codebase (it bit me earlier in the same session).
+8. **Null, not £0, when a plan cannot cover essentials at all.** "This plan is broken" and "no room for
+   treats" must not render identically.
+
+**Consequences (V2 family, deterministic path).** The affordable free-spending budget is the sharpest
+discriminator built so far: **sell & buy cheaper £865/mo**, **lifetime mortgage £652/mo**, **YCC to 72
+£212/mo**, **YCC to 71 £135/mo**, and **everything else fails even at zero discretionary spend** —
+including the LiveMore stay-put base and both £80k art-sale variants. So on these figures the LiveMore
+mortgage leaves **no holiday budget at all**, which is the direct answer to the question the park-home
+exercise was raised to settle.
+
+**Flagged, not fixed:** `usableWealth = liquid + pension` still overstates available capital and drives
+the safety-buffer warning, so that warning fires later than it should (now in DATA-MODEL "Known
+divergences"). The solved figure inherits the deterministic path's optimism, so every surface shows it
+as "on the expected path" beside the Monte Carlo "how sure", never instead of it.
+
 ## 2026-07-29 — Repayment (capital & interest) mortgages amortise; the V2 Stay-put base moves onto a real quote
 **Context:** Rob produced a real indicative quote for the V2 couple — a LiveMore Capital ESIS dated 29 July 2026
 (via broker "When The Bank Says No"): **£160,000 over 16 years, capital & interest**, 6.23% fixed for 60 months

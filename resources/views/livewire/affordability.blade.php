@@ -80,6 +80,40 @@
                     </p>
 
                     <dl class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {{-- The question the reader actually arrived with. Leads the grid because
+                             "how much can we spend?" beats "how much is left when we're dead". --}}
+                        <div class="rounded-lg bg-blue-50 px-4 py-3 sm:col-span-2">
+                            <dt class="text-sm text-gray-600">Money to live on, each month</dt>
+                            <dd class="text-lg font-semibold text-gray-900">
+                                {{ $card['spendable']['now']['monthlyAllowance'] }}
+                                <span class="text-base font-normal text-gray-700">
+                                    — of which {{ $card['spendable']['now']['monthlyFree'] }} is yours to choose
+                                    (holidays, treats, anything you like)
+                                </span>
+                            </dd>
+                            @if ($card['spendable']['survivor'])
+                                <dd class="mt-1 text-sm text-gray-700">
+                                    If one of you is on your own, from about {{ $card['spendable']['survivorFromYear'] }}:
+                                    <strong>{{ $card['spendable']['survivor']['monthlyAllowance'] }} a month</strong>,
+                                    of which {{ $card['spendable']['survivor']['monthlyFree'] }} is free to choose.
+                                </dd>
+                            @endif
+                            <dd class="mt-1 text-xs text-gray-500">
+                                In today's money, and only what this plan can actually pay for.
+                                You'd also have {{ $card['spendable']['now']['availableCapital'] }} in cash and savings to hand.
+                            </dd>
+                            {{-- The SOLVED figure: not what this plan budgets, but the most it could
+                                 fund every year without ever falling short. The holiday budget. --}}
+                            @if ($card['affordableFreeSpendMonthly'])
+                                <dd class="mt-2 border-t border-blue-200 pt-2 text-sm text-gray-800">
+                                    <strong>Most you could spend on treats and holidays:</strong>
+                                    about <strong>{{ $card['affordableFreeSpendMonthly'] }} a month</strong>
+                                    ({{ $card['affordableFreeSpendAnnual'] }} a year){{ $card['affordableFreeSpendUncapped'] ? ' or more' : '' }},
+                                    on top of your essentials — the most this plan could pay for
+                                    <em>every</em> year without ever running short.
+                                </dd>
+                            @endif
+                        </div>
                         <div class="rounded-lg bg-gray-50 px-4 py-3">
                             <dt class="text-sm text-gray-500">Money left at the end</dt>
                             <dd class="text-lg font-semibold text-gray-900">about {{ $card['moneyLeftRough'] }}</dd>

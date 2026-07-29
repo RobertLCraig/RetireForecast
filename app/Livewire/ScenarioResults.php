@@ -315,7 +315,10 @@ class ScenarioResults extends Component
             foreach ($ladder['sources'] as $source) {
                 $header[] = $ladder['sourceLabels'][$source];
             }
-            $header = [...$header, 'Tax', 'Spend', 'Essential spend', 'Discretionary spend', 'Unmet spend', 'Investment growth (capital)', 'Usable wealth (excl. home)', 'Total wealth (incl. home equity)'];
+            $header = [...$header, 'Tax', 'Spend', 'Essential spend', 'Discretionary spend', 'Unmet spend',
+                'To spend per month', 'of which essential per month', 'of which free per month',
+                'Available capital (cash + investments)', 'Pension capital (taxable when drawn)',
+                'Investment growth (capital)', 'Usable wealth (excl. home)', 'Total wealth (incl. home equity)'];
             fputcsv($out, $header);
 
             foreach ($ladder['rows'] as $row) {
@@ -323,7 +326,10 @@ class ScenarioResults extends Component
                 foreach ($ladder['sources'] as $source) {
                     $line[] = $row['income'][$source];
                 }
-                $line = [...$line, $row['tax'], $row['spend'], $row['essentialSpend'], $row['discretionarySpend'], $row['shortfall'] ?? '', $row['investmentGrowth'], $row['usableWealth'], $row['totalWealth']];
+                $line = [...$line, $row['tax'], $row['spend'], $row['essentialSpend'], $row['discretionarySpend'], $row['shortfall'] ?? '',
+                    $row['monthlyAllowance'], $row['monthlyEssential'], $row['monthlyFree'],
+                    $row['availableCapital'], $row['pensionCapital'],
+                    $row['investmentGrowth'], $row['usableWealth'], $row['totalWealth']];
                 fputcsv($out, $line);
             }
             fclose($out);
@@ -445,7 +451,7 @@ class ScenarioResults extends Component
             'sensitivity' => app(AssumptionComparison::class)->compare($this->scenario),
             // The 3-tier spending budget echoed back from the form-state (essential /
             // discretionary / self-investment), reconciling to the forecast's spend.
-            'budget' => ResultPresenter::expenseBreakdown($this->scenario->effectiveBuilderState()),
+            'budget' => ResultPresenter::expenseBreakdown($this->scenario->effectiveBuilderState(), $this->scenario->toHousehold()),
             // Where that spending lands against the PLSA Retirement Living Standards
             // (Minimum / Moderate / Comfortable) — on the PLSA basis (excludes rent,
             // includes home running costs), reusing the same ExpenseProfile.

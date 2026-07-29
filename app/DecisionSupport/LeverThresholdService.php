@@ -15,6 +15,7 @@ use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\Sweep\Lever\BuyPriceLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\CareModellingLever;
+use RetireForecast\FinanceEngine\Sweep\Lever\DiscretionarySpendLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\EssentialSpendLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\PersonLongevityLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\RetirementAgeLever;
@@ -186,6 +187,7 @@ final class LeverThresholdService
             LeverKey::BuyPrice => new BuyPriceLever($this->forecaster->housingComparison($scenario), $assumptions, $action),
             LeverKey::RetirementAge => new RetirementAgeLever,
             LeverKey::EssentialSpend => new EssentialSpendLever,
+            LeverKey::DiscretionarySpend => new DiscretionarySpendLever,
             LeverKey::SurvivorDbFraction => new SurvivorDbFractionLever,
             LeverKey::SurvivorAnnuityFraction => new SurvivorAnnuityFractionLever,
             LeverKey::PersonLongevity => new PersonLongevityLever($leverParam ?? $scenario->toHousehold()->persons[0]->id),
@@ -212,6 +214,14 @@ final class LeverThresholdService
             LeverKey::EssentialSpend => self::linspace(
                 0.5 * (float) intdiv($household->expenseProfile->essentialAnnualSpend->pence, 100),
                 1.5 * (float) intdiv($household->expenseProfile->essentialAnnualSpend->pence, 100),
+                9,
+            ),
+            // Discretionary spend: from nothing (essentials only) to three times what they spend on
+            // choices today. Starts at zero because the honest answer for a stretched household is
+            // sometimes "there is no room for extras", and the grid must be able to say so.
+            LeverKey::DiscretionarySpend => self::linspace(
+                0.0,
+                max(3_000.0, 3.0 * (float) intdiv($household->expenseProfile->discretionaryAnnualSpend->pence, 100)),
                 9,
             ),
             // Survivor's DB fraction: the full 0–100% range, every 10 points (a spouse's pension is

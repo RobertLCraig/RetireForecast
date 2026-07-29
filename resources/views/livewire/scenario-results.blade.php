@@ -534,7 +534,7 @@
                         <ul class="mt-2 space-y-1 text-sm text-gray-700">
                             @foreach ($tier['lines'] as $line)
                                 <li class="flex justify-between gap-3">
-                                    <span>{{ $line['label'] }}@if ($line['saved'])<span class="ml-1 rounded bg-green-100 px-1.5 text-xs text-green-800">saved</span>@endif</span>
+                                    <span>{{ $line['label'] }}@if ($line['saved'])<span class="ml-1 rounded bg-green-100 px-1.5 text-xs text-green-800">saved</span>@endif@if ($line['computed'] ?? false)<span class="ml-1 rounded bg-blue-100 px-1.5 text-xs text-blue-800" title="Worked out from your mortgage terms, not typed in">from your mortgage terms</span>@endif</span>
                                     <span class="tabular-nums">{{ $line['amount'] }}</span>
                                 </li>
                             @endforeach
@@ -1053,6 +1053,15 @@
             <p class="mt-1 text-sm text-gray-600">
                 The central best-estimate projection, year by year: where income comes from, the tax on it, the spend it has to meet (split into its essential floor and discretionary remainder), and the usable (excl. home) and total (incl. home equity, net of any mortgage owed) wealth carried forward. Figures are in today's money. This is one illustrative path, not a probability.
             </p>
+            <p class="mt-1 text-sm text-gray-600">
+                <strong>To spend / month</strong> is what this plan can actually <em>fund</em> that year, divided by twelve —
+                not what it targets, so in a year that falls short it shows the smaller, real figure. <strong>free</strong> is
+                the part left after essentials: holidays, treats, anything you choose.
+                <strong>Available capital</strong> is cash and investments only — money you could spend now without a tax bill
+                to get at it. Your pension is listed beneath it because drawing it is taxable, and
+                <strong>your home is deliberately excluded</strong>: you can't spend it while you live in it.
+                All of these are in <strong>today's money</strong>, so a figure for 2049 is what it would buy at today's prices.
+            </p>
 
             {{-- Safety-floor headline: does usable money stay above the user's buffer, dip below it,
                  or run out entirely? The buffer (months of essentials) is set in the Spending step. --}}
@@ -1081,9 +1090,11 @@
                             @endforeach
                             <th scope="col" class="{{ $th }} text-right">Tax</th>
                             <th scope="col" class="{{ $th }} text-right">Spend</th>
+                            <th scope="col" class="{{ $th }} text-right">To spend / month</th>
                             @if ($ladder['showGrowth'])
                                 <th scope="col" class="{{ $th }} text-right">Investment growth</th>
                             @endif
+                            <th scope="col" class="{{ $th }} text-right">Available capital</th>
                             <th scope="col" class="{{ $th }} text-right">Usable (excl. home)</th>
                             <th scope="col" class="{{ $th }} text-right">Total (incl. home equity)</th>
                         </tr>
@@ -1106,9 +1117,22 @@
                                     <span class="block text-xs text-gray-500">ess {{ $row['essentialSpend'] }} · disc {{ $row['discretionarySpend'] }}</span>
                                     @if ($row['shortfall'])<span class="block text-xs text-amber-700">unmet {{ $row['shortfall'] }}</span>@endif
                                 </td>
+                                {{-- What the plan can actually FUND that year, per month — not the
+                                     target, which in a short year promises money they don't have. --}}
+                                <td class="{{ $td }} text-right font-medium">
+                                    {{ $row['monthlyAllowance'] }}
+                                    <span class="block text-xs font-normal text-gray-500">ess {{ $row['monthlyEssential'] }} · free {{ $row['monthlyFree'] }}</span>
+                                </td>
                                 @if ($ladder['showGrowth'])
                                     <td class="{{ $td }} text-right text-gray-600">{{ $row['investmentGrowth'] }}</td>
                                 @endif
+                                {{-- Cash + investments only: spendable now, no tax to pay to get at
+                                     it. The pension is shown beneath because £1 of pension is not
+                                     £1 in the hand, and the home is excluded entirely. --}}
+                                <td class="{{ $td }} text-right font-medium">
+                                    {{ $row['availableCapital'] }}
+                                    <span class="block text-xs font-normal text-gray-500">+ {{ $row['pensionCapital'] }} pension (taxable)</span>
+                                </td>
                                 <td class="{{ $td }} text-right">
                                     {{ $row['usableWealth'] }}
                                     @if ($row['belowFloor'])<span class="block text-xs font-medium text-red-700">below buffer</span>@endif

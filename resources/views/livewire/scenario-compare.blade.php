@@ -110,6 +110,8 @@
                     <th scope="col" class="px-4 py-3">Housing choice</th>
                     <th scope="col" class="px-4 py-3">Essentials covered every year</th>
                     <th scope="col" class="px-4 py-3">Money lasts</th>
+                    <th scope="col" class="px-4 py-3">To spend / month</th>
+                    <th scope="col" class="px-4 py-3">Available capital</th>
                     <th scope="col" class="px-4 py-3">Usable wealth left (excl. home)</th>
                     <th scope="col" class="px-4 py-3">Total wealth left (incl. home equity)</th>
                     @if ($showIht)<th scope="col" class="px-4 py-3">Inheritance tax</th>@endif
@@ -154,6 +156,23 @@
                                 Runs low in {{ $plan['depletionYear'] }}
                             @endif
                         </td>
+                        {{-- What they could actually spend each month, now and once one of them is
+                             left — the step-down is where these plans really differ. --}}
+                        <td class="px-4 py-3 tabular-nums text-gray-900">
+                            {{ $plan['spendable']['now']['monthlyAllowance'] }}
+                            <span class="mt-1 block text-xs font-normal text-gray-600">free {{ $plan['spendable']['now']['monthlyFree'] }}</span>
+                            @if ($plan['spendable']['survivor'])
+                                <span class="mt-1 block text-xs font-normal text-gray-600">
+                                    from {{ $plan['spendable']['survivorFromYear'] }} (one of you):
+                                    {{ $plan['spendable']['survivor']['monthlyAllowance'] }},
+                                    free {{ $plan['spendable']['survivor']['monthlyFree'] }}
+                                </span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 tabular-nums text-gray-900">
+                            {{ $plan['spendable']['now']['availableCapital'] }}
+                            <span class="mt-1 block text-xs font-normal text-gray-600">+ {{ $plan['spendable']['now']['pensionCapital'] }} pension (taxable)</span>
+                        </td>
                         <td class="px-4 py-3 tabular-nums text-gray-900">{{ $plan['usableWealth'] }}</td>
                         <td class="px-4 py-3 tabular-nums text-gray-900">{{ $plan['totalWealth'] }}</td>
                         @if ($showIht)<td class="px-4 py-3 tabular-nums text-gray-900">{{ $plan['ihtDue'] ?? '— not modelled' }}</td>@endif
@@ -176,6 +195,10 @@
 
     <p class="mt-2 text-xs text-gray-500">
         "Money lasts" means the usable money (excluding your home) is not exhausted before the end of the projection.
+        <strong>To spend / month</strong> is what each plan can actually fund, divided by twelve, with the part left after
+        essentials shown as "free" — and, where one partner outlives the other, what that drops to. <strong>Available
+        capital</strong> is cash and investments only: your home is excluded (you can't spend it while living in it) and your
+        pension is listed separately because drawing it is taxable. All figures are in today's money.
         Figures are in today's money (real terms).
     </p>
 

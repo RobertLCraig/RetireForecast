@@ -4,9 +4,23 @@
 > `docs/HANDOVER.md` first (orient), then this. Follows the project doc standard and the engine rules
 > in `CLAUDE.md` (integer pence, one definition per quantity, reconciliation invariants, tests green).
 
-**Stage:** DRAFT — scoped, not built. Deferred while a concurrent session lands Pension Credit bug fixes.
+**Stage:** ✅ BUILT (2026-07-30) — kept as the build record. See DECISIONS 2026-07-30.
 **Owner lane:** output legibility (sibling of [PLAN-output-inflation-and-charts.md](PLAN-output-inflation-and-charts.md)'s B-series).
-_Last updated: 2026-07-29 (scoped; no code changed)_
+_Last updated: 2026-07-30 (built)_
+
+> **Built as specified, with two changes the build forced:**
+> 1. **The open question below is resolved by evidence, not preference.** An essentials-only bar is
+>    **degenerate** — where income alone covers the essential floor, essentials are met however large a
+>    discretionary budget is set, so the search is insensitive to the lever and runs to its ceiling
+>    (observed: every plan returned "£500,000+"). The bar is therefore **full budget funded every year
+>    AND money never runs out**. Documented in `SustainableSpend` so it is not reintroduced.
+> 2. **"Divide once" had to go further than specced.** Rounding allowance, essential and free
+>    independently let the parts disagree with their total by 1p (caught on a year with a 1p shortfall).
+>    "Free to choose" is now the REMAINDER (`allowance − essential`), which also matches its definition.
+>
+> Also delivered beyond the spec: a synchronous **`SustainableSpend`** solver + `DiscretionarySpendLever`
+> (the spec assumed the Monte Carlo threshold machinery and a queue worker; a deterministic bisection
+> needs neither), made **variant-aware** so a sell-and-rent plan is searched as a renter.
 
 ## Why this exists
 Rob, 2026-07-29: *"we really need to highlight 'Available capital' and 'budgeted monthly allowance' for

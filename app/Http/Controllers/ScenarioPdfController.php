@@ -103,7 +103,7 @@ class ScenarioPdfController extends Controller
             'scenario' => $scenario,
             'generatedAt' => now()->format('j F Y'),
             'shock' => app(LumpSumTaxShock::class)->assess($scenario),
-            'budget' => ResultPresenter::expenseBreakdown($scenario->effectiveBuilderState()),
+            'budget' => ResultPresenter::expenseBreakdown($scenario->effectiveBuilderState(), $scenario->toHousehold()),
             'plsa' => ResultPresenter::plsaBenchmark($household),
             'incomeFloor' => ResultPresenter::incomeFloor($forecast),
             // Inheritance Tax on the estate (only when the toggle is on) — same deterministic

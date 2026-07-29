@@ -475,6 +475,14 @@ from the original plan, flagged inline:
   neutral across the plans being compared**. The £20,000 overall cap and the April-2027 22% charge on
   S&S-ISA cash both bind; the April-2027 cash-ISA cut to £12,000 does not apply to a 65+ saver. Specced as
   A3 of the same plan.
+- **OPEN — `usableWealth` counts pre-tax pension money as cash (found 2026-07-30).** The ladder's
+  `usableWealth`, the burndown chart and the safety-buffer check all use `liquidWealth + pensionWealth`,
+  so £100,000 of pension is treated as £100,000 available when drawing it is taxable (worth perhaps
+  £75–85k in the hand). It **overstates available capital and understates depletion risk** for
+  pension-heavy plans, and because it drives the "below buffer floor" warning, that warning **fires
+  later than it should**. Not fixed by the 2026-07-30 spendable-view work, which deliberately does NOT
+  reuse it (`availableCapital` is `liquidWealth` only, with pension carried separately and labelled
+  taxable). Fixing it moves existing reported figures and needs its own decision on how to net the tax.
 - **A repayment mortgage now amortises — CLOSED 2026-07-29 (DECISIONS 2026-07-29).** The balance of a
   capital-and-interest mortgage was modelled **static** (the workaround was `mortgageRedemptionYear` +
   repay-from-capital, which yanks the whole balance out of capital in one year), and its payment was an

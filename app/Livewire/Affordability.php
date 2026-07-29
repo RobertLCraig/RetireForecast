@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\DecisionSupport\CombinationComparisonData;
+use App\DecisionSupport\SustainableSpend;
 use App\Forecast\AffordabilityAssessment;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
@@ -89,6 +90,9 @@ class Affordability extends Component
                 'baseYear' => $baseYear,
                 'monthlyRent' => $this->monthlyRent($plan, $variant),
                 'mc' => $mc,
+                // "How much could we actually spend?" — solved, not read off the plan's own budget.
+                // Synchronous (a deterministic bisection), so it needs no queue worker.
+                'sustainable' => app(SustainableSpend::class)->forScenario($plan),
             ];
         }
 

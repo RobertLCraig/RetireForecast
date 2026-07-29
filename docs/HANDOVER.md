@@ -166,6 +166,18 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   **builder-UI exposure deferred** (defaults false, no scenario/child-delta affected, immaterial to V2). Guarded
   by `PathProjectorTest` + `PensionCreditCalculatorTest`. Full benefits check for the couple is in the gitignored
   `docs/BENEFITS-CHECK-V2.local.md`.
+- **Done 2026-07-30 — "available capital" + "monthly allowance", and a SOLVED affordable-spend figure
+  (DECISIONS 2026-07-30, [docs/build/PLAN-spendable-view.md](build/PLAN-spendable-view.md)):** the tool
+  reported only annual figures, and its nearest "available" number (`usableWealth`) counted pre-tax
+  pension as cash. One presenter definition (`ResultPresenter::spendableFor`) now feeds the ladder,
+  Compare, `/afford`, the CSV and the PDF: **available capital** (liquid only; home excluded, pension
+  separate + labelled taxable) and **monthly allowance** (what the plan can FUND, split essential vs
+  free-to-choose), with the survivor step-down on the Compare row. Plus `SustainableSpend` — a
+  synchronous deterministic bisection on a new `DiscretionarySpendLever` — which **solves** "the most you
+  could spend on treats and holidays every year", the one question a budget-bounded projection cannot
+  answer. **V2 finding: sell & buy cheaper £865/mo, lifetime mortgage £652/mo, YCC-to-72 £212/mo, and
+  every other plan (incl. the LiveMore stay-put base and both £80k art-sale variants) fails at zero
+  discretionary spend** — the stay-put mortgage leaves no holiday budget at all.
 - **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **read that doc before touching any V2 figure.** The base's
   "money found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
   (year 2026, the real source as the label) — see the V2 doc's note. It now needs **~£49,495**, not ~£90k.
@@ -299,6 +311,25 @@ protection gap promoted to #3** (death-in-service confirmed in force — and it 
 cliff-edge RF is well placed to surface). Personal detail (DOB, scheme, cover) deliberately kept **out** of the
 tracked plan per [[pii-leaks-into-tracked-files]] — it lives in the gitignored SCENARIO-V2 doc. **No code
 changed**; no DECISIONS entry per the established convention (a DRAFT plan earns its entry when built).
+
+_2026-07-30 (spendable view: available capital, monthly allowance, and a solved affordable-spend figure)_ —
+Built [docs/build/PLAN-spendable-view.md](build/PLAN-spendable-view.md) after the other session's Pension
+Credit fix landed (it committed my repayment-mortgage work with it — `11b67e9` is a combined commit).
+Presenter-only for the read figures; **two defects surfaced by my own tests, both worth keeping in mind:**
+(1) rounding the monthly allowance, essential and free independently let the parts disagree with their
+total by 1p on a year with a **1p** shortfall — "free" is now the remainder, so the parts sum by
+construction; (2) more seriously, the whole read-only approach is **bounded by the entered budget**, so it
+can never answer "what could we afford?" — it only says whether the plan worked. That needed a solve.
+Added `DiscretionarySpendLever` + `SustainableSpend` (deterministic bisection, ~20 forecasts, synchronous —
+the Monte Carlo threshold explorer needs a queue worker, this does not), made **variant-aware** so a
+sell-and-rent plan is searched as a renter (`deterministicForecastAt` models stay-put — the trap flagged in
+this handover, which bit me twice in two days). **A third defect caught by inspecting output, not tests:**
+the first solver bar (essentials met) was **degenerate** — income alone covers essentials, so the search
+was insensitive to the lever and every plan returned "£500,000+/yr" for a household on ~£30k. The bar is
+now "full budget funded every year"; recorded in code so it is not reintroduced. Also flagged (not fixed)
+in DATA-MODEL: `usableWealth` counts pre-tax pension as cash, which additionally makes the safety-buffer
+warning fire late. Full suite green (967), pint clean. **Awaits browser sign-off** (visible UI on four
+surfaces).
 
 _2026-07-29 (real repayment mortgages; the V2 Stay-put base moved onto the LiveMore quote)_ —
 Rob supplied a real indicative quote (LiveMore Capital ESIS, 29 July 2026, via broker When The Bank Says No):

@@ -723,6 +723,100 @@ final class ResultPresenter
     }
 
     /**
+     * Is this spend line the mortgage payment? Matches {@see HouseholdAssembler::autoCondition},
+     * which classifies a line as `while_mortgaged` on the same substring — so the line whose amount
+     * is substituted here is exactly the line the engine drops.
+     */
+    private static function isMortgageLine(string $label): bool
+    {
+        return str_contains(mb_strtolower($label), 'mortgage');
+    }
+
+    /**
+     * The two figures a non-financial reader actually plans against, for one year: **capital in
+     * hand** and **money per month**. Everything else this tool reports is annual, and net worth —
+     * the number a reader reaches for — includes a home they cannot spend.
+     *
+     * ONE DEFINITION, here. Results, Compare, the affordability screen and the PDF all read this, so
+     * a figure cannot drift between surfaces.
+     *
+     *  - **availableCapital** is `liquidWealth` (cash + GIA + ISA) ONLY: money spendable this year
+     *    with no tax on withdrawal. Home equity is excluded — it is not spendable while they live
+     *    there, and that exclusion is the point of the figure.
+     *  - **pensionCapital** is carried SEPARATELY and labelled taxable. It is deliberately NOT added
+     *    to available capital: £100,000 of pension is not £100,000 in the hand, and the ladder's
+     *    existing `usableWealth` (liquid + pension) overstates it by exactly the tax due. Never
+     *    reuse `usableWealth` for this.
+     *  - **monthlyAllowance** is the spend the plan can actually FUND (`spendTarget − unmetSpend`),
+     *    not the target. In a shortfall year the target is money the household does not have.
+     *  - **monthlyFree** — funded spend above the essential floor — is the discretionary money: the
+     *    holidays-and-treats budget, and the answer to "what could we afford to spend?".
+     *
+     * All figures are REAL (today's money), like the rest of the engine's output; every display must
+     * say so. Monthly figures divide the annual pence ONCE (`intdiv`), so ×12 reconciles to the
+     * annual row to within the rounding remainder rather than drifting from a re-parsed string.
+     *
+     * @return array<string, string> formatted money, ready to print
+     */
+    public static function spendableFor(YearResult $year): array
+    {
+        $funded = $year->spendTarget->minus($year->unmetSpend)->minZero();
+        $essential = Money::min($year->essentialSpend, $funded);
+
+        // Divide once, then derive the remainder — never three independent intdivs. Rounding each
+        // part separately lets the parts disagree with their own total by a penny (seen on a year
+        // with a 1p shortfall), which is precisely the total-drifts-from-its-parts defect the
+        // data-layer rule forbids. "Free to choose" IS "what is left after essentials", so
+        // computing it as the remainder matches its definition rather than fudging it.
+        $monthlyAllowancePence = intdiv($funded->pence, 12);
+        $monthlyEssentialPence = intdiv($essential->pence, 12);
+        $monthlyFreePence = max(0, $monthlyAllowancePence - $monthlyEssentialPence);
+
+        return [
+            'availableCapital' => $year->liquidWealth->format(),
+            'pensionCapital' => $year->pensionWealth->format(),
+            'fundedSpend' => $funded->format(),
+            'monthlyAllowance' => Money::fromPence($monthlyAllowancePence)->format(),
+            'monthlyEssential' => Money::fromPence($monthlyEssentialPence)->format(),
+            'monthlyFree' => Money::fromPence($monthlyFreePence)->format(),
+        ];
+    }
+
+    /**
+     * The per-scenario headline block: what they would have available and what they could spend a
+     * month — now, and in the survivor years, which is where these households actually fail.
+     *
+     * The survivor figure is the point of the block. A couple's plan can look comfortable for a
+     * decade and then halve when one of them dies, and a reader comparing plans on the opening year
+     * alone will pick the wrong one. Null when nobody outlives their partner in the projection.
+     *
+     * @return array{now: array<string, string>, survivor: array<string, string>|null, survivorFromYear: int|null, finalYear: int}
+     */
+    public static function spendableSummary(ForecastResult $forecast): array
+    {
+        $years = $forecast->years;
+        if ($years === []) {
+            return ['now' => [], 'survivor' => null, 'survivorFromYear' => null, 'finalYear' => 0];
+        }
+
+        // The first year only one partner is left alive — the step down a reader must see.
+        $survivorYear = null;
+        foreach ($years as $year) {
+            if ($year->aliveCount === 1 && count($year->ages) > 1) {
+                $survivorYear = $year;
+                break;
+            }
+        }
+
+        return [
+            'now' => self::spendableFor($years[0]),
+            'survivor' => $survivorYear === null ? null : self::spendableFor($survivorYear),
+            'survivorFromYear' => $survivorYear?->calendarYear,
+            'finalYear' => $years[count($years) - 1]->calendarYear,
+        ];
+    }
+
+    /**
      * The deterministic central-projection cashflow ladder: per year, income split by
      * source, then tax, spend, and the usable / total wealth carried forward. Only the
      * income sources that actually occur are kept as columns. This is the year-by-year
@@ -782,6 +876,10 @@ final class ResultPresenter
                 $floorBreachYear = $year->calendarYear;
             }
 
+            // The two figures a reader actually plans against: capital in hand, and money per month.
+            // {@see spendableFor} — derived there so results, Compare, /afford and the PDF cannot drift.
+            $spendable = self::spendableFor($year);
+
             $rows[] = [
                 'year' => $year->calendarYear,
                 'ages' => implode(' / ', $year->ages),
@@ -790,6 +888,11 @@ final class ResultPresenter
                 'spend' => $year->spendTarget->format(),
                 'essentialSpend' => $year->essentialSpend->format(),
                 'discretionarySpend' => $discretionary->format(),
+                'availableCapital' => $spendable['availableCapital'],
+                'pensionCapital' => $spendable['pensionCapital'],
+                'monthlyAllowance' => $spendable['monthlyAllowance'],
+                'monthlyEssential' => $spendable['monthlyEssential'],
+                'monthlyFree' => $spendable['monthlyFree'],
                 'shortfall' => $year->unmetSpend->isZero() ? null : $year->unmetSpend->format(),
                 // Capital growth left in the pots this year (share/fund appreciation, untaxed until
                 // a GIA disposal) — the part of the return that grows wealth without paying out as
@@ -1692,14 +1795,35 @@ final class ResultPresenter
      * scenario predating line items (none present) falls back to its flat
      * essential/discretionary totals, mirroring the assembler's own fallback.
      *
+     * A REPAYMENT MORTGAGE is the one cost that is not a form-state line: its instalment is computed
+     * from the mortgage terms by {@see AmortisationSchedule}, and the "Mortgage" line is deliberately
+     * zeroed so the two cannot double-count ({@see spendableFor} and DECISIONS 2026-07-29). Echoing
+     * that £0 back unqualified reads as "the mortgage is not being charged" — which is wrong and was
+     * mistaken for a bug in review. So when terms are set, the zeroed line is REPLACED by the
+     * schedule's own first-full-year instalment, marked `computed`, and it counts in the subtotals.
+     * The panel then totals what the household will actually pay, not just what it typed in.
+     *
      * @param  array<string, mixed>  $state  the effective builder form-state
-     * @return array{tiers: list<array{key: string, label: string, lines: list<array{label: string, amount: string, saved: bool}>, subtotal: string}>, spendingTotal: string, savingTotal: string, total: string, hasSaving: bool}
+     * @return array{tiers: list<array{key: string, label: string, lines: list<array{label: string, amount: string, saved: bool, computed: bool}>, subtotal: string}>, spendingTotal: string, savingTotal: string, total: string, hasSaving: bool}
      */
-    public static function expenseBreakdown(array $state): array
+    public static function expenseBreakdown(array $state, ?Household $household = null): array
     {
         $lines = $state['expenseLines'] ?? [];
         if ($lines === []) {
             $lines = self::flatFallbackLines($state['expense'] ?? []);
+        }
+
+        // The engine-computed mortgage instalment, when the home carries repayment terms. Taken at
+        // the first FULL year of the term (the first calendar year can be a part year — a mortgage
+        // completing in September pays four instalments, which is not the annual budget figure).
+        $home = $household?->primaryResidence;
+        $instalment = null;
+        if ($home?->repaymentTerms !== null) {
+            $terms = $home->repaymentTerms;
+            $schedule = AmortisationSchedule::for($home->outstandingMortgage ?? Money::zero(), $terms);
+            $instalment = $schedule->paymentIn($terms->firstPaymentMonth === 1
+                ? $terms->firstPaymentYear
+                : $terms->firstPaymentYear + 1);
         }
 
         $tiers = [];
@@ -1714,10 +1838,22 @@ final class ResultPresenter
                 }
                 $amount = Money::fromPence(MoneyText::toPence((string) ($line['amount'] ?? '0')));
                 $saved = $key === 'self_investment' && (bool) ($line['savedAsAsset'] ?? false);
+
+                // Substitute the schedule's instalment for the zeroed "Mortgage" line, so the panel
+                // shows the payment the projection actually charges.
+                $label = (string) ($line['label'] ?? '');
+                $computed = false;
+                if ($instalment !== null && self::isMortgageLine($label)) {
+                    $amount = $instalment;
+                    $computed = true;
+                    $instalment = null; // only ever substitute onto one line
+                }
+
                 $tierLines[] = [
-                    'label' => (string) ($line['label'] ?? ''),
+                    'label' => $label,
                     'amount' => $amount->format(),
                     'saved' => $saved,
+                    'computed' => $computed,
                 ];
                 $subtotal = $subtotal->plus($amount);
                 // Saved self-investment builds net worth (a contribution), not spend; all
