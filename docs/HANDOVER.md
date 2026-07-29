@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-19 (doc-structure migration to docs/ + spec/build/research; three hero time-series charts)_
+_Last updated: 2026-07-29 (adviser-parity plan: three OPEN correctness gaps found — fees, pension tax relief, ISA caps)_
 
 ## Goal & success criteria
 Full plan: [docs/build/PLAN.md](build/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -150,7 +150,11 @@ not a presenter re-inflation, to avoid drift) and the wealth chart's terminal p2
 order is **B1 — verdict-first, probability-led landing** (reuse the `/afford` screen, lead with the Monte-Carlo
 probability + the word-bands), then the B2–B4 results-page restructure (tabs, tables into `<details>`, banners
 demoted), then A3 fat tails / A4 State-Pension uprating. Build order in the plan's "Build order" section.
-Other unbuilt specs: withdrawal-sequencing #5/#6 (docs/build/PLAN-withdrawal-sequencing.md, gated on two modelling
+Other unbuilt specs: **adviser parity** ([docs/build/PLAN-adviser-parity.md](build/PLAN-adviser-parity.md),
+DRAFT, scope questions all resolved — **contains three OPEN correctness gaps, now in DATA-MODEL "Known
+divergences": no fee/charge model at all, no pension tax relief, no ISA subscription cap. These are
+accuracy defects, not refinements** — build order starts A1 fees → A2 relief → B2 protection gap);
+withdrawal-sequencing #5/#6 (docs/build/PLAN-withdrawal-sequencing.md, gated on two modelling
 calls from Rob); multi-property (docs/build/PLAN-multi-property.md, DRAFT); assistant scenario-editing
 (docs/build/PLAN-assistant-scenario-editing.md, approved scope, not built).
 
@@ -208,6 +212,32 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-29 (adviser-parity plan — three open correctness gaps found; no code changed)_ —
+Rob asked what could be learned from a Damien Talks Money Q&A video (28 Jul 2026), then widened it to "what
+else does a financial adviser provide that we should model, to obviate needing one". The video itself was
+unreadable (YouTube serves a JS shell; no transcript), so Rob pasted the page metadata and **the chapter list
+was used as a topic checklist only** — every claim was then verified against gov.uk / primary sources, never
+against the video. Mapped ~30 retirement-relevant chapters against the code. **Most already covered** (MPAA,
+emergency tax, care, sequencing risk, fiscal drag, CGT, IHT, DB-as-bonds; the triple-lock earnings leg is a
+*decided* adverse divergence, not an oversight). **Three genuine gaps found — all now in DATA-MODEL "Known
+divergences" as OPEN:** (1) **no investment-cost model at all** — returns are gross of platform/fund charges,
+the largest silent optimism in the model and a bias in the reassuring direction; this was an open *confirm*
+in the June competitive scan (Cluster E) and is now confirmed absent; (2) **no pension contribution tax
+relief** — the code's own docblock flags it; (3) **no ISA subscription cap** — and the bias is largest for the
+highest-surplus (sell-and-invest) plans, so it is not neutral across the plans being compared. The
+adviser-services sweep found the remaining reasons to hire one are **coverage and cadence, not
+sophistication** — RF already beats the adviser sector on modelling and leads on means-tested benefits.
+Wrote **docs/build/PLAN-adviser-parity.md** (Part A engine correctness, Part B adviser-service parity, with
+three explicit non-goals: fund/product selection, DB-transfer advice, attitude-to-risk psychometrics —
+capacity for loss is kept because it is objective and already computable). **Rob resolved all four scope
+questions**, which reordered the build: A3 ISA drops to generality (both partners are 65+ before the April-2027
+cash-ISA cut, so it misses this household); A2 implements `net_pay` first (their actual scheme — full marginal
+relief, no NI saving); A4 sacrifice drops to a "would it be worth asking your employer?" what-if; **B2
+protection gap promoted to #3** (death-in-service confirmed in force — and it *ceases at retirement*, a real
+cliff-edge RF is well placed to surface). Personal detail (DOB, scheme, cover) deliberately kept **out** of the
+tracked plan per [[pii-leaks-into-tracked-files]] — it lives in the gitignored SCENARIO-V2 doc. **No code
+changed**; no DECISIONS entry per the established convention (a DRAFT plan earns its entry when built).
 
 _2026-07-19 (doc-structure migration to the canonical layout)_ —
 Ran the Project-Doc-Standard migration (triggered by `/handover save`). The four anchors moved from the repo

@@ -450,6 +450,25 @@ from the original plan, flagged inline:
   (single-property model — DECISIONS 2026-07-01).
 
 ## Known divergences (to close)
+- **OPEN — no investment-cost model anywhere; returns are GROSS (found 2026-07-29).** No platform fee, fund
+  OCF or ongoing charges figure exists on `Account`, `DcPension` or `AssumptionSet`, so every projection
+  assumes the household holds its portfolio for free. Cost is the most predictable drag in the model and
+  compounds against the household every year, so this biases the depletion year in the reassuring
+  direction by a knowable amount — the same class of defect as care riding flat CPI. **The largest open
+  correctness gap.** Fix specced as A1 of
+  [docs/build/PLAN-adviser-parity.md](build/PLAN-adviser-parity.md).
+- **OPEN — pension contributions get no tax relief (flagged in code since v1).** `PathProjector::applyContributions`
+  takes contributions from *net* surplus and adds no relief (see its own docblock), so the pot grows as if
+  relief did not exist — understating a still-working household's accumulation and rigging any
+  pension-vs-ISA comparison against the pension. Relief method matters (`net_pay` / `relief_at_source` /
+  `salary_sacrifice`) and none is modelled; salary sacrifice's NI saving is absent entirely. Must bind to
+  the existing annual-allowance + MPAA machinery when built. Specced as A2/A4 of the same plan.
+- **OPEN — ISA subscription limits are not enforced.** `applyContributions` routes `ongoingContributions`
+  into the ISA bucket with no allowance check, so the model can shelter unlimited surplus tax-free. The
+  bias is largest for the highest-surplus plans (the sell-and-invest housing variants), so it is **not
+  neutral across the plans being compared**. The £20,000 overall cap and the April-2027 22% charge on
+  S&S-ISA cash both bind; the April-2027 cash-ISA cut to £12,000 does not apply to a 65+ saver. Specced as
+  A3 of the same plan.
 - **House-price AND salary growth in the Monte Carlo — both stochastic since 2026-07-18 (DECISIONS 2026-07-18).**
   Each was deterministic (a straight line at the mean): house growth understated the risk of home-heavy plans,
   salary growth understated the spread of a still-working couple's accumulation. `AssumptionSet` now carries
