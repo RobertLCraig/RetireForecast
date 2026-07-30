@@ -94,6 +94,55 @@ class ExpenseLineReconciliationTest extends TestCase
         $this->assertSame($contributing[0]->ongoingContributions->format(), $breakdown['savingTotal']);
     }
 
+    /**
+     * The monthly column adds up as printed. Money is integer pence, so a monthly figure is a
+     * rounded twelfth: rounding each LINE and summing gives a column whose parts equal their
+     * subtotal by construction, whereas dividing each subtotal by twelve independently lets the
+     * printed column disagree with its own rows by a penny or two. A reader who adds up the
+     * column must get the subtotal — the reconciliation invariant, applied to the twin figure.
+     */
+    public function test_the_monthly_column_reconciles_to_the_exact_sum_of_its_lines(): void
+    {
+        // 12000.50 / 12 = 1000.041666… and 3000 / 12 = 250 — a tier whose per-line rounding
+        // does NOT divide evenly, which is the case that exposes a top-down division.
+        $state = $this->state([
+            ['id' => 'l1', 'label' => 'Rent', 'amount' => '12000.50', 'category' => 'essential'],
+            ['id' => 'l2', 'label' => 'Bills', 'amount' => '3000', 'category' => 'essential'],
+            ['id' => 'l3', 'label' => 'Holidays', 'amount' => '4000.05', 'category' => 'discretionary'],
+        ]);
+
+        $breakdown = ResultPresenter::expenseBreakdown($state);
+        $pence = static fn (string $formatted): int => (int) round(
+            (float) str_replace([',', '£'], '', $formatted) * 100,
+        );
+
+        $spendingMonthly = 0;
+        foreach ($breakdown['tiers'] as $tier) {
+            $lines = array_sum(array_map(fn (array $l): int => $pence($l['amountMonthly']), $tier['lines']));
+
+            $this->assertSame($lines, $pence($tier['subtotalMonthly']),
+                "The {$tier['label']} monthly subtotal does not equal the sum of its own monthly lines.");
+
+            $spendingMonthly += $lines;
+        }
+
+        $this->assertSame($spendingMonthly, $pence($breakdown['spendingTotalMonthly']),
+            'The monthly spending total does not equal the sum of the monthly tier subtotals.');
+
+        // And each monthly figure really is a twelfth of its annual twin, not an independent
+        // number: twelve of them land within 6p of the annual figure (half a penny of half-up
+        // rounding, twelve times over — and nothing more).
+        foreach ($breakdown['tiers'] as $tier) {
+            foreach ($tier['lines'] as $line) {
+                $this->assertLessThanOrEqual(
+                    6,
+                    abs($pence($line['amountMonthly']) * 12 - $pence($line['amount'])),
+                    "{$line['label']}'s monthly figure is not a twelfth of its annual figure.",
+                );
+            }
+        }
+    }
+
     public function test_a_legacy_scenario_without_lines_still_breaks_down_its_flat_totals(): void
     {
         // A scenario predating line items: the breakdown falls back to the flat essential/

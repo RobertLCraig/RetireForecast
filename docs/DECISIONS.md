@@ -3,6 +3,120 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-30 — Income is echoed back like spend; monthly beside annual; no sale talk without a sale
+**Context:** three findings from Rob reviewing the rebuilt report, all applying to **both** the results
+page and the PDF (his explicit scope): the spending plan gave annual figures only *"(its not like we dont
+have the space for an extra column)"*; a **stay-put** plan was shown *"If you sell:"* mechanics it never
+performs; and the tool showed what a plan **spends** in detail while never echoing back what **funds** it
+— *"need to include income and where funding sources are and how they change over time"*.
+
+**Decisions:**
+1. **Every budget figure carries a monthly twin.** `expenseBreakdown()` now returns `amountMonthly` per
+   line plus `subtotalMonthly` / `spendingTotalMonthly` / `savingTotalMonthly`. Monthly is rounded **per
+   line and then summed**, never re-divided at the total. *Rationale:* dividing each subtotal by twelve
+   independently lets the printed column disagree with its own rows by a penny or two — the
+   reconciliation rule this project treats as a defect. A reader who adds the column must get the
+   subtotal. Guarded in `ExpenseLineReconciliationTest` with a tier whose lines do not divide evenly.
+2. **New `ResultPresenter::incomePlan()` — the income counterpart to the spending plan.** Three parts:
+   the entered **income** sources (salary, DB, State Pension, annuity/rental/other, one-off receipts) with
+   each one's start and stop per person; the **capital** pots (cash / ISA / GIA / Premium Bonds, DC pots,
+   home equity) with what is paid in, when it can be reached and **how it is taxed on the way out**; and a
+   **timeline** of how each source actually behaves in the projection — first year paid, last year, the
+   amount at each end, its largest year — derived from the same `incomeBySource` the ladder and income
+   chart read. *Rationale:* the spend side has been echoed since Phase C1 and the income side never was,
+   so a reader could see the outgoings in line-item detail and had to infer the income. Deriving the
+   timeline from the forecast rather than restating the inputs means it cannot disagree with the ladder.
+3. **"No savings entered" is stated, not left as an empty table.** A household with no cash/ISA/GIA is in
+   a materially different position from one whose accounts were simply not listed: it starts with nothing
+   to fall back on, and any liquid wealth later in the projection is surplus income accumulating.
+   *Rationale:* found while checking the real V2 base, whose £18,573.68 of 2026 liquid wealth is exactly
+   its first-year surplus (£50,331.24 − £3,265.20 − £28,492.36) and not an opening balance at all.
+4. **Sale content is gated on the strategy being shown, not on a sale being configured.** A base scenario
+   carries a sale and buy price so Compare can run all three variants, so "is a sale configured?" was the
+   wrong question: it handed a stay-put plan the funding waterfall, the selling-cost assumptions and CGT
+   signposting for a disposal it never makes. All three now follow `LadderContext::homeSold()`.
+   *Rationale:* irrelevant figures are not free — they invite the reader to plan around costs this plan
+   does not incur. On screen the gate follows the ladder's strategy picker, so switching to a sell variant
+   restores the section; in the PDF the printed strategy decides.
+
+**Impact:** the stay-put report *shrank* by a page despite gaining a whole income section. Both surfaces
+changed together, from one presenter definition.
+**Status:** active
+
+## 2026-07-30 — The PDF is a COMPLETE print of the results page, charts included
+**Context:** Rob: *"Need to get all of the information in the webpage into the pdf download"* and, on the
+shape of the report, *"the lack of graphs in the PDFs makes them very difficult to use for sharing as
+intended"*. The PDF is how a plan reaches family and an adviser, so a digest is the wrong artefact — but
+the export carried roughly a third of the screen. Missing entirely: the **input-sanity and assumed-figure
+notes** (the "no invisible figures" disclosures), the what-if delta, longevity, care risk, the fan chart
+and its percentile table, the interpretation panel, assumption sensitivity, Pension Credit how-to-claim,
+the IHT distribution, withdrawal sequencing, the historical stress test, the assumptions panel, the
+milestone timeline, the three time-series charts, and eleven of the cashflow ladder's columns. And **no
+chart at all**, because dompdf executes no JavaScript and every chart on screen is an ApexCharts canvas.
+
+**Decisions:**
+1. **The export prints every section the screen renders**, assembled from the *same* `ResultPresenter`
+   calls the Livewire component makes. Only genuinely interactive controls are omitted (run buttons,
+   what-if sliders, the "How far can we go?" explorer — whose sliders open at a lever's mid-range and
+   whose limits are queued on demand, so there is nothing to print until the reader drives it — and the
+   assistant). *Rationale:* the displayed-figure provenance rule, and the hard "no invisible figures"
+   rule in particular: a disclosure the reader cannot see in the artefact they were given is no
+   disclosure at all.
+2. **Charts are re-drawn server-side as vector SVG** by the new `App\Export\ChartSvg`, from the very
+   ApexCharts option blob the screen chart is initialised with — not from a second data pipeline. So a
+   printed chart plots the identical numbers; only the drawing differs. Verified that dompdf **ignores an
+   inline `<svg>`** but renders `<img src="data:image/svg+xml;base64,…">` as true vectors (dompdf 3.1 /
+   php-svg-lib 1.0), so the template embeds data URIs. *Rationale:* a browser-shot renderer (Browsershot
+   / headless Chrome) would print the real canvases but adds a Node + Chromium dependency to a local-first
+   tool and a second failure mode; re-drawing from the shared option blob keeps one source for the data.
+3. **Milestone verticals are numbered, not labelled.** php-svg-lib's rotated-text support is unreliable,
+   so each life-event vertical carries an index and a key line beneath the chart resolves it, matching a
+   numbered "When the big events happen" table. *Rationale:* nothing is dropped, only moved — the
+   alternative was losing the event markers or risking unreadable text.
+4. **The report is A4 landscape.** The full ladder (income by source + the monthly and capital columns)
+   and the chart-plus-table twins do not fit a portrait measure without shrinking the figures past
+   readability. *Rationale:* this is a data report meant to be shared and read, not a letter.
+5. **The print mirrors the screen's visual language, and the charts are page-width.** Rob's review of the
+   first cut: *"the charts and general layout leave a lot to be desired… closer to the web view might be
+   better"* and *"the graphs on the PDF are too small"*. So the template now uses the results page's own
+   idiom — white cards per section, the coloured stat tiles the screen shows as `<dl>` grids, verdict
+   pills, badges and the ladder's green/amber/red row tints — rebuilt as borderless layout tables because
+   dompdf has neither flexbox nor CSS grid. Charts were redrawn at **1000×480** (10.4in — the full text
+   width of the landscape page) instead of 720×320, with axis and legend type raised to 11px.
+   *Rationale:* a report shared with family or an adviser is read, not just consulted; a postage-stamp
+   chart and a wall of grid-lined tables fail at that even when every figure is present.
+6. **Both fan bases print, not one.** On screen the fan's basis is a live "Include home value" checkbox;
+   paper cannot be toggled. The report prints **two** charts — spendable money excluding the home, then
+   total wealth including home equity — each with its own percentile table. *Rationale:* picking one
+   would silently drop a view the reader can see on screen, and the two answer different questions
+   ("will it last?" vs "what will we leave?").
+7. **The ladder is split into two tables sharing the Year / Age(s) key.** All ~24 columns as one table
+   overflowed the page and dompdf **clipped it**: the final "Total (incl. home equity)" column printed as
+   `£225,5`. *Rationale:* a figure cut off at the paper edge is an invisible figure. dompdf does not
+   shrink or wrap an over-wide table, so the fix is structural, not cosmetic.
+5. **Ladder strategy selection moved to one home**, `App\Forecast\LadderContext`, used by the results
+   page, its CSV export and the PDF. *Rationale:* it fixed a live divergence — the PDF read
+   `$scenario->variant` directly while the screen clamps to a strategy the inputs actually configure, so
+   a scenario stored as "sell & rent" with no sale price printed a *rented* ladder while the screen
+   showed stay-put. This is the "`deterministic()` ignores the variant" trap for a third time; it now has
+   a single guarded resolver.
+8. **Completeness is guarded by derivation, not by a checklist**, and **clipping is guarded by position,
+   not presence.** `ScenarioPdfTest` reads the results component's own view data and fails when a key the
+   screen renders is absent from the export (short documented allowlist of interactive-only keys); a
+   second guard decodes the rendered PDF's content streams, maps text back through the graphics-state
+   transform into page coordinates, and fails when anything is painted past the paper edge.
+   *Rationale:* a hand-written list of sections drifts the moment someone adds a panel. And the obvious
+   clipping check — asserting the figure appears in the PDF — is worthless: **dompdf still writes text
+   that overflows the page**, so a presence assertion passes while the reader sees nothing. Verified by
+   inflating the ladder's font until it overflowed and confirming the guard fails.
+
+**Impact:** one scenario prints ~27 landscape pages (was ~3), ~1.4 MB, ~1.3 s. **"Export all to PDF" is
+now heavy:** at ~17 pages/scenario it measured 236 pages, 2.3 MB, ~38 s and ~538 MB peak against Herd's
+1512 M limit and a 300 s gateway timeout, and the page count has since risen by roughly half again. It
+works today with headroom, but memory scales roughly linearly with scenario count, so past ~20–30
+scenarios it will need batching or a queued export. Flagged in HANDOVER open items rather than pre-solved.
+**Status:** active
+
 ## 2026-07-29 — Pension Credit severe-disability addition: the couple-eligibility rule (+ carer addition)
 **Context:** a review of the Pension Credit modelling (prompted by a benefits check for the private V2 household —
 figures in the gitignored SCENARIO/BENEFITS docs) surfaced an error. `PathProjector::meansTestedBenefitNominal()`

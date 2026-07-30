@@ -1913,10 +1913,13 @@ final class ResultPresenter
 
         $tiers = [];
         $spending = Money::zero();
+        $spendingMonthly = Money::zero();
         $saving = Money::zero();
+        $savingMonthly = Money::zero();
         foreach (self::EXPENSE_TIERS as $key => $label) {
             $tierLines = [];
             $subtotal = Money::zero();
+            $subtotalMonthly = Money::zero();
             foreach ($lines as $line) {
                 if (($line['category'] ?? '') !== $key) {
                     continue;
@@ -1939,30 +1942,306 @@ final class ResultPresenter
                     $instalment = null; // only ever substitute onto one line
                 }
 
+                // The monthly twin of every annual figure. Rounded per LINE and then summed into
+                // the subtotals and totals, never divided again at the top — so the monthly
+                // column adds up exactly as printed. (Dividing each total by 12 independently
+                // lets the column disagree with its own parts by a penny or two, which is the
+                // reconciliation rule this project treats as a defect, not a rounding detail.)
+                $monthly = $amount->dividedBy(12);
+
                 $tierLines[] = [
                     'label' => $lineLabel,
                     'amount' => $amount->format(),
+                    'amountMonthly' => $monthly->format(),
                     'saved' => $saved,
                     'computed' => $computed,
                 ];
                 $subtotal = $subtotal->plus($amount);
+                $subtotalMonthly = $subtotalMonthly->plus($monthly);
                 // Saved self-investment builds net worth (a contribution), not spend; all
                 // else is spend. One home per pound — exactly mirrors the assembler.
-                $saved ? $saving = $saving->plus($amount) : $spending = $spending->plus($amount);
+                if ($saved) {
+                    $saving = $saving->plus($amount);
+                    $savingMonthly = $savingMonthly->plus($monthly);
+                } else {
+                    $spending = $spending->plus($amount);
+                    $spendingMonthly = $spendingMonthly->plus($monthly);
+                }
             }
             if ($tierLines !== []) {
-                $tiers[] = ['key' => $key, 'label' => $label, 'lines' => $tierLines, 'subtotal' => $subtotal->format()];
+                $tiers[] = [
+                    'key' => $key,
+                    'label' => $label,
+                    'lines' => $tierLines,
+                    'subtotal' => $subtotal->format(),
+                    'subtotalMonthly' => $subtotalMonthly->format(),
+                ];
             }
         }
 
         return [
             'tiers' => $tiers,
             'spendingTotal' => $spending->format(),
+            'spendingTotalMonthly' => $spendingMonthly->format(),
             'savingTotal' => $saving->format(),
+            'savingTotalMonthly' => $savingMonthly->format(),
             'total' => $spending->plus($saving)->format(),
+            'totalMonthly' => $spendingMonthly->plus($savingMonthly)->format(),
             'hasSaving' => $saving->isPositive(),
         ];
     }
+
+    /**
+     * The income-and-capital counterpart to {@see expenseBreakdown}: what the household has
+     * coming IN, where the capital it can draw on actually sits, and how each source turns on
+     * and off across the projection.
+     *
+     * The spending side was echoed back to the reader from the day the budget panel shipped;
+     * the income side never was, so a reader could see what a plan spends but not what funds
+     * it, nor when a salary stops and a pension starts. Three parts:
+     *
+     *  - `income`   the entered sources — salary, DB, State Pension, annuity/rental/other,
+     *               one-off receipts — each with its own start and stop, per person;
+     *  - `capital`  where the money is: cash / ISA / GIA / premium bonds, DC pension pots and
+     *               home equity, with what is paid in each year and how it is taxed on the way
+     *               out (£1 of pension is not £1 in the hand);
+     *  - `timeline` how each source actually behaves in the projection — the first and last
+     *               year it pays, the amount at each end, and its largest year. Derived from
+     *               the SAME `incomeBySource` the ladder and the income chart read, so the
+     *               three cannot disagree; a source that never pays is omitted, not shown as
+     *               a row of zeroes.
+     *
+     * Monthly twins are rounded per row and summed, so the monthly column adds up as printed.
+     *
+     * @return array<string, mixed>
+     */
+    public static function incomePlan(Household $household, ForecastResult $forecast): array
+    {
+        $baseYear = $forecast->years[0]->calendarYear ?? (int) date('Y');
+
+        $income = [];
+        $capital = [];
+
+        foreach ($household->persons as $i => $person) {
+            $who = self::personLabel($person, $i);
+            $birthYear = (int) $person->dob->format('Y');
+            $yearOfAge = static fn (?int $age): ?int => $age === null ? null : $birthYear + $age;
+
+            // Salary, until the planned retirement age (or indefinitely if none is set — the
+            // foot-gun the input notes already flag, stated plainly here too).
+            if ($person->grossSalary !== null && $person->grossSalary->isPositive()
+                && in_array($person->employmentStatus, [EmploymentStatus::Employed, EmploymentStatus::SelfEmployed], true)) {
+                $retireYear = $yearOfAge($person->plannedRetirementAge);
+                $income[] = self::incomeRow(
+                    'Salary', $who, $person->grossSalary, true,
+                    'now',
+                    $retireYear === null
+                        ? 'no retirement age set — modelled indefinitely'
+                        : "retires at {$person->plannedRetirementAge} ({$retireYear})",
+                );
+            }
+
+            foreach ($household->pensions as $pension) {
+                if ($pension->ownerId !== $person->id) {
+                    continue;
+                }
+
+                if ($pension instanceof DbPension) {
+                    $from = $yearOfAge($pension->normalRetirementAge);
+                    $income[] = self::incomeRow(
+                        'DB pension', $who, $pension->accruedAnnualPension, true,
+                        "age {$pension->normalRetirementAge} ({$from})", 'for life',
+                    );
+                }
+
+                if ($pension instanceof StatePensionEntitlement && $pension->weeklyForecast !== null) {
+                    $spa = StatePensionAge::for($person->dob)->dateReached;
+                    $claimYear = (int) $spa->format('Y') + intdiv($pension->deferralWeeks, 52);
+                    $income[] = self::incomeRow(
+                        'State Pension', $who, $pension->weeklyForecast->times(52), true,
+                        // Already in payment for someone past State Pension age: "age 66 (2012)"
+                        // reads as a future event for an 80-year-old already drawing it.
+                        $claimYear <= $baseYear
+                            ? 'now (in payment)'
+                            : 'State Pension age ('.$claimYear.')'.($pension->deferralWeeks > 0 ? ', deferred' : ''),
+                        'for life',
+                    );
+                }
+
+                if ($pension instanceof DcPension) {
+                    $capital[] = [
+                        'label' => 'Pension pot',
+                        'who' => $who,
+                        'balance' => $pension->currentValue->format(),
+                        'paidIn' => $pension->ongoingContribution->plus($pension->employerContribution)->isPositive()
+                            ? $pension->ongoingContribution->plus($pension->employerContribution)->format().' a year'
+                            : '—',
+                        'access' => "from age {$pension->earliestAccessAge}",
+                        'tax' => '25% tax-free, the rest taxed as income when drawn',
+                    ];
+                }
+            }
+
+            foreach ($household->incomeStreams as $stream) {
+                if ($stream->ownerId !== $person->id) {
+                    continue;
+                }
+                $income[] = self::incomeRow(
+                    self::INCOME_STREAM_LABELS[$stream->type->value] ?? 'Other income',
+                    $who,
+                    $stream->grossAnnual,
+                    $stream->taxable,
+                    $stream->startAge <= ($baseYear - $birthYear) ? 'now' : "age {$stream->startAge} (".$yearOfAge($stream->startAge).')',
+                    $stream->endAge === null ? 'for life' : "age {$stream->endAge} (".$yearOfAge($stream->endAge).')',
+                );
+            }
+        }
+
+        foreach ($household->capitalReceipts as $receipt) {
+            $income[] = self::incomeRow(
+                'One-off receipt: '.$receipt->label,
+                self::ownerLabelFor($household, $receipt->ownerId),
+                $receipt->amount, false,
+                (string) $receipt->calendarYear, 'one-off',
+            );
+        }
+
+        foreach ($household->accounts as $account) {
+            $capital[] = [
+                'label' => self::ACCOUNT_LABELS[$account->type->value] ?? 'Savings',
+                'who' => self::ownerLabelFor($household, $account->ownerId),
+                'balance' => $account->balance->format(),
+                'paidIn' => $account->ongoingContributions?->isPositive()
+                    ? $account->ongoingContributions->format().' a year'
+                    : '—',
+                'access' => 'any time',
+                'tax' => self::ACCOUNT_TAX[$account->type->value] ?? '',
+            ];
+        }
+
+        if ($household->primaryResidence !== null) {
+            $home = $household->primaryResidence;
+            $capital[] = [
+                'label' => 'Home equity',
+                'who' => 'household',
+                'balance' => $home->currentValue->minus($home->outstandingMortgage ?? Money::zero())->format(),
+                'paidIn' => '—',
+                'access' => 'only by selling or borrowing against it',
+                'tax' => 'no CGT on a main home; not spendable while you live in it',
+            ];
+        }
+
+        return [
+            'income' => $income,
+            'capital' => $capital,
+            'timeline' => self::incomeTimeline($forecast),
+            'baseYear' => $baseYear,
+            // No cash / ISA / GIA entered at all is a materially different position from "we
+            // didn't list them": the plan then starts with nothing to draw on, and any liquid
+            // wealth in the projection is surplus income accumulating. Say which it is rather
+            // than printing an empty table the reader has to interpret.
+            'hasSavings' => $household->accounts !== [],
+        ];
+    }
+
+    /** One entered income source, with its annual and (per-row rounded) monthly figure. */
+    private static function incomeRow(string $label, string $who, Money $annual, bool $taxable, string $from, string $until): array
+    {
+        return [
+            'label' => $label,
+            'who' => $who,
+            'annual' => $annual->format(),
+            'monthly' => $annual->dividedBy(12)->format(),
+            'taxable' => $taxable,
+            'from' => $from,
+            'until' => $until,
+        ];
+    }
+
+    private static function ownerLabelFor(Household $household, string $ownerId): string
+    {
+        foreach ($household->persons as $i => $person) {
+            if ($person->id === $ownerId) {
+                return self::personLabel($person, $i);
+            }
+        }
+
+        return 'household';
+    }
+
+    /**
+     * How each income source actually behaves across the projection: when it starts paying,
+     * when it stops, what it pays at each end and in its biggest year. Read from the engine's
+     * own per-year `incomeBySource`, so it reconciles cell-for-cell with the cashflow ladder
+     * and the income chart rather than restating the inputs.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function incomeTimeline(ForecastResult $forecast): array
+    {
+        $rows = [];
+
+        foreach (YearResult::INCOME_SOURCES as $source) {
+            $first = null;
+            $last = null;
+            $peak = null;
+
+            foreach ($forecast->years as $year) {
+                $amount = $year->incomeBySource[$source] ?? Money::zero();
+                if (! $amount->isPositive()) {
+                    continue;
+                }
+                $first ??= ['year' => $year->calendarYear, 'amount' => $amount];
+                $last = ['year' => $year->calendarYear, 'amount' => $amount];
+                if ($peak === null || $amount->greaterThan($peak['amount'])) {
+                    $peak = ['year' => $year->calendarYear, 'amount' => $amount];
+                }
+            }
+
+            // A source that never pays is left out entirely — a row of zeroes tells the reader
+            // nothing and buries the ones that matter.
+            if ($first === null) {
+                continue;
+            }
+
+            $rows[] = [
+                'label' => self::SOURCE_LABELS[$source],
+                'firstYear' => $first['year'],
+                'firstAmount' => $first['amount']->format(),
+                'lastYear' => $last['year'],
+                'lastAmount' => $last['amount']->format(),
+                'peakYear' => $peak['year'],
+                'peakAmount' => $peak['amount']->format(),
+                'endsBeforeTheEnd' => $last['year'] < $forecast->finalCalendarYear,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /** Display names for the entered income-stream types. */
+    private const INCOME_STREAM_LABELS = [
+        'rental' => 'Rental income',
+        'annuity' => 'Annuity',
+        'disability_benefit' => 'Disability benefit',
+        'other' => 'Other income',
+    ];
+
+    /** Display names for the capital pots. */
+    private const ACCOUNT_LABELS = [
+        'isa' => 'ISA',
+        'gia' => 'General investment account',
+        'cash' => 'Cash savings',
+        'premium_bonds' => 'Premium Bonds',
+    ];
+
+    /** How each pot is taxed on the way out — the reason £1 in one is not £1 in another. */
+    private const ACCOUNT_TAX = [
+        'isa' => 'tax-free',
+        'gia' => 'capital gains tax may apply when sold; income taxed each year',
+        'cash' => 'interest taxed each year',
+        'premium_bonds' => 'prizes tax-free',
+    ];
 
     /**
      * The house-sale explainer: a plain decomposition of what selling the current home

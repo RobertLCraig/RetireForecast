@@ -14,6 +14,7 @@
         ['id' => 'sec-fan', 'label' => 'Outlook over time', 'show' => (bool) $presented],
         ['id' => 'sec-shock', 'label' => 'Pension lump-sum tax shock', 'show' => (bool) $shock],
         ['id' => 'sec-sensitivity', 'label' => 'Assumption sensitivity', 'show' => (bool) $sensitivity],
+        ['id' => 'sec-income-plan', 'label' => 'Where your money comes from', 'show' => ! empty($incomePlan['income']) || ! empty($incomePlan['capital'])],
         ['id' => 'sec-budget', 'label' => 'Your spending plan', 'show' => ! empty($budget['tiers'])],
         ['id' => 'sec-plsa', 'label' => 'PLSA living standards', 'show' => (bool) $plsa],
         ['id' => 'sec-income-floor', 'label' => 'Spending vs secure income', 'show' => (bool) $incomeFloor],
@@ -515,6 +516,130 @@
         </section>
     @endif
 
+    {{-- Where the money comes from: the entered income sources and capital pots echoed back,
+         and how each source turns on and off across the projection. The counterpart to the
+         spending plan below — the spend side has been echoed since Phase C1, the income side
+         never was, so a reader could see what a plan spends but not what funds it. --}}
+    @if ($incomePlan['income'] || $incomePlan['capital'])
+        <section id="sec-income-plan" aria-labelledby="income-plan-heading" class="{{ $card }} scroll-mt-6">
+            <h2 id="income-plan-heading" class="text-xl font-semibold text-gray-900">Where your money comes from</h2>
+            <p class="mt-1 text-sm text-gray-600">
+                The income and capital driving this forecast, as entered. Figures are in today's money; the monthly
+                figure is the annual one divided by twelve.
+            </p>
+
+            @if ($incomePlan['income'])
+                <h3 class="mt-4 text-base font-semibold text-gray-900">Income</h3>
+                <div class="mt-2 overflow-x-auto" tabindex="0">
+                    <table class="w-full text-sm">
+                        <caption class="sr-only">Income sources as entered, with when each starts and ends</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col" class="{{ $th }}">Source</th>
+                                <th scope="col" class="{{ $th }}">Whose</th>
+                                <th scope="col" class="{{ $th }} text-right">Monthly</th>
+                                <th scope="col" class="{{ $th }} text-right">Annual</th>
+                                <th scope="col" class="{{ $th }}">Tax</th>
+                                <th scope="col" class="{{ $th }}">Starts</th>
+                                <th scope="col" class="{{ $th }}">Ends</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($incomePlan['income'] as $row)
+                                <tr>
+                                    <th scope="row" class="{{ $td }} text-left font-medium">{{ $row['label'] }}</th>
+                                    <td class="{{ $td }}">{{ $row['who'] }}</td>
+                                    <td class="{{ $td }} text-right tabular-nums">{{ $row['monthly'] }}</td>
+                                    <td class="{{ $td }} text-right tabular-nums">{{ $row['annual'] }}</td>
+                                    <td class="{{ $td }} text-gray-500">{{ $row['taxable'] ? 'taxable' : 'tax-free' }}</td>
+                                    <td class="{{ $td }}">{{ $row['from'] }}</td>
+                                    <td class="{{ $td }}">{{ $row['until'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <p class="mt-2 text-xs text-gray-500">These are the amounts as entered today. What the plan actually
+                    receives each year — after inflation, retirement, deaths and drawdown — is the year-by-year
+                    cashflow and the income chart below.</p>
+            @endif
+
+            @if ($incomePlan['capital'])
+                <h3 class="mt-5 text-base font-semibold text-gray-900">Capital you can draw on</h3>
+                <div class="mt-2 overflow-x-auto" tabindex="0">
+                    <table class="w-full text-sm">
+                        <caption class="sr-only">Where the household's capital sits, and how each pot is taxed when drawn</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col" class="{{ $th }}">Where it is</th>
+                                <th scope="col" class="{{ $th }}">Whose</th>
+                                <th scope="col" class="{{ $th }} text-right">Value now</th>
+                                <th scope="col" class="{{ $th }}">Paid in</th>
+                                <th scope="col" class="{{ $th }}">Available</th>
+                                <th scope="col" class="{{ $th }}">How it's taxed on the way out</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($incomePlan['capital'] as $row)
+                                <tr>
+                                    <th scope="row" class="{{ $td }} text-left font-medium">{{ $row['label'] }}</th>
+                                    <td class="{{ $td }}">{{ $row['who'] }}</td>
+                                    <td class="{{ $td }} text-right tabular-nums">{{ $row['balance'] }}</td>
+                                    <td class="{{ $td }}">{{ $row['paidIn'] }}</td>
+                                    <td class="{{ $td }}">{{ $row['access'] }}</td>
+                                    <td class="{{ $td }} text-gray-500">{{ $row['tax'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+            @unless ($incomePlan['hasSavings'])
+                <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800" role="note">No cash, ISA or
+                    investment accounts were entered, so this plan starts with <strong>no savings to fall back
+                    on</strong>. Any savings shown in later years are surplus income that has accumulated as cash.</p>
+            @endunless
+
+            @if ($incomePlan['timeline'])
+                <h3 class="mt-5 text-base font-semibold text-gray-900">How each source changes over time</h3>
+                <p class="mt-1 text-sm text-gray-600">When each source starts and stops in the projection, and what
+                    it pays at each end. Read from the same year-by-year figures as the cashflow table below.</p>
+                <div class="mt-2 overflow-x-auto" tabindex="0">
+                    <table class="w-full text-sm">
+                        <caption class="sr-only">First, last and largest year of each income source in the projection</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col" class="{{ $th }}">Source</th>
+                                <th scope="col" class="{{ $th }}">First paid</th>
+                                <th scope="col" class="{{ $th }} text-right">Amount then</th>
+                                <th scope="col" class="{{ $th }}">Last paid</th>
+                                <th scope="col" class="{{ $th }} text-right">Amount then</th>
+                                <th scope="col" class="{{ $th }}">Biggest year</th>
+                                <th scope="col" class="{{ $th }} text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($incomePlan['timeline'] as $row)
+                                <tr>
+                                    <th scope="row" class="{{ $td }} text-left font-medium">{{ $row['label'] }}</th>
+                                    <td class="{{ $td }}">{{ $row['firstYear'] }}</td>
+                                    <td class="{{ $td }} text-right tabular-nums">{{ $row['firstAmount'] }}</td>
+                                    <td class="{{ $td }}">
+                                        {{ $row['lastYear'] }}
+                                        @if ($row['endsBeforeTheEnd'])<span class="text-xs text-gray-500">(stops)</span>@endif
+                                    </td>
+                                    <td class="{{ $td }} text-right tabular-nums">{{ $row['lastAmount'] }}</td>
+                                    <td class="{{ $td }}">{{ $row['peakYear'] }}</td>
+                                    <td class="{{ $td }} text-right tabular-nums">{{ $row['peakAmount'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </section>
+    @endif
+
     {{-- The 3-tier spending budget echoed back from the inputs (Phase C1). Essential /
          discretionary / self-investment, with saved self-investment shown as building net
          worth rather than counting as spend — reconciles to the forecast's spend. --}}
@@ -529,13 +654,21 @@
                     <div class="rounded-md border border-gray-200 p-4">
                         <div class="flex items-baseline justify-between">
                             <h3 class="font-medium text-gray-900">{{ $tier['label'] }}</h3>
-                            <span class="text-sm font-semibold text-gray-900">{{ $tier['subtotal'] }}</span>
+                            <span class="text-right text-sm font-semibold text-gray-900">
+                                {{ $tier['subtotalMonthly'] }}<span class="text-xs font-normal text-gray-500">/mo</span>
+                                <span class="block text-xs font-normal text-gray-500">{{ $tier['subtotal'] }}/yr</span>
+                            </span>
                         </div>
                         <ul class="mt-2 space-y-1 text-sm text-gray-700">
                             @foreach ($tier['lines'] as $line)
                                 <li class="flex justify-between gap-3">
                                     <span>{{ $line['label'] }}@if ($line['saved'])<span class="ml-1 rounded bg-green-100 px-1.5 text-xs text-green-800">saved</span>@endif@if ($line['computed'] ?? false)<span class="ml-1 rounded bg-blue-100 px-1.5 text-xs text-blue-800" title="Worked out from your mortgage terms, not typed in">from your mortgage terms</span>@endif</span>
-                                    <span class="tabular-nums">{{ $line['amount'] }}</span>
+                                    {{-- Monthly beside annual: a household budgets by the month, and the
+                                         annual-only figure made every line an arithmetic exercise. --}}
+                                    <span class="shrink-0 text-right tabular-nums">
+                                        {{ $line['amountMonthly'] }}<span class="text-xs text-gray-500">/mo</span>
+                                        <span class="block text-xs text-gray-500">{{ $line['amount'] }}/yr</span>
+                                    </span>
                                 </li>
                             @endforeach
                         </ul>
@@ -543,9 +676,9 @@
                 @endforeach
             </div>
             <dl class="mt-4 flex flex-wrap gap-x-8 gap-y-1 text-sm">
-                <div class="flex gap-2"><dt class="text-gray-600">Total spending</dt><dd class="font-semibold text-gray-900">{{ $budget['spendingTotal'] }}/yr</dd></div>
+                <div class="flex gap-2"><dt class="text-gray-600">Total spending</dt><dd class="font-semibold text-gray-900">{{ $budget['spendingTotalMonthly'] }}/mo &middot; {{ $budget['spendingTotal'] }}/yr</dd></div>
                 @if ($budget['hasSaving'])
-                    <div class="flex gap-2"><dt class="text-gray-600">Saved, builds net worth</dt><dd class="font-semibold text-gray-900">{{ $budget['savingTotal'] }}/yr</dd></div>
+                    <div class="flex gap-2"><dt class="text-gray-600">Saved, builds net worth</dt><dd class="font-semibold text-gray-900">{{ $budget['savingTotalMonthly'] }}/mo &middot; {{ $budget['savingTotal'] }}/yr</dd></div>
                 @endif
             </dl>
         </section>
@@ -905,7 +1038,9 @@
         <p class="mt-3 text-xs text-gray-500">
             Investment growth blends {{ $assumptions['mix'] }}. Assumption set: <strong>{{ $assumptions['setName'] }}{{ $assumptions['customised'] ? ' (customised)' : '' }}</strong>. {{ $assumptions['sourceNote'] }}
         </p>
-        @if ($assumptions['housing'])
+        {{-- Selling costs, moving costs, the buy price and the rent are all sale inputs, so they
+             show only for a strategy that sells. A stay-put plan uses none of them. --}}
+        @if ($salePlanned && $assumptions['housing'])
             <h3 class="mt-5 text-sm font-semibold text-gray-900">Housing-decision inputs</h3>
             <dl class="mt-2 flex flex-wrap gap-x-8 gap-y-1 text-sm">
                 @foreach ($assumptions['housing'] as $row)

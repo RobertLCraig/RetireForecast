@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-30 (hard rule "no invisible figures" + `scenarios:audit`; the park-home option; available-capital / monthly-allowance + the solved affordable-spend figure)_
+_Last updated: 2026-07-30 (the PDF report rebuilt as a complete print of the results page with server-drawn charts; income echoed back like spend, monthly beside annual, no sale content without a sale — both surfaces)_
 
 ## Goal & success criteria
 Full plan: [docs/build/PLAN.md](build/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -218,6 +218,27 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   as "sell & rent" with no sale price printed a *rented* ladder against the screen's stay-put — both now
   resolve through one `App\Forecast\LadderContext`. Completeness is guarded by **derivation** (the test
   reads the component's own view data), not a checklist.
+  **Reworked after Rob's review of the first cut** (charts too small, layout unlike the web): the report
+  now uses the results page's own idiom — white cards, the coloured stat tiles, verdict pills, badges and
+  the ladder's row tints — charts are drawn page-width at **1000×480** (was 720×320), and **both fan
+  bases print as separate charts** (spendable excl. home, then total wealth incl. home equity), because
+  the screen's "Include home value" checkbox cannot be toggled on paper. **A second real defect was found
+  and fixed:** all ~24 ladder columns as one table overflowed the page and dompdf **clipped** it — the
+  final total-wealth column printed as `£225,5` — so the ladder is split into two tables sharing the
+  Year / Age(s) key, guarded by a test that reads the rendered PDF's own text positions.
+- **Done 2026-07-30 — income echoed back like spend; monthly beside annual; no sale talk without a sale
+  (DECISIONS 2026-07-30) — on BOTH the results page and the PDF:** the tool detailed what a plan *spends*
+  but never what *funds* it, so new **`ResultPresenter::incomePlan()`** adds a "Where your money comes
+  from" section — the entered income sources with each one's start and stop, the capital pots with what is
+  paid in and **how each is taxed on the way out**, and a **timeline** of when each source starts, stops
+  and peaks, derived from the same `incomeBySource` the ladder reads so it cannot disagree with it. Every
+  budget figure now carries a **monthly** twin, rounded per line and summed so the column adds up as
+  printed. And **sale content follows the strategy on display** (`LadderContext::homeSold()`), not merely
+  whether a sale price was entered — a base carries one so Compare can run the sell variants, which was
+  handing a stay-put plan a sale waterfall, selling-cost assumptions and CGT signposting for a disposal it
+  never makes. **Finding:** the V2 base has **no savings accounts at all** — its £18,573.68 of 2026 liquid
+  wealth is exactly that year's surplus, not an opening balance — so an explicit "no savings to fall back
+  on" note now says which it is instead of showing an empty table.
 - **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **read that doc before touching any V2 figure.** The base's
   "money found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
   (year 2026, the real source as the label) — see the V2 doc's note. It now needs **~£49,495**, not ~£90k.
@@ -270,10 +291,10 @@ calls from Rob); multi-property (docs/build/PLAN-multi-property.md, DRAFT); assi
   depreciation rate needs nothing further: no neutral UK index exists, so -8%/yr ships as an openly-labelled
   judgement with four sensitivities. Both researched and decided — DECISIONS 2026-07-30.
 - [ ] **"Export all to PDF" scales linearly and will eventually need batching** (found 2026-07-30, not
-  blocking): now the report is complete, 14 scenarios produce 236 landscape pages, 2.3 MB, ~38 s and
+  blocking): now the report is complete, 14 scenarios measured 236 landscape pages, 2.3 MB, ~38 s and
   ~538 MB peak — fine against Herd's 1512 M limit and the 300 s gateway timeout, but memory grows with
-  scenario count, so past roughly 30 scenarios it will need a queued or batched export. Single-scenario
-  download is ~17 pages / ~1.4 s and has plenty of headroom.
+  scenario count and the per-scenario page count has since risen to ~27, so past roughly 20–30 scenarios
+  it will need a queued or batched export. Single-scenario download is ~27 pages / ~1.3 s with headroom.
 - [ ] **Not blocking** — the Delta-research backlog (docs/research/RESEARCH-delta-2026-07-02.md); the under-spending case (docs/build/PLAN.md); the third-adult-contributing-to-upkeep scope item; a /methodology enhancement + an adviser/Pension-Wise output pack; WCAG 2.2 AA + mobile to a public bar.
 
 ## How to pick up
@@ -348,7 +369,26 @@ ImageMagick / Ghostscript), so the charts were verified numerically instead — 
 real scenario's four charts confirming axis spans, no coordinate or label overflow, and stacked axes
 that span the stack rather than the tallest series. Also caught Pint's `fully_qualified_strict_types`
 fixer importing a **test** class into the production controller from a `{@see}` docblock; reworded to
-plain text. Full suite green, pint clean. Awaits browser sign-off (open a PDF and read it on paper).
+plain text. **Then Rob reviewed the output and rejected the presentation** — charts too small, layout
+unlike the web view, and the fan's screen-only "Include home value" toggle leaving one of the two views
+unprinted. Reworked: the results page's own idiom (cards, coloured stat tiles, verdict pills, badges, row
+tints) rebuilt as layout tables, charts redrawn page-width at 1000×480, and **both** fan bases printed.
+**Reviewing his PDF also surfaced a defect neither of us had named:** the ~24-column ladder overflowed
+the paper and dompdf silently **clipped** it — the final total-wealth column read `£225,5`. Split into
+two tables sharing the Year/Age key. The first clipping guard written for it was **worthless and looked
+fine** — asserting the figure appears in the PDF passes even when it is painted off the page — so it was
+replaced with one that decodes the content streams, maps text through the graphics-state transform into
+page coordinates, and was **verified to fail** by inflating the table font until it overflowed. Separately
+confirmed that the "Commute Fuel" tier headings in Rob's PDF were a live `expenseBreakdown()` variable-
+shadowing bug affecting the screen too, already fixed in-tree by the concurrent session — not this work.
+**A third review round** (Rob, scoped to *both* surfaces): monthly beside annual on the spending plan;
+suppress all sale content for a plan that does not sell; and echo the **income** side back the way the
+spend side always has been. The last is the substantive one — `incomePlan()` covers what comes in, where
+the capital sits and how each source turns on and off, with the timeline **derived from the forecast**
+rather than restating inputs so it reconciles with the ladder. Checking it against the real base surfaced
+that the household has **no savings accounts at all**, so its early liquid wealth is accumulated surplus,
+now said out loud. The stay-put report lost a page on net despite gaining a whole section.
+Full suite green, pint clean, assets rebuilt. Awaits browser sign-off (open a PDF and read it on paper).
 
 _2026-07-29 (V2 benefits check + Pension Credit severe-disability-addition couple-rule fix)_ —
 Rob asked which benefits the V2 couple could claim, then whether claiming Carer's Allowance or Attendance

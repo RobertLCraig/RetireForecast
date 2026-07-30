@@ -359,7 +359,20 @@ Recorded here so the rebuild does not fork the model:
   imported/aggregated total with the sheet's own independent figure for the same quantity
   (`{label, imported, stated?, detail?}`, compared in **exact pence**, `stated = null` when the layout has no
   second figure) so the import panel can flag a divergence loudly. **Deferred (→ C4):** the PLSA benchmark;
-  phased ("smile") spend (an engine change).
+  phased ("smile") spend (an engine change). **(2026-07-30):** every displayed budget figure gained a
+  **monthly twin** (`amountMonthly` per line, plus `subtotalMonthly` / `spendingTotalMonthly` /
+  `savingTotalMonthly`) — rounded **per line and then summed**, never re-divided at the total, so the
+  monthly column reconciles to its own rows exactly as the annual one does.
+- ✅ **BUILT (2026-07-30): the income side is echoed back like the spend side.** New
+  `ResultPresenter::incomePlan(Household, ForecastResult)` — a **view-model only, no shape change** —
+  returning `income` (entered sources: salary / DB / State Pension / annuity-rental-other / one-off
+  receipts, each with owner, annual + monthly, taxable flag and its own start and stop), `capital` (cash /
+  ISA / GIA / Premium Bonds `Account`s, DC pots and home equity, with what is paid in, when it can be
+  reached and how it is taxed on the way out), `timeline` (per source: first year paid, last year, the
+  amount at each end and its largest year — **derived from `YearResult::incomeBySource`**, so it reconciles
+  with the cashflow ladder rather than restating inputs; a source that never pays is omitted), plus
+  `hasSavings` (no cash/ISA/GIA entered at all is a materially different position from unlisted accounts).
+  Rendered on both the results page and the PDF. See DECISIONS 2026-07-30.
 - ✅ **BUILT (2026-06-25 rebuild, Phase A).** **`Account` gained `ongoingContributions`** and the projector
   now applies it (and DC `ongoingContribution`/`employerContribution`, previously ignored), funded from
   surplus so *saved* self-investment accumulates.

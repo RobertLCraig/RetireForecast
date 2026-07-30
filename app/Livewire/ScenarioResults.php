@@ -9,6 +9,7 @@ use App\Enums\ScenarioStatus;
 use App\Export\ExportDisclaimer;
 use App\Forecast\AssumptionComparison;
 use App\Forecast\BuilderStateDelta;
+use App\Forecast\LadderContext;
 use App\Forecast\LumpSumTaxShock;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
@@ -23,7 +24,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Money\Money;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -271,39 +271,19 @@ class ScenarioResults extends Component
     /**
      * The per-strategy cashflow context: a deterministic forecast for each housing strategy,
      * which strategies the inputs make worth offering, and the currently selected one (clamped
-     * to an offered strategy). One source for the rendered ladder/milestones and the CSV, so
-     * they can never show different strategies.
-     *
-     * @return array{forecasts: array<string, ForecastResult>, strategies: list<array{key: string, label: string}>, selected: string}
+     * to an offered strategy). One source for the rendered ladder/milestones, the CSV and the
+     * printable PDF ({@see LadderContext}), so they can never show different strategies.
      */
-    private function ladderContext(): array
+    private function ladderContext(): LadderContext
     {
-        $forecasts = app(ScenarioForecaster::class)->deterministicVariants($this->scenario);
-        $action = $this->scenario->toHousingAction();
-
-        // Offer a strategy only where the inputs make it meaningful: stay put always; sell &
-        // buy cheaper only with a buy price; sell & rent only when a sale is configured — the
-        // same gating the sale explainer / assumptions panel already use for the buy/sale rows.
-        $saleConfigured = $action->salePrice->isPositive();
-        $strategies = [['key' => 'stay_put', 'label' => ResultPresenter::strategyLabel('stay_put')]];
-        if ($saleConfigured && $action->buyPrice !== null && $action->buyPrice->isPositive()) {
-            $strategies[] = ['key' => 'buy_outright', 'label' => ResultPresenter::strategyLabel('buy_outright')];
-        }
-        if ($saleConfigured) {
-            $strategies[] = ['key' => 'rent', 'label' => ResultPresenter::strategyLabel('rent')];
-        }
-
-        $offered = array_column($strategies, 'key');
-        $selected = in_array($this->ladderVariant, $offered, true) ? $this->ladderVariant : 'stay_put';
-
-        return ['forecasts' => $forecasts, 'strategies' => $strategies, 'selected' => $selected];
+        return LadderContext::for(app(ScenarioForecaster::class), $this->scenario, $this->ladderVariant);
     }
 
     public function downloadLadderCsv(): StreamedResponse
     {
         $ctx = $this->ladderContext();
-        $selected = $ctx['selected'];
-        $ladder = ResultPresenter::ladder($ctx['forecasts'][$selected], $this->scenario->safetyBufferMonths());
+        $selected = $ctx->selected;
+        $ladder = ResultPresenter::ladder($ctx->selectedForecast(), $this->scenario->safetyBufferMonths());
 
         return response()->streamDownload(function () use ($ladder): void {
             $out = fopen('php://output', 'wb');
@@ -379,12 +359,12 @@ class ScenarioResults extends Component
         // its milestones follow the selected strategy; the income-floor / input-sanity notes
         // stay on the raw (stay-put) household, which is the household exactly as entered.
         $ladderContext = $this->ladderContext();
-        $selectedStrategy = $ladderContext['selected'];
-        $ladderForecast = $ladderContext['forecasts'][$selectedStrategy];
-        $forecast = $ladderContext['forecasts']['stay_put'];
+        $selectedStrategy = $ladderContext->selected;
+        $ladderForecast = $ladderContext->selectedForecast();
+        $forecast = $ladderContext->stayPutForecast();
         // A sell variant frees the home's value into investments at year 0 — the house-sale
         // milestone the timeline shows only for those strategies (never stay put).
-        $homeSold = in_array($selectedStrategy, ['buy_outright', 'rent'], true);
+        $homeSold = $ladderContext->homeSold();
 
         // The deterministic home-sale decomposition + the assumptions behind it, so every
         // headline figure traces to its inputs (show-your-working). Single-sourced from the
@@ -400,7 +380,7 @@ class ScenarioResults extends Component
         // variant-specific), so the curves show *when* each step change happens.
         if ($presented !== null) {
             $primaryVariant = $this->scenario->variant->value;
-            $primaryForecast = $ladderContext['forecasts'][$primaryVariant] ?? $forecast;
+            $primaryForecast = $ladderContext->forecasts[$primaryVariant] ?? $forecast;
             $chartMilestones = ResultPresenter::milestones($household, $primaryForecast, in_array($primaryVariant, ['buy_outright', 'rent'], true));
             // Add the milestone verticals to the fan chart's annotations WITHOUT clobbering the
             // below-zero shortfall band ResultPresenter::fan() may already have set on annotations.yaxis.
@@ -481,7 +461,7 @@ class ScenarioResults extends Component
             'canMakeWhatIf' => ! $this->scenario->isChild(),
             'sliderSummary' => $this->sliderSummary(),
             // The housing strategies worth offering + which is selected, for the ladder picker.
-            'ladderStrategies' => $ladderContext['strategies'],
+            'ladderStrategies' => $ladderContext->strategies,
             'ladderSelected' => $selectedStrategy,
             'ladderSelectedLabel' => ResultPresenter::strategyLabel($selectedStrategy),
             // Life-event milestones (when each person retires / SP starts / takes a pension /
@@ -506,13 +486,23 @@ class ScenarioResults extends Component
                 $allocation,
                 $this->scenario->effectiveBuilderState()['assumptionOverrides'] ?? [],
             ),
-            'saleExplainer' => ResultPresenter::saleExplainer(
-                $housing->saleProceeds($household, $action),
-                $housing->buyOutcome($household, $action),
-                $action,
-                $allocation->blendedRealReturn($assumptions),
-                $assumptions->investmentIncomeYield->asFraction(),
-            ),
+            // Where the money COMES FROM: the entered income sources and capital pots (the
+            // counterpart to the spending plan, which was echoed back from day one while the
+            // income side never was), plus how each source switches on and off over time.
+            'incomePlan' => ResultPresenter::incomePlan($household, $forecast),
+            // The sale waterfall is shown only when the strategy on display actually SELLS.
+            // A stay-put plan was being handed a page of "if you sell" mechanics it does not
+            // do, because the presenter only asks whether a sale price was entered — and a
+            // base scenario carries one so Compare can run the sell variants.
+            'saleExplainer' => $ladderContext->homeSold()
+                ? ResultPresenter::saleExplainer(
+                    $housing->saleProceeds($household, $action),
+                    $housing->buyOutcome($household, $action),
+                    $action,
+                    $allocation->blendedRealReturn($assumptions),
+                    $assumptions->investmentIncomeYield->asFraction(),
+                )
+                : null,
             // Care isn't modelled unless the toggle is on (the default is off). A default-off
             // ~1-in-4 six-figure risk left off the page with no mention is a silent omission, so
             // say so — and point at the toggle — rather than let "the money lasts" read as if care
@@ -522,7 +512,12 @@ class ScenarioResults extends Component
             // mortgage (an owed balance or a buy funded by one); the CGT column when it would sell a
             // home that was ever let (partial-PRR CGT). The pensions & money column always shows.
             'sourcesShowMortgage' => ($household->primaryResidence?->outstandingMortgage?->isPositive() ?? false) || $action->buyMortgageRate !== null,
-            'sourcesShowCgt' => $household->primaryResidence?->everLet ?? false,
+            // CGT only arises on a disposal, so the CGT signposting follows the sale too — a
+            // stay-put plan has no gain to report.
+            'sourcesShowCgt' => ($household->primaryResidence?->everLet ?? false) && $ladderContext->homeSold(),
+            // Does the strategy on display sell the home? Gates every sale-specific block, so a
+            // stay-put plan is never given sale mechanics, buy prices or a rent figure it doesn't use.
+            'salePlanned' => $ladderContext->homeSold(),
         ])->title('Forecast results');
     }
 
