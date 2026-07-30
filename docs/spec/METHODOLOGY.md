@@ -286,7 +286,11 @@ Each projected year the engine:
    tax; invests any surplus.
 7. Charges capital gains tax on any GIA disposal, and on death passes the estate to the survivor (so
    money is never stranded and mis-read as "running out").
-8. Grows the balances into the next year.
+8. Grows the balances into the next year, then takes the year's **investment charges** out of them —
+   the platform/administration fee plus the funds' own ongoing charges, on pensions, ISAs and
+   investment accounts (cash deposits pay none). The growth rates in the assumptions panel are
+   *before* charges, which is how they are published, so the charge is deducted separately and shown
+   as its own pounds figure beneath the cashflow table rather than folded into a smaller growth line.
 
 **Fiscal drag** is built in: tax thresholds are frozen to April 2031 (as legislated), then indexed
 with inflation. **Withdrawal strategies** range from the default tax-efficient order (non-pension
@@ -329,6 +333,11 @@ An honest list of the current limits (each is flagged in the code):
   ends in 2020. (House-price and salary growth now carry volatility — see the assumptions panel.)
 - **Pensions:** the lump-sum-allowance cap on a DB commutation lump sum is not enforced; contribution
   tax relief is not modelled; one smooth inflation proxy for DB escalation.
+- **Investment charges:** one household-wide rate covers the platform/administration fee and the funds'
+  ongoing charges together, taken from pensions, ISAs and investment accounts each year (cash deposits
+  bear none). There is no per-account or per-pot rate, so a cheap ISA and an expensive old pension are
+  charged the same; and the rate does **not** include the cost of financial advice, which an advised
+  household pays on top.
 - **Other:** a one-off cost triggers on the first-listed person's age only; a person under 50 is out
   of the mortality grid.
 

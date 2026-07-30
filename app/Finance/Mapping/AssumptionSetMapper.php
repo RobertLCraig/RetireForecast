@@ -65,6 +65,9 @@ final class AssumptionSetMapper
             'salaryEquityCorrelation' => $set->salaryEquityCorrelation,
             // Null = flat-real care fees (no above-CPI escalation); preserved through the round-trip.
             'careCostRealGrowth' => $set->careCostRealGrowth !== null ? Codec::bps($set->careCostRealGrowth) : null,
+            // Null = returns are gross of charges (no ongoing charge modelled); preserved through
+            // the round-trip, so a run stored before charges existed reproduces byte-identically.
+            'investmentCharge' => $set->investmentCharge !== null ? Codec::bps($set->investmentCharge) : null,
         ];
     }
 
@@ -103,6 +106,9 @@ final class AssumptionSetMapper
             // Back-compat: a pre-A1 snapshot has no care escalation; null keeps care fees flat-real,
             // so an old stored care run reproduces its byte-identical result.
             careCostRealGrowth: isset($payload['careCostRealGrowth']) ? Codec::percent($payload['careCostRealGrowth']) : null,
+            // Back-compat: a snapshot stored before 2026-07-31 has no charge figure; null keeps its
+            // returns gross of charges, so an old stored run reproduces its byte-identical result.
+            investmentCharge: isset($payload['investmentCharge']) ? Codec::percent($payload['investmentCharge']) : null,
             isDefault: $isDefault,
         );
     }

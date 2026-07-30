@@ -1213,6 +1213,9 @@
             @if ($ladder['showGrowth'])
                 <p class="mt-1 text-xs text-gray-500">Your investments earn in two ways: <strong>Investment income</strong> (interest on cash and dividends from funds) is paid out and taxed each year, so it's part of the income columns; <strong>Investment growth</strong> is the rise in the value of your funds/shares — it stays invested (taxed only as capital gains if you later sell outside an ISA/pension), which is why wealth can grow even in a year you're drawing down.</p>
             @endif
+            @if ($ladder['showCharges'])
+                <p class="mt-1 text-xs text-gray-500"><strong>Charges:</strong> the investment growth shown is <em>before</em> charges. Platform and fund fees take <strong>{{ $ladder['chargesTotal'] }}</strong> out of the pensions, ISAs and investments over the whole plan (today's money); cash deposits pay none. The yearly rate is in "The assumptions behind these figures" below, and you can change it.</p>
+            @endif
             <div class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-sm whitespace-nowrap">
                     <caption class="sr-only">Deterministic year-by-year cashflow: income by source, tax, spend and wealth, in real pounds</caption>

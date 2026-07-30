@@ -3,6 +3,92 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-31 — Six shipped assumption figures had never reached a single forecast
+**Context:** measuring the new investment-charge work against Rob's real scenarios produced figures
+**identical to the penny** before and after. The charge was not reaching the app at all. Root cause: the
+app reads a scenario's assumptions from the `assumption_sets` **table**
+(`ScenarioForecaster::assumptions()` → `$scenario->assumptionSet?->toDto()`), seeded once from
+`AssumptionSetLibrary`. A figure added to the library afterwards is simply absent from the stored JSON
+payload, where `AssumptionSetMapper::hydrate()`'s back-compat rule reads a missing key as `null`.
+
+That back-compat rule is **right** for a frozen run snapshot (an old result must reproduce byte-identically)
+and **wrong** for the live set, where the same `null` silently means "held at the pre-feature behaviour".
+Auditing every key showed **six** shipped figures had never reached any of the 14 stored scenarios:
+
+| Figure | Shipped | Actually in use |
+|---|---|---|
+| `houseGrowthVolatility` | 9% (11% DMS) | null — house growth deterministic |
+| `houseEquityCorrelation` | 0.2 | null |
+| `salaryGrowthVolatility` | 2% (2.5% DMS) | null — salary growth deterministic |
+| `salaryEquityCorrelation` | 0.1 | null |
+| `careCostRealGrowth` | CPI + 2% | null — care fees flat-real |
+| `investmentCharge` | 0.50% | null — returns gross of charges |
+
+So the stochastic house-price growth and stochastic salary growth of 2026-07-18, and the above-CPI care
+escalation of the same day, had **never been active** in any Monte Carlo Rob has looked at, despite each
+being built, tested, documented and recorded as shipped. The engine work was correct throughout; the figure
+never arrived. This is the completeness rule's exact failure mode (a value that should affect a result and
+does not), one layer further out than the tests reach.
+
+**Decisions:**
+1. **Re-seeded the three shipped sets** (`AssumptionSetSeeder` is idempotent by name). Verified first that
+   the only differences were the six absent keys, so no admin edit was overwritten, and backed up the stored
+   payloads before touching them.
+2. **`scenarios:audit` gained a pre-flight check** for it: a stored set missing any key the shipped library
+   defines is reported as a problem, with the seeder command to run. Only a *missing* key counts — the sets
+   are admin-editable, so a differing value is a legitimate edit, not drift. Proved by `AuditScenariosTest`
+   in both directions (a stale set fails; a freshly seeded one is clean), per the standing rule that a guard
+   which cannot fail manufactures confidence.
+3. **Not "fixed" by making `hydrate()` fall back to the library default.** The mapper is shared with the
+   frozen run snapshot, where a null must keep meaning "reproduce the old run". Changing it there would
+   silently rewrite stored history to fix a live-data problem.
+
+**Measured effect** (3,000 paths, seed 424242, scenario 9): the terminal-wealth p10–p90 spread widens from
+£338,965–£486,042 to £219,543–£688,165 — the housing risk that had been missing from every fan. Success
+probabilities barely move (they turn on the essentials floor, which the home does not fund). Deterministic
+figures move only by the charge (below). **Stored Monte Carlo runs are frozen snapshots and are unaffected;
+a re-run will now differ, and should.**
+
+## 2026-07-31 — Investment returns are no longer gross of charges (adviser-parity A1)
+**Context:** the largest open correctness gap in DATA-MODEL: no platform fee, fund OCF or ongoing-charges
+figure existed anywhere, so every projection assumed the household held its portfolio for free. Cost is the
+most reliably predictable drag in the whole model — more certain than any return assumption — and it
+compounds every year in the reassuring direction. A1 of docs/build/PLAN-adviser-parity.md.
+
+**Decisions:**
+1. **One household-wide `AssumptionSet::$investmentCharge`** (`?Percent`, null = no charge), threaded through
+   `PathDraws::investmentChargeRate()` to all three drivers so the deterministic path and the Monte Carlo
+   cannot disagree, and deducted in `PathProjector::growState` from each invested balance **after** growth.
+   *Rationale:* the same proven null-safe opt-in shape as `houseGrowthVolatility` / `careCostRealGrowth`; no
+   migration, and every stored run reproduces byte-identically. Per-account and per-pot overrides are
+   deliberately **not** built yet — the correctness gap is the charge existing at all, and the plan's own
+   ordering puts fee drag before refinement.
+2. **Cash deposits bear no charge**; DC pots, ISAs and GIAs do. *Rationale:* a bank account has no platform
+   or fund fee, so charging it would invent a cost. Consequence worth knowing: a plan that parks its surplus
+   in cash is barely touched, while a plan that invests its proceeds carries the full drag — which is the
+   point, not a flaw.
+3. **The charge is reported in pounds, and growth stays GROSS of it.** New `YearResult::$investmentCharges`;
+   `ResultPresenter::ladder()` sums it to a lifetime total shown beneath the table on screen and in the PDF.
+   *Rationale:* netting it into `investmentGrowth` would satisfy the arithmetic and breach the no-invisible-
+   figures rule — the reader would see a quietly smaller growth number and no charge at all. Carried
+   separately, opening balance + growth − charges reconciles to the closing balance.
+4. **Default 0.50% a year, and deliberately NOT the most adverse figure.** Evidence (all primary, verified
+   2026-07-31): UK workplace DC defaults averaged **0.48%** member-borne (DWP Pension Charges Survey 2020),
+   median AMC **0.28%** on providers' largest default funds (DWP Pension Provider Survey 2024/25); the
+   statutory **0.75%** cap binds auto-enrolment defaults but **not** decumulation; retail DIY runs
+   ~0.30–0.60% all-in. *Rationale for departing from the adverse-default rule:* the charge falls on invested
+   wealth and not on housing, so it moves the sell-and-invest plans against the stay-put ones. The parameter
+   is not monotonic in optimism — an over-adverse figure is a thumb on the scale of the comparison the tool
+   exists to make, not a safe margin. Editable as the 8th economic assumption, with the range in
+   ASSUMPTIONS.md §10. The *advised* cost stack (~0.83% ongoing advice on top) stays B1's separate
+   comparison, not this default.
+
+**Measured effect on the V2 scenarios** (deterministic, after the re-seed above): sell-and-rent (#50) now
+runs short in **2042 instead of 2043**; terminal wealth falls ~£2,765 on the plans that hold invested money
+(#42, #49, #52, #53, #54) and is unchanged on the plans that hold none. Lifetime charges: £814 on the
+stay-put base, £2,404 on the lifetime-mortgage and sell-and-buy plans (their liquid wealth accumulates as
+cash, so only the DC pot is charged), **£8,150 on sell-and-rent**, whose proceeds are genuinely invested.
+
 ## 2026-07-30 — Income is echoed back like spend; monthly beside annual; no sale talk without a sale
 **Context:** three findings from Rob reviewing the rebuilt report, all applying to **both** the results
 page and the PDF (his explicit scope): the spending plan gave annual figures only *"(its not like we dont

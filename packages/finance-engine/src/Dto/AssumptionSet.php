@@ -43,6 +43,16 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * drag. The ~2% is a modelling assumption (not a statutory figure), anchored to the
  * global-equity dividend yield (FTSE All-World ~1.3-2%); reviewed 2026-06-27 and kept.
  *
+ * $investmentCharge is the annual ongoing charge borne by INVESTED balances — the platform/
+ * administration fee plus the funds' ongoing charges (OCF) — deducted from the pot each year
+ * after growth (null = no charge, the pre-2026-07-31 behaviour, kept so an old stored run
+ * reproduces byte-identically). Asset-class returns are quoted GROSS of charges (the FCA COBS
+ * 13 projection basis expects charges to be deducted separately), so without this the household
+ * was modelled as holding its portfolio for free: the most reliably predictable drag in the
+ * whole model, compounding against them every year in the reassuring direction. Cash deposits
+ * carry no charge (a bank account has no platform or fund fee), so it applies to DC pots, ISAs
+ * and GIAs only. Sourced default + judgement in docs/spec/ASSUMPTIONS.md.
+ *
  * $careCostRealGrowth is the REAL (above-CPI) annual escalation of self-funder care
  * fees (null = flat-real, the pre-2026-07-18 behaviour, kept so an old stored run
  * reproduces byte-identically). The engine draws one CPI series and models every other
@@ -75,6 +85,7 @@ final class AssumptionSet
         public readonly ?Percent $salaryGrowthVolatility = null,
         public readonly float $salaryEquityCorrelation = 0.1,
         public readonly ?Percent $careCostRealGrowth = null,
+        public readonly ?Percent $investmentCharge = null,
         public readonly bool $isDefault = false,
     ) {}
 
@@ -82,6 +93,12 @@ final class AssumptionSet
     public function careCostRealGrowth(): Percent
     {
         return $this->careCostRealGrowth ?? Percent::zero();
+    }
+
+    /** The annual ongoing charge on invested balances (zero if none is modelled). */
+    public function investmentCharge(): Percent
+    {
+        return $this->investmentCharge ?? Percent::zero();
     }
 
     /**
@@ -137,6 +154,11 @@ final class AssumptionSet
         return $this->copy(careCostRealGrowth: $value);
     }
 
+    public function withInvestmentCharge(Percent $value): self
+    {
+        return $this->copy(investmentCharge: $value);
+    }
+
     /**
      * Clone with selected fields replaced (null = keep current). The non-replaceable
      * fields (name, source, volatilities, correlations — including the house-price and
@@ -153,6 +175,7 @@ final class AssumptionSet
         ?Percent $salaryGrowth = null,
         ?Percent $investmentIncomeYield = null,
         ?Percent $careCostRealGrowth = null,
+        ?Percent $investmentCharge = null,
     ): self {
         return new self(
             $this->name,
@@ -170,6 +193,7 @@ final class AssumptionSet
             $this->salaryGrowthVolatility,
             $this->salaryEquityCorrelation,
             $careCostRealGrowth ?? $this->careCostRealGrowth,
+            $investmentCharge ?? $this->investmentCharge,
             $this->isDefault,
         );
     }

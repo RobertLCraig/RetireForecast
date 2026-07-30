@@ -59,6 +59,7 @@ cash **−0.5%**.
 | Salary–equity correlation | 0.10 | 0.10 | 0.10 |
 | Investment income yield (nominal) | 2.0% | 2.0% | 2.0% |
 | Care cost growth (real, above CPI) | 2.0% | 2.0% | 2.0% |
+| Investment charges (a year, on invested balances) | 0.50% | 0.50% | 0.50% |
 
 ## Judgement calls flagged for Rob (these are the bits to sanity-check)
 1. **Cash real volatility set to 2%, not DMS's 7.5%.** DMS's 7.5% is mostly historical
@@ -120,6 +121,27 @@ cash **−0.5%**.
    share the cost). **These are fixed for now — a per-scenario editor (fee / duration / onset) and a
    probability-weighted "typical" alternative are flagged refinements. Confirm you're happy with the £1,800/wk
    × 4-year single-spell stress.**
+10. **Investment charges 0.50% a year (uniform across sets, added 2026-07-31; verified_on 2026-07-31).** Every
+   return figure above is **gross of charges** — the FCA COBS 13 basis quotes returns before costs and expects
+   charges to be deducted separately — so until now the household was modelled as holding its portfolio for
+   free. Cost is the most reliably predictable drag in the whole model: more certain than any return
+   assumption, and it compounds every year in the *reassuring* direction. The charge covers the platform /
+   administration fee plus the funds' ongoing charges (OCF), and is deducted from **invested** balances only
+   (DC pots, ISAs, GIAs). **Cash deposits bear none** — a bank account has no platform or fund fee — and
+   neither does the home.
+   **Why 0.50%, and why not the most adverse figure.** The evidence: UK workplace DC default arrangements
+   averaged **0.48%** member-borne (DWP Pension Charges Survey 2020; non-qualifying schemes 0.53%), with a
+   median AMC of **0.28%** on providers' largest default funds (DWP Pension Provider Survey 2024/25, published
+   21 Jul 2025); the statutory **0.75%** charge cap binds auto-enrolment defaults but **not** decumulation, so
+   it is an upper anchor rather than a ceiling for a retired household; retail DIY runs ~**0.30–0.60%** all-in
+   (platform 0.15–0.35%, fund OCF ~0.15–0.25%). 0.50% sits just on the adverse side of that central case.
+   This is a **deliberate departure from the usual most-adverse default**: the charge falls on invested wealth
+   and not on housing, so it moves the sell-and-invest plans against the stay-put ones. An over-adverse figure
+   would therefore be a thumb on the scale of the very comparison the tool exists to make, not a safe margin.
+   **Opt-in / null-safe:** a null charge keeps returns gross, so every pre-existing stored run reproduces
+   unchanged. User-editable per scenario (the 8th economic assumption). **Confirm you're happy with 0.50%** —
+   and note that an *advised* household pays this plus an ongoing advice fee (~0.83%), which is the separate
+   cost-of-advice comparison in docs/build/PLAN-adviser-parity.md B1, not modelled here.
 - FCA Handbook COBS 13 Annex 2 (projection rates): https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html
 - FCA/PwC, "Rates of return for FCA prescribed projections" (2017): https://www.fca.org.uk/publication/research/rates-return-fca-prescribed-projections.pdf
 - UBS Global Investment Returns Yearbook 2025 (DMS): https://www.ubs.com/global/en/investment-bank/insights-and-data/2025/global-investment-returns-yearbook-2025.html
@@ -131,6 +153,9 @@ cash **−0.5%**.
 - ONS, Average weekly earnings in Great Britain (real regular-pay growth series used to sanity-check the ~2% annual real-earnings volatility): https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/bulletins/averageweeklyearningsingreatbritain/january2026
 - King's Fund, Social Care 360 — expenditure and provider fees (care unit-cost drivers): https://www.kingsfund.org.uk/insight-and-analysis/long-reads/social-care-360-expenditure
 - PSSRU/LSE (Wittenberg et al.), long-term care expenditure projections (care unit costs escalated on earnings/productivity, ~2% real above prices): https://eprints.lse.ac.uk/88376/1/Wittenberg_Adult%20Social%20Care_Published.pdf
+- DWP, Pension Charges Survey 2020 (average member-borne ongoing charge 0.48% in qualifying default arrangements; 0.53% non-qualifying; all below the 0.75% cap): https://www.gov.uk/government/publications/pension-charges-survey-2020-charges-in-defined-contribution-pension-schemes/pension-charges-survey-2020-charges-in-defined-contribution-pension-schemes
+- DWP, The Pension Provider Survey 2024/25, published 21 July 2025 (median AMC on providers' largest default funds 0.28%; decumulation charges too incompletely reported to publish): https://www.gov.uk/government/publications/the-pension-provider-survey-202425/the-pension-provider-survey-202425
+- Vanguard Investor UK, fees explained (account fee 0.15% capped at £375/yr, £4/mo under £32,000; self-managed fund OCFs 0.06%–0.79%): https://www.vanguardinvestor.co.uk/what-we-offer/fees-explained
 - LaingBuisson, "Care of Older People" UK market report — self-funder fee inflation (~10%/yr to Dec-2025, ~20% over two years; NLW + employer-NI driven): https://www.laingbuisson.com/press-releases/older-people-forced-to-pay-nearly-20-more-for-their-care-as-fees-skyrocket-over-the-last-two-years/
 
 ⚠️ Confidence flags from the research: Barclays Equity Gilt Study exact figures come from

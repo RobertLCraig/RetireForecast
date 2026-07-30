@@ -32,7 +32,14 @@ use RetireForecast\FinanceEngine\Support\Warning;
  * out and taxed each year. It is not spendable cash this year (it compounds in the pot,
  * taxed as CGT only on a later GIA disposal), so it is carried separately from income —
  * it is the "where the rest of the gains come from" the wealth line reflects but the
- * income breakdown otherwise would not. Can be negative in a down year.
+ * income breakdown otherwise would not. Can be negative in a down year. It is GROSS of
+ * $investmentCharges, so opening balance + growth - charges reconciles to the closing one.
+ *
+ * $investmentCharges is what holding the invested money COST this year — the platform/
+ * administration fee plus the funds' ongoing charges, taken out of the DC pots, ISAs and
+ * GIAs (cash deposits bear none). Zero when no charge is modelled. Carried as its own
+ * figure rather than netted silently into $investmentGrowth, because a charge the reader
+ * cannot see is indistinguishable from one we invented.
  */
 final class YearResult
 {
@@ -95,6 +102,7 @@ final class YearResult
         public readonly array $warnings = [],
         public readonly ?Money $investmentGrowth = null,
         public readonly ?Money $mortgageBalance = null,
+        public readonly ?Money $investmentCharges = null,
     ) {
         $this->totalWealth = $liquidWealth->plus($pensionWealth)->plus($this->homeEquity());
     }
@@ -130,8 +138,17 @@ final class YearResult
         return $this->investmentGrowth ?? Money::zero();
     }
 
-    /** A copy of this year with its investment (capital) growth set — attached after growth is applied. */
-    public function withInvestmentGrowth(Money $investmentGrowth): self
+    /** What holding the invested money cost this year (zero if no charge is modelled). */
+    public function investmentCharges(): Money
+    {
+        return $this->investmentCharges ?? Money::zero();
+    }
+
+    /**
+     * A copy of this year with its investment (capital) growth and the ongoing charges taken
+     * out of the pots set — both attached after growth is applied.
+     */
+    public function withInvestmentGrowth(Money $investmentGrowth, ?Money $investmentCharges = null): self
     {
         return new self(
             $this->yearIndex, $this->calendarYear, $this->ages, $this->aliveCount,
@@ -139,6 +156,7 @@ final class YearResult
             $this->essentialSpend, $this->shortfallFunded, $this->unmetSpend, $this->essentialsMet,
             $this->liquidWealth, $this->pensionWealth, $this->propertyWealth,
             $this->incomeBySource, $this->warnings, $investmentGrowth, $this->mortgageBalance,
+            $investmentCharges ?? $this->investmentCharges,
         );
     }
 }

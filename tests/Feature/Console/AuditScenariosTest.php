@@ -6,12 +6,16 @@ namespace Tests\Feature\Console;
 
 use App\Enums\ScenarioStatus;
 use App\Enums\ScenarioVariant;
+use App\Finance\Mapping\AssumptionSetMapper;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
+use App\Models\AssumptionSet;
 use App\Models\Scenario;
 use App\Models\User;
+use Database\Seeders\AssumptionSetSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use Tests\Support\BuilderStateFixture;
 use Tests\TestCase;
 
@@ -93,6 +97,47 @@ final class AuditScenariosTest extends TestCase
     {
         $this->artisan('scenarios:audit', ['--user' => $this->user->id])
             ->expectsOutputToContain('No scenarios to audit')
+            ->assertExitCode(0);
+    }
+
+    public function test_it_catches_a_stored_assumption_set_missing_a_shipped_figure(): void
+    {
+        // The defect this check was written for, which had already happened six times over: a figure
+        // is added to the engine's shipped library, but the app reads its assumptions from the
+        // `assumption_sets` TABLE, seeded once. The stored payload has no such key, the mapper's
+        // back-compat hydration reads it as null, and the figure silently never reaches a forecast —
+        // while the code, the tests and the docs all say it shipped.
+        $this->base();
+
+        $shipped = AssumptionSetLibrary::default();
+        $payload = AssumptionSetMapper::payload($shipped);
+        unset($payload['careCostRealGrowth'], $payload['investmentCharge']);
+
+        $stale = new AssumptionSet;
+        $stale->name = $shipped->name;
+        $stale->source_note = $shipped->sourceNote;
+        $stale->is_default = true;
+        $stale->payload = $payload;
+        $stale->save();
+
+        $exit = Artisan::call('scenarios:audit', ['--user' => $this->user->id]);
+        $output = Artisan::output();
+
+        $this->assertSame(1, $exit, 'a stale assumption set must fail the audit, output: '.$output);
+        $this->assertStringContainsString('careCostRealGrowth', $output);
+        $this->assertStringContainsString('investmentCharge', $output);
+        $this->assertStringContainsString('NOT reaching any forecast', $output);
+    }
+
+    public function test_a_freshly_seeded_assumption_set_audits_clean(): void
+    {
+        // The other direction: the seeder's own output must satisfy the check, or it would cry wolf
+        // on every install and be ignored.
+        $this->base();
+        $this->seed(AssumptionSetSeeder::class);
+
+        $this->artisan('scenarios:audit', ['--user' => $this->user->id])
+            ->expectsOutputToContain('Audit clean')
             ->assertExitCode(0);
     }
 

@@ -38,6 +38,8 @@ final class DeterministicPathDraws implements PathDraws
 
     private readonly float $careCostRealGrowth;
 
+    private readonly float $investmentCharge;
+
     /**
      * @param  array<string, int>  $deathAges  personId => age at death
      * @param  array<string, CareEpisode>  $careEpisodes  personId => injected care spell (empty = care-free)
@@ -55,6 +57,7 @@ final class DeterministicPathDraws implements PathDraws
         $this->salaryGrowth = $set->salaryGrowth->asFraction();
         $this->incomeYield = $set->investmentIncomeYield->asFraction();
         $this->careCostRealGrowth = $set->careCostRealGrowth()->asFraction();
+        $this->investmentCharge = $set->investmentCharge()->asFraction();
     }
 
     public function investmentRealReturn(int $yearIndex): float
@@ -70,6 +73,11 @@ final class DeterministicPathDraws implements PathDraws
     public function investmentIncomeYield(): float
     {
         return $this->incomeYield;
+    }
+
+    public function investmentChargeRate(): float
+    {
+        return $this->investmentCharge;
     }
 
     public function inflation(int $yearIndex): float

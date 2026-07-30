@@ -50,6 +50,10 @@ class MappingRoundTripTest extends TestCase
         // The care escalation must reach storage too, or a stored care run would silently drop
         // it and understate the late-life risk. CPI + 2% real = 200 bps.
         $this->assertSame(200, $payload['careCostRealGrowth']);
+
+        // The ongoing investment charge likewise, or a stored run would silently revert to
+        // holding the portfolio for free and overstate the wealth it ends with. 0.50% = 50 bps.
+        $this->assertSame(50, $payload['investmentCharge']);
     }
 
     public function test_a_pre_stochastic_snapshot_hydrates_to_deterministic_house_and_salary_growth(): void
@@ -62,6 +66,7 @@ class MappingRoundTripTest extends TestCase
             $legacy['houseGrowthVolatility'], $legacy['houseEquityCorrelation'],
             $legacy['salaryGrowthVolatility'], $legacy['salaryEquityCorrelation'],
             $legacy['careCostRealGrowth'],
+            $legacy['investmentCharge'],
         );
 
         $rebuilt = AssumptionSetMapper::hydrate('Legacy', 'legacy', true, $legacy);
@@ -73,5 +78,8 @@ class MappingRoundTripTest extends TestCase
         // A pre-A1 snapshot has no care escalation: it must hydrate to null (flat-real care),
         // so the old care run reproduces exactly rather than gaining a new escalation.
         $this->assertNull($rebuilt->careCostRealGrowth);
+        // Same contract for charges: a snapshot stored before they existed hydrates to null, so
+        // its returns stay gross and the stored result reproduces byte-identically.
+        $this->assertNull($rebuilt->investmentCharge);
     }
 }

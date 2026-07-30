@@ -156,13 +156,17 @@ final class PathProjector
             }
 
             // Advance growth factors and balances to the start of next year. growState returns the
-            // year's nominal capital growth (untaxed appreciation left in the pots). It is a
-            // year N -> N+1 flow, so deflate it by NEXT year's price level to express the real
-            // (purchasing-power) gain — matching the real wealth line's progression — then attach
-            // it, so the ladder shows where the pot grows beyond the income it pays out.
-            $growthNominal = $this->growState($state, $draws, $yearIndex);
+            // year's nominal capital growth (untaxed appreciation left in the pots) and the ongoing
+            // charges taken out of them. Both are year N -> N+1 flows, so deflate by NEXT year's
+            // price level to express the real (purchasing-power) figures — matching the real wealth
+            // line's progression — then attach them, so the ladder shows where the pot grows beyond
+            // the income it pays out, and what holding it cost.
+            $grown = $this->growState($state, $draws, $yearIndex);
             $cumInflation *= (1.0 + $draws->inflation($yearIndex));
-            $years[] = $year->withInvestmentGrowth(Money::fromPence((int) round($growthNominal / $cumInflation)));
+            $years[] = $year->withInvestmentGrowth(
+                Money::fromPence((int) round($grown['growth'] / $cumInflation)),
+                Money::fromPence((int) round($grown['charges'] / $cumInflation)),
+            );
 
             $prevAlive = $alive; // carry this year's living into next year's death detection
 
@@ -2029,10 +2033,15 @@ final class PathProjector
      *
      * @param  array<string, mixed>  $state
      */
-    /** Advance balances and growth factors to the start of next year; returns the nominal capital
-     *  growth (share/fund appreciation) left in the invested pots this year — the untaxed part of
-     *  the return, separate from the interest/dividends projectYear pays out as income. */
-    private function growState(array &$state, PathDraws $draws, int $yearIndex): int
+    /** Advance balances and growth factors to the start of next year. Returns the year's nominal
+     *  ['growth' => capital appreciation left in the invested pots, GROSS of charges — the untaxed
+     *  part of the return, separate from the interest/dividends projectYear pays out as income;
+     *  'charges' => the ongoing platform/fund charge taken out of those pots]. Reported as a pair
+     *  so opening balance + growth - charges reconciles to the closing balance, and so the charge
+     *  is a figure the reader can see rather than a silently smaller growth line.
+     *
+     *  @return array{growth: int, charges: int} */
+    private function growState(array &$state, PathDraws $draws, int $yearIndex): array
     {
         $infl = $draws->inflation($yearIndex);
         $investNominal = (1.0 + $draws->investmentRealReturn($yearIndex)) * (1.0 + $infl) - 1.0;
@@ -2047,7 +2056,25 @@ final class PathProjector
         $globalGiaYield = $draws->investmentIncomeYield(); // per-person effective yield blends overrides
         $cashCapital = $cashNominal - max(0.0, $cashNominal);
 
-        $growth = 0; // capital appreciation left in the pots (new balance − old), summed across all
+        // The ongoing charge (platform + fund OCF) INVESTED balances bear, taken out of the pot
+        // after this year's growth. Asset-class returns are quoted gross of charges, so without
+        // this the household holds its portfolio for free. Cash deposits are not charged (a bank
+        // account has no platform or fund fee) and neither is the home. Clamped so a nonsense
+        // rate can never pay money IN or wipe a balance out.
+        $chargeRate = min(1.0, max(0.0, $draws->investmentChargeRate()));
+        $charges = 0; // the pounds those charges took out of the pots this year
+
+        $charged = static function (int $grown) use ($chargeRate, &$charges): int {
+            if ($chargeRate <= 0.0 || $grown <= 0) {
+                return $grown;
+            }
+            $fee = (int) round($grown * $chargeRate);
+            $charges += $fee;
+
+            return $grown - $fee;
+        };
+
+        $growth = 0; // capital appreciation left in the pots (grown balance − old), GROSS of charges
         foreach ($state['cash'] as $pid => $v) {
             $before = $v + $state['gia'][$pid] + $state['isa'][$pid];
             foreach ($state['pots'][$pid] as $pot) {
@@ -2057,22 +2084,26 @@ final class PathProjector
             // GIA grows at capital only = total return minus THIS person's effective income yield
             // (blending any per-account override), mirroring the income paid out in projectYear.
             $giaCapital = $investNominal - $this->effectiveGiaYield($state, $pid, $globalGiaYield);
-            $state['cash'][$pid] = (int) round($v * (1.0 + $cashCapital));
-            $state['gia'][$pid] = (int) round($state['gia'][$pid] * (1.0 + $giaCapital));
-            $state['isa'][$pid] = (int) round($state['isa'][$pid] * (1.0 + $investNominal));
-            $after = $state['cash'][$pid] + $state['gia'][$pid] + $state['isa'][$pid];
+            $cashGrown = (int) round($v * (1.0 + $cashCapital));
+            $giaGrown = (int) round($state['gia'][$pid] * (1.0 + $giaCapital));
+            $isaGrown = (int) round($state['isa'][$pid] * (1.0 + $investNominal));
+            $state['cash'][$pid] = $cashGrown; // cash bears no ongoing charge
+            $state['gia'][$pid] = $charged($giaGrown);
+            $state['isa'][$pid] = $charged($isaGrown);
+            $grown = $cashGrown + $giaGrown + $isaGrown;
             foreach ($state['pots'][$pid] as &$pot) {
                 // A per-pot growth override grows that pot at its own real rate; otherwise the
                 // blended investment return. (The override sets return, not risk — no volatility.)
                 $potNominal = $pot['growthOverrideReal'] !== null
                     ? (1.0 + $pot['growthOverrideReal']) * (1.0 + $infl) - 1.0
                     : $investNominal;
-                $pot['value'] = (int) round($pot['value'] * (1.0 + $potNominal));
-                $after += $pot['value'];
+                $potGrown = (int) round($pot['value'] * (1.0 + $potNominal));
+                $grown += $potGrown;
+                $pot['value'] = $charged($potGrown);
             }
             unset($pot);
 
-            $growth += $after - $before;
+            $growth += $grown - $before;
         }
 
         // A per-property growth override grows the home at its own real rate; otherwise the
@@ -2123,7 +2154,7 @@ final class PathProjector
         $state['spendFactor'] *= (1.0 + $infl);
         $state['rentFactor'] *= (1.0 + $rentNominal);
 
-        return $growth;
+        return ['growth' => $growth, 'charges' => $charges];
     }
 
     private function dbEscalation(float $inflation): float

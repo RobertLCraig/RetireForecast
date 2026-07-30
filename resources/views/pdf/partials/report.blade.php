@@ -1097,6 +1097,11 @@
             which is why wealth can grow even in a year you're drawing down. A row marked * is a year usable money
             sits below your safety buffer.</p>
     @endif
+    @if ($ladder['showCharges'])
+        <p class="note"><strong>Charges:</strong> the investment growth shown is <em>before</em> charges. Platform and
+            fund fees take <strong>{{ $ladder['chargesTotal'] }}</strong> out of the pensions, ISAs and investments over
+            the whole plan (today's money); cash deposits pay none. The yearly rate is in the assumptions table.</p>
+    @endif
 </div>
 
 {{-- "Check these figures & get help" — the same signposting the screen's sources-and-contacts

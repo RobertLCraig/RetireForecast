@@ -912,12 +912,18 @@ final class ResultPresenter
 
         // Show the capital-growth column only when the pots actually appreciate in some year
         // (an all-cash or fully-drawn plan has none), so the table stays clean otherwise.
+        // The ongoing charges taken out of those pots are totalled rather than given a column
+        // of their own (the ladder is already at the width print can carry): one lifetime figure
+        // in the note below the table, summed from the SAME per-year results, so what holding
+        // the money costs is a number the reader can see rather than a quietly smaller growth
+        // line. The growth column is gross of it, so growth − charges is the pots' net gain.
         $showGrowth = false;
+        $chargesTotal = Money::zero();
         foreach ($forecast->years as $year) {
             if (! $year->investmentGrowth()->isZero()) {
                 $showGrowth = true;
-                break;
             }
+            $chargesTotal = $chargesTotal->plus($year->investmentCharges());
         }
 
         $rows = [];
@@ -986,6 +992,10 @@ final class ResultPresenter
             'sourceLabels' => self::SOURCE_LABELS,
             'rows' => $rows,
             'showGrowth' => $showGrowth,
+            // What holding the invested money cost over the whole plan, in today's money. Summed
+            // from the per-year figures the projector attached, so it cannot drift from them.
+            'showCharges' => ! $chargesTotal->isZero(),
+            'chargesTotal' => $chargesTotal->format(),
             'finalYear' => $forecast->finalCalendarYear,
             // The safety-floor headline: the buffer (in months of essentials), the first year
             // usable money drops below it (null = never), and the first year it runs out entirely.
@@ -2412,6 +2422,7 @@ final class ResultPresenter
             ['key' => 'salaryGrowth', 'label' => 'Salary growth (real)', 'value' => self::ratePct($set->salaryGrowth->asPercent()), 'note' => 'a year above inflation'],
             ['key' => 'incomeYield', 'label' => 'Investment income yield (nominal)', 'value' => self::ratePct($set->investmentIncomeYield->asPercent()), 'note' => 'the part of the return paid out and taxed each year; the rest is capital growth'],
             ['key' => 'careCostGrowth', 'label' => 'Care cost growth (real)', 'value' => self::ratePct($set->careCostRealGrowth()->asPercent()), 'note' => 'how fast care-home fees rise above inflation; care outruns general prices, so a late-life care spell costs more the later it falls'],
+            ['key' => 'investmentCharge', 'label' => 'Investment charges (a year)', 'value' => self::ratePct($set->investmentCharge()->asPercent()), 'note' => 'platform and fund fees taken out of pensions, ISAs and investments each year; the growth rate above is before charges, and cash deposits pay none'],
         ];
         // Show-your-working for the fan's width: when house growth is stochastic, surface the
         // volatility it is sampled over so the home-equity spread traces to a stated figure

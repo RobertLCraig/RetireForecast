@@ -31,6 +31,7 @@ final class SampledPathDraws implements PathDraws
         $this->salaryGrowth = $set->salaryGrowth->asFraction();
         $this->incomeYield = $set->investmentIncomeYield->asFraction();
         $this->careCostRealGrowth = $set->careCostRealGrowth()->asFraction();
+        $this->investmentCharge = $set->investmentCharge()->asFraction();
     }
 
     /** Fallback salary growth (the set mean) for a path generated without a sampled salary series. */
@@ -39,6 +40,9 @@ final class SampledPathDraws implements PathDraws
     private readonly float $incomeYield;
 
     private readonly float $careCostRealGrowth;
+
+    /** The ongoing charge on invested balances: a price, not a risk, so it is not sampled. */
+    private readonly float $investmentCharge;
 
     public function investmentRealReturn(int $yearIndex): float
     {
@@ -53,6 +57,11 @@ final class SampledPathDraws implements PathDraws
     public function investmentIncomeYield(): float
     {
         return $this->incomeYield;
+    }
+
+    public function investmentChargeRate(): float
+    {
+        return $this->investmentCharge;
     }
 
     public function inflation(int $yearIndex): float

@@ -259,6 +259,10 @@ class ScenarioBuilder extends Component
             // Care fees only ever rise in real terms (labour-cost driven); a small negative is
             // permitted for a deliberate optimistic stress, capped like the other growth figures.
             'assumptionOverrides.careCostGrowth' => ['nullable', 'numeric', 'between:-5,15'],
+            // A charge cannot be negative (it never pays money in); the upper bound is well above
+            // any real UK platform + fund + advice stack, so a typo is caught but a legacy
+            // high-charge product can still be modelled.
+            'assumptionOverrides.investmentCharge' => ['nullable', 'numeric', 'between:0,5'],
 
             'people' => ['required', 'array', 'min:1', 'max:2'],
             'people.*.dob' => ['required', 'date', 'before:today'],
@@ -1449,6 +1453,7 @@ class ScenarioBuilder extends Component
                 ['key' => 'salaryGrowth', 'label' => 'Salary growth (real)', 'note' => 'a year above inflation'],
                 ['key' => 'incomeYield', 'label' => 'Investment income yield (nominal)', 'note' => 'the part of the return paid out and taxed each year'],
                 ['key' => 'careCostGrowth', 'label' => 'Care cost growth (real)', 'note' => 'how fast care-home fees rise above inflation (they outrun general prices)'],
+                ['key' => 'investmentCharge', 'label' => 'Investment charges (a year)', 'note' => 'platform and fund fees taken from pensions, ISAs and investments; cash pays none'],
             ],
             // The chosen preset's current figures, so each editable assumption shows the
             // value it would override as its placeholder (and updates when the set changes).

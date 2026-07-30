@@ -29,6 +29,17 @@ interface PathDraws
      */
     public function investmentIncomeYield(): float;
 
+    /**
+     * The annual ongoing charge on INVESTED balances as a fraction (e.g. 0.005 for 0.50%),
+     * or 0.0 if no charge is modelled — the platform/administration fee plus the funds'
+     * ongoing charges, which the projector deducts from each invested balance after growth.
+     * Constant across years and paths: a charge is a price, not a risk, so making it
+     * stochastic would add spurious spread. Cash deposits are not charged. The asset-class
+     * returns are GROSS of charges, so without this deduction the portfolio is held for
+     * free. See {@see AssumptionSet::$investmentCharge}.
+     */
+    public function investmentChargeRate(): float;
+
     /** Inflation rate (fraction) for the given year index. */
     public function inflation(int $yearIndex): float;
 

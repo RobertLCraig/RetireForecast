@@ -1,6 +1,10 @@
 # PLAN — adviser parity: contribution/wrapper correctness + the services that keep people paying an adviser
 
-> **Status: DRAFT spec. Nothing here is built.** Dated 2026-07-28. Two provenances:
+> **Status: PART-BUILT.** **A1 (investment costs / fee drag) shipped 2026-07-31** — see DECISIONS
+> 2026-07-31 and DATA-MODEL "Known divergences"; the figures below were re-verified against primary
+> sources at build time and the shipped default is **0.50%**, with the reasoning for not taking the
+> most adverse figure recorded in docs/spec/ASSUMPTIONS.md §10. Everything else here is still spec.
+> Dated 2026-07-28. Two provenances:
 > (a) a chapter-map of Damien Talks Money, *"Answering All of Your Investing Questions"* (28 Jul 2026)
 > checked line-by-line against the code — the video was used as a **topic checklist only** (chapter titles,
 > no transcript); every claim below was verified independently against gov.uk / primary sources, never
@@ -39,7 +43,17 @@ The adviser-parity half (Part B) mostly *reuses* engine machinery RF already has
 
 ## Part A — contribution & wrapper correctness (engine)
 
-### A1. Investment costs / fee drag (highest priority)
+### A1. Investment costs / fee drag (highest priority) — ✅ BUILT 2026-07-31
+
+**Built as specced, with two deliberate departures.** (a) The charge is a single `AssumptionSet` figure;
+the per-`Account` / per-`DcPension` overrides are **not** built (the gap was the charge existing at all).
+(b) The default is **0.50%** but chosen as the *adverse side of the central case*, not the most adverse
+plausible: the charge falls on invested wealth and not on housing, so an over-adverse figure biases the
+sell-vs-stay comparison rather than adding a safe margin. Cash deposits bear no charge. The pounds it
+costs are reported per year on `YearResult` and totalled beneath the ladder, with growth left gross, so
+the charge is visible rather than folded into a smaller growth line. Not put on the C3 costs chart after
+all: that chart reconciles cell-for-cell with the ladder's spend, and a charge is a return drag, not
+household spend. See DECISIONS 2026-07-31.
 
 **Finding.** No charge model exists anywhere. `AssetClassAssumption` returns are applied gross; there is
 no per-pot or per-account ongoing charges figure. Every projection, deterministic and Monte Carlo, assumes
@@ -299,7 +313,7 @@ only the build consequences are recorded here.
 
 _Revised 2026-07-28 after the answers above._ Accuracy first, then the reuse-heavy parity items.
 
-1. **A1 fee drag** — largest silent bias, self-contained, null-safe opt-in pattern already proven.
+1. ~~**A1 fee drag**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). Next by this order: A2.
 2. **A2 pension tax relief — `net_pay` path** — the code's own flagged debt, and this household's actual
    mechanism; reuses the existing income-tax pass and the AA/MPAA machinery.
 3. **B2 protection gap** — promoted: death-in-service confirmed, and it reuses the survivor cliff plus

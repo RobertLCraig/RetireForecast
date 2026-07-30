@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-30 (the PDF report rebuilt as a complete print of the results page with server-drawn charts; income echoed back like spend, monthly beside annual, no sale content without a sale — both surfaces)_
+_Last updated: 2026-07-31 (investment charges modelled — the largest gross-of-cost optimism closed; and six shipped assumption figures found never to have reached any forecast)_
 
 ## Goal & success criteria
 Full plan: [docs/build/PLAN.md](build/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -239,6 +239,32 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   never makes. **Finding:** the V2 base has **no savings accounts at all** — its £18,573.68 of 2026 liquid
   wealth is exactly that year's surplus, not an opening balance — so an explicit "no savings to fall back
   on" note now says which it is instead of showing an empty table.
+- **Done 2026-07-31 — six shipped assumption figures had never reached a single forecast
+  (DECISIONS 2026-07-31):** the app reads a scenario's assumptions from the `assumption_sets`
+  **table**, seeded once from `AssumptionSetLibrary`; a figure added to the library afterwards is
+  absent from the stored payload, where the mapper's back-compat rule (correct for a frozen run
+  snapshot) reads it as null. So **stochastic house-price growth, stochastic salary growth and the
+  above-CPI care escalation — all built, tested and documented on 2026-07-18 — had never been active
+  in any run Rob has seen**, along with the new investment charge. Re-seeded (verified first that the
+  only differences were the six absent keys, so no admin edit was overwritten). **`scenarios:audit`
+  gained a pre-flight check** for a stored set missing any shipped key, proved in both directions by
+  `AuditScenariosTest`. **Measured:** scenario 9's terminal p10–p90 widens £338,965–£486,042 →
+  £219,543–£688,165 (3,000 paths, seed 424242) — the housing risk that had been missing from every
+  fan. Stored MC runs are frozen and unaffected; **a re-run will now differ, and should.**
+- **Done 2026-07-31 — investment returns are no longer gross of charges (adviser-parity A1,
+  DECISIONS 2026-07-31):** the largest open correctness gap. `AssumptionSet::$investmentCharge`
+  (`?Percent`, null = byte-identical) reaches the projector via `PathDraws::investmentChargeRate()`
+  on all three drivers, and `growState` deducts it from each invested balance after growth — DC pots,
+  ISAs, GIAs; **cash deposits and the home bear none**. Shipped **0.50%** across the presets, sourced
+  to DWP's 0.48% workplace average / 0.28% median AMC / the 0.75% cap that does not bind in
+  decumulation (ASSUMPTIONS §10), and **deliberately not the most adverse figure** — the charge falls
+  on invested wealth, so an over-adverse rate biases sell-vs-stay rather than adding safety. Editable
+  as the 8th economic assumption. `YearResult::$investmentCharges` reports the pounds and growth stays
+  **gross**, so opening + growth − charges reconciles and the charge is visible; a lifetime total
+  prints under the ladder on screen and in the PDF. **V2 effect:** sell-and-rent runs short **2042
+  instead of 2043**; lifetime charges £814 (stay-put base), £2,404 (lifetime-mortgage / sell-and-buy —
+  their surplus piles up as cash, so only the DC pot is charged), **£8,150 (sell-and-rent)**, whose
+  proceeds are genuinely invested.
 - **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **read that doc before touching any V2 figure.** The base's
   "money found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
   (year 2026, the real source as the label) — see the V2 doc's note. It now needs **~£49,495**, not ~£90k.
@@ -247,7 +273,7 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
 
 ## What's next (in order)
 The whole post-v1 backlog is built. What remains:
-1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/spec/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.** Newest visible surfaces to eyeball (2026-07-30): the **"To spend / month"** and **"Available capital"** columns on the results ladder + the pair on Compare + the monthly block on `/afford`; the budget panel's **computed** mortgage instalment (it reads £0 in the stored inputs by design); the **assumed-figure** and **depreciation** notes; and the four **park-home** scenarios (51–54). Run **`php artisan scenarios:audit`** first — it checks the figures and their disclosure before you look. **Also open a downloaded PDF** (2026-07-30): it is now a full landscape print of the whole results page with all four charts drawn server-side — check the charts read well on paper and the wide cashflow ladder is legible at its print size.
+1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/spec/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.** Newest visible surfaces to eyeball (2026-07-30): the **"To spend / month"** and **"Available capital"** columns on the results ladder + the pair on Compare + the monthly block on `/afford`; the budget panel's **computed** mortgage instalment (it reads £0 in the stored inputs by design); the **assumed-figure** and **depreciation** notes; and the four **park-home** scenarios (51–54). Run **`php artisan scenarios:audit`** first — it checks the figures and their disclosure before you look. **Also open a downloaded PDF** (2026-07-30): it is now a full landscape print of the whole results page with all four charts drawn server-side — check the charts read well on paper and the wide cashflow ladder is legible at its print size. **New 2026-07-31:** the **investment-charges** line under the cashflow ladder (screen + PDF) and the **8th assumption row** ("Investment charges (a year)", editable in the builder); and **re-run the Monte Carlo** — house-price volatility, salary volatility and above-CPI care escalation are now live for the first time, so every stored fan is narrower than the model now says it should be.
 2. **Public-release blockers** (harmless while private, mandatory before any public launch; each flagged in code): set `config('compliance.personal_use')` false + confirm the guidance-only partition re-applies; swap the stress-test dataset off the CC BY-NC-SA JST source for an OGL/licensed one; tighten the CSP `script-src` to nonces; complete the a11y pass to a public bar.
 3. **Optional refinements to built features** (all flagged v1 limits; pick by value) — remaining care flags (age-conditioning of the onset rate + a sex split of the care *duration*; the means-test v1 flags: Pension Credit not counted into the contribution, LA-vs-self-funder fee gap); CGT deemed-occupation absences; an annuitisation retirement-month override. (Done this cluster: both house and salary growth in the Monte Carlo are now stochastic, and the care *probability* is now sex-differentiated — DECISIONS 2026-07-18.) See DATA-MODEL "Known divergences" + docs/build/PLAN.md.
 4. **CI / data hygiene (remainder).** The freshness guardrails run monthly in CI (the `data-freshness` workflow; takes effect on GitHub once pushed). Low-value hardening: a tamper-evident run hash, forecast caching.
@@ -262,10 +288,12 @@ not a presenter re-inflation, to avoid drift) and the wealth chart's terminal p2
 order is **B1 — verdict-first, probability-led landing** (reuse the `/afford` screen, lead with the Monte-Carlo
 probability + the word-bands), then the B2–B4 results-page restructure (tabs, tables into `<details>`, banners
 demoted), then A3 fat tails / A4 State-Pension uprating. Build order in the plan's "Build order" section.
-Other unbuilt specs: **adviser parity** ([docs/build/PLAN-adviser-parity.md](build/PLAN-adviser-parity.md),
-DRAFT, scope questions all resolved — **contains three OPEN correctness gaps, now in DATA-MODEL "Known
-divergences": no fee/charge model at all, no pension tax relief, no ISA subscription cap. These are
-accuracy defects, not refinements** — build order starts A1 fees → A2 relief → B2 protection gap);
+Other partly-built specs: **adviser parity** ([docs/build/PLAN-adviser-parity.md](build/PLAN-adviser-parity.md),
+scope questions all resolved; **A1 fee drag is BUILT** 2026-07-31). **Two OPEN correctness gaps remain** in
+DATA-MODEL "Known divergences" — **no pension contribution tax relief, no ISA subscription cap. These are
+accuracy defects, not refinements.** Next by the plan's order is **A2 relief** (implement the household's
+actual `net_pay` method first — full marginal relief, no NI saving, no self-assessment lag), then B2
+protection gap;
 withdrawal-sequencing #5/#6 (docs/build/PLAN-withdrawal-sequencing.md, gated on two modelling
 calls from Rob); multi-property (docs/build/PLAN-multi-property.md, DRAFT); assistant scenario-editing
 (docs/build/PLAN-assistant-scenario-editing.md, approved scope, not built).
@@ -345,6 +373,31 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-31 (investment charges built; then six shipped figures found never to have reached a forecast)_ —
+Resumed via `/handover resume`. What's next #1 is Rob's sign-off and #2 is release-gated, so took the item
+the plan itself ranks above the refinements: **A1 fee drag**, the largest silent optimism in the model.
+Re-verified the plan's ⚠️ figures against primary sources first (DWP's two surveys, the statutory cap,
+Vanguard's own fee page) rather than shipping the drafted 0.50% on trust. **Departed from the standing
+adverse-default rule on purpose, and recorded why:** the charge falls on invested wealth and not on housing,
+so it is not monotonic in optimism — an over-adverse figure would tilt the sell-vs-stay comparison the tool
+exists to make, so 0.50% is the adverse side of the *central* case, not the top of the range. Kept growth
+**gross** and carried the charge as its own pounds figure, because netting it in would have satisfied the
+arithmetic while breaching the no-invisible-figures rule.
+**Then the measurement stage earned its keep.** The V2 scenarios came back **identical to the penny**, so
+the charge was reaching nothing. Root cause: the app reads its assumptions from the `assumption_sets`
+**table**, seeded once, and the mapper's back-compat null (right for a frozen run snapshot) silently means
+"pre-feature behaviour" for the live set. Auditing every key found **six** shipped figures that had never
+reached any of the 14 scenarios — including the stochastic house-price growth, stochastic salary growth and
+above-CPI care escalation of 2026-07-18. Each was built, tested, documented and recorded as shipped; the
+engine work was correct; the figure never arrived. Re-seeded (after checking the only differences were the
+six absent keys, and backing up the payloads), and added the missing-key check to `scenarios:audit` with
+`AuditScenariosTest` proving it fails on a stale set and passes on a freshly seeded one. Deliberately did
+**not** "fix" it by defaulting `hydrate()` to the library, which would rewrite stored history to solve a
+live-data problem. Also chased down an identical £2,765 delta across five structurally different plans
+before believing it: real, not a bug — those plans accumulate surplus as **cash**, which correctly bears no
+charge, so only their (identical) DC pot is charged. Full suite green, pint clean, `scenarios:audit` clean,
+assets rebuilt.
 
 _2026-07-30 (the PDF made a complete print of the results page, charts and all)_ —
 Rob: *"Need to get all of the information in the webpage into the pdf download"*, then mid-task

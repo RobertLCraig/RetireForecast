@@ -469,13 +469,19 @@ from the original plan, flagged inline:
   (single-property model — DECISIONS 2026-07-01).
 
 ## Known divergences (to close)
-- **OPEN — no investment-cost model anywhere; returns are GROSS (found 2026-07-29).** No platform fee, fund
-  OCF or ongoing charges figure exists on `Account`, `DcPension` or `AssumptionSet`, so every projection
-  assumes the household holds its portfolio for free. Cost is the most predictable drag in the model and
-  compounds against the household every year, so this biases the depletion year in the reassuring
-  direction by a knowable amount — the same class of defect as care riding flat CPI. **The largest open
-  correctness gap.** Fix specced as A1 of
-  [docs/build/PLAN-adviser-parity.md](build/PLAN-adviser-parity.md).
+- **CLOSED 2026-07-31 — investment returns are no longer gross of charges** (was the largest open correctness
+  gap, found 2026-07-29; A1 of [docs/build/PLAN-adviser-parity.md](build/PLAN-adviser-parity.md)).
+  `AssumptionSet::$investmentCharge` (`?Percent`; null = no charge, byte-identical, so a stored run
+  reproduces) carries the annual platform + fund ongoing charge, reaches the projector through
+  `PathDraws::investmentChargeRate()` (all three drivers, so deterministic and Monte Carlo agree), and
+  `PathProjector::growState` deducts it from each invested balance **after** growth. Charged: DC pots, ISAs,
+  GIAs. **Not charged: cash deposits** (no platform or fund fee) or the home. Shipped at **0.50%** across all
+  presets, sourced in [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) §10, and exposed as the 8th editable
+  economic assumption. `YearResult::$investmentCharges` reports what the charge cost in pounds each year, and
+  `$investmentGrowth` stays **gross** of it, so opening balance + growth − charges reconciles to the closing
+  balance and the charge is visible rather than a quietly smaller growth line. **Still open:** no per-account
+  or per-pot charge override (one household-wide rate), and the *advised* cost stack (ongoing advice fee) is
+  the separate B1 comparison, not modelled.
 - **OPEN — pension contributions get no tax relief (flagged in code since v1).** `PathProjector::applyContributions`
   takes contributions from *net* surplus and adds no relief (see its own docblock), so the pot grows as if
   relief did not exist — understating a still-working household's accumulation and rigging any

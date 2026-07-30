@@ -133,6 +133,11 @@ final class CareCostInflationTest extends TestCase
                 return 0.0;
             }
 
+            public function investmentChargeRate(): float
+            {
+                return 0.0;
+            }
+
             public function inflation(int $yearIndex): float
             {
                 return 0.0;

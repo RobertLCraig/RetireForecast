@@ -23,13 +23,13 @@ use RetireForecast\FinanceEngine\Money\Percent;
  *
  * "Investment growth" is the allocation-blended REAL return, not a single field, so it is
  * applied as a uniform shift across the asset classes that lands the blend on the target
- * ({@see AssumptionSet::withRealReturnShift}); the other five map to a single set field.
+ * ({@see AssumptionSet::withRealReturnShift}); every other key maps to a single set field.
  * Values are plain percentages (e.g. "3.5" = 3.5%), matching how the builder stores rates.
  */
 final class AssumptionOverrides
 {
     /** The override keys, in the same order the read-only assumptions panel lists them. */
-    public const KEYS = ['investmentGrowth', 'inflation', 'houseGrowth', 'rentGrowth', 'salaryGrowth', 'incomeYield', 'careCostGrowth'];
+    public const KEYS = ['investmentGrowth', 'inflation', 'houseGrowth', 'rentGrowth', 'salaryGrowth', 'incomeYield', 'careCostGrowth', 'investmentCharge'];
 
     /**
      * Derive the effective assumption set: the preset overlaid with the user's filled
@@ -64,6 +64,9 @@ final class AssumptionOverrides
         if (self::filled($overrides, 'careCostGrowth')) {
             $set = $set->withCareCostRealGrowth(self::percent($overrides['careCostGrowth']));
         }
+        if (self::filled($overrides, 'investmentCharge')) {
+            $set = $set->withInvestmentCharge(self::percent($overrides['investmentCharge']));
+        }
 
         return $set;
     }
@@ -85,6 +88,7 @@ final class AssumptionOverrides
             'salaryGrowth' => self::format($set->salaryGrowth->asPercent()),
             'incomeYield' => self::format($set->investmentIncomeYield->asPercent()),
             'careCostGrowth' => self::format($set->careCostRealGrowth()->asPercent()),
+            'investmentCharge' => self::format($set->investmentCharge()->asPercent()),
         ];
     }
 

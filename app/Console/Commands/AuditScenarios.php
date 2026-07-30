@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Finance\Mapping\AssumptionSetMapper;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
 use App\Import\MoneyText;
+use App\Models\AssumptionSet;
 use App\Models\Scenario;
 use Illuminate\Console\Command;
+use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use Throwable;
 
 /**
@@ -20,7 +23,9 @@ use Throwable;
  * mortgage's zeroed spend line read as "the mortgage is not being charged". Both were found by eye.
  * This makes that sweep repeatable.
  *
- * The standing rule it enforces: **no figure the model uses may be invisible or wrong on screen.**
+ * The standing rule it enforces: **no figure the model uses may be invisible or wrong on screen** —
+ * and its sibling, that a figure the engine ships must actually REACH the forecast rather than
+ * sitting in code while the stored assumption set the app reads carries no such key.
  * Exits non-zero when anything is found, so it can gate a release.
  */
 final class AuditScenarios extends Command
@@ -43,7 +48,7 @@ final class AuditScenarios extends Command
             return self::SUCCESS;
         }
 
-        $problems = [];
+        $problems = $this->staleAssumptionSets();
         $rows = [];
 
         foreach ($scenarios as $scenario) {
@@ -79,6 +84,45 @@ final class AuditScenarios extends Command
         }
 
         return self::FAILURE;
+    }
+
+    /**
+     * A figure the engine ships is useless if it never reached the row the app actually runs
+     * against. The scenarios read their assumptions from the `assumption_sets` TABLE, seeded once
+     * from {@see AssumptionSetLibrary}; a figure added to the library afterwards stays absent from
+     * the stored payload, where the mapper's (correct) back-compat hydration reads it as null. That
+     * is right for a frozen RUN snapshot — an old result must reproduce — but wrong for the live
+     * set, where it silently means "held at the pre-feature behaviour".
+     *
+     * It had already happened six times over: stochastic house growth, its equity correlation,
+     * stochastic salary growth, its correlation, the above-CPI care escalation and the ongoing
+     * investment charge were all shipped, tested and documented, yet none had ever reached a single
+     * stored scenario. Only a MISSING key is a defect; a differing value is a legitimate admin edit.
+     *
+     * @return list<string>
+     */
+    private function staleAssumptionSets(): array
+    {
+        $problems = [];
+
+        $shipped = [];
+        foreach (AssumptionSetLibrary::all() as $dto) {
+            $shipped[$dto->name] = array_keys(AssumptionSetMapper::payload($dto));
+        }
+
+        foreach (AssumptionSet::all() as $stored) {
+            $expected = $shipped[$stored->name] ?? null;
+            if ($expected === null) {
+                continue; // an admin-created set is not the library's to police
+            }
+            $missing = array_values(array_diff($expected, array_keys($stored->payload)));
+            if ($missing !== []) {
+                $problems[] = "assumption set '{$stored->name}' is missing shipped figure(s) ".implode(', ', $missing)
+                    .' — those figures are NOT reaching any forecast; run: php artisan db:seed --class=Database\\Seeders\\AssumptionSetSeeder';
+            }
+        }
+
+        return $problems;
     }
 
     /**

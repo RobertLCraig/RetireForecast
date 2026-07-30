@@ -39,6 +39,19 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * the defensible standing range (1.5-3% real); user-editable, with the sourcing + judgement in
  * docs/ASSUMPTIONS.md.
  *
+ * $investmentCharge (added 2026-07-31) is the annual ongoing charge on invested balances —
+ * platform/administration fee plus fund OCF — held uniform at 0.50% across the sets, because
+ * a charge is a price, not a market regime. The asset-class returns above are GROSS of
+ * charges (the FCA COBS 13 basis deducts charges separately), so without it the portfolio is
+ * modelled as held for free. 0.50% sits just above the central case: UK workplace DC default
+ * arrangements averaged 0.48% member-borne (DWP Pension Charges Survey 2020) with a median
+ * AMC of 0.28% on providers' largest default funds (DWP Pension Provider Survey 2024/25),
+ * against a 0.75% statutory charge cap that does NOT bind in decumulation; retail DIY runs
+ * ~0.30-0.60% all-in (platform 0.15-0.35% + tracker OCF ~0.15-0.25%). Deliberately NOT the
+ * top of the range: the charge falls on invested wealth, so it moves the sell-and-invest
+ * plans against the stay-put ones, which makes an over-adverse figure a thumb on the scale of
+ * the comparison rather than a safe margin. User-editable; sourcing in docs/spec/ASSUMPTIONS.md.
+ *
  * Three asset classes in a fixed order — global equities, gilts/bonds, cash — so
  * the correlation matrices line up with {@see AssumptionSet::$assetClasses}; the house
  * factor correlates to index 0 (global equities).
@@ -74,6 +87,7 @@ final class AssumptionSetLibrary
             salaryGrowthVolatility: Percent::fromPercent(2.0),
             salaryEquityCorrelation: 0.1,
             careCostRealGrowth: Percent::fromPercent(2.0),
+            investmentCharge: Percent::fromPercent(0.5),
             isDefault: true,
         );
     }
@@ -110,6 +124,7 @@ final class AssumptionSetLibrary
             salaryGrowthVolatility: Percent::fromPercent(2.5),
             salaryEquityCorrelation: 0.1,
             careCostRealGrowth: Percent::fromPercent(2.0),
+            investmentCharge: Percent::fromPercent(0.5),
         );
     }
 
@@ -142,6 +157,7 @@ final class AssumptionSetLibrary
             salaryGrowthVolatility: Percent::fromPercent(2.0),
             salaryEquityCorrelation: 0.1,
             careCostRealGrowth: Percent::fromPercent(2.0),
+            investmentCharge: Percent::fromPercent(0.5),
         );
     }
 
