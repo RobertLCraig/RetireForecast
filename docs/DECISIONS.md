@@ -38,6 +38,14 @@ performs; and the tool showed what a plan **spends** in detail while never echoi
    *Rationale:* irrelevant figures are not free — they invite the reader to plan around costs this plan
    does not incur. On screen the gate follows the ladder's strategy picker, so switching to a sell variant
    restores the section; in the PDF the printed strategy decides.
+5. **The same gate governs the assumed-figure disclosures** (added on Rob's follow-up review of the
+   printed report, which still carried *"we've assumed 1% of its value a year"* for a home the stay-put
+   plan never buys). `ResultPresenter::housingActionFor($action, $variant)` is now the single home for
+   the rule — the results page, the PDF **and `scenarios:audit`** all resolve the applicable housing
+   action through it, so the audit demands exactly the disclosures the reader is shown. *Rationale:* the
+   no-invisible-figures rule requires disclosing figures the model **uses**; disclosing one it does not
+   use is the same failure inverted — it asserts a cost that is not in the projection. Guarded by a test
+   verified to fail with the gate removed.
 
 **Impact:** the stay-put report *shrank* by a page despite gaining a whole income section. Both surfaces
 changed together, from one presenter definition.

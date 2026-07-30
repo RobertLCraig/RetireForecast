@@ -388,6 +388,13 @@ the capital sits and how each source turns on and off, with the timeline **deriv
 rather than restating inputs so it reconciles with the ladder. Checking it against the real base surfaced
 that the household has **no savings accounts at all**, so its early liquid wealth is accumulated surplus,
 now said out loud. The stay-put report lost a page on net despite gaining a whole section.
+**A fourth round after checkpoint `cc87f49`:** Rob found the stay-put report still disclosing *"we've
+assumed 1% of its value a year"* for a home it never buys — the sale gate had not been carried to the
+**assumed-figure notes**, which keyed off "was a buy price entered?" while a base carries one so Compare
+can run every variant. Fixed at the root with `ResultPresenter::housingActionFor()`, now the single home
+for the rule across the results page, the PDF **and `scenarios:audit`** (auditing the raw action would
+otherwise demand a disclosure the reader must not see). Regression test verified to fail with the gate
+removed; `scenarios:audit` clean across all 18 scenarios.
 Full suite green, pint clean, assets rebuilt. Awaits browser sign-off (open a PDF and read it on paper).
 
 _2026-07-29 (V2 benefits check + Pension Credit severe-disability-addition couple-rule fix)_ —

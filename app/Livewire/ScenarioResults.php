@@ -470,7 +470,14 @@ class ScenarioResults extends Component
             'milestones' => $ladderMilestones,
             // Input-sanity heads-up where an entered value did something drastic (no salary
             // because retirement age <= current age; a death floored to the base year).
-            'inputNotes' => ResultPresenter::inputNotes($household, $forecast, $this->scenario->toHousingAction()),
+            // The housing action is passed only when the strategy on display actually buys, so a
+            // stay-put or sell-and-rent plan is never disclosed a bought home's assumed upkeep,
+            // moving costs or depreciation — figures its projection never charges.
+            'inputNotes' => ResultPresenter::inputNotes(
+                $household,
+                $forecast,
+                ResultPresenter::housingActionFor($action, $selectedStrategy),
+            ),
             // Temporary "new in this build" review markers — the recent additions are mostly
             // new rows / notes inside existing cards, so point at where each one shows. Prune
             // these as they stop being new.

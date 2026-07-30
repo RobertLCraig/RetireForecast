@@ -187,7 +187,14 @@ class ScenarioPdfController extends Controller
             // Input-sanity + assumed-figure disclosure notes. These carry the "no invisible
             // figures" disclosures, so dropping them from the print would leave the reader
             // with figures they cannot interrogate — exactly what the hard rule forbids.
-            'inputNotes' => ResultPresenter::inputNotes($household, $forecast, $action),
+            // The housing action is passed only when the strategy in this report actually buys, so
+            // a stay-put or sell-and-rent plan is never disclosed a bought home's assumed upkeep,
+            // moving costs or depreciation — figures its projection never charges.
+            'inputNotes' => ResultPresenter::inputNotes(
+                $household,
+                $forecast,
+                ResultPresenter::housingActionFor($action, $ladderContext->selected),
+            ),
             'runDiff' => $runDiff,
             // Care isn't modelled unless the toggle is on; say so rather than let "the money
             // lasts" read as if care were free.

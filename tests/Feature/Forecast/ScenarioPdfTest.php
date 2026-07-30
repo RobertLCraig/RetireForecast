@@ -280,6 +280,41 @@ class ScenarioPdfTest extends TestCase
         $this->assertStringNotContainsString('Housing-decision inputs', $html);
     }
 
+    /**
+     * A plan that does not BUY is not disclosed a bought home's assumed costs. The assumed-figure
+     * notes exist to surface defaults the engine supplies for itself — but a base scenario carries
+     * a buy price so Compare can run every variant, so keying the disclosure off "was a buy price
+     * entered?" put a bought home's assumed 1%-of-value upkeep on a stay-put plan that never buys
+     * it. Disclosing a figure the projection does not charge is the inverse of the rule: it makes
+     * the reader plan around a cost that is not there.
+     */
+    public function test_a_plan_that_does_not_buy_is_not_disclosed_a_bought_homes_assumed_costs(): void
+    {
+        // Clear the CURRENT home's running costs as well as the bought home's: with a figure on the
+        // current home the engine carries it across and assumes nothing, so there would be no
+        // disclosure either way and the test would prove nothing. (richState merges shallowly, so
+        // the property block is edited in place rather than passed as an override.)
+        $state = ScenarioFixture::richState();
+        $state['property']['runningCosts'] = '';
+
+        $staysPut = ScenarioFixture::fromState($this->user, ['variant' => 'stay_put'] + $state);
+        $buys = ScenarioFixture::fromState($this->user, ['variant' => 'buy_outright'] + $state);
+
+        $assumedOf = fn ($scenario): array => array_values(array_filter(
+            app(ScenarioPdfController::class)->data($scenario)['inputNotes'],
+            fn (array $note): bool => $note['kind'] === 'assumed_figure',
+        ));
+
+        // The fixture leaves the bought home's running costs blank, so the buy plan HAS an assumed
+        // figure to disclose — without this the stay-put assertion below would pass vacuously.
+        $this->assertNotEmpty($assumedOf($buys), 'The buying plan should disclose its assumed running costs.');
+        $this->assertStringContainsString('running costs for the home', $this->renderReport($buys));
+
+        $this->assertSame([], $assumedOf($staysPut),
+            'A stay-put plan is being disclosed assumed figures for a home it never buys.');
+        $this->assertStringNotContainsString('running costs for the home', $this->renderReport($staysPut));
+    }
+
     /** …and a plan that does sell still gets all of it. */
     public function test_a_selling_plan_still_gets_the_sale_information(): void
     {

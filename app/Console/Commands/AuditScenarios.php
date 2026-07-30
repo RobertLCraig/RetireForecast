@@ -177,8 +177,13 @@ final class AuditScenarios extends Command
 
         // 7. Every figure the engine supplied for itself must be disclosed (the standing rule). If
         //    assumedFigures() finds defaults in play, they must reach the reader as notes.
-        $assumed = ResultPresenter::assumedFigures($household, $action);
-        $disclosed = $this->notesOfKind($household, $forecast, $action, 'assumed_figure');
+        //    Both sides read the action THIS variant actually acts on: a base carries a buy price
+        //    so Compare can run every variant, and a bought home's defaults reach only the plan
+        //    that buys — so auditing the raw action would demand a disclosure the reader must not
+        //    be shown, and pass a scenario that omitted a disclosure it should.
+        $applicable = ResultPresenter::housingActionFor($action, $variant);
+        $assumed = ResultPresenter::assumedFigures($household, $applicable);
+        $disclosed = $this->notesOfKind($household, $forecast, $applicable, 'assumed_figure');
         if (count($assumed) !== count($disclosed)) {
             $problems[] = "#{$id} uses ".count($assumed).' assumed figure(s) but shows '.count($disclosed);
         }

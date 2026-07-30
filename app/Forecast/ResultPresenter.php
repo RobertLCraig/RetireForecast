@@ -744,6 +744,24 @@ final class ResultPresenter
      *
      * @return list<string>
      */
+    /**
+     * The housing action that actually bears on a projection of `$variant` — null unless the plan
+     * BUYS a home.
+     *
+     * A base scenario carries a buy price so the Compare page can run every variant against it, so
+     * "was a buy price entered?" is the wrong question to gate a disclosure on. The bought home's
+     * defaults — its assumed upkeep, the assumed moving costs, a depreciation override — reach a
+     * projection only when that projection buys. Disclosing them on a stay-put or sell-and-rent
+     * plan asserts a cost the model never charges, which is the *opposite* of what the
+     * no-invisible-figures rule exists for: it makes the reader plan around a figure that isn't
+     * there. One home for the rule, so the results page, the PDF and `scenarios:audit` agree on
+     * which notes a plan should carry.
+     */
+    public static function housingActionFor(?HousingAction $action, string $variant): ?HousingAction
+    {
+        return $variant === ScenarioVariant::BuyOutright->value ? $action : null;
+    }
+
     public static function assumedFigures(Household $household, ?HousingAction $action): array
     {
         if ($action === null) {
