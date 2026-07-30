@@ -188,6 +188,16 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   available on a park home and the £46,412 gap exceeds their savings. **A full scenario audit ran
   clean** (see Session log) — variant labels, orphaned overrides, the mortgage line, monthly-figure
   reconciliation, depreciation reaching the result, and unfunded purchases being charged.
+- **Done 2026-07-30 — hard rule "no invisible figures" + `php artisan scenarios:audit`
+  (DECISIONS 2026-07-30):** new hard rule in CLAUDE.md — the model must never use a figure the user
+  cannot see and interrogate. **Two live violations fixed:** a bought home's upkeep (1% of value/yr)
+  and moving costs (£2,000) were private engine constants applied silently; both are now disclosed as
+  `assumed_figure` notes reading the constant that owns them (never restating it). New
+  `scenarios:audit` command sweeps every stored scenario on seven checks and exits non-zero so it can
+  gate a release; `AuditScenariosTest` proves it catches each defect rather than merely passing.
+  **It immediately found a real bug:** `Scenario::projectFrom()` defaulted the variant COLUMN to
+  `Rent` while the forecast defaults to `stay_put`, so a scenario saved without an explicit variant
+  was labelled "Sell & rent" everywhere while being projected as staying put (now `StayPut`).
 - **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **read that doc before touching any V2 figure.** The base's
   "money found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
   (year 2026, the real source as the label) — see the V2 doc's note. It now needs **~£49,495**, not ~£90k.
@@ -321,6 +331,24 @@ protection gap promoted to #3** (death-in-service confirmed in force — and it 
 cliff-edge RF is well placed to surface). Personal detail (DOB, scheme, cover) deliberately kept **out** of the
 tracked plan per [[pii-leaks-into-tracked-files]] — it lives in the gitignored SCENARIO-V2 doc. **No code
 changed**; no DECISIONS entry per the established convention (a DRAFT plan earns its entry when built).
+
+_2026-07-30 (hard rule: no invisible figures; the audit made permanent)_ —
+Rob, on finding the £0 mortgage line: *"the model shouldn't ever be able to use a figure that the user
+cannot see / interrogate in some way."* Encoded as a hard rule in CLAUDE.md and enforced. **Looked for
+live violations first rather than only guarding the fixed case, and found two:** a bought home's upkeep
+(1% of value a year) and moving costs (£2,000) were private engine constants moving the result with
+nothing on any screen. Both now disclose via `ResultPresenter::assumedFigures()`, which **reads the
+owning constant** (made public for the purpose) rather than restating it — a disclosure that drifts from
+the figure in use is worse than none, so a test asserts a bigger home moves the disclosed pounds.
+Turned the scratchpad sweep into **`php artisan scenarios:audit`** (7 checks, non-zero exit so it can
+gate a release) plus `AuditScenariosTest`, which asserts it CATCHES each defect — a guard that always
+passes manufactures confidence. **The audit earned its keep on first run against the test fixture:
+`Scenario::projectFrom()` defaulted the variant COLUMN to `Rent` while the forecast defaults to
+`stay_put`**, so any scenario saved without an explicit variant was labelled "Sell & rent" on every
+screen while being projected as staying put. Fixed to `StayPut`. Rob's own scenarios all carry an
+explicit variant so none were affected, but the trap was live. Also fixed an `array_keys` slip in the
+audit that would have printed indices instead of naming broken overrides. Full suite green (993), pint
+clean, `scenarios:audit` clean across all 14 real scenarios.
 
 _2026-07-30 (the park-home option built, then a full scenario audit)_ —
 Built [docs/build/PLAN-park-home.md](build/PLAN-park-home.md) after committing the spendable view

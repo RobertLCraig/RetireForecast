@@ -47,7 +47,12 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  */
 final class HousingComparison
 {
-    private const DEFAULT_MOVING_COSTS_PENCE = 200_000; // £2,000
+    /**
+     * PUBLIC so a presenter can DISCLOSE it without restating it. Any figure the engine supplies
+     * for itself must be visible to the user and traceable to one home — a number the reader cannot
+     * see or interrogate must not be able to move their result.
+     */
+    public const DEFAULT_MOVING_COSTS_PENCE = 200_000; // £2,000
 
     /**
      * The standard annual home-maintenance rate applied to a BOUGHT freehold home that has no
@@ -59,7 +64,7 @@ final class HousingComparison
      * home with its own runningCosts scales those instead, and a real chosen property's actual
      * costs would override it. verified_on 2026-07-08.
      */
-    private const HOME_MAINTENANCE_RATE_BPS = 100; // 1.00% of value a year
+    public const HOME_MAINTENANCE_RATE_BPS = 100; // 1.00% of value a year (PUBLIC so it can be disclosed)
 
     public function __construct(
         private readonly TaxYearConfig $config,

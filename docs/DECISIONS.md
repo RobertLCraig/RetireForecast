@@ -40,6 +40,38 @@ Pension Credit, confined to the both-alive years) is recorded in the gitignored 
 `PathProjectorTest` (one disabled partner → £0; both → couple rate; a caring partner → carer addition) +
 `PensionCreditCalculatorTest` (single vs couple rate; carer). Full suite green.
 
+## 2026-07-30 — Hard rule: no invisible figures. Plus a permanent scenario audit
+**Context:** Rob, after finding a £0 "Mortgage" line on the live results page for a plan that charges
+£15,822/yr: *"the model shouldn't ever be able to use a figure that the user cannot see / interrogate
+in some way."* Asked for the ad-hoc scenario sweep to become a permanent guard.
+
+**Decisions:**
+1. **New hard rule in CLAUDE.md: no invisible figures.** A default the engine supplies for itself is,
+   to a reader, indistinguishable from a number we invented — and it moves their result.
+2. **Two live violations found and fixed.** A bought home's upkeep (**1% of value a year**) and the
+   cost of moving (**£2,000**) were private engine constants applied silently, with nothing on any
+   screen. Both are now disclosed via `ResultPresenter::assumedFigures()` as `assumed_figure` input
+   notes, stating the value, the resulting pounds and why it applies.
+3. **A disclosure READS the constant that owns the figure, never restates it.** `HOME_MAINTENANCE_RATE_BPS`
+   and `DEFAULT_MOVING_COSTS_PENCE` became public for exactly this. *Rationale:* a disclosure that
+   drifts from the figure actually used is worse than none — pinned by a test that a bigger home moves
+   the disclosed pounds.
+4. **A computed figure on screen is labelled computed.** The repayment-mortgage instalment is the
+   worked example (see the previous entry).
+5. **`php artisan scenarios:audit`** — a permanent, runnable guard over the user's REAL saved
+   scenarios, which a fixture-based test cannot reach. Seven checks: variant label vs modelled
+   variant, orphaned overrides, a mortgage the reader cannot see, monthly figures reconciling every
+   year, a depreciating home that doesn't disclose it, an unfunded purchase not charged, and every
+   assumed figure disclosed. Exits non-zero so it can gate a release.
+6. **The audit is itself guarded.** `AuditScenariosTest` proves it catches each defect, not merely
+   that it passes — *"a guard that always passes is worse than none: it manufactures confidence."*
+
+**A real bug the audit found immediately:** `Scenario::projectFrom()` defaulted the `variant` COLUMN to
+**Rent** when the form-state carried no variant, while the forecast defaults to **stay_put**. Any such
+scenario was labelled "Sell & rent" on every screen while being projected as staying put. Changed the
+fallback to `StayPut` so the label agrees with the plan modelled. Rob's own scenarios all carry an
+explicit variant, so none were affected — but the trap was live.
+
 ## 2026-07-30 — A bought home can cost what it costs, and can LOSE value (the park-home option)
 **Context:** Rob asked to consider a park home between Wokingham and Tring. Research
 ([docs/build/PLAN-park-home.md](build/PLAN-park-home.md)) established that the *holiday*-park version is

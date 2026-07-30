@@ -30,6 +30,19 @@ changes. Do not act on a partial read. This follows the global project documenta
 - **Every tax figure carries a `source` URL and a `verified_on` date.** No magic numbers.
 - **No silent failure.** Every operation reports in-progress / succeeded / failed-with-reason;
   long runs show live progress.
+- **No invisible figures (hard rule — Rob, 2026-07-30).** **The model must never use a figure the user
+  cannot see and interrogate.** A default the engine supplies for itself, or a value it computes
+  rather than being told, is indistinguishable to a reader from a number we invented — and it moves
+  their result. So: every engine-side default that reaches a projection is disclosed with its value
+  and why it applies (`ResultPresenter::assumedFigures()`, surfaced as `assumed_figure` input notes,
+  guarded by `AssumedFiguresDisclosureTest`); a disclosure **reads the constant that owns the figure**
+  and never restates it, or the two drift; and a computed figure shown on a screen is labelled as
+  computed, not left looking like user input (the repayment-mortgage instalment is the worked
+  example — its zeroed spend line read as "no mortgage is charged"). Run **`php artisan
+  scenarios:audit`** to sweep every stored scenario for correctness *and* correct disclosure
+  (mislabelled variants, orphaned overrides, an unseeable mortgage, monthly figures that don't
+  reconcile, a depreciating home that doesn't say so, an unfunded purchase that isn't charged). It
+  exits non-zero, so it can gate a release; `AuditScenariosTest` proves it catches each defect.
 - **Data-layer integrity (hard rule — see DECISIONS 2026-06-25).** Every quantity has **one
   definition, one home.** Derive totals from their parts; never store a total that can drift
   from its components (e.g. `ExpenseProfile::targetAnnualSpend()` sums essential+discretionary;

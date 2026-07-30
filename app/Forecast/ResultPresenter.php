@@ -25,6 +25,7 @@ use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestOutcome;
 use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Forecast\YearResult;
+use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\HousingPurchase;
 use RetireForecast\FinanceEngine\Iht\IhtOutcome;
@@ -720,6 +721,57 @@ final class ResultPresenter
         }
 
         return ['options' => $options, 'years' => $years, 'rows' => $rows, 'dipsNegative' => $dipsNegative];
+    }
+
+    /**
+     * Every money figure the ENGINE supplied for itself because the user left the input blank, stated
+     * plainly so the reader can see and challenge it.
+     *
+     * The standing rule this serves: **the model must never use a figure the user cannot see or
+     * interrogate.** A default that silently moves the result is indistinguishable, to a reader, from
+     * a number we made up.
+     *
+     * Each value is read from the constant that OWNS it ({@see HousingComparison}), never restated
+     * here — a disclosure that drifts from the figure actually used would be worse than none.
+     *
+     * When adding a new engine-side default, add it here too; `AssumedFiguresDisclosureTest` fails
+     * on any known default that reaches a result without appearing in this list.
+     *
+     * @return list<string>
+     */
+    public static function assumedFigures(Household $household, ?HousingAction $action): array
+    {
+        if ($action === null) {
+            return [];
+        }
+
+        $out = [];
+
+        // The bought home's upkeep: 1% of its value a year, when no figure was entered. On a £150,000
+        // home that is £1,500/yr charged as an essential cost for the rest of the plan.
+        if ($action->buyPrice !== null && $action->buyPrice->isPositive() && $action->buyRunningCosts === null) {
+            $current = $household->primaryResidence?->runningCosts;
+            if ($current === null || ! $current->isPositive() || $action->salePrice->isZero()) {
+                $rate = Percent::fromBasisPoints(HousingComparison::HOME_MAINTENANCE_RATE_BPS);
+                $amount = $action->buyPrice->applyRate($rate);
+                $pct = rtrim(rtrim(number_format($rate->asPercent(), 2), '0'), '.');
+                $out[] = "You didn't give running costs for the home you'd buy, so we've assumed {$pct}% of its "
+                    ."value a year — {$amount->format()} a year for maintenance, insurance and council tax — and "
+                    .'charged it as an essential cost for the whole plan. If you know the real figure (a service '
+                    ."charge, or a park home's pitch fee) enter it: at this size, being out by half changes the "
+                    .'plan by hundreds of pounds a year.';
+            }
+        }
+
+        // The cost of moving, when no figure was entered.
+        if ($action->buyPrice !== null && $action->buyPrice->isPositive() && $action->movingCosts === null) {
+            $moving = Money::fromPence(HousingComparison::DEFAULT_MOVING_COSTS_PENCE);
+            $out[] = "You didn't give a figure for moving costs, so we've assumed {$moving->format()} and taken it "
+                .'off the money the sale frees. Removals, and any legal or survey fees not already in your selling '
+                .'costs, come out of this.';
+        }
+
+        return $out;
     }
 
     /**
@@ -1481,6 +1533,16 @@ final class ResultPresenter
                 .'well be worth it while you live there — but the trade is that far less is left to inherit, so compare '
                 .'this against a plan that keeps bricks-and-mortar before deciding. The 10% sale commission is not '
                 .'included in these figures.'];
+        }
+
+        // (c5) ASSUMED FIGURES. Standing rule (Rob, 2026-07-30): the model must never use a figure
+        // the user cannot see or interrogate. Where an input is left blank the engine supplies a
+        // sensible default for itself — and until this note existed, two of them (a bought home's
+        // upkeep and the cost of moving) silently moved the result with nothing on any screen to
+        // show for it. Every such figure is enumerated here, with its value and why it applies, so a
+        // reader can challenge it. Each value is READ from the one place that owns it, never restated.
+        foreach (self::assumedFigures($household, $housingAction) as $assumed) {
+            $notes[] = ['kind' => 'assumed_figure', 'text' => $assumed];
         }
 
         // (d) Cohabiting-couple survivor caveats. The married/civil-partner survivor rights the

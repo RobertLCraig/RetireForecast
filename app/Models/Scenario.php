@@ -163,7 +163,11 @@ class Scenario extends Model
     public function projectFrom(array $state): static
     {
         $this->name = (string) ($state['name'] ?? '');
-        $this->variant = ScenarioVariant::tryFrom((string) ($state['variant'] ?? '')) ?? ScenarioVariant::Rent;
+        // Fall back to StayPut, NOT Rent: the forecast reads `$state['variant'] ?? 'stay_put'`, so a
+        // Rent default labelled the scenario "Sell & rent" on every screen while projecting it as
+        // staying put. The label must agree with the plan actually modelled (found 2026-07-30 by
+        // `scenarios:audit`, which compares the two).
+        $this->variant = ScenarioVariant::tryFrom((string) ($state['variant'] ?? '')) ?? ScenarioVariant::StayPut;
         $this->base_tax_year = (string) ($state['baseTaxYear'] ?? '2026-27');
         $this->iht_modelled = (bool) ($state['ihtModelled'] ?? false);
         $this->assumption_set_id = $state['assumptionSetId'] ?? null;
