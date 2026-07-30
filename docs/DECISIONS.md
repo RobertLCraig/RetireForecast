@@ -40,6 +40,31 @@ Pension Credit, confined to the both-alive years) is recorded in the gitignored 
 `PathProjectorTest` (one disabled partner → £0; both → couple rate; a caring partner → carer addition) +
 `PensionCreditCalculatorTest` (single vs couple rate; carer). Full suite green.
 
+## 2026-07-30 — Park-home running costs raised £3,000 → £5,000/yr (the pitch fee is not the whole cost)
+**Context:** Rob asked what the ongoing costs of a park home actually are. The scenarios modelled
+**£3,000/yr — the pitch fee alone**, which buys site maintenance and communal facilities. The home's own
+upkeep is the owner's, and the research shows it is not small.
+
+**Decisions:**
+1. **Model £5,000/yr**: £3,000 pitch fee + **£1,500** ongoing maintenance (mid of a sourced
+   £1,000–£2,000/yr) + ~**£350** amortised exterior repainting (£1,500–£2,500 every 5–7 years).
+2. **Re-roofing stays a separate £10,000 one-off in 2041** (~£100/m², lasting 20–40 years) — it lands in
+   the survivor years, which is exactly the lump a fixed income cannot absorb.
+3. **Chassis work (£1,200 clean-and-paint, ~£3,750 if corroded) and underfloor insulation
+   (£1,800–£2,400) are NOT modelled** — occasional and condition-dependent. Flagged as the reason to get
+   a structural survey before buying, rather than folded into an annual average.
+4. **Utilities may be worse, not better.** Many parks have no mains gas, so heating is **LPG** —
+   materially dearer than natural gas, and resold by the site owner (case law caps the charge at the unit
+   price the site owner paid). Not modelled as a separate figure; flagged. **Offsetting:** park homes are
+   usually **council tax band A**, so the scenarios carrying the flat's £2,004 forward are conservative.
+
+**Consequences — this narrows the park home's advantage materially, and the earlier claim was
+overstated.** Free-spending capacity falls: £128k + art sale **£1,235 → £994/mo**, £150k + art sale
+£1,109 → £930, £128k without the art sale **£931 → £693**. Against sell-and-buy-cheaper's £865/mo that
+means: **with** the art sale the park home still wins on spending (sell-and-buy still leaves the bigger
+estate); **without** it, sell-and-buy-cheaper now wins on both. Freed outgoings vs staying put fall from
+~£1,750/mo to **~£1,584/mo** — still above the ~£1,300 Rob expected.
+
 ## 2026-07-30 — Let-to-let BTL repriced 6.5% → 5.75%; the depreciation rate is decided, not open
 **Context:** Both figures had been researched and given sourced defaults, then wrongly filed in the
 handover as open questions for Rob. He had explicitly asked me to research them, and the standing rule

@@ -183,10 +183,12 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   (DECISIONS 2026-07-30, [docs/build/PLAN-park-home.md](build/PLAN-park-home.md)):** two optional
   `HousingAction` fields (`buyRunningCosts`, `buyGrowthOverride` — the latter accepting **negative**
   rates), a `home_depreciates` honesty note, and four new scenarios (£150k Tring / £128k Wokingham,
-  each ± the £80k art sale). **The park home is now the strongest plan in the family** — £128k
-  Wokingham + art sale gives **£1,235/mo** free spending vs sell-and-buy-cheaper's £865/mo, and £128k
-  works without the art sale (£931/mo); £150k Tring can't complete at all, since no mortgage is
-  available on a park home and the £46,412 gap exceeds their savings. **A full scenario audit ran
+  each ± the £80k art sale). **Running costs raised £3,000 → £5,000/yr on 2026-07-30** once the home's
+  own upkeep was researched (the pitch fee buys site maintenance only — DECISIONS 2026-07-30), which
+  narrows the advantage: £128k Wokingham + art sale **£994/mo** free spending vs sell-and-buy-cheaper's
+  £865/mo, but **£693/mo without the art sale**, so sell-and-buy wins on both spending and estate unless
+  the art is sold. £150k Tring can't complete at all — no mortgage is available on a park home and the
+  £46,412 gap exceeds their savings. **A full scenario audit ran
   clean** (see Session log) — variant labels, orphaned overrides, the mortgage line, monthly-figure
   reconciliation, depreciation reaching the result, and unfunded purchases being charged.
 - **Done 2026-07-30 — hard rule "no invisible figures" + `php artisan scenarios:audit`

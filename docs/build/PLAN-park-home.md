@@ -13,10 +13,21 @@
 > sale). Guarded by `DepreciatingHomePurchaseTest` (the home must actually lose value; an explicit
 > running cost must REPLACE the 1% default, not add to it; both-null is byte-identical).
 >
-> **The park home is the strongest option in the family**: £128k Wokingham + the £80k art sale
-> supports **£1,235/mo** of free spending against sell-and-buy-cheaper's £865/mo, and £128k works
-> **without** the art sale (£931/mo). £150k Tring needs the art sale to complete at all — no mortgage
-> is available on a park home, and the £46,412 gap exceeds their savings.
+> **Revised 2026-07-30 after researching the home's own upkeep** (the first pass modelled the pitch
+> fee alone, which buys site upkeep, not maintenance of the home). At **£5,000/yr** rather than
+> £3,000 the park home still leads, but only **with** the art sale:
+>
+> | Plan | Free to spend |
+> |---|---|
+> | Park home £128k Wokingham + £80k art sale | **£994/mo** |
+> | Park home £150k Tring + £80k art sale | £930/mo |
+> | *Sell & buy cheaper £165k* | *£865/mo* |
+> | Park home £128k, **no** art sale | £693/mo |
+>
+> So: **with** the art sale the park home wins on spending (though sell-and-buy still leaves the
+> larger estate, £303,506); **without** it, sell-and-buy-cheaper wins on both. £150k Tring cannot
+> complete at all without the art sale — no mortgage is available on a park home and the £46,412 gap
+> exceeds their savings.
 **Owner lane:** housing options (same family as `PLAN-in-place-forced-sale.md` / `PLAN-multi-property.md`).
 _Last updated: 2026-07-29 (scoped from research; no code changed)_
 
@@ -215,12 +226,38 @@ So at the default the home is worth **~15% of its price** by the end — close t
 by the time they're done with it", without asserting a figure the evidence cannot carry. **Ship all
 four as selectable sensitivities**, not just the default.
 
-### Maintenance — a real cost the pitch fee does NOT cover
+### Maintenance and running costs — the pitch fee is NOT the whole cost (researched 2026-07-30)
 The pitch fee covers site maintenance and communal facilities **only**. The owner still pays utilities,
-council tax, buildings insurance **and all maintenance of the home itself**. Budget explicitly:
-- **Re-roofing ~£10,000**, lasting 20–40 years — model as a **one-off cost** ~15 years in (2041), which
-  lands in the survivor years and is exactly the kind of lump a fixed-income household cannot absorb.
-- **Exterior recoating every 10–15 years**; modern coatings then last 10–15 more.
+council tax, buildings insurance **and all maintenance of the home itself** — which is not small:
+
+| Item | Cost | How often |
+|---|---|---|
+| Ongoing maintenance / incidentals | **£1,000–£2,000/yr** | annual (the recommended budget) |
+| Exterior repainting | **£1,500–£2,500** | every **5–7 years** |
+| Chassis clean + repaint | from **£1,200** | occasional |
+| Chassis restoration if corroded | ~**£3,750** | occasional, condition-dependent |
+| Underfloor insulation | **£1,800** single / **£2,400** double unit | one-off improvement |
+| Re-roofing | ~**£10,000** (~£100/m²) | every **20–40 years** |
+
+**So the modelled running cost is £5,000/yr, not £3,000** = £3,000 pitch fee + £1,500 ongoing
+maintenance (mid of the range) + ~£350 amortised repainting. Re-roofing stays a separate **£10,000
+one-off in 2041** — it lands in the survivor years, exactly the lump a fixed income cannot absorb.
+Chassis work and underfloor insulation are **not modelled** (occasional and condition-dependent);
+flag them as the reason to get a structural survey before buying.
+
+**Utilities can be worse than a house, not better.** Many parks have **no mains gas**, so heating is
+**LPG** — cylinders per pitch or a shared tank — which is materially dearer than natural gas, and the
+site owner may resell it at a margin (case law limits the charge to the unit price the site owner
+paid; the pitch agreement gives a right to an explanation of the charges). Water is usually metered
+plus a share of the site standing charge. **Offsetting saving:** park homes are usually **council tax
+band A**, the cheapest — so the V2 scenarios carrying the flat's £2,004 forward are conservative.
+
+> Sources: [Park Home Magazine — are you aware of the costs?](https://parkhomemagazine.co.uk/home-improvements/are-you-aware-of-the-costs/) ·
+> [Prestige — chassis refurbishment cost](https://www.prestigedevelopments.com/park-home-chassis-refurbishment-cost/) ·
+> [Checkatrade — park home refurbishment costs 2026](https://www.checkatrade.com/blog/cost-guides/park-home-refurbishment-costs/) ·
+> [LEASE — costs of living in a park home](https://parkhomes.lease-advice.org/pitch-fees-and-bills/costs/) ·
+> [LEASE — limits on utility charges](https://parkhomes.lease-advice.org/pitch-fees-and-bills/utilities/utility-charges/limits/) ·
+> [Tingdene — park home running costs](https://tingdene-parks.net/news-events/park-home-running-costs/). verified_on 2026-07-30.
 
 ### Pitch fees — and a correction to this plan's earlier draft
 Typical **residential** pitch fees are **£150–£300/mo (£1,800–£3,600/yr)**; a documented current example
