@@ -18,6 +18,7 @@ use RetireForecast\FinanceEngine\Dto\IncomeStream;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
+use RetireForecast\FinanceEngine\Dto\PensionReliefMethod;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
@@ -90,6 +91,9 @@ final class HouseholdFixture
                     ],
                     pclsTakenToDate: Money::fromPounds(0),
                     growthAssumptionOverride: Percent::fromPercent(4.5),
+                    // Matches BuilderStateFixture::full — the round-trip tests compare this DTO
+                    // against the one assembled from that form state, so the pair move together.
+                    reliefMethod: PensionReliefMethod::NetPay,
                 ),
                 new DbPension(
                     ownerId: 'p2',

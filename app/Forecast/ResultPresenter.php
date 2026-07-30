@@ -1490,6 +1490,22 @@ final class ResultPresenter
             }
         }
 
+        // (b2) A DC pension being contributed to with no relief method set. Every real UK pension
+        // gives tax relief by SOME method, so modelling none understates the pot and overstates the
+        // tax bill — and it does so invisibly, since the reader has no reason to suspect the
+        // contribution was charged in full. Naming it is the same discipline as the assumed-figure
+        // disclosures: a modelling choice the user cannot see is indistinguishable from one we
+        // invented. Only raised where it actually bites (a live contribution by a living member).
+        foreach ($household->pensions as $pension) {
+            if (! $pension instanceof DcPension
+                || $pension->reliefMethod !== null
+                || ! $pension->ongoingContribution->isPositive()) {
+                continue;
+            }
+            $who = self::personLabel($household->person($pension->ownerId), 0);
+            $notes[] = ['kind' => 'no_relief_method', 'text' => "No tax relief is modelled on {$who}'s pension contributions of {$pension->ongoingContribution->format()} a year, because the scheme's relief method hasn't been set — so the forecast charges the full cost and gives none of the tax back. Most workplace schemes use \"net pay\" (taken from gross salary); set it on the pension to model the relief."];
+        }
+
         // (c) The current home's mortgage is due for redemption within the plan — a forced
         // decision the "stay put" projection rests on. State the assumption + its consequence so
         // an impossible "keep paying forever" path is never left implied (factual, not advice).

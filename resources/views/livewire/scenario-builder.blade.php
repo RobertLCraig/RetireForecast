@@ -452,6 +452,14 @@
                                     <input id="pensions-{{ $i }}-employerContribution" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.employerContribution" class="{{ $field }}">
                                 </div>
                                 <div>
+                                    <label for="pensions-{{ $i }}-reliefMethod" class="{{ $label }}">Tax relief on your contribution</label>
+                                    <select id="pensions-{{ $i }}-reliefMethod" wire:model="pensions.{{ $i }}.reliefMethod" class="{{ $field }}">
+                                        <option value="">Not sure — don't model relief</option>
+                                        <option value="net_pay">Taken from my pay before tax ("net pay")</option>
+                                    </select>
+                                    <p class="mt-1 text-xs text-gray-500">Most workplace schemes use net pay: the contribution comes out of your gross pay, so you get relief at your own tax rate straight away. Leave it unset and we won't model relief at all, and we'll say so on your results.</p>
+                                </div>
+                                <div>
                                     <label for="pensions-{{ $i }}-growthAssumptionOverride" class="{{ $label }}">Growth override (%/yr, optional)</label>
                                     <input id="pensions-{{ $i }}-growthAssumptionOverride" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.growthAssumptionOverride" class="{{ $field }}">
                                 </div>

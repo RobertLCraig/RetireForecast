@@ -24,6 +24,7 @@ use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\MortgageRatePeriod;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
+use RetireForecast\FinanceEngine\Dto\PensionReliefMethod;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
@@ -431,6 +432,11 @@ final class HouseholdAssembler
                 pclsTakenToDate: $this->money($p['pclsTakenToDate'] ?? null),
                 growthAssumptionOverride: $this->percent($p['growthAssumptionOverride'] ?? null),
                 annuityPurchase: $this->annuity($p),
+                // Blank = relief not modelled (the pre-2026-07-31 behaviour), so an existing
+                // scenario does not silently shift; surfaced as an input note rather than assumed.
+                reliefMethod: ($p['reliefMethod'] ?? '') === ''
+                    ? null
+                    : PensionReliefMethod::from((string) $p['reliefMethod']),
             ),
             'db' => new DbPension(
                 ownerId: (string) $p['ownerId'],

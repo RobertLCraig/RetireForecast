@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-31 (investment charges modelled — the largest gross-of-cost optimism closed; and six shipped assumption figures found never to have reached any forecast)_
+_Last updated: 2026-07-31 (adviser-parity A1 + A2 built: investment charges and net-pay contribution relief; and six shipped assumption figures found never to have reached any forecast)_
 
 ## Goal & success criteria
 Full plan: [docs/build/PLAN.md](build/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -265,6 +265,19 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   instead of 2043**; lifetime charges £814 (stay-put base), £2,404 (lifetime-mortgage / sell-and-buy —
   their surplus piles up as cash, so only the DC pot is charged), **£8,150 (sell-and-rent)**, whose
   proceeds are genuinely invested.
+- **Done 2026-07-31 — pension contributions: net-pay tax relief, and the employer's money is the
+  employer's (adviser-parity A2, DECISIONS 2026-07-31):** contributions came from *net* surplus with
+  no relief, so the engine modelled a pension's cost and none of its point. New
+  `DcPension::$reliefMethod` (`?PensionReliefMethod`; null = relief not modelled, back-compat, and
+  raised as a `no_relief_method` input note). **Net pay** is modelled by subtracting the contribution
+  from gross earnings *before* both the income-tax pass and the spendable total — relief through the
+  engine's one tax pass with no parallel calculation to drift, NI correctly unaffected, and the
+  surplus/tax circularity dissolved. Capped at pay, so it stops when the salary does.
+  **`ReliefAtSource` throws** rather than accepting the input and giving no relief. Two structural
+  defects fixed with it: the **employer's contribution is no longer funded from household surplus**
+  (credited while the member works, prorated in a part-year; a year with no surplus previously
+  **dropped it silently**), and contributions no longer run for ever after retirement. **Effect on V2:
+  none — no stored scenario records any DC contribution at all** (see Blockers).
 - **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **read that doc before touching any V2 figure.** The base's
   "money found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
   (year 2026, the real source as the label) — see the V2 doc's note. It now needs **~£49,495**, not ~£90k.
@@ -273,7 +286,7 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
 
 ## What's next (in order)
 The whole post-v1 backlog is built. What remains:
-1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/spec/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.** Newest visible surfaces to eyeball (2026-07-30): the **"To spend / month"** and **"Available capital"** columns on the results ladder + the pair on Compare + the monthly block on `/afford`; the budget panel's **computed** mortgage instalment (it reads £0 in the stored inputs by design); the **assumed-figure** and **depreciation** notes; and the four **park-home** scenarios (51–54). Run **`php artisan scenarios:audit`** first — it checks the figures and their disclosure before you look. **Also open a downloaded PDF** (2026-07-30): it is now a full landscape print of the whole results page with all four charts drawn server-side — check the charts read well on paper and the wide cashflow ladder is legible at its print size. **New 2026-07-31:** the **investment-charges** line under the cashflow ladder (screen + PDF) and the **8th assumption row** ("Investment charges (a year)", editable in the builder); and **re-run the Monte Carlo** — house-price volatility, salary volatility and above-CPI care escalation are now live for the first time, so every stored fan is narrower than the model now says it should be.
+1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/spec/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.** Newest visible surfaces to eyeball (2026-07-30): the **"To spend / month"** and **"Available capital"** columns on the results ladder + the pair on Compare + the monthly block on `/afford`; the budget panel's **computed** mortgage instalment (it reads £0 in the stored inputs by design); the **assumed-figure** and **depreciation** notes; and the four **park-home** scenarios (51–54). Run **`php artisan scenarios:audit`** first — it checks the figures and their disclosure before you look. **Also open a downloaded PDF** (2026-07-30): it is now a full landscape print of the whole results page with all four charts drawn server-side — check the charts read well on paper and the wide cashflow ladder is legible at its print size. **New 2026-07-31:** the **investment-charges** line under the cashflow ladder (screen + PDF); the **8th assumption row** ("Investment charges (a year)", editable in the builder); the new **"Tax relief on your contribution"** select on each DC pension at builder step 3; and **re-run the Monte Carlo** — house-price volatility, salary volatility and above-CPI care escalation are now live for the first time, so every stored fan is narrower than the model now says it should be.
 2. **Public-release blockers** (harmless while private, mandatory before any public launch; each flagged in code): set `config('compliance.personal_use')` false + confirm the guidance-only partition re-applies; swap the stress-test dataset off the CC BY-NC-SA JST source for an OGL/licensed one; tighten the CSP `script-src` to nonces; complete the a11y pass to a public bar.
 3. **Optional refinements to built features** (all flagged v1 limits; pick by value) — remaining care flags (age-conditioning of the onset rate + a sex split of the care *duration*; the means-test v1 flags: Pension Credit not counted into the contribution, LA-vs-self-funder fee gap); CGT deemed-occupation absences; an annuitisation retirement-month override. (Done this cluster: both house and salary growth in the Monte Carlo are now stochastic, and the care *probability* is now sex-differentiated — DECISIONS 2026-07-18.) See DATA-MODEL "Known divergences" + docs/build/PLAN.md.
 4. **CI / data hygiene (remainder).** The freshness guardrails run monthly in CI (the `data-freshness` workflow; takes effect on GitHub once pushed). Low-value hardening: a tamper-evident run hash, forecast caching.
@@ -289,11 +302,13 @@ order is **B1 — verdict-first, probability-led landing** (reuse the `/afford` 
 probability + the word-bands), then the B2–B4 results-page restructure (tabs, tables into `<details>`, banners
 demoted), then A3 fat tails / A4 State-Pension uprating. Build order in the plan's "Build order" section.
 Other partly-built specs: **adviser parity** ([docs/build/PLAN-adviser-parity.md](build/PLAN-adviser-parity.md),
-scope questions all resolved; **A1 fee drag is BUILT** 2026-07-31). **Two OPEN correctness gaps remain** in
-DATA-MODEL "Known divergences" — **no pension contribution tax relief, no ISA subscription cap. These are
-accuracy defects, not refinements.** Next by the plan's order is **A2 relief** (implement the household's
-actual `net_pay` method first — full marginal relief, no NI saving, no self-assessment lag), then B2
-protection gap;
+scope questions all resolved; **A1 fee drag and A2 net-pay relief are BUILT** 2026-07-31). **One OPEN
+correctness gap remains** in DATA-MODEL "Known divergences" — **no ISA subscription cap** (the model
+shelters unlimited surplus tax-free, and biases *most* for the highest-surplus sell-and-invest plans, so
+it is not neutral across the plans being compared). Smaller open pieces of A2: the £3,600 non-earner
+relief route and the annual-allowance / MPAA cap on relievable contributions. Next by the plan's own
+order is **B2 protection gap** (death-in-service confirmed in force, and it *ceases at retirement* — a
+real cliff-edge; reuses the survivor cliff + `LeverThresholdService`), then B1 cost of advice;
 withdrawal-sequencing #5/#6 (docs/build/PLAN-withdrawal-sequencing.md, gated on two modelling
 calls from Rob); multi-property (docs/build/PLAN-multi-property.md, DRAFT); assistant scenario-editing
 (docs/build/PLAN-assistant-scenario-editing.md, approved scope, not built).
@@ -301,6 +316,13 @@ calls from Rob); multi-property (docs/build/PLAN-multi-property.md, DRAFT); assi
 ## Blockers / open questions
 - [ ] **Rob's browser sign-off** on the built cluster (What's next #1) — the gating item.
 - [ ] **The stale queue worker** — restart it (then in-app "Re-run all" works; see How to pick up).
+- [ ] **Is the working partner really contributing nothing to a pension?** (found 2026-07-31, Rob to
+  confirm). **No stored scenario records any DC contribution — member or employer, on any of the 14.**
+  An employee in a workplace scheme normally contributes under auto-enrolment (typically ~5% member +
+  3% employer), so if this is simply not entered the forecast understates their pension, and now its
+  tax relief too. Deliberately **not** fixed by assuming a figure. If contributions are added, set the
+  pension's **relief method to "net pay"** (Rob's recorded answer, PLAN-adviser-parity "Decisions
+  resolved" #2) or the results page will say relief is not being modelled.
 - [ ] **Spreadsheet import** — the line-item expense-category data-model decision; re-verify IWT CSP vs a real export.
 - [ ] **Demo couple's anonymised figures** — Rob supplies later, entered via the UI, not hardcoded.
 - [ ] **Document where the V2 base's remortgage money comes from** (Rob, in the UI): the base needs **~£49,495**
@@ -373,6 +395,25 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-31 (adviser-parity A2: net-pay contribution relief, and the employer's contribution stops being
+charged to the household)_ —
+Continued the same session after A1. `applyContributions` took contributions from net surplus with no
+relief; reading it for the fix surfaced two further defects in the same function, both structural rather
+than a missing figure — the **employer's** contribution was funded from household surplus (charging them
+for someone else's money, and **silently dropping it** in a year with none), and contributions ran for
+ever after retirement. Modelled net pay as what it physically is: the contribution comes off gross pay
+before the household sees it. That gives relief through the engine's single tax pass rather than a
+parallel calculation that could drift, leaves NI correctly untouched, dissolves the
+surplus-depends-on-tax-depends-on-relief circularity, and caps the contribution at pay so it ends with
+the salary — no separate retirement gate to forget. Made `ReliefAtSource` **throw**: it is a real method
+the projector does not model, and accepting it would give no relief while the input said otherwise.
+**One test initially passed for the wrong reason** — the "employer contribution survives a year with no
+surplus" case put the money in and the shortfall drew it straight back out of an accessible pot; re-cut
+with the member below the access age so the pot is locked and the property is actually isolated.
+**Then found the work changes nothing for the real household:** no V2 scenario records any DC
+contribution at all. Raised as an open question rather than papered over by assuming an auto-enrolment
+figure. Full suite green, pint clean, `scenarios:audit` clean.
 
 _2026-07-31 (investment charges built; then six shipped figures found never to have reached a forecast)_ —
 Resumed via `/handover resume`. What's next #1 is Rob's sign-off and #2 is release-gated, so took the item

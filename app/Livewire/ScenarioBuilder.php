@@ -310,6 +310,10 @@ class ScenarioBuilder extends Component
             'pensions.*.currentValue' => [...$money, 'required_if:pensions.*.subtype,dc'],
             'pensions.*.ongoingContribution' => $money,
             'pensions.*.employerContribution' => $money,
+            // Blank = relief not modelled (and said so on the results page). Only net pay is
+            // offered: relief at source is a real method the engine does not model yet, and the
+            // DTO throws on it rather than quietly giving no relief at all.
+            'pensions.*.reliefMethod' => ['nullable', Rule::in(['', 'net_pay'])],
             'pensions.*.earliestAccessAge' => ['nullable', 'integer', 'min:55', 'max:75', 'required_if:pensions.*.subtype,dc'],
             'pensions.*.pclsTakenToDate' => $money,
             'pensions.*.growthAssumptionOverride' => $rate,
@@ -1554,7 +1558,7 @@ class ScenarioBuilder extends Component
     {
         return [
             'id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'subtype' => $subtype, 'level' => 'amount',
-            'currentValue' => '', 'ongoingContribution' => '', 'employerContribution' => '',
+            'currentValue' => '', 'ongoingContribution' => '', 'employerContribution' => '', 'reliefMethod' => '',
             'earliestAccessAge' => '57', 'pclsTakenToDate' => '', 'growthAssumptionOverride' => '', 'withdrawals' => [],
             'accruedAnnualPension' => '', 'normalRetirementAge' => '65', 'revaluationBasis' => 'cpi',
             'escalationInPayment' => 'cpi', 'spousePensionFraction' => '', 'commutationLumpSum' => '', 'commutationFactor' => '',

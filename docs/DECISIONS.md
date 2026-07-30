@@ -3,6 +3,52 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-31 — Pension contributions: net-pay tax relief, and the employer's money is the employer's
+**Context:** adviser-parity A2. `PathProjector::applyContributions` took contributions from *net*
+surplus and added no relief (the code's own docblock flagged it), so the engine modelled the cost of a
+pension and none of its point. Reading that code for the fix surfaced two more defects in the same
+place, both structural rather than a missing figure.
+
+**Decisions:**
+1. **`DcPension::$reliefMethod`** (`?PensionReliefMethod`; null = relief not modelled, so no stored
+   scenario silently shifts). **Net pay is implemented; relief at source THROWS.** *Rationale:* relief
+   at source is a real method with a genuine cashflow-timing effect (the provider reclaims basic rate,
+   a higher-rate taxpayer recovers the rest through self assessment in a *later* year). Accepting the
+   value and giving no relief would be worse than refusing it — the input would say one thing and the
+   model do another. Refusing it is the no-silent-failure rule, as with Scotland and the mutually
+   exclusive mortgage types.
+2. **Net-pay relief is the subtraction itself, not a second calculation.** The contribution comes off
+   gross earnings *before* they enter both the income-tax pass and the spendable-income total, which
+   is what net pay physically is. *Rationale:* the plan's own warning — relief computed in a parallel
+   pass can drift from the engine's one income-tax pass, which the data-layer integrity rule forbids.
+   It also dissolves a circularity: a surplus-funded contribution depends on tax, which would depend
+   on the relief, which would depend on the contribution. Money taken before the household sees it has
+   no such loop. NI is untouched (`niForPerson` reads `grossSalary`), which is correct — net pay saves
+   no NI; that is salary sacrifice, still not modelled.
+3. **The employer's contribution is no longer funded from household surplus.** It is credited to the
+   pot while the member actually works, prorated in a part-year. *Rationale:* it is the employer's
+   money and never passes through the household's cashflow. Charging it made the household look poorer
+   in cash, and — worse — a year with no surplus **silently dropped it**, which is the completeness
+   rule's exact failure mode. Guarded by a test with a household that spends more than it earns and a
+   pot locked below its access age (an accessible pot would be drawn straight back down, which is why
+   the first version of that test passed for the wrong reason).
+4. **A net-pay contribution is capped at pay**, so it stops by itself when the salary does.
+   *Rationale:* it is deducted from pay, so it cannot exceed pay — which is also the statutory limit on
+   relievable contributions for an earner. No separate retirement gate to forget. (Contributions were
+   previously paid for ever out of a retired person's surplus.) **Still open:** the £3,600 non-earner
+   route, and the annual-allowance / MPAA interaction (`AnnualAllowanceCalculator` exists and is not
+   yet wired to contributions).
+5. **An unset relief method is disclosed**, not left to look like an answer: a live contribution with
+   no method raises a `no_relief_method` input note saying the full cost is charged and no tax given
+   back. *Rationale:* the no-invisible-figures rule — a modelling choice the reader cannot see is
+   indistinguishable from one we invented.
+
+**Effect on the V2 scenarios: none, and that is the finding.** No stored scenario has any DC
+contribution at all — member or employer, on any of the 14. So this work changes nothing for the real
+household until that is checked: a still-working employee in a workplace scheme normally contributes
+under auto-enrolment, and if it is simply not entered, the forecast is understating their pension (and
+now its tax relief too). Raised as an open question for Rob rather than fixed by assuming a figure.
+
 ## 2026-07-31 — Six shipped assumption figures had never reached a single forecast
 **Context:** measuring the new investment-charge work against Rob's real scenarios produced figures
 **identical to the penny** before and after. The charge was not reaching the app at all. Root cause: the

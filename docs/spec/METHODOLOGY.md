@@ -331,8 +331,14 @@ An honest list of the current limits (each is flagged in the code):
   supported by the engine but not yet exposed as a builder input.
 - **Monte Carlo:** normal returns (no fat tails); independent partner deaths; the historical data
   ends in 2020. (House-price and salary growth now carry volatility — see the assumptions panel.)
-- **Pensions:** the lump-sum-allowance cap on a DB commutation lump sum is not enforced; contribution
-  tax relief is not modelled; one smooth inflation proxy for DB escalation.
+- **Pensions:** the lump-sum-allowance cap on a DB commutation lump sum is not enforced; one smooth
+  inflation proxy for DB escalation. **Contribution tax relief** is modelled for "net pay" schemes
+  (the contribution comes off gross salary, so relief lands at your own tax rate straight away, and
+  National Insurance is unaffected); **relief at source is not modelled yet** and is refused rather
+  than quietly treated as no relief; **salary sacrifice** is not modelled at all. We do not yet apply
+  the £3,600 relief limit for a non-earner, or the annual allowance / MPAA cap on how much of a
+  contribution can be relieved. If a pension's relief method is left unset we model no relief, and say
+  so on your results.
 - **Investment charges:** one household-wide rate covers the platform/administration fee and the funds'
   ongoing charges together, taken from pensions, ISAs and investment accounts each year (cash deposits
   bear none). There is no per-account or per-pot rate, so a cheap ISA and an expensive old pension are

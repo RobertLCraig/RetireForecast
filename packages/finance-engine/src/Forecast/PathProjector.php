@@ -14,6 +14,7 @@ use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
+use RetireForecast\FinanceEngine\Dto\PensionReliefMethod;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
@@ -435,7 +436,11 @@ final class PathProjector
                     'value' => $pension->currentValue->pence,
                     'plan' => $pension->withdrawalPlan,
                     'firstAccessDone' => false,
-                    'contribution' => $pension->ongoingContribution->pence + $pension->employerContribution->pence,
+                    // Kept apart, not summed: only the member's own contribution is the household's
+                    // money (so only it may be funded from surplus) and only it attracts relief.
+                    'contribution' => $pension->ongoingContribution->pence,
+                    'employerContribution' => $pension->employerContribution->pence,
+                    'reliefMethod' => $pension->reliefMethod,
                     'earliestAccessAge' => $pension->earliestAccessAge,
                     'growthOverrideReal' => $pension->growthAssumptionOverride?->asFraction(),
                 ];
@@ -604,7 +609,7 @@ final class PathProjector
             if ($inherited > 0) {
                 // An inherited DC pot is a beneficiary drawdown — accessible at any age (access age 0);
                 // it grows at the blended assumption rate (the deceased's per-pot override is not carried).
-                $state['pots'][$heir][] = ['value' => $inherited, 'plan' => [], 'firstAccessDone' => true, 'contribution' => 0, 'earliestAccessAge' => 0, 'growthOverrideReal' => null];
+                $state['pots'][$heir][] = ['value' => $inherited, 'plan' => [], 'firstAccessDone' => true, 'contribution' => 0, 'employerContribution' => 0, 'reliefMethod' => null, 'earliestAccessAge' => 0, 'growthOverrideReal' => null];
             }
             $state['pots'][$id] = [];
         }
@@ -653,6 +658,21 @@ final class PathProjector
             if ($person->employmentStatus === EmploymentStatus::Employed && $person->grossSalary !== null) {
                 $fraction = self::workFraction($person, $age);
                 $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor'][$person->id] * $fraction);
+
+                // The employer's contribution is the EMPLOYER's money: it goes straight into the
+                // pot while the member is working, prorated in a part-year, and is never funded
+                // from the household's surplus (which would charge them for someone else's money
+                // and silently drop it in a year they had none).
+                $this->payEmployerContributions($state, $person->id, $state['spendFactor'], $fraction);
+
+                // A net-pay contribution is deducted from GROSS pay before the employer runs PAYE,
+                // so it never reaches the household's cash and relief is given at the member's full
+                // marginal rate immediately (no NI saving — that is salary sacrifice). Subtracting
+                // it from earnings before BOTH the tax pass and the spendable-income total is what
+                // gives the relief: there is no second, parallel relief calculation to drift from
+                // the engine's one income-tax pass. Capped at pay — you cannot give up more than
+                // you earn — which also stops it by itself at retirement, when pay ends.
+                $earnings -= $this->payNetPayContributions($state, $person->id, $state['spendFactor'], $fraction, $earnings);
             }
 
             // Guaranteed pension / other income, kept split by source.
@@ -1936,14 +1956,69 @@ final class PathProjector
      * nominal by $spendFactor. Returns the total contributed (nominal pence).
      *
      * Funded from surplus only (never by drawing down other assets), so saving
-     * stops automatically once income no longer covers spend. v1 simplification:
-     * pension contributions are taken from net surplus and tax relief on them is
-     * not modelled, which slightly understates the pre-retirement pot — flagged
-     * for the trust pass.
+     * stops automatically once income no longer covers spend.
+     *
+     * Handles only what the household actually pays for out of its own money: regular
+     * account savings, and member pension contributions under a scheme whose relief
+     * method is not net pay. Employer contributions and net-pay member contributions
+     * are paid earlier, in the earnings step, because neither reaches household cash.
+     * A pension with NO relief method set keeps the pre-2026-07-31 behaviour (paid from
+     * net surplus, no relief), which is why an unset method is raised as an input note.
      *
      * @param  array<string, mixed>  $state
      * @param  array<string, bool>  $alive
      */
+    /**
+     * Pay the employer's contributions into this person's pots for the year. The employer's money
+     * never passes through the household's cashflow, so it is credited outright rather than
+     * competing with the household's spending for surplus; it is prorated by the fraction of the
+     * year actually worked and stops when the job does.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function payEmployerContributions(array &$state, string $pid, float $spendFactor, float $workFraction): void
+    {
+        if ($workFraction <= 0.0) {
+            return;
+        }
+        foreach ($state['pots'][$pid] as &$pot) {
+            $pot['value'] += (int) round(($pot['employerContribution'] ?? 0) * $spendFactor * $workFraction);
+        }
+        unset($pot);
+    }
+
+    /**
+     * Pay this person's own NET-PAY contributions into their pots for the year and return the
+     * total, which the caller subtracts from gross earnings — that subtraction IS the tax relief.
+     *
+     * Capped at $earnings in aggregate: a net-pay contribution is taken from pay, so it cannot
+     * exceed pay (which is also the statutory limit on relievable contributions for an earner,
+     * and the reason a retired member's net-pay contribution is zero rather than continuing for
+     * ever). Pots are paid in declaration order and the cap bites on the later ones.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function payNetPayContributions(array &$state, string $pid, float $spendFactor, float $workFraction, int $earnings): int
+    {
+        if ($workFraction <= 0.0 || $earnings <= 0) {
+            return 0;
+        }
+
+        $paid = 0;
+        foreach ($state['pots'][$pid] as &$pot) {
+            if (($pot['reliefMethod'] ?? null) !== PensionReliefMethod::NetPay) {
+                continue;
+            }
+            $wanted = (int) round(($pot['contribution'] ?? 0) * $spendFactor * $workFraction);
+            $give = max(0, min($wanted, $earnings - $paid));
+            $pot['value'] += $give;
+            $paid += $give;
+        }
+        unset($pot);
+
+        return $paid;
+    }
+
     private function applyContributions(Household $household, array &$state, array $alive, float $spendFactor, int $surplus): int
     {
         $available = $surplus;
@@ -1960,12 +2035,19 @@ final class PathProjector
             return $give;
         };
 
-        // DC pension contributions (employee + employer) into each living owner's pots.
+        // The member's OWN DC contributions, for schemes where they are genuinely paid out of the
+        // household's money. A net-pay contribution is not: it is deducted from gross pay before
+        // the household ever sees it (see payNetPayContributions), so taking it from surplus here
+        // as well would charge it twice. The employer's contribution is likewise not the
+        // household's to fund — see payEmployerContributions.
         foreach ($household->persons as $person) {
             if (! ($alive[$person->id] ?? false)) {
                 continue;
             }
             foreach ($state['pots'][$person->id] as &$pot) {
+                if (($pot['reliefMethod'] ?? null) === PensionReliefMethod::NetPay) {
+                    continue;
+                }
                 $pot['value'] += $take($pot['contribution'] ?? 0);
             }
             unset($pot);

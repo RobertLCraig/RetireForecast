@@ -1,6 +1,6 @@
 # PLAN — adviser parity: contribution/wrapper correctness + the services that keep people paying an adviser
 
-> **Status: PART-BUILT.** **A1 (investment costs / fee drag) shipped 2026-07-31** — see DECISIONS
+> **Status: PART-BUILT.** **A1 (fee drag) and A2 (net-pay contribution relief) shipped 2026-07-31** — see DECISIONS
 > 2026-07-31 and DATA-MODEL "Known divergences"; the figures below were re-verified against primary
 > sources at build time and the shipped default is **0.50%**, with the reasoning for not taking the
 > most adverse figure recorded in docs/spec/ASSUMPTIONS.md §10. Everything else here is still spec.
@@ -81,7 +81,18 @@ DIY index investor: platform ~0.25% + fund OCF ~0.15% ⚠️ → **default 0.50%
 side of the 0.40% central case). The advised comparator is Part B's B1. Re-verify platform tiers at build
 time — several changed in 2026, including Vanguard's.
 
-### A2. Pension contribution tax relief
+### A2. Pension contribution tax relief — ✅ BUILT 2026-07-31 (net pay only)
+
+**Built:** `DcPension::$reliefMethod`, net pay implemented by subtracting the contribution from gross
+earnings before the engine's single income-tax pass (so no parallel relief calculation exists to drift,
+and NI is correctly unaffected); capped at pay, so it ends with the salary. `ReliefAtSource` **throws**
+rather than accepting the input and giving no relief. Two structural defects fixed alongside: the
+employer's contribution is no longer paid out of household surplus (and can no longer be silently
+dropped in a year with none), and contributions no longer continue for ever after retirement.
+**Not built:** the £3,600 non-earner route, and the annual-allowance / MPAA cap on relievable
+contributions — `AnnualAllowanceCalculator` exists but is not yet wired to the contribution step.
+**Note:** no V2 scenario records any DC contribution, so this changes nothing for the real household
+until that input is checked. See DECISIONS 2026-07-31.
 
 **Finding.** Contributions are taken from net surplus with **no relief added back**. The code says so
 itself: *"pension contributions are taken from net surplus and tax relief on them is not modelled, which
@@ -314,8 +325,8 @@ only the build consequences are recorded here.
 _Revised 2026-07-28 after the answers above._ Accuracy first, then the reuse-heavy parity items.
 
 1. ~~**A1 fee drag**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). Next by this order: A2.
-2. **A2 pension tax relief — `net_pay` path** — the code's own flagged debt, and this household's actual
-   mechanism; reuses the existing income-tax pass and the AA/MPAA machinery.
+2. ~~**A2 pension tax relief — `net_pay` path**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). The
+   AA/MPAA cap and the £3,600 non-earner route are still to wire in. Next by this order: B2.
 3. **B2 protection gap** — promoted: death-in-service confirmed, and it reuses the survivor cliff plus
    `LeverThresholdService`. Include the retirement cliff-edge when cover ceases.
 4. **B1 cost of advice** — nearly free once A1 lands.

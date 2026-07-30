@@ -482,7 +482,20 @@ from the original plan, flagged inline:
   balance and the charge is visible rather than a quietly smaller growth line. **Still open:** no per-account
   or per-pot charge override (one household-wide rate), and the *advised* cost stack (ongoing advice fee) is
   the separate B1 comparison, not modelled.
-- **OPEN — pension contributions get no tax relief (flagged in code since v1).** `PathProjector::applyContributions`
+- **CLOSED 2026-07-31 for net pay — pension contributions now get tax relief** (adviser-parity A2,
+  DECISIONS 2026-07-31). `DcPension::$reliefMethod` (`?PensionReliefMethod`; null = relief not modelled,
+  the back-compat default, and surfaced as a `no_relief_method` input note). **Net pay** is modelled by
+  subtracting the contribution from gross earnings before both the income-tax pass and the spendable
+  total — so relief is given at the member's marginal rate through the engine's single tax pass, with no
+  parallel calculation to drift, and NI is correctly unaffected. Capped at pay, so it stops when the
+  salary does. **`ReliefAtSource` THROWS** rather than silently giving no relief; it is unbuilt.
+  Two structural defects fixed with it: the **employer's** contribution is no longer funded from
+  household surplus (it is credited while the member works, prorated in a part-year, and could
+  previously be silently dropped in a year with no surplus), and contributions no longer run for ever
+  after retirement. **Still open:** the £3,600 non-earner relief route, and the annual-allowance /
+  MPAA cap on relievable contributions (`AnnualAllowanceCalculator` exists but is not wired here);
+  salary sacrifice is unmodelled (adviser-parity A4).
+- **SUPERSEDED — pension contributions get no tax relief (flagged in code since v1).** `PathProjector::applyContributions`
   takes contributions from *net* surplus and adds no relief (see its own docblock), so the pot grows as if
   relief did not exist — understating a still-working household's accumulation and rigging any
   pension-vs-ISA comparison against the pension. Relief method matters (`net_pay` / `relief_at_source` /

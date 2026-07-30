@@ -34,7 +34,7 @@ final class BuilderStateFixture
             'oneOffCosts' => [['id' => 'oneoff1', 'atAge' => '80', 'amount' => '45000', 'label' => 'Care top-up']],
             'pensions' => [
                 ['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '410000', 'ongoingContribution' => '8000',
-                    'employerContribution' => '4000', 'earliestAccessAge' => '57', 'pclsTakenToDate' => '0',
+                    'employerContribution' => '4000', 'reliefMethod' => 'net_pay', 'earliestAccessAge' => '57', 'pclsTakenToDate' => '0',
                     'growthAssumptionOverride' => '4.5', 'withdrawals' => [
                         ['id' => 'wd1', 'kind' => 'pcls', 'amount' => '100000', 'atAge' => '66'],
                         ['id' => 'wd2', 'kind' => 'ufpls', 'amount' => '20000', 'atAge' => '67'],
