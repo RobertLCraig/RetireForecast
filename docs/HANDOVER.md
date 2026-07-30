@@ -152,8 +152,9 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   up in full at the gitignored `docs/scenario-backup-2026-07-29.local.json`. **Finding: only two plans never
   run short** — the lifetime mortgage (which survives by consuming the whole estate) and sell-and-buy-cheaper;
   and **no lever rescues the LiveMore mortgage** (YCC working 5 more years moves the shortfall 2036 → 2042; an
-  £80k art/jewellery sale buys 1–4 years). One **speculative** input is flagged in the set: the let-to-let BTL
-  rate (6.5%, no quote behind it). Figures + sources in the private V2 doc.
+  £80k art/jewellery sale buys 1–4 years). The let-to-let BTL rate was **repriced 6.5% → 5.75%** on
+  2026-07-30 — the "later-life premium" behind 6.5% does not exist, since BTL is underwritten on rental
+  income, not the borrower's age (DECISIONS 2026-07-30). Figures + sources in the private V2 doc.
 - **Done 2026-07-29 — Pension Credit severe-disability-addition follows the couple rule (DECISIONS 2026-07-29):**
   `PathProjector::meansTestedBenefitNominal` applied the severe-disability addition (SDP) whenever **any** living
   member received a disability benefit, so a couple with **one** disabled partner wrongly got it. Real rule
@@ -239,10 +240,10 @@ calls from Rob); multi-property (docs/build/PLAN-multi-property.md, DRAFT); assi
   as arriving unshown. Enter it at builder step 3 → One-off capital receipts → year 2026, with the real source as
   the label — and a matching one-off cost the same year, since the money goes straight to the lender. Scenarios
   47/48 already model the £80k art-sale answer both ways.
-- [ ] **Decide the depreciation rate for the park-home scenarios** (51–54 ship the −8%/yr adverse default): the
-  evidence is weak and partisan, so −3/−5/−8/−15%/yr are all defensible. See PLAN-park-home "Depreciation".
-- [ ] **Get the let-to-let BTL rate quoted** — scenario 43's 6.5% is the only figure in the family with no quote
-  behind it (flagged SPECULATIVE in its name).
+- [ ] **Not blocking, and not Rob's call** — a real **broker quote** would firm up scenario 43's BTL rate
+  (5.75% is the sourced market average, not a quote; consumer buy-to-let is a narrower market). The park-home
+  depreciation rate needs nothing further: no neutral UK index exists, so -8%/yr ships as an openly-labelled
+  judgement with four sensitivities. Both researched and decided — DECISIONS 2026-07-30.
 - [ ] **Not blocking** — the Delta-research backlog (docs/research/RESEARCH-delta-2026-07-02.md); the under-spending case (docs/build/PLAN.md); the third-adult-contributing-to-upkeep scope item; a /methodology enhancement + an adviser/Pension-Wise output pack; WCAG 2.2 AA + mobile to a public bar.
 
 ## How to pick up
@@ -338,6 +339,20 @@ protection gap promoted to #3** (death-in-service confirmed in force — and it 
 cliff-edge RF is well placed to surface). Personal detail (DOB, scheme, cover) deliberately kept **out** of the
 tracked plan per [[pii-leaks-into-tracked-files]] — it lives in the gitignored SCENARIO-V2 doc. **No code
 changed**; no DECISIONS entry per the established convention (a DRAFT plan earns its entry when built).
+
+_2026-07-30 (checkpoint: BTL repriced after a wrong assumption; both open figures closed out)_ —
+Rob challenged the checkpoint for filing the park-home depreciation rate and the let-to-let BTL rate in
+**Blockers**, when he had asked me to research both and the standing rule is research → adverse default →
+expose as editable, never hand the call back. He was right; both had in fact been researched, and filing
+them as questions was the error. Re-checking them to close them out **found a wrong assumption in the BTL
+figure**: 6.5% rested on an inferred later-life specialist premium that **does not exist** — buy-to-let is
+underwritten on **rental income (ICR), not the borrower's earnings**, so age is not the binding constraint
+(BM Solutions lends to 99; several specialist lenders publish no maximum age; Shawbrook single lets from
+4.84%, TML 5-yr from 4.74%). Repriced scenario 43 to **5.75%** (the market-average 5-year fix, ~1pt above
+best buys), £13,520 → £11,960/yr, ICR 160% → 181%. Depreciation stays **-8%/yr**: searched for a neutral UK
+index and there isn't one — the government's own park-homes research is policy analysis and publishes no
+price series, so the figure is an openly-labelled judgement between a campaigning source and a marketing
+one, with four sensitivities shipped. Both now recorded as decided, not open. `scenarios:audit` clean.
 
 _2026-07-30 (hard rule: no invisible figures; the audit made permanent)_ —
 Rob, on finding the £0 mortgage line: *"the model shouldn't ever be able to use a figure that the user
@@ -436,9 +451,9 @@ completeness rather than assuming: rental income reaches the forecast as taxable
 spend is **exactly** £49,495 above 48's, and the salary really extends to 2029/2031/2032. **Findings: only the
 lifetime mortgage (estate consumed to £63,587) and sell-and-buy-cheaper (£303,506) never run short, and no
 lever rescues the LiveMore mortgage** — +5 working years moves the shortfall 2036 → 2042, the £80k sale buys
-1–4 years. Two judgement calls flagged in the V2 doc: the **let-to-let BTL rate is speculative** (6.5%, chosen
-above the ~4.4% best-buy / ~5.75% market average because at 66 and 80 they need a specialist later-life
-lender), and a **£160k lifetime mortgage is likely unavailable** (max release is governed by the younger
+1–4 years. Two judgement calls flagged in the V2 doc: the **let-to-let BTL rate had no quote behind it** (set
+at 6.5% here on a later-life premium — **since disproved and repriced to 5.75%**, DECISIONS 2026-07-30),
+and a **£160k lifetime mortgage is likely unavailable** (max release is governed by the younger
 borrower — the adviser's own quote capped at £144k). Also flagged: **CGT on chattels is not modelled**, so both
 £80k children are optimistic by whatever tax the paintings and jewellery attract. No code changed.
 

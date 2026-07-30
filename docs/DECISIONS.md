@@ -40,6 +40,30 @@ Pension Credit, confined to the both-alive years) is recorded in the gitignored 
 `PathProjectorTest` (one disabled partner → £0; both → couple rate; a caring partner → carer addition) +
 `PensionCreditCalculatorTest` (single vs couple rate; carer). Full suite green.
 
+## 2026-07-30 — Let-to-let BTL repriced 6.5% → 5.75%; the depreciation rate is decided, not open
+**Context:** Both figures had been researched and given sourced defaults, then wrongly filed in the
+handover as open questions for Rob. He had explicitly asked me to research them, and the standing rule
+([[adverse-default-user-editable]]) is to research, default to the most adverse defensible figure, and
+expose it as editable — never to hand the call back. Correcting that surfaced a wrong assumption.
+
+**Decisions:**
+1. **The let-to-let BTL rate is repriced 6.5% → 5.75%.** The 6.5% rested on an inferred "later-life
+   specialist premium" that **does not exist**: buy-to-let is underwritten on **rental income (ICR),
+   not the borrower's earnings**, so age is not the binding constraint it is for a residential loan.
+   BM Solutions lends to **99**, several specialist lenders publish **no maximum age**, and specialist
+   BTL pricing is competitive (Shawbrook single lets from 4.84%, TML 5-year fix from 4.74%, mid-2026)
+   against a 4.38% best buy and their existing TMW BTL at 4.49%. **5.75%** — the market average 5-year
+   fix — is ~1pt above the best buys: adverse without inventing a premium. Interest cover rises to
+   181%, comfortably clear of a 125–145% ICR test.
+2. **Park-home depreciation stays -8%/yr real, and is DECIDED.** A neutral UK index was searched for
+   and **does not exist**: the government's own park-homes research is policy analysis (sector size,
+   commission-effect modelling) and publishes **no price or resale series**. So the figure is a
+   judgement between a campaigning source and a marketing one, labelled as such, with -3/-5/-8/-15%/yr
+   shipped as selectable sensitivities.
+3. **Neither is a blocker.** A better BTL figure needs only a real broker quote — and specifically for
+   a **consumer** buy-to-let (letting your own former home), a narrower, more regulated market than the
+   headline tables cover.
+
 ## 2026-07-30 — Hard rule: no invisible figures. Plus a permanent scenario audit
 **Context:** Rob, after finding a £0 "Mortgage" line on the live results page for a plan that charges
 £15,822/yr: *"the model shouldn't ever be able to use a figure that the user cannot see / interrogate

@@ -194,7 +194,14 @@ figures (**3–6%/yr** through mid-life, 50–60% retained at 10 years) come fro
 marketing** and partly from the **US** "park model" market, which is not the same product. There is no
 neutral UK index.
 
-**Proposed default: -8%/yr real, user-editable**, as the adverse-but-defensible midpoint per
+**No neutral UK index exists — this was checked, not assumed.** The government's own park-homes research
+([the 2022 DLUHC report](https://assets.publishing.service.gov.uk/media/62ab3d69d3bf7f0afecf6943/Park_Homes_Research_Report.pdf)
+and the [sale-commission impact study](https://gov.uk/government/publications/mobile-homes-the-impact-of-a-change-in-the-maximum-park-home-sale-commission/the-impact-of-a-change-in-the-maximum-park-home-sale-commission-executive-summary))
+is policy analysis, not valuation: it sizes the sector (100,406 park-home addresses, ~159,000 owner-occupier
+residents in 2021) and models commission effects, but publishes **no price or resale-value series at all**.
+So the rate below is a judgement between two biased sources, and is labelled as such wherever it is shown.
+
+**DECIDED default: -8%/yr real, user-editable**, as the adverse-but-defensible midpoint per
 [[adverse-default-user-editable]]. Over the plan's 23 years that leaves roughly:
 
 | Rate | £150,000 in 2049 | £130,000 in 2049 | Reading |
