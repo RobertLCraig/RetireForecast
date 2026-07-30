@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-29 (Pension Credit severe-disability-addition couple-rule fix + V2 benefits check; earlier today: adviser-parity plan, repayment mortgages, V2 rebuild)_
+_Last updated: 2026-07-30 (hard rule "no invisible figures" + `scenarios:audit`; the park-home option; available-capital / monthly-allowance + the solved affordable-spend figure)_
 
 ## Goal & success criteria
 Full plan: [docs/build/PLAN.md](build/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -206,7 +206,7 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
 
 ## What's next (in order)
 The whole post-v1 backlog is built. What remains:
-1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/spec/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.**
+1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/spec/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.** Newest visible surfaces to eyeball (2026-07-30): the **"To spend / month"** and **"Available capital"** columns on the results ladder + the pair on Compare + the monthly block on `/afford`; the budget panel's **computed** mortgage instalment (it reads £0 in the stored inputs by design); the **assumed-figure** and **depreciation** notes; and the four **park-home** scenarios (51–54). Run **`php artisan scenarios:audit`** first — it checks the figures and their disclosure before you look.
 2. **Public-release blockers** (harmless while private, mandatory before any public launch; each flagged in code): set `config('compliance.personal_use')` false + confirm the guidance-only partition re-applies; swap the stress-test dataset off the CC BY-NC-SA JST source for an OGL/licensed one; tighten the CSP `script-src` to nonces; complete the a11y pass to a public bar.
 3. **Optional refinements to built features** (all flagged v1 limits; pick by value) — remaining care flags (age-conditioning of the onset rate + a sex split of the care *duration*; the means-test v1 flags: Pension Credit not counted into the contribution, LA-vs-self-funder fee gap); CGT deemed-occupation absences; an annuitisation retirement-month override. (Done this cluster: both house and salary growth in the Monte Carlo are now stochastic, and the care *probability* is now sex-differentiated — DECISIONS 2026-07-18.) See DATA-MODEL "Known divergences" + docs/build/PLAN.md.
 4. **CI / data hygiene (remainder).** The freshness guardrails run monthly in CI (the `data-freshness` workflow; takes effect on GitHub once pushed). Low-value hardening: a tamper-evident run hash, forecast caching.
@@ -234,8 +234,15 @@ calls from Rob); multi-property (docs/build/PLAN-multi-property.md, DRAFT); assi
 - [ ] **The stale queue worker** — restart it (then in-app "Re-run all" works; see How to pick up).
 - [ ] **Spreadsheet import** — the line-item expense-category data-model decision; re-verify IWT CSP vs a real export.
 - [ ] **Demo couple's anonymised figures** — Rob supplies later, entered via the UI, not hardcoded.
-- [ ] **Re-model the V2 base's ~£90k paydown as a capital receipt** (Rob, in the UI): builder step 3 → One-off
-  capital receipts → year 2026, £90,000, label = the real source, owner = the receiving partner — then re-run.
+- [ ] **Document where the V2 base's remortgage money comes from** (Rob, in the UI): the base needs **~£49,495**
+  found from outside (£48,000 to close the gap to the £208k redemption + £1,495 broker fees) and still models it
+  as arriving unshown. Enter it at builder step 3 → One-off capital receipts → year 2026, with the real source as
+  the label — and a matching one-off cost the same year, since the money goes straight to the lender. Scenarios
+  47/48 already model the £80k art-sale answer both ways.
+- [ ] **Decide the depreciation rate for the park-home scenarios** (51–54 ship the −8%/yr adverse default): the
+  evidence is weak and partisan, so −3/−5/−8/−15%/yr are all defensible. See PLAN-park-home "Depreciation".
+- [ ] **Get the let-to-let BTL rate quoted** — scenario 43's 6.5% is the only figure in the family with no quote
+  behind it (flagged SPECULATIVE in its name).
 - [ ] **Not blocking** — the Delta-research backlog (docs/research/RESEARCH-delta-2026-07-02.md); the under-spending case (docs/build/PLAN.md); the third-adult-contributing-to-upkeep scope item; a /methodology enhancement + an adviser/Pension-Wise output pack; WCAG 2.2 AA + mobile to a public bar.
 
 ## How to pick up
@@ -277,8 +284,8 @@ npm run build                        # build assets (public/build is gitignored)
 | docs/BENEFITS-CHECK-V2.local.md | **GITIGNORED / PRIVATE:** full benefits check for the couple (DLA/CA/AA interaction, carer-underlying-entitlement action, SMI loan vs equity release, Council Tax + Pension Credit gateways) + the Pension Credit engine-fix cross-ref. |
 | [docs/spec/METHODOLOGY.md](spec/METHODOLOGY.md) | User-facing engine-computation methodology + "what we don't model" (also the `/methodology` page + the assistant corpus). |
 | [docs/build/PLAN-output-inflation-and-charts.md](build/PLAN-output-inflation-and-charts.md) | **DRAFT** spec from the 2026-07-18 adversarial review: output legibility, per-category (care) inflation + fat tails, and the six missing time-series charts. Reasoning + research links per decision. |
-| [docs/build/PLAN-spendable-view.md](build/PLAN-spendable-view.md) | **DRAFT** spec: per-year, per-scenario **"available capital"** and **"monthly allowance"** — the two figures a non-financial reader plans against, and the one that answers "what can we afford to spend?". Presenter-only. Also records a correctness issue: `usableWealth` counts pre-tax pension as cash. |
-| [docs/build/PLAN-park-home.md](build/PLAN-park-home.md) | **DRAFT** spec: park homes as a bought home that DEPRECIATES. Holds the 2026-07-29 research (Wokingham–Tring listings, pitch fees, Pension Credit treatment, why the "holiday home + cruise" version is ruled out) and the two-field engine gap that blocks it. |
+| [docs/build/PLAN-spendable-view.md](build/PLAN-spendable-view.md) | **BUILT** (build record): per-year, per-scenario "available capital" + "monthly allowance", and the solved affordable-spend figure. Records why an essentials-only solver bar is degenerate. |
+| [docs/build/PLAN-park-home.md](build/PLAN-park-home.md) | **BUILT** (build record): park homes as a bought home that DEPRECIATES. Also the durable home of the Wokingham–Tring research — listings, pitch fees, the CPI (not RPI) review rule, Pension Credit treatment, and why the "holiday home + cruise" version is ruled out. |
 | docs/build/PLAN-*.md, docs/research/RESEARCH-*.md | Per-feature specs / build records + research (decision-support, IHT, forced sale, sequencing, multi-property, assistant, stress-test, competitive gap, delta). |
 
 ## Branch status
