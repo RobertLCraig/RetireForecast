@@ -308,6 +308,69 @@ final class SpendableViewTest extends TestCase
         $this->assertFalse($breakdown['tiers'][0]['lines'][0]['computed']);
     }
 
+    public function test_each_spending_tier_keeps_its_own_name(): void
+    {
+        // REGRESSION. The tier heading was being overwritten with its own LAST line's label, so
+        // "Essential" displayed as "Commute Fuel" and "Discretionary" as "TV Licence" — on the
+        // results page AND the PDF, which share this presenter. It shipped because every existing
+        // test on this panel checked amounts and totals, never the labels.
+        $state = [
+            'householdName' => 'Tiers', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
+            'people' => [['id' => 'p1', 'dob' => '1955-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'expenseLines' => [
+                ['id' => 'e1', 'label' => 'Food', 'amount' => '3000', 'category' => 'essential', 'savedAsAsset' => false],
+                ['id' => 'e2', 'label' => 'Commute Fuel', 'amount' => '2200', 'category' => 'essential', 'savedAsAsset' => false],
+                ['id' => 'd1', 'label' => 'Netflix', 'amount' => '180', 'category' => 'discretionary', 'savedAsAsset' => false],
+                ['id' => 'd2', 'label' => 'TV Licence', 'amount' => '175', 'category' => 'discretionary', 'savedAsAsset' => false],
+                ['id' => 's1', 'label' => 'ISA top-up', 'amount' => '1200', 'category' => 'self_investment', 'savedAsAsset' => true],
+            ],
+            'expense' => ['survivorFactor' => '70'],
+        ];
+
+        $breakdown = ResultPresenter::expenseBreakdown($state, (new HouseholdAssembler)->household($state));
+
+        $byKey = [];
+        foreach ($breakdown['tiers'] as $tier) {
+            $byKey[$tier['key']] = $tier['label'];
+        }
+
+        // Compared against the constant that owns the names, so the test cannot drift from them.
+        foreach (ResultPresenter::EXPENSE_TIERS as $key => $canonical) {
+            $this->assertSame($canonical, $byKey[$key] ?? null, "tier '{$key}' must keep its own name");
+        }
+
+        // And specifically not the last line of each tier, which is what it used to show.
+        $this->assertNotSame('Commute Fuel', $byKey['essential']);
+        $this->assertNotSame('TV Licence', $byKey['discretionary']);
+    }
+
+    public function test_the_mortgage_substitution_does_not_rename_its_tier(): void
+    {
+        // The substitution is what introduced the bug, so pin the two together: the instalment is
+        // shown AND the tier keeps its name.
+        $state = [
+            'householdName' => 'Both', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
+            'people' => [['id' => 'p1', 'dob' => '1955-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'expenseLines' => [
+                ['id' => 'm1', 'label' => 'Mortgage', 'amount' => '0', 'category' => 'essential', 'savedAsAsset' => false],
+                ['id' => 'f1', 'label' => 'Food', 'amount' => '3000', 'category' => 'essential', 'savedAsAsset' => false],
+            ],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => [
+                'currentValue' => '400000', 'ownership' => 'mortgaged', 'outstandingMortgage' => '160000',
+                'mortgageRepaymentTermMonths' => '192', 'mortgageRepaymentStartYear' => '2026',
+                'mortgageRepaymentStartMonth' => '9', 'mortgageRepaymentRate' => '6.23',
+            ],
+        ];
+
+        $breakdown = ResultPresenter::expenseBreakdown($state, (new HouseholdAssembler)->household($state));
+
+        $this->assertSame('Essential', $breakdown['tiers'][0]['label']);
+        $this->assertSame('Mortgage', $breakdown['tiers'][0]['lines'][0]['label']);
+        $this->assertTrue($breakdown['tiers'][0]['lines'][0]['computed']);
+    }
+
     public function test_a_single_person_household_has_no_survivor_block(): void
     {
         $summary = ResultPresenter::spendableSummary($this->forecast([

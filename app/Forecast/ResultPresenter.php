@@ -88,7 +88,12 @@ final class ResultPresenter
     private const SECURE_SOURCES = ['defined_benefit', 'state_pension', 'other_taxable', 'tax_free_income', 'means_tested_benefit'];
 
     /** The 3-tier budget categories, in display order, with their labels. */
-    private const EXPENSE_TIERS = [
+    /**
+     * PUBLIC so a caller can check a rendered tier against its canonical name without restating it
+     * (`scenarios:audit` does exactly that). A tier heading was once silently overwritten with its
+     * own last spend line, and the only safe check is against the constant that owns the name.
+     */
+    public const EXPENSE_TIERS = [
         'essential' => 'Essential',
         'discretionary' => 'Discretionary',
         'self_investment' => 'Self-investment',
@@ -1921,16 +1926,21 @@ final class ResultPresenter
 
                 // Substitute the schedule's instalment for the zeroed "Mortgage" line, so the panel
                 // shows the payment the projection actually charges.
-                $label = (string) ($line['label'] ?? '');
+                //
+                // NOTE the variable name: this MUST NOT be `$label`, which is the enclosing loop's
+                // TIER name ("Essentials", "Nice to haves"). Assigning to it here silently retitled
+                // every tier with its own last line — "Essentials" became "Commute Fuel" — a bug
+                // that shipped because the reconciliation tests only checked amounts.
+                $lineLabel = (string) ($line['label'] ?? '');
                 $computed = false;
-                if ($instalment !== null && self::isMortgageLine($label)) {
+                if ($instalment !== null && self::isMortgageLine($lineLabel)) {
                     $amount = $instalment;
                     $computed = true;
                     $instalment = null; // only ever substitute onto one line
                 }
 
                 $tierLines[] = [
-                    'label' => $label,
+                    'label' => $lineLabel,
                     'amount' => $amount->format(),
                     'saved' => $saved,
                     'computed' => $computed,

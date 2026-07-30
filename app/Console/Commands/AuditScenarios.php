@@ -127,6 +127,18 @@ final class AuditScenarios extends Command
             $problems[] = "#{$id} amortises a mortgage but its spend line is not marked as computed from the terms";
         }
 
+        // 3b. LABELS must be right too, not just figures. A tier heading was once overwritten with
+        //     its own last spend line ("Essential" showing as "Commute Fuel"), which no amount check
+        //     could see. Compare each heading against the constant that OWNS the name — checking
+        //     "is the tier named after one of its lines?" instead would fire on a household that
+        //     happens to have a line called "Discretionary", which is entirely legitimate.
+        foreach (ResultPresenter::expenseBreakdown($state, $household)['tiers'] as $tier) {
+            $canonical = ResultPresenter::EXPENSE_TIERS[$tier['key']] ?? null;
+            if ($canonical !== null && $tier['label'] !== $canonical) {
+                $problems[] = "#{$id} spending tier '{$tier['key']}' is titled '{$tier['label']}', not '{$canonical}'";
+            }
+        }
+
         // 4. The monthly figures must reconcile every year (a total that drifts from its parts).
         foreach (ResultPresenter::ladder($forecast)['rows'] as $row) {
             $allowance = MoneyText::toPence($row['monthlyAllowance']);
