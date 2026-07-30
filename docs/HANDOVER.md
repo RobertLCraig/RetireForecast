@@ -201,6 +201,23 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   **It immediately found a real bug:** `Scenario::projectFrom()` defaulted the variant COLUMN to
   `Rent` while the forecast defaults to `stay_put`, so a scenario saved without an explicit variant
   was labelled "Sell & rent" everywhere while being projected as staying put (now `StayPut`).
+- **Done 2026-07-30 — the PDF is a COMPLETE print of the results page, charts included
+  (DECISIONS 2026-07-30):** the export carried about a third of the screen and **no chart at all**
+  (dompdf runs no JavaScript; every screen chart is an ApexCharts canvas), which made it unusable for
+  its actual purpose — sharing a plan with family or an adviser. Now every section the page renders is
+  exported from the **same `ResultPresenter` calls** the Livewire component makes, including the
+  previously missing input-sanity / **assumed-figure disclosures** (the "no invisible figures" rule
+  applies to the artefact the reader is handed), the what-if delta, longevity, care risk, the
+  interpretation panel, assumption sensitivity, Pension Credit how-to-claim, the IHT distribution,
+  withdrawal sequencing, the stress test, the assumptions panel, the milestone timeline, and the
+  **eleven ladder columns** the print had been dropping. New **`App\Export\ChartSvg`** re-draws all four
+  charts (Monte Carlo fan + the three time-series) as vector SVG **from the screen chart's own option
+  blob**, embedded as `<img src="data:image/svg+xml;base64,…">` (dompdf ignores an inline `<svg>`).
+  Report is now **A4 landscape**. **A live divergence was found and fixed on the way:** the PDF read
+  `$scenario->variant` directly while the screen clamps to a configured strategy, so a scenario stored
+  as "sell & rent" with no sale price printed a *rented* ladder against the screen's stay-put — both now
+  resolve through one `App\Forecast\LadderContext`. Completeness is guarded by **derivation** (the test
+  reads the component's own view data), not a checklist.
 - **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **read that doc before touching any V2 figure.** The base's
   "money found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
   (year 2026, the real source as the label) — see the V2 doc's note. It now needs **~£49,495**, not ~£90k.
@@ -209,7 +226,7 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
 
 ## What's next (in order)
 The whole post-v1 backlog is built. What remains:
-1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/spec/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.** Newest visible surfaces to eyeball (2026-07-30): the **"To spend / month"** and **"Available capital"** columns on the results ladder + the pair on Compare + the monthly block on `/afford`; the budget panel's **computed** mortgage instalment (it reads £0 in the stored inputs by design); the **assumed-figure** and **depreciation** notes; and the four **park-home** scenarios (51–54). Run **`php artisan scenarios:audit`** first — it checks the figures and their disclosure before you look.
+1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/spec/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.** Newest visible surfaces to eyeball (2026-07-30): the **"To spend / month"** and **"Available capital"** columns on the results ladder + the pair on Compare + the monthly block on `/afford`; the budget panel's **computed** mortgage instalment (it reads £0 in the stored inputs by design); the **assumed-figure** and **depreciation** notes; and the four **park-home** scenarios (51–54). Run **`php artisan scenarios:audit`** first — it checks the figures and their disclosure before you look. **Also open a downloaded PDF** (2026-07-30): it is now a full landscape print of the whole results page with all four charts drawn server-side — check the charts read well on paper and the wide cashflow ladder is legible at its print size.
 2. **Public-release blockers** (harmless while private, mandatory before any public launch; each flagged in code): set `config('compliance.personal_use')` false + confirm the guidance-only partition re-applies; swap the stress-test dataset off the CC BY-NC-SA JST source for an OGL/licensed one; tighten the CSP `script-src` to nonces; complete the a11y pass to a public bar.
 3. **Optional refinements to built features** (all flagged v1 limits; pick by value) — remaining care flags (age-conditioning of the onset rate + a sex split of the care *duration*; the means-test v1 flags: Pension Credit not counted into the contribution, LA-vs-self-funder fee gap); CGT deemed-occupation absences; an annuitisation retirement-month override. (Done this cluster: both house and salary growth in the Monte Carlo are now stochastic, and the care *probability* is now sex-differentiated — DECISIONS 2026-07-18.) See DATA-MODEL "Known divergences" + docs/build/PLAN.md.
 4. **CI / data hygiene (remainder).** The freshness guardrails run monthly in CI (the `data-freshness` workflow; takes effect on GitHub once pushed). Low-value hardening: a tamper-evident run hash, forecast caching.
@@ -242,10 +259,21 @@ calls from Rob); multi-property (docs/build/PLAN-multi-property.md, DRAFT); assi
   as arriving unshown. Enter it at builder step 3 → One-off capital receipts → year 2026, with the real source as
   the label — and a matching one-off cost the same year, since the money goes straight to the lender. Scenarios
   47/48 already model the £80k art-sale answer both ways.
+- [ ] **TIME-LIMITED — the park-home heat-pump grant** (Rob, if a park home is on the table): a
+  main-residence park home on a **residential-licensed** site now qualifies for the Boiler Upgrade
+  Scheme (the EPC blocker was removed 28 Apr 2026), and replacing **LPG** off gas grid draws **£9,000**
+  until **31 March 2027**. Ask any specific park about heat-pump/solar consent, the electricity supply
+  arrangement (own MPAN or site-owner resale — it decides whether solar can earn export income), and
+  whether the roof takes panels. Not modelled; see PLAN-park-home "Heat pumps and solar".
 - [ ] **Not blocking, and not Rob's call** — a real **broker quote** would firm up scenario 43's BTL rate
   (5.75% is the sourced market average, not a quote; consumer buy-to-let is a narrower market). The park-home
   depreciation rate needs nothing further: no neutral UK index exists, so -8%/yr ships as an openly-labelled
   judgement with four sensitivities. Both researched and decided — DECISIONS 2026-07-30.
+- [ ] **"Export all to PDF" scales linearly and will eventually need batching** (found 2026-07-30, not
+  blocking): now the report is complete, 14 scenarios produce 236 landscape pages, 2.3 MB, ~38 s and
+  ~538 MB peak — fine against Herd's 1512 M limit and the 300 s gateway timeout, but memory grows with
+  scenario count, so past roughly 30 scenarios it will need a queued or batched export. Single-scenario
+  download is ~17 pages / ~1.4 s and has plenty of headroom.
 - [ ] **Not blocking** — the Delta-research backlog (docs/research/RESEARCH-delta-2026-07-02.md); the under-spending case (docs/build/PLAN.md); the third-adult-contributing-to-upkeep scope item; a /methodology enhancement + an adviser/Pension-Wise output pack; WCAG 2.2 AA + mobile to a public bar.
 
 ## How to pick up
@@ -296,6 +324,31 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-30 (the PDF made a complete print of the results page, charts and all)_ —
+Rob: *"Need to get all of the information in the webpage into the pdf download"*, then mid-task
+*"the lack of graphs in the PDFs makes them very difficult to use for sharing as intended"*. Audited
+screen against print first rather than guessing: the export carried roughly a third of the page, and
+the omissions included the **assumed-figure disclosures** — so the artefact a reader is actually handed
+breached the "no invisible figures" rule even though the screen satisfied it. **Probed the renderer
+before designing around it** (a throwaway dompdf render, inspecting the inflated PDF content stream):
+dompdf **silently ignores an inline `<svg>`** — only the `<text>` leaked into the page as flowed text —
+but renders `<img src="data:image/svg+xml;base64,…">` as true vector ops, with `fill-opacity`,
+`stroke-dasharray` and `text-anchor` all honoured. That result decided the design: a small `ChartSvg`
+that draws from the **screen chart's own ApexCharts option blob**, so there is no second data pipeline
+to drift. Rejected Browsershot/headless-Chrome (would print the real canvases, but adds Node + Chromium
+to a local-first tool). **Found a live bug on the way:** the PDF selected the ladder strategy from
+`$scenario->variant` while the screen clamps to a strategy the inputs configure, so a scenario stored as
+"sell & rent" with no sale price printed a *rented* ladder against the screen's stay-put — the
+"`deterministic()` ignores the variant" trap for the third time, now behind one `LadderContext` with a
+parity test. Made completeness **derived, not listed**: the test reads the results component's own view
+data and fails on any key the export drops, with a documented interactive-only allowlist (run controls,
+lever sliders, the threshold explorer, the assistant). **No rasterizer on this machine** (no poppler /
+ImageMagick / Ghostscript), so the charts were verified numerically instead — a geometry audit over a
+real scenario's four charts confirming axis spans, no coordinate or label overflow, and stacked axes
+that span the stack rather than the tallest series. Also caught Pint's `fully_qualified_strict_types`
+fixer importing a **test** class into the production controller from a `{@see}` docblock; reworded to
+plain text. Full suite green, pint clean. Awaits browser sign-off (open a PDF and read it on paper).
 
 _2026-07-29 (V2 benefits check + Pension Credit severe-disability-addition couple-rule fix)_ —
 Rob asked which benefits the V2 couple could claim, then whether claiming Carer's Allowance or Attendance

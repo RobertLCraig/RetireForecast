@@ -278,6 +278,51 @@ improvements"; note it in copy, do not model it.)
 > [Quickmove — lifespan of a residential park home](https://www.quickmoveproperties.co.uk/what-is-the-lifespan-of-a-residential-park-home) ·
 > [LEASE — buying a park home: things to consider](https://parkhomes.lease-advice.org/buying-a-park-home/things-to-consider/). verified_on 2026-07-29.
 
+### Heat pumps and solar (researched 2026-07-30) — a TIME-LIMITED grant worth acting on
+**A heat pump is now grant-funded, and the historic blocker is gone.** A main-residence park home on a
+**residential-licensed** site in England or Wales qualifies for the **Boiler Upgrade Scheme** like any
+other home. The **EPC requirement — which used to disqualify most park homes — was removed on
+28 April 2026**; a recent fuel bill plus photographs of the existing system are accepted instead.
+
+| | |
+|---|---|
+| Standard air-source heat pump grant | **£7,500** |
+| **Off-gas-grid, replacing oil or LPG** (from 21 Jul 2026) | **£9,000** |
+| Uplift deadline | **31 March 2027** |
+| Holiday parks / holiday statics | **not eligible** |
+
+**Why this matters here specifically:** the LPG heating cost flagged above is the park home's worst
+running-cost risk, and it is exactly what the **£9,000** tier targets — park homes are typically
+off-gas-grid on LPG. The window closes **31 March 2027**, so on a 2026 purchase it is live. It is also
+one more reason the *residential* route is the only viable one: holiday parks are excluded outright.
+**Caveat:** a heat pump needs decent insulation to run efficiently, so the **£1,800–£2,400 underfloor
+insulation** in the table above is not merely deferred maintenance — treat it as a likely prerequisite.
+
+**Solar is NOT confirmed — do not assume it.** Three park-home-specific obstacles, none of which this
+research pass could settle from an authoritative source:
+1. **Roof structure.** Park home roofs are lightweight and shallow-pitched (the ~£100/m² re-roofing
+   figure reflects a modest structure). General guidance already insists on a structural assessment
+   before any install; a park home may need reinforcement, or panels sited elsewhere.
+2. **Consent is the site owner's, not the council's.** A park home is a **chattel**, not a
+   dwellinghouse, so the permitted-development route for solar on a dwelling does not straightforwardly
+   apply. The real gate is the **pitch agreement and site rules**.
+3. **Export income may be unavailable.** Smart Export Guarantee payments need MCS certification *and* a
+   supply account in the resident's name. On parks where the **site owner buys and resells the
+   electricity** (the arrangement the LEASE utility-charge rules exist to police), a resident may have
+   no MPAN of their own — so solar could offset consumption but earn **no export income**.
+
+**Not modelled, deliberately.** The scenarios carry the flat's existing electricity line forward and
+never charged LPG as an extra, so crediting a heat-pump saving would be crediting a saving against a
+cost the model does not hold. **Action for Rob, not the model:** ask any specific park (a) whether the
+site permits heat pumps and solar, (b) what the electricity supply arrangement is (own meter/MPAN or
+site-owner resale), and (c) whether the roof will take panels. Then it can be costed properly.
+
+> Sources: [Energy Saving Trust — Boiler Upgrade Scheme](https://energysavingtrust.org.uk/grants-and-loans/boiler-upgrade-scheme/) ·
+> [UKEM — park home heat pump grants](https://www.ukem.co.uk/park-homes/) (vendor: treat its "from £399"
+> headline with scepticism; the grant tiers are the sourced part) ·
+> [LEASE — limits on utility charges](https://parkhomes.lease-advice.org/pitch-fees-and-bills/utilities/utility-charges/limits/) ·
+> [HIES — planning permission for solar](https://www.hiesscheme.org.uk/planning-permission-for-solar-panels/). verified_on 2026-07-30.
+
 ### Non-financial risks — put these in the scenario note, not the engine
 - **No mortgage is available on a park home** (you own the structure, not the pitch; it is neither
   freehold nor leasehold). **It must be a cash purchase** — so if the sale price disappoints there is
