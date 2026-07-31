@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Compliance\Interpretation;
+use App\DecisionSupport\AdviceCostComparison;
 use App\DecisionSupport\ProtectionGap;
 use App\Enums\ScenarioStatus;
 use App\Export\ExportDisclaimer;
@@ -504,6 +505,10 @@ class ScenarioResults extends Component
             // the strategy the ladder is showing, so the two cannot disagree about which plan is
             // being stressed. Null for a one-person household (no survivor to protect).
             'protection' => app(ProtectionGap::class)->forScenario($this->scenario, $selectedStrategy),
+            // What paying for advice would cost this plan: the same projection run twice, once
+            // bearing the charges it already bears and once with an adviser's ongoing fee on top.
+            // A cost comparison, not a verdict on advice — the panel says what it cannot value.
+            'adviceCost' => app(AdviceCostComparison::class)->forScenario($this->scenario, $selectedStrategy),
             // The sale waterfall is shown only when the strategy on display actually SELLS.
             // A stay-put plan was being handed a page of "if you sell" mechanics it does not
             // do, because the presenter only asks whether a sale price was entered — and a

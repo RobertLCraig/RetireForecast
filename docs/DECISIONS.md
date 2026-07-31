@@ -3,6 +3,48 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-31 — What paying for advice would cost, built from the one figure that can be sourced
+**Context:** adviser-parity B1, which the plan itself calls "nearly free once A1 lands" — now that the
+engine charges investment costs, the cost of advice is the same projection run twice.
+
+**Decisions:**
+1. **The advised side is the plan's own charge PLUS the ongoing advice fee, and nothing else.** The plan
+   drafted a ~1.80% "total cost of ownership" from the NextWealth 2026 report. Re-verifying it at build
+   time (the plan's own ⚠️ rule) confirmed the **0.83% ongoing fee** on NextWealth's own page and in two
+   trade reports, but the 180bp total appeared **only in search-engine summaries** that could not be
+   fetched. *Rationale:* shipping it would have been a magic number wearing a citation. And the missing
+   part is not merely unverified — how much dearer an advised fund choice is varies far too much between
+   an in-house model portfolio and a whole-of-market tracker to assume for one household, so building
+   the advised total from a guessed fund uplift would have meant **inventing the larger half of the
+   number**. Constructing it as "your charge + the fee" makes the difference between the two runs
+   exactly the fee, which is what the reader is trying to see anyway.
+2. **The fee is NOT an `AssumptionSet` field.** It lives in `config/advice.php` with its source and
+   `verified_on`. *Rationale:* an assumption set is what the projection assumes about the world; the
+   forecast does not pay an advice fee, and putting it there would show it in the assumptions panel as
+   though the plan were being charged one. It is the parameter of a side-by-side comparison, and the
+   comparison is its only reader.
+3. **Editable per scenario as a plain builder field** (`adviceFeePct`), stored **sparsely** — blank means
+   "price it at the benchmark", so the benchmark is never frozen into a scenario and no scenario
+   predating the field records a spurious what-if delta. A blank box must never read as "advice is free".
+4. **Null when nothing is invested.** A percentage fee on no invested money is nothing on both sides, and
+   "£0 either way" would read as "advice is free" when the truth is that an adviser would charge such a
+   household a **fixed** fee instead. The panel simply does not render.
+5. **Framing: a cost, not a verdict.** The panel states in its own words that advice costing X%/yr must
+   add more than X%/yr of value, that whether it does is a question this tool cannot answer (the
+   most-cited component of adviser value is behavioural and none of it is modelled), and that the cost of
+   getting something wrong *without* an adviser is not modelled either. Also states that an initial /
+   one-off advice charge is on top and unmodelled.
+
+**Finding on the real household (V2):** advice costs this household very little — about **£1,278** over
+the whole plan on the stay-put base — because it has almost nothing invested. The exception is
+**sell-and-rent at ~£11,941**, the one plan whose proceeds are genuinely invested, and on the stay-put
+base the fee moves the year the money runs short from 2036 to **2035**. Whether the panel is worth much
+here therefore depends entirely on which plan is chosen, which is itself the useful output.
+
+**Consequences:** new `config/advice.php`, `App\DecisionSupport\AdviceCostComparison`, a builder field, a
+results section and its PDF twin, ASSUMPTIONS §11 and METHODOLOGY. Nothing touches the engine and no
+stored figure moves.
+
 ## 2026-07-31 — The protection gap: what a death next year costs, and the cover that vanishes at retirement
 **Context:** adviser-parity B2, and the plan's own next item after A1 and A2. The engine already
 computed the survivor cliff (the secure-income floor before and after the first death, with five

@@ -301,6 +301,21 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   `Household` rebuilds** into one `copy()` behind withers, guarded by a reflection-driven
   `HouseholdWitherTest` — a field added to the DTO and forgotten in a lever was silently dropped from
   every swept forecast. **Awaits browser sign-off** (a visible new section on results + PDF).
+- **Done 2026-07-31 — what paying for advice would cost (adviser-parity B1, DECISIONS 2026-07-31):**
+  now the engine charges investment costs at all, the cost of advice is the same projection run twice —
+  once bearing the charges it already bears, once with an adviser's ongoing fee on top — reported as
+  lifetime pounds, terminal wealth and the year the money runs out. **The advised side is the plan's own
+  charge PLUS the fee and nothing else:** the drafted ~1.80% "total cost of ownership" could only be
+  found in unverifiable search summaries, and how much dearer an advised fund choice is varies too much
+  between firms to assume, so building the total that way would have invented the larger half of the
+  number. The **0.83%** ongoing fee (NextWealth 2026, re-verified at build time) lives in
+  `config/advice.php` — **not** in `AssumptionSet`, because the forecast never charges it — and is
+  editable per scenario (blank = the benchmark, stored sparsely so no scenario predating it gains a
+  delta). Panel is framed as a **cost, not a verdict**, and says what it cannot value (behavioural
+  coaching; the cost of getting something wrong without an adviser; an initial one-off fee).
+  **V2 finding:** advice costs this household very little (~**£1,278** over the whole stay-put plan,
+  moving the shortfall 2036 → 2035) because it has almost nothing invested — **except sell-and-rent at
+  ~£11,941**, the one plan whose proceeds are genuinely invested. Awaits browser sign-off.
 - **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **read that doc before touching any V2 figure.** The base's
   "money found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
   (year 2026, the real source as the label) — see the V2 doc's note. It now needs **~£49,495**, not ~£90k.
@@ -309,7 +324,7 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
 
 ## What's next (in order)
 The whole post-v1 backlog is built. What remains:
-1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/spec/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.** Newest visible surfaces to eyeball (2026-07-30): the **"To spend / month"** and **"Available capital"** columns on the results ladder + the pair on Compare + the monthly block on `/afford`; the budget panel's **computed** mortgage instalment (it reads £0 in the stored inputs by design); the **assumed-figure** and **depreciation** notes; and the four **park-home** scenarios (51–54). Run **`php artisan scenarios:audit`** first — it checks the figures and their disclosure before you look. **Also open a downloaded PDF** (2026-07-30): it is now a full landscape print of the whole results page with all four charts drawn server-side — check the charts read well on paper and the wide cashflow ladder is legible at its print size. **New 2026-07-31:** the **investment-charges** line under the cashflow ladder (screen + PDF); the **8th assumption row** ("Investment charges (a year)", editable in the builder); the new **"Tax relief on your contribution"** select on each DC pension at builder step 3; the new **"If one of you died"** section on the results page (and its PDF twin) plus the **death-in-service cover** select on an employed person at builder step 1; and **re-run the Monte Carlo** — house-price volatility, salary volatility and above-CPI care escalation are now live for the first time, so every stored fan is narrower than the model now says it should be.
+1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/spec/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.** Newest visible surfaces to eyeball (2026-07-30): the **"To spend / month"** and **"Available capital"** columns on the results ladder + the pair on Compare + the monthly block on `/afford`; the budget panel's **computed** mortgage instalment (it reads £0 in the stored inputs by design); the **assumed-figure** and **depreciation** notes; and the four **park-home** scenarios (51–54). Run **`php artisan scenarios:audit`** first — it checks the figures and their disclosure before you look. **Also open a downloaded PDF** (2026-07-30): it is now a full landscape print of the whole results page with all four charts drawn server-side — check the charts read well on paper and the wide cashflow ladder is legible at its print size. **New 2026-07-31:** the **investment-charges** line under the cashflow ladder (screen + PDF); the **8th assumption row** ("Investment charges (a year)", editable in the builder); the new **"Tax relief on your contribution"** select on each DC pension at builder step 3; the new **"If one of you died"** section on the results page (and its PDF twin) plus the **death-in-service cover** select on an employed person at builder step 1; the new **"What paying for advice would cost"** section (+ PDF) and its **advice-fee** input at the foot of the builder's Economic assumptions; and **re-run the Monte Carlo** — house-price volatility, salary volatility and above-CPI care escalation are now live for the first time, so every stored fan is narrower than the model now says it should be.
 2. **Public-release blockers** (harmless while private, mandatory before any public launch; each flagged in code): set `config('compliance.personal_use')` false + confirm the guidance-only partition re-applies; swap the stress-test dataset off the CC BY-NC-SA JST source for an OGL/licensed one; tighten the CSP `script-src` to nonces; complete the a11y pass to a public bar.
 3. **Optional refinements to built features** (all flagged v1 limits; pick by value) — remaining care flags (age-conditioning of the onset rate + a sex split of the care *duration*; the means-test v1 flags: Pension Credit not counted into the contribution, LA-vs-self-funder fee gap); CGT deemed-occupation absences; an annuitisation retirement-month override. (Done this cluster: both house and salary growth in the Monte Carlo are now stochastic, and the care *probability* is now sex-differentiated — DECISIONS 2026-07-18.) See DATA-MODEL "Known divergences" + docs/build/PLAN.md.
 4. **CI / data hygiene (remainder).** The freshness guardrails run monthly in CI (the `data-freshness` workflow; takes effect on GitHub once pushed). Low-value hardening: a tamper-evident run hash, forecast caching.
@@ -325,15 +340,14 @@ order is **B1 — verdict-first, probability-led landing** (reuse the `/afford` 
 probability + the word-bands), then the B2–B4 results-page restructure (tabs, tables into `<details>`, banners
 demoted), then A3 fat tails / A4 State-Pension uprating. Build order in the plan's "Build order" section.
 Other partly-built specs: **adviser parity** ([docs/build/PLAN-adviser-parity.md](build/PLAN-adviser-parity.md),
-scope questions all resolved; **A1 fee drag, A2 net-pay relief and B2 protection gap are BUILT**
-2026-07-31). **One OPEN correctness gap remains** in DATA-MODEL "Known divergences" — **no ISA
+scope questions all resolved; **A1 fee drag, A2 net-pay relief, B2 protection gap and B1 cost of advice
+are BUILT** 2026-07-31). **One OPEN correctness gap remains** in DATA-MODEL "Known divergences" — **no ISA
 subscription cap** (the model shelters unlimited surplus tax-free, and biases *most* for the
 highest-surplus sell-and-invest plans, so it is not neutral across the plans being compared). Smaller
 open pieces of A2: the £3,600 non-earner relief route and the annual-allowance / MPAA cap on relievable
-contributions. Next by the plan's own order is **B1 cost of advice** (nearly free now A1 has landed:
-run the plan twice on identical seeds, DIY charges vs advised, and show the lifetime £ and the change
-in depletion year), then B5 capacity for loss, A3 ISA rules, A4 salary sacrifice, B3 estate checklist,
-B4 annual review;
+contributions. Next by the plan's own order is **B5 capacity for loss** (mostly framing over the stress
+machinery that already exists: how far can wealth fall before the essential floor breaks), then A3 ISA
+rules, A4 salary sacrifice, B3 estate checklist, B4 annual review;
 withdrawal-sequencing #5/#6 (docs/build/PLAN-withdrawal-sequencing.md, gated on two modelling
 calls from Rob); multi-property (docs/build/PLAN-multi-property.md, DRAFT); assistant scenario-editing
 (docs/build/PLAN-assistant-scenario-editing.md, approved scope, not built).
@@ -427,6 +441,21 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-31 (adviser-parity B1: the cost of advice, built from the one figure that could be sourced)_ —
+Same session, straight on from B2. Re-verified the plan's ⚠️ fee figures first, and that decided the
+design: the **0.83% ongoing fee** confirmed on NextWealth's own page and two trade reports, but the
+drafted **~1.80% total cost of ownership** existed only in search-engine summaries no fetch could
+confirm. Rather than ship a magic number wearing a citation, constructed the advised side as *the
+household's own charge plus the fee* — which is also the more honest model, since the unverified part
+(how much dearer an advised fund choice is) varies too much between an in-house model portfolio and a
+whole-of-market tracker to assume, and guessing it would have invented the larger half of the answer.
+Kept the fee **out of `AssumptionSet`**: the forecast never charges it, and an assumption set that
+listed it would imply otherwise. Returns **null** when nothing is invested rather than "£0 either way",
+which would read as "advice is free" when an adviser would in fact charge such a household a fixed fee.
+**V2 finding:** advice barely matters to this household (~£1,278 lifetime on the stay-put base) because
+it has almost nothing invested — except on **sell-and-rent (~£11,941)**, the one plan that genuinely
+invests. Full suite green, pint clean, `scenarios:audit` clean.
 
 _2026-07-31 (adviser-parity B2: the protection gap, and seven levers that could silently drop a field)_ —
 Resumed via `/handover resume`. What's next #1 is Rob's sign-off and #2 is release-gated, so took the

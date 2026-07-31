@@ -141,7 +141,29 @@ cash **−0.5%**.
    **Opt-in / null-safe:** a null charge keeps returns gross, so every pre-existing stored run reproduces
    unchanged. User-editable per scenario (the 8th economic assumption). **Confirm you're happy with 0.50%** —
    and note that an *advised* household pays this plus an ongoing advice fee (~0.83%), which is the separate
-   cost-of-advice comparison in docs/build/PLAN-adviser-parity.md B1, not modelled here.
+   cost-of-advice comparison (§11), not modelled here.
+11. **Ongoing adviser fee 0.83% a year — a COMPARISON figure, not an assumption (added 2026-07-31;
+   verified_on 2026-07-31; lives in `config/advice.php`, not in `AssumptionSet`).** It drives one thing: the
+   results page's "what paying for advice would cost" panel (adviser-parity B1), which re-runs the same plan
+   with this fee **added on top of** the §10 charge and reports the difference in lifetime pounds, in terminal
+   wealth, and in the year the money runs out. **The forecast itself never charges it.** It is deliberately
+   outside the assumption set: an assumption set says what the projection assumes about the world, and putting
+   an advice fee there would make it look as though the plan were paying one.
+   **Why 0.83%, and why nothing else is added.** NextWealth's *Fee Benchmarking Report 2026* (published
+   12 Mar 2026; data requests to large UK advice firms plus surveys of 545 advisers and 261 clients) puts the
+   average ongoing advice fee at **83bp, up from 77bp in 2025**. That figure is confirmed on NextWealth's own
+   page and in two trade reports. A widely-quoted **~180bp "total cost of ownership"** (advice + platform +
+   fund) from the same report could **not** be verified against a primary or fetchable secondary source, so it
+   is **not shipped**: the advised side is the household's own charge plus the advice fee and nothing else.
+   That is the honest construction — the fee is the one component that can be benchmarked, whereas how much
+   dearer an advised fund choice is varies far too much between an in-house model portfolio and a
+   whole-of-market tracker to assume for a particular household. Building the advised total out of an assumed
+   fund uplift would be inventing the larger half of the number.
+   **Not modelled:** a one-off / initial advice charge (commonly £1,500–£4,000, or a percentage of the amount
+   invested) is charged on top and is stated as unmodelled on the panel. User-editable per scenario — the
+   benchmark average is a starting figure and a real quote is better.
+- NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
+- Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees
 - FCA Handbook COBS 13 Annex 2 (projection rates): https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html
 - FCA/PwC, "Rates of return for FCA prescribed projections" (2017): https://www.fca.org.uk/publication/research/rates-return-fca-prescribed-projections.pdf
 - UBS Global Investment Returns Yearbook 2025 (DMS): https://www.ubs.com/global/en/investment-bank/insights-and-data/2025/global-investment-returns-yearbook-2025.html

@@ -667,6 +667,51 @@
     </div>
 @endif
 
+{{-- What paying for advice would cost. Same two runs as on screen. --}}
+@if ($adviceCost)
+    <div class="card">
+        <h2>What paying for advice would cost</h2>
+        <p class="lede">Your plan already carries <strong>{{ number_format($adviceCost['diyChargePct'], 2) }}% a
+            year</strong> in platform and fund charges. If you also paid an adviser
+            {{ $adviceCost['isCustomFee'] ? 'the' : 'the benchmark average' }}
+            <strong>{{ number_format($adviceCost['adviceFeePct'], 2) }}% a year</strong>, the money would carry
+            <strong>{{ number_format($adviceCost['advisedChargePct'], 2) }}% a year</strong> instead. All figures in
+            today's money.</p>
+        <table class="tiles">
+            <tr>
+                <td><div class="tile"><p class="tile-label">Charges over the whole plan, as you are now</p><p class="tile-value">{{ $adviceCost['diy']['lifetimeCharges']->format() }}</p></div></td>
+                <td><div class="tile"><p class="tile-label">Charges if you were advised</p><p class="tile-value">{{ $adviceCost['advised']['lifetimeCharges']->format() }}</p></div></td>
+                <td><div class="tile tile-amber"><p class="tile-label">The advice itself, over a lifetime</p><p class="tile-value">{{ $adviceCost['extraLifetimeCost']->format() }}</p></div></td>
+            </tr>
+        </table>
+        <p>It would leave <strong>{{ $adviceCost['terminalWealthLost']->format() }}</strong> less at the end of the
+            plan.
+            @if ($adviceCost['diy']['depletionYear'] === null && $adviceCost['advised']['depletionYear'] !== null)
+                And where the money currently lasts, it would instead run short in
+                <strong>{{ $adviceCost['advised']['depletionYear'] }}</strong>.
+            @elseif ($adviceCost['yearsOfMoneyLost'] > 0)
+                The money would run short in <strong>{{ $adviceCost['advised']['depletionYear'] }}</strong> rather
+                than {{ $adviceCost['diy']['depletionYear'] }} — {{ $adviceCost['yearsOfMoneyLost'] }}
+                {{ \Illuminate\Support\Str::plural('year', $adviceCost['yearsOfMoneyLost']) }} earlier.
+            @elseif ($adviceCost['diy']['depletionYear'] !== null)
+                The year the money runs short ({{ $adviceCost['diy']['depletionYear'] }}) would not move.
+            @else
+                The money would still last for life.
+            @endif
+        </p>
+        <p><strong>This is a cost, not a verdict.</strong> Advice costing
+            {{ number_format($adviceCost['adviceFeePct'], 2) }}% a year has to add more than that much value a year to
+            be worth paying for — and whether it does is a question this tool cannot answer. The most-cited part of an
+            adviser's value is behavioural (talking someone out of selling in a crash), and none of it is modelled
+            here. Neither is the cost of getting something wrong without one.</p>
+        <p class="note">The advised figure is your own charges plus the ongoing fee, and nothing else: the fee is the
+            one figure that can be benchmarked, while how much dearer an advised fund choice is varies too much
+            between firms to assume. A one-off piece of advice (commonly £1,500–£4,000, or a percentage of the amount
+            invested) is charged on top and is not modelled. Fee source: {{ $adviceCost['sourceNote'] }}
+            {{ $adviceCost['source'] }} · checked {{ $adviceCost['verifiedOn'] }}.</p>
+    </div>
+@endif
+
 @if ($iht)
     <div class="card">
         <h2>Inheritance tax on your estate</h2>

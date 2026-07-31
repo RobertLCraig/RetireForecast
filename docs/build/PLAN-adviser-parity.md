@@ -1,7 +1,7 @@
 # PLAN — adviser parity: contribution/wrapper correctness + the services that keep people paying an adviser
 
-> **Status: PART-BUILT.** **A1 (fee drag), A2 (net-pay contribution relief) and B2 (protection gap)
-> shipped 2026-07-31** — see DECISIONS
+> **Status: PART-BUILT.** **A1 (fee drag), A2 (net-pay contribution relief), B2 (protection gap) and
+> B1 (cost of advice) shipped 2026-07-31** — see DECISIONS
 > 2026-07-31 and DATA-MODEL "Known divergences"; the figures below were re-verified against primary
 > sources at build time and the shipped default is **0.50%**, with the reasoning for not taking the
 > most adverse figure recorded in docs/spec/ASSUMPTIONS.md §10. Everything else here is still spec.
@@ -213,7 +213,15 @@ all) and **cadence** (someone reviews it annually), not sophistication.
 | DB transfer advice | DB modelled as income | **Non-goal** — see below |
 | Behavioural coaching | Assistant, partially | Partial, can't fully replace |
 
-### B1. What the advice would cost you (build on A1)
+### B1. What the advice would cost you (build on A1) — ✅ BUILT 2026-07-31
+
+**Built with one deliberate departure.** The **0.83% ongoing fee** was re-verified at build time and
+ships; the drafted **~1.80% "total cost of ownership"** did **not** — it could only be found in
+search-engine summaries, never in a fetchable primary or secondary source, and the missing part (how much
+dearer an advised fund choice is) varies too much between firms to assume. So the advised side is the
+household's **own** charge plus the advice fee and nothing else, which makes the difference between the
+two runs exactly the fee. The figure lives in `config/advice.php`, **not** in `AssumptionSet` (the
+forecast never charges it), and is editable per scenario. See DECISIONS 2026-07-31.
 
 Once A1 exists, this is nearly free and it directly answers the question in the title. Run the plan twice
 on identical seeds — DIY charges vs advised charges — and show the **lifetime £ difference** and the
@@ -339,7 +347,7 @@ _Revised 2026-07-28 after the answers above._ Accuracy first, then the reuse-hea
 2. ~~**A2 pension tax relief — `net_pay` path**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). The
    AA/MPAA cap and the £3,600 non-earner route are still to wire in. Next by this order: B2.
 3. ~~**B2 protection gap**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). Next by this order: B1.
-4. **B1 cost of advice** — nearly free once A1 lands.
+4. ~~**B1 cost of advice**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). Next by this order: B5.
 5. **B5 capacity for loss** — mostly framing over existing stress machinery.
 6. **A3 ISA rules** — reduced priority. Overall £20,000 cap + the 22% S&S-cash charge bind this household;
    the age-conditional cash cut is generality/public-release.

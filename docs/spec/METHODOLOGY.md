@@ -191,6 +191,25 @@ pension. The headline panel values deaths at the plan's representative (median) 
 Carlo run also shows the **spread** of IHT across futures (the share leaving any bill, and the median vs
 high-end), since it varies with longevity and returns.
 
+## What paying for advice would cost
+
+Because the forecast charges investment costs at all, it can answer a question people actually ask: what
+would an adviser's fee do to this plan? It runs the **same projection twice** — once bearing the charges
+your assumptions already say it bears, once with an ongoing advice fee added on top — and reports the
+difference in lifetime charges, in what is left at the end, and in the year the money runs out.
+
+The advised side is your own charge **plus the fee, and nothing else**. That is deliberate. The ongoing
+fee is the one component that can be benchmarked (the 2026 UK average is 0.83% a year, from NextWealth's
+fee benchmarking work); how much dearer an advised fund choice is varies far too much between firms to
+assume for any particular household, and building the advised total out of a guessed fund uplift would
+mean inventing the larger half of the number. You can replace the benchmark with a real quote.
+
+**This is a cost, not a verdict.** Advice costing X% a year has to add more than X% a year of value to be
+worth paying for, and whether it does is a question this tool cannot answer. The most-cited component of
+an adviser's value is behavioural — talking someone out of selling in a crash — and none of it is
+modelled here. Neither is the cost of getting something wrong without one. A one-off piece of advice
+(commonly £1,500–£4,000, or a percentage of the amount invested) is charged on top and is not modelled.
+
 ## If one of you died: the protection gap
 
 A plan for two people quietly assumes you both live roughly as long as the tables say. The first death

@@ -298,6 +298,21 @@
                         </div>
                     @endforeach
                 </div>
+
+                {{-- The adviser's ongoing fee is NOT an economic assumption: the forecast never
+                     charges it. It is the parameter of the results page's "what paying for advice
+                     would cost" comparison, so it sits below the assumptions with that said out loud. --}}
+                <div class="mt-6 border-t border-gray-200 pt-4">
+                    <label for="adviceFeePct" class="{{ $label }}">If you paid for advice, the ongoing fee (% a year)</label>
+                    <input id="adviceFeePct" type="text" inputmode="decimal" wire:model.blur="adviceFeePct"
+                        placeholder="{{ number_format(config('advice.ongoing_fee_bp') / 100, 2) }}"
+                        class="{{ $field }} sm:max-w-xs"
+                        @error('adviceFeePct') aria-invalid="true" aria-describedby="adviceFeePct-error" @enderror>
+                    <p class="mt-1 text-xs text-gray-500">
+                        <strong>This is never charged to your forecast.</strong> It only prices the "what paying for advice would cost" comparison on your results, which re-runs the same plan with this fee added on top of the charges it already bears. Leave it blank to use the benchmark average of {{ number_format(config('advice.ongoing_fee_bp') / 100, 2) }}% a year (NextWealth, checked {{ config('advice.verified_on') }}); if you have a real quote, use that instead.
+                    </p>
+                    @error('adviceFeePct') <p id="adviceFeePct-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                </div>
             </fieldset>
 
             <fieldset class="{{ $section }}">

@@ -76,7 +76,7 @@ class ScenarioBuilder extends Component
     /** Which top-level form section lives on which step — drives the jump-to-first-error on save. */
     private const STEP_OF_FIELD = [
         'name' => 1, 'householdName' => 1, 'region' => 1, 'baseTaxYear' => 1,
-        'variant' => 1, 'assumptionSetId' => 1, 'assumptionOverrides' => 1, 'ihtModelled' => 1,
+        'variant' => 1, 'assumptionSetId' => 1, 'assumptionOverrides' => 1, 'adviceFeePct' => 1, 'ihtModelled' => 1,
         'homeToDescendants' => 1, 'relationshipStatus' => 1, 'people' => 1,
         'pensions' => 2, 'incomeStreams' => 2,
         'accounts' => 3, 'property' => 3, 'hasProperty' => 3, 'capitalReceipts' => 3,
@@ -130,6 +130,16 @@ class ScenarioBuilder extends Component
      * @var array<string, string>
      */
     public array $assumptionOverrides = [];
+
+    /**
+     * The ongoing adviser fee (percent a year) to price in the results page's "what paying for
+     * advice would cost" comparison. Blank (the default) uses the benchmarked average from
+     * `config/advice.php`; a real quote is better than a benchmark, which is why it is editable.
+     *
+     * NOT an assumption-set figure and never part of any projection: the forecast does not charge
+     * an advice fee. It is the parameter of a side-by-side comparison and nothing else.
+     */
+    public string $adviceFeePct = '';
 
     /** @var list<array<string, mixed>> */
     public array $people = [];
@@ -263,6 +273,11 @@ class ScenarioBuilder extends Component
             // any real UK platform + fund + advice stack, so a typo is caught but a legacy
             // high-charge product can still be modelled.
             'assumptionOverrides.investmentCharge' => ['nullable', 'numeric', 'between:0,5'],
+
+            // The adviser's ongoing fee to PRICE (not to charge the forecast). Blank = the
+            // benchmarked average. The upper bound is well above any UK ongoing advice fee, so a
+            // real quote always fits and a percent-vs-pounds typo is caught.
+            'adviceFeePct' => ['nullable', 'numeric', 'between:0,5'],
 
             'people' => ['required', 'array', 'min:1', 'max:2'],
             'people.*.dob' => ['required', 'date', 'before:today'],
@@ -918,6 +933,14 @@ class ScenarioBuilder extends Component
         $assumptionOverrides = AssumptionOverrides::sparse($this->assumptionOverrides);
         if ($assumptionOverrides !== []) {
             $state['assumptionOverrides'] = $assumptionOverrides;
+        }
+
+        // The adviser's ongoing fee is stored only when the user entered one (sparse): blank means
+        // "price it at the benchmarked average from config", so writing the benchmark back would
+        // freeze a figure that should follow the source, and would give every scenario predating
+        // the field a spurious what-if delta.
+        if (trim($this->adviceFeePct) !== '') {
+            $state['adviceFeePct'] = $this->adviceFeePct;
         }
 
         // Store the care-cost toggle only when ON (sparse), so a scenario predating it — and a

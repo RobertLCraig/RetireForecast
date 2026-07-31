@@ -19,6 +19,7 @@
         ['id' => 'sec-plsa', 'label' => 'PLSA living standards', 'show' => (bool) $plsa],
         ['id' => 'sec-income-floor', 'label' => 'Spending vs secure income', 'show' => (bool) $incomeFloor],
         ['id' => 'sec-protection', 'label' => 'If one of you died', 'show' => (bool) ($protection ?? null)],
+        ['id' => 'sec-advice-cost', 'label' => 'What advice would cost', 'show' => (bool) ($adviceCost ?? null)],
         ['id' => 'sec-iht', 'label' => 'Inheritance tax', 'show' => (bool) ($iht ?? null)],
         ['id' => 'sec-withdrawal-sequencing', 'label' => 'How you draw your money', 'show' => (bool) $withdrawal],
         ['id' => 'sec-stress', 'label' => 'Stress test: past crises', 'show' => (bool) $stressTest],
@@ -922,6 +923,58 @@
 
             <p class="mt-4 text-xs text-gray-500">
                 These figures come from the expected path, not an unlucky one, and each is the smallest lump sum that restores the plan to where it stands today — rounded up to the nearest £1,000, because a protection figure rounded down would not quite do the job. It says how large a hole a death would leave; it does not price a policy or say which one to buy, and life cover on someone older or in poor health can be expensive or simply unavailable. A lump sum is only one way to close the hole: less borrowing, more savings or a larger survivor's pension close the same gap, and the "How far can we go?" panel below can put numbers on those. Cover written in trust normally falls outside the estate for Inheritance Tax, and money paid to a survivor counts as capital for means-tested benefits, which can affect Pension Credit.
+            </p>
+
+            <x-signpost class="mt-4" />
+        </section>
+    @endif
+
+    {{-- What paying for advice would cost this plan (adviser-parity B1): the same projection run
+         twice, once with the charges it already bears and once with an adviser's ongoing fee on
+         top. A COST comparison, never a verdict on advice — the panel states what it cannot value. --}}
+    @if ($adviceCost)
+        <section id="sec-advice-cost" aria-labelledby="advice-cost-heading" class="{{ $card }} scroll-mt-6">
+            <h2 id="advice-cost-heading" class="text-xl font-semibold text-gray-900">What paying for advice would cost</h2>
+            <p class="mt-1 text-sm text-gray-600">
+                Your plan already carries <strong>{{ number_format($adviceCost['diyChargePct'], 2) }}% a year</strong> in platform and fund charges. If you also paid an adviser
+                {{ $adviceCost['isCustomFee'] ? 'the' : 'the benchmark average' }} <strong>{{ number_format($adviceCost['adviceFeePct'], 2) }}% a year</strong>,
+                the money would carry <strong>{{ number_format($adviceCost['advisedChargePct'], 2) }}% a year</strong> instead. Here is what that difference does to this plan, in today's money.
+            </p>
+
+            <dl class="mt-4 grid gap-4 sm:grid-cols-3">
+                <div class="rounded-md bg-gray-50 p-4">
+                    <dt class="text-sm text-gray-500">Charges over the whole plan, as you are now</dt>
+                    <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">{{ $adviceCost['diy']['lifetimeCharges']->format() }}</dd>
+                </div>
+                <div class="rounded-md bg-gray-50 p-4">
+                    <dt class="text-sm text-gray-500">Charges if you were advised</dt>
+                    <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">{{ $adviceCost['advised']['lifetimeCharges']->format() }}</dd>
+                </div>
+                <div class="rounded-md bg-amber-50 p-4">
+                    <dt class="text-sm text-amber-800">The advice itself, over a lifetime</dt>
+                    <dd class="mt-1 text-2xl font-semibold text-amber-900 tabular-nums">{{ $adviceCost['extraLifetimeCost']->format() }}</dd>
+                </div>
+            </dl>
+
+            <p class="mt-4 text-sm text-gray-700">
+                It would leave <strong>{{ $adviceCost['terminalWealthLost']->format() }}</strong> less at the end of the plan.
+                @if ($adviceCost['diy']['depletionYear'] === null && $adviceCost['advised']['depletionYear'] !== null)
+                    And where the money currently lasts, it would instead <strong>run short in {{ $adviceCost['advised']['depletionYear'] }}</strong>.
+                @elseif ($adviceCost['yearsOfMoneyLost'] > 0)
+                    The money would run short in <strong>{{ $adviceCost['advised']['depletionYear'] }}</strong> rather than {{ $adviceCost['diy']['depletionYear'] }} — {{ $adviceCost['yearsOfMoneyLost'] }} {{ \Illuminate\Support\Str::plural('year', $adviceCost['yearsOfMoneyLost']) }} earlier.
+                @elseif ($adviceCost['diy']['depletionYear'] !== null)
+                    The year the money runs short ({{ $adviceCost['diy']['depletionYear'] }}) would not move.
+                @else
+                    The money would still last for life.
+                @endif
+            </p>
+
+            <div class="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+                <p><strong>This is a cost, not a verdict.</strong> Advice costing {{ number_format($adviceCost['adviceFeePct'], 2) }}% a year has to add more than {{ number_format($adviceCost['adviceFeePct'], 2) }}% a year of value to be worth paying for — and whether it does is a question this tool cannot answer. The most-cited part of an adviser's value is behavioural (talking someone out of selling in a crash), and none of it is modelled here. Neither is the cost of getting something wrong without one.</p>
+            </div>
+
+            <p class="mt-3 text-xs text-gray-500">
+                The advised figure is your own charges <em>plus</em> the ongoing fee, and nothing else: the fee is the one figure that can be benchmarked, while how much dearer an advised fund choice is varies too much between firms to assume. A one-off piece of advice (commonly £1,500–£4,000, or a percentage of the amount invested) is charged on top and is not modelled. Fee source: {{ $adviceCost['sourceNote'] }} <a href="{{ $adviceCost['source'] }}" class="underline" rel="noopener">nextwealth.co.uk</a> · checked {{ $adviceCost['verifiedOn'] }}. You can enter a real quote instead, in the builder.
             </p>
 
             <x-signpost class="mt-4" />

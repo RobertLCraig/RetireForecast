@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Compliance\Interpretation;
+use App\DecisionSupport\AdviceCostComparison;
 use App\DecisionSupport\ProtectionGap;
 use App\Enums\ScenarioStatus;
 use App\Export\ChartSvg;
@@ -243,6 +244,8 @@ class ScenarioPdfController extends Controller
             // death-in-service cover pays, and the cover that would restore the plan — pinned to
             // the same strategy this report prints, as on screen.
             'protection' => app(ProtectionGap::class)->forScenario($scenario, $ladderContext->selected),
+            // What paying for advice would cost this plan — the same two runs as on screen.
+            'adviceCost' => app(AdviceCostComparison::class)->forScenario($scenario, $ladderContext->selected),
             // Where a sale's proceeds come from and go — the funding waterfall (net proceeds,
             // savings drawn, mortgage, unfunded gap), single-sourced from the engine's own
             // decomposition, exactly as the results page shows it. Printed ONLY when the
