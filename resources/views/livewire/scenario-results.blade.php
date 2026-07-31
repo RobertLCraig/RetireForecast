@@ -18,6 +18,7 @@
         ['id' => 'sec-budget', 'label' => 'Your spending plan', 'show' => ! empty($budget['tiers'])],
         ['id' => 'sec-plsa', 'label' => 'PLSA living standards', 'show' => (bool) $plsa],
         ['id' => 'sec-income-floor', 'label' => 'Spending vs secure income', 'show' => (bool) $incomeFloor],
+        ['id' => 'sec-protection', 'label' => 'If one of you died', 'show' => (bool) ($protection ?? null)],
         ['id' => 'sec-iht', 'label' => 'Inheritance tax', 'show' => (bool) ($iht ?? null)],
         ['id' => 'sec-withdrawal-sequencing', 'label' => 'How you draw your money', 'show' => (bool) $withdrawal],
         ['id' => 'sec-stress', 'label' => 'Stress test: past crises', 'show' => (bool) $stressTest],
@@ -852,6 +853,76 @@
                     <p class="mt-2 text-xs text-blue-700"><a href="{{ $pensionCredit['source'] }}" class="underline" rel="noopener">gov.uk/pension-credit</a> · checked {{ $pensionCredit['verifiedOn'] }}. The exact amount is means-tested — only the DWP can confirm what you'd get.</p>
                 </div>
             @endif
+
+            <x-signpost class="mt-4" />
+        </section>
+    @endif
+
+    {{-- The protection gap (adviser-parity B2): the survivor cliff turned into a number a reader
+         can act on. The floor panel above shows that the survivor's coverage falls; this says how
+         big the hole is in pounds, what any employer death-in-service cover already fills, and what
+         happens on the day that cover CEASES at retirement. Factual and quantum-only: it sizes the
+         hole, it does not price or recommend a policy. --}}
+    @if ($protection)
+        <section id="sec-protection" aria-labelledby="protection-heading" class="{{ $card }} scroll-mt-6">
+            <h2 id="protection-heading" class="text-xl font-semibold text-gray-900">If one of you died</h2>
+            <p class="mt-1 text-sm text-gray-600">
+                A plan for two people quietly assumes you both live roughly as long as the tables say. The first death is the sharpest single change in the whole forecast: one State Pension stops, a work pension may drop to a survivor's rate or stop altogether, and any salary ends — while the spending falls by much less. Below is what a death in <strong>{{ $protection['deathYear'] }}</strong> would do to whoever is left, and how much money would put the plan back where it is now. All figures are in today's money.
+            </p>
+
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                @foreach ($protection['people'] as $p)
+                    <div class="rounded-md border border-gray-200 bg-white p-4">
+                        <h3 class="text-base font-semibold text-gray-900">If {{ $p['name'] }} died in {{ $protection['deathYear'] }}</h3>
+
+                        <p class="mt-2 text-sm {{ $p['worseThanBaseline'] ? 'text-amber-800' : 'text-emerald-800' }}">
+                            <span aria-hidden="true">{{ $p['worseThanBaseline'] ? '⚠' : '✓' }}</span>
+                            @if (! $p['worseThanBaseline'])
+                                {{ $p['survivorName'] }} would be no worse off than this plan already is.
+                            @elseif ($p['depletionYear'])
+                                {{ $p['survivorName'] }} would run short of money in <strong>{{ $p['depletionYear'] }}</strong>{{ $protection['baselineDepletionYear'] ? ', rather than '.$protection['baselineDepletionYear'].' as the plan stands' : '' }}.
+                            @else
+                                {{ $p['survivorName'] }}'s money would not last as long as it does in this plan.
+                            @endif
+                        </p>
+
+                        @if ($p['coverInForce']->isPositive())
+                            <p class="mt-2 text-sm text-gray-700">
+                                {{ $p['name'] }}'s employer cover would pay about <strong>{{ $p['coverInForce']->format() }}</strong>@if ($p['coverDescription']) ({{ $p['coverDescription'] }})@endif. That is already counted in the figures here.
+                            </p>
+                        @endif
+
+                        <div class="mt-3 rounded-md {{ $p['gap']->isZero() ? 'bg-emerald-50' : 'bg-amber-50' }} p-3">
+                            <p class="text-xs {{ $p['gap']->isZero() ? 'text-emerald-800' : 'text-amber-800' }}">
+                                {{ $p['gap']->isZero() ? 'Nothing more needed' : 'Life cover that would close the gap' }}
+                            </p>
+                            <p class="text-lg font-semibold {{ $p['gap']->isZero() ? 'text-emerald-900' : 'text-amber-900' }} tabular-nums">
+                                {{ $p['gap']->isZero() ? '—' : $p['gap']->format() }}
+                                @if ($p['gapCeilingHit'])
+                                    <span class="text-xs font-normal">or more (beyond what this search covers)</span>
+                                @endif
+                            </p>
+                        </div>
+
+                        @if ($p['coverInForce']->isPositive() && $p['needWithoutCover']->pence > $p['gap']->pence)
+                            <p class="mt-2 text-xs text-gray-600">
+                                Without that employer cover the figure would be about <strong>{{ $p['needWithoutCover']->format() }}</strong> — so the policy {{ $p['name'] }} already has is doing most of the work.
+                            </p>
+                        @endif
+
+                        @if ($p['gapAfterCoverCeases'] && $p['coverCeasesInYear'])
+                            <p class="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+                                <strong>That cover stops when {{ $p['name'] }} retires in {{ $p['coverCeasesInYear'] }}.</strong>
+                                Death-in-service cover only pays while you are still employed. The same death in {{ $p['deathYearAfterRetirement'] }}, a year after retiring, would leave a gap of about <strong>{{ $p['gapAfterCoverCeases']->format() }}</strong> with nothing to meet it.
+                            </p>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+
+            <p class="mt-4 text-xs text-gray-500">
+                These figures come from the expected path, not an unlucky one, and each is the smallest lump sum that restores the plan to where it stands today — rounded up to the nearest £1,000, because a protection figure rounded down would not quite do the job. It says how large a hole a death would leave; it does not price a policy or say which one to buy, and life cover on someone older or in poor health can be expensive or simply unavailable. A lump sum is only one way to close the hole: less borrowing, more savings or a larger survivor's pension close the same gap, and the "How far can we go?" panel below can put numbers on those. Cover written in trust normally falls outside the estate for Inheritance Tax, and money paid to a survivor counts as capital for means-tested benefits, which can affect Pension Credit.
+            </p>
 
             <x-signpost class="mt-4" />
         </section>

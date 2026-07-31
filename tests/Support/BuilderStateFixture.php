@@ -21,10 +21,15 @@ final class BuilderStateFixture
             'relationshipStatus' => 'married_or_civil_partnership',
             'region' => 'england_wales_ni',
             'people' => [
+                // The death-in-service keys are present-but-blank on purpose: the builder BACKFILLS
+                // them on load, so a fixture person without them would differ from the same person
+                // after a round-trip and show up as a spurious what-if delta. Blank = no cover.
                 ['id' => 'p1', 'dob' => '1961-04-02', 'sex' => 'male', 'employmentStatus' => 'employed',
-                    'grossSalary' => '62000', 'salaryGrowth' => '2.5', 'plannedRetirementAge' => '66', 'niCategory' => 'A'],
+                    'grossSalary' => '62000', 'salaryGrowth' => '2.5', 'plannedRetirementAge' => '66', 'niCategory' => 'A',
+                    'deathInServiceMode' => '', 'deathInServiceMultiple' => '', 'deathInServiceSum' => ''],
                 ['id' => 'p2', 'dob' => '1963-11-20', 'sex' => 'female', 'employmentStatus' => 'retired',
-                    'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => ''],
+                    'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => '',
+                    'deathInServiceMode' => '', 'deathInServiceMultiple' => '', 'deathInServiceSum' => ''],
             ],
             'expense' => ['essential' => '', 'discretionary' => '', 'survivorFactor' => '70'],
             'expenseLines' => [

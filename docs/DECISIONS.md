@@ -3,6 +3,73 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-31 — The protection gap: what a death next year costs, and the cover that vanishes at retirement
+**Context:** adviser-parity B2, and the plan's own next item after A1 and A2. The engine already
+computed the survivor cliff (the secure-income floor before and after the first death, with five
+levers), so it already knew the *size of the hole* — but it never named the instrument that fills it,
+which is one of the few genuinely valuable things a protection adviser does. Two halves: an engine gap
+(employer death-in-service cover was not modelled at all, so an early death of a working partner lost
+the salary and gained nothing) and a presentation gap (the cliff was a percentage, not a sum of money).
+
+**Decisions:**
+1. **`Person::$deathInServiceCover`** (`?DeathInServiceCover`; null = no cover, byte-identical, and the
+   adverse default). Stated as a **multiple of salary** or a **fixed sum assured**, because schemes
+   state it both ways, and the difference is real: a multiple is sized on the salary in the year of
+   death so it keeps pace with pay, while a stated sum is **nominal** and erodes. The multiple is held
+   as a `Percent` (4x = 400%) rather than a float, under the engine's no-floats rule.
+2. **Cover is conditional on being in employment, and that is the whole point.** The payout is recorded
+   only in a member's last living year and only if they still work a fraction of it, so it **ceases at
+   retirement**. Modelling it as a flat asset would have been simpler and would have hidden the one
+   fact worth surfacing: the protection disappears exactly when the household can no longer replace it.
+3. **Tax through the engine's one income-tax pass**, not a parallel calculation. Verified 2026-07-31
+   against HMRC PTM073010 and gov.uk's lump sum allowance guidance: tax-free on a death **under 75** up
+   to the member's remaining LSDBA (£1,073,100 less lump-sum allowance already used), taxable as the
+   recipient's income above it and in full on a death at **75 or over**. The 45% special charge applies
+   only to a non-qualifying recipient (a trust), which a surviving partner is not, so it is not
+   modelled. *Rationale:* the same discipline as A2 — one definition, nothing to drift.
+4. **Outside the estate for IHT; capital, not income, for the means test.** Registered-scheme
+   death-in-service benefits are excluded from IHT, and were explicitly carved out of the April-2027
+   measure bringing unused pensions in, so the payout is deliberately not added to the deceased's
+   estate. For Pension Credit it is capital, so a new `$excludedFromAssessable` argument keeps it out
+   of assessable income while the capital tariff catches the banked cash from the following year — as
+   in life. **A payout can therefore end a survivor's Guarantee Credit**, which the forecast now shows
+   (`DeathInServiceCoverTest`) rather than hides; it is the same trap the tool already surfaces on a
+   house sale.
+5. **The protection bar is the household's OWN plan, not an absolute one.** `ProtectionGap` bisects for
+   the smallest lump sum that leaves the survivor's money lasting at least as long as the couple's plan
+   already makes it last. *Rationale:* an absolute "must never run short" bar is unanswerable for a plan
+   that already runs short, and would bill a death for a shortfall it did not cause. Solved sums round
+   **up** to £1,000: a bisection on a step function (the year the money runs out) knows the answer only
+   to within a step, and a protection figure rounded down would not quite do the job.
+6. **Modelled through existing DTO fields, not a new projector mode.** The stress is
+   `LongevityAdjustment::fixedAge` on one person; the solved cover is a `CapitalReceipt` (which is
+   exactly what life cover written in trust is to a household: one-off, documented, tax-free, outside
+   the estate). So a stressed path IS the ordinary projection, and no tax, benefit or drawdown logic
+   can diverge between the two.
+7. **Household rebuilding collapsed to one place.** Seven sweep levers each rebuilt `Household`
+   positionally, so a field added to the DTO and forgotten in a lever would be **silently dropped from
+   every swept forecast**. They now go through `withPersons()` / `withPensions()` /
+   `withExpenseProfile()` / `withCapitalReceipts()`, all delegating to one private `copy()`, guarded by
+   a reflection-driven `HouseholdWitherTest` that enumerates the DTO's own properties (so a new field
+   is covered the moment it is declared) — **verified to fail** by dropping a field from `copy()`.
+8. **Quantum only, never a product.** The panel sizes the hole and says what closes it; it does not
+   price or recommend a policy, and it says out loud that cover on someone older or in poor health may
+   be expensive or unavailable, and that less borrowing / more savings / a larger survivor's pension
+   close the same gap.
+
+**Finding on the real household (V2):** the exposure runs the **opposite way to the adviser reflex**.
+The *working* partner's death leaves the survivor no worse off; the *retired, disabled* partner's death
+is the damaging one — it removes their State Pension, their disability benefit and the couple's Pension
+Credit while the survivor still carries the stay-put mortgage, moving the shortfall from 2036 to 2030
+and needing about **£108,000** to restore the plan (about £110,000 on sell-and-rent; **£0** on
+sell-and-buy-cheaper, which is immune). Insuring the earner would have addressed the smaller risk. No
+stored scenario records any death-in-service cover, so **Rob has an input to enter** (see HANDOVER).
+
+**Consequences:** new `YearResult::INCOME_SOURCES` key `death_in_service` (shown gross); a builder
+input on step 1 for an employed person; a results-page section and its PDF twin; METHODOLOGY and
+DATA-MODEL updated. Null cover leaves every stored scenario byte-identical, so no migration and no
+re-run is required.
+
 ## 2026-07-31 — Pension contributions: net-pay tax relief, and the employer's money is the employer's
 **Context:** adviser-parity A2. `PathProjector::applyContributions` took contributions from *net*
 surplus and added no relief (the code's own docblock flagged it), so the engine modelled the cost of a

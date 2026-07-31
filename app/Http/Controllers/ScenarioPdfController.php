@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Compliance\Interpretation;
+use App\DecisionSupport\ProtectionGap;
 use App\Enums\ScenarioStatus;
 use App\Export\ChartSvg;
 use App\Forecast\AssumptionComparison;
@@ -238,6 +239,10 @@ class ScenarioPdfController extends Controller
             // Where the money COMES FROM: the entered income sources and capital pots, plus how
             // each source switches on and off across the projection.
             'incomePlan' => ResultPresenter::incomePlan($household, $forecast),
+            // The protection gap: what a death next year does to the survivor, what any employer
+            // death-in-service cover pays, and the cover that would restore the plan — pinned to
+            // the same strategy this report prints, as on screen.
+            'protection' => app(ProtectionGap::class)->forScenario($scenario, $ladderContext->selected),
             // Where a sale's proceeds come from and go — the funding waterfall (net proceeds,
             // savings drawn, mortgage, unfunded gap), single-sourced from the engine's own
             // decomposition, exactly as the results page shows it. Printed ONLY when the

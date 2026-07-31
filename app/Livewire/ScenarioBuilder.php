@@ -278,6 +278,14 @@ class ScenarioBuilder extends Component
             // grid clamps anything extreme (ages 50–110), so a loose bound is safe.
             'people.*.longevityMode' => ['nullable', Rule::in(['peer', 'fixed_age', 'offset_years'])],
             'people.*.longevityValue' => ['nullable', 'integer', 'min:-25', 'max:110', 'required_if:people.*.longevityMode,fixed_age,offset_years'],
+            // Employer death-in-service cover, stated the way the scheme states it: a multiple of
+            // salary ("4x") or a fixed sum assured. Blank mode = no cover. The two are separate
+            // fields rather than one value read two ways, so each carries its own bound: the
+            // multiple's ceiling is generous (the most generous UK schemes reach 8-10x) so a real
+            // policy is never rejected, while a sum assured typed into the multiple box still fails.
+            'people.*.deathInServiceMode' => ['nullable', Rule::in(['', 'multiple', 'fixed'])],
+            'people.*.deathInServiceMultiple' => ['nullable', 'numeric', 'min:0', 'max:20', 'required_if:people.*.deathInServiceMode,multiple'],
+            'people.*.deathInServiceSum' => [...$money, 'required_if:people.*.deathInServiceMode,fixed'],
 
             'expense.survivorFactor' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'expense.safetyBufferMonths' => ['nullable', 'integer', 'min:0', 'max:60'],
@@ -705,6 +713,15 @@ class ScenarioBuilder extends Component
         // An expense section saved before the above-CPI growth input existed has no key; default
         // it empty so the input binds (empty = property costs grow with CPI only, the old model).
         $this->expense['propertyCostsGrowthPct'] ??= '';
+
+        // A person saved before the death-in-service inputs existed has none of these keys; default
+        // them empty so the select and its two inputs bind. Empty = no cover, which is exactly the
+        // old behaviour and the adverse assumption.
+        foreach ($this->people as $i => $person) {
+            $this->people[$i]['deathInServiceMode'] ??= '';
+            $this->people[$i]['deathInServiceMultiple'] ??= '';
+            $this->people[$i]['deathInServiceSum'] ??= '';
+        }
     }
 
     /**
@@ -1551,6 +1568,10 @@ class ScenarioBuilder extends Component
             'id' => $id, 'name' => '', 'dob' => '', 'sex' => 'female', 'employmentStatus' => 'retired',
             'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => '',
             'longevityMode' => 'peer', 'longevityValue' => '', 'receivesDisabilityBenefit' => false,
+            // Employer death-in-service cover. Both blank by default so adding this field shifts
+            // no existing scenario and creates no what-if delta; blank = no cover, the adverse
+            // assumption (see DeathInServiceCover).
+            'deathInServiceMode' => '', 'deathInServiceMultiple' => '', 'deathInServiceSum' => '',
         ];
     }
 

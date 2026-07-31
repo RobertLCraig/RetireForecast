@@ -469,6 +469,22 @@ from the original plan, flagged inline:
   (single-property model — DECISIONS 2026-07-01).
 
 ## Known divergences (to close)
+- **CLOSED 2026-07-31 — an employer's death-in-service cover is now modelled, and so is the moment it
+  ceases** (adviser-parity B2, DECISIONS 2026-07-31). `Person::$deathInServiceCover`
+  (`?DeathInServiceCover`; null = no cover, the adverse default and byte-identical to before) pays a
+  lump sum to the surviving partner when the member dies **while still in employment**, sized either as
+  a multiple of the salary in the year of death or as a fixed (nominal) sum assured. Tax follows the
+  registered-scheme rules verified against HMRC PTM073010: **tax-free under 75 up to the member's
+  remaining lump sum and death benefit allowance**, taxable as the recipient's income above it and for a
+  death at **75 or over**; the taxable slice runs through the engine's single income-tax pass. It is
+  **outside the estate for IHT** (registered-scheme death-in-service benefits are excluded, including
+  under the April-2027 pensions-in-estate rule), and it is **capital, not income, for Pension Credit**
+  (so the payout can extinguish a survivor's Guarantee Credit through the capital tariff — a real effect
+  the forecast now shows). New `YearResult::INCOME_SOURCES` key `death_in_service`, shown gross.
+  **Still open:** the 45% special lump sum death benefits charge for a non-qualifying recipient (a
+  trust) is not modelled — only a surviving partner is; excepted group life policies (outside the
+  registered-scheme regime, so no LSDBA test) are not distinguished; and cover is not carried into a
+  new employment after a job change, because the engine has no concept of one.
 - **CLOSED 2026-07-31 — investment returns are no longer gross of charges** (was the largest open correctness
   gap, found 2026-07-29; A1 of [docs/build/PLAN-adviser-parity.md](build/PLAN-adviser-parity.md)).
   `AssumptionSet::$investmentCharge` (`?Percent`; null = no charge, byte-identical, so a stored run

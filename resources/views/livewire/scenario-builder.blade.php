@@ -392,6 +392,34 @@
                                 </label>
                                 <p class="mt-1 text-xs text-gray-500">Enter the benefit itself as a tax-free income stream below. This flag lets the forecast include the Pension Credit severe-disability top-up while they are alive.</p>
                             </div>
+                            {{-- Employer death-in-service (group life) cover. Most employed people have
+                                 it and most forget; it is also the one protection that VANISHES at
+                                 retirement, which is what the results page's protection panel surfaces. --}}
+                            @if (in_array($person['employmentStatus'] ?? '', ['employed', 'self_employed'], true))
+                                <div>
+                                    <label for="people-{{ $i }}-deathInServiceMode" class="{{ $label }}">Death-in-service cover from their employer</label>
+                                    <select id="people-{{ $i }}-deathInServiceMode" wire:model.live="people.{{ $i }}.deathInServiceMode" class="{{ $field }}">
+                                        <option value="">None / don't know</option>
+                                        <option value="multiple">A multiple of salary</option>
+                                        <option value="fixed">A fixed sum</option>
+                                    </select>
+                                    <p class="mt-1 text-xs text-gray-500">A lump sum an employer's group life scheme pays if you die while still working there. Commonly 2&ndash;4 times salary. It stops when you leave or retire.</p>
+                                </div>
+                                @if (($person['deathInServiceMode'] ?? '') === 'multiple')
+                                    <div>
+                                        <label for="people-{{ $i }}-deathInServiceMultiple" class="{{ $label }}">Times salary</label>
+                                        <input id="people-{{ $i }}-deathInServiceMultiple" type="number" step="0.5" min="0" wire:model.blur="people.{{ $i }}.deathInServiceMultiple" class="{{ $field }}" @error('people.'.$i.'.deathInServiceMultiple') aria-invalid="true" aria-describedby="people-{{ $i }}-deathInServiceMultiple-error" @enderror>
+                                        @error('people.'.$i.'.deathInServiceMultiple') <p id="people-{{ $i }}-deathInServiceMultiple-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                    </div>
+                                @elseif (($person['deathInServiceMode'] ?? '') === 'fixed')
+                                    <div>
+                                        <label for="people-{{ $i }}-deathInServiceSum" class="{{ $label }}">Sum assured (£)</label>
+                                        <input id="people-{{ $i }}-deathInServiceSum" type="number" min="0" wire:model.blur="people.{{ $i }}.deathInServiceSum" class="{{ $field }}" @error('people.'.$i.'.deathInServiceSum') aria-invalid="true" aria-describedby="people-{{ $i }}-deathInServiceSum-error" @enderror>
+                                        @error('people.'.$i.'.deathInServiceSum') <p id="people-{{ $i }}-deathInServiceSum-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                        <p class="mt-1 text-xs text-gray-500">A stated sum does not rise with pay or prices, so it is worth less the further away the death is. A multiple of salary keeps pace.</p>
+                                    </div>
+                                @endif
+                            @endif
                             {{-- What the lifespan lever resolves to: the modelled age/year of death from the
                                  same deterministic forecast as the live preview, so the setting is concrete. --}}
                             @if (! empty($modelledDeaths[$person['id']]))

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Compliance\Interpretation;
+use App\DecisionSupport\ProtectionGap;
 use App\Enums\ScenarioStatus;
 use App\Export\ExportDisclaimer;
 use App\Forecast\AssumptionComparison;
@@ -497,6 +498,12 @@ class ScenarioResults extends Component
             // counterpart to the spending plan, which was echoed back from day one while the
             // income side never was), plus how each source switches on and off over time.
             'incomePlan' => ResultPresenter::incomePlan($household, $forecast),
+            // The protection gap: what a death next year would do to the survivor, what any
+            // employer death-in-service cover would pay, and the life cover that would restore
+            // the plan — including what changes when that cover CEASES at retirement. Pinned to
+            // the strategy the ladder is showing, so the two cannot disagree about which plan is
+            // being stressed. Null for a one-person household (no survivor to protect).
+            'protection' => app(ProtectionGap::class)->forScenario($this->scenario, $selectedStrategy),
             // The sale waterfall is shown only when the strategy on display actually SELLS.
             // A stay-put plan was being handed a page of "if you sell" mechanics it does not
             // do, because the presenter only asks whether a sale price was entered — and a

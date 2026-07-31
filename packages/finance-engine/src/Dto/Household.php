@@ -52,6 +52,72 @@ final class Household
         public readonly array $realisedGainsAtStart = [],
     ) {}
 
+    /**
+     * The same household with different people (immutable) — a sweep lever varying a retirement
+     * age, a lifespan, a State Pension deferral, or the protection-gap stress killing one partner.
+     *
+     * @param  list<Person>  $persons
+     */
+    public function withPersons(array $persons): self
+    {
+        return $this->copy(persons: $persons);
+    }
+
+    /**
+     * The same household with different pensions (immutable) — a sweep lever varying a survivor's
+     * DB or annuity fraction.
+     *
+     * @param  list<Pension>  $pensions
+     */
+    public function withPensions(array $pensions): self
+    {
+        return $this->copy(pensions: $pensions);
+    }
+
+    /** The same household with a different expense profile (immutable) — the spend levers. */
+    public function withExpenseProfile(ExpenseProfile $expenseProfile): self
+    {
+        return $this->copy(expenseProfile: $expenseProfile);
+    }
+
+    /**
+     * The same household with different one-off capital receipts (immutable) — the protection-gap
+     * solve, which sizes the life cover a survivor would need by landing a lump sum on the death.
+     *
+     * @param  list<CapitalReceipt>  $capitalReceipts
+     */
+    public function withCapitalReceipts(array $capitalReceipts): self
+    {
+        return $this->copy(capitalReceipts: $capitalReceipts);
+    }
+
+    /**
+     * The ONE place a household is rebuilt from an existing one. Every caller that varies a single
+     * part goes through here, so a field added to this DTO cannot be silently dropped by a lever
+     * that rebuilt the household positionally and was never updated — which is exactly how a
+     * carefully-entered input disappears from a swept forecast. Guarded by `HouseholdWitherTest`.
+     *
+     * @param  list<Person>|null  $persons
+     * @param  list<Pension>|null  $pensions
+     * @param  list<CapitalReceipt>|null  $capitalReceipts
+     */
+    private function copy(?array $persons = null, ?array $pensions = null, ?ExpenseProfile $expenseProfile = null, ?array $capitalReceipts = null): self
+    {
+        return new self(
+            $this->name,
+            $this->region,
+            $persons ?? $this->persons,
+            $expenseProfile ?? $this->expenseProfile,
+            $pensions ?? $this->pensions,
+            $this->accounts,
+            $this->incomeStreams,
+            $this->primaryResidence,
+            $this->relationshipStatus,
+            $capitalReceipts ?? $this->capitalReceipts,
+            $this->realisedGainsAtStart,
+        );
+    }
+
     public function person(string $id): ?Person
     {
         foreach ($this->persons as $person) {

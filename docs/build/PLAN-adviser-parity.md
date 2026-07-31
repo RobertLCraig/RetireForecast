@@ -1,6 +1,7 @@
 # PLAN — adviser parity: contribution/wrapper correctness + the services that keep people paying an adviser
 
-> **Status: PART-BUILT.** **A1 (fee drag) and A2 (net-pay contribution relief) shipped 2026-07-31** — see DECISIONS
+> **Status: PART-BUILT.** **A1 (fee drag), A2 (net-pay contribution relief) and B2 (protection gap)
+> shipped 2026-07-31** — see DECISIONS
 > 2026-07-31 and DATA-MODEL "Known divergences"; the figures below were re-verified against primary
 > sources at build time and the shipped default is **0.50%**, with the reasoning for not taking the
 > most adverse figure recorded in docs/spec/ASSUMPTIONS.md §10. Everything else here is still spec.
@@ -229,7 +230,17 @@ honest output is that advice costing 1% must add >1%/yr of value, which is a que
 answer (behavioural value is real and unmodelled). State that limitation in the panel. Under
 `compliance.personal_use = false` this needs a banned-phrasing review.
 
-### B2. Protection gap — what life cover would close the survivor cliff
+### B2. Protection gap — what life cover would close the survivor cliff — ✅ BUILT 2026-07-31
+
+**Built as specced, plus the engine half the spec assumed away.** Death-in-service cover did not exist
+as an input at all, so it was built first (`Person::$deathInServiceCover`, registered-scheme tax rules,
+IHT-exempt, capital for the means test) and the panel then reads the payout out of the stressed
+forecast rather than recomputing it. The solve is a **deterministic bisection** on a lump sum, not a
+Monte Carlo probability restore: it runs synchronously in ~10–50 ms with no queue worker, and the bar
+is the household's own baseline depletion year rather than an absolute one (an absolute bar is
+unanswerable for a plan that already runs short). The retirement cliff-edge is priced as its own
+figure. See DECISIONS 2026-07-31. **Finding:** for the real household the exposure is on the *retired*
+partner, not the earner — the adviser reflex points the wrong way.
 
 **The strongest reuse in this plan.** RF already computes the **survivor cliff** (the decision-support
 spine has it with five levers), and it already knows the household's death ages, the income lost on first
@@ -327,8 +338,7 @@ _Revised 2026-07-28 after the answers above._ Accuracy first, then the reuse-hea
 1. ~~**A1 fee drag**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). Next by this order: A2.
 2. ~~**A2 pension tax relief — `net_pay` path**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). The
    AA/MPAA cap and the £3,600 non-earner route are still to wire in. Next by this order: B2.
-3. **B2 protection gap** — promoted: death-in-service confirmed, and it reuses the survivor cliff plus
-   `LeverThresholdService`. Include the retirement cliff-edge when cover ceases.
+3. ~~**B2 protection gap**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). Next by this order: B1.
 4. **B1 cost of advice** — nearly free once A1 lands.
 5. **B5 capacity for loss** — mostly framing over existing stress machinery.
 6. **A3 ISA rules** — reduced priority. Overall £20,000 cap + the 22% S&S-cash charge bind this household;

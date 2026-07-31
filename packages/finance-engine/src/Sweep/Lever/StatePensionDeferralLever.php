@@ -49,12 +49,7 @@ final class StatePensionDeferralLever implements SweepLever
         );
 
         return new SweepInputs(
-            new Household(
-                $household->name, $household->region, $household->persons, $household->expenseProfile,
-                $pensions, $household->accounts, $household->incomeStreams,
-                $household->primaryResidence, $household->relationshipStatus,
-                $household->capitalReceipts, $household->realisedGainsAtStart,
-            ),
+            $household->withPensions($pensions),
             $settings,
         );
     }

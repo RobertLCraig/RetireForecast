@@ -191,6 +191,43 @@ pension. The headline panel values deaths at the plan's representative (median) 
 Carlo run also shows the **spread** of IHT across futures (the share leaving any bill, and the median vs
 high-end), since it varies with longevity and returns.
 
+## If one of you died: the protection gap
+
+A plan for two people quietly assumes you both live roughly as long as the tables say. The first death
+is the sharpest single change in a projection: one State Pension stops, a defined-benefit pension may
+drop to a survivor's fraction or stop altogether, any salary ends, and any means-tested top-up is
+recalculated — while spending falls only by the survivor factor. The forecast already shows that cliff
+in the secure-income floor; the protection panel puts a **number** on it.
+
+For each of you, the tool pins your death to **next year** and re-runs the same deterministic
+projection on the same plan (the housing strategy currently on display, not a stay-put reading of a
+sell plan). It then **searches** for the smallest lump sum, arriving in that year, that puts the
+survivor's plan back where the couple's plan stands today. The bar is deliberately **relative**: "the
+money lasts at least as long as it does now". An absolute "must never run short" bar would be
+unanswerable for a plan that already runs short, and would blame a death for a shortfall it did not
+cause. The answer is rounded **up** to the nearest £1,000, because a protection figure rounded down
+would not quite do the job.
+
+**Employer death-in-service cover** is modelled as its own input, because most employed people have it,
+most forget they do, and it can close the whole gap at no cost. It is a lump sum a group life scheme
+pays if you die **while still employed** — stated either as a multiple of salary (which keeps pace with
+pay) or as a fixed sum assured (which does not, so it is worth less the further off the death is). The
+tax treatment follows the registered-scheme rules: **tax-free if you die under 75**, up to your
+remaining lump sum and death benefit allowance (£1,073,100 less any tax-free cash already taken), and
+taxable as the recipient's income above that or if you die at **75 or over**. It falls **outside your
+estate for Inheritance Tax**, including under the April-2027 rule that brings unused pensions in. To
+the survivor it is **capital, not income**, for means-tested benefits — so a large payout can end a
+survivor's Pension Credit through the capital tariff, which the forecast shows rather than hides.
+
+The point of modelling it separately is the **cliff**: the cover **ceases when the employment does**.
+The panel therefore also prices the same death a year after retirement, when the policy has gone and
+the survivor still has decades to fund.
+
+What this is not: it sizes the hole, it does not price or recommend a policy, and cover on someone
+older or in poor health can be expensive or simply unavailable. A lump sum is only one way to close the
+same gap — less borrowing, more savings, or a larger survivor's pension do it too. The figures walk the
+central (expected) path, not an unlucky one.
+
 ## Care costs
 
 Later-life care is a fat-tailed risk, so it is modelled explicitly:

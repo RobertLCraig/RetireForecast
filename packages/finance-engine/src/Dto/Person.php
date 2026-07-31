@@ -48,6 +48,14 @@ final class Person
          * (the cautious assumption: it is claimed, not assumed). See DECISIONS 2026-07-29.
          */
         public readonly bool $caresForPartner = false,
+        /**
+         * Employer death-in-service (group life) cover: a lump sum paid to the survivor if this
+         * person dies while still in employment. Null (the default, and the adverse assumption)
+         * = no cover, byte-identical to a projection that never knew about it. The cover CEASES
+         * when employment does, which is the whole point of modelling it — see
+         * {@see DeathInServiceCover}.
+         */
+        public readonly ?DeathInServiceCover $deathInServiceCover = null,
     ) {}
 
     /** The same person with a different planned retirement age (immutable; e.g. a sweep lever). */
@@ -66,6 +74,7 @@ final class Person
             $this->longevity,
             $this->receivesDisabilityBenefit,
             $this->caresForPartner,
+            $this->deathInServiceCover,
         );
     }
 
@@ -85,6 +94,7 @@ final class Person
             $longevity,
             $this->receivesDisabilityBenefit,
             $this->caresForPartner,
+            $this->deathInServiceCover,
         );
     }
 }

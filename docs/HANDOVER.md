@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-31 (adviser-parity A1 + A2 built: investment charges and net-pay contribution relief; and six shipped assumption figures found never to have reached any forecast)_
+_Last updated: 2026-07-31 (adviser-parity A1 + A2 + B2 built: investment charges, net-pay contribution relief, and the protection gap; and six shipped assumption figures found never to have reached any forecast)_
 
 ## Goal & success criteria
 Full plan: [docs/build/PLAN.md](build/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -278,6 +278,29 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   (credited while the member works, prorated in a part-year; a year with no surplus previously
   **dropped it silently**), and contributions no longer run for ever after retirement. **Effect on V2:
   none — no stored scenario records any DC contribution at all** (see Blockers).
+- **Done 2026-07-31 — the protection gap: what a death next year costs, and the cover that vanishes
+  at retirement (adviser-parity B2, DECISIONS 2026-07-31):** the engine already computed the survivor
+  cliff as a *percentage*, so it knew the size of the hole but never named the instrument that fills
+  it. Two halves. **Engine:** `Person::$deathInServiceCover` (`?DeathInServiceCover`; null = no cover,
+  byte-identical) pays an employer group-life lump sum to the survivor when a member dies **while
+  still employed** — a multiple of the salary in the year of death, or a fixed (nominal) sum assured.
+  Registered-scheme tax rules verified against HMRC PTM073010: tax-free under 75 up to the remaining
+  LSDBA, taxable as the recipient's income above it and in full at 75+, all through the engine's one
+  tax pass. **Outside the estate for IHT**; **capital, not income, for Pension Credit** — so a payout
+  can end a survivor's Guarantee Credit, which the forecast now shows. New `death_in_service` income
+  source. **App:** `ProtectionGap` bisects for the smallest lump sum that leaves the survivor's money
+  lasting at least as long as the couple's own plan does (a **relative** bar — an absolute one is
+  unanswerable for a plan that already runs short), and prices the same death a year after retirement,
+  when the cover has ceased. Deterministic and synchronous (~10–50 ms, no queue worker), pinned to the
+  strategy the ladder is showing. **Finding — the exposure runs the opposite way to the adviser
+  reflex:** the *working* partner's death leaves the survivor no worse off; the *retired, disabled*
+  partner's death is the damaging one (it removes their State Pension, disability benefit and the
+  couple's Pension Credit while the survivor still carries the stay-put mortgage), moving the
+  shortfall 2036 → 2030 and needing ~**£108,000** to restore the plan (~£110,000 on sell-and-rent,
+  **£0** on sell-and-buy-cheaper, which is immune). Also collapsed **seven sweep levers' positional
+  `Household` rebuilds** into one `copy()` behind withers, guarded by a reflection-driven
+  `HouseholdWitherTest` — a field added to the DTO and forgotten in a lever was silently dropped from
+  every swept forecast. **Awaits browser sign-off** (a visible new section on results + PDF).
 - **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **read that doc before touching any V2 figure.** The base's
   "money found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
   (year 2026, the real source as the label) — see the V2 doc's note. It now needs **~£49,495**, not ~£90k.
@@ -286,7 +309,7 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
 
 ## What's next (in order)
 The whole post-v1 backlog is built. What remains:
-1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/spec/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.** Newest visible surfaces to eyeball (2026-07-30): the **"To spend / month"** and **"Available capital"** columns on the results ladder + the pair on Compare + the monthly block on `/afford`; the budget panel's **computed** mortgage instalment (it reads £0 in the stored inputs by design); the **assumed-figure** and **depreciation** notes; and the four **park-home** scenarios (51–54). Run **`php artisan scenarios:audit`** first — it checks the figures and their disclosure before you look. **Also open a downloaded PDF** (2026-07-30): it is now a full landscape print of the whole results page with all four charts drawn server-side — check the charts read well on paper and the wide cashflow ladder is legible at its print size. **New 2026-07-31:** the **investment-charges** line under the cashflow ladder (screen + PDF); the **8th assumption row** ("Investment charges (a year)", editable in the builder); the new **"Tax relief on your contribution"** select on each DC pension at builder step 3; and **re-run the Monte Carlo** — house-price volatility, salary volatility and above-CPI care escalation are now live for the first time, so every stored fan is narrower than the model now says it should be.
+1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/spec/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.** Newest visible surfaces to eyeball (2026-07-30): the **"To spend / month"** and **"Available capital"** columns on the results ladder + the pair on Compare + the monthly block on `/afford`; the budget panel's **computed** mortgage instalment (it reads £0 in the stored inputs by design); the **assumed-figure** and **depreciation** notes; and the four **park-home** scenarios (51–54). Run **`php artisan scenarios:audit`** first — it checks the figures and their disclosure before you look. **Also open a downloaded PDF** (2026-07-30): it is now a full landscape print of the whole results page with all four charts drawn server-side — check the charts read well on paper and the wide cashflow ladder is legible at its print size. **New 2026-07-31:** the **investment-charges** line under the cashflow ladder (screen + PDF); the **8th assumption row** ("Investment charges (a year)", editable in the builder); the new **"Tax relief on your contribution"** select on each DC pension at builder step 3; the new **"If one of you died"** section on the results page (and its PDF twin) plus the **death-in-service cover** select on an employed person at builder step 1; and **re-run the Monte Carlo** — house-price volatility, salary volatility and above-CPI care escalation are now live for the first time, so every stored fan is narrower than the model now says it should be.
 2. **Public-release blockers** (harmless while private, mandatory before any public launch; each flagged in code): set `config('compliance.personal_use')` false + confirm the guidance-only partition re-applies; swap the stress-test dataset off the CC BY-NC-SA JST source for an OGL/licensed one; tighten the CSP `script-src` to nonces; complete the a11y pass to a public bar.
 3. **Optional refinements to built features** (all flagged v1 limits; pick by value) — remaining care flags (age-conditioning of the onset rate + a sex split of the care *duration*; the means-test v1 flags: Pension Credit not counted into the contribution, LA-vs-self-funder fee gap); CGT deemed-occupation absences; an annuitisation retirement-month override. (Done this cluster: both house and salary growth in the Monte Carlo are now stochastic, and the care *probability* is now sex-differentiated — DECISIONS 2026-07-18.) See DATA-MODEL "Known divergences" + docs/build/PLAN.md.
 4. **CI / data hygiene (remainder).** The freshness guardrails run monthly in CI (the `data-freshness` workflow; takes effect on GitHub once pushed). Low-value hardening: a tamper-evident run hash, forecast caching.
@@ -302,13 +325,15 @@ order is **B1 — verdict-first, probability-led landing** (reuse the `/afford` 
 probability + the word-bands), then the B2–B4 results-page restructure (tabs, tables into `<details>`, banners
 demoted), then A3 fat tails / A4 State-Pension uprating. Build order in the plan's "Build order" section.
 Other partly-built specs: **adviser parity** ([docs/build/PLAN-adviser-parity.md](build/PLAN-adviser-parity.md),
-scope questions all resolved; **A1 fee drag and A2 net-pay relief are BUILT** 2026-07-31). **One OPEN
-correctness gap remains** in DATA-MODEL "Known divergences" — **no ISA subscription cap** (the model
-shelters unlimited surplus tax-free, and biases *most* for the highest-surplus sell-and-invest plans, so
-it is not neutral across the plans being compared). Smaller open pieces of A2: the £3,600 non-earner
-relief route and the annual-allowance / MPAA cap on relievable contributions. Next by the plan's own
-order is **B2 protection gap** (death-in-service confirmed in force, and it *ceases at retirement* — a
-real cliff-edge; reuses the survivor cliff + `LeverThresholdService`), then B1 cost of advice;
+scope questions all resolved; **A1 fee drag, A2 net-pay relief and B2 protection gap are BUILT**
+2026-07-31). **One OPEN correctness gap remains** in DATA-MODEL "Known divergences" — **no ISA
+subscription cap** (the model shelters unlimited surplus tax-free, and biases *most* for the
+highest-surplus sell-and-invest plans, so it is not neutral across the plans being compared). Smaller
+open pieces of A2: the £3,600 non-earner relief route and the annual-allowance / MPAA cap on relievable
+contributions. Next by the plan's own order is **B1 cost of advice** (nearly free now A1 has landed:
+run the plan twice on identical seeds, DIY charges vs advised, and show the lifetime £ and the change
+in depletion year), then B5 capacity for loss, A3 ISA rules, A4 salary sacrifice, B3 estate checklist,
+B4 annual review;
 withdrawal-sequencing #5/#6 (docs/build/PLAN-withdrawal-sequencing.md, gated on two modelling
 calls from Rob); multi-property (docs/build/PLAN-multi-property.md, DRAFT); assistant scenario-editing
 (docs/build/PLAN-assistant-scenario-editing.md, approved scope, not built).
@@ -323,6 +348,13 @@ calls from Rob); multi-property (docs/build/PLAN-multi-property.md, DRAFT); assi
   tax relief too. Deliberately **not** fixed by assuming a figure. If contributions are added, set the
   pension's **relief method to "net pay"** (Rob's recorded answer, PLAN-adviser-parity "Decisions
   resolved" #2) or the results page will say relief is not being modelled.
+- [ ] **Enter the working partner's death-in-service cover** (found 2026-07-31, Rob). It is confirmed
+  in force (PLAN-adviser-parity "Decisions resolved" #4) but **no stored scenario records any**, so the
+  new "If one of you died" panel currently shows £0 of cover for them. Builder step 1 → the employed
+  person → "Death-in-service cover from their employer" (a multiple of salary, or a fixed sum). Worth
+  knowing before entering it: **it changes little here** — the modelling shows the working partner's
+  death is *not* the household's protection risk; the retired partner's is, and no employer cover
+  exists for them.
 - [ ] **Spreadsheet import** — the line-item expense-category data-model decision; re-verify IWT CSP vs a real export.
 - [ ] **Demo couple's anonymised figures** — Rob supplies later, entered via the UI, not hardcoded.
 - [ ] **Document where the V2 base's remortgage money comes from** (Rob, in the UI): the base needs **~£49,495**
@@ -395,6 +427,35 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-31 (adviser-parity B2: the protection gap, and seven levers that could silently drop a field)_ —
+Resumed via `/handover resume`. What's next #1 is Rob's sign-off and #2 is release-gated, so took the
+plan's own next item: **B2 protection gap**. Verified the tax and IHT treatment against HMRC's Pensions
+Tax Manual and gov.uk **before** modelling anything, rather than shipping the plan's ⚠️ figures on trust
+— which is how the LSDBA test, the age-75 rule and the April-2027 IHT carve-out came to be modelled at
+all. Built the stress through **existing DTO fields** (`LongevityAdjustment::fixedAge` for the death,
+`CapitalReceipt` for the cover) rather than a new projector mode, so a stressed path IS the ordinary
+projection and no tax, benefit or drawdown logic can diverge between the two.
+**Two things the tests earned.** (1) A "the payout persists" assertion failed by £1,072 — chased it
+rather than loosening the delta, and it was **real**: £160,000 of capital ends the survivor's Pension
+Credit, the same trap the tool already shows on a house sale. Pinned as its own test instead of hidden.
+(2) A threshold test that handed the household the solved sum as a capital receipt failed because a
+receipt in the builder state arrives **whether or not anyone dies**, so it lifted the baseline too and
+moved the very bar being measured; re-cut through death-contingent cover.
+**Then the measurement changed the story.** The adviser reflex is to insure the earner. Here the
+*working* partner's death leaves the survivor no worse off, while the *retired, disabled* partner's
+death is the damaging one — it takes their State Pension, their disability benefit and the couple's
+Pension Credit while the survivor still carries the stay-put mortgage. Checked that against the
+stressed ladders line by line before believing it. Added the honest corollary to the panel: cover on
+someone older or unwell may be expensive or unavailable, and a lump sum is only one way to close the
+hole.
+**Also closed a latent drift bug found on the way:** seven sweep levers each rebuilt `Household`
+positionally, so a field added to the DTO and forgotten in a lever would be silently dropped from every
+swept forecast. One private `copy()` now owns it, guarded by a reflection-driven test that enumerates
+the DTO's own properties — **verified to fail** by dropping a field. Pint's `fully_qualified_strict_types`
+fixer again tried to turn a `{@see}` into a real `use` (this time giving a Dto a Forecast dependency);
+reworded to plain text with a note, as on 2026-07-30. Full suite green, pint clean, `scenarios:audit`
+clean, assets rebuilt.
 
 _2026-07-31 (adviser-parity A2: net-pay contribution relief, and the employer's contribution stops being
 charged to the household)_ —

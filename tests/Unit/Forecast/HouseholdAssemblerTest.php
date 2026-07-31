@@ -11,6 +11,7 @@ use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
+use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
@@ -198,6 +199,50 @@ class HouseholdAssemblerTest extends TestCase
 
         $this->assertTrue($household->persons[0]->receivesDisabilityBenefit);
         $this->assertFalse($household->persons[1]->receivesDisabilityBenefit); // absent flag = false
+    }
+
+    /**
+     * @param  array<string, mixed>  $person
+     */
+    private function personFrom(array $person): Person
+    {
+        return (new HouseholdAssembler)->household([
+            'householdName' => 'Cover', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1966-01-01', 'sex' => 'male', 'employmentStatus' => 'employed', 'grossSalary' => '40000'] + $person],
+            'expenseLines' => [['id' => 'e1', 'amount' => '10000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ])->persons[0];
+    }
+
+    public function test_death_in_service_cover_reaches_the_person_stated_either_way(): void
+    {
+        // A multiple is held as a Percent (400% = 4x), so it stays exact under the no-floats rule
+        // and sizes itself on whatever the salary is in the year of death.
+        $multiple = $this->personFrom(['deathInServiceMode' => 'multiple', 'deathInServiceMultiple' => '4'])->deathInServiceCover;
+        $this->assertNotNull($multiple);
+        $this->assertSame(
+            Money::fromPounds(160_000)->pence,
+            $multiple->amountAt(Money::fromPounds(40_000))->pence,
+        );
+        $this->assertSame('4x salary', $multiple->describe());
+
+        $fixed = $this->personFrom(['deathInServiceMode' => 'fixed', 'deathInServiceSum' => '150000'])->deathInServiceCover;
+        $this->assertNotNull($fixed);
+        $this->assertSame(
+            Money::fromPounds(150_000)->pence,
+            $fixed->amountAt(Money::fromPounds(40_000))->pence,
+            'a fixed sum assured ignores the salary, by definition',
+        );
+    }
+
+    public function test_no_cover_is_the_default_and_a_half_filled_input_never_claims_a_policy(): void
+    {
+        // Absent, blank, and "a mode chosen but no figure typed" must all mean NO cover — never a
+        // zero-value policy the reader would see listed as if it existed.
+        $this->assertNull($this->personFrom([])->deathInServiceCover);
+        $this->assertNull($this->personFrom(['deathInServiceMode' => '', 'deathInServiceMultiple' => ''])->deathInServiceCover);
+        $this->assertNull($this->personFrom(['deathInServiceMode' => 'multiple', 'deathInServiceMultiple' => ''])->deathInServiceCover);
+        $this->assertNull($this->personFrom(['deathInServiceMode' => 'fixed', 'deathInServiceSum' => ''])->deathInServiceCover);
     }
 
     public function test_an_old_single_selling_cost_rate_maps_to_one_estate_agent_component(): void

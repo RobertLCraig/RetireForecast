@@ -13,6 +13,7 @@ use RetireForecast\FinanceEngine\Dto\CapitalReceipt;
 use RetireForecast\FinanceEngine\Dto\CgtHistory;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
+use RetireForecast\FinanceEngine\Dto\DeathInServiceCover;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
@@ -164,7 +165,41 @@ final class HouseholdAssembler
             name: $this->stringOrNull($p['name'] ?? null),
             longevity: $this->longevity($p),
             receivesDisabilityBenefit: (bool) ($p['receivesDisabilityBenefit'] ?? false),
+            deathInServiceCover: $this->deathInServiceCover($p),
         );
+    }
+
+    /**
+     * Employer death-in-service (group life) cover, stated as the scheme states it: a multiple of
+     * salary or a fixed sum assured. A blank or absent mode is no cover (null) — the adverse
+     * assumption, and byte-identical to a projection that never knew about it.
+     *
+     * A mode with a blank figure is treated as no cover rather than as zero cover, so a
+     * half-completed input never silently claims a policy exists; validation asks for the figure.
+     *
+     * @param  array<string, mixed>  $p
+     */
+    private function deathInServiceCover(array $p): ?DeathInServiceCover
+    {
+        $mode = (string) ($p['deathInServiceMode'] ?? '');
+
+        if ($mode === 'multiple') {
+            $multiple = $this->floatOrNull($p['deathInServiceMultiple'] ?? null);
+
+            // The DTO holds the multiple as a Percent (integer basis points, the engine's no-floats
+            // rule), so "4x salary" is 400%.
+            return $multiple === null
+                ? null
+                : DeathInServiceCover::multipleOfSalary(Percent::fromPercent($multiple * 100));
+        }
+
+        if ($mode === 'fixed') {
+            $sum = $this->money($p['deathInServiceSum'] ?? null);
+
+            return $sum === null ? null : DeathInServiceCover::fixedSum($sum);
+        }
+
+        return null;
     }
 
     /**

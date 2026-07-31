@@ -512,6 +512,9 @@ final class PathProjector
             'annuities' => $annuities, // planned/active lifetime annuities bought from DC pots
             'careRealTotal' => 0, // accumulated real (today's money) care cost incurred on this path
             'estateSettled' => [], // person ids whose assets have passed to the survivor (once each)
+            // Death-in-service lump sums recorded in a member's final working year and paid to the
+            // survivor the following year (personId => the payout's facts). Drained when paid.
+            'deathBenefit' => [],
             // Running nominal growth factors (1.0 in the base year). salaryFactor is per-person so
             // each person's pay can escalate at their own rate (Person::salaryGrowth override).
             'salaryFactor' => $salaryFactor,
@@ -616,6 +619,113 @@ final class PathProjector
     }
 
     /**
+     * Record an employer death-in-service lump sum, if this year is $person's LAST living year and
+     * they are still in employment then.
+     *
+     * Cover is conditional on being *in service*, which is exactly why it is worth modelling: it
+     * **ceases when employment does**, so a household relying on it loses it at retirement — in the
+     * years a survivor has the longest left to fund. A member who dies after their planned
+     * retirement age works no fraction of that year, so nothing is recorded and nothing is paid.
+     *
+     * The sum is sized on the member's FULL-year salary in the year of death (a multiple of
+     * contractual annual salary, not of the part-year a retirement year actually pays), and stashed
+     * with the two facts its tax treatment needs later: their age at death, and how much of their
+     * lump-sum allowance they had used.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function recordDeathInServiceBenefit(array &$state, Person $person, int $age, PathDraws $draws): void
+    {
+        if ($person->deathInServiceCover === null
+            || $person->employmentStatus !== EmploymentStatus::Employed
+            || $person->grossSalary === null
+            || $age !== $draws->deathAge($person->id)
+            || self::workFraction($person, $age) <= 0.0) {
+            return;
+        }
+
+        $annualSalary = Money::fromPence((int) round($person->grossSalary->pence * $state['salaryFactor'][$person->id]));
+
+        $state['deathBenefit'][$person->id] = [
+            'gross' => $person->deathInServiceCover->amountAt($annualSalary)->pence,
+            'ageAtDeath' => $age,
+            'lsaUsed' => $state['lsaUsed'][$person->id],
+        ];
+    }
+
+    /**
+     * Pay any recorded death-in-service lump sum whose member has now died, to the first living
+     * person (the same heir convention {@see settleEstates} uses), and split it into its tax-free
+     * and taxable parts. Returns null when there is nothing to pay.
+     *
+     * **Tax treatment** (verified 2026-07-31 against HMRC's Pensions Tax Manual PTM073010 and
+     * gov.uk's lump sum allowance guidance):
+     *  - Death **under 75**: tax-free up to the deceased's REMAINING lump sum and death benefit
+     *    allowance (the £1,073,100 LSDBA less the lump-sum allowance they had already used through
+     *    tax-free cash); anything above it is taxed as the recipient's income at their marginal rate.
+     *  - Death at **75 or over**: the whole lump sum is taxable as the recipient's pension income.
+     *    (The 45% special lump sum death benefits charge applies only where the recipient is a
+     *    non-qualifying person, e.g. a trust — not a surviving partner, so it is not modelled.)
+     *
+     * **Inheritance Tax:** none. Death-in-service benefits from a registered pension scheme are
+     * outside the IHT net, and are explicitly excluded from the April-2027 measure that brings
+     * unused pension funds into the estate — so the payout is deliberately NOT added to the
+     * deceased's estate here. It becomes the survivor's own money, and is in their estate at the
+     * second death like any other cash, which the projector already handles.
+     *
+     * If nobody survives the member (a one-person household), the projection has ended: the money
+     * passes outside the estate to their beneficiaries and cannot affect the forecast, so the
+     * record is simply never drained.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     * @return array{heirId: string, taxFree: int, taxable: int}|null
+     */
+    private function collectDeathInServiceBenefit(array &$state, Household $household, array $alive): ?array
+    {
+        if ($state['deathBenefit'] === []) {
+            return null;
+        }
+
+        $heir = null;
+        foreach ($household->persons as $person) {
+            if ($alive[$person->id]) {
+                $heir = $person->id;
+                break;
+            }
+        }
+        if ($heir === null) {
+            return null;
+        }
+
+        $taxFree = 0;
+        $taxable = 0;
+        foreach ($state['deathBenefit'] as $pid => $benefit) {
+            if ($alive[$pid] ?? false) {
+                continue; // recorded, but they have not died yet — this is still their final living year
+            }
+            unset($state['deathBenefit'][$pid]);
+
+            if ($benefit['ageAtDeath'] >= 75) {
+                $taxable += $benefit['gross'];
+
+                continue;
+            }
+
+            $allowanceLeft = max(0, $this->config->pension->lumpSumAndDeathBenefitAllowance->pence - $benefit['lsaUsed']);
+            $free = min($benefit['gross'], $allowanceLeft);
+            $taxFree += $free;
+            $taxable += $benefit['gross'] - $free;
+        }
+
+        if ($taxFree === 0 && $taxable === 0) {
+            return null;
+        }
+
+        return ['heirId' => $heir, 'taxFree' => $taxFree, 'taxable' => $taxable];
+    }
+
+    /**
      * @param  array<string, mixed>  $state
      * @param  array<string, bool>  $alive
      */
@@ -684,6 +794,11 @@ final class PathProjector
             // Planned DC withdrawals due at this age.
             $wd = $this->plannedWithdrawals($state, $person->id, $age);
 
+            // Employer death-in-service cover: recorded in the member's LAST living year, while
+            // the salary that sizes it and the lump-sum allowance they have used are both still
+            // known. It is PAID next year, when the death is settled — see collectDeathInServiceBenefit().
+            $this->recordDeathInServiceBenefit($state, $person, $age, $draws);
+
             // DB commutation: a tax-free lump sum taken at the member's retirement (the pension
             // itself was reduced for it in dbIncome). Routed as pension tax-free cash, like a PCLS.
             $commutationCash = $this->commutationLumpSumNominal($household, $person->id, $age, $state['dbFactor']);
@@ -708,6 +823,22 @@ final class PathProjector
         foreach ($this->annuityIncomeNominal($state, $household, $alive, $cumInflation) as $pid => $annuityAmount) {
             $taxablePerPerson[$pid] += $annuityAmount;
             $src['other_taxable'] += $annuityAmount;
+        }
+
+        // Employer death-in-service cover: a member who died last year still in employment leaves
+        // the scheme's lump sum to their survivor, paid now. The tax-free part joins the year's
+        // tax-free cash; the taxable part (death at 75+, or above the deceased's remaining lump sum
+        // and death benefit allowance) joins the survivor's taxable income so it runs through the
+        // engine's ONE income-tax pass rather than a parallel calculation. It is a capital receipt
+        // for the means test, not income, so it is excluded from the Pension Credit assessment
+        // ($meansTestExcluded) — the banked cash raises tariff income from the following year instead.
+        $meansTestExcluded = [];
+        $deathBenefit = $this->collectDeathInServiceBenefit($state, $household, $alive);
+        if ($deathBenefit !== null) {
+            $taxablePerPerson[$deathBenefit['heirId']] += $deathBenefit['taxable'];
+            $meansTestExcluded[$deathBenefit['heirId']] = $deathBenefit['taxable'];
+            $taxFreeCashNominal += $deathBenefit['taxFree'];
+            $src['death_in_service'] += $deathBenefit['taxable'] + $deathBenefit['taxFree'];
         }
 
         // Survivor DB pension: when a DB member dies, a scheme with a survivor's fraction continues
@@ -809,7 +940,7 @@ final class PathProjector
         // household's appropriate minimum guarantee, credited as income before any shortfall
         // is funded — so a sale that turns the exempt home into assessable capital (raising the
         // tariff income) erodes it in-projection, the downsizing trap made visible.
-        $benefitNominal = $this->meansTestedBenefitNominal($household, $state, $alive, $calendarYear, $taxablePerPerson, $aliveCount);
+        $benefitNominal = $this->meansTestedBenefitNominal($household, $state, $alive, $calendarYear, $taxablePerPerson, $aliveCount, $meansTestExcluded);
         $netCashNominal += $benefitNominal;
         $grossIncomeNominal += $benefitNominal;
         $src['means_tested_benefit'] += $benefitNominal;
@@ -1106,8 +1237,11 @@ final class PathProjector
      * @param  array<string, mixed>  $state
      * @param  array<string, bool>  $alive
      * @param  array<string, int>  $taxablePerPerson
+     * @param  array<string, int>  $excludedFromAssessable  taxable receipts that are CAPITAL for the
+     *                                                      means test, not income (a death-in-service
+     *                                                      lump sum): taxed as income, assessed as capital
      */
-    private function meansTestedBenefitNominal(Household $household, array $state, array $alive, int $calendarYear, array $taxablePerPerson, int $aliveCount): int
+    private function meansTestedBenefitNominal(Household $household, array $state, array $alive, int $calendarYear, array $taxablePerPerson, int $aliveCount, array $excludedFromAssessable = []): int
     {
         $weeksPerYear = $this->config->statePension->weeksPerYear;
 
@@ -1121,7 +1255,7 @@ final class PathProjector
             if ($calendarYear < $state['spaYear'][$person->id]) {
                 return 0;
             }
-            $assessableAnnual += $taxablePerPerson[$person->id];
+            $assessableAnnual += $taxablePerPerson[$person->id] - ($excludedFromAssessable[$person->id] ?? 0);
             // A paused (deferred) State Pension is still assessable income for Pension Credit — count
             // the notional undeferred amount during the deferral window, since the paid figure is 0
             // there (deferring must not conjure Pension Credit it wouldn't otherwise get).

@@ -51,7 +51,9 @@ final class YearResult
      * pension tax-free lump sums; taxable pension drawdown (planned + drawn to meet a
      * shortfall); capital drawn from savings/ISA/GIA; and documented one-off capital
      * receipts (a family gift / inheritance / outside-asset sale — tax-free, one-off,
-     * so never part of the secure-income floor).
+     * so never part of the secure-income floor); and an employer death-in-service lump
+     * sum paid to the survivor (likewise one-off, and shown GROSS — any tax on it is in
+     * the year's total tax, as for every other taxable source).
      */
     public const INCOME_SOURCES = [
         'salary',
@@ -65,6 +67,7 @@ final class YearResult
         'pension_drawdown',
         'asset_drawdown',
         'capital_receipt',
+        'death_in_service',
     ];
 
     /**

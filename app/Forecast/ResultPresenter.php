@@ -74,6 +74,8 @@ final class ResultPresenter
         'asset_drawdown' => 'Savings drawn',
         // One-off, so deliberately NOT in SECURE_SOURCES: a gift never inflates the income floor.
         'capital_receipt' => 'One-off receipt',
+        // Likewise one-off: the employer's group-life lump sum lands once, on a death in service.
+        'death_in_service' => 'Death-in-service payout',
     ];
 
     /**

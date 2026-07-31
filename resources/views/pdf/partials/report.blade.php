@@ -607,6 +607,66 @@
     </div>
 @endif
 
+{{-- The protection gap: the survivor cliff above, priced. Same source as the screen panel. --}}
+@if ($protection)
+    <div class="card">
+        <h2>If one of you died</h2>
+        <p class="lede">A plan for two people quietly assumes you both live roughly as long as the tables say. The
+            first death is the sharpest single change in the whole forecast: one State Pension stops, a work pension
+            may drop to a survivor's rate or stop altogether, and any salary ends — while the spending falls by much
+            less. Below is what a death in <strong>{{ $protection['deathYear'] }}</strong> would do to whoever is
+            left, and how much money would put the plan back where it is now. All figures are in today's money.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>If this person died in {{ $protection['deathYear'] }}</th>
+                    <th>What happens to the survivor</th>
+                    <th class="num">Employer cover</th>
+                    <th class="num">Further cover needed</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($protection['people'] as $p)
+                    <tr>
+                        <td>{{ $p['name'] }}</td>
+                        <td>
+                            @if (! $p['worseThanBaseline'])
+                                {{ $p['survivorName'] }} would be no worse off than this plan already is.
+                            @elseif ($p['depletionYear'])
+                                {{ $p['survivorName'] }} would run short in {{ $p['depletionYear'] }}{{ $protection['baselineDepletionYear'] ? ', rather than '.$protection['baselineDepletionYear'] : '' }}.
+                            @else
+                                {{ $p['survivorName'] }}'s money would not last as long as it does in this plan.
+                            @endif
+                        </td>
+                        <td class="num">{{ $p['coverInForce']->isPositive() ? $p['coverInForce']->format().($p['coverDescription'] ? ' ('.$p['coverDescription'].')' : '') : '—' }}</td>
+                        <td class="num">{{ $p['gap']->isZero() ? '—' : $p['gap']->format().($p['gapCeilingHit'] ? ' or more' : '') }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+        @foreach ($protection['people'] as $p)
+            @if ($p['coverInForce']->isPositive() && $p['needWithoutCover']->pence > $p['gap']->pence)
+                <p class="note">Without {{ $p['name'] }}'s employer cover the figure would be about
+                    {{ $p['needWithoutCover']->format() }} — so the policy they already have is doing most of the work.</p>
+            @endif
+            @if ($p['gapAfterCoverCeases'] && $p['coverCeasesInYear'])
+                <p class="note"><strong>{{ $p['name'] }}'s cover stops when they retire in
+                    {{ $p['coverCeasesInYear'] }}.</strong> Death-in-service cover only pays while you are still
+                    employed. The same death in {{ $p['deathYearAfterRetirement'] }}, a year after retiring, would
+                    leave a gap of about {{ $p['gapAfterCoverCeases']->format() }} with nothing to meet it.</p>
+            @endif
+        @endforeach
+        <p class="note">These figures come from the expected path, not an unlucky one, and each is the smallest lump
+            sum that restores the plan to where it stands today — rounded up to the nearest £1,000, because a
+            protection figure rounded down would not quite do the job. It says how large a hole a death would leave;
+            it does not price a policy or say which one to buy, and life cover on someone older or in poor health can
+            be expensive or simply unavailable. A lump sum is only one way to close the hole: less borrowing, more
+            savings or a larger survivor's pension close the same gap. Cover written in trust normally falls outside
+            the estate for Inheritance Tax, and money paid to a survivor counts as capital for means-tested benefits,
+            which can affect Pension Credit.</p>
+    </div>
+@endif
+
 @if ($iht)
     <div class="card">
         <h2>Inheritance tax on your estate</h2>

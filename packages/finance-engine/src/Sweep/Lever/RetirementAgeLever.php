@@ -37,12 +37,7 @@ final class RetirementAgeLever implements SweepLever
         );
 
         return new SweepInputs(
-            new Household(
-                $household->name, $household->region, $persons, $household->expenseProfile,
-                $household->pensions, $household->accounts, $household->incomeStreams,
-                $household->primaryResidence, $household->relationshipStatus,
-                $household->capitalReceipts, $household->realisedGainsAtStart,
-            ),
+            $household->withPersons($persons),
             $settings,
         );
     }
