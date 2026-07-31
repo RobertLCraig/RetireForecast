@@ -517,12 +517,28 @@ from the original plan, flagged inline:
   pension-vs-ISA comparison against the pension. Relief method matters (`net_pay` / `relief_at_source` /
   `salary_sacrifice`) and none is modelled; salary sacrifice's NI saving is absent entirely. Must bind to
   the existing annual-allowance + MPAA machinery when built. Specced as A2/A4 of the same plan.
-- **OPEN — ISA subscription limits are not enforced.** `applyContributions` routes `ongoingContributions`
-  into the ISA bucket with no allowance check, so the model can shelter unlimited surplus tax-free. The
-  bias is largest for the highest-surplus plans (the sell-and-invest housing variants), so it is **not
-  neutral across the plans being compared**. The £20,000 overall cap and the April-2027 22% charge on
-  S&S-ISA cash both bind; the April-2027 cash-ISA cut to £12,000 does not apply to a 65+ saver. Specced as
-  A3 of the same plan.
+- **CLOSED 2026-07-31 — the ISA overall subscription allowance is enforced** (adviser-parity A3,
+  DECISIONS 2026-07-31). New `IsaParameters` in the tax-year registry (£20,000 overall per person per
+  year, sourced + `verified_on`, plus the dated April-2027 cash-ISA cut it also carries).
+  `applyContributions` now caps ISA subscriptions **per person, per year** and **spills the excess into
+  that person's GIA** — the household still saves the money, it just saves it somewhere taxable, which
+  is what happens in reality. Dropping the excess would have been a completeness failure (a real input
+  that stops counting) and would have made the household look poorer rather than more taxed. The cap
+  applies to money paid **in**, never to what the wrapper already holds. Guarded by
+  `IsaSubscriptionCapTest`, **verified to fail** with the cap removed.
+  **Correction to the earlier note here (which overstated this, and pointed the wrong way):** it claimed
+  the bias was "largest for the sell-and-invest housing variants". It is not. A sale's proceeds are
+  invested into a **GIA**, not an ISA (`HousingComparison::withHousing`), and ordinary surplus banks to
+  **cash** — so no housing variant ever sheltered a penny through the missing cap. The gap only ever
+  bit on an explicitly-entered ISA `ongoingContributions` above £20,000/yr, which no stored scenario
+  has. Measured on the real household before building: peak liquid wealth £136k–£150k and lifetime
+  investment income £32k–£38k, most of it inside the personal savings and dividend allowances.
+  **Still open, and the larger of the two:** the engine never *uses* the allowance either — a household
+  holding a large GIA would in reality move £20,000 each per year into an ISA ("bed and ISA", a CGT
+  disposal), and the model does not, so it **understates** the after-tax return of exactly those
+  sell-and-invest plans. The April-2027 22% charge on cash held inside a stocks-and-shares ISA has
+  nothing to bite on (an ISA is modelled as one invested balance, with no cash sleeve); the April-2027
+  cash-ISA cut does not apply to a 65+ saver.
 - **A bought home can now carry its own cost and its own (possibly NEGATIVE) growth — CLOSED
   2026-07-30 (DECISIONS 2026-07-30).** `HousingAction::$buyRunningCosts` + `$buyGrowthOverride`. The
   bought home previously always appreciated at the assumption-set house rate with running costs derived

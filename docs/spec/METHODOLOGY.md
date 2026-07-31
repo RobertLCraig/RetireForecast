@@ -191,6 +191,23 @@ pension. The headline panel values deaths at the plan's representative (median) 
 Carlo run also shows the **spread** of IHT across futures (the share leaving any bill, and the median vs
 high-end), since it varies with longevity and returns.
 
+## ISA allowances
+
+An ISA shelters investment returns from tax entirely, and the amount you may pay **in** is capped at
+**£20,000 per person per tax year**. The forecast enforces that cap on any regular saving you enter
+into an ISA. Anything above the allowance is **not lost** — it goes into your general investment
+account instead, where its dividends and interest are taxed, which is what would happen in reality.
+The cap applies only to money going in: a pot that has *grown* past the allowance inside an ISA is
+entirely legitimate and is left alone.
+
+Two things this deliberately does not do. It does not move money you already hold into an ISA over
+time (a real household with a large general investment account would use each year's allowance, which
+means selling and repurchasing, and that sale is itself a capital-gains disposal) — so if anything the
+forecast understates the after-tax return on a plan that invests a large sum. And because an ISA is
+modelled as a single invested balance rather than a cash sleeve plus a stocks sleeve, the April-2027
+cut to the *cash* ISA allowance and the charge on cash held inside a stocks-and-shares ISA have nothing
+to apply to (both figures are recorded, dated, and ready if that changes).
+
 ## What paying for advice would cost
 
 Because the forecast charges investment costs at all, it can answer a question people actually ask: what

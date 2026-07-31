@@ -3,6 +3,37 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-07-31 — The ISA subscription cap enforced, and a "known divergence" that had it backwards
+**Context:** adviser-parity A3, the last OPEN correctness gap in DATA-MODEL. `applyContributions`
+routed any amount into the ISA bucket with no allowance check.
+
+**Decisions:**
+1. **`IsaParameters` in the tax-year registry** (overall allowance £20,000 per person per year, plus
+   the dated April-2027 cash-ISA cut to £12,000 for under-65s), sourced with `verified_on`, following
+   the established per-tax-year pattern rather than a constant — the 2027 change lands inside the
+   engine's horizon.
+2. **The excess SPILLS to the person's GIA; it is never dropped.** *Rationale:* the household really
+   would still save the money, just somewhere taxable. Discarding it would be the completeness failure
+   this codebase has been bitten by before (a real input that stops counting), and it would make the
+   household look **poorer** when the truth is that it is **more taxed** — a different and wrong error.
+3. **The cap is on money paid IN, per person, per year.** A pot that grew past the allowance inside an
+   ISA is legitimate and untouched; two ISAs for one person share one allowance.
+4. **Measured before building, and the measurement corrected the record.** The DATA-MODEL entry claimed
+   the bias was "largest for the highest-surplus sell-and-invest plans, so it is not neutral across the
+   plans being compared". **That was wrong in direction and in size.** A sale's proceeds are invested
+   into a **GIA** (`HousingComparison::withHousing`), and ordinary surplus banks to **cash**, so no
+   housing variant ever sheltered anything through the missing cap; the gap only bit on an
+   explicitly-entered ISA contribution above £20,000/yr, which no stored scenario has. Corrected in
+   place, because a wrong severity in the divergence list mis-prioritises the next session.
+5. **The larger half is now recorded as still open:** the engine never *uses* the allowance either. A
+   household holding a large GIA would in reality bed-and-ISA £20,000 each per year, and the model does
+   not — which **understates** the after-tax return of the sell-and-invest plans. Not built here
+   because it is a modelled *action* (with a real CGT disposal), not a missing rule, and it needs its
+   own decision about whether the tool should assume the household takes it.
+
+**Consequences:** `TaxYearConfig` gains an `isa` group; `IsaSubscriptionCapTest` guards the cap and was
+**verified to fail** with it removed. No stored scenario moves (none subscribes above the allowance).
+
 ## 2026-07-31 — What paying for advice would cost, built from the one figure that can be sourced
 **Context:** adviser-parity B1, which the plan itself calls "nearly free once A1 lands" — now that the
 engine charges investment costs, the cost of advice is the same projection run twice.

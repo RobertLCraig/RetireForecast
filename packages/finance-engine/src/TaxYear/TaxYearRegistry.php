@@ -78,6 +78,7 @@ final class TaxYearRegistry
                 deferredMainRate: Percent::fromPercent(2),
             ),
             pension: self::pensionParameters(),
+            isa: self::isaParameters(),
             statePension: new StatePensionParameters(
                 newStatePensionWeekly: Money::of(230, 25),
                 basicStatePensionWeekly: Money::of(176, 45),
@@ -104,6 +105,7 @@ final class TaxYearRegistry
                 'savings' => 'https://www.gov.uk/apply-tax-free-interest-on-savings',
                 'national_insurance' => 'https://www.gov.uk/national-insurance-rates-letters',
                 'pension' => 'https://www.gov.uk/tax-on-your-private-pension/annual-allowance',
+                'isa' => 'https://www.gov.uk/individual-savings-accounts',
                 'state_pension' => 'https://www.gov.uk/new-state-pension/what-youll-get',
                 'sdlt' => 'https://www.gov.uk/stamp-duty-land-tax/residential-property-rates',
                 'cgt' => 'https://www.gov.uk/capital-gains-tax/rates',
@@ -156,6 +158,7 @@ final class TaxYearRegistry
                 deferredMainRate: Percent::fromPercent(2),
             ),
             pension: self::pensionParameters(),
+            isa: self::isaParameters(),
             statePension: new StatePensionParameters(
                 // Triple lock uprating of +4.8% applied to the 2025/26 weekly rates.
                 newStatePensionWeekly: Money::of(241, 30),
@@ -183,6 +186,7 @@ final class TaxYearRegistry
                 'savings' => 'https://www.gov.uk/apply-tax-free-interest-on-savings',
                 'national_insurance' => 'https://www.gov.uk/national-insurance-rates-letters',
                 'pension' => 'https://www.gov.uk/tax-on-your-private-pension/annual-allowance',
+                'isa' => 'https://www.gov.uk/individual-savings-accounts',
                 'state_pension' => 'https://www.gov.uk/new-state-pension/what-youll-get',
                 'sdlt' => 'https://www.gov.uk/stamp-duty-land-tax/residential-property-rates',
                 'cgt' => 'https://www.gov.uk/capital-gains-tax/rates',
@@ -202,6 +206,30 @@ final class TaxYearRegistry
      * £200,000 / £10,000 floor; minimum pension age 55, rising to 57 on 6 April 2028
      * (HMRC "Increasing Normal Minimum Pension Age", effect on and after 6 April 2028).
      */
+    /**
+     * ISA subscription limits. The overall allowance is £20,000 per person per tax year and has
+     * been frozen since 2017/18, so the same object serves both tax years modelled here.
+     *
+     * From **6 April 2027** the CASH ISA allowance falls to £12,000 for savers under 65, while
+     * savers aged 65 and over keep the full £20,000 in cash; the overall £20,000 is unchanged in
+     * both cases. Carried per tax year (rather than as a constant) because the change lands inside
+     * the engine's horizon, and dated by `reformFromTaxYear` so a reader of the switch finds it in
+     * the record instead of hard-coded in a calculator.
+     *
+     * Verified 2026-07-31: gov.uk "Individual Savings Accounts (ISAs)" for the £20,000 overall
+     * allowance; the fiscal-events factsheet "ISA reform 2027 anti-circumvention rules" and
+     * Practical Law w-048-6635 for the cash-ISA cut to £12,000 for under-65s from 6 April 2027.
+     */
+    private static function isaParameters(): IsaParameters
+    {
+        return new IsaParameters(
+            overallAllowance: Money::fromPounds(20_000),
+            cashAllowanceUnder65: Money::fromPounds(12_000),
+            cashAllowanceAgeThreshold: 65,
+            reformFromTaxYear: '2027-28',
+        );
+    }
+
     private static function pensionParameters(): PensionParameters
     {
         return new PensionParameters(

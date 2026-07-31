@@ -124,7 +124,17 @@ runs, not a parallel approximation — otherwise the two can drift, which the da
 forbids. Extending contributions to be deducted before the tax computation (net pay / sacrifice) versus
 grossed-up after it (relief at source) is the clean way to keep one definition.
 
-### A3. ISA subscription limits and the April 2027 regime
+### A3. ISA subscription limits and the April 2027 regime — ✅ PART-BUILT 2026-07-31
+
+**The cap is enforced; the *use* of the allowance is not.** `IsaParameters` is in the tax-year registry
+(£20,000 overall per person per year, plus the dated April-2027 cash-ISA cut) and `applyContributions`
+caps ISA subscriptions per person per year, **spilling the excess to that person's GIA** rather than
+dropping it. The 22% charge on cash inside a S&S ISA has nothing to bite on — the engine models an ISA
+as one invested balance with no cash sleeve. **The finding below was wrong and is corrected in
+DATA-MODEL:** proceeds are invested into a **GIA**, not an ISA, and surplus banks to cash, so no housing
+variant ever sheltered anything through the missing cap. **Still open, and the bigger half:** the engine
+never *uses* the allowance either (no bed-and-ISA), which **understates** the sell-and-invest plans.
+See DECISIONS 2026-07-31.
 
 **Finding.** `applyContributions` routes `ongoingContributions` into a cash/GIA/ISA bucket by account type
 with **no allowance check of any kind**
@@ -349,8 +359,9 @@ _Revised 2026-07-28 after the answers above._ Accuracy first, then the reuse-hea
 3. ~~**B2 protection gap**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). Next by this order: B1.
 4. ~~**B1 cost of advice**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). Next by this order: B5.
 5. **B5 capacity for loss** — mostly framing over existing stress machinery.
-6. **A3 ISA rules** — reduced priority. Overall £20,000 cap + the 22% S&S-cash charge bind this household;
-   the age-conditional cash cut is generality/public-release.
+6. ~~**A3 ISA rules**~~ — ✅ **PART-BUILT 2026-07-31**: the overall £20,000 cap is enforced (spilling to
+   GIA). What remains is not a rule but an *action*: bed-and-ISA, i.e. actually using the allowance,
+   which needs its own decision about whether the tool should assume the household takes it.
 7. **A4 salary sacrifice** — generality, not this household's scheme; earns its place as the
    "what if your employer offered it?" comparison.
 8. **B3 estate checklist** — cheap, but the gifting half should land with an IHT re-verify.

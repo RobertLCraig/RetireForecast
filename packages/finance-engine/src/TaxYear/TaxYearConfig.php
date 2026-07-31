@@ -25,6 +25,7 @@ final class TaxYearConfig
         public readonly SavingsParameters $savings,
         public readonly NationalInsuranceParameters $nationalInsurance,
         public readonly PensionParameters $pension,
+        public readonly IsaParameters $isa,
         public readonly StatePensionParameters $statePension,
         public readonly SdltParameters $sdlt,
         public readonly CgtParameters $cgt,

@@ -316,6 +316,18 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   **V2 finding:** advice costs this household very little (~**£1,278** over the whole stay-put plan,
   moving the shortfall 2036 → 2035) because it has almost nothing invested — **except sell-and-rent at
   ~£11,941**, the one plan whose proceeds are genuinely invested. Awaits browser sign-off.
+- **Done 2026-07-31 — the ISA subscription cap enforced, and a "known divergence" that had it
+  backwards (adviser-parity A3, DECISIONS 2026-07-31):** new `IsaParameters` in the tax-year registry
+  (£20,000 overall per person per year, sourced, plus the dated April-2027 cash-ISA cut);
+  `applyContributions` caps ISA subscriptions per person per year and **spills the excess to that
+  person's GIA** rather than dropping it — the household still saves the money, just somewhere taxable.
+  `IsaSubscriptionCapTest` is **verified to fail** with the cap removed. **The DATA-MODEL entry was
+  wrong and is corrected in place:** it claimed the bias was "largest for the sell-and-invest plans",
+  but a sale's proceeds are invested into a **GIA**, not an ISA, and surplus banks to **cash**, so no
+  housing variant ever sheltered anything through the gap. It only ever bit on an entered ISA
+  contribution above £20,000/yr, which no stored scenario has, so nothing moves. **The bigger half is
+  now recorded as still open:** the engine never *uses* the allowance either (no bed-and-ISA), which
+  **understates** the sell-and-invest plans — an action to decide on, not a rule to enforce.
 - **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **read that doc before touching any V2 figure.** The base's
   "money found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
   (year 2026, the real source as the label) — see the V2 doc's note. It now needs **~£49,495**, not ~£90k.
@@ -341,11 +353,12 @@ probability + the word-bands), then the B2–B4 results-page restructure (tabs, 
 demoted), then A3 fat tails / A4 State-Pension uprating. Build order in the plan's "Build order" section.
 Other partly-built specs: **adviser parity** ([docs/build/PLAN-adviser-parity.md](build/PLAN-adviser-parity.md),
 scope questions all resolved; **A1 fee drag, A2 net-pay relief, B2 protection gap and B1 cost of advice
-are BUILT** 2026-07-31). **One OPEN correctness gap remains** in DATA-MODEL "Known divergences" — **no ISA
-subscription cap** (the model shelters unlimited surplus tax-free, and biases *most* for the
-highest-surplus sell-and-invest plans, so it is not neutral across the plans being compared). Smaller
-open pieces of A2: the £3,600 non-earner relief route and the annual-allowance / MPAA cap on relievable
-contributions. Next by the plan's own order is **B5 capacity for loss** (mostly framing over the stress
+are BUILT** 2026-07-31, and **A3's ISA subscription cap** with them). **No OPEN correctness gap from the
+adviser-parity sweep remains.** What is left there is smaller and each is recorded in DATA-MODEL "Known
+divergences": the engine never *uses* the ISA allowance (no bed-and-ISA, so sell-and-invest plans are
+**understated** — an action to decide on, not a rule), the £3,600 non-earner relief route, and the
+annual-allowance / MPAA cap on relievable contributions. Next by the plan's own order is **B5 capacity
+for loss** (mostly framing over the stress
 machinery that already exists: how far can wealth fall before the essential floor breaks), then A3 ISA
 rules, A4 salary sacrifice, B3 estate checklist, B4 annual review;
 withdrawal-sequencing #5/#6 (docs/build/PLAN-withdrawal-sequencing.md, gated on two modelling
@@ -441,6 +454,21 @@ On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. 
 
 ## Session log
 _Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+
+_2026-07-31 (adviser-parity A3: the ISA cap, and a divergence note that pointed the wrong way)_ —
+Took the last OPEN correctness gap from the adviser-parity sweep. **Measured it before building**, and
+the measurement contradicted the record: the DATA-MODEL entry said the missing cap "biases most for the
+highest-surplus sell-and-invest plans", but a sale's proceeds are invested into a **GIA** and surplus
+banks to **cash**, so no housing variant ever sheltered a penny through it. The gap only ever bit on an
+explicitly-entered ISA contribution above £20,000/yr, which no stored scenario has. Corrected the note
+in place rather than leaving a wrong severity to mis-prioritise the next session — and recorded the
+larger, opposite gap it was masking: the engine never *uses* the allowance either, so the
+sell-and-invest plans are if anything **understated**. Built the cap anyway (it is a real rule the model
+broke), spilling the excess to the GIA rather than dropping it, because dropping it would make the
+household look poorer when the truth is it is more taxed. **The first version of the test was worthless
+and looked fine** — at zero dividend yield an ISA and a GIA are indistinguishable, so every assertion
+would have passed with the cap deleted; re-cut with a real 3% yield and then **verified to fail** by
+disabling the cap.
 
 _2026-07-31 (adviser-parity B1: the cost of advice, built from the one figure that could be sourced)_ —
 Same session, straight on from B2. Re-verified the plan's ⚠️ fee figures first, and that decided the

@@ -2188,20 +2188,55 @@ final class PathProjector
         }
 
         // Regular savings into accounts, added to the matching liquid bucket.
+        //
+        // ISA subscriptions are capped at the statutory overall allowance PER PERSON, PER YEAR
+        // (£20,000; {@see IsaParameters}). Without the cap the model could shelter any amount of
+        // income from tax for ever, which is not a rule the law has. The cap applies to money paid
+        // IN, never to what the wrapper already holds — a pot that GREW past the allowance inside
+        // an ISA is entirely legitimate and untouched here.
+        //
+        // Anything over the allowance SPILLS to that person's general investment account rather
+        // than being dropped: the household still saves the money, it just saves it somewhere
+        // taxable, which is what would happen in reality. Silently discarding it would breach the
+        // completeness rule (an input that should count, not counting).
+        $isaAllowance = $this->config->isa->overallAllowance->pence;
+        $isaSubscribed = [];
         foreach ($household->accounts as $account) {
             if ($account->ongoingContributions === null || ! ($alive[$account->ownerId] ?? false)) {
                 continue;
             }
+            $owner = $account->ownerId;
+            $added = $take($account->ongoingContributions->pence);
+            if ($added <= 0) {
+                continue;
+            }
+
             $bucket = match ($account->type) {
                 AccountType::Cash, AccountType::PremiumBonds => 'cash',
                 AccountType::Gia => 'gia',
                 AccountType::Isa => 'isa',
             };
-            $added = $take($account->ongoingContributions->pence);
-            $state[$bucket][$account->ownerId] += $added;
+
+            if ($account->type === AccountType::Isa) {
+                $headroom = max(0, $isaAllowance - ($isaSubscribed[$owner] ?? 0));
+                $intoIsa = min($added, $headroom);
+                $isaSubscribed[$owner] = ($isaSubscribed[$owner] ?? 0) + $intoIsa;
+                $state['isa'][$owner] += $intoIsa;
+
+                // The overflow is still saved, but in a taxable account.
+                $spill = $added - $intoIsa;
+                if ($spill > 0) {
+                    $state['gia'][$owner] += $spill;
+                    $state['giaBasis'][$owner] += $spill;
+                }
+
+                continue;
+            }
+
+            $state[$bucket][$owner] += $added;
             // New money into a GIA raises its cost basis, so only later growth is a gain.
             if ($account->type === AccountType::Gia) {
-                $state['giaBasis'][$account->ownerId] += $added;
+                $state['giaBasis'][$owner] += $added;
             }
         }
 
