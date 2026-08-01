@@ -1,5 +1,32 @@
 # Browser sign-off on the built cluster
 
+## What I need from you
+Open the app and confirm the panels built since 2026-06-29 read correctly, because none of them
+has ever been looked at in a browser: they are proven by tests and by numeric audit only. A pass
+is "the figures on screen match the audit and the words make sense to a reader who is not you".
+A failure on a numbered step points at that step's surface, not at the whole cluster.
+
+Run `php artisan scenarios:audit` first, and start a queue worker: steps 4 and 5 need one.
+
+1. <http://retireforecast.test/scenarios/9> , the results page. The **"To spend / month"** and
+   **"Available capital"** ladder columns, the **investment-charges** line beneath it, the
+   **"If one of you died"** section, and the **"What paying for advice would cost"** section.
+   Pass: every figure is present and none reads as a placeholder.
+2. Same page: the budget panel's mortgage instalment is labelled **computed** (it reads GBP 0 in
+   the stored inputs by design), and the assumed-figure and depreciation notes are present. Pass:
+   a stay-put plan shows no bought-home assumptions.
+3. <http://retireforecast.test/scenarios/9/afford> , the monthly block and the **Check how sure**
+   hand-off. Pass: it queues runs and returns to Compare.
+4. Compare: the **"To spend / month"** and **"Available capital"** pair, and the **"Hide
+   non-viable plans"** toggle re-rendering the burndown chart.
+5. Thresholds, the trade-off map and the assistant. A spinner that never resolves means the
+   worker is stale (see How to pick up), not that the feature is broken.
+6. The four park-home scenarios, ids 51 to 54.
+7. `npm run a11y` over the post-06-29 panels (docs/spec/A11Y.md), the mobile results nav, and the
+   2FA QR scan at <http://retireforecast.test/account/security>.
+8. **Download a PDF.** Pass: the four server-drawn charts read well on paper and the wide
+   cashflow ladder is legible at print size, with no clipped final column.
+
 ## Why
 The gating item for everything else. The whole post-2026-06-29 cluster is built but unreviewed
 in a browser, so nothing downstream can be called finished until it has been looked at.

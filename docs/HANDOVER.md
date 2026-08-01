@@ -1,1007 +1,128 @@
 # HANDOVER: RetireForecast — UK retirement / downsizing forecast tool
 
-> A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue refining the calculation engine and the app around it. Read [docs/build/PLAN.md](build/PLAN.md) first (the full approved plan + scope). The detailed per-feature build record is archived in [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md).
+> A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue refining the calculation engine and the app around it. **This doc holds what is true; [docs/board/](board/) holds what is moving.** Read [docs/build/PLAN.md](build/PLAN.md) for the full approved plan and scope.
 
 **Stage:** active
-**Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0–6), the local assistant (3 phases), IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and **optional refinements**.
-_Last updated: 2026-07-31 (adviser-parity A1 + A2 + B2 built: investment charges, net-pay contribution relief, and the protection gap; and six shipped assumption figures found never to have reached any forecast)_
+**Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and refinements.
+_Last updated: 2026-08-01 (handover split into this doc plus docs/board/; the prose changelog and session log archived)_
 
 ## Goal & success criteria
 Full plan: [docs/build/PLAN.md](build/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
 - **Goal:** let an older couple (one working, one retired) model whether to sell their home and either buy somewhere cheaper outright (invest the surplus) or sell and rent (invest all proceeds), plus the consequences of pension lump-sum withdrawals and whether their money lasts for life.
-- **Headline outputs:** (1) the pension lump-sum tax shock (25% tax-free, marginal tax on the rest, the Month-1 emergency-tax overpayment + reclaim); (2) running-out-of-money / longevity risk via Monte Carlo.
+- **Headline outputs:** (1) the pension lump-sum tax shock (25% tax-free, marginal tax on the rest, the Month-1 emergency-tax overpayment and reclaim); (2) running-out-of-money / longevity risk via Monte Carlo.
 - **Success for Rob's own use:** a working **local** site where he enters a real couple, runs buy-vs-rent, and reads a trustworthy forecast. **No hardcoded client data in the repo.** Possible free public release later.
 - **Correctness bar:** the engine reproduces known HMRC worked examples to the penny (A, B, C in docs/build/PLAN.md). **Met** for the deterministic engine.
 
 ## Canonical data shape
-Single source of truth: the engine's readonly DTOs under `packages/finance-engine/src/Dto/` (Eloquent models + Livewire forms map to/from these). Full field lists: [DATA-MODEL.md](DATA-MODEL.md) + docs/build/PLAN.md. Conventions:
+Single source of truth: the engine's readonly DTOs under `packages/finance-engine/src/Dto/` (Eloquent models and Livewire forms map to and from these). Full field lists: [DATA-MODEL.md](DATA-MODEL.md) + docs/build/PLAN.md. Conventions:
 - **Money = integer pence**, never a float (held by `Money`, GBP only). Rates = `Percent` (integer basis points). Dates = ISO `Y-m-d`. **Ages derive from DOB + a reference date, never stored.**
 - **All reported wealth is NET of the mortgage** (2026-07-08): `YearResult::totalWealth` = liquid + pension + home equity (NNEG-floored); every surface (Compare / results / PDF / CSV / Monte Carlo / assistant) inherits from that one definition.
-- **Storage inversion (Phase B):** a base scenario stores raw builder **form-state** (`builder_state`, one `encrypted:array`) as the single source of truth; the engine `Household` + `HousingAction` DTOs are **derived** (`Scenario::toHousehold()`/`toHousingAction()` via `HouseholdAssembler`, no reverse-mapper). A what-if **child** holds no `builder_state` — only `parent_scenario_id` + a sparse encrypted `overrides` delta (value overrides, added rows stored whole, removed rows a `REMOVED` sentinel); `effectiveBuilderState()` = base ⊕ overrides.
+- **Storage inversion (Phase B):** a base scenario stores raw builder **form-state** (`builder_state`, one `encrypted:array`) as the single source of truth; the engine `Household` + `HousingAction` DTOs are **derived** (`Scenario::toHousehold()` / `toHousingAction()` via `HouseholdAssembler`, no reverse-mapper). A what-if **child** holds no `builder_state`, only `parent_scenario_id` + a sparse encrypted `overrides` delta (value overrides, added rows stored whole, removed rows a `REMOVED` sentinel); `effectiveBuilderState()` = base overlaid with overrides.
+- **One rebuild site per DTO.** `Household` is only ever copied through its private `copy()` behind `withPersons()` / `withPensions()` / `withExpenseProfile()` / `withCapitalReceipts()`, because seven sweep levers used to rebuild it positionally and a field added to the DTO but forgotten in a lever was silently dropped from every swept forecast. Guarded by `HouseholdWitherTest`, which enumerates the DTO's own properties by reflection.
 
 ## Architecture / stack
-- **Laravel 13.17** app at the repo root, **on local Postgres 18** (moved off SQLite 2026-07-09 — see Decisions). **Fortify** auth + **Filament 5** admin (which pulled **Livewire 4**). Front end = hand-rolled Livewire 4 full-page components (`app/Livewire/`) + **ApexCharts** (progressive enhancement — every figure is also text + an accessible `<table>` + CSV).
-- **`packages/finance-engine`**: a framework-free Composer **path package** (`retireforecast/finance-engine`, symlinked). Zero Laravel deps, no I/O, no clock — this is the product; the app is a shell. Must never `use App\...`/`Illuminate\...` (guarded by `EngineIsolationTest`).
-- Money is hand-rolled integer pence. PHPUnit 12. `phpspreadsheet` is an app-layer dependency (`.xlsx` import only). A CSP + hardening headers ship on the `web` group (`config/security.php`); Filament `/admin` is out of scope.
+- **Laravel 13.17** app at the repo root, on local **Postgres 18** (moved off SQLite 2026-07-09, see Decisions). **Fortify** auth + **Filament 5** admin (which pulled **Livewire 4**). Front end is hand-rolled Livewire 4 full-page components (`app/Livewire/`) + **ApexCharts** (progressive enhancement: every figure is also text, an accessible `<table>` and CSV).
+- **`packages/finance-engine`**: a framework-free Composer **path package** (`retireforecast/finance-engine`, symlinked). Zero Laravel deps, no I/O, no clock. This is the product; the app is a shell. Must never `use App\...` or `Illuminate\...` (guarded by `EngineIsolationTest`).
+- Money is hand-rolled integer pence. PHPUnit 12. `phpspreadsheet` is an app-layer dependency (`.xlsx` import only). A CSP and hardening headers ship on the `web` group (`config/security.php`); Filament `/admin` is out of scope.
 
 ## Key files / structure
-The engine is the product; the app is a shell around it. Browse the tree (it drifts if mirrored here).
-- `packages/finance-engine/src/` — `Money/`, `TaxYear/`, `Tax/`, `Pension/`, `StatePension/`, `Property/`, `Benefits/`, `Iht/`, `Care/`, `Dto/`, `Assumptions/`, `Benchmark/`, `Mortality/`, `Forecast/` (`PathProjector` + `DeterministicForecaster` + `YearResult`), `MonteCarlo/`, `Housing/`, `Sweep/` (decision-support spine + levers).
-- `app/` — `Forecast/` (`HouseholdAssembler`, `BuilderStateDelta`, `ScenarioForecaster`, `SimulationRunner`, `ResultPresenter`, `LumpSumTaxShock`), `DecisionSupport/` (`LeverThresholdService`, `ThresholdRunner`, `ThresholdPresenter`, `CombinationComparison`), `Assistant/` (`OllamaChatClient`, `ScenarioContext`, `FigureGrounding`, `AssistantTurnRunner`), `Import/`, `Livewire/`, `Compliance/`, `Models/`, `Http/`, `Jobs/`, `Filament/`.
-- Root: `composer.json` (path repo), `phpunit.xml` (Engine testsuite), `config/security.php`, `database/migrations/`, `database/seeders/DemoScenarioSeeder.php`.
+A map, not an inventory. Browse the tree for the rest; per-file rationale lives in each file's docblock.
+- `packages/finance-engine/src/` — `Money/`, `TaxYear/`, `Tax/`, `Pension/`, `StatePension/`, `Property/`, `Benefits/`, `Iht/`, `Care/`, `Protection/`, `Dto/`, `Assumptions/`, `Benchmark/`, `Mortality/`, `Forecast/` (`PathProjector` + `DeterministicForecaster` + `YearResult`), `MonteCarlo/`, `Housing/`, `Sweep/` (decision-support spine and levers).
+- `app/` — `Forecast/`, `DecisionSupport/`, `Assistant/`, `Import/`, `Livewire/`, `Compliance/`, `Models/`, `Http/`, `Jobs/`, `Filament/`, `Export/`.
+- The seams a fresh session must not re-derive:
+  - **`PathProjector`** is the hot loop and the cross-cutting contention point. Read its year-order before editing it.
+  - **`ResultPresenter`** is the one place a figure becomes a screen string; the PDF calls the same methods, so print cannot drift from screen.
+  - **`LadderContext`** resolves which housing strategy is on display. `deterministic()` ignores the stored variant, which has caused the same bug three times: read a sell plan through the variant path, never the raw household.
+  - **`ScenarioForecaster::assumptions()`** is the only place assumption overrides are applied.
+  - **`config/advice.php`** holds the advice fee deliberately outside `AssumptionSet`: the forecast never charges it, it only prices a comparison.
 - House style is Pint: `vendor/bin/pint --dirty`.
 
 ## Decisions locked
-Full log + rationale: [DECISIONS.md](DECISIONS.md). The load-bearing "don't relitigate" anchors:
+Full log and rationale: [DECISIONS.md](DECISIONS.md). The load-bearing "do not relitigate" anchors:
 - **Local-first, personal use, no hardcoded client data.** Rob enters the couple via the UI; any first-run sample must be obviously fictional.
-- **App DB is Postgres 18** (moved off SQLite 2026-07-09 to fix the queued-Monte-Carlo reproducibility bug — SQLite could not handle the `database` queue driver's concurrent access). **Tests still run on in-memory SQLite** (phpunit.xml).
-- **Regulatory posture: education/guidance-only** is the **public** stance. **Currently relaxed for personal use — `config('compliance.personal_use')` (default true) is the flagged "regulatory line"**, turning the walled-off advice `interpret` capability ON for everyone. The suite runs with it **true** (advice mode); `BannedPhrasingTest` is posture-aware (skips in advice mode, fully enforces when false). **Set `COMPLIANCE_PERSONAL_USE=false` before any public release**; `php artisan compliance:advice-audit` lists advice spots.
-- **Engine is framework-free** in a path package; **money = integer pence**; savings + dividends in one combined income-tax pass; **tax figures versioned per tax year with source + verified-on** (frozen to April 2031).
+- **App DB is Postgres 18** (moved off SQLite 2026-07-09 to fix the queued-Monte-Carlo reproducibility bug: SQLite could not handle the `database` queue driver's concurrent access). **Tests still run on in-memory SQLite** (phpunit.xml).
+- **Regulatory posture: education/guidance-only** is the **public** stance, **currently relaxed for personal use.** `config('compliance.personal_use')` (default true) is the flagged "regulatory line", turning the walled-off advice `interpret` capability on for everyone. The suite runs with it **true**; `BannedPhrasingTest` is posture-aware (skips in advice mode, fully enforces when false). **Set `COMPLIANCE_PERSONAL_USE=false` before any public release**; `php artisan compliance:advice-audit` lists advice spots.
+- **Engine is framework-free** in a path package; **money = integer pence**; savings and dividends in one combined income-tax pass; **tax figures versioned per tax year with source and verified-on** (frozen to April 2031).
 - **All wealth reported NET of the mortgage** (2026-07-08).
-- **UI = hand-rolled Livewire 4** (Filament admin-only); form input → engine DTOs via the unit-tested `HouseholdAssembler`.
+- **UI = hand-rolled Livewire 4** (Filament admin-only); form input maps to engine DTOs via the unit-tested `HouseholdAssembler`.
+- **No invisible figures.** Any engine-side default reaching a projection is disclosed with its value and why it applies, reading the constant that owns it rather than restating it. `php artisan scenarios:audit` sweeps every stored scenario for correctness and correct disclosure, and exits non-zero so it can gate a release.
 
 ## Current state
-The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md)** (each item also has a dated DECISIONS entry + git history). High level:
-- **Done — everything through the post-v1 backlog is built:** the HMRC-accurate deterministic engine (income tax + NI; the pension lump-sum suite incl. Month-1 emergency tax + reclaim; State Pension; SDLT/CGT/PRR; means-tested benefits; IHT; care) + Monte Carlo with stochastic joint-life mortality; the full app (encrypted DTO persistence, Fortify auth, GDPR, Filament, queued runs with progress/cancel, Livewire UI + charts, spreadsheet import, PDF export, 2FA, CSP); the rebuild (Phases A–D); the adviser-legibility presentation layer; **decision-support (Phases 0–6)** — lever thresholds, the "How far can we go?" panel, combination comparison, the survivor-cliff story + 5 levers, the 2-D trade-off map, the hash-gated assistant tie-in; the **local-model assistant** (grounded explainer + methodology doc-RAG + idea capture); **IHT wired into the forecast** (+ relationship status); the **care means-test tail**; the **age-varying spending smile**; the **equity-release lifetime mortgage**; the **BTL finance-cost tax reducer**. Nearly all of the post-2026-06-29 cluster **awaits Rob's browser sign-off** (What's next #1).
-- **Done 2026-07-16 — no-magic-money purchase funding (DECISIONS 2026-07-16):** a buy above the sale proceeds is
-  funded savings-first (cash → GIA → ISA, never pensions; the RIO borrows only the remainder); anything unfunded is
-  charged as a year-0 cost so the plan **visibly fails** instead of being handed the home for free (the old
-  floor-the-surplus behaviour is gone); a year-0 GIA draw pays real CGT. New **`CapitalReceipt`** builder input
-  (step 3) models documented one-off money from outside the plan (family gift / outside-asset sale) — the ladder
-  shows it as "One-off receipt". Awaits browser sign-off with the rest (What's next #1).
-- **Done 2026-07-17 — "What you can afford" screen (DECISIONS 2026-07-17):** a plain-English `/scenarios/{base}/afford`
-  surface for the elder couple who can't read the ladders/fans — one yes/no per plan (do the essentials last for
-  life?), working plans first, failing ones collapsed with the year each runs short, a factual "bottom line" naming
-  the strongest plan (+ a gated "lean towards" line). Verdict is the fast deterministic projection; stored Monte
-  Carlo "how sure" shown beside it, with a one-click **Check how sure** that queues the full runs and hands off to
-  Compare's progress UI. Pure presentation (no shape change). Linked from the dashboard, Compare and Results.
-  Awaits browser sign-off with the rest (What's next #1). **Finding:** sell-and-rent at £2,000/mo fails at any
-  realistic sale price (out 2037 on a £290k sale); affordable rent ceiling on a £290k sale ~£1,000/mo; sell-and-buy
-  cheaper is the strongest plan. Five limit-test what-ifs added to the app (DB scenarios 33–37, not repo data).
-- **Done 2026-07-18 — stochastic house-price growth in the Monte Carlo (DECISIONS 2026-07-18):** house growth was a
-  deterministic straight line in the MC, so a home (the biggest, most variable slice of wealth) carried no risk and
-  home-heavy plans looked artificially certain. Now the MC draws a per-year house shock (sourced 9%/11% real vol,
-  low ~0.2 house–equity correlation). Opt-in via a nullable `AssumptionSet::houseGrowthVolatility`, so the
-  deterministic projection, every existing set and every stored run are byte-identical (no DB migration). The
-  low correlation is the point: it's why sell-and-invest diversifies concentrated housing risk. Salary growth in the
-  MC stays deterministic (remaining refinement). Completeness-tested; no browser sign-off needed (engine + fan width).
-- **Done 2026-07-18 — stochastic salary growth in the Monte Carlo (DECISIONS 2026-07-18):** the last deterministic
-  straight line in the MC. A still-working household's future pay rises (and the savings/pension the surplus funds)
-  now carry earnings risk. Same opt-in/null-safe contract as the house change: nullable `AssumptionSet::salaryGrowthVolatility`
-  (+ a deliberately LOW `salaryEquityCorrelation` 0.1, weaker than housing's 0.2 — aggregate real wage growth is
-  near-acyclical), so the deterministic projection, every existing set and every stored run stay byte-identical
-  (no DB migration). Sourced 2.0%/2.5% real vol (SF Fed: real wage growth ~half GDP-growth volatility; ONS sanity
-  check). Completeness-tested (`StochasticSalaryGrowthTest`); sanity magnitudes: a salary-driven working couple's
-  p10–p90 terminal spread widens £104k → £115k at the shipped 2% (median ~unchanged). No browser sign-off needed
-  (engine + fan width). **No MC-growth-determinism divergence remains.**
-- **Done 2026-07-19 — the three hero time-series charts (C1/C2/C3, DECISIONS 2026-07-19):** a new "Money over
-  time" section before the cashflow ladder draws the deterministic projection as three stacked-area pictures —
-  **C1** income staircase (every source over time), **C2** wealth composition (pensions / savings / home
-  equity, summing to net worth), **C3** costs (essential vs discretionary, the spending smile). Presenter +
-  Blade only (`ResultPresenter::timeSeriesCharts`), no engine change — all data was already on `YearResult`.
-  Built from the SAME `ForecastResult->years` the ladder reads, each with a `<details>` table twin reconciling
-  to the ladder cell-for-cell (`TimeSeriesChartsTest`). Real-terms only; the **nominal-pounds toggle is
-  deferred** (needs the engine's pre-deflation figures exposed, not a presenter re-inflation). Third build-order
-  item of docs/build/PLAN-output-inflation-and-charts.md; **awaits browser sign-off** with the rest (visible UI).
-- **Done 2026-07-19 — voluntary overpayments on a rolled-up lifetime mortgage (DECISIONS 2026-07-19):** the
-  equity-release roll-up could only model "no payments"; now `Property::mortgageOverpaymentAnnual` (`?Money`,
-  null = pure roll-up) subtracts a fixed-nominal overpayment from the balance each year after it compounds
-  (NNEG-capped, floored at 0), so overpaying a lifetime mortgage slows the roll-up and preserves the estate.
-  The cash to fund it rides on the "Mortgage" expense line, so the model shows the honest trade-off (lower
-  balance vs the cashflow that pays for it). Builder-wired as an optional field; `LifetimeMortgageRollUpTest`
-  (penny-exact + strictly-lower-than-pure-roll-up). Built to evaluate a real equity-release proposal.
-- **Done 2026-07-18 — care in the deterministic path as an "if care is needed" stress (A2, DECISIONS 2026-07-18):**
-  care was Monte-Carlo-only, so the plain-English Affordability verdict ("lasts for life? Yes") was computed on a
-  care-free path — falsely reassuring for the least-numerate reader. Now `DeterministicPathDraws` accepts injected
-  `CareEpisode`s (empty = byte-identical care-free path) and `DeterministicForecaster::forecastWithCareStress`
-  places one adverse ~4-year nursing spell (£1,800/wk, `CareStressScenario`) on the last-surviving partner,
-  means-tested + CPI+2%-escalated. The Affordability screen shows the care-stress verdict beside each plan's
-  care-free verdict (and a bottom-line care caveat), so "for life" is never shown unqualified; the ordering stays
-  the care-free expected path. Not averaging (per FCA / pro cashflow tools). `DeterministicCareStressTest` +
-  `AffordabilityTest`. **Awaits browser sign-off** with the rest (What's next #1 — it's a visible UI change).
-  **Still open:** a care-stress params editor, a probability-weighted "typical" option, the stress line on the
-  main results ladder.
-- **Done 2026-07-18 — care fees escalate above CPI (A1, DECISIONS 2026-07-18):** the engine drew one CPI series
-  and modelled care as a flat-real cost, so care — the fastest-inflating major UK retirement category — rode flat
-  CPI and understated the tool's headline late-life risk. New `AssumptionSet::careCostRealGrowth` (`?Percent`;
-  null = flat-real, back-compat; shipped presets CPI+2% real, sourced/adverse-default, user-editable as the 7th
-  economic assumption) compounds the sampled self-funder fee above CPI to the year the spell falls, mirroring
-  `propertyCostsRealGrowth`. Null-safe: every stored care run reproduces byte-identically (`CareCostInflationTest`,
-  `MappingRoundTripTest`). First slice of docs/build/PLAN-output-inflation-and-charts.md; **A2 (care in the deterministic
-  path) is the next item.** No browser sign-off needed (engine + a panel row).
-- **Done 2026-07-18 — sex-differentiated late-life care probability (DECISIONS 2026-07-18):** the stochastic care
-  risk drew one flat 0.25 lifetime probability for everyone though `Person::sex` was already threaded to the
-  `Simulator` before being dropped at the sampler. Now `CareAssumptions` carries male 0.20 / female 0.30 (~1.5:1,
-  mean anchored to the Dilnot/PSSRU ~1 in 4), threaded into `CareCostSampler`'s per-person Bernoulli. No data-shape
-  change; a threshold swap, not an extra draw, so seeded runs reproduce byte-identically and only fresh care-modelled
-  runs shift. Age-conditioning of the rate + a sex split of the *duration* remain flagged. Completeness-tested
-  (`CareCostSamplerTest`: the split reaches incidence). No browser sign-off needed (engine + fan tail).
-- **Done 2026-07-18 — "Hide non-viable plans" toggle on Compare (DECISIONS 2026-07-18):** a checkbox that drops any
-  plan whose usable-wealth line falls below £0 (runs out of money on the deterministic path) from the Compare table,
-  burndown chart and Monte-Carlo cards, so the reader can focus on the plans that last. Shown only when there is a
-  non-viable plan to hide; "Re-run all" still queues every plan, not just the visible ones; the burndown is re-keyed
-  so the `wire:ignore`d chart re-renders the filtered series. Pure presentation, no shape change. Awaits browser
-  sign-off with the rest (What's next #1).
-- **Done 2026-07-18 — PDF sale-funding waterfall:** the downloadable/print report now renders the "If you sell"
-  block (net-proceeds waterfall → sell-&-rent → sell-&-buy funding: savings drawn, mortgage, unfunded-gap failure),
-  built from the SAME `ResultPresenter::saleExplainer` + engine decomposition the results page uses, so print cannot
-  drift from screen. Closes the last PDF open item; guarded by a `ScenarioPdfTest` assertion. Awaits browser sign-off
-  with the rest (What's next #1).
-- **Done 2026-07-29 — repayment (capital & interest) mortgages amortise (DECISIONS 2026-07-29):** the engine
-  modelled a repayment mortgage's balance as **static** and its payment as an ordinary expense line, so it
-  inflated a contractually fixed instalment with CPI, shrank it by the survivor factor on a death, never
-  stopped it at the end of the term, and understated net wealth + the IHT estate by every pound of capital
-  repaid. New `Property::$repaymentTerms` (`RepaymentMortgageTerms` + `MortgageRatePeriod`) and an
-  `AmortisationSchedule` now own **both** legs — the balance amortises to zero and the fixed-nominal
-  instalment is charged as essential spend (added after the CPI/survivor multiplies), **replacing** the
-  "Mortgage" expense line. Mutually exclusive with `mortgageRollUpRate` (throws). Pinned to a real lender
-  illustration — the LiveMore ESIS of 2026-07-29 reproduces **within 21p at any row over 16 years**, both
-  monthly instalments exact. Null terms = byte-identical, no migration. Closes the DATA-MODEL divergence.
-- **Done 2026-07-29 — the V2 Stay-put base moved onto the real LiveMore quote:** the base's hypothetical
-  "£90k found → £118k RIO at £7,080/yr" is replaced by the actual quote (**£160k over 16 years, C&I**,
-  £1,318.54/mo then £1,384.65/mo). **Finding: it does not work** — affordable while both live, but the
-  survivor carries £16,616/yr on ~£11.7k/yr, so the plan runs short in **2036** (was 2043), ~£15k/yr short
-  until the loan clears in 2042; against that, terminal net wealth is **+£74,830** because the debt is
-  genuinely repaid. It also needs ~£49,495 up front vs the ~£42k realistically available. Seven children that
-  model a *different* mortgage product (17, 32 let-to-let; 27, 28, 31, 38, 39 lifetime mortgages) carry an
-  explicit blank-term override; all others inherit. Figures + the entry recipe are in the gitignored
-  `docs/SCENARIO-V2.local.md`.
-- **Done 2026-07-29 — the V2 what-if family was cleared and rebuilt (Rob's call):** 23 children on drifting
-  premises replaced by 9, organised around the three identifiable ways to keep the flat (repayment mortgage /
-  lifetime mortgage / let-to-let) plus levers and two sell comparators. The previous 24 scenarios are backed
-  up in full at the gitignored `docs/scenario-backup-2026-07-29.local.json`. **Finding: only two plans never
-  run short** — the lifetime mortgage (which survives by consuming the whole estate) and sell-and-buy-cheaper;
-  and **no lever rescues the LiveMore mortgage** (YCC working 5 more years moves the shortfall 2036 → 2042; an
-  £80k art/jewellery sale buys 1–4 years). The let-to-let BTL rate was **repriced 6.5% → 5.75%** on
-  2026-07-30 — the "later-life premium" behind 6.5% does not exist, since BTL is underwritten on rental
-  income, not the borrower's age (DECISIONS 2026-07-30). Figures + sources in the private V2 doc.
-- **Done 2026-07-29 — Pension Credit severe-disability-addition follows the couple rule (DECISIONS 2026-07-29):**
-  `PathProjector::meansTestedBenefitNominal` applied the severe-disability addition (SDP) whenever **any** living
-  member received a disability benefit, so a couple with **one** disabled partner wrongly got it. Real rule
-  (Turn2us): a couple qualifies only when **both** partners receive a qualifying disability benefit (or the other
-  is registered blind). Fix: SDP now needs a single disabled pensioner or a both-disabled couple (**couple rate =
-  2× single**); a new `Person::caresForPartner` flag wires the **carer addition** (the correct addition for a
-  one-disabled-partner couple, via underlying entitlement, which does not remove any SDP). Quantified on the
-  private V2 base before/after (figures in the gitignored benefits doc): a material cut to lifetime Pension
-  Credit, confined to the both-alive years (survivor years were already SDP-free, unchanged). Engine-only; `caresForPartner`
-  **builder-UI exposure deferred** (defaults false, no scenario/child-delta affected, immaterial to V2). Guarded
-  by `PathProjectorTest` + `PensionCreditCalculatorTest`. Full benefits check for the couple is in the gitignored
-  `docs/BENEFITS-CHECK-V2.local.md`.
-- **Done 2026-07-30 — "available capital" + "monthly allowance", and a SOLVED affordable-spend figure
-  (DECISIONS 2026-07-30, [docs/build/PLAN-spendable-view.md](build/PLAN-spendable-view.md)):** the tool
-  reported only annual figures, and its nearest "available" number (`usableWealth`) counted pre-tax
-  pension as cash. One presenter definition (`ResultPresenter::spendableFor`) now feeds the ladder,
-  Compare, `/afford`, the CSV and the PDF: **available capital** (liquid only; home excluded, pension
-  separate + labelled taxable) and **monthly allowance** (what the plan can FUND, split essential vs
-  free-to-choose), with the survivor step-down on the Compare row. Plus `SustainableSpend` — a
-  synchronous deterministic bisection on a new `DiscretionarySpendLever` — which **solves** "the most you
-  could spend on treats and holidays every year", the one question a budget-bounded projection cannot
-  answer. **V2 finding: sell & buy cheaper £865/mo, lifetime mortgage £652/mo, YCC-to-72 £212/mo, and
-  every other plan (incl. the LiveMore stay-put base and both £80k art-sale variants) fails at zero
-  discretionary spend** — the stay-put mortgage leaves no holiday budget at all.
-- **Done 2026-07-30 — the park-home option: a bought home that costs what it costs and LOSES value
-  (DECISIONS 2026-07-30, [docs/build/PLAN-park-home.md](build/PLAN-park-home.md)):** two optional
-  `HousingAction` fields (`buyRunningCosts`, `buyGrowthOverride` — the latter accepting **negative**
-  rates), a `home_depreciates` honesty note, and four new scenarios (£150k Tring / £128k Wokingham,
-  each ± the £80k art sale). **Running costs raised £3,000 → £5,000/yr on 2026-07-30** once the home's
-  own upkeep was researched (the pitch fee buys site maintenance only — DECISIONS 2026-07-30), which
-  narrows the advantage: £128k Wokingham + art sale **£994/mo** free spending vs sell-and-buy-cheaper's
-  £865/mo, but **£693/mo without the art sale**, so sell-and-buy wins on both spending and estate unless
-  the art is sold. £150k Tring can't complete at all — no mortgage is available on a park home and the
-  £46,412 gap exceeds their savings. **A full scenario audit ran
-  clean** (see Session log) — variant labels, orphaned overrides, the mortgage line, monthly-figure
-  reconciliation, depreciation reaching the result, and unfunded purchases being charged.
-- **Done 2026-07-30 — hard rule "no invisible figures" + `php artisan scenarios:audit`
-  (DECISIONS 2026-07-30):** new hard rule in CLAUDE.md — the model must never use a figure the user
-  cannot see and interrogate. **Two live violations fixed:** a bought home's upkeep (1% of value/yr)
-  and moving costs (£2,000) were private engine constants applied silently; both are now disclosed as
-  `assumed_figure` notes reading the constant that owns them (never restating it). New
-  `scenarios:audit` command sweeps every stored scenario on seven checks and exits non-zero so it can
-  gate a release; `AuditScenariosTest` proves it catches each defect rather than merely passing.
-  **It immediately found a real bug:** `Scenario::projectFrom()` defaulted the variant COLUMN to
-  `Rent` while the forecast defaults to `stay_put`, so a scenario saved without an explicit variant
-  was labelled "Sell & rent" everywhere while being projected as staying put (now `StayPut`).
-- **Done 2026-07-30 — the PDF is a COMPLETE print of the results page, charts included
-  (DECISIONS 2026-07-30):** the export carried about a third of the screen and **no chart at all**
-  (dompdf runs no JavaScript; every screen chart is an ApexCharts canvas), which made it unusable for
-  its actual purpose — sharing a plan with family or an adviser. Now every section the page renders is
-  exported from the **same `ResultPresenter` calls** the Livewire component makes, including the
-  previously missing input-sanity / **assumed-figure disclosures** (the "no invisible figures" rule
-  applies to the artefact the reader is handed), the what-if delta, longevity, care risk, the
-  interpretation panel, assumption sensitivity, Pension Credit how-to-claim, the IHT distribution,
-  withdrawal sequencing, the stress test, the assumptions panel, the milestone timeline, and the
-  **eleven ladder columns** the print had been dropping. New **`App\Export\ChartSvg`** re-draws all four
-  charts (Monte Carlo fan + the three time-series) as vector SVG **from the screen chart's own option
-  blob**, embedded as `<img src="data:image/svg+xml;base64,…">` (dompdf ignores an inline `<svg>`).
-  Report is now **A4 landscape**. **A live divergence was found and fixed on the way:** the PDF read
-  `$scenario->variant` directly while the screen clamps to a configured strategy, so a scenario stored
-  as "sell & rent" with no sale price printed a *rented* ladder against the screen's stay-put — both now
-  resolve through one `App\Forecast\LadderContext`. Completeness is guarded by **derivation** (the test
-  reads the component's own view data), not a checklist.
-  **Reworked after Rob's review of the first cut** (charts too small, layout unlike the web): the report
-  now uses the results page's own idiom — white cards, the coloured stat tiles, verdict pills, badges and
-  the ladder's row tints — charts are drawn page-width at **1000×480** (was 720×320), and **both fan
-  bases print as separate charts** (spendable excl. home, then total wealth incl. home equity), because
-  the screen's "Include home value" checkbox cannot be toggled on paper. **A second real defect was found
-  and fixed:** all ~24 ladder columns as one table overflowed the page and dompdf **clipped** it — the
-  final total-wealth column printed as `£225,5` — so the ladder is split into two tables sharing the
-  Year / Age(s) key, guarded by a test that reads the rendered PDF's own text positions.
-- **Done 2026-07-30 — income echoed back like spend; monthly beside annual; no sale talk without a sale
-  (DECISIONS 2026-07-30) — on BOTH the results page and the PDF:** the tool detailed what a plan *spends*
-  but never what *funds* it, so new **`ResultPresenter::incomePlan()`** adds a "Where your money comes
-  from" section — the entered income sources with each one's start and stop, the capital pots with what is
-  paid in and **how each is taxed on the way out**, and a **timeline** of when each source starts, stops
-  and peaks, derived from the same `incomeBySource` the ladder reads so it cannot disagree with it. Every
-  budget figure now carries a **monthly** twin, rounded per line and summed so the column adds up as
-  printed. And **sale content follows the strategy on display** (`LadderContext::homeSold()`), not merely
-  whether a sale price was entered — a base carries one so Compare can run the sell variants, which was
-  handing a stay-put plan a sale waterfall, selling-cost assumptions and CGT signposting for a disposal it
-  never makes. **Finding:** the V2 base has **no savings accounts at all** — its £18,573.68 of 2026 liquid
-  wealth is exactly that year's surplus, not an opening balance — so an explicit "no savings to fall back
-  on" note now says which it is instead of showing an empty table.
-- **Done 2026-07-31 — six shipped assumption figures had never reached a single forecast
-  (DECISIONS 2026-07-31):** the app reads a scenario's assumptions from the `assumption_sets`
-  **table**, seeded once from `AssumptionSetLibrary`; a figure added to the library afterwards is
-  absent from the stored payload, where the mapper's back-compat rule (correct for a frozen run
-  snapshot) reads it as null. So **stochastic house-price growth, stochastic salary growth and the
-  above-CPI care escalation — all built, tested and documented on 2026-07-18 — had never been active
-  in any run Rob has seen**, along with the new investment charge. Re-seeded (verified first that the
-  only differences were the six absent keys, so no admin edit was overwritten). **`scenarios:audit`
-  gained a pre-flight check** for a stored set missing any shipped key, proved in both directions by
-  `AuditScenariosTest`. **Measured:** scenario 9's terminal p10–p90 widens £338,965–£486,042 →
-  £219,543–£688,165 (3,000 paths, seed 424242) — the housing risk that had been missing from every
-  fan. Stored MC runs are frozen and unaffected; **a re-run will now differ, and should.**
-- **Done 2026-07-31 — investment returns are no longer gross of charges (adviser-parity A1,
-  DECISIONS 2026-07-31):** the largest open correctness gap. `AssumptionSet::$investmentCharge`
-  (`?Percent`, null = byte-identical) reaches the projector via `PathDraws::investmentChargeRate()`
-  on all three drivers, and `growState` deducts it from each invested balance after growth — DC pots,
-  ISAs, GIAs; **cash deposits and the home bear none**. Shipped **0.50%** across the presets, sourced
-  to DWP's 0.48% workplace average / 0.28% median AMC / the 0.75% cap that does not bind in
-  decumulation (ASSUMPTIONS §10), and **deliberately not the most adverse figure** — the charge falls
-  on invested wealth, so an over-adverse rate biases sell-vs-stay rather than adding safety. Editable
-  as the 8th economic assumption. `YearResult::$investmentCharges` reports the pounds and growth stays
-  **gross**, so opening + growth − charges reconciles and the charge is visible; a lifetime total
-  prints under the ladder on screen and in the PDF. **V2 effect:** sell-and-rent runs short **2042
-  instead of 2043**; lifetime charges £814 (stay-put base), £2,404 (lifetime-mortgage / sell-and-buy —
-  their surplus piles up as cash, so only the DC pot is charged), **£8,150 (sell-and-rent)**, whose
-  proceeds are genuinely invested.
-- **Done 2026-07-31 — pension contributions: net-pay tax relief, and the employer's money is the
-  employer's (adviser-parity A2, DECISIONS 2026-07-31):** contributions came from *net* surplus with
-  no relief, so the engine modelled a pension's cost and none of its point. New
-  `DcPension::$reliefMethod` (`?PensionReliefMethod`; null = relief not modelled, back-compat, and
-  raised as a `no_relief_method` input note). **Net pay** is modelled by subtracting the contribution
-  from gross earnings *before* both the income-tax pass and the spendable total — relief through the
-  engine's one tax pass with no parallel calculation to drift, NI correctly unaffected, and the
-  surplus/tax circularity dissolved. Capped at pay, so it stops when the salary does.
-  **`ReliefAtSource` throws** rather than accepting the input and giving no relief. Two structural
-  defects fixed with it: the **employer's contribution is no longer funded from household surplus**
-  (credited while the member works, prorated in a part-year; a year with no surplus previously
-  **dropped it silently**), and contributions no longer run for ever after retirement. **Effect on V2:
-  none — no stored scenario records any DC contribution at all** (see Blockers).
-- **Done 2026-07-31 — the protection gap: what a death next year costs, and the cover that vanishes
-  at retirement (adviser-parity B2, DECISIONS 2026-07-31):** the engine already computed the survivor
-  cliff as a *percentage*, so it knew the size of the hole but never named the instrument that fills
-  it. Two halves. **Engine:** `Person::$deathInServiceCover` (`?DeathInServiceCover`; null = no cover,
-  byte-identical) pays an employer group-life lump sum to the survivor when a member dies **while
-  still employed** — a multiple of the salary in the year of death, or a fixed (nominal) sum assured.
-  Registered-scheme tax rules verified against HMRC PTM073010: tax-free under 75 up to the remaining
-  LSDBA, taxable as the recipient's income above it and in full at 75+, all through the engine's one
-  tax pass. **Outside the estate for IHT**; **capital, not income, for Pension Credit** — so a payout
-  can end a survivor's Guarantee Credit, which the forecast now shows. New `death_in_service` income
-  source. **App:** `ProtectionGap` bisects for the smallest lump sum that leaves the survivor's money
-  lasting at least as long as the couple's own plan does (a **relative** bar — an absolute one is
-  unanswerable for a plan that already runs short), and prices the same death a year after retirement,
-  when the cover has ceased. Deterministic and synchronous (~10–50 ms, no queue worker), pinned to the
-  strategy the ladder is showing. **Finding — the exposure runs the opposite way to the adviser
-  reflex:** the *working* partner's death leaves the survivor no worse off; the *retired, disabled*
-  partner's death is the damaging one (it removes their State Pension, disability benefit and the
-  couple's Pension Credit while the survivor still carries the stay-put mortgage), moving the
-  shortfall 2036 → 2030 and needing ~**£108,000** to restore the plan (~£110,000 on sell-and-rent,
-  **£0** on sell-and-buy-cheaper, which is immune). Also collapsed **seven sweep levers' positional
-  `Household` rebuilds** into one `copy()` behind withers, guarded by a reflection-driven
-  `HouseholdWitherTest` — a field added to the DTO and forgotten in a lever was silently dropped from
-  every swept forecast. **Awaits browser sign-off** (a visible new section on results + PDF).
-- **Done 2026-07-31 — what paying for advice would cost (adviser-parity B1, DECISIONS 2026-07-31):**
-  now the engine charges investment costs at all, the cost of advice is the same projection run twice —
-  once bearing the charges it already bears, once with an adviser's ongoing fee on top — reported as
-  lifetime pounds, terminal wealth and the year the money runs out. **The advised side is the plan's own
-  charge PLUS the fee and nothing else:** the drafted ~1.80% "total cost of ownership" could only be
-  found in unverifiable search summaries, and how much dearer an advised fund choice is varies too much
-  between firms to assume, so building the total that way would have invented the larger half of the
-  number. The **0.83%** ongoing fee (NextWealth 2026, re-verified at build time) lives in
-  `config/advice.php` — **not** in `AssumptionSet`, because the forecast never charges it — and is
-  editable per scenario (blank = the benchmark, stored sparsely so no scenario predating it gains a
-  delta). Panel is framed as a **cost, not a verdict**, and says what it cannot value (behavioural
-  coaching; the cost of getting something wrong without an adviser; an initial one-off fee).
-  **V2 finding:** advice costs this household very little (~**£1,278** over the whole stay-put plan,
-  moving the shortfall 2036 → 2035) because it has almost nothing invested — **except sell-and-rent at
-  ~£11,941**, the one plan whose proceeds are genuinely invested. Awaits browser sign-off.
-- **Done 2026-07-31 — the ISA subscription cap enforced, and a "known divergence" that had it
-  backwards (adviser-parity A3, DECISIONS 2026-07-31):** new `IsaParameters` in the tax-year registry
-  (£20,000 overall per person per year, sourced, plus the dated April-2027 cash-ISA cut);
-  `applyContributions` caps ISA subscriptions per person per year and **spills the excess to that
-  person's GIA** rather than dropping it — the household still saves the money, just somewhere taxable.
-  `IsaSubscriptionCapTest` is **verified to fail** with the cap removed. **The DATA-MODEL entry was
-  wrong and is corrected in place:** it claimed the bias was "largest for the sell-and-invest plans",
-  but a sale's proceeds are invested into a **GIA**, not an ISA, and surplus banks to **cash**, so no
-  housing variant ever sheltered anything through the gap. It only ever bit on an entered ISA
-  contribution above £20,000/yr, which no stored scenario has, so nothing moves. **The bigger half is
-  now recorded as still open:** the engine never *uses* the allowance either (no bed-and-ISA), which
-  **understates** the sell-and-invest plans — an action to decide on, not a rule to enforce.
-- **In progress:** nothing mid-edit. Live carry-over: the real **V2 couple's data** is captured privately in the gitignored `docs/SCENARIO-V2.local.md` (never commit) — the durable source to rebuild after a DB wipe; **read that doc before touching any V2 figure.** The base's
-  "money found from outside" convention can now be modelled honestly: **Rob re-enters it as a capital receipt**
-  (year 2026, the real source as the label) — see the V2 doc's note. It now needs **~£49,495**, not ~£90k.
-- **Operational note (found 2026-07-10):** a `queue:work` daemon started **before** the 2026-07-09 Postgres migration keeps polling the old SQLite `jobs` table and processes **no** Postgres jobs — an in-app "Re-run all" hangs against it. **Restart every queue worker after the DB change** (`queue:work` caches its DB connection at boot). See How to pick up.
-- **Known bugs:** none open. The queued-Monte-Carlo reproducibility bug is **RESOLVED** (Postgres) and **independently re-verified 2026-07-10** (Session log). Documented v1 scope limits (all flagged in code) live in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" — e.g. Scotland income tax throws; emergency tax models the over-deduction magnitude, not PAYE-table pennies. **A repayment mortgage now amortises properly** (DECISIONS 2026-07-29 — the static-balance divergence is CLOSED; lender fees, ERCs and the 10%/yr overpayment allowance remain unmodelled). **House AND salary growth are now both stochastic in the Monte Carlo** (DECISIONS 2026-07-18) — no growth factor is a deterministic straight line any more.
+- **Done:** the tool is feature-complete for personal use. An HMRC-accurate deterministic engine (income tax and NI, the pension lump-sum suite including Month-1 emergency tax and reclaim, State Pension, SDLT/CGT/PRR, means-tested benefits, IHT, care) sits behind a Monte Carlo with stochastic joint-life mortality and stochastic house-price, salary and care-cost paths. Around it: encrypted DTO persistence, Fortify auth, GDPR, Filament, queued runs with progress and cancel, a Livewire UI with charts, spreadsheet import, a complete PDF export with server-drawn charts, 2FA and a CSP. Decision support covers lever thresholds, a combination comparison, the survivor cliff, a 2-D trade-off map and a local-model assistant. Housing covers stay-put, buy-cheaper, rent, park homes (a bought home that depreciates), let-to-let, equity release and real amortising repayment mortgages pinned to a lender illustration. The adviser-parity sweep is now largely closed: investment charges, net-pay contribution relief, the protection gap (employer death-in-service cover and the life cover that would restore a survivor's plan), the cost-of-advice comparison, and the ISA subscription cap all shipped on 2026-07-31.
+- **In progress:** nothing mid-edit.
+- **Known bugs / broken:** none open. Documented v1 scope limits are all flagged in code and listed in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" (for example Scotland income tax throws rather than guessing; emergency tax models the over-deduction magnitude, not PAYE-table pennies; the engine enforces the ISA allowance but never *uses* it, so sell-and-invest plans are understated).
+- **Live carry-over:** the real couple's data is captured privately in the gitignored `docs/SCENARIO-V2.local.md`, which is the durable source to rebuild from after a DB wipe. **Read it before touching any V2 figure.**
 
 ## What's next (in order)
-The whole post-v1 backlog is built. What remains:
-1. **Rob's browser verification + sign-off** (testing deferred by Rob). The whole post-2026-06-29 cluster is built but unreviewed in the browser: re-run the browser a11y pass over the post-06-29 panels (`npm run a11y`; docs/spec/A11Y.md); check the mobile results nav; the 2FA QR scan; eyeball the new panels (annuitisation / stress-test / care-risk / withdrawal-sequencing / IHT / the spending-smile ladder / the decision-support finishers + the assistant + the new **"What you can afford"** screen and its **Check how sure** hand-off). **Thresholds, the trade-off map, assistant answers and the "Check how sure" MC runs all need the queue worker running.** Newest visible surfaces to eyeball (2026-07-30): the **"To spend / month"** and **"Available capital"** columns on the results ladder + the pair on Compare + the monthly block on `/afford`; the budget panel's **computed** mortgage instalment (it reads £0 in the stored inputs by design); the **assumed-figure** and **depreciation** notes; and the four **park-home** scenarios (51–54). Run **`php artisan scenarios:audit`** first — it checks the figures and their disclosure before you look. **Also open a downloaded PDF** (2026-07-30): it is now a full landscape print of the whole results page with all four charts drawn server-side — check the charts read well on paper and the wide cashflow ladder is legible at its print size. **New 2026-07-31:** the **investment-charges** line under the cashflow ladder (screen + PDF); the **8th assumption row** ("Investment charges (a year)", editable in the builder); the new **"Tax relief on your contribution"** select on each DC pension at builder step 3; the new **"If one of you died"** section on the results page (and its PDF twin) plus the **death-in-service cover** select on an employed person at builder step 1; the new **"What paying for advice would cost"** section (+ PDF) and its **advice-fee** input at the foot of the builder's Economic assumptions; and **re-run the Monte Carlo** — house-price volatility, salary volatility and above-CPI care escalation are now live for the first time, so every stored fan is narrower than the model now says it should be.
-2. **Public-release blockers** (harmless while private, mandatory before any public launch; each flagged in code): set `config('compliance.personal_use')` false + confirm the guidance-only partition re-applies; swap the stress-test dataset off the CC BY-NC-SA JST source for an OGL/licensed one; tighten the CSP `script-src` to nonces; complete the a11y pass to a public bar.
-3. **Optional refinements to built features** (all flagged v1 limits; pick by value) — remaining care flags (age-conditioning of the onset rate + a sex split of the care *duration*; the means-test v1 flags: Pension Credit not counted into the contribution, LA-vs-self-funder fee gap); CGT deemed-occupation absences; an annuitisation retirement-month override. (Done this cluster: both house and salary growth in the Monte Carlo are now stochastic, and the care *probability* is now sex-differentiated — DECISIONS 2026-07-18.) See DATA-MODEL "Known divergences" + docs/build/PLAN.md.
-4. **CI / data hygiene (remainder).** The freshness guardrails run monthly in CI (the `data-freshness` workflow; takes effect on GitHub once pushed). Low-value hardening: a tamper-evident run hash, forecast caching.
+**The queue is [docs/board/todo/](board/todo/), one card per file.** Do not restate it here. At the head:
 
-**Specced-but-partly-built** (pick up when chosen): **output legibility + category (care) inflation + the
-missing time-series charts** ([docs/build/PLAN-output-inflation-and-charts.md](build/PLAN-output-inflation-and-charts.md);
-open questions resolved by the 2026-07-18 research pass, most-adverse defaults each user-editable, bar one
-residual State-Pension judgement flag for Rob). **A1 (care escalates above CPI), A2 (care-stress in the
-deterministic path) and C1+C2+C3 (the three hero time-series charts) are now built (above).** Still open from
-slice #3: the **nominal-pounds toggle** (deferred — needs the engine's internal pre-deflation figures exposed,
-not a presenter re-inflation, to avoid drift) and the wealth chart's terminal p25/p75. Next by the plan's build
-order is **B1 — verdict-first, probability-led landing** (reuse the `/afford` screen, lead with the Monte-Carlo
-probability + the word-bands), then the B2–B4 results-page restructure (tabs, tables into `<details>`, banners
-demoted), then A3 fat tails / A4 State-Pension uprating. Build order in the plan's "Build order" section.
-Other partly-built specs: **adviser parity** ([docs/build/PLAN-adviser-parity.md](build/PLAN-adviser-parity.md),
-scope questions all resolved; **A1 fee drag, A2 net-pay relief, B2 protection gap and B1 cost of advice
-are BUILT** 2026-07-31, and **A3's ISA subscription cap** with them). **No OPEN correctness gap from the
-adviser-parity sweep remains.** What is left there is smaller and each is recorded in DATA-MODEL "Known
-divergences": the engine never *uses* the ISA allowance (no bed-and-ISA, so sell-and-invest plans are
-**understated** — an action to decide on, not a rule), the £3,600 non-earner relief route, and the
-annual-allowance / MPAA cap on relievable contributions. Next by the plan's own order is **B5 capacity
-for loss** (mostly framing over the stress
-machinery that already exists: how far can wealth fall before the essential floor breaks), then A3 ISA
-rules, A4 salary sacrifice, B3 estate checklist, B4 annual review;
-withdrawal-sequencing #5/#6 (docs/build/PLAN-withdrawal-sequencing.md, gated on two modelling
-calls from Rob); multi-property (docs/build/PLAN-multi-property.md, DRAFT); assistant scenario-editing
-(docs/build/PLAN-assistant-scenario-editing.md, approved scope, not built).
+1. **0011 B5 capacity for loss** — mostly framing over stress machinery that already exists: how far can wealth fall before the essential floor breaks. Next by PLAN-adviser-parity's own order.
+2. **0010 B1 verdict-first, probability-led landing** — reuse the `/afford` screen, lead with the Monte-Carlo probability and the word-bands. Next by PLAN-output-inflation-and-charts' build order.
+3. **0007 withdrawal sequencing #5 and #6** — planner-timed PCLS then the bounded optimiser. Its two "modelling calls" were found already answered in the plan's own Decisions section on 2026-08-01, so it is buildable rather than gated.
 
 ## Blockers / open questions
-- [ ] **Rob's browser sign-off** on the built cluster (What's next #1) — the gating item.
-- [ ] **The stale queue worker** — restart it (then in-app "Re-run all" works; see How to pick up).
-- [ ] **Is the working partner really contributing nothing to a pension?** (found 2026-07-31, Rob to
-  confirm). **No stored scenario records any DC contribution — member or employer, on any of the 14.**
-  An employee in a workplace scheme normally contributes under auto-enrolment (typically ~5% member +
-  3% employer), so if this is simply not entered the forecast understates their pension, and now its
-  tax relief too. Deliberately **not** fixed by assuming a figure. If contributions are added, set the
-  pension's **relief method to "net pay"** (Rob's recorded answer, PLAN-adviser-parity "Decisions
-  resolved" #2) or the results page will say relief is not being modelled.
-- [ ] **Enter the working partner's death-in-service cover** (found 2026-07-31, Rob). It is confirmed
-  in force (PLAN-adviser-parity "Decisions resolved" #4) but **no stored scenario records any**, so the
-  new "If one of you died" panel currently shows £0 of cover for them. Builder step 1 → the employed
-  person → "Death-in-service cover from their employer" (a multiple of salary, or a fixed sum). Worth
-  knowing before entering it: **it changes little here** — the modelling shows the working partner's
-  death is *not* the household's protection risk; the retired partner's is, and no employer cover
-  exists for them.
-- [ ] **Spreadsheet import** — the line-item expense-category data-model decision; re-verify IWT CSP vs a real export.
-- [ ] **Demo couple's anonymised figures** — Rob supplies later, entered via the UI, not hardcoded.
-- [ ] **Document where the V2 base's remortgage money comes from** (Rob, in the UI): the base needs **~£49,495**
-  found from outside (£48,000 to close the gap to the £208k redemption + £1,495 broker fees) and still models it
-  as arriving unshown. Enter it at builder step 3 → One-off capital receipts → year 2026, with the real source as
-  the label — and a matching one-off cost the same year, since the money goes straight to the lender. Scenarios
-  47/48 already model the £80k art-sale answer both ways.
-- [ ] **TIME-LIMITED — the park-home heat-pump grant** (Rob, if a park home is on the table): a
-  main-residence park home on a **residential-licensed** site now qualifies for the Boiler Upgrade
-  Scheme (the EPC blocker was removed 28 Apr 2026), and replacing **LPG** off gas grid draws **£9,000**
-  until **31 March 2027**. Ask any specific park about heat-pump/solar consent, the electricity supply
-  arrangement (own MPAN or site-owner resale — it decides whether solar can earn export income), and
-  whether the roof takes panels. Not modelled; see PLAN-park-home "Heat pumps and solar".
-- [ ] **Not blocking, and not Rob's call** — a real **broker quote** would firm up scenario 43's BTL rate
-  (5.75% is the sourced market average, not a quote; consumer buy-to-let is a narrower market). The park-home
-  depreciation rate needs nothing further: no neutral UK index exists, so -8%/yr ships as an openly-labelled
-  judgement with four sensitivities. Both researched and decided — DECISIONS 2026-07-30.
-- [ ] **"Export all to PDF" scales linearly and will eventually need batching** (found 2026-07-30, not
-  blocking): now the report is complete, 14 scenarios measured 236 landscape pages, 2.3 MB, ~38 s and
-  ~538 MB peak — fine against Herd's 1512 M limit and the 300 s gateway timeout, but memory grows with
-  scenario count and the per-scenario page count has since risen to ~27, so past roughly 20–30 scenarios
-  it will need a queued or batched export. Single-scenario download is ~27 pages / ~1.3 s with headroom.
-- [ ] **Not blocking** — the Delta-research backlog (docs/research/RESEARCH-delta-2026-07-02.md); the under-spending case (docs/build/PLAN.md); the third-adult-contributing-to-upkeep scope item; a /methodology enhancement + an adviser/Pension-Wise output pack; WCAG 2.2 AA + mobile to a public bar.
+**The full set is [docs/board/human-review/](board/human-review/), each card carrying its own options and a recommendation.** Eight cards are waiting on Rob; the ones that actually gate work:
+
+- **0001 browser sign-off on the built cluster.** The gating item: everything built since 2026-06-29 is proven by tests and numeric audit but has never been looked at in a browser.
+- **0002 is the working partner really contributing nothing to a pension?** No stored scenario records any DC contribution, so the forecast may understate their pension and its tax relief. A payslip settles it; deliberately not fixed by assuming a figure.
+- **0009 should the model assume bed-and-ISA?** The engine enforces the ISA cap but never uses the allowance, so sell-and-invest plans are understated. A decision about modelled behaviour, not a rule.
+- **0006 the park-home heat-pump grant is time-limited** (GBP 9,000, expires 31 March 2027) and needs questions put to a specific park.
 
 ## How to pick up
-Run from the **project root** (the test runner shells out to a relative phpunit path). **Run php / artisan / composer / npm via PowerShell** (PHP 8.4 = Laravel Herd; not on the Git Bash PATH). Bash is fine for git / grep / file ops. See CLAUDE.md.
+Run from the **project root** (the test runner shells out to a relative phpunit path). **Run php / artisan / composer / npm via PowerShell** (PHP 8.4 is Laravel Herd, not on the Git Bash PATH). Bash is fine for git, grep and file ops. See CLAUDE.md.
 ```powershell
 Set-Location "C:\Dev\RetireForecast"
-php artisan test                     # full suite — must be all green (red = stop and fix)
+php artisan test                     # full suite, must be all green (red = stop and fix)
 php artisan test --testsuite=Engine  # engine only
+php artisan scenarios:audit          # every stored scenario: figures AND their disclosure
 vendor/bin/pint --dirty              # house style on changed files
 npm run build                        # build assets (public/build is gitignored)
 ```
-- **App DB is Postgres 18** (`.env` `DB_CONNECTION=pgsql`, db `retireforecast`, `127.0.0.1:5432`, `postgres`/`postgres`; the old sqlite line is commented for revert). Fresh machine: create the db, then `php artisan migrate --seed`. Tests run on in-memory SQLite regardless.
-- **Herd serves the app at `https://retireforecast.test`** (no `php artisan serve` needed). Run `npm run build` after asset changes. Using HMR (`npm run dev`) → set `SECURITY_HEADERS_ENABLED=false` (the CSP omits the Vite dev origin).
-- **Queue worker (needed for full runs, thresholds, the trade-off map and assistant answers).** Start it **fresh from the project root** with JIT (≈2× faster, byte-identical):
+- **App DB is Postgres 18** (`.env` `DB_CONNECTION=pgsql`, db `retireforecast`, `127.0.0.1:5432`; the old sqlite line is commented for revert). Fresh machine: create the db, then `php artisan migrate --seed`. Tests run on in-memory SQLite regardless.
+- **Herd serves the app at `https://retireforecast.test`** (no `php artisan serve` needed). Run `npm run build` after asset changes. Using HMR (`npm run dev`) needs `SECURITY_HEADERS_ENABLED=false`, because the CSP omits the Vite dev origin.
+- **Queue worker** (needed for full runs, thresholds, the trade-off map and assistant answers). Start it **fresh from the project root** with JIT (about twice as fast, byte-identical):
   ```powershell
   php -d opcache.enable_cli=1 -d opcache.jit_buffer_size=128M -d opcache.jit=1255 artisan queue:work
   ```
-  **A worker started before the 2026-07-09 Postgres move polls the old SQLite jobs table and never processes Postgres jobs — kill and restart it.** The synchronous preview (1 path) needs no worker.
-- **Admin `/admin`** gated on `is_admin` (`php artisan user:make-admin {email}`). **Assistant** inert unless `ASSISTANT_ENABLED=true` (needs Ollama with `qwen3:14b` + the worker; build the doc index once with `php artisan assistant:index-docs`, re-run after editing a curated methodology doc). Register at `/register` + accept the `/welcome` disclaimer; 2FA at `/account/security`. Demo preset: `php artisan db:seed --class=Database\Seeders\DemoScenarioSeeder`.
+  **A worker started before the 2026-07-09 Postgres move polls the old SQLite jobs table and never processes Postgres jobs, so kill and restart it.** The synchronous preview (1 path) needs no worker.
+- **Admin `/admin`** gated on `is_admin` (`php artisan user:make-admin {email}`). **Assistant** is inert unless `ASSISTANT_ENABLED=true` (needs Ollama with `qwen3:14b` plus the worker; build the doc index once with `php artisan assistant:index-docs`, re-run after editing a curated methodology doc). Register at `/register` and accept the `/welcome` disclaimer; 2FA at `/account/security`. Demo preset: `php artisan db:seed --class=Database\Seeders\DemoScenarioSeeder`.
 - **Machine config (not in repo):** a per-site Herd nginx conf raises this site's gateway timeout to 300s (`~/.config/herd/config/valet/Nginx/retireforecast.test.conf`).
-- **Share with family (private, as-is) — Tailscale Serve, not a public deploy (DECISIONS 2026-07-12 + 07-16).**
-  Set `APP_EXTERNAL_URL` (in `.env`) to this machine's `https://<name>.ts.net`, run `php artisan serve --port=8000`
-  plus a queue worker, then `tailscale serve --bg 8000` (tailnet-only, auto HTTPS). The URL pin is
-  host-conditional (2026-07-16): family traffic under the `*.ts.net` host gets pinned https URLs while local
-  browsing at `retireforecast.test` keeps its own — both work at once, no env toggling needed.
-  The `tailscale serve` config survives reboot; `artisan serve`/`queue:work` do not — relaunch them. Stop
-  sharing: `tailscale serve --https=443 off`. Family log in with Rob's credentials (scenarios are per-user).
+- **Share with family** (private, as-is): Tailscale Serve, not a public deploy (DECISIONS 2026-07-12 and 07-16). Set `APP_EXTERNAL_URL` in `.env` to this machine's `https://<name>.ts.net`, run `php artisan serve --port=8000` plus a queue worker, then `tailscale serve --bg 8000` (tailnet-only, auto HTTPS). The URL pin is host-conditional, so family traffic under the `*.ts.net` host gets pinned https URLs while local browsing at `retireforecast.test` keeps its own; both work at once with no env toggling. The `tailscale serve` config survives reboot; `artisan serve` and `queue:work` do not. Stop sharing with `tailscale serve --https=443 off`. Family log in with Rob's credentials (scenarios are per-user).
+
+## Suggested skills / next tools
+- **`/handover resume`** — the pick-up path. Reads this doc, then the board, then starts the head card.
+- **`/handover save`** — wrapping up. Moves cards first, edits this doc second.
+- **`/checkpoint`** — update the doc set and commit without a full handover pass.
+- **`php artisan scenarios:audit`** — run before and after any engine change, and before looking at a screen. Seven checks over every stored scenario, non-zero exit so it can gate a release.
+- **`php artisan compliance:advice-audit`** — the standing inventory of advice-mode spots, needed before any public release.
+- **ProgressBoard** at `C:\Dev\ProgressBoard` — renders this board (and every other project's) ordered by what is waiting on Rob, and moves cards by `git mv` plus a commit. `php artisan serve --port=8737`, or Herd at `progressboard.test`.
+- **`/code-review`** — for a working diff. `/security-review` before any public release.
 
 ## Sibling docs
 | Doc | Purpose |
 |-----|---------|
+| [docs/board/](board/) | **What is moving.** One card per task; the folder it sits in is its state. |
 | [docs/build/PLAN.md](build/PLAN.md) | The full approved plan. Source of truth for scope, data model, tax rules, Monte Carlo design, phasing. |
-| [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) | The detailed per-feature build record ("Done" bullets) + older session log, trimmed out of this doc 2026-07-10. |
 | [DATA-MODEL.md](DATA-MODEL.md) | Canonical data shape; materialised-vs-planned; "Known divergences" (the full v1-limit list). |
 | [DECISIONS.md](DECISIONS.md) | Append-only decision log with rationale. |
 | [PRD.md](PRD.md) | Goal, success criteria, scope, non-goals, open questions. |
-| [CLAUDE.md](../CLAUDE.md) | Root orient tripwire + build/test conventions + doc-hygiene rules. |
-| docs/SCENARIO-V2.local.md | **GITIGNORED / PRIVATE:** the real couple's data + core scenario, to re-model after a DB wipe. **Read before touching any V2 figure.** |
-| docs/BENEFITS-CHECK-V2.local.md | **GITIGNORED / PRIVATE:** full benefits check for the couple (DLA/CA/AA interaction, carer-underlying-entitlement action, SMI loan vs equity release, Council Tax + Pension Credit gateways) + the Pension Credit engine-fix cross-ref. |
-| [docs/spec/METHODOLOGY.md](spec/METHODOLOGY.md) | User-facing engine-computation methodology + "what we don't model" (also the `/methodology` page + the assistant corpus). |
-| [docs/build/PLAN-output-inflation-and-charts.md](build/PLAN-output-inflation-and-charts.md) | **DRAFT** spec from the 2026-07-18 adversarial review: output legibility, per-category (care) inflation + fat tails, and the six missing time-series charts. Reasoning + research links per decision. |
-| [docs/build/PLAN-spendable-view.md](build/PLAN-spendable-view.md) | **BUILT** (build record): per-year, per-scenario "available capital" + "monthly allowance", and the solved affordable-spend figure. Records why an essentials-only solver bar is degenerate. |
-| [docs/build/PLAN-park-home.md](build/PLAN-park-home.md) | **BUILT** (build record): park homes as a bought home that DEPRECIATES. Also the durable home of the Wokingham–Tring research — listings, pitch fees, the CPI (not RPI) review rule, Pension Credit treatment, and why the "holiday home + cruise" version is ruled out. |
-| docs/build/PLAN-*.md, docs/research/RESEARCH-*.md | Per-feature specs / build records + research (decision-support, IHT, forced sale, sequencing, multi-property, assistant, stress-test, competitive gap, delta). |
+| [CLAUDE.md](../CLAUDE.md) | Root orient tripwire, build/test conventions, doc-hygiene rules. |
+| [docs/spec/METHODOLOGY.md](spec/METHODOLOGY.md) | User-facing methodology and "what we don't model" (also the `/methodology` page and the assistant corpus). |
+| [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) | Every economic assumption with its source and verified-on date. |
+| [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) | The per-feature build record, out of the load path. |
+| [docs/build/SESSION-LOG-ARCHIVE.md](build/SESSION-LOG-ARCHIVE.md) | The dated prose session log, archived 2026-08-01. |
+| docs/SCENARIO-V2.local.md | **GITIGNORED / PRIVATE:** the real couple's data and core scenario, to re-model after a DB wipe. **Read before touching any V2 figure.** |
+| docs/BENEFITS-CHECK-V2.local.md | **GITIGNORED / PRIVATE:** full benefits check for the couple. |
+| docs/build/PLAN-*.md, docs/research/RESEARCH-*.md | Per-feature specs, build records and research. |
 
 ## Branch status
-On `master`. GitHub remote `origin` → github.com/RobertLCraig/RetireForecast. **Pushing to `master` is gated — needs Rob's explicit go-ahead.** Otherwise commit directly to `master` (personal local-first project, no PR flow). **Re-check `git status` / `git log` before any commit or push.** The pre-rebuild prototype is tagged `prototype-v1` (a8f1f68). Use `git log` for history (not restated here — it drifts).
+On `master`. GitHub remote `origin` is github.com/RobertLCraig/RetireForecast. **Pushing to `master` is gated and needs Rob's explicit go-ahead.** Otherwise commit directly to `master` (personal local-first project, no PR flow). **Re-check `git status` and `git log` before any commit or push: this tree is sometimes shared by two concurrent sessions.** The pre-rebuild prototype is tagged `prototype-v1` (a8f1f68).
 
 ## Session log
-_Newest first. Only the recent live window; older sessions are folded into [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) + git log + DECISIONS._
+Not kept here. The narrative is the commit history and the rationale is the decision log:
 
-_2026-07-31 (adviser-parity A3: the ISA cap, and a divergence note that pointed the wrong way)_ —
-Took the last OPEN correctness gap from the adviser-parity sweep. **Measured it before building**, and
-the measurement contradicted the record: the DATA-MODEL entry said the missing cap "biases most for the
-highest-surplus sell-and-invest plans", but a sale's proceeds are invested into a **GIA** and surplus
-banks to **cash**, so no housing variant ever sheltered a penny through it. The gap only ever bit on an
-explicitly-entered ISA contribution above £20,000/yr, which no stored scenario has. Corrected the note
-in place rather than leaving a wrong severity to mis-prioritise the next session — and recorded the
-larger, opposite gap it was masking: the engine never *uses* the allowance either, so the
-sell-and-invest plans are if anything **understated**. Built the cap anyway (it is a real rule the model
-broke), spilling the excess to the GIA rather than dropping it, because dropping it would make the
-household look poorer when the truth is it is more taxed. **The first version of the test was worthless
-and looked fine** — at zero dividend yield an ISA and a GIA are indistinguishable, so every assertion
-would have passed with the cap deleted; re-cut with a real 3% yield and then **verified to fail** by
-disabling the cap.
+```bash
+git log --format='%ad %s%n%b'      # what happened
+```
 
-_2026-07-31 (adviser-parity B1: the cost of advice, built from the one figure that could be sourced)_ —
-Same session, straight on from B2. Re-verified the plan's ⚠️ fee figures first, and that decided the
-design: the **0.83% ongoing fee** confirmed on NextWealth's own page and two trade reports, but the
-drafted **~1.80% total cost of ownership** existed only in search-engine summaries no fetch could
-confirm. Rather than ship a magic number wearing a citation, constructed the advised side as *the
-household's own charge plus the fee* — which is also the more honest model, since the unverified part
-(how much dearer an advised fund choice is) varies too much between an in-house model portfolio and a
-whole-of-market tracker to assume, and guessing it would have invented the larger half of the answer.
-Kept the fee **out of `AssumptionSet`**: the forecast never charges it, and an assumption set that
-listed it would imply otherwise. Returns **null** when nothing is invested rather than "£0 either way",
-which would read as "advice is free" when an adviser would in fact charge such a household a fixed fee.
-**V2 finding:** advice barely matters to this household (~£1,278 lifetime on the stay-put base) because
-it has almost nothing invested — except on **sell-and-rent (~£11,941)**, the one plan that genuinely
-invests. Full suite green, pint clean, `scenarios:audit` clean.
-
-_2026-07-31 (adviser-parity B2: the protection gap, and seven levers that could silently drop a field)_ —
-Resumed via `/handover resume`. What's next #1 is Rob's sign-off and #2 is release-gated, so took the
-plan's own next item: **B2 protection gap**. Verified the tax and IHT treatment against HMRC's Pensions
-Tax Manual and gov.uk **before** modelling anything, rather than shipping the plan's ⚠️ figures on trust
-— which is how the LSDBA test, the age-75 rule and the April-2027 IHT carve-out came to be modelled at
-all. Built the stress through **existing DTO fields** (`LongevityAdjustment::fixedAge` for the death,
-`CapitalReceipt` for the cover) rather than a new projector mode, so a stressed path IS the ordinary
-projection and no tax, benefit or drawdown logic can diverge between the two.
-**Two things the tests earned.** (1) A "the payout persists" assertion failed by £1,072 — chased it
-rather than loosening the delta, and it was **real**: £160,000 of capital ends the survivor's Pension
-Credit, the same trap the tool already shows on a house sale. Pinned as its own test instead of hidden.
-(2) A threshold test that handed the household the solved sum as a capital receipt failed because a
-receipt in the builder state arrives **whether or not anyone dies**, so it lifted the baseline too and
-moved the very bar being measured; re-cut through death-contingent cover.
-**Then the measurement changed the story.** The adviser reflex is to insure the earner. Here the
-*working* partner's death leaves the survivor no worse off, while the *retired, disabled* partner's
-death is the damaging one — it takes their State Pension, their disability benefit and the couple's
-Pension Credit while the survivor still carries the stay-put mortgage. Checked that against the
-stressed ladders line by line before believing it. Added the honest corollary to the panel: cover on
-someone older or unwell may be expensive or unavailable, and a lump sum is only one way to close the
-hole.
-**Also closed a latent drift bug found on the way:** seven sweep levers each rebuilt `Household`
-positionally, so a field added to the DTO and forgotten in a lever would be silently dropped from every
-swept forecast. One private `copy()` now owns it, guarded by a reflection-driven test that enumerates
-the DTO's own properties — **verified to fail** by dropping a field. Pint's `fully_qualified_strict_types`
-fixer again tried to turn a `{@see}` into a real `use` (this time giving a Dto a Forecast dependency);
-reworded to plain text with a note, as on 2026-07-30. Full suite green, pint clean, `scenarios:audit`
-clean, assets rebuilt.
-
-_2026-07-31 (adviser-parity A2: net-pay contribution relief, and the employer's contribution stops being
-charged to the household)_ —
-Continued the same session after A1. `applyContributions` took contributions from net surplus with no
-relief; reading it for the fix surfaced two further defects in the same function, both structural rather
-than a missing figure — the **employer's** contribution was funded from household surplus (charging them
-for someone else's money, and **silently dropping it** in a year with none), and contributions ran for
-ever after retirement. Modelled net pay as what it physically is: the contribution comes off gross pay
-before the household sees it. That gives relief through the engine's single tax pass rather than a
-parallel calculation that could drift, leaves NI correctly untouched, dissolves the
-surplus-depends-on-tax-depends-on-relief circularity, and caps the contribution at pay so it ends with
-the salary — no separate retirement gate to forget. Made `ReliefAtSource` **throw**: it is a real method
-the projector does not model, and accepting it would give no relief while the input said otherwise.
-**One test initially passed for the wrong reason** — the "employer contribution survives a year with no
-surplus" case put the money in and the shortfall drew it straight back out of an accessible pot; re-cut
-with the member below the access age so the pot is locked and the property is actually isolated.
-**Then found the work changes nothing for the real household:** no V2 scenario records any DC
-contribution at all. Raised as an open question rather than papered over by assuming an auto-enrolment
-figure. Full suite green, pint clean, `scenarios:audit` clean.
-
-_2026-07-31 (investment charges built; then six shipped figures found never to have reached a forecast)_ —
-Resumed via `/handover resume`. What's next #1 is Rob's sign-off and #2 is release-gated, so took the item
-the plan itself ranks above the refinements: **A1 fee drag**, the largest silent optimism in the model.
-Re-verified the plan's ⚠️ figures against primary sources first (DWP's two surveys, the statutory cap,
-Vanguard's own fee page) rather than shipping the drafted 0.50% on trust. **Departed from the standing
-adverse-default rule on purpose, and recorded why:** the charge falls on invested wealth and not on housing,
-so it is not monotonic in optimism — an over-adverse figure would tilt the sell-vs-stay comparison the tool
-exists to make, so 0.50% is the adverse side of the *central* case, not the top of the range. Kept growth
-**gross** and carried the charge as its own pounds figure, because netting it in would have satisfied the
-arithmetic while breaching the no-invisible-figures rule.
-**Then the measurement stage earned its keep.** The V2 scenarios came back **identical to the penny**, so
-the charge was reaching nothing. Root cause: the app reads its assumptions from the `assumption_sets`
-**table**, seeded once, and the mapper's back-compat null (right for a frozen run snapshot) silently means
-"pre-feature behaviour" for the live set. Auditing every key found **six** shipped figures that had never
-reached any of the 14 scenarios — including the stochastic house-price growth, stochastic salary growth and
-above-CPI care escalation of 2026-07-18. Each was built, tested, documented and recorded as shipped; the
-engine work was correct; the figure never arrived. Re-seeded (after checking the only differences were the
-six absent keys, and backing up the payloads), and added the missing-key check to `scenarios:audit` with
-`AuditScenariosTest` proving it fails on a stale set and passes on a freshly seeded one. Deliberately did
-**not** "fix" it by defaulting `hydrate()` to the library, which would rewrite stored history to solve a
-live-data problem. Also chased down an identical £2,765 delta across five structurally different plans
-before believing it: real, not a bug — those plans accumulate surplus as **cash**, which correctly bears no
-charge, so only their (identical) DC pot is charged. Full suite green, pint clean, `scenarios:audit` clean,
-assets rebuilt.
-
-_2026-07-30 (the PDF made a complete print of the results page, charts and all)_ —
-Rob: *"Need to get all of the information in the webpage into the pdf download"*, then mid-task
-*"the lack of graphs in the PDFs makes them very difficult to use for sharing as intended"*. Audited
-screen against print first rather than guessing: the export carried roughly a third of the page, and
-the omissions included the **assumed-figure disclosures** — so the artefact a reader is actually handed
-breached the "no invisible figures" rule even though the screen satisfied it. **Probed the renderer
-before designing around it** (a throwaway dompdf render, inspecting the inflated PDF content stream):
-dompdf **silently ignores an inline `<svg>`** — only the `<text>` leaked into the page as flowed text —
-but renders `<img src="data:image/svg+xml;base64,…">` as true vector ops, with `fill-opacity`,
-`stroke-dasharray` and `text-anchor` all honoured. That result decided the design: a small `ChartSvg`
-that draws from the **screen chart's own ApexCharts option blob**, so there is no second data pipeline
-to drift. Rejected Browsershot/headless-Chrome (would print the real canvases, but adds Node + Chromium
-to a local-first tool). **Found a live bug on the way:** the PDF selected the ladder strategy from
-`$scenario->variant` while the screen clamps to a strategy the inputs configure, so a scenario stored as
-"sell & rent" with no sale price printed a *rented* ladder against the screen's stay-put — the
-"`deterministic()` ignores the variant" trap for the third time, now behind one `LadderContext` with a
-parity test. Made completeness **derived, not listed**: the test reads the results component's own view
-data and fails on any key the export drops, with a documented interactive-only allowlist (run controls,
-lever sliders, the threshold explorer, the assistant). **No rasterizer on this machine** (no poppler /
-ImageMagick / Ghostscript), so the charts were verified numerically instead — a geometry audit over a
-real scenario's four charts confirming axis spans, no coordinate or label overflow, and stacked axes
-that span the stack rather than the tallest series. Also caught Pint's `fully_qualified_strict_types`
-fixer importing a **test** class into the production controller from a `{@see}` docblock; reworded to
-plain text. **Then Rob reviewed the output and rejected the presentation** — charts too small, layout
-unlike the web view, and the fan's screen-only "Include home value" toggle leaving one of the two views
-unprinted. Reworked: the results page's own idiom (cards, coloured stat tiles, verdict pills, badges, row
-tints) rebuilt as layout tables, charts redrawn page-width at 1000×480, and **both** fan bases printed.
-**Reviewing his PDF also surfaced a defect neither of us had named:** the ~24-column ladder overflowed
-the paper and dompdf silently **clipped** it — the final total-wealth column read `£225,5`. Split into
-two tables sharing the Year/Age key. The first clipping guard written for it was **worthless and looked
-fine** — asserting the figure appears in the PDF passes even when it is painted off the page — so it was
-replaced with one that decodes the content streams, maps text through the graphics-state transform into
-page coordinates, and was **verified to fail** by inflating the table font until it overflowed. Separately
-confirmed that the "Commute Fuel" tier headings in Rob's PDF were a live `expenseBreakdown()` variable-
-shadowing bug affecting the screen too, already fixed in-tree by the concurrent session — not this work.
-**A third review round** (Rob, scoped to *both* surfaces): monthly beside annual on the spending plan;
-suppress all sale content for a plan that does not sell; and echo the **income** side back the way the
-spend side always has been. The last is the substantive one — `incomePlan()` covers what comes in, where
-the capital sits and how each source turns on and off, with the timeline **derived from the forecast**
-rather than restating inputs so it reconciles with the ladder. Checking it against the real base surfaced
-that the household has **no savings accounts at all**, so its early liquid wealth is accumulated surplus,
-now said out loud. The stay-put report lost a page on net despite gaining a whole section.
-**A fourth round after checkpoint `cc87f49`:** Rob found the stay-put report still disclosing *"we've
-assumed 1% of its value a year"* for a home it never buys — the sale gate had not been carried to the
-**assumed-figure notes**, which keyed off "was a buy price entered?" while a base carries one so Compare
-can run every variant. Fixed at the root with `ResultPresenter::housingActionFor()`, now the single home
-for the rule across the results page, the PDF **and `scenarios:audit`** (auditing the raw action would
-otherwise demand a disclosure the reader must not see). Regression test verified to fail with the gate
-removed; `scenarios:audit` clean across all 18 scenarios.
-Full suite green, pint clean, assets rebuilt. Awaits browser sign-off (open a PDF and read it on paper).
-
-_2026-07-29 (V2 benefits check + Pension Credit severe-disability-addition couple-rule fix)_ —
-Rob asked which benefits the V2 couple could claim, then whether claiming Carer's Allowance or Attendance
-Allowance would cut FRC's DLA, then for a full benefit check. Researched against authoritative sources (Turn2us,
-Age UK, entitledto, gov.uk; verified 2026-07-29): **neither CA (underlying entitlement) nor YCC's own AA reduces
-FRC's DLA** — the only interaction is the Severe Disability Premium, which *paid* CA would remove but underlying
-entitlement does not, and which this one-disabled-partner couple does not get anyway. Wrote a durable benefits
-check to the gitignored `docs/BENEFITS-CHECK-V2.local.md` (benefit × life-phase table; the safe
-carer-underlying-entitlement action; SMI-loan at 3.66% vs the equity-release proposals; Council Tax reductions;
-Pension Credit gateways). While checking the engine's Pension Credit modelling, **found and fixed a real bug**:
-`PathProjector::meansTestedBenefitNominal` OR-ed a per-person disability flag into the household SDP decision, so a
-couple with one disabled partner wrongly received the addition. Fixed to the couple rule (both partners must
-qualify → couple rate = 2× single) and wired the carer addition via a new `Person::caresForPartner` flag.
-**Measured on the private V2 base before/after** (figures in the gitignored benefits doc): a material lifetime
-Pension Credit overstatement removed, entirely the both-alive years (survivor years were already SDP-free).
-Engine-only; DECISIONS + DATA-MODEL + METHODOLOGY updated; full suite green (954 pass, 1 advice-mode skip).
-`caresForPartner` builder-UI exposure deferred (defaults false, immaterial to V2). **Not committed:** the tree
-also carries the concurrent session's uncommitted repayment-mortgage + park-home work, which shares
-`PathProjector.php` and the doc files, so a clean split needs coordination (see [[concurrent-session-split]]).
-
-_2026-07-29 (adviser-parity plan — three open correctness gaps found; no code changed)_ —
-Rob asked what could be learned from a Damien Talks Money Q&A video (28 Jul 2026), then widened it to "what
-else does a financial adviser provide that we should model, to obviate needing one". The video itself was
-unreadable (YouTube serves a JS shell; no transcript), so Rob pasted the page metadata and **the chapter list
-was used as a topic checklist only** — every claim was then verified against gov.uk / primary sources, never
-against the video. Mapped ~30 retirement-relevant chapters against the code. **Most already covered** (MPAA,
-emergency tax, care, sequencing risk, fiscal drag, CGT, IHT, DB-as-bonds; the triple-lock earnings leg is a
-*decided* adverse divergence, not an oversight). **Three genuine gaps found — all now in DATA-MODEL "Known
-divergences" as OPEN:** (1) **no investment-cost model at all** — returns are gross of platform/fund charges,
-the largest silent optimism in the model and a bias in the reassuring direction; this was an open *confirm*
-in the June competitive scan (Cluster E) and is now confirmed absent; (2) **no pension contribution tax
-relief** — the code's own docblock flags it; (3) **no ISA subscription cap** — and the bias is largest for the
-highest-surplus (sell-and-invest) plans, so it is not neutral across the plans being compared. The
-adviser-services sweep found the remaining reasons to hire one are **coverage and cadence, not
-sophistication** — RF already beats the adviser sector on modelling and leads on means-tested benefits.
-Wrote **docs/build/PLAN-adviser-parity.md** (Part A engine correctness, Part B adviser-service parity, with
-three explicit non-goals: fund/product selection, DB-transfer advice, attitude-to-risk psychometrics —
-capacity for loss is kept because it is objective and already computable). **Rob resolved all four scope
-questions**, which reordered the build: A3 ISA drops to generality (both partners are 65+ before the April-2027
-cash-ISA cut, so it misses this household); A2 implements `net_pay` first (their actual scheme — full marginal
-relief, no NI saving); A4 sacrifice drops to a "would it be worth asking your employer?" what-if; **B2
-protection gap promoted to #3** (death-in-service confirmed in force — and it *ceases at retirement*, a real
-cliff-edge RF is well placed to surface). Personal detail (DOB, scheme, cover) deliberately kept **out** of the
-tracked plan per [[pii-leaks-into-tracked-files]] — it lives in the gitignored SCENARIO-V2 doc. **No code
-changed**; no DECISIONS entry per the established convention (a DRAFT plan earns its entry when built).
-
-_2026-07-30 (checkpoint: BTL repriced after a wrong assumption; both open figures closed out)_ —
-Rob challenged the checkpoint for filing the park-home depreciation rate and the let-to-let BTL rate in
-**Blockers**, when he had asked me to research both and the standing rule is research → adverse default →
-expose as editable, never hand the call back. He was right; both had in fact been researched, and filing
-them as questions was the error. Re-checking them to close them out **found a wrong assumption in the BTL
-figure**: 6.5% rested on an inferred later-life specialist premium that **does not exist** — buy-to-let is
-underwritten on **rental income (ICR), not the borrower's earnings**, so age is not the binding constraint
-(BM Solutions lends to 99; several specialist lenders publish no maximum age; Shawbrook single lets from
-4.84%, TML 5-yr from 4.74%). Repriced scenario 43 to **5.75%** (the market-average 5-year fix, ~1pt above
-best buys), £13,520 → £11,960/yr, ICR 160% → 181%. Depreciation stays **-8%/yr**: searched for a neutral UK
-index and there isn't one — the government's own park-homes research is policy analysis and publishes no
-price series, so the figure is an openly-labelled judgement between a campaigning source and a marketing
-one, with four sensitivities shipped. Both now recorded as decided, not open. `scenarios:audit` clean.
-
-_2026-07-30 (hard rule: no invisible figures; the audit made permanent)_ —
-Rob, on finding the £0 mortgage line: *"the model shouldn't ever be able to use a figure that the user
-cannot see / interrogate in some way."* Encoded as a hard rule in CLAUDE.md and enforced. **Looked for
-live violations first rather than only guarding the fixed case, and found two:** a bought home's upkeep
-(1% of value a year) and moving costs (£2,000) were private engine constants moving the result with
-nothing on any screen. Both now disclose via `ResultPresenter::assumedFigures()`, which **reads the
-owning constant** (made public for the purpose) rather than restating it — a disclosure that drifts from
-the figure in use is worse than none, so a test asserts a bigger home moves the disclosed pounds.
-Turned the scratchpad sweep into **`php artisan scenarios:audit`** (7 checks, non-zero exit so it can
-gate a release) plus `AuditScenariosTest`, which asserts it CATCHES each defect — a guard that always
-passes manufactures confidence. **The audit earned its keep on first run against the test fixture:
-`Scenario::projectFrom()` defaulted the variant COLUMN to `Rent` while the forecast defaults to
-`stay_put`**, so any scenario saved without an explicit variant was labelled "Sell & rent" on every
-screen while being projected as staying put. Fixed to `StayPut`. Rob's own scenarios all carry an
-explicit variant so none were affected, but the trap was live. Also fixed an `array_keys` slip in the
-audit that would have printed indices instead of naming broken overrides. Full suite green (993), pint
-clean, `scenarios:audit` clean across all 14 real scenarios.
-
-_2026-07-30 (the park-home option built, then a full scenario audit)_ —
-Built [docs/build/PLAN-park-home.md](build/PLAN-park-home.md) after committing the spendable view
-(`8f5b650`). Two optional `HousingAction` fields close both gaps; `buyGrowthOverride` accepts **negative**
-rates, so `housing.buyGrowthReal` gets its own validation band (−25..25) rather than the 0-upwards `$rate`
-rule. Added four scenarios (ids 51–54). **Corrected my own earlier claim to Rob:** I had written that the
-cruise "only exists in plans that don't involve that mortgage" and treated the park home as settled — wrong,
-since a park home is a sell-and-buy with **no mortgage at all**, the opposite category. Rob pushed back and
-was right; his ~£1,300/mo instinct was if anything conservative (the freed outgoings are ~£1,750/mo: the
-£1,318.54 instalment plus £682.11 of service charge and levy, less the £250 pitch fee).
-**Also fixed a display defect Rob found on the live results page:** a repayment mortgage's "Mortgage" spend
-line is deliberately zeroed (the schedule owns the payment), and echoing that £0 back read as "the mortgage
-isn't being charged". Verified the charge is correct first (the year-on-year difference IS the instalment
-once deflated — my first comparison script wrongly compared nominal to real), then made the budget panel
-show the schedule's own first-full-year instalment, tag it as computed, and count it in the totals.
-**Then audited all 14 scenarios** on six checks: variant column vs modelled variant, orphaned overrides,
-the mortgage line vs what is charged, monthly-figure reconciliation every year, a depreciating home
-actually depreciating *and* raising its note, and an unfunded purchase being charged rather than conjured.
-Three initial flags were **my audit check being naive, not bugs** — an unfunded gap need not surface as
-unmet spend, because the year's income and savings may legitimately cover it (that is the point of charging
-it); corrected the check to assert the gap lands in the year's spend instead. **Audit clean.** Full suite
-green (979), pint clean. Awaits browser sign-off.
-
-_2026-07-30 (spendable view: available capital, monthly allowance, and a solved affordable-spend figure)_ —
-Built [docs/build/PLAN-spendable-view.md](build/PLAN-spendable-view.md) after the other session's Pension
-Credit fix landed (it committed my repayment-mortgage work with it — `11b67e9` is a combined commit).
-Presenter-only for the read figures; **two defects surfaced by my own tests, both worth keeping in mind:**
-(1) rounding the monthly allowance, essential and free independently let the parts disagree with their
-total by 1p on a year with a **1p** shortfall — "free" is now the remainder, so the parts sum by
-construction; (2) more seriously, the whole read-only approach is **bounded by the entered budget**, so it
-can never answer "what could we afford?" — it only says whether the plan worked. That needed a solve.
-Added `DiscretionarySpendLever` + `SustainableSpend` (deterministic bisection, ~20 forecasts, synchronous —
-the Monte Carlo threshold explorer needs a queue worker, this does not), made **variant-aware** so a
-sell-and-rent plan is searched as a renter (`deterministicForecastAt` models stay-put — the trap flagged in
-this handover, which bit me twice in two days). **A third defect caught by inspecting output, not tests:**
-the first solver bar (essentials met) was **degenerate** — income alone covers essentials, so the search
-was insensitive to the lever and every plan returned "£500,000+/yr" for a household on ~£30k. The bar is
-now "full budget funded every year"; recorded in code so it is not reintroduced. Also flagged (not fixed)
-in DATA-MODEL: `usableWealth` counts pre-tax pension as cash, which additionally makes the safety-buffer
-warning fire late. Full suite green (967), pint clean. **Awaits browser sign-off** (visible UI on four
-surfaces).
-
-_2026-07-29 (real repayment mortgages; the V2 Stay-put base moved onto the LiveMore quote)_ —
-Rob supplied a real indicative quote (LiveMore Capital ESIS, 29 July 2026, via broker When The Bank Says No):
-**£160,000 over 16 years, capital & interest**, 6.23% fixed for 60 months then 7.24% SVR. The engine could not
-represent it — a repayment mortgage's balance was **static**, and its payment was an ordinary expense line, so
-the model inflated a contractually fixed instalment with CPI, shrank it by the survivor factor on a death,
-never stopped it at the term end, and understated wealth/estate by all capital repaid. Built the real thing
-(accuracy-first, not an approximation): `RepaymentMortgageTerms` + `MortgageRatePeriod` DTOs and an
-`AmortisationSchedule` (monthly, nominal-rate/12, instalment recomputed at each rate tier, final payment trued
-up to land on zero), with the schedule owning **both** the balance and the payment and dropping the "Mortgage"
-expense line so they cannot double-count. The loan amount stays in one home (`outstandingMortgage`); amortising
-and rolling up are mutually exclusive (the DTO **throws**). **Pinned to the lender's own table as a worked
-example** — every quoted balance within **21p over 16 years**, both instalments (£1,318.54 / £1,384.65) exact,
-total interest within 11p. Wired through assembler + builder (6 new fields, all defaulting empty so no child
-delta shifts) + a results-page modelling note. Then moved base 9 onto the quote, per Rob's call to let children
-inherit. **The mutual-exclusion throw earned its keep:** testing every child against the proposed base *before*
-writing found **4 that broke outright** (27, 31, 38, 39 — lifetime mortgages) and **3 that would have changed
-silently** (17, 32 let-to-let; 28), so those seven carry an explicit blank-term override. Also caught myself
-measuring the sell/rent children with `deterministic()`, which ignores the housing variant — the trap already
-flagged in this handover; re-measured via `deterministicVariants()`, after which they correctly read as
-unchanged. **Verdict on the quote: it does not work** — the survivor carries £16,616/yr on ~£11.7k/yr, so the
-plan runs short in **2036** (was 2043) and stays ~£15k/yr short to 2042, though terminal wealth is **+£74,830**
-because the debt is actually repaid; and it needs ~£49,495 up front against ~£42k realistically available.
-Full suite green, pint clean. Awaits browser sign-off.
-
-_2026-07-29 (V2 what-if family cleared and rebuilt around the three keep-the-flat options)_ —
-Rob: "clean up the scenarios and restart, based on the 3 easily identifiable options." Backed up all 24
-scenarios to the gitignored `docs/scenario-backup-2026-07-29.local.json` (added `/docs/*.local.json` to
-.gitignore first — only `*.local.md` was covered, so a raw export would have been committed with real
-financial data), deleted the 23 children, and rebuilt 9 via the same path the app uses
-(`QuickWhatIfController`: empty `builder_state`, sparse `overrides`, `projectFrom()` for the structural
-columns — two NOT-NULL columns caught a hand-rolled first attempt). The set: lifetime mortgage / let-to-let /
-YCC working +2, +4, +5 years / the £80k art-and-jewellery sale modelled BOTH ways (funding the remortgage gap
-vs additional, Rob's call) / and — Rob's call against the original three-option brief — sell-and-buy-cheaper
-and sell-and-rent kept as comparators, which proved right: they are the only plans that work. Verified
-completeness rather than assuming: rental income reaches the forecast as taxable, both £80k receipts land, 47's
-spend is **exactly** £49,495 above 48's, and the salary really extends to 2029/2031/2032. **Findings: only the
-lifetime mortgage (estate consumed to £63,587) and sell-and-buy-cheaper (£303,506) never run short, and no
-lever rescues the LiveMore mortgage** — +5 working years moves the shortfall 2036 → 2042, the £80k sale buys
-1–4 years. Two judgement calls flagged in the V2 doc: the **let-to-let BTL rate had no quote behind it** (set
-at 6.5% here on a later-life premium — **since disproved and repriced to 5.75%**, DECISIONS 2026-07-30),
-and a **£160k lifetime mortgage is likely unavailable** (max release is governed by the younger
-borrower — the adviser's own quote capped at £144k). Also flagged: **CGT on chattels is not modelled**, so both
-£80k children are optimistic by whatever tax the paintings and jewellery attract. No code changed.
-
-_2026-07-19 (doc-structure migration to the canonical layout)_ —
-Ran the Project-Doc-Standard migration (triggered by `/handover save`). The four anchors moved from the repo
-root into `docs/`; `METHODOLOGY`/`ASSUMPTIONS`/`MORTALITY`/`A11Y` → `docs/spec/`; `PLAN` + `PLAN-*` →
-`docs/build/`; `RESEARCH-*` → `docs/research/` (all `git mv`, history preserved). `HANDOVER-ARCHIVE.md` and the
-gitignored `*.local.md` / `*.xlsx` stayed at `docs/` root. Rewrote every relative cross-reference (doc-to-doc
-and links to source files, at both new depths) plus the code/config that names a doc path — root `CLAUDE.md`,
-`HandoverHygieneTest`, `MethodologyController` + `MethodologyPageTest`, and `config/assistant.php`
-`methodology_docs`. Verified with a link checker over all relative links in every tracked `*.md` (0 broken) and
-the full suite green. Committed on its own (`docs(structure): …`), separate from the charts work. **Note:** stale
-path *prose* in the historical docs (DECISIONS/PLAN/RESEARCH bodies) was left as-is — the clickable links all
-resolve; only this living HANDOVER's prose was updated (rewriting append-only logs is worse than the minor
-staleness). The SessionStart orient hook already discovers anchors at `docs/` root, so it is unaffected.
-
-_2026-07-19 (C1/C2/C3: the three hero time-series charts)_ —
-Resumed and picked up build-order #3 of docs/build/PLAN-output-inflation-and-charts.md (A1/A2 done). The review found
-nearly every chart a user wants was already computed per year on `YearResult` and thrown at a table — only the
-Monte-Carlo wealth fan was drawn. Added a "Money over time" section before the cashflow ladder with three
-stacked-area charts: **C1** income staircase (every income source over time), **C2** wealth composition
-(pensions / savings & investments / home equity, summing to net worth), **C3** costs (essential vs
-discretionary — the spending smile). Presenter + Blade only (`ResultPresenter::timeSeriesCharts` +
-`partials/time-series-charts.blade.php`), no engine change. Built from the SAME `ForecastResult->years` the
-ladder reads, so a chart can't drift from the table; each ships its `<details>` table twin reconciling to the
-ladder cell-for-cell (`TimeSeriesChartsTest`: income cols → total, wealth legs → net worth, ess+disc → spend,
-all cross-checked vs the ladder; non-negative stacked pounds; the >8-source fold keeps every source in the
-table). **Caught in the test:** the income "total" is the sum of the *sources* (the stack height — includes
-tax-free cash, savings drawn, one-off receipts), NOT `grossIncome` (taxable only), which reconciled to a
-different, smaller figure. Categorical colour from the validated dataviz reference palette (CVD-checked on the
-app's white surface); C1 caps at the 8 palette hues, folding any extra income sources into a neutral "Other"
-band on the chart only (the table keeps them all — completeness). Milestone verticals overlaid on all three.
-**Real-terms only; the nominal toggle is deferred** (needs the engine's pre-deflation figures exposed to avoid
-a presenter re-inflation drifting from the projector). Full suite green, pint clean, assets build. **Awaits
-browser sign-off** (visible UI). Next by build order: B1 verdict-first landing.
-
-_2026-07-18 (A2: care in the deterministic path as an "if care is needed" stress)_ —
-Continued the output/inflation plan (build-order #2). Care was Monte-Carlo-only, so the deterministic
-Affordability verdict read a care-free path — "lasts for life? Yes" computed without the household's biggest
-late-life expense, falsely reassuring for exactly the least-numerate reader the screen is built for. Per the
-plan's resolved design (and the FCA / pro-cashflow-tool convention), modelled care as a **stress shown beside a
-labelled care-free base, never expected-value-averaged** (averaging a right-skewed tail understates the person
-in the tail). Engine: `DeterministicPathDraws` gained optional injected `CareEpisode`s (empty = byte-identical
-care-free path — the care-free central estimate is untouched); new `CareStressScenario` (one 4-year nursing
-spell @ £1,800/wk on the last-surviving partner — the adverse means-test position, and discriminating where a
-both-partners worst case would sink every plan) + `DeterministicForecaster::forecastWithCareStress`; reuses the
-A1-escalated, means-tested projector care leg. App: `ScenarioForecaster::deterministicCareStressVariants` mirrors
-`deterministicVariants` on the same variant inputs; `AffordabilityAssessment` adds a care-stress verdict per card
-+ a bottom-line care caveat (tier/ordering stay the care-free expected path — a strong plan still ranks strong);
-the Affordability view renders a 🏥 care line on every card. Guarded (`DeterministicCareStressTest`: reaches the
-result, tips a marginal single-person household, care-free carries no care; `AffordabilityTest`: every card
-carries the verdict + the caveat). Design calls (single spell / last survivor / £1,800×4yr) are the adverse
-defaults per [[adverse-default-user-editable]], flagged user-editable (a params UI is a later refinement).
-**Awaits browser sign-off** (visible UI). Full suite green, pint clean. Next: C1–C3 hero charts.
-
-_2026-07-18 (A1: care fees escalate above CPI — first slice of the output/inflation plan)_ —
-Resumed and picked up docs/build/PLAN-output-inflation-and-charts.md build-order #1 (the highest-value item by the
-accuracy-first rule now the plan's open questions are resolved). The engine drew one CPI series and modelled care
-as a flat-real cost, so care — the fastest-inflating major UK retirement category (self-funder fees ran ~10%/yr to
-Dec-2025) — rode flat CPI and understated the tool's headline late-life risk. Copied the proven, null-safe
-`propertyCostsRealGrowth` mechanism exactly: new `AssumptionSet::careCostRealGrowth` (`?Percent`), threaded through
-the `PathDraws` interface (all three drivers) and escalated in the `PathProjector` care leg by `(1+g)^yearIndex`
-before the means test. Shipped default **CPI + 2% real** across all presets (sourced most-adverse standing value —
-care is NLW-pinned staff cost, PSSRU/OBR escalate care unit costs on earnings ~2% real; the ~10%/yr run-rate is an
-NLW+NI spike, not standing), exposed as the **7th user-editable economic assumption** (`careCostGrowth`) per the
-adverse-default-user-editable rule. Null-safe throughout: null keeps care flat-real, the mapper hydrates a pre-A1
-snapshot to null, so every stored care run reproduces byte-identically; new runs carry 2%. Guarded by
-`CareCostInflationTest` (compounds by the expected factor; null/zero byte-identical) + `MappingRoundTripTest`
-(reaches storage; pre-A1 → null). Fixed a stale METHODOLOGY caveat in passing (care probability is split by sex,
-contradicting an adjacent "no split by sex or age" line). Full suite green (913 + 1 advice-mode skip; +2 tests),
-pint clean. **A2 (care in the deterministic path) is the next build-order item** — care is still MC-only, so the
-Affordability verdict still reads a care-free path.
-
-_2026-07-18 (adversarial output/inflation/charts review → a DRAFT plan)_ —
-Rob asked for an adversarial review of the project + docs (wrong assumptions; data gathered-but-unused; how
-to make the information-heavy output more legible + how other forecasters do it; what charts to add; how
-inflation changes costings). Ran two code-grounded mapping passes (the Blade/ApexCharts output layer; the
-engine's `YearResult`/`SimulationResult` fields vs what any view reads) plus web research for every figure.
-**Findings:** (1) correctness — the engine draws one CPI and models everything else as a real spread, so
-**care fees ride flat CPI** (understating the tool's headline risk; real self-funder fees ran ~10%/yr to
-Dec-2025), care is **absent from every deterministic surface** the Affordability screen reads, MC returns are
-**Gaussian** (left tail optimistic ~10–17pts per the literature), and the triple lock **drops the earnings
-leg**; (2) the results page is ~1,170 lines / 18 sections front-loading up to four banners before the first
-number, every chart doubled by an inline table; (3) **only one time-series chart exists** though
-`incomeBySource` (11 sources/yr), the spend split, wealth legs, tax and mortgage balance are all on
-`YearResult` — six more charts are a presenter/Blade job, not an engine change. Wrote
-**docs/build/PLAN-output-inflation-and-charts.md** (Part A correctness / Part B legibility / Part C charts; each
-decision carries reasoning + a research link; six open questions flagged for Rob; build order + files-to-touch
-map). Noted the concurrent session's `21e0efe feat(care): sex-differentiated care probability` had just landed
-(distinct from this plan's care *inflation* items); re-checked git before editing per [[concurrent-session-split]].
-**Then resolved all six of the plan's open modelling questions** via a three-way parallel research pass (care;
-return distribution; triple lock + probability wording) — Rob delegated the calls ("not my field", saved as
-[[adverse-default-user-editable]]): research the industry figure, default to the **most adverse** where several
-are defensible, expose each as a user-editable UI control. Sourced defaults landed in the plan (care inflation
-CPI+2%; care-stress variant ON not expected-value-averaged, adverse fees/duration from LaingBuisson/PSSRU;
-Student-t d.o.f. 3 + negative skew + a stagflation inflation↔return coupling; State Pension CPI-only — the one
-place adverse departs from current law, flagged; probability word-bands reserving "on track" for ≥80%). **No
-code changed** — plan + handover/sibling-doc index only.
-
-_2026-07-18 (sex-differentiated late-life care probability in the Monte Carlo)_ —
-Picked up What's next #3. Chose the care sex-split over CGT deemed-occupation absences (near-moot for the V2 couple's
-continuously occupied main home — PRR already relieves the whole gain) and the annuitisation month override (narrow).
-The care sampler drew one flat 0.25 for everyone though `Person::sex` was already carried to the `Simulator` and
-dropped at the sampler boundary — a collected-but-under-consumed use of sex, and a real understatement of a woman's
-care tail (a headline "does the money last" driver). Researched sourced figures (women's lifetime care-home use
-consistently ~1.5:1 vs men — NHS HSE 2021 28/24 ADL, US NEJM 38/21 nursing-home, HHS ASPE 55/38 paid LTSS); set male
-0.20 / female 0.30 calibrated to preserve the Dilnot/PSSRU ~1 in 4 mean at an even split (so a mixed couple's
-aggregate risk is essentially unchanged, no unexplained drift). Threaded `sex` into `CareCostSampler`; it's a
-threshold swap, not an extra draw, so seeded runs reproduce byte-identically and care being opt-in means no
-default/non-care run changes. Guarded (`CareCostSamplerTest`: asymmetry + the split reaches incidence over 2,000
-same-seed draws). Fixed two adjacent stale honesty lines in docs/spec/METHODOLOGY.md while there: the care "no sex/age
-split" caveat, and the "house/salary growth have no volatility" MC caveat (both were made stochastic earlier today).
-Full suite green (911 + 1 expected advice-mode skip), pint clean.
-
-_2026-07-18 ("hide non-viable plans" toggle on Compare)_ —
-Resumed to find a complete, green, uncommitted feature in the tree (the handover said "nothing mid-edit"): a
-Compare-screen checkbox that hides plans whose usable-wealth line falls below £0 (deterministic depletion) from the
-table, burndown and MC cards. Confirmed it coherent + green (`ScenarioCompareTest` 16/16), Rob confirmed it was this
-work to land, so committed it: pint clean, added the DECISIONS entry + handover Done bullet. "Non-viable" is defined
-off the deterministic `depletionCalendarYear` (same as the "Money lasts: No" column), not an MC probability; pure
-presentation, no shape change; "Re-run all" still queues every plan; the burndown is `wire:key`ed so the ignored
-chart re-inits with the filtered series. Toggle shows only when a non-viable plan exists.
-
-_2026-07-18 (stochastic salary growth in the Monte Carlo — the last deterministic growth line)_ —
-Picked up from What's next #3 (Rob chose it over the public-release blockers and sign-off prep). With house growth
-made stochastic earlier the same day, salary growth was the only remaining deterministic straight line in the MC, so
-a still-working couple's accumulation looked artificially certain. Mirrored the house pattern exactly: `AssumptionSet`
-gains nullable `salaryGrowthVolatility` + `salaryEquityCorrelation` (0.1, deliberately LOWER than housing's 0.2 —
-researched: aggregate real wage growth is near-acyclical, ~0.51× GDP-growth volatility per SF Fed WP 2011-23, ~2% in
-the UK ONS record); `ReturnModel` draws a per-year salary shock correlated to the equity shock, **drawn last** so a
-null-salary set consumes no extra draw and every stored run reproduces byte-identically; `SampledPathDraws` reads the
-sampled path; mapper round-trips the pair with null back-compat; the assumptions panel gains a salary-volatility
-"show-your-working" row. **Corrected an over-claim mid-build:** "drawn last" does NOT keep later years' house/asset
-streams identical when salary vol is on (each extra draw advances the shared RNG for subsequent years) — the real,
-narrower guarantee is that a *null*-salary set draws nothing extra; fixed the docblock and the test to assert exactly
-that. Sourced figures + judgement note in docs/spec/ASSUMPTIONS.md; DECISIONS 2026-07-18 supersedes the house entry's
-"salary stays deterministic". Full suite green (908), pint clean; sanity magnitudes verified via a scratchpad script
-(not committed): shipped-2% widens the p10–p90 spread £104k → £115k, median unchanged.
-
-_2026-07-18 (stochastic house-price growth in the Monte Carlo)_ —
-Highest-value accuracy refinement from What's next #3: house growth was a deterministic straight line in the MC, so
-the home carried no risk and stay-put/buy plans looked artificially certain vs sell-and-rent (whose invested proceeds
-were already stochastic) — wrong for a tool whose whole point is a housing decision under uncertainty. Researched
-sourced figures (real house vol ~9%, low ~0.2 house–equity correlation, per JST "Rate of Return on Everything"
-NBER w24112 — housing far less volatile than equities, low equity–housing covariance / diversification gains).
-Implemented: `AssumptionSet` gains `houseGrowthVolatility` (`?Percent`) + `houseEquityCorrelation` (float);
-`ReturnModel` draws a per-year house shock correlated to the equity shock (single scalar correlation, not a 4th
-matrix row — keeps the asset-class matrix contract); `SampledPathDraws` reads the sampled house path; presets +
-mapper + assumptions panel updated. **Key design for safety: nullable vol = opt-in** — a null-vol set draws no house
-shock, so the deterministic projection, all existing sets/tests and every stored run are byte-identical (no DB
-migration, MC reproducibility preserved). Completeness-tested (`StochasticHouseGrowthTest`): a £500k-home couple's
-terminal spread widens p10–p90 £169k → £759k (median ~unchanged), collapses to the mean at zero vol, reproduces under
-a seed. Salary growth in the MC left deterministic (narrower, lower value). Full suite green, pint clean. Sanity-run
-magnitudes verified via a scratchpad script (not committed).
-
-_2026-07-18 (PDF sale-funding waterfall — last PDF gap closed)_ —
-The buy-funding waterfall (net proceeds → savings → mortgage → unfunded gap) rendered on results/Compare/assistant
-but the PDF summary omitted the sale explainer entirely. Fixed by mirroring the screen, not re-deriving: added the
-same `ResultPresenter::saleExplainer(...)` call to `ScenarioPdfController::data()` (fed by the scenario's own
-`housingComparison`/`assumptions`/`allocation`, deterministic, null when no sale is configured) and an "If you sell"
-section to `pdf/partials/report.blade.php`, placed just before the cashflow ladder to match the on-screen money-flow
-order. Used only the inline `@php(...)` form (block/inline mixing is the known Blade raw-block gotcha); added an `h3`
-rule to the PDF stylesheet. Guarded with a `ScenarioPdfTest` assertion (the rich fixture sells & buys). Full suite
-green, pint clean; the `%PDF` download test confirms DomPDF renders the new markup. No shape change, no DECISIONS
-entry (mechanical parity with the screen under the existing displayed-figure-provenance rule).
-
-_2026-07-17 ("What you can afford" screen + affordability limit-tests)_ —
-Rob: the current tool is good for him but hard to communicate to the elder couple — "they just want a this-is-what-
-I-can/should-do". Built a plain-English `/scenarios/{base}/afford` screen (`Affordability` Livewire + pure
-`AffordabilityAssessment` presenter + view; linked from dashboard/Compare/Results): base + every what-if reduced to
-one yes/no (do the essentials last for life?), working plans first, failing ones collapsed with the year each runs
-short, a factual bottom line naming the strongest plan (directive "lean towards" gated behind `interpret`). Verdict
-is the fast deterministic projection (covers new what-ifs with no stored run); stored Monte-Carlo "how sure" shown
-beside it — an important honesty gap here (several plans "work on the expected path" yet are only ~55–62% in MC; the
-base stay-put is 28%). One-click **Check how sure** queues the full runs via `SimulationRunner` and hands off to
-Compare's progress UI. Pure presentation, no shape change; suite green, pint clean. **Caught two bugs in build:**
-`deterministic()` ignores the housing variant (must use `deterministicVariants()[$variant]` for a sell/rent plan —
-my first probe mis-modelled the sells), and an inverted sort comparator briefly put the weakest plan as the bottom
-line. **Answered Rob's limit test:** sell-and-rent at £2,000/mo fails at any realistic sale price (out 2037 on a
-£290k sale, 2040 even on £350k); affordable rent ceiling on a £290k sale ~£1,000/mo (tight); sell-and-buy cheaper
-£165k is the strongest (survives the £290k price with ~£82k left; £135k / 87% MC on the £350k base). Added 5
-limit-test what-ifs to the app (DB scenarios 33–37, not committed); noted them in the gitignored SCENARIO-V2 doc.
-
-_2026-07-16 (no magic money: purchase-funding waterfall + documented capital receipts)_ —
-Rob: scenarios that buy a home "seem to magic up the money required — show it accurately, without money
-appearing without a documented income source (e.g. sale residual, income from work/kids)". Root cause: a
-cash-only buy above the proceeds floored the surplus at £0 and still granted the home at full price (phantom
-equity, flagged in the UI but silently modelled); savings were never drawn; no input existed for money arriving
-from outside the plan. Built (all per DECISIONS 2026-07-16, Rob's three design calls made explicitly): the
-savings-first funding waterfall with the loud unfunded-gap year-0 failure; real year-0 CGT on the GIA slice a
-purchase draw sells (one shared AEA, exact-pence tests via the engine's own primitives); the `CapitalReceipt`
-input end-to-end (engine → projector → builder step 3 → ladder → assistant). Fixed in passing: `withHousing`
-dropped `relationshipStatus` (cohabiting buy/rent variants silently reverted to married IHT). The Compare
-burndown now shows an unfunded mansion plunging £-millions negative — verified as the honest net-position line
-(usable minus cumulative unmet), not a bug. PDF surfaces untouched (uncommitted work from a concurrent session
-in those files — stage selectively). Suite green throughout; pint clean.
-
-_2026-07-12 (private family sharing via Tailscale Serve — Hostinger rejected)_ —
-Rob wanted family to view the current real scenarios **as-is** (not a public launch). Rejected the offered
-Hostinger box: its SSH is shared hosting (port 65002), which is MySQL-only (no Postgres), cannot run a
-persistent `queue:work` daemon or the Ollama assistant, and would force a DB migration + re-entering the
-encrypted data on a third party + crossing the public-compliance line — all cost, no fit. Chose **Tailscale
-Serve**: the app stays exactly as-is on this machine, reachable only inside the private tailnet, data never
-leaves the box. Wired it up and verified end-to-end (the tailnet URL returns 200 with a valid auto cert):
-serve Host-agnostically on `php artisan serve --port=8000` (Herd/Valet routes by Host and will not match the
-`*.ts.net` name) + `tailscale serve --bg 8000`; new `APP_EXTERNAL_URL` pins absolute URLs/redirects to the
-https origin so logins do not bounce to an unreachable host; `bootstrap/app.php` trusts the loopback proxy
-for the forwarded scheme (not Host); `APP_DEBUG=false` while shared. Family log in with Rob's credentials
-(scenarios are per-user; no read-only share built). See DECISIONS 2026-07-12 + How to pick up.
-
-_2026-07-10 (queued-Monte-Carlo reproducibility independently re-verified; a stale worker found)_ —
-Re-ran and re-verified the run-to-run-variance trust concern on Postgres. Built an independent test: an
-in-process reference for all 18 scenarios (3 variants, 10k paths — the proven-deterministic path), then
-dispatched the whole family **twice** through the real `queue:work` daemon (batch 1 = single worker;
-batch 2 = **two concurrent workers**, deliberately heavier `jobs`-table contention than the original bug),
-comparing each stored result to the reference on both the success probabilities and a full-payload md5.
-**108 queued variant-results across 36 runs, every one byte-identical (max gap 0.0000 points, 0 hash
-mismatches).** Confirms the SQLite→Postgres fix — in-app "Re-run all" is trustworthy. **Found a stale
-`queue:work` daemon (started 2026-07-07, before the migration)** still polling the old SQLite `jobs`
-table — it processed none of my Postgres jobs; a fresh worker drained them. `queue:work` caches its DB
-connection at boot, so restart every worker after the DB change (DECISIONS 2026-07-10). Residue: the 36
-verification runs (ids 437–472, seed 424242) are now each family scenario's "latest completed run" and
-polluted `result_snapshots`; deleting them was safety-blocked (Rob's pre-existing data), so Rob's next
-in-app "Re-run all" (after restarting the worker) supersedes them at canonical seeds. Verification scripts
-stayed in the session scratchpad, not the repo. **No code changed.**
-
-_2026-07-09 (queued-Monte-Carlo reproducibility bug RESOLVED via Postgres; BTL finance-cost reducer)_ —
-A family figure swung more than 10k-path sampling noise allows. A long investigation proved the engine is
-deterministic (same seed → identical across 6 processes, JIT and no-JIT) and every non-queue path
-reproduces exactly; only runs through the `queue:work` daemon were intermittently wrong (up to 14pts).
-Root cause: SQLite could not handle the `database` queue driver's concurrent access. Rob's fix: moved the
-app DB to local Postgres 18 (data copied across, encrypted V2 family intact); the family re-run through the
-identical queued path now reproduces exactly. Also this session: the let plan (#17) given the April-2020
-BTL finance-cost tax reducer with rental at £1,800/mo (depletion 2030 → 2035, still fails). See DECISIONS
-2026-07-09.
-
-_Older sessions folded into [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md)._
+Older prose sessions are archived at [docs/build/SESSION-LOG-ARCHIVE.md](build/SESSION-LOG-ARCHIVE.md), out of the load path.

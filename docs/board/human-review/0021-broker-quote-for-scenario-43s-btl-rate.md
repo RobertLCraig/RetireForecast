@@ -4,6 +4,15 @@ waiting_on: a real broker quote for consumer buy-to-let - recheck 2026-09-01
 
 # A real broker quote would firm up scenario 43's BTL rate
 
+## What I need from you
+Nothing to decide. This is an outside party to chase, and only if scenario 43 (let out the flat)
+is still a live candidate: a real broker indication would replace a market-average rate with a
+real one. Pass: a quoted rate, or a decision that the let-to-let plan is out and this card is
+dropped.
+
+The scenario already runs short in 2039, so a rate refinement is unlikely to change the
+conclusion. Recheck 2026-09-01.
+
 ## Why
 Not blocking, and not Rob's call to make alone. 5.75% is the sourced market average, not a
 quote, and consumer buy-to-let is a narrower market than the average represents.

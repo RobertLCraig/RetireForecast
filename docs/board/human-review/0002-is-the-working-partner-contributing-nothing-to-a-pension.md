@@ -1,5 +1,13 @@
 # Is the working partner really contributing nothing to a pension?
 
+## What I need from you
+Check a payslip or scheme booklet and tell me whether the employed partner pays into a workplace
+pension, and at what rate (member and employer). An agent cannot settle this: it is a fact about
+their employment, not something the model can derive, and assuming a figure would put an
+unverified number into a result.
+
+Pass: a member and employer percentage, or a confirmed nil with the reason.
+
 ## Why
 Found 2026-07-31. **No stored scenario records any DC contribution, member or employer, on any
 of the 14.** An employee in a workplace scheme normally contributes under auto-enrolment

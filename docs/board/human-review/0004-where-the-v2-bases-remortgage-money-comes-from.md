@@ -1,5 +1,13 @@
 # Document where the V2 base's remortgage money comes from
 
+## What I need from you
+Tell me where the roughly GBP 49,495 comes from, then enter it at builder step 3 as a one-off
+capital receipt in 2026 labelled with the real source, plus a matching one-off cost the same year
+(the money goes straight to the lender). <http://retireforecast.test/scenarios/9/edit>
+
+Pass: `php artisan scenarios:audit` still runs clean and the base no longer contains money from
+nowhere. An agent cannot supply this: only you know the source.
+
 ## Why
 The base needs **~GBP 49,495** found from outside (GBP 48,000 to close the gap to the GBP 208k
 redemption, plus GBP 1,495 broker fees) and still models it as arriving unshown. Until the source
