@@ -46,7 +46,7 @@ A card with `## Options` is a **decision**. A card with `## Tasks` is a **featur
 declares its kind, because a declared kind is one more thing that can disagree with the card's own
 contents.
 
-**Decision:** `# title`, `## Why`, `## Options` (at least two, each with its cost),
+**Decision:** `# title`, `## Why`, `## Options` (a **numbered** list, at least two, each with its cost),
 `## Recommendation`, `## Decided`. The recommendation is the point: a decision surfaced without one
 hands over the whole problem, while one that recommends has done the reading and leaves only the
 judgement.
