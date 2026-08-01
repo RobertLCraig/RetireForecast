@@ -40,6 +40,34 @@ holding lane nobody owns is how one real board reached 21 cards nobody could cle
 party owes you something, chasing them is your action: the card sits in `human-review/` with a
 `waiting_on:` note carrying a recheck date, and a past-due recheck is surfaced.
 
+## The one section a card in `human-review/` must have
+
+```markdown
+## What I need from you
+Which of the three, because it decides the storage shape and four cards are queued behind it.
+An agent cannot settle it: the options differ on cost and liability, not on evidence.
+
+<http://retireforecast.test/scenarios/43>
+```
+
+One or two sentences, directly under the title, saying **why this needs a person**: what it decides,
+what it blocks, and why an agent could not settle it from the docs, the standards and its own
+research. `## Why` was doing this job and doing it badly, because "why this card exists" and "why
+this card stopped" are different questions and only the second one is the reader's problem.
+
+**If the answer is "look at it", give the link.** The board derives a project's local URL from its
+directory name, so a card that wants a page checked should name that page rather than describe it.
+
+A card in `human-review/` without this section is flagged as not ready, the same way a feature with
+no acceptance criteria is. Making the gap loud is the only enforcement there is.
+
+## Answering a card moves it
+
+Recording an answer is the review, so the card leaves `human-review/` on the way out and lands back
+in `todo/`. Not `done/`: an answer is almost always the start of work rather than the end of it, and
+an agent picking it up can move it on if there is nothing to do. Direction is not an answer and
+moves nothing, because steering a card is something you do to work that is still yours to steer.
+
 ## Two kinds of card, and the kind is derived
 
 A card with `## Options` is a **decision**. A card with `## Tasks` is a **feature**. Nothing
