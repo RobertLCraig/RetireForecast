@@ -52,7 +52,13 @@ An agent cannot settle it: the options differ on cost and liability, not on evid
 
 One or two sentences, directly under the title, saying **why this needs a person**: what it decides,
 what it blocks, and why an agent could not settle it from the docs, the standards and its own
-research. `## Why` was doing this job and doing it badly, because "why this card exists" and "why
+research.
+
+**It has to be checkable, not merely short.** "Four clicks in a browser" is not an ask: it says how
+much work it is and not what the work is. Name the exact thing to do, what a pass looks like, and
+what a failure means. If there are several steps, number them and give each one its own expected
+result, so a failure points at one cause instead of at the whole card. The test is whether somebody
+could act on it without opening anything else. `## Why` was doing this job and doing it badly, because "why this card exists" and "why
 this card stopped" are different questions and only the second one is the reader's problem.
 
 **If the answer is "look at it", give the link.** The board derives a project's local URL from its
