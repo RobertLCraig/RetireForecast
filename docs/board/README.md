@@ -25,6 +25,30 @@ There is no `status:` field, because the folder already says it. A card carrying
 eventually disagree with itself, which is the failure this board exists to remove. There is no
 `created`, `updated` or `author` field either: git holds those, and a copy would drift.
 
+## The one field that is not derivable: `needs:`
+
+```yaml
+---
+needs: 0057, 0082
+---
+```
+
+What a card cannot start without, as card numbers. It is the only dependency notation there is, and
+it earns its place because it is the one fact neither the folder nor git nor the card's own shape
+can supply.
+
+**It has to be in the frontmatter, not in a paragraph.** A blocker named only in prose is one no
+view can show, and one real board ran for weeks with most of its dependencies sitting in sentences
+like "answer 0025 first". A board that renders `needs:` shows the part that is **still open**,
+treating `done/`, `discarded/` (answered by dropping it) and `ai-review/` (built, with only its
+acceptance pending) as settled, so a card whose blockers have all landed stops showing as blocked
+without anybody editing it.
+
+**Declare a blocker, not an influence.** If the card can be built now and a later answer merely
+refines it, that belongs in `## Plan` with the interim stated ("build to a named constant, the swap
+is one call site"), because a `needs:` that is not really a blocker makes a ready card look stuck,
+which is the same failure as a holding lane nobody owns.
+
 ## One lane for the human, not three
 
 A call to make, a build to accept, and an outside party to chase are the same state: nothing moves
@@ -100,6 +124,13 @@ convention.
 the agent should know. `## Decided` is the answer to a decision card, and filling it is that card's
 exit condition. Both are append-only dated entries, added and never edited. An answer recorded as
 direction neither reads as a ruling nor moves the card, which was found by watching it happen.
+
+An entry can carry screenshots. They live in `docs/board/attachments/`, named after the card and
+dated, and a card links to one as `![name](../attachments/NNNN-YYYY-MM-DD-N.png)`. That path is
+correct from every lane folder and therefore survives every move, where a picture stored beside the
+card would be orphaned by the first `git mv`. It is an ordinary relative link, so the card renders
+with its screenshots in any markdown viewer with nothing running, and the attachments are committed
+with the card that references them rather than left behind untracked.
 
 ## Naming
 
