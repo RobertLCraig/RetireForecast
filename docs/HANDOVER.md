@@ -64,11 +64,12 @@ Full log and rationale: [DECISIONS.md](DECISIONS.md). The load-bearing "do not r
 ## Blockers / open questions
 **The full set is [docs/board/human-review/](board/human-review/), each card carrying its own options and a recommendation.** Nine cards are waiting on Rob; the ones that actually gate work:
 
-- **0022 interest-only and RIO indications change what keeping the flat costs.** A second broker's
-  11 August revision lends GBP 199,000 interest-only, narrowing the base's funding gap to GBP 9,000
-  without closing it, and withdraws the RIO entirely on survivor affordability. No reversion rate was
-  quoted, and on the stress it fails a year earlier than the base it would replace. Modelled as
-  scenarios 55-58; the decision is whether the interest-only route replaces base 9.
+- **0022 what keeping the flat costs, now that a keep-the-flat plan works.** The 2026-08-12 combination
+  sweep (scenarios 61-67) found the lifetime mortgage plus the art sale plus YCC working to 72 reaches
+  **88.9%**, level with selling and buying cheaper at **89.8%**, so the choice is no longer a modelling
+  question: it is the flat against roughly **GBP 243,000** of estate. The interest-only route the broker
+  is sourcing cannot be rescued (45.4% given the same levers). The decision is which of the two becomes
+  base 9, and it needs YCC to confirm that working to 72 is real.
 - **0001 browser sign-off on the built cluster.** The gating item: everything built since 2026-06-29 is proven by tests and numeric audit but has never been looked at in a browser.
 - **0002 is the working partner really contributing nothing to a pension?** No stored scenario records any DC contribution, so the forecast may understate their pension and its tax relief. A payslip settles it; deliberately not fixed by assuming a figure.
 - **0009 should the model assume bed-and-ISA?** The engine enforces the ISA cap but never uses the allowance, so sell-and-invest plans are understated. A decision about modelled behaviour, not a rule.
