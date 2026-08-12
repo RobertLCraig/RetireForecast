@@ -56,10 +56,10 @@ Full log and rationale: [DECISIONS.md](DECISIONS.md). The load-bearing "do not r
 ## What's next (in order)
 **The queue is [docs/board/todo/](board/todo/), one card per file.** Do not restate it here. At the head:
 
-1. **0023 scenario 51 covers the floor but never the full spend** — a 76-point gap between the two probabilities on one park-home scenario that also carries a stale completion warning. Cheap to settle and it currently misranks a plan on the comparison, so do it before anything reads off that chart.
-2. **0011 B5 capacity for loss** — mostly framing over stress machinery that already exists: how far can wealth fall before the essential floor breaks. Next by PLAN-adviser-parity's own order.
-3. **0010 B1 verdict-first, probability-led landing** — reuse the `/afford` screen, lead with the Monte-Carlo probability and the word-bands. Next by PLAN-output-inflation-and-charts' build order.
-4. **0007 withdrawal sequencing #5 and #6** — planner-timed PCLS then the bounded optimiser. Its two "modelling calls" were found already answered in the plan's own Decisions section on 2026-08-01, so it is buildable rather than gated.
+1. **0023 scenario 51 covers the floor but never the full spend**: a 76-point gap between the two probabilities on one park-home scenario that also carries a stale completion warning. Cheap to settle and it currently misranks a plan on the comparison, so do it before anything reads off that chart.
+2. **0011 B5 capacity for loss**: mostly framing over stress machinery that already exists, namely how far wealth can fall before the essential floor breaks. Next by PLAN-adviser-parity's own order.
+3. **0010 B1 verdict-first, probability-led landing**: reuse the `/afford` screen, lead with the Monte-Carlo probability and the word-bands. Next by PLAN-output-inflation-and-charts' build order.
+4. **0007 withdrawal sequencing #5 and #6**: planner-timed PCLS then the bounded optimiser. Its two "modelling calls" were found already answered in the plan's own Decisions section on 2026-08-01, so it is buildable rather than gated.
 
 ## Blockers / open questions
 **The full set is [docs/board/human-review/](board/human-review/), each card carrying its own options and a recommendation.** Nine cards are waiting on Rob; the ones that actually gate work:

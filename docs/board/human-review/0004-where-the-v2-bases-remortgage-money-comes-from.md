@@ -23,7 +23,7 @@ is named, the base scenario contains money from nowhere.
 4. **Adopt the 50+ interest-only route** (broker revision 2026-08-11, card 0022): it lends
    GBP 199,000, which shrinks the gap from ~GBP 49,495 to **GBP 9,000** but does not close it, so
    this option reduces the amount to source rather than removing the question. It carries its own
-   costs — a GBP 199,000 balloon in 2036 and an unquoted rate after the five-year fix — so this
+   costs (a GBP 199,000 balloon in 2036 and an unquoted rate after the five-year fix), so this
    card cannot be closed by picking it here; it is decided on 0022 and this card follows.
 
 ## Recommendation

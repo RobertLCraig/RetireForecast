@@ -12,8 +12,8 @@ waiting_on: four questions to Mark Braidford (My Later Life) - recheck 2026-08-2
 Two things, in order.
 
 1. **Send the remaining questions in the private doc back to Mark** (SCENARIO-V2.local.md, "Questions
-   to put back to Mark"). Pass: a reversion rate for each product in writing. A failure — no revert
-   rate given — means scenario 58's stress stands as the working assumption, and 58 fails a year
+   to put back to Mark"). Pass: a reversion rate for each product in writing. A failure, meaning no
+   revert rate given, leaves scenario 58's stress as the working assumption, and 58 fails a year
    *earlier* than the current base. Question 2 is now answered and has been struck through; a sharper
    one replaces it: **why did the £199,000 interest-only survive the survivor-affordability test when
    the smaller £180,000 RIO did not?**
@@ -27,7 +27,7 @@ Two things, in order.
 ## Why
 The 11 August email offers a **10-year 50+ interest-only mortgage at circa 6% for £199,000** and a
 **lifetime mortgage of £144,000 at circa 9.16%**. The stored base is the LiveMore £160,000 repayment
-quote, which needs **~£49,495 found from outside** — more than the ~£42k that is realistically
+quote, which needs **~£49,495 found from outside**, more than the ~£42k that is realistically
 available. The interest-only product narrows that to **£9,000**, so a keep-the-flat plan is close to
 executable, which is a different question from whether it works.
 
@@ -49,7 +49,7 @@ on his death. That is the same structural wall the forecast has hit from the oth
    ~£49,495 to **£9,000** but does not vanish, and the base still holds no savings to pay it from. It
    also inherits a **£199,000 balloon in 2036** and an unquoted rate after 2031. Modelled honestly
    (56), the term end forces a sale and ends at **£0** against selling now at £300,741.
-3. ~~**Promote 57 (RIO £180k @ 6.1%) to the base.**~~ **No longer available** — withdrawn 11 August on
+3. ~~**Promote 57 (RIO £180k @ 6.1%) to the base.**~~ **No longer available**: withdrawn 11 August on
    survivor affordability. Scenario 57 is retained as a historical comparator only.
 4. **Accept that no keep-the-flat route survives and make 49 (sell & buy cheaper £165k) the base**,
    demoting every mortgage route to a comparator. Cost: it is the answer the numbers have given four
@@ -62,7 +62,7 @@ worth more than the headline rate here: at 7.24% the interest-only product fails
 year is unknown.
 
 The repricing weakens option 2 rather than strengthening it. Borrowing £9,000 less moves nothing that
-matters — 55 still runs short in **2037**, 58 still fails in **2035** — while reintroducing a funding
+matters (55 still runs short in **2037**, 58 still fails in **2035**) while reintroducing a funding
 gap the 6 August figure did not have. Option 2 was the strongest keep-the-flat plan on the table; it
 is now marginally worse and no longer fully funded.
 

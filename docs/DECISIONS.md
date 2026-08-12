@@ -17,7 +17,7 @@ docblock. Drawing the first one made a failing plan look like a succeeding one.
 2. **A terminal-wealth chart must show the split, not the total alone.** Each bar is the estate with
    the spendable part drawn solid and the rest pale. A single £384k bar is defensible arithmetic and
    a misleading picture; the same rule as the repayment-mortgage instalment under "no invisible
-   figures" — a number the reader cannot decompose is one they will read wrongly.
+   figures". A number the reader cannot decompose is one they will read wrongly.
 3. **Small multiples share one y-axis.** Four per-chart axes on a page built for skimming read as one
    scale and flatter the worst plan (stay-put topped out at £46k beside park home's £324k).
 4. **The fan's final year is NOT the terminal percentile** and the two must never be presented as one
