@@ -20,6 +20,11 @@ is named, the base scenario contains money from nowhere.
 2. **Adopt the art-sale answer.** Scenarios 47/48 already model the GBP 80k art sale both ways;
    point the base at that rather than inventing a second source.
 3. **Change the plan** so the gap does not arise.
+4. **Adopt the 50+ interest-only route** (broker revision 2026-08-11, card 0022): it lends
+   GBP 199,000, which shrinks the gap from ~GBP 49,495 to **GBP 9,000** but does not close it, so
+   this option reduces the amount to source rather than removing the question. It carries its own
+   costs — a GBP 199,000 balloon in 2036 and an unquoted rate after the five-year fix — so this
+   card cannot be closed by picking it here; it is decided on 0022 and this card follows.
 
 ## Recommendation
 Option 1, using whatever the real source turns out to be. This is data entry through the UI, not

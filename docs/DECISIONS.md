@@ -3,6 +3,51 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-08-12 — Reporting Monte Carlo results: spendable money, not total wealth
+**Context:** a graph-led report over the full 10,000-path sweep of every scenario. The engine already
+keeps two wealth series apart (`fanChart` / `terminalWealthPercentiles` include the home;
+`usableFanChart` / `usableWealthPercentiles` exclude it) and says why in `SimulationResult`'s own
+docblock. Drawing the first one made a failing plan look like a succeeding one.
+
+**Decisions:**
+1. **Any "will the money last" chart plots the USABLE series.** *Rationale:* stay-put ends with £0
+   spendable and a £384k flat. On total wealth its line *rises* with house prices while the cash is
+   running out, which is the exact misreading the two-series split exists to prevent. The stay-put
+   fan on the usable series collapses to zero around 2035 and flatlines, which is the truth.
+2. **A terminal-wealth chart must show the split, not the total alone.** Each bar is the estate with
+   the spendable part drawn solid and the rest pale. A single £384k bar is defensible arithmetic and
+   a misleading picture; the same rule as the repayment-mortgage instalment under "no invisible
+   figures" — a number the reader cannot decompose is one they will read wrongly.
+3. **Small multiples share one y-axis.** Four per-chart axes on a page built for skimming read as one
+   scale and flatter the worst plan (stay-put topped out at £46k beside park home's £324k).
+4. **The fan's final year is NOT the terminal percentile** and the two must never be presented as one
+   figure: the fan's last year contains only the longest-lived paths, so #9 reads £554,619 there
+   against a £383,912 terminal median. Both are correct and they answer different questions.
+
+**Also:** every scenario in a comparison sweep runs on **one common seed**, so differences between
+plans are differences in the plan rather than in the draws.
+
+## 2026-08-12 — The mortgage scenarios are priced off the latest broker email, and dead products are kept
+**Context:** the 11 August "Revised amounts" email superseded the 5-6 August indications that
+scenarios 55/56/58 were built on, and withdrew the RIO outright.
+
+**Decisions:**
+1. **Repriced in place rather than added alongside**: interest-only £208,000 @ 5.98% became £199,000
+   @ ~6% (55, 56, 58) and the lifetime roll-up 8.99% became 9.16% (42). *Rationale:* the stored set is
+   meant to be what is *available*, and the superseded figures are preserved in
+   `SCENARIO-V2.local.md` plus a gitignored pre-repricing backup, so nothing is lost by not keeping
+   a stale scenario live.
+2. **The interest line is derived `loan × rate`, never typed in.** Two numbers that must agree should
+   not be entered twice.
+3. **A withdrawn product is renamed, not deleted** (57 → `WITHDRAWN 2026-08-11 …`). *Rationale:* the
+   modelling stays available as a comparator, deletion is irreversible, and the name stops it reading
+   as an option.
+4. **A scenario whose headline does not move is verified, not assumed.** 42's terminal wealth is
+   identical at 8.99 and 9.16%; projecting it at 8.99/9.16/14/25% shows the debt *does* move
+   (2036: £279,401 / £283,789 / £386,618 / £386,618) while terminal wealth stays £60,822.11, because
+   the roll-up passes the property value and the No-Negative-Equity floor caps equity at zero. The
+   rate reaches the projection; it just cannot change that outcome.
+
 ## 2026-07-31 — The ISA subscription cap enforced, and a "known divergence" that had it backwards
 **Context:** adviser-parity A3, the last OPEN correctness gap in DATA-MODEL. `applyContributions`
 routed any amount into the ISA bucket with no allowance check.

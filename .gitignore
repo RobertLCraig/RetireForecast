@@ -34,3 +34,6 @@ Thumbs.db
 # (.json covers raw builder_state / overrides exports taken before a scenario rebuild.)
 /docs/*.local.md
 /docs/*.local.json
+
+# Playwright MCP session artifacts (snapshots, console logs)
+.playwright-mcp/
