@@ -1,13 +1,19 @@
 # Enter the working partner's death-in-service cover
 
 ## What I need from you
-Enter the employer's group-life cover for the employed partner, as a multiple of salary or a
-fixed sum assured, at builder step 1 under "Death-in-service cover from their employer".
+
+**Enter the employed partner's group-life cover at builder step 1, under "Death-in-service cover
+from their employer".** A multiple of salary or a fixed sum assured, either is fine.
 <http://retireforecast.test/scenarios/9/edit>
 
-Pass: the "If one of you died" section on the results page stops showing GBP 0 of cover for them.
-Worth knowing before you spend time on it: it will not move the answer, for the reason in the
-recommendation below.
+**Pass** is the "If one of you died" section on the results page no longer showing GBP 0 of cover
+for them.
+
+**Fail** is not really available here, and that is worth knowing before you spend time on it: the
+figure will not move the answer, for the reason in the recommendation below. It removes a wrong
+number from the screen rather than changing a conclusion.
+
+**Why it needs you** The figure is on their scheme paperwork and nowhere this app can reach.
 
 ## Why
 Found 2026-07-31. The cover is confirmed in force (PLAN-adviser-parity "Decisions resolved" #4)

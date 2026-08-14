@@ -1,17 +1,25 @@
 # TIME LIMITED: the park-home heat-pump grant
 
 ## What I need from you
-Decide whether a park home is still a live option. If it is, ask one specific park three
-questions before **31 March 2027**, when the grant closes:
+
+**Say whether a park home is still a live option, and if it is, put three questions to one specific
+park before 31 March 2027**, when the grant closes. The three:
 
 1. Is heat-pump and solar installation permitted on the pitch? Pass: consent in writing.
 2. Own MPAN or site-owner electricity resale? This alone decides whether solar can earn export
    income.
 3. Will the roof take panels?
 
-If it is not a live option, say so and this card is dropped. Leaving it unanswered past January
-2027 answers it by default, which is the worst of the three outcomes because the GBP 9,000 is
-simply forgone.
+**Pass** is either three answers from a named park, or "not a live option", in which case the card
+is dropped. Both are complete answers.
+
+**Fail** is leaving it past January 2027, which answers it by default and is the worst of the three
+outcomes: the GBP 9,000 is simply forgone, and nothing will tell you it has gone.
+
+**Why it needs you** Whether a park home is still on the table is your call, and questions 1 and 3
+have to be put to a particular site rather than researched. Question 2 is the one that decides
+whether solar can earn export income at all, so it is worth asking even if the answer to the others
+is discouraging.
 
 ## Why
 Only relevant if a park home is on the table, but it expires. A main-residence park home on a

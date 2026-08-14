@@ -1,12 +1,20 @@
 # Document where the V2 base's remortgage money comes from
 
 ## What I need from you
-Tell me where the roughly GBP 49,495 comes from, then enter it at builder step 3 as a one-off
-capital receipt in 2026 labelled with the real source, plus a matching one-off cost the same year
-(the money goes straight to the lender). <http://retireforecast.test/scenarios/9/edit>
 
-Pass: `php artisan scenarios:audit` still runs clean and the base no longer contains money from
-nowhere. An agent cannot supply this: only you know the source.
+**Say where the roughly GBP 49,495 comes from, then enter it at builder step 3** as a one-off
+capital receipt in 2026 labelled with the real source, plus a matching one-off cost the same year,
+because the money goes straight to the lender. <http://retireforecast.test/scenarios/9/edit>
+
+**Pass** is `php artisan scenarios:audit` still running clean, with the base no longer containing
+money from nowhere.
+
+**Fail** is entering the receipt without the matching cost. That balances the base by inventing
+GBP 49,495 of spendable capital, which is a worse error than the one it replaces because it looks
+correct.
+
+**Why it needs you** Only you know the source, and the label is the point: a receipt named
+accurately is evidence, while one named "remortgage" is the same hole with a caption.
 
 ## Why
 The base needs **~GBP 49,495** found from outside (GBP 48,000 to close the gap to the GBP 208k

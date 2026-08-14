@@ -1,12 +1,18 @@
 # Spreadsheet import: the line-item expense-category decision
 
 ## What I need from you
-Two answers, in order. First: is the `.xlsx` import wanted at all? Nothing else is blocked on it,
-so "no" is a real answer and closes the card. If yes, pick one of the options below for how a
-source row's category maps into the model, because that choice decides the storage shape and
-cannot be deferred past the first import.
 
-Pass: a yes/no, and if yes an option number.
+**Two answers, in order: is the `.xlsx` import wanted at all, and if so which option below?**
+
+**Pass** is a yes or no, plus an option number if yes. Nothing else is blocked on this, so **"no" is
+a real answer** and closes the card outright.
+
+**Fail** is "yes, decide the mapping later". The choice decides the storage shape, so deferring it
+past the first import means migrating data rather than choosing a column.
+
+**Why it needs you** The three options differ on what you would want to do with an imported budget
+afterwards rather than on anything measurable, and whether the import is wanted at all is a question
+about your own workflow.
 
 ## Why
 The `.xlsx` import path is blocked on one data-model call: how line-item expense categories map

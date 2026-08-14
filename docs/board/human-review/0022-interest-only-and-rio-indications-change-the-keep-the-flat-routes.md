@@ -16,7 +16,9 @@ add a one-off stock of capital and that product charges roughly all of YCC's sol
 life. A new option 5 records this and the recommendation has changed.
 
 ## What I need from you
-Three things, in order.
+
+**Three things, in order: send Mark the remaining questions, pick between keeping the flat and the
+larger estate, and confirm with YCC that working to 72 is on the table.**
 
 1. **Send the remaining questions in the private doc back to Mark** (SCENARIO-V2.local.md, "Questions
    to put back to Mark"). Pass: a reversion rate for each product in writing. A failure, meaning no
@@ -32,6 +34,17 @@ Three things, in order.
    <http://retireforecast.test/scenarios/66/results> (sell and buy cheaper)
 3. **Confirm with YCC that working to 72 is actually on the table**, because both surviving options
    depend on it. Pass: a yes or no. A no drops 64 to 79.4% and 66 to 85.0%, which reopens the choice.
+
+**Pass** is all three, and each has its own above. Question 3 is the cheapest and the most
+load-bearing, so it is worth asking first.
+
+**Fail** on 1 is no reversion rate given, which leaves scenario 58's stress as the working
+assumption, and 58 fails a year earlier than the current base. Fail on 3 is a no, which is not a
+dead end but does reopen question 2.
+
+**Why it needs you** Question 2 is the one nothing here can settle: the two candidates are level on
+security, so the choice is what the flat is worth to them against roughly £243,000, and that is
+their call rather than a modelling result. Questions 1 and 3 are both other people to ask.
 
 ## Why
 The 11 August email offers a **10-year 50+ interest-only mortgage at circa 6% for £199,000** and a

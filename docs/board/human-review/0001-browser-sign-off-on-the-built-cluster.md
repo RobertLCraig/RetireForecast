@@ -1,12 +1,21 @@
 # Browser sign-off on the built cluster
 
 ## What I need from you
-Open the app and confirm the panels built since 2026-06-29 read correctly, because none of them
-has ever been looked at in a browser: they are proven by tests and by numeric audit only. A pass
-is "the figures on screen match the audit and the words make sense to a reader who is not you".
-A failure on a numbered step points at that step's surface, not at the whole cluster.
 
-Run `php artisan scenarios:audit` first, and start a queue worker: steps 4 and 5 need one.
+**Open the app and sign off the eight numbered surfaces below.** Start at
+<http://retireforecast.test/scenarios/9>. Run `php artisan scenarios:audit` first, and start a queue
+worker, because steps 4 and 5 need one.
+
+**Pass** is both of these, on every step: the figures on screen match the audit, and the words make
+sense to a reader who is not you.
+
+**Fail** on a numbered step points at that step's surface rather than at the whole cluster, so
+report the number. Step 5 has a known false alarm: a spinner that never resolves means the worker is
+stale, not that the feature is broken.
+
+**Why it needs you** None of these panels has ever been looked at in a browser. They are proven by
+tests and by numeric audit only, and neither can tell you whether a sentence reads as nonsense to
+somebody who did not write it, or whether the wide cashflow ladder is legible at print size.
 
 1. <http://retireforecast.test/scenarios/9> , the results page. The **"To spend / month"** and
    **"Available capital"** ladder columns, the **investment-charges** line beneath it, the
