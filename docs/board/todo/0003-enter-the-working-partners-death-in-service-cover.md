@@ -33,3 +33,5 @@ forward is the other half: the retired partner is uncovered and that is where th
 
 ## Decided
 <!-- -->
+
+**2026-08-18** Unknown value. Unlikely to be an issue at this stage.
