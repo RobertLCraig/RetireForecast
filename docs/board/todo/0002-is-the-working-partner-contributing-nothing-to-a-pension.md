@@ -34,3 +34,5 @@ about. Until it is answered, treat every pension figure for the working partner 
 
 ## Decided
 <!-- -->
+
+**2026-08-18** Several scenarios were created that simulate the working person being beyond retirement age and therefore no longer contributing to a pension. (Unsure how correct this might turn out to be.)
