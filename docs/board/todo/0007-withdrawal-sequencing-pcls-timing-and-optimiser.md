@@ -35,3 +35,23 @@ before #5 is green. Multi-property and Section 24 interactions are card 0019.
 - [ ] Pin the access-age gate with a test that an under-access-age pot is never UFPLS-drawn
 - [ ] #6 bounded search over orderings (plan section "#6"), last
 - [ ] Read the plan's "Coordination (READ before touching PathProjector)" note first
+
+## Direction
+
+**2026-08-19 - the expert panel raises the stakes on slice #5.** `fundShortfall`'s draw closure
+takes pension money **gross and taxes 100% of it**. The 25% tax-free element is only ever applied
+through an explicit withdrawal instruction. The plan calls that a conservative baseline; the
+adviser's view is that it is not conservative, it is a modelling error, because it misprices
+pension wealth against every other asset - roughly five percentage points of tax on every pension
+pound for a basic-rate household, making pension wealth look about a fifth smaller than it is. That
+biases every housing comparison towards realising property equity rather than pension.
+
+Two additions he would make on the same pass:
+
+- Change the **displayed default** to `FillBands`. The shipped default draws pension last, which
+  since the April 2027 pensions-in-estate change is generally wrong for an estate near the bands.
+  `FillBands` is already Pension Credit aware, which is the right behaviour for this cohort.
+- Net the pension component of `usableWealth` at the projected marginal rate. Treating a pot as
+  fully spendable overstates available capital and makes the safety-buffer warning fire late.
+
+Detail in the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md` (adviser finding 4).

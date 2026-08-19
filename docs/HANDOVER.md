@@ -3,8 +3,8 @@
 > A local-first UK financial-forecasting decision-support tool. A fresh agent picks this up to continue refining the calculation engine and the app around it. **This doc holds what is true; [docs/board/](board/) holds what is moving.** Read [docs/build/PLAN.md](build/PLAN.md) for the full approved plan and scope.
 
 **Stage:** active
-**Status:** **Feature-complete for personal use.** The engine, the app, the whole post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. What remains is Rob's **browser sign-off**, the **public-release blockers**, and refinements.
-_Last updated: 2026-08-12 (mortgage scenarios repriced onto the 11 August broker revision; full Monte Carlo run across every scenario)_
+**Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
+_Last updated: 2026-08-19 (expert panel review: 48 new cards, nothing built; the comparison should not be read off until the ranking-movers at the head of the queue are fixed)_
 
 ## Goal & success criteria
 Full plan: [docs/build/PLAN.md](build/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -50,30 +50,34 @@ Full log and rationale: [DECISIONS.md](DECISIONS.md). The load-bearing "do not r
 ## Current state
 - **Done:** the tool is feature-complete for personal use. An HMRC-accurate deterministic engine (income tax and NI, the pension lump-sum suite including Month-1 emergency tax and reclaim, State Pension, SDLT/CGT/PRR, means-tested benefits, IHT, care) sits behind a Monte Carlo with stochastic joint-life mortality and stochastic house-price, salary and care-cost paths. Around it: encrypted DTO persistence, Fortify auth, GDPR, Filament, queued runs with progress and cancel, a Livewire UI with charts, spreadsheet import, a complete PDF export with server-drawn charts, 2FA and a CSP. Decision support covers lever thresholds, a combination comparison, the survivor cliff, a 2-D trade-off map and a local-model assistant. Housing covers stay-put, buy-cheaper, rent, park homes (a bought home that depreciates), let-to-let, equity release and real amortising repayment mortgages pinned to a lender illustration. The adviser-parity sweep is now largely closed: investment charges, net-pay contribution relief, the protection gap (employer death-in-service cover and the life cover that would restore a survivor's plan), the cost-of-advice comparison, and the ISA subscription cap all shipped on 2026-07-31.
 - **In progress:** nothing mid-edit.
-- **Known bugs / broken:** one open, **card 0023**: scenario 51 (park home Tring) reports 76.4% on essentials and 0.0% on full spend across 10,000 paths, and the same scenario already carries a stale "cannot complete" warning. Real finding or artefact is undetermined, and it ranks sixth on the comparison, so it reads as a plan that works. Documented v1 scope limits are all flagged in code and listed in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" (for example Scotland income tax throws rather than guessing; emergency tax models the over-deduction magnitude, not PAYE-table pennies; the engine enforces the ISA allowance but never *uses* it, so sell-and-invest plans are understated).
+- **Known bugs / broken:** a reviewed defect backlog, carded as **0024 to 0065** in [docs/board/todo/](board/todo/); do not restate it here, read the lane. The shape of it: five independent senior reviewers (software engineering, financial planning, welfare benefits, property, estate planning) read the docs, the engine and the stored scenarios on 2026-08-19. Findings four or more reviewers reached separately are the load-bearing ones. **Several change which plan the comparison ranks first**, so the ranked chart and card 0022 should not be read off until the head of the queue is cleared. Card **0023** is no longer undetermined: it is diagnosed as the unfunded-one-off defect and now blocked on 0025. The full report, with the private figures the cards deliberately omit, is the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`. Documented v1 scope limits remain flagged in code and listed in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" (for example Scotland income tax throws rather than guessing; emergency tax models the over-deduction magnitude, not PAYE-table pennies; the engine enforces the ISA allowance but never *uses* it, so sell-and-invest plans are understated).
+- **Data hygiene is currently breached** (card 0043): private detail about the couple is in eleven tracked files, including this doc's own Blockers section historically. Cards written from 2026-08-19 carry no private figures and point at the gitignored captures instead. Keep it that way.
 - **Live carry-over:** the real couple's data is captured privately in the gitignored `docs/SCENARIO-V2.local.md`, which is the durable source to rebuild from after a DB wipe. **Read it before touching any V2 figure.** What each broker has actually offered, with dates and sources, is in the gitignored `docs/HOUSING-OFFERS.local.md`; the stored mortgage scenarios are priced off it.
 
 ## What's next (in order)
 **The queue is [docs/board/todo/](board/todo/), one card per file.** Do not restate it here. At the head:
 
-1. **0023 scenario 51 covers the floor but never the full spend**: a 76-point gap between the two probabilities on one park-home scenario that also carries a stale completion warning. Cheap to settle and it currently misranks a plan on the comparison, so do it before anything reads off that chart.
-2. **0011 B5 capacity for loss**: mostly framing over stress machinery that already exists, namely how far wealth can fall before the essential floor breaks. Next by PLAN-adviser-parity's own order.
-3. **0010 B1 verdict-first, probability-led landing**: reuse the `/afford` screen, lead with the Monte-Carlo probability and the word-bands. Next by PLAN-output-inflation-and-charts' build order.
-4. **0007 withdrawal sequencing #5 and #6**: planner-timed PCLS then the bounded optimiser. Its two "modelling calls" were found already answered in the plan's own Decisions section on 2026-08-01, so it is buildable rather than gated.
+**The first four are the ranking-movers.** They change which plan wins, so they come before any
+feature work and before card 0022 is answered. Re-run every stored scenario and `scenarios:audit`
+after each.
+
+1. **0024 an interest-only mortgage payment is CPI-indexed and survivor-scaled.** The repayment instalment was fixed for this in July 2026; the fix never reached the other three product shapes. It removes the inflation hedge on a nominal debt, so it penalises every borrowing route against selling. Biggest single distortion found.
+2. **0025 an unfunded one-off zeroes the full-spend probability on every path.** Also the diagnosis for 0023, which is blocked on it.
+3. **0034 a year-0 purchase cannot see a capital receipt arriving the same year**, so a plan borrows for life beside money it already has.
+4. **0035 and 0036 dead and mis-timed income inputs**: the defined-benefit escalation dropdown is never read, and the retirement year pays a part-year salary with a full year of pension and no National Insurance.
+
+Then the pre-review queue resumes: **0011** capacity for loss, **0010** verdict-first landing,
+**0007** withdrawal sequencing (which picked up new direction on 2026-08-19).
 
 ## Blockers / open questions
-**The full set is [docs/board/human-review/](board/human-review/), each card carrying its own options and a recommendation.** Nine cards are waiting on Rob; the ones that actually gate work:
+**The full set is [docs/board/human-review/](board/human-review/), each card carrying its own ask or
+its own options and a recommendation.** Thirteen cards are waiting on Rob. Do not restate them here.
+What a fresh session needs to know:
 
-- **0022 what keeping the flat costs, now that a keep-the-flat plan works.** The 2026-08-12 combination
-  sweep (scenarios 61-67) found the lifetime mortgage plus the art sale plus YCC working to 72 reaches
-  **88.9%**, level with selling and buying cheaper at **89.8%**, so the choice is no longer a modelling
-  question: it is the flat against roughly **GBP 243,000** of estate. The interest-only route the broker
-  is sourcing cannot be rescued (45.4% given the same levers). The decision is which of the two becomes
-  base 9, and it needs YCC to confirm that working to 72 is real.
-- **0001 browser sign-off on the built cluster.** The gating item: everything built since 2026-06-29 is proven by tests and numeric audit but has never been looked at in a browser.
-- **0002 is the working partner really contributing nothing to a pension?** No stored scenario records any DC contribution, so the forecast may understate their pension and its tax relief. A payslip settles it; deliberately not fixed by assuming a figure.
-- **0009 should the model assume bed-and-ISA?** The engine enforces the ISA cap but never uses the allowance, so sell-and-invest plans are understated. A decision about modelled behaviour, not a rule.
-- **0006 the park-home heat-pump grant is time-limited** (GBP 9,000, expires 31 March 2027) and needs questions put to a specific park.
+- **0022 keep the flat or sell, is now explicitly on hold.** The 2026-08-19 review added direction: three reviewers, separately, said the two leading options are inside noise of each other while several unpriced items are each larger than the gap. Four things must land first, all carded. Do not push for an answer.
+- **Six new cards are real-world actions, not modelling questions** (0066 to 0071): powers of attorney before any deed is signed, the State Pension figure that decides the whole benefits picture, a lease valuation, a formal property valuation plus the lender's position, the managing agent's accounts, and a quote for the borrowing the winning plan assumes. Several engine cards are blocked on their answers.
+- **0001 browser sign-off on the built cluster** still gates acceptance: everything built since 2026-06-29 is proven by tests and numeric audit but has never been looked at in a browser.
+- The rest (0004, 0005, 0006, 0008, 0021) are unchanged and carry their own recommendations.
 
 ## How to pick up
 Run from the **project root** (the test runner shells out to a relative phpunit path). **Run php / artisan / composer / npm via PowerShell** (PHP 8.4 is Laravel Herd, not on the Git Bash PATH). Bash is fine for git, grep and file ops. See CLAUDE.md.
@@ -121,6 +125,7 @@ npm run build                        # build assets (public/build is gitignored)
 | docs/SCENARIO-V2.local.md | **GITIGNORED / PRIVATE:** the real couple's data and core scenario, to re-model after a DB wipe. **Read before touching any V2 figure.** |
 | docs/HOUSING-OFFERS.local.md | **GITIGNORED / PRIVATE:** every mortgage / equity-release offer actually made, with lender, rate, date and the email it came from. The source the mortgage scenarios are priced off. |
 | docs/BENEFITS-CHECK-V2.local.md | **GITIGNORED / PRIVATE:** full benefits check for the couple. |
+| docs/REVIEW-PANEL-2026-08-19.local.md | **GITIGNORED / PRIVATE:** the five-discipline expert review in full, with the figures the tracked cards omit. The source for cards 0024 to 0071. |
 | docs/build/PLAN-*.md, docs/research/RESEARCH-*.md | Per-feature specs, build records and research. |
 
 ## Branch status

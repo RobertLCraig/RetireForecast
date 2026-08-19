@@ -38,3 +38,22 @@ decided, DECISIONS 2026-07-30.
 
 ## Tasks
 - [ ] Approach a broker for a consumer BTL indication
+
+## Direction
+
+**2026-08-19 - the expert panel says the rate is not the problem.** The let-to-let scenario is
+modelled on **gross** rent: no management fee, no void, no repairs, no compliance, no licensing.
+Realistic deductions run to roughly a quarter of gross rent. The service charge is also treated as
+household spend when on a let property it is a deductible letting expense, while the full gross
+rent is taxed as profit.
+
+Corrected, the property reviewer turns the plan's modelled positive contribution into a real cash
+loss - a swing far larger than any plausible move in the interest rate. His words: the rate is not
+the problem, the missing costs are.
+
+So the question this card really settles is unchanged - is the let plan still a candidate at all -
+but a quoted rate will not rescue it. Card 0030 is the engine fix. Also unmodelled and real: the
+proposed minimum energy efficiency standard for lets by 2030, and that the lease usually needs
+freeholder consent to sublet and may prohibit it.
+
+Detail in the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md` (property finding 5).

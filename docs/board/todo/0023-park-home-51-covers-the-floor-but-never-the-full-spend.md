@@ -1,3 +1,6 @@
+---
+needs: 0025
+---
 # Scenario 51 covers the essentials 76% of the time and the full spend 0% of the time
 
 ## Why
@@ -15,6 +18,11 @@ the "51 cannot complete, the GBP 46,412 gap exceeds their savings" note predates
 rebuild, and that `scenarios:audit` now reports 51 as never running short. Two unexplained things
 about the same scenario is one too many.
 
+## Links
+
+**Blocked by**
+- `0025` - the 0.0% figure is almost certainly the unfunded-one-off defect, so fixing that first
+  turns this card into a confirmation rather than an investigation.
 ## Not this card
 Do not re-price the park homes, do not touch the other three park-home scenarios unless the same
 defect is found in them, and do not change the ranked report. This card establishes whether the
@@ -39,3 +47,22 @@ figure is real. Acting on it is a separate card.
 - [ ] Check whether the purchase gap on 51 is funded, charged, or silently absorbed.
 - [ ] Confirm the essentials/full-spend split is reading the same expense profile the builder stored.
 - [ ] Record the finding in SCENARIO-V2.local.md and correct or delete the stale warning.
+
+
+## Direction
+
+**2026-08-19 - the expert panel believes this is diagnosed, and it is not specific to 51.**
+Two reviewers reached the same answer separately. `fullSpendAlwaysMet` is all-or-nothing across a
+whole path. `HousingComparison::withHousing()` charges an unfunded purchase gap through
+`withOneOffCost()`, and `oneOffCostsNominal()` adds that to the spend target but **not** to the
+essential floor. The gap is a year-0 constant, independent of the sampled draws, so it produces
+unmet spend on 100% of paths - which is exactly a 0.0% full-spend probability with essentials
+untouched, and exactly why `scenarios:audit` still reports the plan as never running short.
+
+So acceptance #2 is the live branch: the completion gap is being modelled as unfunded, and the
+model is behaving correctly while reporting it in a way nobody can read. Card 0025 is the engine
+fix. Do that first, then re-run 51 and 53 side by side to confirm rather than to discover.
+
+Full detail in the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md` (engineer finding F3,
+property finding 14).
+
