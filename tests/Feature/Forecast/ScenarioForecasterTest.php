@@ -9,6 +9,7 @@ use App\Forecast\WithdrawalStrategyComparison;
 use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
@@ -40,6 +41,38 @@ class ScenarioForecasterTest extends TestCase
         // The saving is EXACTLY the difference of the two engine-computed lifetime-tax totals
         // (one figure, one home - never re-derived from something else).
         $this->assertSame($comparison->baselineTaxPence - $comparison->fillBandsTaxPence, $comparison->savingPence);
+    }
+
+    public function test_the_optimiser_returns_the_cheapest_candidate_and_reconciles_to_two_engine_runs(): void
+    {
+        $forecaster = new ScenarioForecaster;
+        $comparison = WithdrawalStrategyComparison::for($forecaster, $this->scenario());
+
+        // The reported delta is the difference of two of the engine's OWN runs, never a
+        // re-derivation: re-run the winner and the current order and subtract.
+        $lifetimeTax = function (DrawdownStrategy $strategy) use ($forecaster): int {
+            $total = 0;
+            foreach ($forecaster->deterministicUnderStrategy($this->scenario(), $strategy)->years as $year) {
+                $total += $year->totalTax->pence;
+            }
+
+            return $total;
+        };
+        $this->assertSame($lifetimeTax($comparison->cheapest), $comparison->cheapestTaxPence);
+        $this->assertSame(
+            $lifetimeTax(WithdrawalStrategyComparison::CURRENT) - $lifetimeTax($comparison->cheapest),
+            $comparison->optimiserSavingPence,
+        );
+
+        // The winner really is the cheapest of the candidate set, and the optimiser never
+        // reports a saving for an order that pays MORE than the one in place.
+        foreach (WithdrawalStrategyComparison::CANDIDATES as $candidate) {
+            $this->assertLessThanOrEqual($lifetimeTax($candidate), $comparison->cheapestTaxPence);
+        }
+        $this->assertGreaterThanOrEqual(0, $comparison->optimiserSavingPence);
+
+        // The search stays bounded: each candidate is a whole forecast, so this is the cost.
+        $this->assertLessThanOrEqual(6, count(WithdrawalStrategyComparison::CANDIDATES));
     }
 
     public function test_the_monte_carlo_run_records_its_seed_and_bounded_probabilities(): void

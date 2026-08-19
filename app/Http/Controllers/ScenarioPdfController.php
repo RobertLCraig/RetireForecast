@@ -155,14 +155,10 @@ class ScenarioPdfController extends Controller
         // Withdrawal sequencing: what the household's draw order costs in lifetime tax vs
         // filling the tax-free bands first. Same shape the screen partial reads.
         $comparison = WithdrawalStrategyComparison::for($forecaster, $scenario);
-        $withdrawal = $comparison->baselineTaxPence > 0 ? [
-            'baseline' => Money::fromPence($comparison->baselineTaxPence)->format(),
-            'fillBands' => Money::fromPence($comparison->fillBandsTaxPence)->format(),
-            'difference' => Money::fromPence(abs($comparison->savingPence))->format(),
-            'fillBandsSaves' => $comparison->fillBandsSaves(),
-            'differs' => $comparison->savingPence !== 0,
-            'steer' => Gate::allows('interpret') ? Interpretation::withdrawalSequencingNarrative($comparison) : null,
-        ] : null;
+        $withdrawal = $comparison->panel();
+        if ($withdrawal !== null) {
+            $withdrawal['steer'] = Gate::allows('interpret') ? Interpretation::withdrawalSequencingNarrative($comparison) : null;
+        }
 
         // "Since your last run": the same two-snapshot diff the screen shows.
         $snapshots = $scenario->result_snapshots ?? [];

@@ -32,6 +32,7 @@ use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Forecast\PathProjector;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -576,6 +577,174 @@ final class PathProjectorTest extends TestCase
             $pensionAware->years[1]->pensionWealth->pence,
             $fillBands->years[1]->pensionWealth->pence,
         );
+
+        // ...and the point of preferring capital is the credit it saves: across the plan the
+        // Pension-Credit-aware order keeps strictly more Guarantee Credit than the order that
+        // draws pension income, which the means test claws back £-for-£.
+        $credit = function ($forecast): int {
+            $total = 0;
+            foreach ($forecast->years as $year) {
+                $total += $year->incomeBySource['means_tested_benefit']->pence;
+            }
+
+            return $total;
+        };
+        $this->assertGreaterThan($credit($pensionAware), $credit($fillBands));
+    }
+
+    /**
+     * The household slice #5 is judged on: a retired couple of 68 whose two full State Pensions
+     * use up almost all of both personal allowances, spending £45,000 against £20,000 of cash and
+     * a £600,000 pot. From year 1 every extra pound of spend has to come out of the pension and
+     * into the basic-rate band, which is exactly where a tax-free quarter is worth something.
+     * Rebuilt per run because a forecast consumes the household.
+     */
+    private function ufplsCouple(?Money $pclsTakenToDate = null): Household
+    {
+        return $this->couple(
+            new ExpenseProfile(Money::fromPounds(45_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+                new DcPension('p1', Money::fromPounds(600_000), Money::zero(), Money::zero(), 55, pclsTakenToDate: $pclsTakenToDate),
+            ],
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(20_000))],
+        );
+    }
+
+    private function lifetimeTax(DrawdownStrategy $strategy, Household $household): int
+    {
+        $total = 0;
+        foreach ($this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings($strategy))->years as $year) {
+            $total += $year->totalTax->pence;
+        }
+
+        return $total;
+    }
+
+    /**
+     * Lifetime tax under FillBands BEFORE slice #5, when every ad-hoc pension draw was taxed on
+     * 100% of the gross. Pinned so the improvement is measured against a real number rather than
+     * asserted vaguely; recomputing it means reverting PathProjector, not editing this constant.
+     */
+    private const FILL_BANDS_LIFETIME_TAX_BEFORE_UFPLS = 10_353_810;
+
+    public function test_a_fill_bands_pension_draw_is_taken_ufpls_style_and_pays_less_lifetime_tax(): void
+    {
+        // A quarter of each draw is tax-free cash while the Lump Sum Allowance lasts, so the same
+        // spend is met with less taxable income than the old fully-taxable drawdown.
+        $this->assertLessThan(
+            self::FILL_BANDS_LIFETIME_TAX_BEFORE_UFPLS,
+            $this->lifetimeTax(DrawdownStrategy::FillBands, $this->ufplsCouple()),
+        );
+    }
+
+    public function test_a_fill_bands_draw_with_no_lump_sum_allowance_left_is_fully_taxable_as_before(): void
+    {
+        // Graceful degradation: with the whole allowance already used there is no tax-free
+        // element, so the UFPLS draw IS the old fully-taxable draw, to the penny.
+        $lsa = TaxYearRegistry::for('2026-27')->pension->lumpSumAllowance;
+
+        $this->assertSame(
+            self::FILL_BANDS_LIFETIME_TAX_BEFORE_UFPLS,
+            $this->lifetimeTax(DrawdownStrategy::FillBands, $this->ufplsCouple($lsa)),
+        );
+    }
+
+    public function test_the_tax_free_cash_a_fill_bands_plan_takes_never_exceeds_the_lump_sum_allowance(): void
+    {
+        // The ad-hoc UFPLS draw and an explicit instruction share ONE ledger ($state['lsaUsed']),
+        // so tax-free cash already taken is gone: it cannot also fund a full 25% of every draw.
+        // All but £10,000 of the allowance is used up front, which the plan exhausts in a year or
+        // two - so the run must land strictly between "no allowance left" and "all of it left".
+        $lsa = TaxYearRegistry::for('2026-27')->pension->lumpSumAllowance;
+        $nearlyAllUsed = Money::fromPence($lsa->pence - 10_000_00);
+
+        $withLittleLeft = $this->lifetimeTax(DrawdownStrategy::FillBands, $this->ufplsCouple($nearlyAllUsed));
+
+        // Were the allowance not shared, this run would take a tax-free quarter for ever and
+        // match the full-headroom figure instead.
+        $this->assertGreaterThan($this->lifetimeTax(DrawdownStrategy::FillBands, $this->ufplsCouple()), $withLittleLeft);
+        $this->assertLessThan(self::FILL_BANDS_LIFETIME_TAX_BEFORE_UFPLS, $withLittleLeft);
+    }
+
+    public function test_fill_bands_never_ufpls_draws_a_pot_before_its_owner_reaches_its_access_age(): void
+    {
+        // p1 is 58; the pot's earliest access age is 65, so it is legally untouchable for seven
+        // years whatever order the fill planner would prefer. The 2026-07-02 access-age gate must
+        // hold on the UFPLS path exactly as it does on the fully-taxable one.
+        $locked = $this->couple(
+            new ExpenseProfile(Money::fromPounds(30_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [new DcPension('p1', Money::fromPounds(200_000), Money::zero(), Money::zero(), 65)],
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(80_000))],
+            override1: new Person('p1', new DateTimeImmutable('1968-04-01'), Sex::Female, EmploymentStatus::Retired),
+        );
+
+        $result = $this->forecaster()->forecast($locked, $this->flatAssumptions(), $this->settings(DrawdownStrategy::FillBands));
+
+        // Ages 58 to 64 (year indices 0 to 6): the pot is untouched, so the shortfall falls on cash.
+        foreach (range(0, 6) as $yearIndex) {
+            $this->assertSame(
+                Money::fromPounds(200_000)->pence,
+                $result->years[$yearIndex]->pensionWealth->pence,
+                "the pot was drawn at age {$result->years[$yearIndex]->ages['p1']}, before its access age of 65",
+            );
+        }
+        // ...and once she reaches 65 it is drawn, so the gate delays the draw rather than losing it.
+        $this->assertLessThan(Money::fromPounds(200_000)->pence, $result->years[7]->pensionWealth->pence);
+    }
+
+    public function test_flexible_access_caps_later_money_purchase_contributions_at_the_mpaa(): void
+    {
+        // A worker of 60 with a £20k employer contribution. Taking a UFPLS is flexible access, so
+        // from the following year the pot may only be topped up to the Money Purchase Annual
+        // Allowance: the plan cannot draw the pot down in the free bands and recycle the cash back.
+        $worker = fn (): Person => new Person('p1', new DateTimeImmutable('1966-04-01'), Sex::Female,
+            EmploymentStatus::Employed, grossSalary: Money::fromPounds(80_000), plannedRetirementAge: 70);
+        $expense = new ExpenseProfile(Money::fromPounds(30_000), Money::zero(), Percent::fromPercent(70));
+        $pot = fn (array $plan): DcPension => new DcPension('p1', Money::fromPounds(100_000),
+            Money::zero(), Money::fromPounds(20_000), 55, withdrawalPlan: $plan);
+
+        $triggered = $this->couple($expense, pensions: [
+            $pot([new WithdrawalInstruction(WithdrawalKind::Ufpls, Money::fromPounds(4_000), 60)]),
+        ], override1: $worker());
+        $untouched = $this->couple($expense, pensions: [$pot([])], override1: $worker());
+
+        $a = $this->forecaster()->forecast($triggered, $this->flatAssumptions(), $this->settings());
+        $b = $this->forecaster()->forecast($untouched, $this->flatAssumptions(), $this->settings());
+
+        $mpaa = TaxYearRegistry::for('2026-27')->pension->moneyPurchaseAnnualAllowance->pence;
+
+        // The year AFTER the trigger: only the MPAA goes in, not the £20,000 the employer pays.
+        $this->assertSame($mpaa, $a->years[2]->pensionWealth->pence - $a->years[1]->pensionWealth->pence);
+        // ...where an untriggered member still receives the whole employer contribution.
+        $this->assertSame(Money::fromPounds(20_000)->pence, $b->years[2]->pensionWealth->pence - $b->years[1]->pensionWealth->pence);
+    }
+
+    public function test_the_ufpls_split_respects_the_lump_sum_allowance_and_the_band_being_filled(): void
+    {
+        // 25% tax-free while the allowance lasts...
+        $this->assertSame([1_000_00, 3_000_00], PathProjector::ufplsSplit(4_000_00, 268_275_00, 0.25));
+        // ...capped by what is left of it, so the rest of the draw is taxable...
+        $this->assertSame([250_00, 3_750_00], PathProjector::ufplsSplit(4_000_00, 250_00, 0.25));
+        // ...and with none left the whole draw is taxable (the pre-#5 behaviour).
+        $this->assertSame([0, 4_000_00], PathProjector::ufplsSplit(4_000_00, 0, 0.25));
+
+        // The largest draw whose TAXABLE part fits £3,000 of band: £4,000 while the allowance
+        // covers the tax-free quarter...
+        $this->assertSame(4_000_00, PathProjector::maxUfplsGross(3_000_00, 268_275_00, 0.25));
+        // ...and once the allowance runs out, only room + what is left of the allowance.
+        $this->assertSame(3_500_00, PathProjector::maxUfplsGross(3_000_00, 500_00, 0.25));
+        $this->assertSame(3_000_00, PathProjector::maxUfplsGross(3_000_00, 0, 0.25));
+        // No band left is no draw: 75% of any UFPLS is taxable, so nothing fits.
+        $this->assertSame(0, PathProjector::maxUfplsGross(0, 268_275_00, 0.25));
+
+        // The solved cap really does fit the room, at every pence of it (the floor in the split
+        // can otherwise push the taxable part one penny over).
+        foreach (range(1, 400) as $room) {
+            $gross = PathProjector::maxUfplsGross($room, 268_275_00, 0.25);
+            $this->assertLessThanOrEqual($room, PathProjector::ufplsSplit($gross, 268_275_00, 0.25)[1]);
+        }
     }
 
     public function test_dc_contributions_funded_from_surplus_grow_the_pot(): void

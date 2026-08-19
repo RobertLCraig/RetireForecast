@@ -169,23 +169,16 @@ final class Interpretation
      */
     public static function withdrawalSequencingNarrative(WithdrawalStrategyComparison $comparison): array
     {
-        if ($comparison->savingPence === 0) {
-            return ['On these figures the order you draw your money makes no difference to the tax you pay, so there is nothing to choose between them here.'];
+        // Reads the optimiser's winner, not just the fill-the-bands column, so the steer names
+        // the cheapest order of every one searched rather than the better of two.
+        if (! $comparison->optimiserSaves()) {
+            return ['On these figures none of the draw orders we tried pays less tax than the one you have, so there is nothing to change here for tax.'];
         }
 
-        if ($comparison->fillBandsSaves()) {
-            $amount = Money::fromPence($comparison->savingPence)->format();
-
-            return [
-                "Filling your tax-free allowances first would pay {$amount} less tax across your plan; on these figures it is the order to lean towards for tax.",
-                'This is one central projection on your current assumptions; revisit it if your spending, income or returns differ.',
-            ];
-        }
-
-        $amount = Money::fromPence(-$comparison->savingPence)->format();
+        $amount = Money::fromPence($comparison->optimiserSavingPence)->format();
 
         return [
-            "Your current order, spending your savings first, already pays {$amount} less tax than filling the bands, so on these figures it is the one to lean towards.",
+            "Of the orders we tried, {$comparison->cheapestLabel()} pays {$amount} less tax across your plan; on these figures it is the order to lean towards for tax.",
             'This is one central projection on your current assumptions; revisit it if your spending, income or returns differ.',
         ];
     }

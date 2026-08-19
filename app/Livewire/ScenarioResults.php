@@ -347,14 +347,10 @@ class ScenarioResults extends Component
         // the tax-free bands first (on the base household). Neutral figures always; the directive
         // steer only behind the interpret gate.
         $comparison = WithdrawalStrategyComparison::for($forecaster, $this->scenario);
-        $withdrawal = $comparison->baselineTaxPence > 0 ? [
-            'baseline' => Money::fromPence($comparison->baselineTaxPence)->format(),
-            'fillBands' => Money::fromPence($comparison->fillBandsTaxPence)->format(),
-            'difference' => Money::fromPence(abs($comparison->savingPence))->format(),
-            'fillBandsSaves' => $comparison->fillBandsSaves(),
-            'differs' => $comparison->savingPence !== 0,
-            'steer' => Gate::allows('interpret') ? Interpretation::withdrawalSequencingNarrative($comparison) : null,
-        ] : null;
+        $withdrawal = $comparison->panel();
+        if ($withdrawal !== null) {
+            $withdrawal['steer'] = Gate::allows('interpret') ? Interpretation::withdrawalSequencingNarrative($comparison) : null;
+        }
 
         // Per-strategy cashflow: a deterministic forecast for each housing strategy (single
         // source — the same variant households the Monte Carlo comparison runs). The ladder +

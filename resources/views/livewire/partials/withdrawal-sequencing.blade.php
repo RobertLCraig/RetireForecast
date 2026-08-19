@@ -30,10 +30,21 @@
         @endif
     </p>
 
+    <p class="mt-3 text-sm text-gray-700">
+        @if ($withdrawal['optimiserSaves'])
+            Of the {{ $withdrawal['candidateCount'] }} draw orders we tried, the cheapest is
+            <span class="font-semibold">{{ $withdrawal['cheapestLabel'] }}</span>: it pays
+            <span class="font-semibold">{{ $withdrawal['optimiserSaving'] }}</span> less tax across the plan than your current order.
+        @else
+            We tried {{ $withdrawal['candidateCount'] }} draw orders in all. None of them pays less tax across the plan than your current order.
+        @endif
+    </p>
+
     <p class="mt-2 text-xs text-gray-500">
         A central projection on your current assumptions. "Filling your tax-free allowances" draws pension within your
-        personal allowance and realises gains within your capital-gains allowance before taxed income; if you receive
-        Pension Credit it draws your savings first, so pension income does not reduce the credit.
+        personal allowance and realises gains within your capital-gains allowance before taxed income; each pension draw
+        is taken so a quarter of it is tax-free cash while your lump sum allowance lasts. If you receive Pension Credit it
+        draws your savings first, so pension income does not reduce the credit.
     </p>
 
     @if (! empty($withdrawal['steer']))

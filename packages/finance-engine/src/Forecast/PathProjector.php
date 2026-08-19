@@ -489,6 +489,11 @@ final class PathProjector
             'isa' => $isa,
             'pots' => $pots,
             'lsaUsed' => $lsaUsed,
+            // Flexible access (a UFPLS or drawdown income, planned or ad-hoc) permanently caps
+            // that member's money-purchase contributions at the MPAA; mpContributed counts what
+            // has gone in THIS year and is reset each year. {@see mpaaHeadroom}.
+            'mpaaTriggered' => array_fill_keys(array_keys($lsaUsed), false),
+            'mpContributed' => array_fill_keys(array_keys($lsaUsed), 0),
             // The household owns a beneficial share of the home (tenants in common); null = 100%.
             // Value and mortgage are entered whole and scaled to the household's share here, so every
             // downstream use (wealth, the means test, IHT, growth) reflects only the share it owns.
@@ -747,6 +752,11 @@ final class PathProjector
         $grossIncomeNominal = 0;
         // Nominal income split by canonical source (YearResult::INCOME_SOURCES).
         $src = array_fill_keys(YearResult::INCOME_SOURCES, 0);
+
+        // The Money Purchase Annual Allowance is a per-TAX-YEAR cap, so the running total of
+        // what has been paid into money-purchase pots resets here, before any of this year's
+        // contributions (employer, net-pay, or from surplus) are made.
+        $state['mpContributed'] = array_fill_keys(array_keys($state['mpContributed']), 0);
 
         // Any annuity purchases due this year convert part of a DC pot into a lifetime income
         // before the year's income is assembled, so the pot is reduced and the annuity pays
@@ -1525,11 +1535,18 @@ final class PathProjector
                     continue;
                 }
 
+                if ($instruction->kind->triggersMpaa()) {
+                    // Flexible access: from now on this member's money-purchase contributions are
+                    // capped at the MPAA ({@see mpaaHeadroom}). One home for the trigger, so an
+                    // ad-hoc UFPLS draw and a planned instruction cannot set it differently.
+                    $state['mpaaTriggered'][$pid] = true;
+                }
+
                 switch ($instruction->kind) {
                     case WithdrawalKind::Ufpls:
-                        $tf = min((int) floor($amount * $pclsRate), max(0, $lsaRemaining));
+                        [$tf, $tx] = self::ufplsSplit($amount, $lsaRemaining, $pclsRate);
                         $taxFree += $tf;
-                        $taxable += $amount - $tf;
+                        $taxable += $tx;
                         $pot['value'] -= $amount;
                         $state['lsaUsed'][$pid] += $tf;
                         $lsaRemaining -= $tf;
@@ -1551,6 +1568,50 @@ final class PathProjector
         }
 
         return ['taxable' => $taxable, 'taxFree' => $taxFree];
+    }
+
+    /**
+     * Split a gross UFPLS withdrawal into its tax-free and taxable parts: 25% is tax-free, but
+     * only while the member's Lump Sum Allowance lasts, beyond which the whole withdrawal is
+     * taxable. THE one home for the rule, so a planned WithdrawalInstruction and an ad-hoc
+     * FillBands draw can never diverge (they used to be two copies of the same three lines).
+     * Public static so the split is unit-tested directly at the allowance boundary.
+     *
+     * @return array{0: int, 1: int} [taxFree, taxable], both in pence
+     */
+    public static function ufplsSplit(int $gross, int $lsaRemaining, float $pclsRate): array
+    {
+        $taxFree = min((int) floor($gross * $pclsRate), max(0, $lsaRemaining));
+
+        return [$taxFree, $gross - $taxFree];
+    }
+
+    /**
+     * The largest gross UFPLS withdrawal whose TAXABLE part still fits in $taxableRoom (the
+     * income the person can take before crossing the band being filled), given $lsaRemaining of
+     * tax-free allowance left.
+     *
+     * Two caps bind at once and swap over: while the tax-free 25% is covered by the allowance the
+     * taxable part is 75% of the draw (so room / 0.75 fits), and once the allowance runs out every
+     * further pound is taxable (so room + allowance fits). The two agree exactly where they meet.
+     * The final loop only ever costs one step: it repairs the penny that {@see ufplsSplit}'s floor
+     * can add to the taxable part.
+     */
+    public static function maxUfplsGross(int $taxableRoom, int $lsaRemaining, float $pclsRate): int
+    {
+        if ($taxableRoom <= 0) {
+            return 0;
+        }
+        $allowance = max(0, $lsaRemaining);
+        $gross = (int) floor($taxableRoom / (1.0 - $pclsRate));
+        if ((int) floor($gross * $pclsRate) > $allowance) {
+            $gross = $taxableRoom + $allowance;
+        }
+        while ($gross > 0 && self::ufplsSplit($gross, $allowance, $pclsRate)[1] > $taxableRoom) {
+            $gross--;
+        }
+
+        return $gross;
     }
 
     /**
@@ -1889,20 +1950,99 @@ final class PathProjector
             }
         };
 
+        // The same draw, taken UFPLS-style: 25% of each withdrawal is tax-free (while the Lump
+        // Sum Allowance lasts) and only the rest is taxable income. This is what a retiree
+        // drawing ad-hoc from an uncrystallised pot actually does, and taxing 100% of it instead
+        // mispriced pension wealth against every other asset. FillBands only: $drawPension stays
+        // byte-identical for TaxEfficient / PensionAware and the HMRC worked examples.
+        //
+        // Two caps bind at once: the band being filled ($taxableLimit, which only the TAXABLE
+        // part consumes, so the draw is ~a third larger for the same taxable income) and the
+        // person's remaining Lump Sum Allowance. {@see maxUfplsGross} solves both. With no
+        // allowance left the split is all-taxable, so this degrades exactly to $drawPension.
+        $drawPensionUfpls = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, $alive, $ages, $household, $taxablePerPerson, $thresholdFactor): void {
+            $pclsRate = $this->config->pension->pclsRate->asFraction();
+            $lsa = $this->config->pension->lumpSumAllowance->pence;
+
+            foreach ($household->persons as $person) {
+                if ($remaining <= 0) {
+                    return;
+                }
+                if (! $alive[$person->id]) {
+                    continue;
+                }
+                $alreadyTaxable = $taxablePerPerson[$person->id];
+                foreach ($state['pots'][$person->id] as &$pot) {
+                    if ($remaining <= 0 || $pot['value'] <= 0) {
+                        continue;
+                    }
+                    // The access-age gate, exactly as $drawPension applies it: a pot cannot be
+                    // touched before its owner reaches its earliest access age, whatever order
+                    // the fill planner would prefer. (DECISIONS 2026-07-02.)
+                    if (($ages[$person->id] ?? 0) < ($pot['earliestAccessAge'] ?? 0)) {
+                        continue;
+                    }
+                    $lsaRemaining = max(0, $lsa - $state['lsaUsed'][$person->id]);
+                    $cap = $pot['value'];
+                    if ($taxableLimit !== null) {
+                        $cap = min($cap, self::maxUfplsGross($taxableLimit - $alreadyTaxable, $lsaRemaining, $pclsRate));
+                    }
+                    if ($cap <= 0) {
+                        continue;
+                    }
+
+                    // Gross up so the after-tax cash meets the need, on the same iteration as
+                    // grossUpPension, where only the taxable part carries tax.
+                    $gross = $remaining;
+                    for ($i = 0; $i < 8; $i++) {
+                        $tax = $this->marginalTax($alreadyTaxable, self::ufplsSplit($gross, $lsaRemaining, $pclsRate)[1], $thresholdFactor);
+                        $next = $remaining + $tax;
+                        if (abs($next - $gross) <= 1) {
+                            $gross = $next;
+                            break;
+                        }
+                        $gross = $next;
+                    }
+                    $gross = min($gross, $cap);
+                    if ($gross <= 0) {
+                        continue;
+                    }
+
+                    [$taxFree, $taxablePart] = self::ufplsSplit($gross, $lsaRemaining, $pclsRate);
+                    $taxDelta = $this->marginalTax($alreadyTaxable, $taxablePart, $thresholdFactor);
+                    $net = $gross - $taxDelta;
+                    $pot['value'] -= $gross;
+                    $state['lsaUsed'][$person->id] += $taxFree;
+                    // A UFPLS is flexible access: it caps this member's future money-purchase
+                    // contributions at the MPAA ({@see mpaaHeadroom}).
+                    $state['mpaaTriggered'][$person->id] = true;
+                    $remaining -= $net;
+                    $funded += $net;
+                    $extraTax += $taxDelta;
+                    $fromPension += $gross;
+                    $alreadyTaxable += $taxablePart;
+                }
+                unset($pot);
+            }
+        };
+
         if ($strategy === DrawdownStrategy::FillBands) {
             // Fill each tax-free band before a taxed pound. A household on Guarantee Credit is
             // the exception: any pension income claws the credit back £-for-£, so for them draw
             // capital first and leave the pension (and the credit) intact.
             if (! $onGuaranteeCredit) {
-                $drawPension($paLimit);    // pension within the personal allowance (0% income tax)
+                $drawPensionUfpls($paLimit);    // pension within the personal allowance (0% income tax)
             }
-            $drawGiaToAea();               // GIA gains within the CGT annual exempt amount (0% CGT)
-            $drawTaxFreeCapital();         // cash + ISA (tax-free capital)
+            $drawGiaToAea();                    // GIA gains within the CGT annual exempt amount (0% CGT)
+            $drawTaxFreeCapital();              // cash + ISA (tax-free capital)
             if (! $onGuaranteeCredit) {
-                $drawPension($basicLimit); // pension within the basic-rate band (20%)
+                $drawPensionUfpls($basicLimit); // pension within the basic-rate band (20%)
             }
-            $drawNonPension();             // remaining GIA (CGT on gains beyond the AEA)
-            $drawPension(null);            // remaining pension (higher rate) - last resort
+            $drawNonPension();                  // remaining GIA (CGT on gains beyond the AEA)
+            // Remaining pension - last resort. On Guarantee Credit this is the ONLY pension step,
+            // and taking it UFPLS-style means a quarter of it arrives as tax-free CAPITAL, which
+            // the means test disregards as income, so less of the credit is clawed back.
+            $drawPensionUfpls(null);
         } elseif ($strategy === DrawdownStrategy::PensionAware) {
             $drawPension($basicLimit);   // pension up to the basic-rate band first
             $drawNonPension();
@@ -1934,7 +2074,11 @@ final class PathProjector
             $remaining = $cgt;
             $fundedBeforeCgt = $funded;
             $drawNonPension();
-            $drawPension(null);
+            if ($strategy === DrawdownStrategy::FillBands) {
+                $drawPensionUfpls(null);
+            } else {
+                $drawPension(null);
+            }
             $funded = $fundedBeforeCgt;
         }
 
@@ -2116,9 +2260,53 @@ final class PathProjector
             return;
         }
         foreach ($state['pots'][$pid] as &$pot) {
-            $pot['value'] += (int) round(($pot['employerContribution'] ?? 0) * $spendFactor * $workFraction);
+            $this->payIntoPot($state, $pid, $pot, (int) round(($pot['employerContribution'] ?? 0) * $spendFactor * $workFraction));
         }
         unset($pot);
+    }
+
+    /**
+     * This member's remaining money-purchase contribution allowance for the year. Unlimited
+     * until they flexibly access a pension (a UFPLS or drawdown income, planned or drawn to fund
+     * a shortfall); from then on it is the Money Purchase Annual Allowance less what has already
+     * gone in this year: the rule that stops a plan drawing a pot down in the free bands and
+     * recycling the cash straight back in.
+     *
+     * v1 simplifications, both flagged: the allowance is modelled as a hard cap on what may be
+     * paid in rather than as an annual-allowance CHARGE on the excess ({@see AnnualAllowanceCalculator}
+     * prices that separately), and it bites from the year of the trigger rather than the day
+     * after it. It is the frozen statutory figure, not indexed, because nothing has indexed it.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function mpaaHeadroom(array $state, string $pid): int
+    {
+        if (! ($state['mpaaTriggered'][$pid] ?? false)) {
+            return PHP_INT_MAX;
+        }
+
+        return max(0, $this->config->pension->moneyPurchaseAnnualAllowance->pence - ($state['mpContributed'][$pid] ?? 0));
+    }
+
+    /**
+     * Pay $amount into one of this member's money-purchase pots, capped at their remaining MPAA
+     * headroom, and return what actually went in. THE one place a DC pot is credited with a
+     * contribution, so the cap cannot be applied at two of the three sites and missed at the
+     * third, and so the year's running total has one home.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, mixed>  $pot
+     */
+    private function payIntoPot(array &$state, string $pid, array &$pot, int $amount): int
+    {
+        $give = min(max(0, $amount), $this->mpaaHeadroom($state, $pid));
+        if ($give <= 0) {
+            return 0;
+        }
+        $pot['value'] += $give;
+        $state['mpContributed'][$pid] = ($state['mpContributed'][$pid] ?? 0) + $give;
+
+        return $give;
     }
 
     /**
@@ -2144,9 +2332,9 @@ final class PathProjector
                 continue;
             }
             $wanted = (int) round(($pot['contribution'] ?? 0) * $spendFactor * $workFraction);
-            $give = max(0, min($wanted, $earnings - $paid));
-            $pot['value'] += $give;
-            $paid += $give;
+            // What the MPAA blocks is never given up, so it stays in pay and is taxed there:
+            // the caller subtracts only what actually reached the pot.
+            $paid += $this->payIntoPot($state, $pid, $pot, max(0, min($wanted, $earnings - $paid)));
         }
         unset($pot);
 
@@ -2158,11 +2346,14 @@ final class PathProjector
         $available = $surplus;
         $contributed = 0;
 
-        $take = function (int $annualPence) use (&$available, &$contributed, $spendFactor): int {
+        $take = function (int $annualPence, int $capNominal = PHP_INT_MAX) use (&$available, &$contributed, $spendFactor): int {
             if ($annualPence <= 0 || $available <= 0) {
                 return 0;
             }
-            $give = min((int) round($annualPence * $spendFactor), $available);
+            $give = min((int) round($annualPence * $spendFactor), $available, $capNominal);
+            if ($give <= 0) {
+                return 0;
+            }
             $available -= $give;
             $contributed += $give;
 
@@ -2182,7 +2373,9 @@ final class PathProjector
                 if (($pot['reliefMethod'] ?? null) === PensionReliefMethod::NetPay) {
                     continue;
                 }
-                $pot['value'] += $take($pot['contribution'] ?? 0);
+                // Capped BEFORE the surplus is consumed, so what the MPAA blocks is not
+                // silently dropped: it stays in the surplus and is saved into cash instead.
+                $this->payIntoPot($state, $person->id, $pot, $take($pot['contribution'] ?? 0, $this->mpaaHeadroom($state, $person->id)));
             }
             unset($pot);
         }

@@ -1,10 +1,10 @@
 # PLAN — tax-efficient withdrawal sequencing across wrappers ("fill the band")
 
-> **Status: CORE SHIPPED (2026-07-01); #5 (PCLS-timing) + #6 (optimiser) handed off.** Dated 2026-06-30,
-> approved by Rob and built in green committed slices — the `FillBands` `DrawdownStrategy` + its
-> Pension-Credit-aware fill order, the lifetime-tax £-delta (`WithdrawalStrategyComparison`), and the
-> results-page panel + advice-gated steer are live (DECISIONS 2026-07-01, Lane C). Still to build: #5/#6,
-> per the "Implementation plan for a fresh agent" section (gated on Rob's two modelling calls).
+> **Status: COMPLETE (2026-08-19).** Dated 2026-06-30, approved by Rob and built in green committed
+> slices — the `FillBands` `DrawdownStrategy` + its Pension-Credit-aware fill order, the lifetime-tax
+> £-delta (`WithdrawalStrategyComparison`), the results-page panel + advice-gated steer
+> (DECISIONS 2026-07-01, Lane C), and now **#5 planner-timed PCLS + #6 the bounded search optimiser**
+> (card 0007, DECISIONS 2026-08-19). Nothing in this spec is outstanding.
 > Motivated by the competitive scan ([docs/RESEARCH-competitive-gap-analysis.md](../research/RESEARCH-competitive-gap-analysis.md),
 > Cluster A) — the highest-value, most on-brand net-new item, because RF already owns the HMRC engine.
 >
@@ -168,10 +168,15 @@ before each engine edit, and claim the lane in HANDOVER.
    nothing cheaper to substitute. So the fill order is inherently taper-optimal; no extra step needed.
 3. ✅ **£-delta in Compare — BUILT (2026-07-01, commits `c598381` + `39db68c`).** "Strategy X pays £Y less lifetime tax" (neutral, always) + the advice-gated steer
    (`personal_use`). Reuses Compare's identical-seed runs; reconciliation test (delta == tax(A) − tax(B)).
-4. **PCLS timing** (= **#5** in the Decisions numbering used by the handoff below + HANDOVER). Let the planner
-   choose when to take the 25% tax-free cash (vs user-specified).
-5. **Search-optimiser (last)** (= **#6** in the Decisions numbering). A bounded search over orderings to minimise
-   lifetime tax; flag cost/benefit.
+4. ✅ **PCLS timing — BUILT (2026-08-19, card 0007).** Every FillBands pension draw is taken UFPLS-style
+   (`PathProjector::$drawPensionUfpls`): 25% tax-free while the Lump Sum Allowance lasts, the rest taxable,
+   solved against both caps at once (`maxUfplsGross`). The split has one home (`ufplsSplit`, shared with
+   `plannedWithdrawals`) and one LSA ledger, so an ad-hoc draw and a planned instruction cannot double-count
+   the allowance. Flexible access now caps later money-purchase contributions at the MPAA (`mpaaHeadroom`).
+5. ✅ **Search-optimiser — BUILT (2026-08-19, card 0007).** `WithdrawalStrategyComparison` runs every candidate
+   in its bounded `CANDIDATES` set (the three named strategies) and reports the cheapest plus its £ saving
+   against the order in place. Extending the existing comparison rather than adding a sibling keeps it at one
+   forecast per candidate.
 
 Each slice ships alone; stopping after 1–3 already delivered the headline value (the core is shipped).
 

@@ -3,6 +3,34 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-08-19 — A "fill the bands" pension draw is a UFPLS, and flexible access caps what can go back in
+**Context:** card 0007, the last two slices of [PLAN-withdrawal-sequencing.md](build/PLAN-withdrawal-sequencing.md).
+`fundShortfall`'s draw closure took pension money gross and taxed 100% of it, applying the 25% tax-free
+element only through an explicit withdrawal instruction. The spec called that a conservative baseline; the
+2026-08-19 adviser review called it a modelling error, because it mispriced pension wealth against every
+other asset and so biased every housing comparison towards realising property equity.
+
+**Decisions:**
+1. **An ad-hoc FillBands pension draw is modelled as a UFPLS from uncrystallised funds** (25% tax-free up to
+   the Lump Sum Allowance, 75% taxable), not as fully-taxable drawdown. *Rationale:* it is what a retiree
+   drawing ad-hoc from an uncrystallised pot actually does, and the alternative is not conservative, it is
+   wrong by roughly five points of tax on every pension pound. On the pinned test household lifetime tax
+   falls from £103,538.10 to £81,749.09. `TaxEfficient` / `PensionAware` and the HMRC worked examples are
+   untouched: the change is a second closure, not a rewrite of the first.
+2. **One home for the split and one ledger for the allowance.** `PathProjector::ufplsSplit` is now the only
+   place the 25% rule lives, shared with `plannedWithdrawals`, and both routes spend the same
+   `$state['lsaUsed']`. A member whose allowance is already gone gets the old fully-taxable draw **to the
+   penny**, which is the pinned regression guard.
+3. **Flexible access caps later money-purchase contributions at the MPAA.** Otherwise a plan could draw a pot
+   down in the free bands and recycle the cash straight back in, which the law does not allow. Modelled as a
+   hard cap on what may be paid in rather than as an annual-allowance charge on the excess, and from the year
+   of the trigger rather than the day after it: both simplifications are flagged on `mpaaHeadroom`. What the
+   cap blocks is never dropped, it stays in pay or in surplus and is taxed or saved there.
+4. **The optimiser extends the existing comparison rather than sitting beside it.** A sibling class would have
+   re-run the two forecasts the results panel already needs; `WithdrawalStrategyComparison` now runs its whole
+   bounded `CANDIDATES` set once and reports the cheapest. Every saving stays the difference of two of the
+   engine's own runs, never a re-derivation.
+
 ## 2026-08-12 — Reporting Monte Carlo results: spendable money, not total wealth
 **Context:** a graph-led report over the full 10,000-path sweep of every scenario. The engine already
 keeps two wealth series apart (`fanChart` / `terminalWealthPercentiles` include the home;
