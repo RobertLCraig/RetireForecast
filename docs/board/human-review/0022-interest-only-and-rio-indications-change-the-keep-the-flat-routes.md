@@ -1,5 +1,6 @@
 ---
 waiting_on: four questions to Mark Braidford (My Later Life) - recheck 2026-08-22
+needs: 0024, 0027, 0058, 0067, 0068, 0069, 0070
 ---
 
 # Interest-only and RIO indications change what keeping the flat costs
