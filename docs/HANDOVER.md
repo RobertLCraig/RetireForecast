@@ -66,7 +66,7 @@ after each.
 3. **0034 a year-0 purchase cannot see a capital receipt arriving the same year**, so a plan borrows for life beside money it already has.
 4. **0035 and 0036 dead and mis-timed income inputs**: the defined-benefit escalation dropdown is never read, and the retirement year pays a part-year salary with a full year of pension and no National Insurance.
 
-Then the pre-review queue resumes: **0011** capacity for loss, **0010** verdict-first landing.
+Then the pre-review queue resumes: **0011** capacity for loss.
 
 ## Blockers / open questions
 **The full set is [docs/board/human-review/](board/human-review/), each card carrying its own ask or

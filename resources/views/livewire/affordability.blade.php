@@ -7,19 +7,34 @@
             <a href="{{ route('dashboard') }}" class="hover:text-blue-700">Back to forecasts</a>
         </div>
     </div>
-    <p class="mt-1 text-base text-gray-600">Every plan you’ve entered, answered as a plain yes or no. The plans that work come first.</p>
+    <p class="mt-1 text-base text-gray-600">Every plan you’ve entered, led by how often it actually holds up. The plans that work come first.</p>
 
-    {{-- The bottom line, up top where an impatient reader will actually see it. --}}
-    @php($best = $bottomLine['best'])
-    <div class="mt-6 rounded-xl border-2 {{ $best ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50' }} p-5">
-        <p class="text-sm font-semibold uppercase tracking-wide {{ $best ? 'text-green-800' : 'text-red-800' }}">The bottom line</p>
-        <p class="mt-2 text-xl leading-relaxed text-gray-900">{{ $bottomLine['headline'] }}</p>
-        @if ($best)
-            <p class="mt-2 text-base text-gray-700">
-                {{ $bottomLine['workCount'] }} of your {{ $bottomLine['total'] }} plans keep the essentials paid for life.
+    {{-- B1: the landing leads with the Monte Carlo probability, never the deterministic yes/no.
+         A green "yes, this lasts" beside an unshown coin-flip was the most misleading thing here,
+         so the chance and its plain word come first and the expected path is demoted below it. --}}
+    @php($lead = $bottomLine['lead'])
+    @php($leadTones = ['strong' => 'border-green-300 bg-green-50', 'good' => 'border-green-300 bg-green-50', 'borderline' => 'border-amber-300 bg-amber-50', 'weak' => 'border-red-300 bg-red-50', 'poor' => 'border-red-300 bg-red-50'])
+    <section aria-labelledby="how-sure-heading" class="mt-6 rounded-xl border-2 p-6 {{ $leadTones[$lead['band']['level'] ?? ''] ?? 'border-gray-300 bg-gray-50' }}">
+        <p id="how-sure-heading" class="text-sm font-semibold tracking-wide text-gray-700 uppercase">How sure is your strongest plan?</p>
+
+        @if ($lead['checked'])
+            <p class="mt-2 flex flex-wrap items-baseline gap-x-3">
+                <span class="text-5xl font-bold text-gray-900">{{ $lead['percent'] }}</span>
+                <span class="text-2xl font-semibold text-gray-900">{{ $lead['band']['word'] }}</span>
             </p>
-            {{-- The verdict above is the expected, care-free path; this qualifies it with the care risk (A2). --}}
-            <p class="mt-2 text-base font-medium text-gray-700">🏥 {{ $bottomLine['careCaveat'] }}</p>
+            <p class="mt-3 text-base leading-relaxed text-gray-800">
+                That is how often <span class="font-semibold">{{ $lead['plan'] }}</span> keeps your essential bills paid
+                right to the end, across thousands of possible futures — good years and bad, shorter lives and longer ones.
+            </p>
+        @else
+            {{-- No completed run: say so. The deterministic verdict is ONE average future, not a
+                 chance, so it must never stand in the probability's place (card 0010 #2). --}}
+            <p class="mt-2 text-2xl font-semibold text-gray-900">Not checked yet</p>
+            <p class="mt-3 text-base leading-relaxed text-gray-800">
+                <span class="font-semibold">{{ $lead['plan'] ?? 'This plan' }}</span> has not been through the full future test,
+                so there is no chance figure to show you. The verdict below is a single average future, not a probability —
+                run the test to find out how often this plan really holds.
+            </p>
         @endif
 
         @if ($anyUnchecked)
@@ -33,6 +48,20 @@
                 </button>
                 <span class="text-sm text-gray-600">Some plans haven’t been through the full test yet. It runs in the background (a minute or two).</span>
             </div>
+        @endif
+    </section>
+
+    {{-- The expected path, below the probability: one average future, useful but not a chance. --}}
+    @php($best = $bottomLine['best'])
+    <div class="mt-6 rounded-xl border-2 {{ $best ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50' }} p-5">
+        <p class="text-sm font-semibold tracking-wide uppercase {{ $best ? 'text-green-800' : 'text-red-800' }}">On the expected path</p>
+        <p class="mt-2 text-xl leading-relaxed text-gray-900">{{ $bottomLine['headline'] }}</p>
+        @if ($best)
+            <p class="mt-2 text-base text-gray-700">
+                {{ $bottomLine['workCount'] }} of your {{ $bottomLine['total'] }} plans keep the essentials paid for life.
+            </p>
+            {{-- The verdict above is the expected, care-free path; this qualifies it with the care risk (A2). --}}
+            <p class="mt-2 text-base font-medium text-gray-700">🏥 {{ $bottomLine['careCaveat'] }}</p>
         @endif
 
         @if ($canInterpret && $best)
@@ -174,7 +203,8 @@
     <div class="mt-10 rounded-lg border border-gray-200 bg-white px-5 py-4 text-sm leading-relaxed text-gray-600">
         <p class="font-semibold text-gray-700">How to read this</p>
         <p class="mt-1">
-            “Works” means the <span class="font-medium">essential</span> bills — housing, food, heating, the must-pays —
+            The figure at the top is the honest one: how often the essentials stay paid once bad luck with
+            investments and living longer are allowed for. Below it, “works” means the <span class="font-medium">essential</span> bills — housing, food, heating, the must-pays —
             stay covered every year to the end, on the <span class="font-medium">expected path</span> (average investment returns
             and typical lifespans). Where a plan has been through the full check, the “how sure” figure shows how often it lasts
             once we allow for bad luck with returns and living longer — always look at that too before deciding.

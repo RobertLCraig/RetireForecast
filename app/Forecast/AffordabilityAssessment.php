@@ -75,19 +75,23 @@ final class AffordabilityAssessment
      * plans the reader already entered, it does not tell them to act) so it clears the banned-
      * phrasing partition; the caller may append a directive sentence behind the `interpret` gate.
      *
+     * `lead` is the probability layer the page opens with (B1) — see {@see lead()}.
+     *
      * @param  list<array<string, mixed>>  $cards  the output of {@see cards()}
-     * @return array{workCount: int, total: int, best: ?array<string, mixed>, headline: string}
+     * @return array{workCount: int, total: int, best: ?array<string, mixed>, headline: string, lead: array<string, mixed>}
      */
     public static function bottomLine(array $cards): array
     {
         $working = array_values(array_filter($cards, fn (array $c): bool => $c['works']));
         $best = $working[0] ?? null; // cards() already sorts working + most-money-left first
+        $lead = self::lead($cards[0] ?? null);
 
         if ($best === null) {
             return [
                 'workCount' => 0,
                 'total' => count($cards),
                 'best' => null,
+                'lead' => $lead,
                 'headline' => 'On the figures entered, none of these plans keep the essentials paid for life. '
                     .'The options below each show the year the money would run short — the least-bad ones are first.',
             ];
@@ -107,8 +111,31 @@ final class AffordabilityAssessment
             'workCount' => count($working),
             'total' => count($cards),
             'best' => $best,
+            'lead' => $lead,
             'headline' => $headline,
             'careCaveat' => $careCaveat,
+        ];
+    }
+
+    /**
+     * The figure the landing leads with (B1): the strongest plan's Monte Carlo chance that the
+     * essentials last, and the plain word band for it. Leading with the deterministic yes/no was
+     * the honesty gap this replaces — a green "yes, this lasts" beside an unshown coin-flip.
+     *
+     * `checked` is false when that plan has no completed full run. There is then NO probability,
+     * and the caller must say so: the deterministic verdict is one average future, not a chance,
+     * so putting it in the probability's place would read as certainty the tool does not have.
+     *
+     * @param  array<string, mixed>|null  $card  the strongest card, {@see cards()} sorts it first
+     * @return array{plan: ?string, checked: bool, percent: ?string, band: ?array{level: string, word: string}}
+     */
+    private static function lead(?array $card): array
+    {
+        return [
+            'plan' => $card['title'] ?? null,
+            'checked' => ($card['mcEssentials'] ?? null) !== null,
+            'percent' => $card['mcEssentials'] ?? null,
+            'band' => $card['mcBand'] ?? null,
         ];
     }
 
@@ -175,6 +202,9 @@ final class AffordabilityAssessment
             // plan; null prompts the caller to offer a re-run rather than implying certainty.
             'mcEssentials' => $mc !== null ? self::pct($mc->successProbabilityEssentials) : null,
             'mcFullSpend' => $mc !== null ? self::pct($mc->successProbabilityFullSpend) : null,
+            // The plain word for that chance, from the one banding home, so this landing and the
+            // comparison chip can never disagree on where "likely to last" starts.
+            'mcBand' => $mc !== null ? ResultPresenter::lastsBand($mc->successProbabilityEssentials) : null,
         ];
     }
 

@@ -43,9 +43,9 @@
                             </div>
                         </div>
                         <div class="ml-4 flex shrink-0 items-center gap-3 text-sm font-medium text-blue-600">
-                            @if ($scenario->children->isNotEmpty())
-                                <a href="{{ route('scenarios.afford', $scenario) }}" class="rounded-md bg-green-600 px-3 py-1.5 text-white hover:bg-green-700">What can I afford?</a>
-                            @endif
+                            {{-- The verdict landing, offered for every forecast (B1): a single plan
+                                 needs the "how sure" answer as much as a family of what-ifs does. --}}
+                            <a href="{{ route('scenarios.afford', $scenario) }}" class="rounded-md bg-green-600 px-3 py-1.5 text-white hover:bg-green-700">What can I afford?</a>
                             <a href="{{ route('scenarios.child', $scenario) }}" class="hover:text-blue-700">Create what-if</a>
                             @if ($scenario->children->isNotEmpty())
                                 <a href="{{ route('scenarios.compare', $scenario) }}" class="hover:text-blue-700">Compare</a>

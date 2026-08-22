@@ -5,13 +5,20 @@ declare(strict_types=1);
 namespace Tests\Feature\Livewire;
 
 use App\Enums\ScenarioStatus;
+use App\Enums\SimulationMode;
+use App\Enums\SimulationStatus;
+use App\Forecast\ResultPresenter;
 use App\Jobs\RunScenarioSimulation;
 use App\Livewire\Affordability;
+use App\Models\Result;
 use App\Models\Scenario;
+use App\Models\SimulationRun;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
@@ -55,7 +62,8 @@ class AffordabilityTest extends TestCase
         Livewire::test(Affordability::class, ['scenario' => $base])
             ->assertOk()
             ->assertSee('What you can afford')
-            ->assertSee('The bottom line')
+            // The deterministic verdict is still here, but demoted below the probability (B1).
+            ->assertSee('On the expected path')
             ->assertViewHas('working', fn (array $w): bool => collect($w)->contains(fn ($c) => $c['title'] === 'Keep the home'))
             ->assertViewHas('failing', fn (array $f): bool => collect($f)->contains(fn ($c) => $c['title'] === 'Spend far too much' && $c['runsOutYear'] !== null))
             // The bottom line names a working plan, never a failing one.
@@ -130,6 +138,89 @@ class AffordabilityTest extends TestCase
             ->assertRedirect(route('scenarios.compare', $base));
 
         Queue::assertPushed(RunScenarioSimulation::class, 2);
+    }
+
+    /**
+     * B1 (card 0010 #1): the landing opens on the Monte Carlo chance and its plain word band, not
+     * on the deterministic yes/no. The band comes from the one banding home, so this page and the
+     * comparison chip can never put the same probability in two different words.
+     */
+    public function test_it_leads_with_the_monte_carlo_probability_and_its_word_band(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user, ['variant' => 'stay_put', 'name' => 'Keep the home', 'expenseLines.ess1.amount' => '8000']);
+        $this->completedRun($base, $user, $this->mc(0.62));
+
+        Livewire::test(Affordability::class, ['scenario' => $base])
+            ->assertOk()
+            ->assertViewHas('bottomLine', fn (array $b): bool => $b['lead']['checked'] === true
+                && $b['lead']['percent'] === '62%'
+                && $b['lead']['band'] === ResultPresenter::lastsBand(0.62)
+                && $b['lead']['plan'] === 'Keep the home')
+            // The figure and its word are on the page, above the expected-path verdict.
+            ->assertSeeInOrder(['How sure is your strongest plan?', '62%', 'Borderline', 'On the expected path'])
+            ->assertDontSee('@endif'); // no leaked Blade directive
+    }
+
+    /**
+     * B1 (card 0010 #2): with no completed run there is no probability, so the page says so. The
+     * deterministic verdict is one average future and must never stand in the probability's place.
+     */
+    public function test_it_says_the_probability_is_unchecked_rather_than_showing_a_deterministic_figure(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user, ['variant' => 'stay_put', 'name' => 'Keep the home', 'expenseLines.ess1.amount' => '8000']);
+
+        Livewire::test(Affordability::class, ['scenario' => $base])
+            ->assertOk()
+            ->assertViewHas('bottomLine', fn (array $b): bool => $b['lead']['checked'] === false
+                && $b['lead']['percent'] === null
+                && $b['lead']['band'] === null)
+            ->assertSeeInOrder(['How sure is your strongest plan?', 'Not checked yet', 'not a probability'])
+            // The offer to run the real check, rather than a figure standing in for one.
+            ->assertSee('Check how sure');
+    }
+
+    /** A minimal but valid Monte Carlo result, pinned to a chosen "chance essentials last". */
+    private function mc(float $ess): SimulationResult
+    {
+        $p = fn (int $v): array => ['p10' => Money::fromPence($v), 'p25' => Money::fromPence($v), 'p50' => Money::fromPence($v), 'p75' => Money::fromPence($v), 'p90' => Money::fromPence($v)];
+
+        return new SimulationResult(
+            nPaths: 2000,
+            seed: 42,
+            successProbabilityEssentials: $ess,
+            successProbabilityFullSpend: $ess * 0.7,
+            depletionRate: 1.0 - $ess,
+            medianDepletionYear: $ess >= 0.9 ? null : 2050,
+            terminalWealthPercentiles: $p((int) round($ess * 100_000_00)),
+            fanChart: [],
+            usableWealthPercentiles: $p((int) round($ess * 100_000_00)),
+            usableFanChart: [],
+            netPositionFanChart: [['calendarYear' => 2030, 'paths' => 2000] + $p((int) round($ess * 100_000_00))],
+        );
+    }
+
+    private function completedRun(Scenario $plan, User $user, SimulationResult $mc): void
+    {
+        $run = SimulationRun::create([
+            'scenario_id' => $plan->id,
+            'user_id' => $user->id,
+            'mode' => SimulationMode::Full,
+            'n_paths' => $mc->nPaths,
+            'seed' => $mc->seed,
+            'status' => SimulationStatus::Done,
+            'progress_pct' => 100,
+            'engine_version' => 'test',
+            'taxyear_config_version' => 'test',
+            'assumption_snapshot' => [],
+        ]);
+
+        $result = new Result(['simulation_run_id' => $run->id, 'variant' => $plan->variant]);
+        $result->setSimulationResult($mc);
+        $result->save();
     }
 
     public function test_it_is_owner_scoped(): void
