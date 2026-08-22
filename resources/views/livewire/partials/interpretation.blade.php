@@ -7,7 +7,7 @@
     <h2 id="interpretation-heading" class="text-xl font-semibold text-violet-900">What this suggests</h2>
     <p class="mt-1 text-xs text-violet-800">
         Advice-style interpretation, enabled for your account. This is a directive reading of the figures
-        above, not a regulated personal recommendation. Free, impartial guidance remains available below.
+        above, not a regulated personal recommendation. Free, impartial guidance remains available on this page.
     </p>
     <ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-violet-900">
         @foreach ($interpretation as $line)

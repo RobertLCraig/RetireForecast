@@ -43,7 +43,28 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 #[Layout('components.layouts.app')]
 class ScenarioResults extends Component
 {
+    /**
+     * The four groups the results page is split into, in display order: key => tab label.
+     * One source for the tab bar and for the section-to-tab map in the view.
+     */
+    public const TABS = [
+        'verdict' => 'The verdict',
+        'money' => 'Money over time',
+        'spending' => 'Where the money goes',
+        'detail' => 'The fine print',
+    ];
+
+    public const DEFAULT_TAB = 'verdict';
+
     public Scenario $scenario;
+
+    /**
+     * Which group of sections is on display. The tab set is plain links (`?tab=…`) resolved
+     * here on the server, not a JavaScript widget, and the sections outside the active tab
+     * are still rendered (hidden) with their accessible tables and CSV twins — so every
+     * figure stays reachable with JavaScript off.
+     */
+    public string $tab = self::DEFAULT_TAB;
 
     public ?int $runId = null;
 
@@ -227,6 +248,10 @@ class ScenarioResults extends Component
         }
 
         $this->scenario = $scenario;
+        // An unknown ?tab= would hide every panel and leave a blank page, so fall back to
+        // the verdict rather than trusting the query string.
+        $requested = (string) request()->query('tab', '');
+        $this->tab = isset(self::TABS[$requested]) ? $requested : self::DEFAULT_TAB;
         $this->runId = $scenario->simulationRuns()->latest()->value('id');
         // Open the cashflow ladder on the scenario's own chosen strategy; render() clamps it
         // to one the inputs configure (e.g. stay put when no sale is set).
@@ -420,7 +445,12 @@ class ScenarioResults extends Component
             $timeSeries[$chartKey]['options']['annotations']['xaxis'] = $milestoneAnnotations;
         }
 
+        // A link into a section that lives in another tab has to carry that tab, or it
+        // scrolls to something the server rendered hidden.
+        $inTab = fn (string $tab, string $anchor): string => route('scenarios.results', ['scenario' => $this->scenario, 'tab' => $tab]).'#'.$anchor;
+
         return view('livewire.scenario-results', [
+            'tabs' => self::TABS,
             'run' => $run,
             'resultsRun' => $resultsRun,
             'runDiff' => $runDiff,
@@ -492,8 +522,8 @@ class ScenarioResults extends Component
             // new rows / notes inside existing cards, so point at where each one shows. Prune
             // these as they stop being new.
             'whatsNew' => [
-                '<strong>Pension Credit</strong> is now modelled — see the <a href="#sec-ladder" class="font-medium underline">year-by-year cashflow</a> and the <a href="#sec-income-floor" class="font-medium underline">secure-income floor</a>.',
-                '<strong>Feasibility &amp; input-sanity flags</strong> (mortgage due for redemption, no retirement age) — see <a href="#sec-input-notes" class="font-medium underline">the notes above</a>.',
+                '<strong>Pension Credit</strong> is now modelled — see the <a href="'.$inTab('money', 'sec-ladder').'" class="font-medium underline">year-by-year cashflow</a> and the <a href="'.$inTab('spending', 'sec-income-floor').'" class="font-medium underline">secure-income floor</a>.',
+                '<strong>Feasibility &amp; input-sanity flags</strong> (mortgage due for redemption, no retirement age) — see <a href="'.$inTab('verdict', 'sec-input-notes').'" class="font-medium underline">the notes on the verdict</a>.',
             ],
             // Show-your-working: the assumptions every figure rests on, and (if a sale is
             // configured) where the sale proceeds come from and go. Both deterministic.

@@ -39,12 +39,13 @@ class ScenarioPdfTest extends TestCase
      *   ladderStrategies   the ladder's strategy picker (the PDF prints the selected one)
      *   ladderSelected     the picker's current key (printed as ladderSelectedLabel)
      *   whatsNew           transient "new in this build" review markers
+     *   tabs               the on-screen tab bar; paper has no tabs, the PDF prints one flow
      *   layoutConfig       Livewire's own #[Layout] plumbing, not a section at all
      * Anything else the page renders must reach the export.
      */
     private const INTERACTIVE_ONLY = [
         'run', 'resultsRun', 'canMakeWhatIf', 'sliderSummary',
-        'ladderStrategies', 'ladderSelected', 'whatsNew', 'layoutConfig',
+        'ladderStrategies', 'ladderSelected', 'whatsNew', 'tabs', 'layoutConfig',
     ];
 
     private User $user;

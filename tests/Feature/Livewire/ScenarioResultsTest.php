@@ -260,14 +260,92 @@ class ScenarioResultsTest extends TestCase
 
     public function test_the_results_page_has_an_on_this_page_side_nav(): void
     {
-        // A long page needs jump-navigation. The nav lists only sections actually present and
-        // its links are real anchors (work without JS); a bundled observer highlights on scroll.
+        // The page is tabbed, so this nav jumps WITHIN the tab on display (the tab bar moves
+        // between tabs). It lists only sections actually present in that tab, and its links are
+        // real anchors (work without JS); a bundled observer highlights on scroll.
         $this->get(route('scenarios.results', $this->scenario()))
             ->assertOk()
             ->assertSee('On this page')
             ->assertSeeHtml('data-results-toc')
-            ->assertSeeHtml('href="#sec-shock"')
-            ->assertSeeHtml('href="#sec-ladder"');
+            ->assertSeeHtml('href="#sec-shock"')      // the verdict tab, which is on display
+            ->assertSeeHtml('href="#sec-how-far"')
+            ->assertDontSeeHtml('href="#sec-ladder"'); // another tab's section, not this nav's job
+    }
+
+    public function test_the_results_page_is_grouped_into_tabs(): void
+    {
+        // B2: four groups, so the first screen is the answer rather than eighteen stacked
+        // sections. Each section declares the tab it belongs to, and the ones outside the
+        // active tab are rendered but hidden.
+        $this->get(route('scenarios.results', $this->scenario()))
+            ->assertOk()
+            ->assertSeeHtml('data-results-tabs')
+            ->assertSee('The verdict')
+            ->assertSee('Money over time')
+            ->assertSee('Where the money goes')
+            ->assertSee('The fine print')
+            ->assertSeeHtml('id="sec-shock" data-tab="verdict"')
+            ->assertSeeHtml('id="sec-ladder" data-tab="money" hidden');
+    }
+
+    public function test_every_figure_stays_reachable_without_javascript(): void
+    {
+        // The tabs are plain links the server resolves (?tab=…), not a JavaScript widget, and a
+        // section outside the active tab is rendered anyway — so its accessible table and CSV
+        // twin never leave the page. Both halves of that promise are asserted here.
+        $scenario = $this->scenario();
+
+        $this->get(route('scenarios.results', $scenario))
+            ->assertOk()
+            ->assertSeeHtml('href="'.e(route('scenarios.results', ['scenario' => $scenario, 'tab' => 'money'])).'"')
+            ->assertSee('Year-by-year cashflow')      // in the page even while another tab shows
+            ->assertSee('Usable (excl. home)');
+
+        // Following that link renders the same section visible, with no JavaScript involved.
+        $this->get(route('scenarios.results', ['scenario' => $scenario, 'tab' => 'money']))
+            ->assertOk()
+            ->assertSeeHtml('id="sec-ladder" data-tab="money" aria-labelledby')
+            ->assertSeeHtml('id="sec-shock" data-tab="verdict" hidden');
+    }
+
+    public function test_an_unknown_tab_falls_back_to_the_verdict(): void
+    {
+        // A bad ?tab= would otherwise hide every panel and leave a blank page.
+        $this->get(route('scenarios.results', ['scenario' => $this->scenario(), 'tab' => 'nonsense']))
+            ->assertOk()
+            ->assertSeeHtml('id="sec-shock" data-tab="verdict" aria-labelledby');
+    }
+
+    public function test_the_advisory_banners_sit_below_the_verdict(): void
+    {
+        // B4: the banners used to render above the first figure. The reader came for the
+        // answer, so the answer comes first — the care heads-up now follows the verdict and
+        // the outlook chart instead of preceding them.
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->set('previewPaths', 30)
+            ->call('preview')
+            ->assertSeeInOrder([
+                'Will the money last?',
+                'Projected',
+                'Later-life care',
+            ]);
+
+        // The housekeeping banners are demoted further still, out of the verdict entirely.
+        $this->get(route('scenarios.results', $this->scenario()))
+            ->assertOk()
+            ->assertSeeHtml('data-tab="detail" hidden class="rounded-lg border border-blue-200');
+    }
+
+    public function test_detail_tables_are_behind_a_disclosure(): void
+    {
+        // B3: the long raw tables render inside <details> so the page skims. <details> is
+        // native HTML, so the figures are still there with JavaScript off.
+        $this->get(route('scenarios.results', $this->scenario()))
+            ->assertOk()
+            ->assertSee('Show the year-by-year numbers')
+            ->assertSee('Show each income source')
+            ->assertSee('Show how the sale price becomes net proceeds')
+            ->assertSee('Show each crisis it was started into');
     }
 
     public function test_the_results_page_shows_the_cashflow_ladder_before_any_run(): void

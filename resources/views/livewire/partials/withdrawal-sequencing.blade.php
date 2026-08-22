@@ -2,7 +2,7 @@
      vs filling the tax-free bands first (figures from App\Forecast\WithdrawalStrategyComparison).
      Figures only; any directive steer is the walled-off interpretation partial, included below
      only when the interpret gate allows. --}}
-<section id="sec-withdrawal-sequencing" aria-labelledby="withdrawal-heading" class="{{ $card }} scroll-mt-6">
+<section id="sec-withdrawal-sequencing" {{ $panel('sec-withdrawal-sequencing') }} aria-labelledby="withdrawal-heading" class="{{ $card }} scroll-mt-6">
     <h2 id="withdrawal-heading" class="text-xl font-semibold text-gray-900">How you draw your money down</h2>
     <p class="mt-1 text-sm text-gray-600">
         The order you take money from your pension, ISA and other savings changes the tax you pay over your whole plan.

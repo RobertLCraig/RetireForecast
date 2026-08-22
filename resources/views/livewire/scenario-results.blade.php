@@ -3,36 +3,52 @@
     $th = 'border-b border-gray-200 px-3 py-2 text-left font-medium text-gray-700';
     $td = 'border-b border-gray-100 px-3 py-2 text-gray-800';
 
-    // "On this page" floating nav: list only the sections actually present this render
-    // (same conditions the sections use below), in document order. One source — add a
-    // section to the page and its nav entry here together.
-    $toc = array_values(array_filter([
-        ['id' => 'sec-input-notes', 'label' => 'A note on your inputs', 'show' => (bool) $inputNotes],
-        ['id' => 'sec-headline', 'label' => 'Will the money last?', 'show' => (bool) $presented],
-        ['id' => 'sec-longevity', 'label' => 'How long it may need to last', 'show' => ! empty($presented['longevity'])],
-        ['id' => 'sec-care', 'label' => 'Care-cost risk', 'show' => ! empty($presented['careImpact'])],
-        ['id' => 'sec-fan', 'label' => 'Outlook over time', 'show' => (bool) $presented],
-        ['id' => 'sec-shock', 'label' => 'Pension lump-sum tax shock', 'show' => (bool) $shock],
-        ['id' => 'sec-sensitivity', 'label' => 'Assumption sensitivity', 'show' => (bool) $sensitivity],
-        ['id' => 'sec-income-plan', 'label' => 'Where your money comes from', 'show' => ! empty($incomePlan['income']) || ! empty($incomePlan['capital'])],
-        ['id' => 'sec-budget', 'label' => 'Your spending plan', 'show' => ! empty($budget['tiers'])],
-        ['id' => 'sec-plsa', 'label' => 'PLSA living standards', 'show' => (bool) $plsa],
-        ['id' => 'sec-income-floor', 'label' => 'Spending vs secure income', 'show' => (bool) $incomeFloor],
-        ['id' => 'sec-protection', 'label' => 'If one of you died', 'show' => (bool) ($protection ?? null)],
-        ['id' => 'sec-capacity', 'label' => 'How much you could lose', 'show' => (bool) ($capacityForLoss ?? null)],
-        ['id' => 'sec-advice-cost', 'label' => 'What advice would cost', 'show' => (bool) ($adviceCost ?? null)],
-        ['id' => 'sec-iht', 'label' => 'Inheritance tax', 'show' => (bool) ($iht ?? null)],
-        ['id' => 'sec-withdrawal-sequencing', 'label' => 'How you draw your money', 'show' => (bool) $withdrawal],
-        ['id' => 'sec-stress', 'label' => 'Stress test: past crises', 'show' => (bool) $stressTest],
-        ['id' => 'sec-assumptions', 'label' => 'Assumptions used', 'show' => true],
-        ['id' => 'sec-sale', 'label' => 'If you sell', 'show' => (bool) $saleExplainer],
-        ['id' => 'sec-milestones', 'label' => 'Life events', 'show' => (bool) $milestones],
-        ['id' => 'sec-money-over-time', 'label' => 'Money over time', 'show' => ! empty($timeSeries['income']['rows'])],
-        ['id' => 'sec-ladder', 'label' => 'Year-by-year cashflow', 'show' => ! empty($ladder['rows'])],
-        ['id' => 'sec-explore', 'label' => 'Build a what-if', 'show' => $canMakeWhatIf],
-        ['id' => 'sec-how-far', 'label' => 'How far can we go?', 'show' => true],
-        ['id' => 'sec-sources', 'label' => 'Check figures & get help', 'show' => true],
-    ], fn ($s) => $s['show']));
+    // The page is grouped into four tabs, so the first screen is the answer rather than a
+    // wall of eighteen sections. ONE source: this list says which tab a section sits in,
+    // whether it is present this render (the same conditions the sections themselves use),
+    // and what the "on this page" nav calls it — grouped by tab, in document order within
+    // each. Add a section to the page and its entry here together.
+    $sections = [
+        ['id' => 'sec-headline', 'tab' => 'verdict', 'label' => 'Will the money last?', 'show' => (bool) $presented],
+        ['id' => 'sec-longevity', 'tab' => 'verdict', 'label' => 'How long it may need to last', 'show' => ! empty($presented['longevity'])],
+        ['id' => 'sec-care', 'tab' => 'verdict', 'label' => 'Care-cost risk', 'show' => ! empty($presented['careImpact'])],
+        ['id' => 'sec-fan', 'tab' => 'verdict', 'label' => 'Outlook over time', 'show' => (bool) $presented],
+        ['id' => 'sec-input-notes', 'tab' => 'verdict', 'label' => 'A note on your inputs', 'show' => (bool) $inputNotes],
+        ['id' => 'sec-shock', 'tab' => 'verdict', 'label' => 'Pension lump-sum tax shock', 'show' => (bool) $shock],
+        ['id' => 'sec-protection', 'tab' => 'verdict', 'label' => 'If one of you died', 'show' => (bool) ($protection ?? null)],
+        ['id' => 'sec-capacity', 'tab' => 'verdict', 'label' => 'How much you could lose', 'show' => (bool) ($capacityForLoss ?? null)],
+        ['id' => 'sec-explore', 'tab' => 'verdict', 'label' => 'Build a what-if', 'show' => $canMakeWhatIf],
+        ['id' => 'sec-how-far', 'tab' => 'verdict', 'label' => 'How far can we go?', 'show' => true],
+
+        ['id' => 'sec-sale', 'tab' => 'money', 'label' => 'If you sell', 'show' => (bool) $saleExplainer],
+        ['id' => 'sec-milestones', 'tab' => 'money', 'label' => 'Life events', 'show' => (bool) $milestones],
+        ['id' => 'sec-money-over-time', 'tab' => 'money', 'label' => 'Money over time', 'show' => ! empty($timeSeries['income']['rows'])],
+        ['id' => 'sec-ladder', 'tab' => 'money', 'label' => 'Year-by-year cashflow', 'show' => ! empty($ladder['rows'])],
+
+        ['id' => 'sec-income-plan', 'tab' => 'spending', 'label' => 'Where your money comes from', 'show' => ! empty($incomePlan['income']) || ! empty($incomePlan['capital'])],
+        ['id' => 'sec-budget', 'tab' => 'spending', 'label' => 'Your spending plan', 'show' => ! empty($budget['tiers'])],
+        ['id' => 'sec-plsa', 'tab' => 'spending', 'label' => 'PLSA living standards', 'show' => (bool) $plsa],
+        ['id' => 'sec-income-floor', 'tab' => 'spending', 'label' => 'Spending vs secure income', 'show' => (bool) $incomeFloor],
+        ['id' => 'sec-advice-cost', 'tab' => 'spending', 'label' => 'What advice would cost', 'show' => (bool) ($adviceCost ?? null)],
+        ['id' => 'sec-iht', 'tab' => 'spending', 'label' => 'Inheritance tax', 'show' => (bool) ($iht ?? null)],
+        ['id' => 'sec-withdrawal-sequencing', 'tab' => 'spending', 'label' => 'How you draw your money', 'show' => (bool) $withdrawal],
+
+        ['id' => 'sec-sensitivity', 'tab' => 'detail', 'label' => 'Assumption sensitivity', 'show' => (bool) $sensitivity],
+        ['id' => 'sec-stress', 'tab' => 'detail', 'label' => 'Stress test: past crises', 'show' => (bool) $stressTest],
+        ['id' => 'sec-assumptions', 'tab' => 'detail', 'label' => 'Assumptions used', 'show' => true],
+        ['id' => 'sec-sources', 'tab' => 'detail', 'label' => 'Check figures & get help', 'show' => true],
+    ];
+
+    $tabOf = array_column($sections, 'tab', 'id');
+
+    // A section outside the active tab is still RENDERED, only hidden, so the accessible
+    // table and CSV twin of every figure stays in the page. Nothing here needs JavaScript:
+    // the tab links are real hrefs the server resolves back into this attribute.
+    $panelAttrs = fn (string $t) => new \Illuminate\Support\HtmlString('data-tab="'.$t.'"'.($t === $tab ? '' : ' hidden'));
+    $panel = fn (string $id) => $panelAttrs($tabOf[$id]);
+
+    // "On this page" jumps within the tab on display; the tab bar moves between tabs.
+    $toc = array_values(array_filter($sections, fn ($s) => $s['show'] && $s['tab'] === $tab));
 @endphp
 
 <div class="lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:items-start lg:gap-6">
@@ -158,62 +174,25 @@
         @endif
     </div>
 
-    {{-- Input-sanity heads-up: a neutral note where an entered value produced a drastic
-         modelling consequence, so a surprising result is understood, not silently wrong.
-         Placed high, before the figures it affects. --}}
-    @if ($inputNotes)
-        <div id="sec-input-notes" class="scroll-mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4" role="note" aria-label="Notes about your inputs">
-            <h2 class="text-sm font-semibold text-amber-900">A note on your inputs</h2>
-            <ul class="mt-2 space-y-1 text-sm text-amber-800">
-                @foreach ($inputNotes as $note)
-                    <li>{{ $note['text'] }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    {{-- "New in this build" review marker: the recent additions are mostly new rows / notes
-         inside existing cards, easy to miss — so point to them. Temporary; prune entries as
-         they stop being new (the $whatsNew list is built in ScenarioResults::render). --}}
-    @if (! empty($whatsNew))
-        <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm" aria-label="New in this build">
-            <p class="font-semibold text-blue-900">New in this build</p>
-            <ul class="mt-2 space-y-1 text-blue-800">
-                @foreach ($whatsNew as $item)
-                    <li>&bull; {!! $item !!}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    {{-- "Since your last run": how the headline figures moved vs the previous completed run.
-         The snapshots survive an input edit (which deletes the runs themselves), so this shows
-         what a change did, not just Monte-Carlo seed noise on identical inputs. --}}
-    @if (! empty($runDiff))
-        <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm" aria-label="Since your last run">
-            <p class="font-semibold text-gray-900">Since your last run</p>
-            <ul class="mt-2 space-y-1">
-                @foreach ($runDiff as $row)
-                    <li class="flex flex-wrap items-baseline gap-x-2">
-                        <span class="text-gray-700">{{ $row['label'] }}:</span>
-                        <span class="text-gray-500 line-through">{{ $row['from'] }}</span>
-                        <span aria-hidden="true" class="text-gray-400">&rarr;</span>
-                        <span class="font-semibold {{ $row['better'] === true ? 'text-green-700' : ($row['better'] === false ? 'text-red-700' : 'text-gray-900') }}">{{ $row['to'] }}</span>
-                    </li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    {{-- Care not modelled: a heads-up so a default-off ~1-in-4 six-figure risk isn't a silent
-         omission. Shown regardless of run state (it depends on the toggle, not a run); suppressed
-         once a run actually models care, when the care panel below takes over. --}}
-    @if ($careNotModelled)
-        <section class="{{ $card }} border-amber-200 bg-amber-50" role="note">
-            <h2 class="text-lg font-semibold text-amber-900">Later-life care isn't included in this forecast</h2>
-            <p class="mt-1 text-sm text-amber-800">These projections don't include the cost of residential or nursing care. It's a real risk: around <strong>1 in 4</strong> people need care in later life, and self-funded fees run to roughly <strong>£1,300–£1,600 a week</strong> (about £65,000–£85,000 a year), which can be a large and prolonged cost. To see how it would affect whether your money lasts, turn on <strong>Model the risk of late-life care costs</strong> in the builder.</p>
-        </section>
-    @endif
+    {{-- The tab set. Four groups so the first screen is the answer, not eighteen stacked
+         sections. Plain links the server resolves (?tab=…), not a JavaScript widget, and
+         marked with aria-current rather than the ARIA tab-widget roles, whose keyboard
+         contract a set of links does not honour. --}}
+    <nav data-results-tabs aria-label="Results sections" class="border-b border-gray-200">
+        <ul class="-mb-px flex flex-wrap gap-x-6">
+            @foreach ($tabs as $key => $label)
+                <li>
+                    <a href="{{ route('scenarios.results', ['scenario' => $scenario, 'tab' => $key]) }}"
+                        @if ($key === $tab) aria-current="page" @endif
+                        @class([
+                            'block border-b-2 px-1 py-3 text-sm font-medium',
+                            'border-blue-600 text-blue-700' => $key === $tab,
+                            'border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900' => $key !== $tab,
+                        ])>{{ $label }}</a>
+                </li>
+            @endforeach
+        </ul>
+    </nav>
 
     @if (! $presented)
         <div class="{{ $card }} text-sm text-gray-600">
@@ -232,7 +211,7 @@
         </p>
 
         {{-- Headline numbers as text (never only in a chart) ----------------------- --}}
-        <section id="sec-headline" aria-labelledby="headline-heading" class="scroll-mt-6 space-y-3">
+        <section id="sec-headline" {{ $panel('sec-headline') }} aria-labelledby="headline-heading" class="scroll-mt-6 space-y-3">
             <h2 id="headline-heading" class="text-xl font-semibold text-gray-900">Will the money last?</h2>
             <p class="text-sm text-gray-600">
                 Under this run's assumptions, across {{ $resultsRun->n_paths }} simulated futures
@@ -270,7 +249,7 @@
              sampler the Monte Carlo already runs. Descriptive (a spread of outcomes), not advice. --}}
         @if (! empty($presented['longevity']))
             @php $lg = $presented['longevity']; @endphp
-            <section id="sec-longevity" aria-labelledby="longevity-heading" class="{{ $card }} scroll-mt-6">
+            <section id="sec-longevity" {{ $panel('sec-longevity') }} aria-labelledby="longevity-heading" class="{{ $card }} scroll-mt-6">
                 <h2 id="longevity-heading" class="text-xl font-semibold text-gray-900">How long the money may need to last</h2>
                 <p class="mt-1 text-sm text-gray-600">From the same joint-life mortality model the simulation runs, framed around the <strong>last survivor</strong> (how long the money has to stretch for a couple). A spread of possibilities, not a prediction.</p>
                 <dl class="mt-4 grid gap-4 sm:grid-cols-3">
@@ -296,7 +275,7 @@
         {{-- Care-cost risk: shown only when the run modelled it (the builder toggle). --}}
         @if (! empty($presented['careImpact']))
             @php $care = $presented['careImpact']; @endphp
-            <section id="sec-care" aria-labelledby="care-heading" class="{{ $card }} scroll-mt-6">
+            <section id="sec-care" {{ $panel('sec-care') }} aria-labelledby="care-heading" class="{{ $card }} scroll-mt-6">
                 <h2 id="care-heading" class="text-xl font-semibold text-gray-900">The risk of late-life care costs</h2>
                 <p class="mt-1 text-sm text-gray-600">These projections include the chance of needing residential or nursing care in later life. Most people pay nothing, but a minority face very large bills — so this is a <strong>fat tail</strong>, shown as a risk rather than a single expected figure.</p>
                 <dl class="mt-4 grid gap-4 sm:grid-cols-3">
@@ -324,14 +303,14 @@
              point at the re-run buttons, rather than silently drawing total wealth as if it
              were spendable money (no silent failure). --}}
         @unless ($presented['usableFanAvailable'])
-            <div role="status" class="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div role="status" {{ $panelAttrs('verdict') }} class="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 These results were calculated before the spendable-money (excluding home) view was added, so the charts below show total wealth only and the <strong>Include home value</strong> toggle has nothing to switch to. Run the forecast again (the buttons above) to see your spendable money over time.
             </div>
         @endunless
 
         {{-- Fan chart: the chosen strategy's outcome spread over time --------------- --}}
         @php $fan = $presented['fan']; @endphp
-        <section id="sec-fan" aria-labelledby="fan-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-fan" {{ $panel('sec-fan') }} aria-labelledby="fan-heading" class="{{ $card }} scroll-mt-6">
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <h2 id="fan-heading" class="text-xl font-semibold text-gray-900">Projected {{ $fan['usableBasis'] ? 'spendable money' : 'total wealth' }} over time — {{ $fan['label'] }}</h2>
                 <div class="flex items-center gap-4">
@@ -406,13 +385,75 @@
         {{-- Walled-off, admin-granted interpretation. Built only when the gate allows;
              the directive wording lives in App\Compliance\Interpretation, never here. --}}
         @if ($interpretation)
-            @include('livewire.partials.interpretation', ['interpretation' => $interpretation])
+            <div {{ $panelAttrs('verdict') }}>
+                @include('livewire.partials.interpretation', ['interpretation' => $interpretation])
+            </div>
         @endif
     @endif
+
+    {{-- Input-sanity heads-up: a neutral note where an entered value produced a drastic
+         modelling consequence, so a surprising result is understood, not silently wrong.
+         Sits under the verdict and the outlook chart, not above them: the reader came for
+         the answer, and a caveat read before there is anything to caveat is just noise. --}}
+    @if ($inputNotes)
+        <div id="sec-input-notes" {{ $panel('sec-input-notes') }} class="scroll-mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4" role="note" aria-label="Notes about your inputs">
+            <h2 class="text-sm font-semibold text-amber-900">A note on your inputs</h2>
+            <ul class="mt-2 space-y-1 text-sm text-amber-800">
+                @foreach ($inputNotes as $note)
+                    <li>{{ $note['text'] }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    {{-- Care not modelled: a heads-up so a default-off ~1-in-4 six-figure risk isn't a silent
+         omission. Shown regardless of run state (it depends on the toggle, not a run); suppressed
+         once a run actually models care, when the care panel takes over. --}}
+    @if ($careNotModelled)
+        <section {{ $panelAttrs('verdict') }} class="{{ $card }} border-amber-200 bg-amber-50" role="note">
+            <h2 class="text-lg font-semibold text-amber-900">Later-life care isn't included in this forecast</h2>
+            <p class="mt-1 text-sm text-amber-800">These projections don't include the cost of residential or nursing care. It's a real risk: around <strong>1 in 4</strong> people need care in later life, and self-funded fees run to roughly <strong>£1,300–£1,600 a week</strong> (about £65,000–£85,000 a year), which can be a large and prolonged cost. To see how it would affect whether your money lasts, turn on <strong>Model the risk of late-life care costs</strong> in the builder.</p>
+        </section>
+    @endif
+
+    {{-- "New in this build" review marker: the recent additions are mostly new rows / notes
+         inside existing cards, easy to miss — so point to them. Housekeeping, not a figure,
+         so it lives in the fine print. Temporary; prune entries as they stop being new (the
+         $whatsNew list is built in ScenarioResults::render). --}}
+    @if (! empty($whatsNew))
+        <div {{ $panelAttrs('detail') }} class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm" aria-label="New in this build">
+            <p class="font-semibold text-blue-900">New in this build</p>
+            <ul class="mt-2 space-y-1 text-blue-800">
+                @foreach ($whatsNew as $item)
+                    <li>&bull; {!! $item !!}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    {{-- "Since your last run": how the headline figures moved vs the previous completed run.
+         The snapshots survive an input edit (which deletes the runs themselves), so this shows
+         what a change did, not just Monte-Carlo seed noise on identical inputs. --}}
+    @if (! empty($runDiff))
+        <div {{ $panelAttrs('detail') }} class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm" aria-label="Since your last run">
+            <p class="font-semibold text-gray-900">Since your last run</p>
+            <ul class="mt-2 space-y-1">
+                @foreach ($runDiff as $row)
+                    <li class="flex flex-wrap items-baseline gap-x-2">
+                        <span class="text-gray-700">{{ $row['label'] }}:</span>
+                        <span class="text-gray-500 line-through">{{ $row['from'] }}</span>
+                        <span aria-hidden="true" class="text-gray-400">&rarr;</span>
+                        <span class="font-semibold {{ $row['better'] === true ? 'text-green-700' : ($row['better'] === false ? 'text-red-700' : 'text-gray-900') }}">{{ $row['to'] }}</span>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     {{-- Headline output #1: the lump-sum tax shock. Deterministic, so it shows as soon as
          a withdrawal is planned, before (and independent of) any Monte Carlo run. --}}
     @if ($shock)
-        <section id="sec-shock" aria-labelledby="shock-heading" class="{{ $card }} scroll-mt-6 space-y-4">
+        <section id="sec-shock" {{ $panel('sec-shock') }} aria-labelledby="shock-heading" class="{{ $card }} scroll-mt-6 space-y-4">
             <div>
                 <h2 id="shock-heading" class="text-xl font-semibold text-gray-900">The pension lump-sum tax shock</h2>
                 <p class="mt-1 text-sm text-gray-600">
@@ -475,7 +516,7 @@
                 @if ($shock['workingAssumed'])
                     Assumes other taxable income that year of {{ $shock['otherIncome'] }} (the owner's current salary, as they are still working at this age).
                 @else
-                    Assumes no other employment income that year, as the plan retires the owner by this age. State Pension and any defined-benefit income in payment are modelled in the full forecast below, not in this first-withdrawal illustration.
+                    Assumes no other employment income that year, as the plan retires the owner by this age. State Pension and any defined-benefit income in payment are modelled in the full forecast, not in this first-withdrawal illustration.
                 @endif
             </p>
 
@@ -486,12 +527,14 @@
     {{-- Compare-assumptions overlay. Deterministic central projection under each sourced
          assumption set, so it shows immediately and illustrates sensitivity, not a ranking. --}}
     @if ($sensitivity)
-        <section id="sec-sensitivity" aria-labelledby="sensitivity-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-sensitivity" {{ $panel('sec-sensitivity') }} aria-labelledby="sensitivity-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="sensitivity-heading" class="text-xl font-semibold text-gray-900">How sensitive is this to the assumptions?</h2>
             <p class="mt-1 text-sm text-gray-600">
                 The central best-estimate projection run under each sourced assumption set. The spread shows how much the answer depends on the assumptions. These are consequences under different assumptions, not a recommendation.
             </p>
-            <div class="mt-4 overflow-x-auto" tabindex="0">
+            <details class="mt-4">
+            <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the figures for each assumption set</summary>
+            <div class="mt-2 overflow-x-auto" tabindex="0">
                 <table class="w-full text-sm">
                     <caption class="sr-only">Best-estimate outcome under each shipped assumption set</caption>
                     <thead>
@@ -516,6 +559,7 @@
                     </tbody>
                 </table>
             </div>
+            </details>
             <x-signpost class="mt-4" />
         </section>
     @endif
@@ -525,7 +569,7 @@
          spending plan below — the spend side has been echoed since Phase C1, the income side
          never was, so a reader could see what a plan spends but not what funds it. --}}
     @if ($incomePlan['income'] || $incomePlan['capital'])
-        <section id="sec-income-plan" aria-labelledby="income-plan-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-income-plan" {{ $panel('sec-income-plan') }} aria-labelledby="income-plan-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="income-plan-heading" class="text-xl font-semibold text-gray-900">Where your money comes from</h2>
             <p class="mt-1 text-sm text-gray-600">
                 The income and capital driving this forecast, as entered. Figures are in today's money; the monthly
@@ -534,6 +578,8 @@
 
             @if ($incomePlan['income'])
                 <h3 class="mt-4 text-base font-semibold text-gray-900">Income</h3>
+                <details class="mt-2">
+                <summary class="cursor-pointer text-sm font-medium text-blue-700">Show each income source</summary>
                 <div class="mt-2 overflow-x-auto" tabindex="0">
                     <table class="w-full text-sm">
                         <caption class="sr-only">Income sources as entered, with when each starts and ends</caption>
@@ -563,13 +609,16 @@
                         </tbody>
                     </table>
                 </div>
+                </details>
                 <p class="mt-2 text-xs text-gray-500">These are the amounts as entered today. What the plan actually
                     receives each year — after inflation, retirement, deaths and drawdown — is the year-by-year
-                    cashflow and the income chart below.</p>
+                    cashflow and the income chart under <strong>Money over time</strong>.</p>
             @endif
 
             @if ($incomePlan['capital'])
                 <h3 class="mt-5 text-base font-semibold text-gray-900">Capital you can draw on</h3>
+                <details class="mt-2">
+                <summary class="cursor-pointer text-sm font-medium text-blue-700">Show each capital pot</summary>
                 <div class="mt-2 overflow-x-auto" tabindex="0">
                     <table class="w-full text-sm">
                         <caption class="sr-only">Where the household's capital sits, and how each pot is taxed when drawn</caption>
@@ -597,6 +646,7 @@
                         </tbody>
                     </table>
                 </div>
+                </details>
             @endif
             @unless ($incomePlan['hasSavings'])
                 <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800" role="note">No cash, ISA or
@@ -607,7 +657,10 @@
             @if ($incomePlan['timeline'])
                 <h3 class="mt-5 text-base font-semibold text-gray-900">How each source changes over time</h3>
                 <p class="mt-1 text-sm text-gray-600">When each source starts and stops in the projection, and what
-                    it pays at each end. Read from the same year-by-year figures as the cashflow table below.</p>
+                    it pays at each end. Read from the same year-by-year figures as the cashflow table under
+                    <strong>Money over time</strong>.</p>
+                <details class="mt-2">
+                <summary class="cursor-pointer text-sm font-medium text-blue-700">Show each source's first, last and biggest year</summary>
                 <div class="mt-2 overflow-x-auto" tabindex="0">
                     <table class="w-full text-sm">
                         <caption class="sr-only">First, last and largest year of each income source in the projection</caption>
@@ -640,6 +693,7 @@
                         </tbody>
                     </table>
                 </div>
+                </details>
             @endif
         </section>
     @endif
@@ -648,7 +702,7 @@
          discretionary / self-investment, with saved self-investment shown as building net
          worth rather than counting as spend — reconciles to the forecast's spend. --}}
     @if ($budget['tiers'])
-        <section id="sec-budget" aria-labelledby="budget-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-budget" {{ $panel('sec-budget') }} aria-labelledby="budget-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="budget-heading" class="text-xl font-semibold text-gray-900">Your spending plan</h2>
             <p class="mt-1 text-sm text-gray-600">
                 The annual budget driving this forecast, in three tiers. Self-investment you mark as saved builds your net worth rather than counting as spending. Figures are per year, in today's money.
@@ -693,7 +747,7 @@
          basis (excludes rent/mortgage, includes home running costs). A factual orientation,
          never a recommendation. --}}
     @if ($plsa)
-        <section id="sec-plsa" aria-labelledby="plsa-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-plsa" {{ $panel('sec-plsa') }} aria-labelledby="plsa-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="plsa-heading" class="text-xl font-semibold text-gray-900">How your spending compares — PLSA Retirement Living Standards</h2>
             <p class="mt-1 text-sm text-gray-600">
                 The PLSA Retirement Living Standards describe what three levels of spending — Minimum, Moderate and Comfortable — typically provide in retirement.
@@ -706,7 +760,9 @@
                 These are a general yardstick, not a recommendation.
             </p>
 
-            <div class="mt-4 overflow-x-auto" tabindex="0">
+            <details class="mt-4">
+            <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the three standards</summary>
+            <div class="mt-2 overflow-x-auto" tabindex="0">
                 <table class="w-full text-sm">
                     <caption class="sr-only">PLSA Retirement Living Standards annual budgets for a {{ $plsa['composition'] }}, and whether your spending reaches each</caption>
                     <thead>
@@ -727,6 +783,7 @@
                     </tbody>
                 </table>
             </div>
+            </details>
 
             @if ($plsa['nextTier'] && $plsa['gapToNext'])
                 <p class="mt-3 text-sm text-gray-700">Spending {{ $plsa['gapToNext'] }} a year more would reach the {{ $plsa['nextTierLabel'] }} standard.</p>
@@ -742,7 +799,7 @@
     {{-- Income-floor readout (Phase C1): essential spending vs secure (guaranteed-for-life)
          income at the mature point. Neutral — reports the coverage, never whether it is enough. --}}
     @if ($incomeFloor)
-        <section id="sec-income-floor" aria-labelledby="floor-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-income-floor" {{ $panel('sec-income-floor') }} aria-labelledby="floor-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="floor-heading" class="text-xl font-semibold text-gray-900">Essential spending vs secure income</h2>
             <p class="mt-1 text-sm text-gray-600">
                 In {{ $incomeFloor['year'] }}, when you would be {{ $incomeFloor['ages'] }}, your secure income — guaranteed for life and not dependent on your savings lasting (State Pension, defined-benefit pensions, annuities and any tax-free income) — covers <strong>{{ $incomeFloor['coveragePct'] }}%</strong> of your essential spending (your essential needs, including any rent or home running costs). Figures are per year, in today's money.
@@ -769,7 +826,9 @@
                 @endif
             </div>
             @if ($incomeFloor['sources'])
-                <div class="mt-4 overflow-x-auto" tabindex="0">
+                <details class="mt-4">
+                <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the secure income source by source</summary>
+                <div class="mt-2 overflow-x-auto" tabindex="0">
                     <table class="w-full text-sm">
                         <caption class="sr-only">Secure income by source in {{ $incomeFloor['year'] }}</caption>
                         <thead>
@@ -788,12 +847,13 @@
                         </tbody>
                     </table>
                 </div>
+                </details>
             @endif
             <p class="mt-3 text-xs text-gray-500">
                 @if ($incomeFloor['fullyCovered'])
-                    Essential spending here is fully met by income that does not rely on your savings lasting. Any discretionary spending on top draws on your pots, which the forecast below tests.
+                    Essential spending here is fully met by income that does not rely on your savings lasting. Any discretionary spending on top draws on your pots, which the forecast tests.
                 @else
-                    The rest of essential spending is met by drawing on your savings and pensions, so it depends on those lasting — which is what the forecast below tests.
+                    The rest of essential spending is met by drawing on your savings and pensions, so it depends on those lasting — which is what the forecast tests.
                 @endif
             </p>
 
@@ -867,7 +927,7 @@
          happens on the day that cover CEASES at retirement. Factual and quantum-only: it sizes the
          hole, it does not price or recommend a policy. --}}
     @if ($protection)
-        <section id="sec-protection" aria-labelledby="protection-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-protection" {{ $panel('sec-protection') }} aria-labelledby="protection-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="protection-heading" class="text-xl font-semibold text-gray-900">If one of you died</h2>
             <p class="mt-1 text-sm text-gray-600">
                 A plan for two people quietly assumes you both live roughly as long as the tables say. The first death is the sharpest single change in the whole forecast: one State Pension stops, a work pension may drop to a survivor's rate or stop altogether, and any salary ends — while the spending falls by much less. Below is what a death in <strong>{{ $protection['deathYear'] }}</strong> would do to whoever is left, and how much money would put the plan back where it is now. All figures are in today's money.
@@ -936,7 +996,7 @@
          plan actually absorb? Searched, not asserted: the largest across-the-board fall in wealth
          at which the essential floor is still met in every year. --}}
     @if ($capacityForLoss)
-        <section id="sec-capacity" aria-labelledby="capacity-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-capacity" {{ $panel('sec-capacity') }} aria-labelledby="capacity-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="capacity-heading" class="text-xl font-semibold text-gray-900">How much could you afford to lose?</h2>
             <p class="mt-1 text-sm text-gray-600">
                 This is what advisers call <strong>capacity for loss</strong>. It is not how much risk you would be comfortable taking. It is how far everything you own could fall in value before it stops paying for the things you cannot go without.
@@ -992,7 +1052,7 @@
          twice, once with the charges it already bears and once with an adviser's ongoing fee on
          top. A COST comparison, never a verdict on advice — the panel states what it cannot value. --}}
     @if ($adviceCost)
-        <section id="sec-advice-cost" aria-labelledby="advice-cost-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-advice-cost" {{ $panel('sec-advice-cost') }} aria-labelledby="advice-cost-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="advice-cost-heading" class="text-xl font-semibold text-gray-900">What paying for advice would cost</h2>
             <p class="mt-1 text-sm text-gray-600">
                 Your plan already carries <strong>{{ number_format($adviceCost['diyChargePct'], 2) }}% a year</strong> in platform and fund charges. If you also paid an adviser
@@ -1043,7 +1103,7 @@
     {{-- Inheritance tax on the estate at death (only when the IHT toggle is on). Education only:
          the headline nil-rate bands, not a full estate computation. Deterministic; shows pre-run. --}}
     @if ($iht)
-        <section id="sec-iht" aria-labelledby="iht-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-iht" {{ $panel('sec-iht') }} aria-labelledby="iht-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="iht-heading" class="text-xl font-semibold text-gray-900">Inheritance tax on your estate</h2>
             <p class="mt-1 text-sm text-gray-600">
                 @if ($iht['relationship'] === 'married')
@@ -1136,7 +1196,7 @@
          plan, so "will it last" is tested against the worst starts in living memory, not just
          the average. Deterministic; shows before any Monte Carlo run. --}}
     @if ($stressTest)
-        <section id="sec-stress" aria-labelledby="stress-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-stress" {{ $panel('sec-stress') }} aria-labelledby="stress-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="stress-heading" class="text-xl font-semibold text-gray-900">Stress test: how it would have handled past crises</h2>
             <p class="mt-1 text-sm text-gray-600">We replayed this plan through every year from {{ $stressTest['fromYear'] }} to {{ $stressTest['toYear'] }} as if you had started then, using the <strong>actual</strong> returns and inflation that followed. This is <strong>sequence-of-returns risk</strong>: a bad first decade while you are drawing an income does far more damage than the same slump later.</p>
 
@@ -1161,7 +1221,9 @@
             </dl>
 
             @if ($stressTest['crises'])
-                <table class="mt-4 w-full border-collapse text-sm">
+                <details class="mt-4">
+                <summary class="cursor-pointer text-sm font-medium text-blue-700">Show each crisis it was started into</summary>
+                <table class="mt-2 w-full border-collapse text-sm">
                     <caption class="sr-only">Outcome if the plan had started at the onset of each historical crisis</caption>
                     <thead>
                         <tr>
@@ -1184,6 +1246,7 @@
                         @endforeach
                     </tbody>
                 </table>
+                </details>
             @endif
 
             <p class="mt-3 text-xs text-gray-500">Real UK asset returns and inflation, 1871–2020, from the Jordà–Schularick–Taylor Macrohistory database (<em>The Rate of Return on Everything</em>). A plan that survives the 1970s and 2008 starts is robust to sequence risk; past performance is not a guarantee of the future.</p>
@@ -1192,7 +1255,7 @@
 
     {{-- Show-your-working: the assumptions every figure on this page rests on, surfaced so a
          headline figure can be traced to its basis. Factual, never a recommendation. --}}
-    <section id="sec-assumptions" aria-labelledby="assumptions-heading" class="{{ $card }} scroll-mt-6">
+    <section id="sec-assumptions" {{ $panel('sec-assumptions') }} aria-labelledby="assumptions-heading" class="{{ $card }} scroll-mt-6">
         <h2 id="assumptions-heading" class="text-xl font-semibold text-gray-900">
             The assumptions behind these figures
             @if ($assumptions['customised'])
@@ -1238,13 +1301,15 @@
          reconciled. Shows only when a sale is configured. Factual, never a recommendation. --}}
     @if ($saleExplainer)
         @php $se = $saleExplainer; @endphp
-        <section id="sec-sale" aria-labelledby="sale-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-sale" {{ $panel('sec-sale') }} aria-labelledby="sale-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="sale-heading" class="text-xl font-semibold text-gray-900">If you sell: where the money comes from and goes</h2>
             <p class="mt-1 text-sm text-gray-600">
                 Selling the current home is assumed at {{ $se['proceeds']['salePrice'] }}. After the costs of selling, this is what is left to invest — and, if buying a cheaper home, what is left over after that purchase. Figures are in today's money.
             </p>
 
-            <div class="mt-4 overflow-x-auto" tabindex="0">
+            <details class="mt-4">
+            <summary class="cursor-pointer text-sm font-medium text-blue-700">Show how the sale price becomes net proceeds</summary>
+            <div class="mt-2 overflow-x-auto" tabindex="0">
                 <table class="w-full text-sm">
                     <caption class="sr-only">How the sale price becomes net proceeds</caption>
                     <tbody>
@@ -1276,6 +1341,7 @@
                     </tbody>
                 </table>
             </div>
+            </details>
             @unless ($se['proceeds']['clearsCosts'])
                 <p role="status" class="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">On these figures the sale does not cover the mortgage and selling costs, so there are no net proceeds to invest.</p>
             @endunless
@@ -1333,7 +1399,7 @@
                 'death' => 'bg-gray-500',
             ];
         @endphp
-        <section id="sec-milestones" aria-labelledby="milestones-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-milestones" {{ $panel('sec-milestones') }} aria-labelledby="milestones-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="milestones-heading" class="text-xl font-semibold text-gray-900">When the big events happen</h2>
             <p class="mt-1 text-sm text-gray-600">
                 The major life events in this forecast, in order. These drive the step changes in the year-by-year cashflow below — when earnings stop, a pension starts, the home is sold, or the household changes size. Ages are each person's age in that year.
@@ -1360,7 +1426,7 @@
          immediately: where income comes from each year, the tax on it, the spend it must
          meet, and the usable (excl. home) vs total (incl. home equity) wealth carried forward. --}}
     @if ($ladder && $ladder['rows'])
-        <section id="sec-ladder" aria-labelledby="ladder-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-ladder" {{ $panel('sec-ladder') }} aria-labelledby="ladder-heading" class="{{ $card }} scroll-mt-6">
             <div class="flex items-center justify-between">
                 <h2 id="ladder-heading" class="text-xl font-semibold text-gray-900">
                     Year-by-year cashflow
@@ -1399,9 +1465,11 @@
                 <p class="mt-1 text-xs text-gray-500">Your investments earn in two ways: <strong>Investment income</strong> (interest on cash and dividends from funds) is paid out and taxed each year, so it's part of the income columns; <strong>Investment growth</strong> is the rise in the value of your funds/shares — it stays invested (taxed only as capital gains if you later sell outside an ISA/pension), which is why wealth can grow even in a year you're drawing down.</p>
             @endif
             @if ($ladder['showCharges'])
-                <p class="mt-1 text-xs text-gray-500"><strong>Charges:</strong> the investment growth shown is <em>before</em> charges. Platform and fund fees take <strong>{{ $ladder['chargesTotal'] }}</strong> out of the pensions, ISAs and investments over the whole plan (today's money); cash deposits pay none. The yearly rate is in "The assumptions behind these figures" below, and you can change it.</p>
+                <p class="mt-1 text-xs text-gray-500"><strong>Charges:</strong> the investment growth shown is <em>before</em> charges. Platform and fund fees take <strong>{{ $ladder['chargesTotal'] }}</strong> out of the pensions, ISAs and investments over the whole plan (today's money); cash deposits pay none. The yearly rate is in "The assumptions behind these figures" under <strong>The fine print</strong>, and you can change it.</p>
             @endif
-            <div class="mt-4 overflow-x-auto" tabindex="0">
+            <details class="mt-4">
+            <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the year-by-year numbers</summary>
+            <div class="mt-2 overflow-x-auto" tabindex="0">
                 <table class="w-full text-sm whitespace-nowrap">
                     <caption class="sr-only">Deterministic year-by-year cashflow: income by source, tax, spend and wealth, in real pounds</caption>
                     <thead>
@@ -1466,6 +1534,7 @@
                     </tbody>
                 </table>
             </div>
+            </details>
             <x-signpost class="mt-4" />
         </section>
     @endif
@@ -1475,7 +1544,7 @@
          page. Replaces the old throwaway live-slider preview, so a lever change is always a
          real, comparable scenario rather than an unsaved exploration baked into the report. --}}
     @if ($canMakeWhatIf)
-        <section id="sec-explore" aria-labelledby="explore-heading" class="{{ $card }} scroll-mt-6">
+        <section id="sec-explore" {{ $panel('sec-explore') }} aria-labelledby="explore-heading" class="{{ $card }} scroll-mt-6">
             <div class="flex items-center justify-between">
                 <h2 id="explore-heading" class="text-xl font-semibold text-gray-900">Build a what-if</h2>
                 <button type="button" wire:click="resetSliders" class="text-sm text-blue-700 underline">Reset</button>
@@ -1510,9 +1579,15 @@
     {{-- "How far can we go?" (decision-support Phase 2): a nested component so its slider drags
          and threshold poll re-render on their own, without re-running this whole results page.
          Renders its own <section id="sec-how-far">. --}}
-    <livewire:threshold-explorer :scenario="$scenario" />
+    {{-- Both of these render their own <section>, so the tab marker goes on a wrapper: a
+         nested Livewire component and a Blade component do not share this view's scope. --}}
+    <div {{ $panel('sec-how-far') }}>
+        <livewire:threshold-explorer :scenario="$scenario" />
+    </div>
 
-    <x-sources-and-contacts id="sec-sources" class="scroll-mt-6" :show-mortgage="$sourcesShowMortgage" :show-cgt="$sourcesShowCgt" />
+    <div {{ $panel('sec-sources') }}>
+        <x-sources-and-contacts id="sec-sources" class="scroll-mt-6" :show-mortgage="$sourcesShowMortgage" :show-cgt="$sourcesShowCgt" />
+    </div>
 
     </div>{{-- /content column --}}
 

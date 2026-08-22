@@ -5,7 +5,7 @@
      accessible source of truth; the canvas is a progressive enhancement). Figures default to
      today's money, like the ladder and fan; the toggle switches all three to the pounds of each
      year, taken from the engine's own pre-deflation figures. --}}
-<section id="sec-money-over-time" aria-labelledby="money-over-time-heading" class="{{ $card }} scroll-mt-6 space-y-8">
+<section id="sec-money-over-time" {{ $panel('sec-money-over-time') }} aria-labelledby="money-over-time-heading" class="{{ $card }} scroll-mt-6 space-y-8">
     <div>
         <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 id="money-over-time-heading" class="text-xl font-semibold text-gray-900">
