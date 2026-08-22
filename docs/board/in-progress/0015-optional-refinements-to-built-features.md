@@ -83,3 +83,50 @@ CGT wizard's three new period kinds, the "+ Away period" button and the "Away, s
 still need a look on screen. `.\vendor\bin\pest.bat` does not exist in this project; the suite is
 PHPUnit, run with `php artisan test` (1124 pass, 1 expected advice-mode skip). `vendor\bin\pint.bat`
 clean, and `php artisan scenarios:audit` clean over all 25 stored scenarios.
+
+**2026-08-22 (second unattended run)** This session had no web access either — `WebSearch` and `WebFetch`
+are both refused, and there is no project permission file to widen — so the three refinements that need a
+sourced modelling figure are still not built, and nothing was guessed. **This card cannot be advanced by
+an unattended session.** Handing it to another one repeats this run. It needs either a session with web
+access or the three figures from Rob; until then only the annuitisation item is left, and that one is
+sequenced behind card 0036 for the reason logged in DECISIONS 2026-08-22.
+
+**Built: the methodology page no longer contradicts the code.** Checking that acceptance #1 actually held
+for the two refinements built earlier today found one place where it did not. `docs/spec/METHODOLOGY.md`
+states the care limits **twice** — once in a "Simplifications:" paragraph under "Care costs", and once in
+the "Care" bullet under "What we don't model". Yesterday's build updated the second and left the first, so
+the public `/methodology` page (and the assistant's own corpus, which is the same file) still told a reader
+"any Pension Credit award is not counted into the care contribution" — false since that build, and about a
+figure that moves a means-tested result. Rather than restate the list correctly in both places and leave it
+to rot again, the duplicate is gone: the "Care costs" section now keeps only what is specific to the
+*care-stress* (fixed adverse parameters, one spell not both) and points at "What we don't model" for the
+rest, which is the one home for that fact. The DECISIONS entries that carry the old flags are left alone —
+that log is append-only and the 2026-08-22 entry already records what it supersedes. No code changed, so no
+figure moves.
+
+**What the next run needs, so it does not have to re-derive it.** Each of the three blocked items needs one
+number, and the code change after it is small:
+- *Age-conditioning of the care onset rate* — an age gradient for entering residential/nursing care. It
+  would multiply the sex-differentiated Bernoulli in `CareCostSampler::sampleHousehold()`, which currently
+  draws against a flat lifetime probability whatever age the path kills the person at. Must stay calibrated
+  to the Dilnot/PSSRU ~1-in-4 population mean that `CareAssumptions` is already anchored to, or the headline
+  care-risk share moves for the wrong reason.
+- *Sex split of care duration* — a female:male ratio of length of stay, to split `CareAssumptions::$meanDurationYears`
+  the way `$probabilityOfCareMale` / `$probabilityOfCareFemale` already split the probability. The class
+  docblock's existing source (PSSRU/LSE dp2769) is the likely home for it, but the repo's summary of that
+  paper does not carry the split.
+- *LA-versus-self-funder fee gap* — the local-authority rate as a share of the self-funder fee, so a funded
+  resident's third-party top-up is charged instead of assuming the council buys the same place at the same
+  price. It enters `CareMeansTest::annualCharge()`, whose docblock carries the flag.
+A user-input route was considered for the third (the precedent is the annuity rate, which is a user input
+because a real quote belongs to the household — PLAN.md). It was not taken: with no default it changes no
+shipped result, and it would put a control Rob cannot fill in without the same research onto a page that has
+not had its browser sign-off yet (card 0001).
+
+**Acceptance #1 still left unticked**, for the same reason as this morning: it holds for both refinements
+built, but four tasks remain and ticking it would read as a finished card.
+
+**Not verified in a browser** (worktree, so Herd serves the main checkout). This run changed one prose
+paragraph in a doc, so there is nothing new to look at beyond the `/methodology` page rendering. The
+assistant's doc index (`php artisan assistant:index-docs`) should be re-run after this METHODOLOGY edit if
+the assistant is enabled; it is inert by default and could not be rebuilt here.

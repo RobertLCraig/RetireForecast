@@ -295,11 +295,9 @@ the same expected path with one adverse ~4-year nursing spell (~£1,800 a week) 
 last-surviving partner, means-tested and escalated like any care cost. So a plain "lasts for life"
 is never shown against a silently care-free path, while the ordering still reflects the expected case.
 
-Simplifications: the care-stress uses fixed adverse parameters (not yet user-editable), and applies
-one spell rather than both partners'; the probabilistic Monte Carlo care model is unchanged; the care
-probability is split by sex but not yet by age; any Pension Credit award is not counted into the care
-contribution; the local authority is assumed to pay its share at the same fee rate; deferred-payment
-agreements and the 12-week property disregard are below the annual grid.
+Simplifications of the stress itself: it uses fixed adverse parameters (not yet user-editable) and
+applies one spell rather than both partners'; the probabilistic Monte Carlo care model is unchanged.
+What the care model as a whole does not cover is listed once, under **What we don't model** below.
 
 ## How long you might live
 
