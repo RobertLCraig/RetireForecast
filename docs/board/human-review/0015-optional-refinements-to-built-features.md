@@ -130,3 +130,5 @@ built, but four tasks remain and ticking it would read as a finished card.
 paragraph in a doc, so there is nothing new to look at beyond the `/methodology` page rendering. The
 assistant's doc index (`php artisan assistant:index-docs`) should be re-run after this METHODOLOGY edit if
 the assistant is enabled; it is inert by default and could not be rebuilt here.
+
+**2026-08-22** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with 1 of 1 acceptance criteria still open, so what this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
