@@ -30,7 +30,10 @@
             </p>
 
             @if ($qrSvg)
-                <div class="mt-4 inline-block rounded bg-white p-2 ring-1 ring-gray-200">
+                {{-- Hidden from assistive tech on purpose: Fortify renders a bare unlabelled <svg>,
+                     and the setup key below is the same secret as text (it is set by the same
+                     condition, so it is always there). One accessible copy, not a nameless graphic. --}}
+                <div aria-hidden="true" class="mt-4 inline-block rounded bg-white p-2 ring-1 ring-gray-200">
                     {!! $qrSvg !!}
                 </div>
                 @if ($setupKey)

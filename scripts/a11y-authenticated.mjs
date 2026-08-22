@@ -43,6 +43,7 @@ const paths = [
     `/scenarios/${scenario}/results`,
     `/scenarios/${scenario}/compare`,
     `/scenarios/${scenario}/afford`,
+    '/account/security',
 ];
 
 const viewports = [
@@ -56,6 +57,25 @@ const browser = await puppeteer.launch({
 });
 
 let violations = 0;
+
+/** Run current axe over whatever is on screen now, print every failure, and count the nodes. */
+async function scan(page, label, path) {
+    await page.evaluate(axeSource);
+    const result = await page.evaluate(() => window.axe.run(document, { resultTypes: ['violations'] }));
+
+    const count = result.violations.reduce((n, v) => n + v.nodes.length, 0);
+    violations += count;
+    console.log(`${count === 0 ? 'ok  ' : 'FAIL'} ${label.padEnd(7)} ${path} (${count} violation node(s))`);
+
+    for (const v of result.violations) {
+        console.log(`      [${v.impact}] ${v.id}: ${v.help}`);
+        for (const node of v.nodes) {
+            console.log(`        ${JSON.stringify(node.target)}`);
+            console.log(`        ${node.html.slice(0, 180).replace(/\s+/g, ' ')}`);
+            console.log(`        ${(node.failureSummary || '').replace(/\s+/g, ' ')}`);
+        }
+    }
+}
 
 try {
     const page = await browser.newPage();
@@ -74,22 +94,21 @@ try {
 
         for (const path of paths) {
             await page.goto(base + path, { waitUntil: 'networkidle0' });
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            await page.evaluate(axeSource);
-            const result = await page.evaluate(() => window.axe.run(document, { resultTypes: ['violations'] }));
 
-            const count = result.violations.reduce((n, v) => n + v.nodes.length, 0);
-            violations += count;
-            console.log(`${count === 0 ? 'ok  ' : 'FAIL'} ${label.padEnd(7)} ${path} (${count} violation node(s))`);
-
-            for (const v of result.violations) {
-                console.log(`      [${v.impact}] ${v.id}: ${v.help}`);
-                for (const node of v.nodes) {
-                    console.log(`        ${JSON.stringify(node.target)}`);
-                    console.log(`        ${node.html.slice(0, 180).replace(/\s+/g, ' ')}`);
-                    console.log(`        ${(node.failureSummary || '').replace(/\s+/g, ' ')}`);
-                }
+            // A secured page (/account/security) bounces through Fortify's password-confirmation
+            // interstitial. Nothing else ever reaches that screen, so scan it on the way past,
+            // then confirm and carry on to the page we actually asked for.
+            if (page.url().includes('confirm-password')) {
+                await scan(page, label, '/user/confirm-password');
+                await page.type('#password', password);
+                await Promise.all([
+                    page.waitForNavigation({ waitUntil: 'networkidle0' }),
+                    page.click('button[type=submit]'),
+                ]);
             }
+
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            await scan(page, label, path);
         }
     }
 } finally {

@@ -103,3 +103,49 @@ Two things I could not settle from the repository. The runner instruction named
 wants to reformat `app/Forecast/QuickWhatIf.php` and `app/Forecast/SimulationRunner.php`,
 which is pre-existing drift unrelated to this card; I reverted those two so the diff stays
 the card's, but somebody should run a bare `pint` on master.
+
+**2026-08-22 (second pass)** Picked up #4 where the first pass left it: the automated bar was
+already clean, so what was left was the coverage gap it named and the five criteria it called
+"manual only". Both moved, and one of the five turned out to be a real failure.
+
+**The last unswept page is swept.** `/account/security` is now in `npm run a11y:auth`. Asking
+for it bounces through Fortify's password-confirmation screen, so the script scans that on the
+way past as well (nothing else reaches it) and then confirms and carries on. Both pass at both
+viewports, so **all 11 public URLs and all 15 signed-in page/viewport scans are at zero
+violations**. Also `aria-hidden` on the 2FA QR code: Fortify emits a bare unlabelled `<svg>`,
+and the setup key printed beside it is the same secret as text under the same condition, so
+there is now one accessible copy of it rather than a nameless graphic.
+
+**#4's five "manual only" criteria are no longer a blank.** Worked through one at a time and
+written into the table at the top of docs/spec/A11Y.md so nobody re-derives them. 2.5.7, 3.2.6,
+3.3.7 and 3.3.8 are **met from the code as it stands**, each with its evidence (native range
+sliders only, so the criterion's user-agent exception applies; the help links live in the shared
+layout footer, same place every page; the builder wizard is one Livewire component so nothing is
+re-entered; no CAPTCHA anywhere and every credential field carries the `autocomplete` a password
+manager needs).
+
+**2.4.11 Focus Not Obscured was failing, and is now fixed.** The assistant is a `position: fixed`
+panel — a 24rem column on desktop, the whole screen on a phone — but the page behind it stayed in
+the tab order, so a keyboard user tabbed into controls entirely hidden underneath it. Measured
+rather than argued: wrote `npm run a11y:focus`, which tabs the results page with the panel open
+and asks the document what actually paints over each focus stop. It found three (one desktop, two
+mobile). Fixed with `resources/js/assistant-inert.js`, which makes everything outside the panel
+`inert` while it is open and returns focus to the edge tab when it closes. The same command is the
+standing check and asserts the close path too, because a stuck `inert` would freeze the page more
+thoroughly than the bug it fixes. Green both ways at both viewports.
+
+**Why #4 still stays open.** Everything above ran in headless Chrome against this worktree served
+on a throwaway SQLite database, so it is a real check of this code but it is **not** the human
+pass. What still needs a person: the ApexCharts canvases, 400% reflow, a screen-reader walkthrough,
+and the judgements no tool makes (link text in context, meaningful sequence, meaning carried by
+colour inside a chart). That belongs with card 0001. One coverage gap also remains and is written
+into A11Y.md: the **two-factor enrolment state** of `/account/security` renders only after a click
+that mutates the user, so no sweep has seen the QR / recovery-code panel.
+
+**#2 is unchanged and still Rob's call.** Nothing in the repository has moved on it since the
+first pass; the three options and the recommendation above stand.
+
+One thing I could not settle from the repository: whether the assistant would even ship in a
+public build (`ASSISTANT_ENABLED` needs a local Ollama). I fixed 2.4.11 for it regardless, because
+it is on in this environment and the fix is one attribute, but if the assistant is out of a public
+build then 2.4.11 was never a public-bar blocker.

@@ -4,13 +4,17 @@
      (data never leaves the machine). Every figure it states is engine-derived and re-verified at
      runtime (App\Assistant\FigureGrounding); a held-back or unreachable reply is shown as such, never
      a silent blank. Inert unless config('assistant.enabled'). CSP-safe: all interactivity is Livewire
-     wire: directives, no inline JS. --}}
+     wire: directives, no inline JS. While open the panel is a fixed overlay, so the bundled
+     resources/js/assistant-inert.js makes the rest of the page `inert` off the `data-assistant-open`
+     / `data-assistant-tab` hooks below — without that a keyboard user tabs into controls hidden
+     underneath it (WCAG 2.2 AA 2.4.11). --}}
 <div class="print:hidden">
     @if (! $open)
         {{-- Docked edge tab (attached to the right edge, not a corner bubble). --}}
         <button
             type="button"
             wire:click="toggle"
+            data-assistant-tab
             aria-expanded="false"
             class="fixed right-0 top-1/3 z-40 flex items-center gap-2 rounded-l-lg bg-blue-600 py-3 pl-3 pr-2 text-sm font-medium text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
