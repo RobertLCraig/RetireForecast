@@ -3,6 +3,56 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-08-22 — Two flagged v1 refinements closed: Pension Credit in the care charge, and CGT deemed-occupation absences
+**Context:** card 0015, a list of six flagged v1 simplifications to pick off by value. None is a correctness
+gap; each was a deliberate limit recorded in code and in docs/spec/METHODOLOGY.md "What we don't model".
+Two of the six needed no figure this repository does not already hold, so they were built; the other four
+are held open for the reasons at the end.
+
+**Decisions:**
+1. **A resident's Pension Credit is now assessable income for the care charge.** The care financial
+   assessment takes income into account unless it is expressly disregarded, and Guarantee Credit is not
+   disregarded. Being tax-free it never reached `$taxablePerPerson`, so the means test read a resident on
+   the credit as having only their private income: the household banked the award as income and was never
+   charged it back, while in life it is handed to the home. `PathProjector`'s care leg now adds the
+   household award **split per living member** to each resident's assessable income. *Rationale for the
+   split:* England assesses each resident individually, and a couple with one partner in permanent care is
+   treated as two single people for the credit, so half a couple's award is the resident's own money.
+   **Still open:** the couple award is not re-computed as two single awards (two singles get more than a
+   couple), so a couple's resident share is if anything understated; and the severe-disability addition is
+   not withdrawn on a placement. Guard: `CareMeansTestedChargeTest` asserts the care year's spend step
+   equals the resident's own income **plus the year's reported credit**, less the PEA read from the
+   tax-year registry that owns it.
+2. **Allowed absences ("deemed occupation") are now entered as such and relieved.** The CGT wizard's
+   occupation timeline gained three kinds of period beside "main home" and "let": away for any reason, away
+   for a job elsewhere in the UK, and working abroad. `CgtHistory` carries the three month counts raw and
+   `CgtPrivateResidenceCalculator` applies the statutory caps from `CgtParameters` (3 years any reason,
+   4 years UK work, no cap abroad; TCGA 1992 s223(3), gov.uk HS283). *Rationale for that split:* the caps
+   are statute and belong with the tax figures, but whether an absence qualifies is a question about the
+   shape of the timeline, which a month-count calculator cannot see, so `HouseholdAssembler` owns the
+   qualifying test (occupied before the absence, and returned to after it, the return excused for the two
+   work absences, exactly as the statute reads). An absence that fails its test earns nothing, the same
+   treatment as a let period. `CgtResult::deemedOccupationMonths` reports what survived the caps and the
+   wizard shows it as "Away, still counted", so a capped allowance cannot look like an uncapped one.
+   The previous workaround, where the wizard told the reader to mark a qualifying absence as "main home",
+   is gone, and with it the risk of a hand-applied cap. All three counts default to 0, byte-identical to
+   before. **Still open:** the rule that no other residence may be eligible for relief during the absence
+   is not enforced (the engine models one home), and job-related accommodation is not distinguished.
+3. **Four of the six are NOT built, and are held rather than guessed.** Age-conditioning of the care onset
+   rate, a sex split of care *duration*, and the LA-versus-self-funder fee gap each need a modelling figure
+   this repository does not hold (an age gradient, a female:male duration ratio, and the LA rate as a share
+   of the self-funder fee). *Rationale:* the no-magic-numbers rule. A figure with no source and no
+   verified-on date is indistinguishable from an invented one, and each of these moves a headline result.
+   The annuitisation retirement-month override is held for a different reason: the engine buys the annuity
+   at the start of the purchase year and pays a full year of income, so the pot already forgoes a whole
+   year of growth on the money, and prorating only the income would make the model doubly adverse rather
+   than more accurate. The faithful fix needs one convention for a mid-year event on an annual grid, which
+   is the same call card 0036 must make about the retirement year.
+
+**Status:** active (supersedes the "Pension Credit is not counted into the contribution" flag of
+[[2026-07-08 — Care years are means-tested in the projection (supersedes the gross-fee flag of 2026-07-01)]],
+and the "deemed-occupation absences are entered by hand" caveat of the 2026-06-30 partial-PRR build)
+
 ## 2026-08-22 — A big "export all to PDF" is built on the worker, one forecast at a time, and arrives as a zip
 **Context:** card 0014. "Export all to PDF" rendered every ready forecast into ONE dompdf document inside
 the web request, and dompdf holds the whole document in memory until it is written. Measured on this

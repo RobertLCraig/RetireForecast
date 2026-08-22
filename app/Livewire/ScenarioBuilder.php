@@ -73,6 +73,14 @@ class ScenarioBuilder extends Component
         5 => 'The decision',
     ];
 
+    /**
+     * How a period on the home's capital-gains timeline was used. `main_home` earns relief and
+     * `let` does not; the three `absence_*` kinds are the statutory allowed absences that still
+     * count as living there (gov.uk HS283), summed and capped in the engine. One list, read by
+     * both the validation rule and the add-row action, so a new kind cannot reach only one.
+     */
+    public const CGT_PERIOD_USES = ['main_home', 'let', 'absence_any', 'absence_uk_work', 'absence_abroad'];
+
     /** Which top-level form section lives on which step — drives the jump-to-first-error on save. */
     private const STEP_OF_FIELD = [
         'name' => 1, 'householdName' => 1, 'region' => 1, 'baseTaxYear' => 1,
@@ -436,7 +444,7 @@ class ScenarioBuilder extends Component
             $rules['property.cgtHistory.jointlyOwned'] = ['boolean'];
             $rules['property.cgtHistory.higherRateOnSale'] = ['boolean'];
             $rules['property.cgtHistory.periods.*.fromYear'] = ['nullable', 'integer', 'min:1900', 'max:2100'];
-            $rules['property.cgtHistory.periods.*.use'] = ['nullable', Rule::in(['main_home', 'let'])];
+            $rules['property.cgtHistory.periods.*.use'] = ['nullable', Rule::in(self::CGT_PERIOD_USES)];
         }
 
         return $rules;
@@ -1648,7 +1656,7 @@ class ScenarioBuilder extends Component
         $this->property['cgtHistory']['periods'][] = [
             'id' => $this->newRowId(),
             'fromYear' => '',
-            'use' => in_array($use, ['main_home', 'let'], true) ? $use : 'main_home',
+            'use' => in_array($use, self::CGT_PERIOD_USES, true) ? $use : 'main_home',
         ];
     }
 
@@ -1666,7 +1674,11 @@ class ScenarioBuilder extends Component
      * cannot drift from the real figure. Indicative because it uses the home's current value as the
      * sale value (the forecast nets selling costs off the sale price); null until it can estimate.
      *
-     * @return array{ownedYears: float, livedInYears: float, letYears: float, reliefPercent: int, gain: string, estimatedCgt: string, owners: int}|null
+     * `awayYears` is the part of the timeline marked as an allowed absence that actually earned
+     * relief after the statutory caps, so a reader can see how much of their away time counted
+     * rather than inferring it from the relief percentage.
+     *
+     * @return array{ownedYears: float, livedInYears: float, letYears: float, awayYears: float, reliefPercent: int, gain: string, estimatedCgt: string, owners: int}|null
      */
     public function cgtPreview(): ?array
     {
@@ -1691,12 +1703,20 @@ class ScenarioBuilder extends Component
             $history->mainResidenceMonths,
             $history->higherRateOnSale,
             $history->owners,
+            $history->absenceAnyReasonMonths,
+            $history->absenceWorkElsewhereUkMonths,
+            $history->absenceWorkAbroadMonths,
         );
+
+        // The allowed-absence months that survived the statutory caps, reported by the engine
+        // that applies them, never re-capped here, or the readout would drift from the tax.
+        $awayMonths = $result->deemedOccupationMonths;
 
         return [
             'ownedYears' => round($history->ownershipMonths / 12, 1),
             'livedInYears' => round($history->mainResidenceMonths / 12, 1),
-            'letYears' => round(($history->ownershipMonths - $history->mainResidenceMonths) / 12, 1),
+            'awayYears' => round($awayMonths / 12, 1),
+            'letYears' => round(max(0, $history->ownershipMonths - $history->mainResidenceMonths - $awayMonths) / 12, 1),
             'reliefPercent' => $gain->isPositive()
                 ? (int) round(100 * $result->privateResidenceReliefGain->pence / $gain->pence)
                 : 0,

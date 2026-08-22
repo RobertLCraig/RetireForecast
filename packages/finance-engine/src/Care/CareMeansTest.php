@@ -43,11 +43,14 @@ final class CareMeansTest
      * passes its cumulative inflation factor as $peaUprating.
      *
      * Assessable income is the resident's own taxable income (State Pension, DB/annuity,
-     * drawdown, rental): under the charging regulations income derived from capital is
-     * treated as capital (the tariff covers it), and disability benefits are excluded
-     * here — mirroring the payment stop once a resident is LA-funded. v1 flags: any
-     * Pension Credit award is not counted into the contribution, and the LA-vs-self-funder
-     * fee-rate gap is not modelled (the household only sees its own contribution).
+     * drawdown, rental) PLUS their share of any Pension Credit Guarantee Credit, which the
+     * charging regulations take into account like any other undisregarded income (the caller
+     * adds it, because the award is a household figure — see the care leg of PathProjector). Income
+     * derived from capital is treated as capital (the tariff covers it), and disability
+     * benefits are excluded here, mirroring the payment stop once a resident is LA-funded.
+     * v1 flag: the LA-vs-self-funder fee-rate gap is not modelled (the local authority is
+     * assumed to buy the same place at the same price the self-funder pays, so no
+     * third-party top-up is charged once the resident is funded).
      */
     public function annualCharge(Money $grossAnnualFee, Money $capital, Money $assessableAnnualIncome, float $peaUprating = 1.0): Money
     {

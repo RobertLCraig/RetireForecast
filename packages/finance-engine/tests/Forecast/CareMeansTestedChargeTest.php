@@ -239,6 +239,41 @@ final class CareMeansTestedChargeTest extends TestCase
         $this->assertSame(3 * self::CONTRIBUTION, $result->careCostReal()->pence);
     }
 
+    public function test_a_residents_pension_credit_is_counted_into_their_contribution(): void
+    {
+        // Guarantee Credit is assessable income for the care charge, but it is tax-free, so it
+        // never appears in the tax pass the assessment reads. A resident whose own income sits
+        // below the minimum guarantee therefore has to be charged (own income + the credit) less
+        // the PEA — the credit is handed to the home, not banked. Spend well above income drains
+        // the £8,000 of cash in the first year, so capital is nil by the care years and neither
+        // the tariff nor the capital-above-limit term muddies the arithmetic.
+        $household = new Household(
+            'CreditResident', RegionProfile::EnglandWalesNi,
+            [$this->person('p1')],
+            $this->spend(30_000),
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(8_000))],
+            incomeStreams: [$this->income('p1', 6_000)],
+        );
+
+        $years = [];
+        foreach ($this->project($household, deathAges: ['p1' => 90], careFromAge: ['p1' => 88])->years as $year) {
+            $years[$year->calendarYear] = $year;
+        }
+
+        // The PEA is read from the tax-year registry that owns it, never restated here.
+        $config = TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi);
+        $peaAnnual = $config->care->personalExpensesAllowanceWeekly->pence * $config->statePension->weeksPerYear;
+
+        $credit = $years[2046]->incomeBySource['means_tested_benefit']->pence;
+        $this->assertGreaterThan(0, $credit, 'the fixture is on Guarantee Credit');
+
+        $this->assertSame(
+            600_000 + $credit - $peaAnnual,
+            $years[2046]->spendTarget->pence - $years[2045]->spendTarget->pence,
+            'the care charge counts the credit as income',
+        );
+    }
+
     public function test_a_resident_with_nothing_of_their_own_is_fully_funded_even_in_a_wealthy_household(): void
     {
         // All income and savings are the partner's: the resident's own assessment finds

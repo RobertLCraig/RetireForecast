@@ -663,6 +663,11 @@ final class HouseholdAssembler
      * period does not. Occupation is what matters, not the mortgage (gov.uk HS283). Public so the
      * builder's live CGT readout reduces the timeline through the same one source.
      *
+     * A period can also be an ALLOWED ABSENCE ("deemed occupation") — away for any reason, away
+     * for a job elsewhere in the UK, or working abroad. Those months are summed per kind and
+     * handed to the engine raw, which owns the statutory caps; this method owns the part only a
+     * timeline can answer, which is whether the absence is bracketed by real occupation.
+     *
      * @param  array<string, mixed>  $p  the property form-state
      */
     public function cgtHistoryFrom(array $p, int $saleYear): ?CgtHistory
@@ -688,13 +693,38 @@ final class HouseholdAssembler
         ));
         usort($periods, static fn (array $a, array $b): int => (int) $a['fromYear'] <=> (int) $b['fromYear']);
 
+        // Which periods are actual occupation: the test a period of absence is judged against.
+        $occupied = array_map(static fn (array $p): bool => ($p['use'] ?? 'main_home') === 'main_home', $periods);
+
         $mainResidenceMonths = 0;
+        $absence = ['absence_any' => 0, 'absence_uk_work' => 0, 'absence_abroad' => 0];
         foreach ($periods as $i => $period) {
             $from = (int) $period['fromYear'];
             $to = isset($periods[$i + 1]) ? (int) $periods[$i + 1]['fromYear'] : $saleYear;
-            if (($period['use'] ?? 'main_home') === 'main_home') {
-                $mainResidenceMonths += max(0, ($to - $from) * 12);
+            $months = max(0, ($to - $from) * 12);
+            $use = $period['use'] ?? 'main_home';
+
+            if ($use === 'main_home') {
+                $mainResidenceMonths += $months;
+
+                continue;
             }
+            if (! array_key_exists($use, $absence)) {
+                continue; // let / not the main home — chargeable, no relief
+            }
+
+            // Deemed occupation (TCGA 1992 s223(3), gov.uk HS283 "Absence from your home"):
+            // an absence only counts as living there if the home was the owner's main
+            // residence before it AND they came back to it afterwards. The two work absences
+            // are excused the coming-back test, because the statute allows for a job that
+            // stops the owner returning. An absence that fails its test simply earns no
+            // relief — the adverse reading, and the same treatment as a let period.
+            $before = in_array(true, array_slice($occupied, 0, $i), true);
+            $after = in_array(true, array_slice($occupied, $i + 1), true);
+            if (! $before || ($use === 'absence_any' && ! $after)) {
+                continue;
+            }
+            $absence[$use] += $months;
         }
 
         return new CgtHistory(
@@ -704,6 +734,10 @@ final class HouseholdAssembler
             mainResidenceMonths: min($mainResidenceMonths, $ownershipMonths),
             higherRateOnSale: (bool) ($h['higherRateOnSale'] ?? false),
             owners: ($h['jointlyOwned'] ?? false) ? 2 : 1,
+            // Raw qualifying months: the engine owns the 3-year / 4-year statutory caps.
+            absenceAnyReasonMonths: $absence['absence_any'],
+            absenceWorkElsewhereUkMonths: $absence['absence_uk_work'],
+            absenceWorkAbroadMonths: $absence['absence_abroad'],
         );
     }
 

@@ -105,6 +105,9 @@ final class HousingProceeds
                 $cgtHistory->mainResidenceMonths,
                 $cgtHistory->higherRateOnSale,
                 $cgtHistory->owners,
+                $cgtHistory->absenceAnyReasonMonths,
+                $cgtHistory->absenceWorkElsewhereUkMonths,
+                $cgtHistory->absenceWorkAbroadMonths,
             );
             $cgt = $cgtResult->tax;
         }

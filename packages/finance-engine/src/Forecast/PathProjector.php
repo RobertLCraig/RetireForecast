@@ -1133,6 +1133,21 @@ final class PathProjector
         // the pre-2026-07-18 behaviour, so a null-careCostRealGrowth set reproduces byte-identically.
         $careGrowth = $draws->careCostRealGrowth();
         $careEscalation = $careGrowth > 0.0 ? (1.0 + $careGrowth) ** $yearIndex : 1.0;
+
+        // Pension Credit is assessable INCOME for the care financial assessment: the charging
+        // regulations take income into account unless it is expressly disregarded, and Guarantee
+        // Credit is not disregarded. Being tax-free it never reaches $taxablePerPerson, so a
+        // resident on the credit used to be assessed as if the state top-up were not theirs to
+        // contribute: the household banked it as income and was never charged it, while in life
+        // it is handed to the home. Counting it makes the pair reconcile: the award is credited
+        // as income above and charged back here, so a fully funded resident's credit is a wash.
+        // The household award is split per living member, because England assesses each resident
+        // individually and a couple with one partner in permanent care is treated as two single
+        // people for the credit — half of a couple's award is the resident's own money.
+        // v1 flag: that couple award is not re-computed as two single awards (two singles get
+        // more than a couple), so a couple's resident share is if anything understated.
+        $pensionCreditPerPerson = $aliveCount > 0 ? intdiv($benefitNominal, $aliveCount) : 0;
+
         $careChargedNominal = 0;
         foreach ($household->persons as $person) {
             if (! ($alive[$person->id] ?? false)) {
@@ -1146,7 +1161,7 @@ final class PathProjector
             $careChargedNominal += $this->careMeans->annualCharge(
                 grossAnnualFee: Money::fromPence((int) round($feeReal * $state['spendFactor'])),
                 capital: Money::fromPence($this->careAssessableCapital($household, $state, $person->id, $aliveCount)),
-                assessableAnnualIncome: Money::fromPence($taxablePerPerson[$person->id]),
+                assessableAnnualIncome: Money::fromPence($taxablePerPerson[$person->id] + $pensionCreditPerPerson),
                 peaUprating: $state['spendFactor'],
             )->pence;
         }

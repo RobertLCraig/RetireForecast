@@ -987,8 +987,8 @@
                             </div>
 
                             <div class="mt-4">
-                                <p class="{{ $label }}">When it was your main home vs let out</p>
-                                <p class="mt-1 text-xs text-gray-500">Add a row each time its use changed, in order from when you bought it; each runs until the next (the last until you sell). The final 9 months of ownership are always relieved.</p>
+                                <p class="{{ $label }}">When it was your main home, let out, or you were away</p>
+                                <p class="mt-1 text-xs text-gray-500">Add a row each time its use changed, in order from when you bought it; each runs until the next (the last until you sell). The final 9 months of ownership are always relieved. Use an "away" row for a spell when you kept the home but did not live in it: the allowed part of that still counts as living there.</p>
                                 <div class="mt-2 space-y-2">
                                     @foreach ($property['cgtHistory']['periods'] ?? [] as $i => $period)
                                         <div wire:key="cgtperiod-{{ $period['id'] ?? $i }}" class="grid items-end gap-2 sm:grid-cols-12">
@@ -1001,6 +1001,9 @@
                                                 <select id="cgt-period-{{ $i }}-use" wire:model.live="property.cgtHistory.periods.{{ $i }}.use" class="{{ $field }}">
                                                     <option value="main_home">Lived in as main home</option>
                                                     <option value="let">Let out / not main home</option>
+                                                    <option value="absence_any">Away, any reason (up to 3 years counts)</option>
+                                                    <option value="absence_uk_work">Away, job elsewhere in the UK (up to 4 years counts)</option>
+                                                    <option value="absence_abroad">Away, working abroad (no limit)</option>
                                                 </select>
                                             </div>
                                             <button type="button" wire:click="removeCgtPeriod({{ $i }})" class="mb-2 text-sm text-red-700 underline sm:col-span-2">Remove</button>
@@ -1010,17 +1013,19 @@
                                 <div class="mt-2 flex flex-wrap gap-2">
                                     <button type="button" wire:click="addCgtPeriod('main_home')" class="rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100">+ Main-home period</button>
                                     <button type="button" wire:click="addCgtPeriod('let')" class="rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100">+ Let period</button>
+                                    <button type="button" wire:click="addCgtPeriod('absence_any')" class="rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100">+ Away period</button>
                                 </div>
                             </div>
 
                             @if ($cgtPreview)
-                                <dl class="mt-4 grid gap-3 rounded-md bg-white p-3 text-sm sm:grid-cols-4" aria-live="polite">
+                                <dl class="mt-4 grid gap-3 rounded-md bg-white p-3 text-sm sm:grid-cols-5" aria-live="polite">
                                     <div><dt class="text-gray-500">Owned</dt><dd class="font-semibold">{{ $cgtPreview['ownedYears'] }} yrs</dd></div>
                                     <div><dt class="text-gray-500">Lived in / let</dt><dd class="font-semibold">{{ $cgtPreview['livedInYears'] }} / {{ $cgtPreview['letYears'] }} yrs</dd></div>
+                                    <div><dt class="text-gray-500">Away, still counted</dt><dd class="font-semibold">{{ $cgtPreview['awayYears'] }} yrs</dd></div>
                                     <div><dt class="text-gray-500">Gain relieved</dt><dd class="font-semibold">{{ $cgtPreview['reliefPercent'] }}%</dd></div>
                                     <div><dt class="text-gray-500">Estimated CGT{{ $cgtPreview['owners'] > 1 ? ' (2 owners)' : '' }}</dt><dd class="font-semibold tabular-nums">{{ $cgtPreview['estimatedCgt'] }}</dd></div>
                                 </dl>
-                                <p class="mt-1 text-xs text-gray-500">Indicative, on the home's current value (the forecast uses the sale price less selling costs). Allowed absences — e.g. up to 3 years for any reason, or time working away — can also count as living there; mark such a period as "main home". <a href="https://www.gov.uk/tax-sell-home/absence-from-home" target="_blank" rel="noopener" class="underline">gov.uk: living away</a>.</p>
+                                <p class="mt-1 text-xs text-gray-500">Indicative, on the home's current value (the forecast uses the sale price less selling costs). "Away, still counted" is the part of your away time that Private Residence Relief allows after its limits: 3 years in total for any reason, 4 years in total for a job elsewhere in the UK, no limit working abroad. An away period only counts if you lived there before it, and came back after it (a work absence does not need the coming back). <a href="https://www.gov.uk/tax-sell-home/absence-from-home" target="_blank" rel="noopener" class="underline">gov.uk: living away</a>.</p>
                             @endif
                         </div>
                     @endif

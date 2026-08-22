@@ -18,8 +18,18 @@ use RetireForecast\FinanceEngine\Money\Money;
  * residence against the total months owned, plus the costs that reduce the gain.
  *
  *   gain      = sale price − purchase price − improvement/acquisition costs − selling costs
- *   relief    = gain × (mainResidenceMonths + final 9 months) ÷ ownershipMonths
+ *   relief    = gain × (mainResidenceMonths + deemed occupation + final 9 months) ÷ ownershipMonths
  *   chargeable= gain − relief, then each owner's £3,000 allowance and rate
+ *
+ * The three absence figures are periods away from the home that STILL count as living there
+ * ("deemed occupation", TCGA 1992 s223(3) — gov.uk HS283 /tax-sell-home/absence-from-home).
+ * They are carried raw, in months; CgtPrivateResidenceCalculator applies the statutory caps
+ * from the tax-year registry, so the limit has one home: 3 years in total for any reason,
+ * 4 years in total for a job that kept the owner elsewhere in the UK, and no limit at all for
+ * work abroad. Whoever builds this DTO is responsible for the qualifying test the months
+ * cannot express: the home must have been the main residence before the absence (and after
+ * it, except where the job prevented a return). All three default to 0, which is the
+ * pre-2026-08 behaviour to the penny.
  *
  * $owners is the number of individuals the gain is split across (1, or 2 for a jointly-owned
  * home): CGT is a per-person tax, so each owner gets their own annual exempt amount and rate.
@@ -33,5 +43,8 @@ final class CgtHistory
         public readonly int $mainResidenceMonths,
         public readonly bool $higherRateOnSale = false,
         public readonly int $owners = 1,
+        public readonly int $absenceAnyReasonMonths = 0,
+        public readonly int $absenceWorkElsewhereUkMonths = 0,
+        public readonly int $absenceWorkAbroadMonths = 0,
     ) {}
 }

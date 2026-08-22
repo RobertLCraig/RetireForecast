@@ -462,6 +462,73 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertFalse($history->higherRateOnSale);
     }
 
+    public function test_an_allowed_absence_bracketed_by_occupation_reaches_the_engine(): void
+    {
+        // Lived in 2006-2010, away on a UK posting 2010-2016, back home 2016-2020, let after.
+        // The absence is bracketed by real occupation, so its 72 months are handed over raw
+        // (the engine, not this mapper, applies the 4-year cap).
+        $history = (new HouseholdAssembler)->cgtHistoryFrom([
+            'everLet' => true,
+            'cgtHistory' => [
+                'purchasePrice' => '150000', 'acquisitionYear' => '2006',
+                'periods' => [
+                    ['fromYear' => '2006', 'use' => 'main_home'],
+                    ['fromYear' => '2010', 'use' => 'absence_uk_work'],
+                    ['fromYear' => '2016', 'use' => 'main_home'],
+                    ['fromYear' => '2020', 'use' => 'let'],
+                ],
+            ],
+        ], 2026);
+
+        $this->assertNotNull($history);
+        $this->assertSame((4 + 4) * 12, $history->mainResidenceMonths);
+        $this->assertSame(6 * 12, $history->absenceWorkElsewhereUkMonths);
+        $this->assertSame(0, $history->absenceAnyReasonMonths);
+        $this->assertSame(0, $history->absenceWorkAbroadMonths);
+    }
+
+    public function test_an_absence_never_returned_from_earns_nothing_unless_it_was_for_work(): void
+    {
+        // Same timeline both times: lived in, then away to the sale with no return. The
+        // any-reason allowance needs the owner to come back, so it earns nothing; a job that
+        // kept them away is excused that test, so its months still count.
+        $timeline = static fn (string $use): array => [
+            'everLet' => true,
+            'cgtHistory' => [
+                'purchasePrice' => '150000', 'acquisitionYear' => '2006',
+                'periods' => [
+                    ['fromYear' => '2006', 'use' => 'main_home'],
+                    ['fromYear' => '2016', 'use' => $use],
+                ],
+            ],
+        ];
+
+        $neverReturned = (new HouseholdAssembler)->cgtHistoryFrom($timeline('absence_any'), 2026);
+        $this->assertSame(0, $neverReturned?->absenceAnyReasonMonths);
+
+        $keptAwayByWork = (new HouseholdAssembler)->cgtHistoryFrom($timeline('absence_abroad'), 2026);
+        $this->assertSame(10 * 12, $keptAwayByWork?->absenceWorkAbroadMonths);
+    }
+
+    public function test_an_absence_before_ever_living_there_earns_nothing(): void
+    {
+        // Away first, moved in later: there is no occupation before the absence, so it cannot
+        // be deemed occupation however good the reason.
+        $history = (new HouseholdAssembler)->cgtHistoryFrom([
+            'everLet' => true,
+            'cgtHistory' => [
+                'purchasePrice' => '150000', 'acquisitionYear' => '2006',
+                'periods' => [
+                    ['fromYear' => '2006', 'use' => 'absence_abroad'],
+                    ['fromYear' => '2012', 'use' => 'main_home'],
+                ],
+            ],
+        ], 2026);
+
+        $this->assertSame(0, $history?->absenceWorkAbroadMonths);
+        $this->assertSame(14 * 12, $history?->mainResidenceMonths);
+    }
+
     public function test_cgt_history_is_null_without_letting_or_a_purchase_price(): void
     {
         // Not let → full PRR, no CGT history.

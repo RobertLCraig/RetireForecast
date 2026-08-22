@@ -448,9 +448,15 @@ class ScenarioBuilderTest extends TestCase
             ->assertDontSee('Capital gains on sale')
             ->set('property.everLet', true)
             ->assertSee('Capital gains on sale')
-            ->assertSee('When it was your main home vs let out')
+            ->assertSee('When it was your main home, let out, or you were away')
             ->call('addCgtPeriod', 'let')
-            ->assertSet('property.cgtHistory.periods.0.use', 'let');
+            ->assertSet('property.cgtHistory.periods.0.use', 'let')
+            // An allowed absence is a third kind of period, offered by its own button.
+            ->call('addCgtPeriod', 'absence_uk_work')
+            ->assertSet('property.cgtHistory.periods.1.use', 'absence_uk_work')
+            // An unknown kind falls back to the main home rather than reaching the assembler.
+            ->call('addCgtPeriod', 'holiday_let_but_typoed')
+            ->assertSet('property.cgtHistory.periods.2.use', 'main_home');
     }
 
     public function test_the_safety_buffer_months_is_captured_and_read_back(): void

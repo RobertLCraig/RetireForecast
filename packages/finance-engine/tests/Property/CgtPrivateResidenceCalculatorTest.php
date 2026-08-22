@@ -69,16 +69,73 @@ final class CgtPrivateResidenceCalculatorTest extends TestCase
         $this->assertSame(366_000, $result->tax->pence);               // £1,830 × 2
     }
 
+    public function test_an_allowed_absence_is_relieved_like_occupation(): void
+    {
+        // The let-period fixture, but the 51 chargeable months were an absence for any reason
+        // rather than a letting. The 3-year allowance relieves 36 of them, so relief runs
+        // (180 + 36 + 9) / 240 = £93,750; chargeable £6,250; less £3,000 = £3,250 @ 24% = £780.
+        $result = $this->calculator()->compute(
+            gain: Money::fromPounds(100_000),
+            totalOwnershipMonths: 240,
+            mainResidenceMonths: 180,
+            higherRate: true,
+            absenceAnyReasonMonths: 51,
+        );
+
+        $this->assertSame(36, $result->deemedOccupationMonths, 'capped at the statutory 3 years');
+        $this->assertSame(9_375_000, $result->privateResidenceReliefGain->pence);
+        $this->assertSame(78_000, $result->tax->pence);
+    }
+
+    public function test_each_absence_allowance_is_capped_on_its_own_and_working_abroad_is_not(): void
+    {
+        // 5 years away for any reason (capped to 3), 5 years on a UK posting (capped to 4) and
+        // 5 years working abroad (no cap) = 36 + 48 + 60 months of deemed occupation.
+        $result = $this->calculator()->compute(
+            gain: Money::fromPounds(100_000),
+            totalOwnershipMonths: 480,
+            mainResidenceMonths: 240,
+            higherRate: false,
+            owners: 1,
+            absenceAnyReasonMonths: 60,
+            absenceWorkElsewhereUkMonths: 60,
+            absenceWorkAbroadMonths: 60,
+        );
+
+        $this->assertSame(144, $result->deemedOccupationMonths);
+    }
+
+    public function test_relief_never_exceeds_the_ownership_period(): void
+    {
+        // Absences plus occupation plus the final 9 months overshoot the time owned; relief is
+        // still the whole gain and no more, so the apportionment can never exceed 100%.
+        $result = $this->calculator()->compute(
+            gain: Money::fromPounds(100_000),
+            totalOwnershipMonths: 240,
+            mainResidenceMonths: 220,
+            higherRate: true,
+            owners: 1,
+            absenceAnyReasonMonths: 36,
+        );
+
+        $this->assertSame(10_000_000, $result->privateResidenceReliefGain->pence);
+        $this->assertSame(0, $result->tax->pence);
+    }
+
     public function test_property_never_a_main_residence_gets_no_relief(): void
     {
-        // A pure investment property: no PRR, no final-period exemption.
+        // A pure investment property: no PRR, no final-period exemption, and no deemed
+        // occupation either — you cannot be deemed to live somewhere you never lived.
         $result = $this->calculator()->compute(
             gain: Money::fromPounds(50_000),
             totalOwnershipMonths: 120,
             mainResidenceMonths: 0,
             higherRate: false,
+            owners: 1,
+            absenceAnyReasonMonths: 36,
         );
 
+        $this->assertSame(0, $result->deemedOccupationMonths);
         $this->assertSame(0, $result->privateResidenceReliefGain->pence);
         // £50,000 - £3,000 AEA = £47,000 @ 18% = £8,460.
         $this->assertSame(846_000, $result->tax->pence);

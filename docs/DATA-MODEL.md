@@ -476,6 +476,26 @@ from the original plan, flagged inline:
   (single-property model — DECISIONS 2026-07-01).
 
 ## Known divergences (to close)
+- **CLOSED 2026-08-22 — a resident's Pension Credit is counted into the care contribution**
+  (card 0015, DECISIONS 2026-08-22). Guarantee Credit is assessable income for the care financial
+  assessment, but it is tax-free, so it never reached the taxable figure the means test read: the
+  household banked the award as income and was never charged it back. The care leg of `PathProjector`
+  now adds the household award split per living member to each resident's assessable income, so a
+  funded resident's credit is a wash rather than a windfall. No data-shape change. **Still open:** a
+  couple's award is not re-computed as two single awards on a permanent placement (two singles get
+  more than a couple), and the severe-disability addition is not withdrawn on one.
+- **CLOSED 2026-08-22 — CGT deemed-occupation absences are entered as such and relieved**
+  (card 0015, DECISIONS 2026-08-22). A qualifying absence used to be relieved only by the reader
+  marking it "main home" and applying the statutory cap by hand. `CgtHistory` gained
+  `absenceAnyReasonMonths` / `absenceWorkElsewhereUkMonths` / `absenceWorkAbroadMonths` (all
+  defaulting to 0, byte-identical to before), carrying raw months from three new period kinds on the
+  wizard's occupation timeline; `CgtParameters` gained the statutory caps (36 and 48 months, work
+  abroad uncapped) and `CgtPrivateResidenceCalculator` applies them, reporting what survived as
+  `CgtResult::deemedOccupationMonths` so the wizard can show it. `HouseholdAssembler` owns the one
+  test only a timeline can answer: the home must have been the main residence before the absence, and
+  been returned to after it, the return excused for the two work absences. **Still open:** the rule
+  that no other residence may be eligible for relief during the absence (the engine models one home),
+  and job-related accommodation.
 - **CLOSED 2026-07-31 — an employer's death-in-service cover is now modelled, and so is the moment it
   ceases** (adviser-parity B2, DECISIONS 2026-07-31). `Person::$deathInServiceCover`
   (`?DeathInServiceCover`; null = no cover, the adverse default and byte-identical to before) pays a

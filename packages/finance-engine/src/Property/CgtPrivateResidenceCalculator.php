@@ -11,9 +11,20 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  * Capital Gains Tax on selling a home, after Private Residence Relief.
  *
  * The gain is relieved for the months the property was the owner's main residence,
- * plus the final 9 months of ownership (always relieved once it has been the main
- * home at some point). The rest of the gain is chargeable. A property that was never
- * the main residence gets no relief or final-period exemption.
+ * plus any period of DEEMED occupation, plus the final 9 months of ownership (always
+ * relieved once it has been the main home at some point). The rest of the gain is
+ * chargeable. A property that was never the main residence gets no relief at all — no
+ * final-period exemption, and no deemed occupation either, which is why all three
+ * absence figures hang off the same `$mainResidenceMonths > 0` test.
+ *
+ * Deemed occupation is a period away from the home that still counts as living there
+ * (TCGA 1992 s223(3), gov.uk HS283 "Absence from your home"): up to 3 years in total for
+ * any reason, up to 4 years in total where a job required living elsewhere in the UK, and
+ * an unlimited period working abroad. The caps come from the tax-year registry's
+ * CgtParameters so the statute has one home; the caller passes only months that qualify
+ * (the home was the main residence before the absence, and after it except where the job
+ * prevented a return) — that is a question about the occupation timeline, which this
+ * month-count calculator cannot see.
  *
  * Lettings relief was restricted from 6 April 2020 to cases where the owner shared
  * occupancy with the tenant (verified 2026-06-27 against gov.uk HS283 — Private
@@ -37,12 +48,21 @@ final class CgtPrivateResidenceCalculator
         int $mainResidenceMonths,
         bool $higherRate,
         int $owners = 1,
+        int $absenceAnyReasonMonths = 0,
+        int $absenceWorkElsewhereUkMonths = 0,
+        int $absenceWorkAbroadMonths = 0,
     ): CgtResult {
         $params = $this->config->cgt;
         $owners = max(1, $owners);
 
+        // Each statutory allowance is a TOTAL across all absences of that kind, so the caps
+        // apply to the summed months, not per absence. Work abroad is uncapped.
+        $deemedOccupationMonths = min(max(0, $absenceAnyReasonMonths), $params->deemedOccupationAnyReasonMonths)
+            + min(max(0, $absenceWorkElsewhereUkMonths), $params->deemedOccupationWorkElsewhereUkMonths)
+            + max(0, $absenceWorkAbroadMonths);
+
         $relievedMonths = $mainResidenceMonths > 0
-            ? min($mainResidenceMonths + $params->privateResidenceFinalExemptionMonths, $totalOwnershipMonths)
+            ? min($mainResidenceMonths + $deemedOccupationMonths + $params->privateResidenceFinalExemptionMonths, $totalOwnershipMonths)
             : 0;
 
         $reliefGain = $totalOwnershipMonths > 0
@@ -67,6 +87,7 @@ final class CgtPrivateResidenceCalculator
             taxableGain: $perOwnerTaxable->times($owners),
             rate: $rate,
             tax: $perOwnerTax->times($owners),
+            deemedOccupationMonths: $mainResidenceMonths > 0 ? $deemedOccupationMonths : 0,
         );
     }
 }

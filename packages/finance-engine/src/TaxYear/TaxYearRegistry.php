@@ -270,6 +270,12 @@ final class TaxYearRegistry
      * 2026-06-27: residential gains are 18% within the basic-rate band and 24% above
      * it; the annual exempt amount is £3,000; the final 9 months of ownership always
      * qualify for Private Residence Relief (HS283).
+     *
+     * The deemed-occupation caps are statute, not an annually uprated rate: an absence
+     * of up to 3 years for any reason, and up to 4 years where a job kept you living
+     * elsewhere in the UK, still count as living there (TCGA 1992 s223(3); gov.uk HS283
+     * https://www.gov.uk/tax-sell-home/absence-from-home). Working abroad is uncapped,
+     * so it carries no parameter.
      */
     private static function cgtParameters(): CgtParameters
     {
@@ -278,6 +284,8 @@ final class TaxYearRegistry
             residentialBasicRate: Percent::fromPercent(18),
             residentialHigherRate: Percent::fromPercent(24),
             privateResidenceFinalExemptionMonths: 9,
+            deemedOccupationAnyReasonMonths: 36,
+            deemedOccupationWorkElsewhereUkMonths: 48,
         );
     }
 

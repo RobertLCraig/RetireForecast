@@ -131,9 +131,13 @@ is time-apportioned: the years you lived there (plus the final 9 months) are rel
 of the gain is taxable. Jointly-owned homes split the gain, and **each owner** gets their own £3,000
 allowance and pays their own rate (18% or 24%).
 
-Not modelled: Welsh LTT / Scottish LBTT; the SDLT surcharge on the replacement home; lettings relief;
-periods-of-absence ("deemed occupation") rules — a let period other than the final 9 months is
-treated as chargeable, entered by hand.
+Time you spent **away** from the home can still count as living there ("deemed occupation"): up to 3
+years in total for any reason, up to 4 years in total where a job kept you elsewhere in the UK, and any
+length of time working abroad. An away period only counts if the home was your main home before it, and
+you came back to it afterwards, though a job that stopped you coming back is excused that.
+
+Not modelled: Welsh LTT / Scottish LBTT; the SDLT surcharge on the replacement home; lettings relief.
+A let period other than the final 9 months is treated as chargeable.
 
 ## Means-tested benefits — the downsizing trap
 
@@ -382,8 +386,10 @@ An honest list of the current limits (each is flagged in the code):
   SDLT.
 - **Emergency tax** reflects the size of the over-deduction, not HMRC's PAYE tables to the pound.
 - **SDLT** surcharge is not applied to a replacement main residence; no first-time-buyer relief.
-- **Capital gains:** no lettings relief; deemed-occupation absences are entered by hand; one rate per
-  owner; capital losses are not relieved; the CGT band is judged on non-savings income.
+- **Capital gains:** no lettings relief; one rate per owner; capital losses are not relieved; the CGT
+  band is judged on non-savings income. Deemed-occupation absences are modelled, but we do not check
+  that no other home was eligible for relief while you were away, and job-related accommodation is not
+  distinguished.
 - **Inheritance tax** (when the toggle is on) values the estate at each death inside the projection and
   applies the headline bands (relationship-status aware), but not the fuller estate: no lifetime gifts or
   7-year taper, trusts, business/agricultural relief, the 36% charity rate, non-descendant beneficiaries,
@@ -391,9 +397,11 @@ An honest list of the current limits (each is flagged in the code):
   ages; a completed Monte Carlo run additionally shows the spread of IHT across futures.
 - **Care:** the lifetime care probability is sex-differentiated (women's chance is materially higher,
   anchored to the Dilnot/PSSRU ~1 in 4 population mean); age-conditioning of the onset rate and a
-  sex split of the duration remain flagged refinements; Monte Carlo only. The in-path means test does
-  not count Pension Credit into the contribution, assumes the local authority pays at the same fee
-  rate, and skips deferred-payment / 12-week-disregard mechanics (below the annual grid).
+  sex split of the duration remain flagged refinements; Monte Carlo only. The in-path means test
+  counts a resident's share of any Pension Credit into their contribution, but it does not re-assess a
+  couple as two single people when one moves into permanent care, assumes the local authority pays at
+  the same fee rate as a self-funder (so no third-party top-up is charged), and skips
+  deferred-payment / 12-week-disregard mechanics (below the annual grid).
 - **Mortgages:** no lender or broker **fees**, arrangement/redemption charges or **early-repayment
   charges** are modelled anywhere, so the cost of taking or leaving a deal is understated. On a
   repayment mortgage there is no input for **overpayments** (the overpayment input applies only to an
