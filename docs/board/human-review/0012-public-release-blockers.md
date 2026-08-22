@@ -199,3 +199,5 @@ does not exist (this project is PHPUnit), so the suite was `php artisan test`. A
 `app/Forecast/SimulationRunner.php` — pre-existing drift in files this card never touched, so I
 left them alone again rather than widen the diff. `pint --dirty` is clean. Somebody should run a
 bare `pint` on master.
+
+**2026-08-22** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with 2 of 4 acceptance criteria still open, so what this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
