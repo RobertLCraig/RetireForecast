@@ -101,3 +101,39 @@ snapshots at fresh seeds for nothing.
 button is verified — plan set, dispatch, worker, completion, and the assembled figures the screen
 reads. The unverified step is the render itself: Herd serves this project from `C:\Dev\RetireForecast`,
 not this worktree, so **this still needs Rob's browser pass**, folded into card 0001.
+
+**2026-08-22 (third pass)** Resumed, changed no code, and found nothing left that this session can
+honestly close. Recording that as a result rather than passing the card round again.
+
+**Nothing regressed, and nothing moved on its own.** Same daemon, PID 68992, still up since
+03:33:02 local, still the JIT `queue:work` line from HANDOVER "How to pick up". Connection `pgsql`,
+database `retireforecast`, 0 pending jobs, 0 failed jobs, no run in a non-terminal state (120 `done`,
+1 `cancelled`). Latest run is still 769 and `Scenario::find(9)->latestCompletedRun()` still returns
+769 — byte-for-byte the state the second pass left. So the second pass's findings still hold and are
+not restated here.
+
+**There is no headless fact left to win, and that is now checked rather than assumed.**
+`ScenarioCompare::runFullFamily()` is two lines — `plans()->map(fn ($plan) => $runner->dispatch($plan)->id)`.
+Its map is covered by `ScenarioCompareTest::test_re_run_all_queues_a_full_run_for_every_plan_compared`,
+and `dispatch()` → live worker → `done` is run 769. The composition has no third part. Driving the
+component live — against Rob's family or a throwaway one — would exercise no untested line while
+overwriting stored snapshots at fresh seeds, so I did not. Task 2 stays open because clicking it is
+the one thing left, not because verification was skipped.
+
+**This card is now waiting on a person, not on work.** Its only open criterion needs the two words
+*in-app*, and this worktree is not the tree Herd serves, so a browser check cannot be claimed from
+here at all — not for want of effort, but by construction. Three passes have each ended at the same
+step. Suggest it stops being re-picked as a build card and rides on **card 0001's** browser sign-off,
+which is the same click. Nothing in the repository blocks it.
+
+**One exception found, deliberately not fixed.** `vendor\bin\pint.bat --test` fails on
+`app\Forecast\QuickWhatIf.php` and `app\Forecast\SimulationRunner.php`. Both are byte-identical to
+HEAD with a clean tree, so this is pre-existing style drift inherited from master, not from this
+card. Fixing it would put unrelated changes in this card's commit, so it is left alone and flagged
+here; it wants its own card. `--dirty` (the documented house command) is clean, because this pass
+changed no PHP.
+
+**HANDOVER not touched, on purpose.** This pass changed no code and no repository state. "The worker
+is running" is machine state, not repo state — the restart line already lives in HANDOVER "How to
+pick up", and the browser gate is already recorded there under 0001. There is no fact here that
+HANDOVER does not already own.
