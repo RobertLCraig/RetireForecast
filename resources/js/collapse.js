@@ -48,23 +48,32 @@ function headingHost(section, heading) {
     return host
 }
 
+// The control the reader actually operates. It is a real <button> INSIDE the <h2>, not the
+// <h2> itself wearing role="button": that role replaces the heading semantics, so a long
+// results page loses every entry from the screen-reader heading list (axe aria-allowed-role).
+// Falls back to the heading while the button is being created.
+function controlFor(heading) {
+    return heading.querySelector('[data-collapse-toggle]') || heading
+}
+
 function apply(section, heading, collapsed) {
     const host = headingHost(section, heading)
+    const control = controlFor(heading)
     Array.from(section.children).forEach((child) => {
         if (child !== host) {
             child.hidden = collapsed
         }
     })
     section.dataset.collapsed = collapsed ? 'true' : 'false'
-    heading.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
+    control.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
 
-    let chevron = heading.querySelector('[data-collapse-chevron]')
+    let chevron = control.querySelector('[data-collapse-chevron]')
     if (!chevron) {
         chevron = document.createElement('span')
         chevron.setAttribute('data-collapse-chevron', '')
         chevron.setAttribute('aria-hidden', 'true')
-        chevron.className = 'mr-2 inline-block text-gray-400'
-        heading.prepend(chevron)
+        chevron.className = 'mr-2 inline-block text-gray-600'
+        control.prepend(chevron)
     }
     chevron.textContent = collapsed ? '▸' : '▾' // ▸ / ▾
 }
@@ -79,22 +88,23 @@ function enhance(section) {
     const saved = stored(id)
     const collapsed = saved === null ? DEFAULT_COLLAPSED.has(id) : saved === '1'
 
-    if (section.dataset.collapseReady !== 'true') {
-        heading.setAttribute('role', 'button')
-        heading.setAttribute('tabindex', '0')
-        heading.classList.add('cursor-pointer', 'select-none')
+    if (!heading.querySelector('[data-collapse-toggle]')) {
+        // Move the heading's own content into a real button, so the h2 stays a heading and the
+        // control gets native Enter/Space, focus and role. Tailwind's preflight makes a button
+        // inherit the heading's font, so this is invisible apart from the pointer cursor.
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.setAttribute('data-collapse-toggle', '')
+        button.className = 'flex w-full cursor-pointer select-none items-center text-left'
+        while (heading.firstChild) {
+            button.appendChild(heading.firstChild)
+        }
+        heading.appendChild(button)
 
-        const toggle = () => {
+        button.addEventListener('click', () => {
             const next = section.dataset.collapsed !== 'true'
             apply(section, heading, next)
             remember(id, next)
-        }
-        heading.addEventListener('click', toggle)
-        heading.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                toggle()
-            }
         })
         section.dataset.collapseReady = 'true'
     }

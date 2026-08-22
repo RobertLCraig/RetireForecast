@@ -1,6 +1,5 @@
 {
     "defaults": {
-        "standard": "WCAG2AA",
         "runners": ["axe"],
         "timeout": 30000,
         "chromeLaunchConfig": { "args": ["--no-sandbox", "--disable-gpu"] }
@@ -22,6 +21,11 @@
                 "navigate to http://127.0.0.1:8000/welcome",
                 "wait for element form[action$='/welcome'] button to be visible"
             ]
-        }
+        },
+        { "url": "http://127.0.0.1:8000/", "viewport": { "width": 375, "height": 667, "isMobile": true, "deviceScaleFactor": 2 } },
+        { "url": "http://127.0.0.1:8000/login", "viewport": { "width": 375, "height": 667, "isMobile": true, "deviceScaleFactor": 2 } },
+        { "url": "http://127.0.0.1:8000/register", "viewport": { "width": 375, "height": 667, "isMobile": true, "deviceScaleFactor": 2 } },
+        { "url": "http://127.0.0.1:8000/forgot-password", "viewport": { "width": 375, "height": 667, "isMobile": true, "deviceScaleFactor": 2 } },
+        { "url": "http://127.0.0.1:8000/methodology", "viewport": { "width": 375, "height": 667, "isMobile": true, "deviceScaleFactor": 2 } }
     ]
 }

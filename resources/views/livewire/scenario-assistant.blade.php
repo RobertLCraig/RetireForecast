@@ -15,7 +15,9 @@
             class="fixed right-0 top-1/3 z-40 flex items-center gap-2 rounded-l-lg bg-blue-600 py-3 pl-3 pr-2 text-sm font-medium text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
             <span aria-hidden="true">💬</span>
-            <span class="hidden sm:inline">Ask about this forecast</span>
+            {{-- sr-only rather than hidden below sm: `hidden` left the tab with no accessible name at
+                 all on a phone (axe button-name, WCAG 4.1.2), since the emoji is aria-hidden. --}}
+            <span class="sr-only sm:not-sr-only sm:inline">Ask about this forecast</span>
         </button>
     @else
         <section

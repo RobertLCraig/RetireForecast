@@ -13,8 +13,13 @@
     x-on:step-changed.window="$nextTick(() => $refs.stepHeading?.focus())"
     x-on:validation-failed.window="$nextTick(() => $refs.errorSummary?.focus())">
     <div>
+        {{-- One expression, not @if/@elseif/@else: the directive form had `forecast@else` glued to a
+             word character, which Blade does not compile, so the whole heading rendered EMPTY on a new
+             forecast (found by the axe sweep as an empty-heading violation). --}}
         <h1 class="text-2xl font-semibold text-gray-900">
-            @if ($childMode){{ $editing ? 'Edit what-if' : 'Create a what-if' }}@elseif ($editing)Edit forecast@else New forecast @endif
+            {{ $childMode
+                ? ($editing ? 'Edit what-if' : 'Create a what-if')
+                : ($editing ? 'Edit forecast' : 'New forecast') }}
         </h1>
         <p class="mt-1 text-sm text-gray-600">
             @if ($childMode)
@@ -45,7 +50,8 @@
                             </option>
                         @endforeach
                     </select>
-                    <p class="mt-1 text-xs text-gray-500">{{ collect($importProfiles)->firstWhere('key', $importProfile)['description'] ?? '' }}</p>
+                    {{-- gray-600, not gray-500: this sits on the blue-50 tint, where gray-500 is 4.44:1 (under AA). --}}
+                    <p class="mt-1 text-xs text-gray-600">{{ collect($importProfiles)->firstWhere('key', $importProfile)['description'] ?? '' }}</p>
                 </div>
                 <div>
                     <label for="importFile" class="{{ $label }}">File (.xlsx or .csv)</label>

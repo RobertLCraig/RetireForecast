@@ -39,7 +39,11 @@ final class CombinationComparisonGateTest extends TestCase
 
     public function test_advice_mode_reorders_best_first_and_shows_the_ranking(): void
     {
-        // The suite runs with compliance.personal_use = true (advice mode) → interpret allowed.
+        // Advice mode → interpret allowed. Pinned rather than leaned on: the suite's default is
+        // advice mode today, but it must still pass under COMPLIANCE_PERSONAL_USE=false, which is
+        // how the public guidance-only posture is rehearsed before a release (board card 0012).
+        config(['compliance.personal_use' => true]);
+
         $base = ScenarioFixture::rich($this->user);
         $stronger = $this->childOf($base, ['expenseLines.ess1.amount' => '12000'], 'Spend less');
         $this->completedRun($base, $this->mc(0.55));      // weaker

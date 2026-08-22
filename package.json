@@ -5,7 +5,8 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "a11y": "pa11y-ci"
+        "a11y": "pa11y-ci",
+        "a11y:auth": "node scripts/a11y-authenticated.mjs"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",

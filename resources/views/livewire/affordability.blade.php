@@ -127,7 +127,8 @@
                                     of which {{ $card['spendable']['survivor']['monthlyFree'] }} is free to choose.
                                 </dd>
                             @endif
-                            <dd class="mt-1 text-xs text-gray-500">
+                            {{-- gray-600, not gray-500: on the blue-50 tint gray-500 is 4.44:1 (under AA). --}}
+                            <dd class="mt-1 text-xs text-gray-600">
                                 In today's money, and only what this plan can actually pay for.
                                 You'd also have {{ $card['spendable']['now']['availableCapital'] }} in cash and savings to hand.
                             </dd>

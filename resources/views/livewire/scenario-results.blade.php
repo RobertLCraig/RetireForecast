@@ -41,7 +41,8 @@
          section in view (resources/js/toc.js). Sticky on large screens, hidden on small. --}}
     @if (count($toc) > 1)
         <nav aria-label="On this page" data-results-toc class="sticky top-8 hidden self-start lg:block">
-            <p class="px-3 pb-2 text-xs font-semibold tracking-wide text-gray-400 uppercase">On this page</p>
+            {{-- gray-600, not gray-400: gray-400 on the gray-50 page is 2.48:1, well under AA. --}}
+            <p class="px-3 pb-2 text-xs font-semibold tracking-wide text-gray-600 uppercase">On this page</p>
             <ul class="space-y-0.5 border-l border-gray-200">
                 @foreach ($toc as $item)
                     <li>
@@ -1391,7 +1392,9 @@
             @else
                 <p class="mt-3 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm font-medium text-green-900">✓ Usable money never runs out on this strategy.</p>
             @endif
-            <p class="mt-1 text-xs text-gray-500">Rows are tinted: <span class="rounded bg-green-50 px-1">surplus</span> (income covers spend), plain (drawing on savings), <span class="rounded bg-amber-50 px-1">shortfall</span> (spend not fully met), <span class="rounded bg-red-50 px-1">below buffer</span>.</p>
+            {{-- gray-600, not gray-500: the tinted swatch spans below inherit it, and gray-500 on the
+                 red-50 tint is 4.42:1 (under AA). --}}
+            <p class="mt-1 text-xs text-gray-600">Rows are tinted: <span class="rounded bg-green-50 px-1">surplus</span> (income covers spend), plain (drawing on savings), <span class="rounded bg-amber-50 px-1">shortfall</span> (spend not fully met), <span class="rounded bg-red-50 px-1">below buffer</span>.</p>
             @if ($ladder['showGrowth'])
                 <p class="mt-1 text-xs text-gray-500">Your investments earn in two ways: <strong>Investment income</strong> (interest on cash and dividends from funds) is paid out and taxed each year, so it's part of the income columns; <strong>Investment growth</strong> is the rise in the value of your funds/shares — it stays invested (taxed only as capital gains if you later sell outside an ISA/pension), which is why wealth can grow even in a year you're drawing down.</p>
             @endif

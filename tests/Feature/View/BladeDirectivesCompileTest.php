@@ -17,12 +17,16 @@ use Tests\TestCase;
  */
 final class BladeDirectivesCompileTest extends TestCase
 {
+    /**
+     * Unambiguous signals of a directive that failed to compile: an end-token, a bare `@else`,
+     * or an opener with its argument list, still present in the COMPILED output. Real directives
+     * are gone by then. `@else` earns its own alternative because it takes no argument list:
+     * `forecast@else` left the builder's `<h1>` rendering EMPTY and this test still passed.
+     */
+    private const LEAK = '/@(?:end(?:if|foreach|forelse|for|while|unless|switch)|else|(?:if|elseif|unless|foreach|forelse|for|while|switch)\s*\()/';
+
     public function test_no_view_leaks_an_uncompiled_control_directive(): void
     {
-        // Unambiguous signals of a directive that failed to compile: an end-token, or an opener
-        // with its argument list, still present in the COMPILED output. Real directives are gone.
-        $leak = '/@(?:end(?:if|foreach|forelse|for|while|unless|switch)|(?:if|elseif|unless|foreach|forelse|for|while|switch)\s*\()/';
-
         $offenders = [];
         foreach (File::allFiles(resource_path('views')) as $file) {
             if (! str_ends_with($file->getFilename(), '.blade.php')) {
@@ -30,7 +34,7 @@ final class BladeDirectivesCompileTest extends TestCase
             }
 
             $compiled = Blade::compileString(File::get($file->getPathname()));
-            if (preg_match_all($leak, $compiled, $m)) {
+            if (preg_match_all(self::LEAK, $compiled, $m)) {
                 $offenders[$file->getRelativePathname()] = array_unique($m[0]);
             }
         }
@@ -41,5 +45,14 @@ final class BladeDirectivesCompileTest extends TestCase
             'Blade left a control directive uncompiled (likely glued to a word char, e.g. word@if): '
                 .json_encode($offenders, JSON_PRETTY_PRINT),
         );
+    }
+
+    public function test_the_leak_pattern_catches_a_glued_directive(): void
+    {
+        // Guards against a vacuous pass: the two real shapes this has been bitten by, so
+        // narrowing the pattern later cannot quietly stop catching them.
+        foreach (['finished@if ($x)Yes@endif', '@if ($a)A@elseif ($b)forecast@else New @endif'] as $source) {
+            $this->assertMatchesRegularExpression(self::LEAK, Blade::compileString($source), "Missed a glued directive in: {$source}");
+        }
     }
 }

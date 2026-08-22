@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Forecast;
 
 use App\Compliance\Interpretation;
+use App\Compliance\OutputPhrasing;
 use App\Models\Scenario;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
@@ -247,7 +248,9 @@ final class AffordabilityAssessment
 
     /**
      * The plain-English verdict sentence. Deliberately blunt on a failure (the reader needs to
-     * hear it) but always a factual statement about the expected path, never "you should".
+     * hear it) but always a factual statement about the expected path, never a directive
+     * recommendation. It sits in the neutral zone, so it stays on the guidance side of the
+     * line that {@see OutputPhrasing} draws.
      */
     private static function verdict(string $tier, ?int $runsOutYear, ?string $runsOutAges, ?int $yearsFromNow, Money $moneyLeft): string
     {

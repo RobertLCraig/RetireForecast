@@ -109,6 +109,21 @@ historical path** of returns/inflation into the same `PathProjector` (which alre
   the **fee level** and **need probability/duration** from LaingBuisson + PSSRU (each cited with `verified_on`).
   A strictly ONS-only care model would be materially incomplete. **Needs Rob's decision** (see below).
 
+## Re-verified 2026-08-22 (board card 0012, the public-release swap)
+
+Downloaded **BoE "A Millennium of Macroeconomic Data" v3.1** again and searched the whole
+workbook, not just sheet A31. The 2026-07-01 correction holds and is now doubly confirmed:
+sheet **A31 "Interest rates & asset ps"** carries *share price indices* (Mirowski 1981,
+Acheson et al 2009, Grossman 1997) plus bond and bill yields, and the strings "total return",
+"equity return" and "dividend yield" **appear nowhere in the file**. There is no equity
+dividend series to reconstruct a total return from, so BoE alone still cannot replace the JST
+numbers without inventing the dividend leg.
+
+That leaves the same three-way tension, and **which way to go is Rob's call, not a build**:
+license DMS/Barclays, ship BoE prices plus a documented dividend-yield assumption (cheaper,
+measurably less accurate on the one thing the panel exists to measure), or drop the shipped
+historical numbers for a public build. The card carries the ask.
+
 ## Decisions (resolved 2026-07-01)
 
 - [x] **Stress-test data source → JST macrohistory R6** (Rob, after the BoE-has-no-total-return correction).

@@ -1,4 +1,4 @@
-# Accessibility (WCAG 2.1 AA) CI sweep with Pa11y CI (axe runner — see .pa11yci.json).
+# Accessibility (WCAG 2.2 AA) CI sweep with Pa11y CI (axe runner, see .pa11yci.json).
 #
 # This is the CI home for the a11y gate; it runs on the GitHub remote (first ran 2026-06-29).
 # To run the same sweep locally instead, see docs/spec/A11Y.md.

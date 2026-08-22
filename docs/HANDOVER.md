@@ -4,7 +4,7 @@
 
 **Stage:** active
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-08-22 (card 0011 capacity for loss built; the comparison still should not be read off until the ranking-movers at the head of the queue are fixed)_
+_Last updated: 2026-08-22 (cards 0011 capacity for loss and 0012 release blockers, the latter partly: nonce CSP and the guidance-only posture done, the stress-test licence and the manual a11y pass still open; the comparison still should not be read off until the ranking-movers at the head of the queue are fixed)_
 
 ## Goal & success criteria
 Full plan: [docs/build/PLAN.md](build/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
@@ -23,7 +23,7 @@ Single source of truth: the engine's readonly DTOs under `packages/finance-engin
 ## Architecture / stack
 - **Laravel 13.17** app at the repo root, on local **Postgres 18** (moved off SQLite 2026-07-09, see Decisions). **Fortify** auth + **Filament 5** admin (which pulled **Livewire 4**). Front end is hand-rolled Livewire 4 full-page components (`app/Livewire/`) + **ApexCharts** (progressive enhancement: every figure is also text, an accessible `<table>` and CSV).
 - **`packages/finance-engine`**: a framework-free Composer **path package** (`retireforecast/finance-engine`, symlinked). Zero Laravel deps, no I/O, no clock. This is the product; the app is a shell. Must never `use App\...` or `Illuminate\...` (guarded by `EngineIsolationTest`).
-- Money is hand-rolled integer pence. PHPUnit 12. `phpspreadsheet` is an app-layer dependency (`.xlsx` import only). A CSP and hardening headers ship on the `web` group (`config/security.php`); Filament `/admin` is out of scope.
+- Money is hand-rolled integer pence. PHPUnit 12. `phpspreadsheet` is an app-layer dependency (`.xlsx` import only). A CSP and hardening headers ship on the `web` group (`config/security.php`); Filament `/admin` is out of scope. `script-src` is **nonce-based** (minted per request, handed to the Vite helper, which Livewire reads back); `'unsafe-eval'` is the one remaining relaxation, because Livewire 4's bundled Alpine evaluates through the Function constructor.
 
 ## Key files / structure
 A map, not an inventory. Browse the tree for the rest; per-file rationale lives in each file's docblock.
@@ -104,7 +104,8 @@ npm run build                        # build assets (public/build is gitignored)
 - **`/handover save`** — wrapping up. Moves cards first, edits this doc second.
 - **`/checkpoint`** — update the doc set and commit without a full handover pass.
 - **`php artisan scenarios:audit`** — run before and after any engine change, and before looking at a screen. Seven checks over every stored scenario, non-zero exit so it can gate a release.
-- **`php artisan compliance:advice-audit`** — the standing inventory of advice-mode spots, needed before any public release.
+- **`php artisan compliance:advice-audit`** — the standing inventory of advice-mode spots, needed before any public release. `--strict` exits non-zero, which is the pre-release gate form.
+- **`npm run a11y`** (public pages, also in CI) and **`npm run a11y:auth`** (the signed-in pages; needs the app served and a demo scenario) — both drive current axe at a desktop and a phone viewport. See [docs/spec/A11Y.md](spec/A11Y.md).
 - **ProgressBoard** at `C:\Dev\ProgressBoard` — renders this board (and every other project's) ordered by what is waiting on Rob, and moves cards by `git mv` plus a commit. `php artisan serve --port=8737`, or Herd at `progressboard.test`.
 - **`/code-review`** — for a working diff. `/security-review` before any public release.
 

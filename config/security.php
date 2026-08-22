@@ -35,21 +35,30 @@ return [
     /*
     | The Content-Security-Policy, one directive per key, assembled in source order.
     |
-    | script-src and style-src keep 'unsafe-inline'/'unsafe-eval' because the current
-    | front-end stack needs them: Livewire injects an inline init script, Alpine
-    | evaluates its expressions via the Function constructor, and ApexCharts injects
-    | inline styles. Tightening these to nonce-based (dropping 'unsafe-inline' and
-    | 'unsafe-eval') requires Alpine's CSP build and a real-browser verification pass,
-    | and is tracked as the residual go-live item. The structural directives below
-    | (default-src, object-src, base-uri, form-action, frame-ancestors) are the high
-    | value protections and do not depend on how inline scripts are handled.
+    | The literal source expression 'nonce' is a PLACEHOLDER: App\Http\Middleware\
+    | SecurityHeaders replaces it with this request's 'nonce-<random>' and hands the same
+    | value to Laravel's Vite helper, which Livewire also reads, so every script tag the
+    | app emits (the Vite bundle, the Livewire runtime and its inline init script) carries
+    | it, and an injected inline script does not. Note the browser rule: once a nonce is
+    | present in script-src, 'unsafe-inline' is IGNORED, so it is gone from below rather
+    | than merely redundant.
+    |
+    | 'unsafe-eval' STAYS on script-src, and is the residual relaxation: Livewire 4 bundles
+    | Alpine, which evaluates its expressions through the Function constructor. Removing it
+    | needs Alpine's CSP build, which Livewire 4 does not expose (its own wire: directives
+    | compile to Alpine expressions), so it is a front-end rewrite rather than a config
+    | change. style-src keeps 'unsafe-inline' because ApexCharts injects inline styles.
+    |
+    | The structural directives below (default-src, object-src, base-uri, form-action,
+    | frame-ancestors) are the high value protections and do not depend on how inline
+    | scripts are handled.
     |
     | Set a directive to null to omit it.
     */
 
     'csp' => [
         'default-src' => "'self'",
-        'script-src' => "'self' 'unsafe-inline' 'unsafe-eval'",
+        'script-src' => "'self' 'nonce' 'unsafe-eval'",
         'style-src' => "'self' 'unsafe-inline'",
         'img-src' => "'self' data:",
         'font-src' => "'self'",
