@@ -105,7 +105,7 @@ npm run build                        # build assets (public/build is gitignored)
 - **`/checkpoint`** — update the doc set and commit without a full handover pass.
 - **`php artisan scenarios:audit`** — run before and after any engine change, and before looking at a screen. Seven checks over every stored scenario, non-zero exit so it can gate a release.
 - **`php artisan compliance:advice-audit`** — the standing inventory of advice-mode spots, needed before any public release. `--strict` exits non-zero, which is the pre-release gate form.
-- **`npm run a11y`** (public pages, also in CI), **`npm run a11y:auth`** (the signed-in pages, `/account/security` included) and **`npm run a11y:focus`** (WCAG 2.2 2.4.11: nothing focusable hidden under the assistant overlay). The last two need the app served and a demo scenario. See [docs/spec/A11Y.md](spec/A11Y.md), whose table records where each unautomatable 2.2 criterion stands.
+- **`npm run a11y`** (public pages, also in CI), **`npm run a11y:auth`** (the signed-in pages, including `/account/security` in all three of its two-factor states, which it enrols into and back out of) and **`npm run a11y:focus`** (WCAG 2.2 2.4.11: nothing focusable hidden under the assistant overlay). The last two need the app served and a demo scenario. See [docs/spec/A11Y.md](spec/A11Y.md), whose table records where each unautomatable 2.2 criterion stands.
 - **ProgressBoard** at `C:\Dev\ProgressBoard` — renders this board (and every other project's) ordered by what is waiting on Rob, and moves cards by `git mv` plus a commit. `php artisan serve --port=8737`, or Herd at `progressboard.test`.
 - **`/code-review`** — for a working diff. `/security-review` before any public release.
 

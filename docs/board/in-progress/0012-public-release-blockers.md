@@ -149,3 +149,53 @@ One thing I could not settle from the repository: whether the assistant would ev
 public build (`ASSISTANT_ENABLED` needs a local Ollama). I fixed 2.4.11 for it regardless, because
 it is on in this environment and the fix is one attribute, but if the assistant is out of a public
 build then 2.4.11 was never a public-bar blocker.
+
+**2026-08-22 (third pass)** Went to close the one coverage gap the last pass left open, and found
+first that the sweep which reported that gap could not be trusted.
+
+**The signed-in sweep was reporting green for pages it never loaded.** Confirming the password
+clicked a bare `button[type=submit]`, and on that page the signed-in layout's **Log out** button is
+the first submit in the DOM. So the sweep signed itself out at that point and carried on: the
+desktop `/account/security` scan was really the landing page, and every one of the seven mobile
+scans was really the login page. Both of the previous passes' counts were about six scans short of
+what they claimed. Fixed by scoping the click to the form, but the click was the symptom. The
+defect is that a walked session can be lost and nothing noticed, so `scan()` now compares
+`location.pathname` with the path it is labelling and fails the run on a mismatch. Proved
+non-vacuous rather than asserted: run with a bad password it prints 14 FAILs where it used to print
+14 oks. **With that fixed, every page was re-scanned for real and all of them still pass**, so this
+turned up no hidden violation, only hidden absence of proof.
+
+**The last coverage gap is closed.** `/account/security` is now swept in all three of its states,
+not just the one it loads in. The enrolment panel (QR + setup key) and the enabled panel (recovery
+codes) only render after clicks that mutate the user, which is why no script had ever seen them, so
+the sweep now drives the whole enrolment: click Turn on, scan, read the setup key off the page,
+compute the authenticator code itself, confirm, scan, then turn 2FA back off so the user is left as
+found. That last step is what makes it re-runnable. The TOTP is fifteen lines of node's own
+`crypto` rather than a new dependency, since this is its only caller. Both new states pass at both
+viewports, first time, with no fixes needed. **19 signed-in page/viewport scans (up from a claimed
+15, a real 9) and 11 public URLs at zero violations, plus `npm run a11y:focus` green at both
+viewports**, all with `ASSISTANT_ENABLED=true` so the assistant markup was in scope throughout.
+
+One incidental thing worth knowing for anyone extending these scripts: puppeteer typing into a
+field immediately after `goto` can silently go nowhere, which is how the empty confirm-password
+form sat there until the navigation timed out rather than saying what was wrong. The script now
+fills through a helper that reads the value back and retries once. It is a harness race, not an app
+bug: the key events all arrive at the field and nothing prevents them.
+
+**Why #4 still stays open.** Unchanged in kind from the last pass, and I do not think any further
+machine work moves it. Every page state a script can reach is swept; what is left needs a person at
+a browser (the ApexCharts canvases, 400% reflow, a screen-reader walkthrough, link text in context,
+meaning carried by colour inside a chart), and **this is a worktree, so the Herd site serves
+C:\Dev\RetireForecast and not this code**. Everything above ran against a locally served copy of
+this tree on a throwaway SQLite database, which is a real check of this code but is not the human
+pass. That belongs with card 0001.
+
+**#2 is unchanged and still Rob's call.** Nothing in the repository has moved on it. The three
+options and the recommendation from the first pass stand; I have deliberately not picked one.
+
+Two things I could not settle from the repository, both carried over. `.\vendor\bin\pest.bat` still
+does not exist (this project is PHPUnit), so the suite was `php artisan test`. And a bare
+`vendor/bin/pint` still wants to reformat `app/Forecast/QuickWhatIf.php` and
+`app/Forecast/SimulationRunner.php` — pre-existing drift in files this card never touched, so I
+left them alone again rather than widen the diff. `pint --dirty` is clean. Somebody should run a
+bare `pint` on master.
