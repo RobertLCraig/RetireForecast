@@ -74,9 +74,30 @@ final class DcPension implements Pension
      */
     public function withAnnuityPurchase(?AnnuityPurchase $annuityPurchase): self
     {
+        return $this->copy($this->currentValue, $annuityPurchase);
+    }
+
+    /**
+     * The same pot at a different value (immutable) — the capacity-for-loss stress, which marks
+     * every invested pot down by the fall being tested.
+     */
+    public function withCurrentValue(Money $currentValue): self
+    {
+        return $this->copy($currentValue, $this->annuityPurchase);
+    }
+
+    /**
+     * The one place this DTO is rebuilt from an existing one, for the same reason
+     * {@see Household::copy()} exists: a field added above and forgotten in a wither would be
+     * silently dropped from a swept or stressed forecast. `AssetWitherTest` guards it. Both
+     * parameters are required — a nullable "keep what was there" default would make
+     * `withAnnuityPurchase(null)` silently fail to CLEAR the annuity.
+     */
+    private function copy(Money $currentValue, ?AnnuityPurchase $annuityPurchase): self
+    {
         return new self(
             $this->ownerId,
-            $this->currentValue,
+            $currentValue,
             $this->ongoingContribution,
             $this->employerContribution,
             $this->earliestAccessAge,

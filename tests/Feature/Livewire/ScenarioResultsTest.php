@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Livewire;
 
+use App\DecisionSupport\CapacityForLoss;
 use App\Enums\ScenarioStatus;
 use App\Enums\SimulationStatus;
 use App\Forecast\ScenarioForecaster;
@@ -170,6 +171,27 @@ class ScenarioResultsTest extends TestCase
             ->call('preview')
             ->assertSee('The risk of late-life care costs')
             ->assertSee('Chance care costs you something');
+    }
+
+    /**
+     * Capacity for loss states BOTH figures the card asks for (a percentage fall and the cash it
+     * amounts to) beside the total wealth they are measured against, so a reader can check the
+     * arithmetic rather than take the percentage on trust. Deterministic, so it needs no run.
+     */
+    public function test_the_results_page_states_how_far_wealth_could_fall(): void
+    {
+        $scenario = $this->scenario();
+        $capacity = app(CapacityForLoss::class)->forScenario($scenario);
+        $this->assertFalse($capacity['alreadyBreached'], 'the rich fixture should have some room to lose');
+        $this->assertFalse($capacity['survivesTotalLoss']);
+
+        $this->get(route('scenarios.results', $scenario))
+            ->assertOk()
+            ->assertSee('How much could you afford to lose?')
+            ->assertSee('The most your wealth could fall')
+            ->assertSee($capacity['percent'].'%')
+            ->assertSee($capacity['cash']->format())
+            ->assertSee($capacity['wealth']->format());
     }
 
     public function test_the_results_page_shows_the_assumption_sensitivity_overlay(): void

@@ -19,6 +19,7 @@
         ['id' => 'sec-plsa', 'label' => 'PLSA living standards', 'show' => (bool) $plsa],
         ['id' => 'sec-income-floor', 'label' => 'Spending vs secure income', 'show' => (bool) $incomeFloor],
         ['id' => 'sec-protection', 'label' => 'If one of you died', 'show' => (bool) ($protection ?? null)],
+        ['id' => 'sec-capacity', 'label' => 'How much you could lose', 'show' => (bool) ($capacityForLoss ?? null)],
         ['id' => 'sec-advice-cost', 'label' => 'What advice would cost', 'show' => (bool) ($adviceCost ?? null)],
         ['id' => 'sec-iht', 'label' => 'Inheritance tax', 'show' => (bool) ($iht ?? null)],
         ['id' => 'sec-withdrawal-sequencing', 'label' => 'How you draw your money', 'show' => (bool) $withdrawal],
@@ -923,6 +924,63 @@
 
             <p class="mt-4 text-xs text-gray-500">
                 These figures come from the expected path, not an unlucky one, and each is the smallest lump sum that restores the plan to where it stands today — rounded up to the nearest £1,000, because a protection figure rounded down would not quite do the job. It says how large a hole a death would leave; it does not price a policy or say which one to buy, and life cover on someone older or in poor health can be expensive or simply unavailable. A lump sum is only one way to close the hole: less borrowing, more savings or a larger survivor's pension close the same gap, and the "How far can we go?" panel below can put numbers on those. Cover written in trust normally falls outside the estate for Inheritance Tax, and money paid to a survivor counts as capital for means-tested benefits, which can affect Pension Credit.
+            </p>
+
+            <x-signpost class="mt-4" />
+        </section>
+    @endif
+
+    {{-- Capacity for loss (adviser-parity B5): the question an adviser must ask before anyone
+         takes investment risk, which a probability cannot answer — how much of a fall could this
+         plan actually absorb? Searched, not asserted: the largest across-the-board fall in wealth
+         at which the essential floor is still met in every year. --}}
+    @if ($capacityForLoss)
+        <section id="sec-capacity" aria-labelledby="capacity-heading" class="{{ $card }} scroll-mt-6">
+            <h2 id="capacity-heading" class="text-xl font-semibold text-gray-900">How much could you afford to lose?</h2>
+            <p class="mt-1 text-sm text-gray-600">
+                This is what advisers call <strong>capacity for loss</strong>. It is not how much risk you would be comfortable taking. It is how far everything you own could fall in value before it stops paying for the things you cannot go without.
+            </p>
+
+            @if ($capacityForLoss['alreadyBreached'])
+                <div class="mt-4 rounded-md bg-red-50 p-4">
+                    <p class="text-sm text-red-900">
+                        <span aria-hidden="true">⚠</span>
+                        <strong>There is no room to lose anything: this plan is already short.</strong>
+                        As it stands, there is at least one year in which this plan cannot pay for the essentials, so the question of how much it could afford to lose does not arise yet. The panels above show when that happens. Everything you own today comes to <strong>{{ $capacityForLoss['wealth']->format() }}</strong> after the mortgage.
+                    </p>
+                </div>
+            @elseif ($capacityForLoss['survivesTotalLoss'])
+                <div class="mt-4 rounded-md bg-emerald-50 p-4">
+                    <p class="text-sm text-emerald-900">
+                        <span aria-hidden="true">✓</span>
+                        <strong>Even losing everything would leave your essential spending covered.</strong>
+                        Your guaranteed income on its own pays for the essentials in every year of this plan, so there is no fall in the value of your savings, pensions or home that would breach that floor. Your money would buy you far less of everything else, but the floor holds. Everything you own today comes to <strong>{{ $capacityForLoss['wealth']->format() }}</strong> after the mortgage.
+                    </p>
+                </div>
+            @else
+                <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div class="rounded-md bg-amber-50 p-4">
+                        <p class="text-xs text-amber-800">The most your wealth could fall</p>
+                        <p class="text-3xl font-semibold text-amber-900 tabular-nums">{{ $capacityForLoss['percent'] }}%</p>
+                    </div>
+                    <div class="rounded-md border border-gray-200 bg-white p-4">
+                        <p class="text-xs text-gray-500">Which is about</p>
+                        <p class="text-2xl font-semibold text-gray-900 tabular-nums">{{ $capacityForLoss['cash']->format() }}</p>
+                    </div>
+                    <div class="rounded-md border border-gray-200 bg-white p-4">
+                        <p class="text-xs text-gray-500">Out of everything you own today</p>
+                        <p class="text-2xl font-semibold text-gray-900 tabular-nums">{{ $capacityForLoss['wealth']->format() }}</p>
+                        <p class="mt-1 text-xs text-gray-500">Savings, pensions and the home, after the mortgage. Worked out from your figures, not entered.</p>
+                    </div>
+                </div>
+
+                <p class="mt-4 text-sm text-gray-700">
+                    Lose up to <strong>{{ $capacityForLoss['percent'] }}%</strong> of that and your essential spending is still paid in every year of this plan. Lose more and it is not.
+                </p>
+            @endif
+
+            <p class="mt-4 text-xs text-gray-500">
+                How this is worked out: everything you own (savings, pensions and the home) is marked down by the same amount on day one, while the mortgage stays exactly where it is, and the plan carries on spending what you entered. Only the essential floor has to hold; the extras would already have gone. It is not a prediction of a crash, and it does not model which of your assets would really fall or by how much: it measures how much room this plan has, and marking everything down together is the cautious way to measure it. The figure comes from the expected path rather than an unlucky one, so a bad run of returns after a fall would use that room up faster. It is rounded down to a whole percent, so it is a level this forecast was actually run at and survived, and it applies to the plan shown above. A different housing choice has a different answer.
             </p>
 
             <x-signpost class="mt-4" />

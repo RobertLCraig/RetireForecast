@@ -667,6 +667,57 @@
     </div>
 @endif
 
+{{-- Capacity for loss: how far wealth could fall before the essential floor breaks. Same source
+     and same strategy as the screen panel. --}}
+@if ($capacityForLoss)
+    <div class="card">
+        <h2>How much could you afford to lose?</h2>
+        <p class="lede">This is what advisers call <strong>capacity for loss</strong>. It is not how much risk you
+            would be comfortable taking. It is how far everything you own could fall in value before it stops paying
+            for the things you cannot go without.</p>
+        @if ($capacityForLoss['alreadyBreached'])
+            <p><strong>There is no room to lose anything: this plan is already short.</strong> As it stands, there is
+                at least one year in which this plan cannot pay for the essentials, so the question of how much it
+                could afford to lose does not arise yet. Everything you own today comes to
+                {{ $capacityForLoss['wealth']->format() }} after the mortgage.</p>
+        @elseif ($capacityForLoss['survivesTotalLoss'])
+            <p><strong>Even losing everything would leave your essential spending covered.</strong> Your guaranteed
+                income on its own pays for the essentials in every year of this plan, so there is no fall in the value
+                of your savings, pensions or home that would breach that floor. Everything you own today comes to
+                {{ $capacityForLoss['wealth']->format() }} after the mortgage.</p>
+        @else
+            <table>
+                <thead>
+                    <tr>
+                        <th class="num">The most your wealth could fall</th>
+                        <th class="num">Which is about</th>
+                        <th class="num">Out of everything you own today</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="num">{{ $capacityForLoss['percent'] }}%</td>
+                        <td class="num">{{ $capacityForLoss['cash']->format() }}</td>
+                        <td class="num">{{ $capacityForLoss['wealth']->format() }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>Lose up to {{ $capacityForLoss['percent'] }}% of that and your essential spending is still paid in
+                every year of this plan. Lose more and it is not. The total is your savings, pensions and the home
+                after the mortgage, worked out from your figures rather than entered.</p>
+        @endif
+        <p class="note">How this is worked out: everything you own (savings, pensions and the home) is marked down by
+            the same amount on day one, while the mortgage stays exactly where it is, and the plan carries on spending
+            what you entered. Only the essential floor has to hold; the extras would already have gone. It is not a
+            prediction of a crash, and it does not model which of your assets would really fall or by how much: it
+            measures how much room this plan has, and marking everything down together is the cautious way to measure
+            it. The figure comes from the expected path rather than an unlucky one, so a bad run of returns after a
+            fall would use that room up faster. It is rounded down to a whole percent, so it is a level this forecast
+            was actually run at and survived, and it applies to the plan in this report. A different housing choice
+            has a different answer.</p>
+    </div>
+@endif
+
 {{-- What paying for advice would cost. Same two runs as on screen. --}}
 @if ($adviceCost)
     <div class="card">

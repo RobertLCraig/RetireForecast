@@ -6,6 +6,7 @@ namespace App\Livewire;
 
 use App\Compliance\Interpretation;
 use App\DecisionSupport\AdviceCostComparison;
+use App\DecisionSupport\CapacityForLoss;
 use App\DecisionSupport\ProtectionGap;
 use App\Enums\ScenarioStatus;
 use App\Export\ExportDisclaimer;
@@ -501,6 +502,12 @@ class ScenarioResults extends Component
             // the strategy the ladder is showing, so the two cannot disagree about which plan is
             // being stressed. Null for a one-person household (no survivor to protect).
             'protection' => app(ProtectionGap::class)->forScenario($this->scenario, $selectedStrategy),
+            // Capacity for loss: how far everything they own could fall before the essential
+            // spending floor stops being met. Pinned to the strategy on display, like the
+            // protection panel. It reports "already breached" as its own state, because a plan
+            // that is short of its essentials has no room at all, which is not the same message
+            // as a capacity of nothing left.
+            'capacityForLoss' => app(CapacityForLoss::class)->forScenario($this->scenario, $selectedStrategy),
             // What paying for advice would cost this plan: the same projection run twice, once
             // bearing the charges it already bears and once with an adviser's ongoing fee on top.
             // A cost comparison, not a verdict on advice — the panel says what it cannot value.

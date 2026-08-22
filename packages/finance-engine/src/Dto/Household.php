@@ -92,6 +92,28 @@ final class Household
     }
 
     /**
+     * The same household with different savings/investment accounts (immutable) — the
+     * capacity-for-loss stress, which marks every balance down by the fall being tested.
+     *
+     * @param  list<Account>  $accounts
+     */
+    public function withAccounts(array $accounts): self
+    {
+        return $this->copy(accounts: $accounts);
+    }
+
+    /**
+     * The same household with a re-valued main home (immutable) — the capacity-for-loss stress,
+     * which marks the home down so its EQUITY falls by the fraction being tested. Not nullable:
+     * nothing here removes a home (selling it is a housing transform, not a wither), so `copy()`
+     * needs no "set it to null" sentinel.
+     */
+    public function withPrimaryResidence(Property $primaryResidence): self
+    {
+        return $this->copy(primaryResidence: $primaryResidence);
+    }
+
+    /**
      * The ONE place a household is rebuilt from an existing one. Every caller that varies a single
      * part goes through here, so a field added to this DTO cannot be silently dropped by a lever
      * that rebuilt the household positionally and was never updated — which is exactly how a
@@ -100,18 +122,25 @@ final class Household
      * @param  list<Person>|null  $persons
      * @param  list<Pension>|null  $pensions
      * @param  list<CapitalReceipt>|null  $capitalReceipts
+     * @param  list<Account>|null  $accounts
      */
-    private function copy(?array $persons = null, ?array $pensions = null, ?ExpenseProfile $expenseProfile = null, ?array $capitalReceipts = null): self
-    {
+    private function copy(
+        ?array $persons = null,
+        ?array $pensions = null,
+        ?ExpenseProfile $expenseProfile = null,
+        ?array $capitalReceipts = null,
+        ?array $accounts = null,
+        ?Property $primaryResidence = null,
+    ): self {
         return new self(
             $this->name,
             $this->region,
             $persons ?? $this->persons,
             $expenseProfile ?? $this->expenseProfile,
             $pensions ?? $this->pensions,
-            $this->accounts,
+            $accounts ?? $this->accounts,
             $this->incomeStreams,
-            $this->primaryResidence,
+            $primaryResidence ?? $this->primaryResidence,
             $this->relationshipStatus,
             $capitalReceipts ?? $this->capitalReceipts,
             $this->realisedGainsAtStart,

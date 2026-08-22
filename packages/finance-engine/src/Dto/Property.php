@@ -82,4 +82,31 @@ final class Property
             throw new \InvalidArgumentException('A mortgage cannot both amortise (repaymentTerms) and roll up (mortgageRollUpRate) — choose one.');
         }
     }
+
+    /**
+     * The same property at a different value (immutable) — the capacity-for-loss stress, which
+     * marks the home down while the debt secured on it stays exactly where it is. Every other
+     * field is carried through by name; a field added above and forgotten here would silently
+     * vanish from a stressed forecast, which `AssetWitherTest` fails on.
+     */
+    public function withCurrentValue(Money $currentValue): self
+    {
+        return new self(
+            currentValue: $currentValue,
+            ownership: $this->ownership,
+            isPrimaryResidence: $this->isPrimaryResidence,
+            everLet: $this->everLet,
+            outstandingMortgage: $this->outstandingMortgage,
+            runningCosts: $this->runningCosts,
+            growthAssumptionOverride: $this->growthAssumptionOverride,
+            ownershipShare: $this->ownershipShare,
+            cgtHistory: $this->cgtHistory,
+            mortgageRedemptionYear: $this->mortgageRedemptionYear,
+            mortgageMaturityAction: $this->mortgageMaturityAction,
+            isLet: $this->isLet,
+            mortgageRollUpRate: $this->mortgageRollUpRate,
+            mortgageOverpaymentAnnual: $this->mortgageOverpaymentAnnual,
+            repaymentTerms: $this->repaymentTerms,
+        );
+    }
 }

@@ -121,6 +121,7 @@ class ScenarioPdfTest extends TestCase
             'Your spending plan',
             'PLSA Retirement Living Standards',
             'Essential spending vs secure income',
+            'How much could you afford to lose?',
             'Inheritance tax on your estate',
             'How you draw your money down',
             'Stress test: how it would have handled past crises',

@@ -181,6 +181,37 @@ final class ScenarioForecaster
         return new HousingComparison($this->config($scenario), new CohortLifeTable);
     }
 
+    /**
+     * The household, settings and assumptions for ONE housing strategy — the scenario as that
+     * plan actually leaves it (stayed put, bought cheaper, renting), not the raw household.
+     * Reading a sell plan off the stay-put path is a live trap in this codebase, so anything that
+     * stresses or searches a plan resolves it through here first.
+     *
+     * $strategy pins which variant to read; null falls back to the scenario's own stored choice,
+     * which is what a caller outside the results ladder wants. An unknown strategy falls back to
+     * stay-put rather than throwing, matching how the ladder degrades.
+     *
+     * @return array{household: Household, settings: ForecastSettings, assumptions: AssumptionSet}
+     */
+    public function variantInputs(Scenario $scenario, ?string $strategy = null): array
+    {
+        $assumptions = $this->assumptions($scenario);
+        $all = $this->housingComparison($scenario)->variantInputs(
+            $this->household($scenario),
+            $this->settings($scenario),
+            $assumptions,
+            $this->housingAction($scenario),
+        );
+
+        $inputs = $all[$strategy ?? $scenario->effectiveBuilderState()['variant'] ?? 'stay_put'] ?? $all['stay_put'];
+
+        return [
+            'household' => $inputs['household'],
+            'settings' => $inputs['settings'],
+            'assumptions' => $assumptions,
+        ];
+    }
+
     public function config(Scenario $scenario): TaxYearConfig
     {
         return TaxYearRegistry::for($scenario->base_tax_year, $this->household($scenario)->region);

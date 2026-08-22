@@ -27,4 +27,23 @@ final class Account
         public readonly ?Percent $yield = null,
         public readonly ?Money $ongoingContributions = null,
     ) {}
+
+    /**
+     * The same account marked to a different value (immutable) — the capacity-for-loss stress.
+     * Balance and unrealised gain move together because they must: the cost basis does not change
+     * in a market fall, so a fall of £X takes £X off the gain as well, and leaving the gain where
+     * it was would tax a profit the household no longer has. Every other field is carried through
+     * by name; `AssetWitherTest` fails if one is dropped.
+     */
+    public function withValue(Money $balance, ?Money $unrealisedGain): self
+    {
+        return new self(
+            ownerId: $this->ownerId,
+            type: $this->type,
+            balance: $balance,
+            unrealisedGain: $unrealisedGain,
+            yield: $this->yield,
+            ongoingContributions: $this->ongoingContributions,
+        );
+    }
 }

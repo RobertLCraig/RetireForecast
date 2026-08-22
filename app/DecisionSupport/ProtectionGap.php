@@ -6,12 +6,10 @@ namespace App\DecisionSupport;
 
 use App\Forecast\ScenarioForecaster;
 use App\Models\Scenario;
-use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
-use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\Protection\EarlyDeathStress;
@@ -95,7 +93,7 @@ final class ProtectionGap
      */
     public function forScenario(Scenario $scenario, ?string $strategy = null): ?array
     {
-        ['household' => $household, 'settings' => $settings, 'assumptions' => $assumptions] = $this->variantInputs($scenario, $strategy);
+        ['household' => $household, 'settings' => $settings, 'assumptions' => $assumptions] = $this->forecaster->variantInputs($scenario, $strategy);
         if (count($household->persons) < 2) {
             return null;
         }
@@ -273,32 +271,5 @@ final class ProtectionGap
         $pence = (int) ceil($pounds * 100 / self::ROUND_UP_TO) * self::ROUND_UP_TO;
 
         return Money::fromPence($pence);
-    }
-
-    /**
-     * The household as the scenario's own housing choice leaves it (sold, bought cheaper, renting),
-     * with the settings and assumptions that go with it — the same resolution {@see SustainableSpend}
-     * uses, so a sell plan is stressed as a seller and not as if it stayed put.
-     *
-     * @return array{household: Household, settings: ForecastSettings, assumptions: AssumptionSet}
-     */
-    private function variantInputs(Scenario $scenario, ?string $strategy = null): array
-    {
-        $assumptions = $this->forecaster->assumptions($scenario);
-        $all = $this->forecaster->housingComparison($scenario)->variantInputs(
-            $scenario->toHousehold(),
-            $this->forecaster->settings($scenario),
-            $assumptions,
-            $scenario->toHousingAction(),
-        );
-
-        $variant = $strategy ?? $scenario->effectiveBuilderState()['variant'] ?? 'stay_put';
-        $inputs = $all[$variant] ?? $all['stay_put'];
-
-        return [
-            'household' => $inputs['household'],
-            'settings' => $inputs['settings'],
-            'assumptions' => $assumptions,
-        ];
     }
 }
