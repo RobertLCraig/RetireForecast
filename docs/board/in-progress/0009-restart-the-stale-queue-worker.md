@@ -69,3 +69,35 @@ HANDOVER "How to pick up"; making it self-healing is explicitly a different card
 
 **Test note.** The instructions named `.\vendor\bin\pest.bat`; this project has no Pest. Ran the
 documented commands instead: `php artisan test` (PHPUnit 12) and `vendor\bin\pint.bat`.
+
+**2026-08-22 (second pass)** Resumed this card, changed no code, and closed the one thing the first
+pass left genuinely unknown: whether the *whole compared set* is refreshed, not just scenario 9.
+
+**The worker still holds.** Same daemon, PID 68992, up since 03:33:02 local; `pgsql`, 0 pending
+jobs, 0 failed jobs, 0 runs in a non-terminal state.
+
+**The 03:33 batch is exactly a "Re-run all" set, and it is complete.** `ScenarioCompare::plans()`
+is `CombinationComparisonData::plans()` — the base plus its children whose status is `Ready`. For
+base 9 that is **21 plans** of the 25 in the family; the other four (55, 56, 57, 58, the 50+
+interest-only variants and the withdrawn RIO) are status `draft`, so Compare excludes them by
+design and their older 2026-08-12 runs are not staleness. **All 21 compared plans carry a completed
+run from 2026-08-22** — 20 dispatched in one second at 02:33:47 UTC plus run 769 — with no gaps.
+That is the plan set `runFullFamily()` builds, one run each, all `done`, which is what a completed
+in-app "Re-run all" leaves behind.
+
+**"Refreshed figures" checked at the assembler, not the pixels.** `CombinationComparisonData::assemble()`
+— the single call `ScenarioCompare::render()` makes for the table, burndown and Monte Carlo cards —
+returns all 21 plans with a non-null `mc`, so no plan falls to the "Not simulated yet" branch and
+every figure on that screen is a 2026-08-22 run.
+
+**Why I did not re-trigger the batch.** Task 2 stays open because I did not click it. I chose not to
+dispatch a fresh 21-plan family from the component either: the button's own map loop is already
+covered with a faked queue (`ScenarioCompareTest::test_re_run_all_queues_a_full_run_for_every_plan_compared`),
+`dispatch()` → live worker → `done` is proven by run 769, and the 21 completed runs above show the
+composition. It would have produced no new fact and would have overwritten 21 of Rob's stored
+snapshots at fresh seeds for nothing.
+
+**AC #1 stays open for the same reason as before, now the only reason.** Every link behind the
+button is verified — plan set, dispatch, worker, completion, and the assembled figures the screen
+reads. The unverified step is the render itself: Herd serves this project from `C:\Dev\RetireForecast`,
+not this worktree, so **this still needs Rob's browser pass**, folded into card 0001.
