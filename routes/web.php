@@ -53,6 +53,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware(EnsureDisclaimerAcknowledged::class)->group(function () {
         Route::get('/dashboard', Dashboard::class)->name('dashboard');
         Route::get('/scenarios/pdf', [ScenarioPdfController::class, 'downloadAll'])->name('scenarios.pdf');
+        // The finished archive from a queued (batched) export — see App\Export\ScenarioExport.
+        Route::get('/scenarios/pdf/archive', [ScenarioPdfController::class, 'downloadArchive'])->name('scenarios.pdf.archive');
         Route::get('/scenarios/create', ScenarioBuilder::class)->name('scenarios.create');
         Route::get('/scenarios/{scenario}/edit', ScenarioBuilder::class)->name('scenarios.edit');
         Route::get('/scenarios/{scenario}/child', ScenarioBuilder::class)->name('scenarios.child');

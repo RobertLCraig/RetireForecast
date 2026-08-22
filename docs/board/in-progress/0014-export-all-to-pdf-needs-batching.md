@@ -11,12 +11,60 @@ Single-scenario export, which has plenty of headroom.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a user exports more scenarios than fit in one pass, THE APP SHALL produce the
+- [x] #1 WHEN a user exports more scenarios than fit in one pass, THE APP SHALL produce the
       export via a queued or batched job rather than one request.
-- [ ] #2 THE APP SHALL complete a 30-scenario export without exceeding the memory limit or the
+- [x] #2 THE APP SHALL complete a 30-scenario export without exceeding the memory limit or the
       gateway timeout.
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Measure again at 20 and 30 scenarios to find the real cliff
-- [ ] Queue or batch the export above the threshold
+- [x] Measure again at 20 and 30 scenarios to find the real cliff
+- [x] Queue or batch the export above the threshold
+
+## Direction
+**2026-08-22** Measured first, then batched.
+
+Measured on this machine, one request against a batched build, using the rich test fixture:
+
+| forecasts | one request | batched |
+|-----------|-------------------|-----------------|
+| 5 | 8.5s / 274 MB | |
+| 10 | 25.6s / 444 MB | 15.3s / 200 MB |
+| 20 | 78.9s / 774 MB | 30.6s / 180 MB |
+| 30 | 171.8s / 1,114 MB | 45.7s / 200 MB |
+
+The real cliff is **around 35 to 40 forecasts**, and time reaches it at about the same point as
+memory: a single request's memory grows roughly linearly with the count while its time grows
+faster than linearly (dompdf's cost per page rises with document size), so 30 forecasts already
+spend 172s of the 300s gateway budget and 1,114 MB of the 1512M limit. Batched, both go flat:
+peak memory is one report's whatever the count, and the total is three times faster at 30.
+
+Built: past **eight** forecasts, `GET /scenarios/pdf` queues `App\Jobs\BuildScenarioExport`
+instead of rendering, and returns to the dashboard. `App\Export\ScenarioExport` renders each
+forecast as its own complete report and adds it to a zip, reporting building / ready /
+failed-with-reason plus a per-forecast progress count, which the dashboard polls and shows.
+`App\Export\ScenarioReport` (the report assembly, moved out of the controller) is shared with the
+direct download, so a queued export prints exactly what a direct one does. At or below eight the
+direct single-PDF download is unchanged. Rationale and the figures are in DECISIONS 2026-08-22.
+
+Assumed, and worth a look:
+- **The batched export is a zip of one PDF per forecast, not one merged PDF.** One file can only
+  come from one render, which is the thing that does not scale, and nothing installed here can
+  merge pre-rendered PDFs. If Rob wants a single file above the threshold, that is a new
+  dependency (FPDI or similar), not a redesign. The zip is also bigger than the merged PDF (about
+  35 MB for 30, against 4 MB) because each report re-embeds its own fonts and charts.
+- **The threshold of eight is set well inside the cliff, not at it.** The measurements above use
+  the test fixture; the card's earlier real-data figure (14 forecasts, 538 MB) is about 1.3x
+  heavier per forecast, and eight leaves room for that.
+- **A queue worker must be running**, as for Monte Carlo runs. On the `sync` driver the build
+  would run inside the request and defeat the point.
+- The archive stays on disk until the next export replaces it or the account is erased (erase now
+  deletes it, since no foreign key reaches a file). Its status expires after 24 hours, after which
+  the dashboard offers a rebuild rather than a stale download.
+
+Could not settle here:
+- **The dashboard panel has not been looked at in a browser.** This ran in a worktree, which Herd
+  does not serve, so the progress panel, its polling and the zip download are proven by tests
+  only. Add it to the 0001 browser sign-off.
+- The card asked for `.\vendor\bin\pest.bat`; this project has no Pest. The suite is PHPUnit, run
+  with `php artisan test` (`vendor/bin/phpunit.bat` also works). Pint ran clean.

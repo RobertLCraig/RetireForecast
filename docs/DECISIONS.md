@@ -3,6 +3,43 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-08-22 — A big "export all to PDF" is built on the worker, one forecast at a time, and arrives as a zip
+**Context:** card 0014. "Export all to PDF" rendered every ready forecast into ONE dompdf document inside
+the web request, and dompdf holds the whole document in memory until it is written. Measured on this
+machine, one request against a batched build:
+
+| forecasts | one request | batched |
+|-----------|--------------------|-----------------|
+| 10 | 25.6s / 444 MB | 15.3s / 200 MB |
+| 20 | 78.9s / 774 MB | 30.6s / 180 MB |
+| 30 | 171.8s / 1,114 MB | 45.7s / 200 MB |
+
+A request's memory grows about linearly with the count and its time grows faster than linearly, so the
+cliff sits around 35 to 40 forecasts, where it meets both the 1512M PHP memory limit and the per-site
+300s gateway timeout at once.
+
+**Decisions:**
+1. **Past eight forecasts the export is queued and built one forecast at a time**
+   (`App\Export\ScenarioExport`, `App\Jobs\BuildScenarioExport`). *Rationale:* peak memory then costs one
+   report whatever the count (flat at 10, 20 and 30) and time becomes linear, so the cost stops growing
+   with a number the user controls. It is also three times faster at 30, because dompdf's cost per page
+   rises with document size. The threshold sits well inside the cliff rather than at it: the count is the
+   user's to grow and it must not be a surprise when it breaks. At or below eight the direct download is
+   kept, because it has plenty of headroom and needs no worker.
+2. **The batched export is a zip of one complete PDF per forecast, not one merged PDF.** *Rationale:* a
+   single file can only come from a single render, which is the thing that does not scale. Merging
+   pre-rendered files would need a new PDF library (nothing installed can do it), where a zip needs only
+   PHP's own `ZipArchive`, and one file per forecast is separately openable and shareable. Reversible: if
+   one file is wanted later, that is a dependency decision, not a redesign.
+3. **The reports are assembled by `App\Export\ScenarioReport`, shared with the direct download.**
+   *Rationale:* a queued export must print exactly what a direct one prints; one assembly, one home.
+4. **The dashboard shows the build running, ready, or failed with its reason.** *Rationale:* the
+   no-silent-failure rule. A minutes-long render that reports nothing is indistinguishable from a broken one.
+5. **A built archive is deleted when the account is erased.** *Rationale:* it is a file outside the
+   database, so no foreign key cascades to it, and "erased means gone" has to stay true.
+
+**Status:** active
+
 ## 2026-08-22 — A nominal-pounds view reads the engine's pre-deflation year, never a re-inflated one
 **Context:** card 0013, deferred from slice #3 of
 [PLAN-output-inflation-and-charts.md](build/PLAN-output-inflation-and-charts.md). Every reported figure is

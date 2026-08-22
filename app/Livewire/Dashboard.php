@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Enums\ScenarioStatus;
+use App\Export\ScenarioExport;
 use App\Forecast\WhatIfChanges;
 use App\Models\Scenario;
 use Illuminate\Contracts\View\View;
@@ -50,6 +51,26 @@ class Dashboard extends Component
             ->first();
     }
 
+    /**
+     * A queued "export all to PDF" build, if the user has one: building (with its progress),
+     * ready to download, or failed with the reason. Polled from the view while it is running,
+     * so a long export reports itself rather than finishing silently.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function export(): ?array
+    {
+        $export = app(ScenarioExport::class);
+        $status = $export->status(auth()->user());
+
+        if ($status === null) {
+            return null;
+        }
+
+        // A "ready" state whose file has since been cleared away has nothing to offer.
+        return $status + ['downloadable' => $status['state'] === 'ready' && $export->exists(auth()->user())];
+    }
+
     public function render(): View
     {
         $scenarios = $this->scenarios();
@@ -69,6 +90,7 @@ class Dashboard extends Component
             'scenarios' => $scenarios,
             'draft' => $this->draft(),
             'whatIfChanges' => $whatIfChanges,
+            'export' => $this->export(),
         ])->title('Dashboard');
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Gdpr;
 
+use App\Export\ScenarioExport;
 use App\Models\User;
 
 /**
@@ -64,6 +65,10 @@ final class GdprService
     /** Hard-delete the account and everything that cascades from it. */
     public function erase(User $user): void
     {
+        // A built PDF export is a file on disk, so no foreign key reaches it. Erased means
+        // gone, so it goes first.
+        app(ScenarioExport::class)->clear($user);
+
         $user->delete();
     }
 }

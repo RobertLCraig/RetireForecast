@@ -13,6 +13,30 @@
         <div role="status" class="mt-4 rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('status') }}</div>
     @endif
 
+    {{-- A queued "export all" build. Big exports are rendered one forecast at a time on the
+         worker (App\Export\ScenarioExport), so this panel is where it reports itself: while
+         it runs, when it is ready, and — if it broke — why. --}}
+    @if ($export)
+        <div class="mt-4 rounded-md border px-4 py-3 text-sm
+                    @if ($export['state'] === 'failed') border-red-200 bg-red-50 text-red-800
+                    @elseif ($export['state'] === 'ready') border-green-200 bg-green-50 text-green-800
+                    @else border-blue-200 bg-blue-50 text-blue-800 @endif"
+             role="status" aria-live="polite"
+             @if ($export['state'] === 'building') wire:poll.2500ms @endif>
+            @if ($export['state'] === 'building')
+                <span>Building your export — {{ $export['done'] }} of {{ $export['total'] }} forecasts rendered.</span>
+                <p class="mt-1 text-xs">Each forecast is rendered on its own, so a big export takes a few minutes. You can carry on using the site.</p>
+            @elseif ($export['state'] === 'ready' && $export['downloadable'])
+                <span>Your export of {{ $export['total'] }} forecasts is ready — one PDF per forecast.</span>
+                <a href="{{ route('scenarios.pdf.archive') }}" class="ml-2 font-medium underline hover:no-underline">Download the zip</a>
+            @elseif ($export['state'] === 'ready')
+                <span>Your export has been cleared away. Choose "Export all to PDF" to build it again.</span>
+            @else
+                <span>Your export could not be built: {{ $export['error'] }}</span>
+            @endif
+        </div>
+    @endif
+
     @if ($draft)
         <div class="mt-4 flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <span>You have a forecast in progress.</span>
