@@ -137,3 +137,5 @@ changed no PHP.
 is running" is machine state, not repo state — the restart line already lives in HANDOVER "How to
 pick up", and the browser gate is already recorded there under 0001. There is no fact here that
 HANDOVER does not already own.
+
+**2026-08-22** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with 1 of 2 acceptance criteria still open, so what this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
