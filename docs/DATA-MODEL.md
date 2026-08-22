@@ -535,9 +535,23 @@ from the original plan, flagged inline:
   Two structural defects fixed with it: the **employer's** contribution is no longer funded from
   household surplus (it is credited while the member works, prorated in a part-year, and could
   previously be silently dropped in a year with no surplus), and contributions no longer run for ever
-  after retirement. **Still open:** the £3,600 non-earner relief route, and the annual-allowance /
-  MPAA cap on relievable contributions (`AnnualAllowanceCalculator` exists but is not wired here);
-  salary sacrifice is unmodelled (adviser-parity A4).
+  after retirement. **Still open:** salary sacrifice is unmodelled (adviser-parity A4).
+- **CLOSED 2026-08-22: contributions are capped, and a non-earner has a relief route** (the half of
+  adviser-parity A2 left open on 2026-07-31; DECISIONS 2026-08-22). `PathProjector::payIntoPot` is
+  the one place a DC pot is credited, and its cap is now `contributionHeadroom()`: the **annual
+  allowance** (£60,000) less what has gone in this year, replaced by the **MPAA** (£10,000) once the
+  member has flexibly accessed a pension. Both count the employer's contribution, because the
+  statutory limit is measured on total pension input. What the cap blocks stays in pay and is taxed
+  and saved there, so nothing is dropped. New `PensionReliefMethod::NonEarner` models the statutory
+  **basic amount**: the member pays £2,880 out of household surplus, the provider adds basic-rate
+  relief, and £3,600 reaches the pot; new `PensionParameters::$nonEarnerReliefLimit` (£3,600) and
+  `$reliefMaximumAge` (75) own both figures. `ContributionAllowanceTest` guards it. **Still open:**
+  the cap is a hard limit on what may be paid in rather than an annual-allowance **charge** on the
+  excess (`AnnualAllowanceCalculator` prices that separately and is still not wired in); carry-forward
+  of unused allowance is not tracked (the cautious side of the rule); the high-income **taper** is not
+  applied in the projector, because it needs adjusted and threshold income which the year's own
+  contributions move; and `ReliefAtSource` still throws, so a higher-rate taxpayer wanting relief
+  above the basic amount must use net pay.
 - **SUPERSEDED — pension contributions get no tax relief (flagged in code since v1).** `PathProjector::applyContributions`
   takes contributions from *net* surplus and adds no relief (see its own docblock), so the pot grows as if
   relief did not exist — understating a still-working household's accumulation and rigging any
@@ -560,12 +574,27 @@ from the original plan, flagged inline:
   bit on an explicitly-entered ISA `ongoingContributions` above £20,000/yr, which no stored scenario
   has. Measured on the real household before building: peak liquid wealth £136k–£150k and lifetime
   investment income £32k–£38k, most of it inside the personal savings and dividend allowances.
-  **Still open, and the larger of the two:** the engine never *uses* the allowance either — a household
-  holding a large GIA would in reality move £20,000 each per year into an ISA ("bed and ISA", a CGT
-  disposal), and the model does not, so it **understates** the after-tax return of exactly those
-  sell-and-invest plans. The April-2027 22% charge on cash held inside a stocks-and-shares ISA has
+  The April-2027 22% charge on cash held inside a stocks-and-shares ISA has
   nothing to bite on (an ISA is modelled as one invested balance, with no cash sleeve); the April-2027
   cash-ISA cut does not apply to a 65+ saver.
+- **CLOSED 2026-08-22: the ISA allowance is now USED as well as enforced** (the larger half of
+  adviser-parity A3, and the last of it; DECISIONS 2026-08-22). `PathProjector::bedAndIsa()` runs
+  after each year's contributions and disposals and moves money the household already holds in a
+  taxable GIA into their ISA, up to whatever is left of each person's £20,000 allowance. **The
+  allowance is one allowance**: `$state['isaSubscribed']` is shared with money paid in, so it cannot
+  be spent twice. The move is a **disposal**, so it realises the pro-rata gain and consumes the
+  matching cost basis, and it is sized to keep that gain inside what is left of the person's CGT
+  annual exempt amount, which is the discipline a real bed-and-ISA follows and means the step never
+  adds a tax bill the projection would then have to fund. It runs in shortfall years too, because a
+  sell-and-invest plan has a shortfall in almost all of them and that is exactly the plan this
+  shelters. `YearResult::$isaSheltered` reports what moved, and the results page discloses it as an
+  `assumed_figure` note read out of the forecast, because it is an **action** nobody entered rather
+  than a blank input filled in. **It is ON by default** (`ForecastSettings::$useIsaAllowance`, from
+  the builder-state key `useIsaAllowance`) because leaving it out understated exactly the plans this
+  tool exists to compare. Guarded by `BedAndIsaTest`. **Still open:** no builder control turns it off
+  yet (the engine and the scenario key take it, the UI does not offer it); and when a drawdown year's
+  disposals have already spent the exempt amount, nothing moves that year, so spending has first
+  claim on the allowance rather than sheltering.
 - **A bought home can now carry its own cost and its own (possibly NEGATIVE) growth — CLOSED
   2026-07-30 (DECISIONS 2026-07-30).** `HousingAction::$buyRunningCosts` + `$buyGrowthOverride`. The
   bought home previously always appreciated at the assumption-set house rate with running costs derived

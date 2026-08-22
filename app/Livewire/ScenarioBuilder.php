@@ -344,7 +344,7 @@ class ScenarioBuilder extends Component
             // Blank = relief not modelled (and said so on the results page). Only net pay is
             // offered: relief at source is a real method the engine does not model yet, and the
             // DTO throws on it rather than quietly giving no relief at all.
-            'pensions.*.reliefMethod' => ['nullable', Rule::in(['', 'net_pay'])],
+            'pensions.*.reliefMethod' => ['nullable', Rule::in(['', 'net_pay', 'non_earner'])],
             'pensions.*.earliestAccessAge' => ['nullable', 'integer', 'min:55', 'max:75', 'required_if:pensions.*.subtype,dc'],
             'pensions.*.pclsTakenToDate' => $money,
             'pensions.*.growthAssumptionOverride' => $rate,

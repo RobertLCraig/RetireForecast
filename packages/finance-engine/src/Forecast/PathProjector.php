@@ -497,9 +497,12 @@ final class PathProjector
             'lsaUsed' => $lsaUsed,
             // Flexible access (a UFPLS or drawdown income, planned or ad-hoc) permanently caps
             // that member's money-purchase contributions at the MPAA; mpContributed counts what
-            // has gone in THIS year and is reset each year. {@see mpaaHeadroom}.
+            // has gone in THIS year and is reset each year. {@see contributionHeadroom}.
             'mpaaTriggered' => array_fill_keys(array_keys($lsaUsed), false),
             'mpContributed' => array_fill_keys(array_keys($lsaUsed), 0),
+            // The ISA subscription allowance a person has used THIS year, across money paid in
+            // and anything moved in from a GIA; reset each year. {@see bedAndIsa}.
+            'isaSubscribed' => array_fill_keys(array_keys($lsaUsed), 0),
             // The household owns a beneficial share of the home (tenants in common); null = 100%.
             // Value and mortgage are entered whole and scaled to the household's share here, so every
             // downstream use (wealth, the means test, IHT, growth) reflects only the share it owns.
@@ -759,10 +762,13 @@ final class PathProjector
         // Nominal income split by canonical source (YearResult::INCOME_SOURCES).
         $src = array_fill_keys(YearResult::INCOME_SOURCES, 0);
 
-        // The Money Purchase Annual Allowance is a per-TAX-YEAR cap, so the running total of
-        // what has been paid into money-purchase pots resets here, before any of this year's
-        // contributions (employer, net-pay, or from surplus) are made.
+        // The annual allowance / MPAA is a per-TAX-YEAR cap, so the running total of what has
+        // been paid into money-purchase pots resets here, before any of this year's
+        // contributions (employer, net-pay, or from surplus) are made. The ISA subscription
+        // allowance is per tax year too, and is shared between money paid in and anything moved
+        // in from a GIA ({@see bedAndIsa}), so its running total resets in the same place.
         $state['mpContributed'] = array_fill_keys(array_keys($state['mpContributed']), 0);
+        $state['isaSubscribed'] = array_fill_keys(array_keys($state['mpContributed']), 0);
 
         // Any annuity purchases due this year convert part of a DC pot into a lifetime income
         // before the year's income is assembled, so the pot is reduced and the annuity pays
@@ -1192,23 +1198,37 @@ final class PathProjector
         // Fund any shortfall from assets per the drawdown strategy.
         $shortfall = $spendNominal - $netCashNominal;
         $fundedNominal = 0;
+        $gainsThisYear = $seedGains;
         if ($shortfall > 0) {
             $funded = $this->fundShortfall($household, $settings, $state, $alive, $ages, $taxablePerPerson, $shortfall, $thresholdFactor, $benefitNominal > 0, $seedGains);
             $fundedNominal = $funded['funded'];
             $totalTaxNominal += $funded['extraTax'];
             $src['pension_drawdown'] += $funded['fromPension'];
             $src['asset_drawdown'] += $funded['fromAssets'];
+            // The disposals that funded the year already counted against each person's CGT
+            // annual exempt amount (they include $seedGains, shared once), so bed-and-ISA below
+            // reads them rather than re-claiming an allowance that is already spent.
+            $gainsThisYear = $funded['realisedGain'];
         } elseif ($shortfall < 0) {
             // Surplus first funds any planned contributions to long-term assets
             // (DC pension top-ups, regular account savings); what remains is saved
             // into the first living person's cash.
             $surplus = -$shortfall;
-            $surplus -= $this->applyContributions($household, $state, $alive, $state['spendFactor'], $surplus);
+            $surplus -= $this->applyContributions($household, $state, $alive, $ages, $state['spendFactor'], $surplus);
             $surplusOwner = $this->firstLiving($household, $alive);
             if ($surplusOwner !== null && $surplus > 0) {
                 $state['cash'][$surplusOwner] += $surplus;
             }
         }
+
+        // Use what is left of the ISA allowance on money the household ALREADY holds in a taxable
+        // account. Runs last, so it sees the year's contributions and disposals and cannot claim
+        // an allowance either has spent; runs every year, including a drawdown year, because a
+        // sell-and-invest plan has a shortfall in almost all of them and that is exactly the plan
+        // this shelters. {@see bedAndIsa}.
+        $isaShelteredNominal = $settings->useIsaAllowance
+            ? $this->bedAndIsa($household, $state, $alive, $gainsThisYear)
+            : 0;
 
         $metSpend = min($spendNominal, $netCashNominal + $fundedNominal);
         $unmetNominal = max(0, $spendNominal - $metSpend);
@@ -1250,6 +1270,7 @@ final class PathProjector
             incomeBySource: array_map($m, $src),
             mortgageBalance: $m($state['mortgageOutstanding']),
             nominal: $nominal,
+            isaSheltered: $m($isaShelteredNominal),
         );
 
         return $build($r, $build(Money::fromPence(...), null));
@@ -2107,7 +2128,7 @@ final class PathProjector
             $funded = $fundedBeforeCgt;
         }
 
-        return ['funded' => $funded, 'extraTax' => $extraTax, 'fromPension' => $fromPension, 'fromAssets' => $fromAssets];
+        return ['funded' => $funded, 'extraTax' => $extraTax, 'fromPension' => $fromPension, 'fromAssets' => $fromAssets, 'realisedGain' => $realisedGain];
     }
 
     /**
@@ -2291,40 +2312,49 @@ final class PathProjector
     }
 
     /**
-     * This member's remaining money-purchase contribution allowance for the year. Unlimited
-     * until they flexibly access a pension (a UFPLS or drawdown income, planned or drawn to fund
-     * a shortfall); from then on it is the Money Purchase Annual Allowance less what has already
-     * gone in this year: the rule that stops a plan drawing a pot down in the free bands and
-     * recycling the cash straight back in.
+     * This member's remaining money-purchase contribution allowance for the year: the annual
+     * allowance (£60,000) less what has already gone into their pots this year, or the Money
+     * Purchase Annual Allowance (£10,000) once they have flexibly accessed a pension: a UFPLS
+     * or drawdown income, planned or drawn to fund a shortfall. The MPAA is the rule that stops
+     * a plan drawing a pot down in the free bands and recycling the cash straight back in; the
+     * annual allowance is the ordinary ceiling that binds before any of that happens.
      *
-     * v1 simplifications, both flagged: the allowance is modelled as a hard cap on what may be
+     * Both count the EMPLOYER's contribution as well as the member's, because the statutory
+     * allowance is measured on total pension input, not on what the household paid.
+     *
+     * v1 simplifications, all flagged: the allowance is modelled as a hard cap on what may be
      * paid in rather than as an annual-allowance CHARGE on the excess ({@see AnnualAllowanceCalculator}
-     * prices that separately), and it bites from the year of the trigger rather than the day
-     * after it. It is the frozen statutory figure, not indexed, because nothing has indexed it.
+     * prices that separately); carry-forward of unused allowance from the previous three years
+     * is not tracked, so the cap is the cautious side of the rule; the high-income taper is not
+     * applied here (it needs adjusted and threshold income, which this year's contributions
+     * themselves move; {@see AnnualAllowanceCalculator} prices it); and the MPAA bites from the
+     * year of the trigger rather than the day after it. Both are the frozen statutory figures,
+     * not indexed, because nothing has indexed them.
      *
      * @param  array<string, mixed>  $state
      */
-    private function mpaaHeadroom(array $state, string $pid): int
+    private function contributionHeadroom(array $state, string $pid): int
     {
-        if (! ($state['mpaaTriggered'][$pid] ?? false)) {
-            return PHP_INT_MAX;
-        }
+        $params = $this->config->pension;
+        $limit = ($state['mpaaTriggered'][$pid] ?? false)
+            ? $params->moneyPurchaseAnnualAllowance->pence
+            : $params->annualAllowance->pence;
 
-        return max(0, $this->config->pension->moneyPurchaseAnnualAllowance->pence - ($state['mpContributed'][$pid] ?? 0));
+        return max(0, $limit - ($state['mpContributed'][$pid] ?? 0));
     }
 
     /**
-     * Pay $amount into one of this member's money-purchase pots, capped at their remaining MPAA
-     * headroom, and return what actually went in. THE one place a DC pot is credited with a
-     * contribution, so the cap cannot be applied at two of the three sites and missed at the
-     * third, and so the year's running total has one home.
+     * Pay $amount into one of this member's money-purchase pots, capped at their remaining
+     * annual-allowance / MPAA headroom, and return what actually went in. THE one place a DC pot
+     * is credited with a contribution, so the cap cannot be applied at two of the three sites and
+     * missed at the third, and so the year's running total has one home.
      *
      * @param  array<string, mixed>  $state
      * @param  array<string, mixed>  $pot
      */
     private function payIntoPot(array &$state, string $pid, array &$pot, int $amount): int
     {
-        $give = min(max(0, $amount), $this->mpaaHeadroom($state, $pid));
+        $give = min(max(0, $amount), $this->contributionHeadroom($state, $pid));
         if ($give <= 0) {
             return 0;
         }
@@ -2357,7 +2387,7 @@ final class PathProjector
                 continue;
             }
             $wanted = (int) round(($pot['contribution'] ?? 0) * $spendFactor * $workFraction);
-            // What the MPAA blocks is never given up, so it stays in pay and is taxed there:
+            // What the allowance blocks is never given up, so it stays in pay and is taxed there:
             // the caller subtracts only what actually reached the pot.
             $paid += $this->payIntoPot($state, $pid, $pot, max(0, min($wanted, $earnings - $paid)));
         }
@@ -2366,7 +2396,12 @@ final class PathProjector
         return $paid;
     }
 
-    private function applyContributions(Household $household, array &$state, array $alive, float $spendFactor, int $surplus): int
+    /**
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     * @param  array<string, int>  $ages
+     */
+    private function applyContributions(Household $household, array &$state, array $alive, array $ages, float $spendFactor, int $surplus): int
     {
         $available = $surplus;
         $contributed = 0;
@@ -2390,17 +2425,50 @@ final class PathProjector
         // the household ever sees it (see payNetPayContributions), so taking it from surplus here
         // as well would charge it twice. The employer's contribution is likewise not the
         // household's to fund — see payEmployerContributions.
+        $pension = $this->config->pension;
+        $basicRate = $this->config->incomeTax->basicRate;
         foreach ($household->persons as $person) {
             if (! ($alive[$person->id] ?? false)) {
                 continue;
             }
+            $nonEarnerPaid = 0; // gross already relieved on the basic-amount route this year
             foreach ($state['pots'][$person->id] as &$pot) {
-                if (($pot['reliefMethod'] ?? null) === PensionReliefMethod::NetPay) {
+                $method = $pot['reliefMethod'] ?? null;
+                if ($method === PensionReliefMethod::NetPay) {
                     continue;
                 }
-                // Capped BEFORE the surplus is consumed, so what the MPAA blocks is not
+
+                // The non-earner "basic amount" route: the household pays the NET figure out of
+                // surplus and the provider adds basic-rate relief, so a bigger sum lands in the
+                // pot than left the bank. Relief ends at 75, and the GROSS is capped at the basic
+                // amount per person per year, and every member has that floor whatever they earn, so
+                // it needs no earnings test, but relief on more than it needs net pay.
+                if ($method === PensionReliefMethod::NonEarner) {
+                    if (($ages[$person->id] ?? 0) >= $pension->reliefMaximumAge) {
+                        continue;
+                    }
+                    $grossHeadroom = min(
+                        max(0, $pension->nonEarnerReliefLimit->pence - $nonEarnerPaid),
+                        $this->contributionHeadroom($state, $person->id),
+                    );
+                    // Net cap = gross cap less the relief the provider reclaims on it.
+                    $netCap = Money::fromPence($grossHeadroom)->minus(Money::fromPence($grossHeadroom)->applyRate($basicRate))->pence;
+                    $net = $take($pot['contribution'] ?? 0, $netCap);
+                    if ($net <= 0) {
+                        continue;
+                    }
+                    // Gross the net payment back up at the basic rate: £2,880 net buys £3,600
+                    // gross, i.e. net / (1 - 20%). Derived from the rate the tax pass uses, so
+                    // the two cannot drift.
+                    $gross = min($grossHeadroom, (int) round($net * 10_000 / (10_000 - $basicRate->basisPoints)));
+                    $nonEarnerPaid += $this->payIntoPot($state, $person->id, $pot, $gross);
+
+                    continue;
+                }
+
+                // Capped BEFORE the surplus is consumed, so what the allowance blocks is not
                 // silently dropped: it stays in the surplus and is saved into cash instead.
-                $this->payIntoPot($state, $person->id, $pot, $take($pot['contribution'] ?? 0, $this->mpaaHeadroom($state, $person->id)));
+                $this->payIntoPot($state, $person->id, $pot, $take($pot['contribution'] ?? 0, $this->contributionHeadroom($state, $person->id)));
             }
             unset($pot);
         }
@@ -2418,7 +2486,6 @@ final class PathProjector
         // taxable, which is what would happen in reality. Silently discarding it would breach the
         // completeness rule (an input that should count, not counting).
         $isaAllowance = $this->config->isa->overallAllowance->pence;
-        $isaSubscribed = [];
         foreach ($household->accounts as $account) {
             if ($account->ongoingContributions === null || ! ($alive[$account->ownerId] ?? false)) {
                 continue;
@@ -2436,9 +2503,9 @@ final class PathProjector
             };
 
             if ($account->type === AccountType::Isa) {
-                $headroom = max(0, $isaAllowance - ($isaSubscribed[$owner] ?? 0));
+                $headroom = max(0, $isaAllowance - ($state['isaSubscribed'][$owner] ?? 0));
                 $intoIsa = min($added, $headroom);
-                $isaSubscribed[$owner] = ($isaSubscribed[$owner] ?? 0) + $intoIsa;
+                $state['isaSubscribed'][$owner] = ($state['isaSubscribed'][$owner] ?? 0) + $intoIsa;
                 $state['isa'][$owner] += $intoIsa;
 
                 // The overflow is still saved, but in a taxable account.
@@ -2459,6 +2526,67 @@ final class PathProjector
         }
 
         return $contributed;
+    }
+
+    /**
+     * "Bed and ISA": move money the household already holds in a taxable General Investment
+     * Account into their ISA, up to each person's UNUSED ISA subscription allowance for the year.
+     * Nothing is spent and nothing is earned: the same pounds simply stop being taxable, so from
+     * next year their growth and their dividends are sheltered.
+     *
+     * Until this existed the engine ENFORCED the ISA allowance but never USED it, which
+     * understated every plan that sells a home and invests the proceeds: those proceeds land in a
+     * GIA, and a real household would move £20,000 each into an ISA every year until the GIA was
+     * empty. See DATA-MODEL "Known divergences".
+     *
+     * It is a disposal, so it realises the pro-rata gain and consumes the matching cost basis
+     * exactly as a sale to fund spending does. The transfer is sized so that gain stays inside
+     * what is LEFT of the person's CGT annual exempt amount after the year's other disposals,
+     * which is the discipline a real bed-and-ISA follows (you move what you can shelter for free)
+     * and means the step never adds a tax bill the projection would then have to fund. Where the
+     * exempt amount is already spent, nothing moves this year.
+     *
+     * @param  array<string, bool>  $alive
+     * @param  array<string, mixed>  $state
+     * @param  array<string, int>  $realisedGain  gains this year already counted against the AEA
+     * @return int the total moved into ISAs (nominal pence)
+     */
+    private function bedAndIsa(Household $household, array &$state, array $alive, array $realisedGain): int
+    {
+        $isaAllowance = $this->config->isa->overallAllowance->pence;
+        $aea = $this->config->cgt->annualExemptAmount->pence;
+        $moved = 0;
+
+        foreach ($household->persons as $person) {
+            $pid = $person->id;
+            if (! ($alive[$pid] ?? false)) {
+                continue;
+            }
+            $bal = $state['gia'][$pid] ?? 0;
+            $headroom = max(0, $isaAllowance - ($state['isaSubscribed'][$pid] ?? 0));
+            if ($bal <= 0 || $headroom <= 0) {
+                continue;
+            }
+            $basis = $state['giaBasis'][$pid] ?? 0;
+            // The largest disposal whose realised gain stays inside the remaining exempt amount;
+            // a holding with no gain can move freely. Mirrors drawGiaToAea deliberately: one
+            // definition of "how much can be sold without a CGT bill".
+            $gainRoom = max(0, $aea - ($realisedGain[$pid] ?? 0));
+            $maxByGain = $bal > $basis ? (int) floor($gainRoom * $bal / ($bal - $basis)) : $bal;
+            $take = min($bal, $headroom, $maxByGain);
+            if ($take <= 0) {
+                continue;
+            }
+
+            [, $basisConsumed] = self::disposeGiaSlice($bal, $basis, $take);
+            $state['gia'][$pid] -= $take;
+            $state['giaBasis'][$pid] -= $basisConsumed;
+            $state['isa'][$pid] += $take;
+            $state['isaSubscribed'][$pid] = ($state['isaSubscribed'][$pid] ?? 0) + $take;
+            $moved += $take;
+        }
+
+        return $moved;
     }
 
     private function firstLiving(Household $household, array $alive): ?string

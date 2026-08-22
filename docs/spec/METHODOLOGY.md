@@ -204,13 +204,22 @@ account instead, where its dividends and interest are taxed, which is what would
 The cap applies only to money going in: a pot that has *grown* past the allowance inside an ISA is
 entirely legitimate and is left alone.
 
-Two things this deliberately does not do. It does not move money you already hold into an ISA over
-time (a real household with a large general investment account would use each year's allowance, which
-means selling and repurchasing, and that sale is itself a capital-gains disposal) — so if anything the
-forecast understates the after-tax return on a plan that invests a large sum. And because an ISA is
-modelled as a single invested balance rather than a cash sleeve plus a stocks sleeve, the April-2027
-cut to the *cash* ISA allowance and the charge on cash held inside a stocks-and-shares ISA have nothing
-to apply to (both figures are recorded, dated, and ready if that changes).
+The forecast also **uses** the allowance, not just enforces it. Each year, whatever is left of your
+£20,000 after anything you pay in is spent moving money you already hold in a general investment
+account into an ISA, so from then on its growth and dividends are tax-free. This is what people call
+"bed and ISA", and it is what a household with a large unwrapped pot would really do; assuming they
+never did it would show you paying tax you would not pay, and it would do so hardest on a plan that
+sells a home and invests the proceeds. Because moving the money means selling it, each move is a
+capital-gains disposal, so the forecast keeps it small enough that the gain stays inside your annual
+exempt amount and costs nothing. In a year where drawing money to live on has already used that
+exempt amount, nothing moves: spending comes first. **We assume you do this**, and say so on your
+results with the pounds involved. If you would not, the model can be told to leave the money where it
+is.
+
+One thing this deliberately does not do. Because an ISA is modelled as a single invested balance
+rather than a cash sleeve plus a stocks sleeve, the April-2027 cut to the *cash* ISA allowance and the
+charge on cash held inside a stocks-and-shares ISA have nothing to apply to (both figures are
+recorded, dated, and ready if that changes).
 
 ## What paying for advice would cost
 
@@ -413,11 +422,15 @@ An honest list of the current limits (each is flagged in the code):
 - **Pensions:** the lump-sum-allowance cap on a DB commutation lump sum is not enforced; one smooth
   inflation proxy for DB escalation. **Contribution tax relief** is modelled for "net pay" schemes
   (the contribution comes off gross salary, so relief lands at your own tax rate straight away, and
-  National Insurance is unaffected); **relief at source is not modelled yet** and is refused rather
-  than quietly treated as no relief; **salary sacrifice** is not modelled at all. We do not yet apply
-  the £3,600 relief limit for a non-earner, or the annual allowance / MPAA cap on how much of a
-  contribution can be relieved. If a pension's relief method is left unset we model no relief, and say
-  so on your results.
+  National Insurance is unaffected) and for the **£3,600 non-earner route** (you pay £2,880 from
+  savings and the provider adds £720, until you turn 75); general **relief at source is not modelled
+  yet** and is refused rather than quietly treated as no relief, and **salary sacrifice** is not
+  modelled at all. If a pension's relief method is left unset we model no relief, and say so on your
+  results. Contributions are capped at the **annual allowance** (£60,000 a year, counting your
+  employer's payments too), or the **£10,000 MPAA** once you have flexibly accessed a pension. We
+  model those as a limit on what can go in rather than as a tax charge on the excess, we do not carry
+  forward unused allowance from earlier years, and we do not taper the allowance for very high
+  earners.
 - **Investment charges:** one household-wide rate covers the platform/administration fee and the funds'
   ongoing charges together, taken from pensions, ISAs and investment accounts each year (cash deposits
   bear none). There is no per-account or per-pot rate, so a cheap ISA and an expensive old pension are

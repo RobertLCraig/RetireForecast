@@ -27,7 +27,9 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * $reliefMethod says how the scheme gives income-tax relief on the member's contribution
  * ({@see PensionReliefMethod}). Null = relief is not modelled, the pre-2026-07-31 behaviour,
  * kept so a stored scenario does not silently shift — but it is never true of a real UK
- * pension, so it is surfaced as an input-sanity note rather than passing unremarked.
+ * pension, so it is surfaced as an input-sanity note rather than passing unremarked. For
+ * {@see PensionReliefMethod::NonEarner} $ongoingContribution is the NET payment the household
+ * makes (£2,880 buys £3,600 in the pot), because that is the money that leaves their bank.
  */
 final class DcPension implements Pension
 {

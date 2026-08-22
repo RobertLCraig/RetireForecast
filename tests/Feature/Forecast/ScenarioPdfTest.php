@@ -311,8 +311,15 @@ class ScenarioPdfTest extends TestCase
         $this->assertNotEmpty($assumedOf($buys), 'The buying plan should disclose its assumed running costs.');
         $this->assertStringContainsString('running costs for the home', $this->renderReport($buys));
 
-        $this->assertSame([], $assumedOf($staysPut),
-            'A stay-put plan is being disclosed assumed figures for a home it never buys.');
+        // A stay-put plan may still carry assumed figures of its own (using the ISA allowance is
+        // one, and applies to any plan), so the claim is narrower than "none at all": none of them
+        // may be about the home it never buys.
+        foreach ($assumedOf($staysPut) as $note) {
+            $this->assertStringNotContainsString('the home you\'d buy', $note['text'],
+                'A stay-put plan is being disclosed assumed figures for a home it never buys.');
+            $this->assertStringNotContainsString('moving costs', $note['text'],
+                'A stay-put plan is being disclosed the cost of a move it never makes.');
+        }
         $this->assertStringNotContainsString('running costs for the home', $this->renderReport($staysPut));
     }
 

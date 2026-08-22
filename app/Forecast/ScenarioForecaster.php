@@ -272,6 +272,11 @@ final class ScenarioForecaster
             // overridable in the builder (slice 4).
             modelIht: (bool) ($scenario->effectiveBuilderState()['ihtModelled'] ?? false),
             homeToDescendants: (bool) ($scenario->effectiveBuilderState()['homeToDescendants'] ?? true),
+            // Use each person's unused ISA allowance on money already held in a taxable account
+            // ("bed and ISA"). On unless the scenario says otherwise, because leaving it out
+            // understates every plan that sells a home and invests the proceeds; disclosed on the
+            // results page as an assumed figure, so it is a choice the reader can see and reject.
+            useIsaAllowance: (bool) ($scenario->effectiveBuilderState()['useIsaAllowance'] ?? true),
         );
     }
 

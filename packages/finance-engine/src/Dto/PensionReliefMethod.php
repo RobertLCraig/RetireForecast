@@ -17,6 +17,14 @@ namespace RetireForecast\FinanceEngine\Dto;
  *   basic-rate relief into the pot; a higher- or additional-rate taxpayer recovers the rest
  *   through self assessment, which lands in a LATER year (a real cashflow-timing effect).
  *   NOT YET MODELLED — see docs/build/PLAN-adviser-parity.md A2.
+ * - {@see NonEarner}: relief at source restricted to the statutory "basic amount": the route a
+ *   member with no relevant UK earnings uses. They pay £2,880 net out of the household's money
+ *   and the provider adds 20%, so £3,600 gross reaches the pot
+ *   ({@see PensionParameters::$nonEarnerReliefLimit}). Every member under 75 has this floor
+ *   whatever they earn, which is why it can be modelled without knowing their pay, but it is
+ *   capped AT the basic amount, so an earner wanting relief on more than that needs net pay (or
+ *   relief at source, which is unbuilt). Relief stops at 75
+ *   ({@see PensionParameters::$reliefMaximumAge}), so the contribution stops with it.
  *
  * A null method on {@see DcPension} means relief is not modelled at all (the pre-2026-07-31
  * behaviour, kept so a stored scenario does not silently shift). That is never true of a real
@@ -27,4 +35,5 @@ enum PensionReliefMethod: string
 {
     case NetPay = 'net_pay';
     case ReliefAtSource = 'relief_at_source';
+    case NonEarner = 'non_earner';
 }

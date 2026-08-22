@@ -21,12 +21,18 @@ use RetireForecast\FinanceEngine\Money\Percent;
  *  - annualAllowance / moneyPurchaseAnnualAllowance: the normal yearly contribution
  *    limit, and the reduced limit that applies to money-purchase contributions once
  *    pension savings have been flexibly accessed.
+ *  - nonEarnerReliefLimit: the "basic amount", the GROSS contribution a member with no
+ *    (or very small) relevant UK earnings may still get basic-rate relief on. Relief is
+ *    capped at 100% of relevant earnings OR this figure, whichever is greater, so it is
+ *    the floor every member under 75 has regardless of pay.
  *  - tapered AA: the annual allowance tapers by £1 for every £2 of adjusted income
  *    above the adjusted-income threshold, but only if threshold income also exceeds
  *    its limit, down to the tapered minimum.
  *  - pclsRate: the proportion of a crystallisation that may be taken tax-free (25%).
  *  - normalMinimumPensionAge: the earliest age flexible access is allowed (55,
  *    rising to 57 from 6 April 2028).
+ *  - reliefMaximumAge: relief on a member's OWN contributions stops at this age (75), which
+ *    is what ends the non-earner route for a retired spouse rather than it running for ever.
  */
 final class PensionParameters
 {
@@ -41,5 +47,7 @@ final class PensionParameters
         public readonly Percent $taperRate,
         public readonly Percent $pclsRate,
         public readonly int $normalMinimumPensionAge,
+        public readonly Money $nonEarnerReliefLimit,
+        public readonly int $reliefMaximumAge,
     ) {}
 }

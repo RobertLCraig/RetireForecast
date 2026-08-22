@@ -3,6 +3,50 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-08-22 — Adviser parity: the ISA allowance is used, not just enforced; contributions are capped; a non-earner gets relief
+**Context:** card 0016, the remainder of docs/build/PLAN-adviser-parity.md. A1 fee drag, A2 net-pay
+relief, B1 cost of advice and B2 the protection gap shipped on 2026-07-31, along with the enforcement
+half of A3. Three rules were left recorded in DATA-MODEL "Known divergences" as open, and this closes
+them.
+
+**Decisions:**
+1. **The engine now USES the ISA allowance ("bed and ISA"), on by default.** This is the one that
+   needed a call rather than a rule, because it is an **action** the household takes, not a limit the
+   law imposes: the plan note that specced A3 flagged it as "a decision about whether the tool should
+   assume the household takes it". It is modelled, and it is on. *Rationale:* leaving it out is not
+   neutral. A sale's proceeds land in a GIA, so a plan that sells the home and invests was being
+   charged dividend tax and CGT that the same household, in life, would simply not pay by moving
+   £20,000 each into an ISA every year. The tool exists to rank selling against staying, and the
+   error fell on one side of that comparison. Modelling nothing is itself a claim, and it was the
+   wrong one. *Guards on it:* the allowance is shared with money paid in, so it cannot be spent twice;
+   the transfer is a real disposal, sized to keep its gain inside what is left of the CGT annual
+   exempt amount, so it never conjures a tax bill; and it is disclosed on the results page as an
+   assumed figure that names the pounds the projection actually moved, so a reader can see and reject
+   it. `ForecastSettings::$useIsaAllowance` turns it off for a household that would not do it.
+   *Deliberate ordering:* it runs after the year's spending disposals, so in a year the exempt amount
+   is already spent nothing moves. Spending has first claim on the allowance, which is the cautious
+   way round.
+2. **Relievable contributions are capped by the annual allowance as well as the MPAA.** Only the MPAA
+   capped them before, and only after flexible access, so until a member touched a pension the
+   projector paid in any amount asked for. One cap, in the one place a pot is credited
+   (`payIntoPot`), counting the employer's contribution too, because the statutory limit is measured
+   on total pension input. What the cap blocks is never given up: it stays in pay, is taxed there, and
+   is saved. *Not built, deliberately:* the high-income taper, because it needs adjusted and threshold
+   income which the year's own contributions move, and `AnnualAllowanceCalculator` already prices it
+   separately; and carry-forward, whose absence is the cautious side of the rule.
+3. **The £3,600 non-earner route is modelled as its own relief method, not by opening relief at
+   source.** `PensionReliefMethod::NonEarner`: the household pays £2,880 out of surplus and the pot
+   receives £3,600, capped at the statutory basic amount and stopping at 75. *Rationale for a separate
+   case:* every member under 75 has the basic amount whatever they earn, so it needs no earnings test
+   and cannot under-relieve anyone. General relief at source cannot say the same, since it would give
+   a higher-rate taxpayer 20% where they are due 40%, which is why it still throws rather than
+   accepting the input and quietly short-changing it.
+
+**Consequences:** every stored scenario holding a GIA now shelters money it did not before, so figures
+have moved; `scenarios:audit` is clean and the whole suite is green. The results page gains one input
+note. No builder control turns bed-and-ISA off yet, so a household that would not do it needs the
+scenario key set by hand.
+
 ## 2026-08-22 — Two flagged v1 refinements closed: Pension Credit in the care charge, and CGT deemed-occupation absences
 **Context:** card 0015, a list of six flagged v1 simplifications to pick off by value. None is a correctness
 gap; each was a deliberate limit recorded in code and in docs/spec/METHODOLOGY.md "What we don't model".

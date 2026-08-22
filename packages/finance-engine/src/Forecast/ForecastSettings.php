@@ -45,6 +45,14 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * (the IHT toggle was collected but not consumed before this). $homeToDescendants says the
  * home is left to direct descendants, which is what unlocks the residence nil-rate band on
  * the final death; default true (the common case when a household owns a home).
+ *
+ * $useIsaAllowance, when true (the default), has the household use each person's unused ISA
+ * subscription allowance each year on money they already hold in a taxable General Investment
+ * Account ("bed and ISA"). It is ON by default because the absence of it UNDERSTATES every plan
+ * that sells a home and invests the proceeds: those proceeds land in a GIA, a real household
+ * would shelter them, and modelling them never doing so charges tax they would not pay. It is a
+ * modelled ACTION rather than an economic assumption, so it is disclosed on the results page as
+ * an assumed figure and can be turned off here for a household that would not take it.
  */
 final class ForecastSettings
 {
@@ -63,6 +71,7 @@ final class ForecastSettings
         public readonly ?array $sellingCosts = null,
         public readonly bool $modelIht = false,
         public readonly bool $homeToDescendants = true,
+        public readonly bool $useIsaAllowance = true,
     ) {}
 
     public function allocation(): PortfolioAllocation
@@ -80,7 +89,7 @@ final class ForecastSettings
         return new self(
             $this->baseYear, $this->baseTaxYear, $this->drawdownStrategy, $this->allocation,
             $this->freezeEndYear, $this->annualRent, $this->rentInflationReal, $on,
-            $this->sellingCosts, $this->modelIht, $this->homeToDescendants,
+            $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
         );
     }
 }

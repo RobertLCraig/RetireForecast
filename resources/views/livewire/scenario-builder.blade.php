@@ -505,8 +505,9 @@
                                     <select id="pensions-{{ $i }}-reliefMethod" wire:model="pensions.{{ $i }}.reliefMethod" class="{{ $field }}">
                                         <option value="">Not sure — don't model relief</option>
                                         <option value="net_pay">Taken from my pay before tax ("net pay")</option>
+                                        <option value="non_earner">I'm not earning, so I pay in from savings</option>
                                     </select>
-                                    <p class="mt-1 text-xs text-gray-500">Most workplace schemes use net pay: the contribution comes out of your gross pay, so you get relief at your own tax rate straight away. Leave it unset and we won't model relief at all, and we'll say so on your results.</p>
+                                    <p class="mt-1 text-xs text-gray-500">Most workplace schemes use net pay: the contribution comes out of your gross pay, so you get relief at your own tax rate straight away. If you're not earning you can still pay in up to £2,880 a year and the provider adds £720, making £3,600. Pick the second option and enter what leaves your bank, not what lands in the pot. Relief stops at 75. Leave it unset and we won't model relief at all, and we'll say so on your results.</p>
                                 </div>
                                 <div>
                                     <label for="pensions-{{ $i }}-growthAssumptionOverride" class="{{ $label }}">Growth override (%/yr, optional)</label>

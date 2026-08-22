@@ -1,7 +1,10 @@
 # PLAN — adviser parity: contribution/wrapper correctness + the services that keep people paying an adviser
 
 > **Status: PART-BUILT.** **A1 (fee drag), A2 (net-pay contribution relief), B2 (protection gap) and
-> B1 (cost of advice) shipped 2026-07-31** — see DECISIONS
+> B1 (cost of advice) shipped 2026-07-31; A2's remainder (the annual-allowance / MPAA cap and the
+> £3,600 non-earner route) and A3 in full (bed-and-ISA) shipped 2026-08-22.** What is left is A4
+> salary sacrifice, B3 the estate checklist, B4 the annual review, and B5 capacity for loss (card
+> 0011). See DECISIONS
 > 2026-07-31 and DATA-MODEL "Known divergences"; the figures below were re-verified against primary
 > sources at build time and the shipped default is **0.50%**, with the reasoning for not taking the
 > most adverse figure recorded in docs/spec/ASSUMPTIONS.md §10. Everything else here is still spec.
@@ -90,8 +93,12 @@ and NI is correctly unaffected); capped at pay, so it ends with the salary. `Rel
 rather than accepting the input and giving no relief. Two structural defects fixed alongside: the
 employer's contribution is no longer paid out of household surplus (and can no longer be silently
 dropped in a year with none), and contributions no longer continue for ever after retirement.
-**Not built:** the £3,600 non-earner route, and the annual-allowance / MPAA cap on relievable
-contributions — `AnnualAllowanceCalculator` exists but is not yet wired to the contribution step.
+**Built 2026-08-22 (card 0016):** the £3,600 non-earner route, as its own
+`PensionReliefMethod::NonEarner` rather than by opening relief at source, and the annual-allowance /
+MPAA cap, applied in `payIntoPot` as a limit on what may be paid in. The high-income taper and
+carry-forward are still not applied in the projector; `AnnualAllowanceCalculator` still prices the
+charge on the excess separately and is still not wired to the contribution step. See DECISIONS
+2026-08-22.
 **Note:** no V2 scenario records any DC contribution, so this changes nothing for the real household
 until that input is checked. See DECISIONS 2026-07-31.
 
@@ -124,16 +131,20 @@ runs, not a parallel approximation — otherwise the two can drift, which the da
 forbids. Extending contributions to be deducted before the tax computation (net pay / sacrifice) versus
 grossed-up after it (relief at source) is the clean way to keep one definition.
 
-### A3. ISA subscription limits and the April 2027 regime — ✅ PART-BUILT 2026-07-31
+### A3. ISA subscription limits and the April 2027 regime — ✅ BUILT (enforcement 2026-07-31, use 2026-08-22)
 
-**The cap is enforced; the *use* of the allowance is not.** `IsaParameters` is in the tax-year registry
+**Both halves are now built.** `IsaParameters` is in the tax-year registry
 (£20,000 overall per person per year, plus the dated April-2027 cash-ISA cut) and `applyContributions`
 caps ISA subscriptions per person per year, **spilling the excess to that person's GIA** rather than
 dropping it. The 22% charge on cash inside a S&S ISA has nothing to bite on — the engine models an ISA
 as one invested balance with no cash sleeve. **The finding below was wrong and is corrected in
 DATA-MODEL:** proceeds are invested into a **GIA**, not an ISA, and surplus banks to cash, so no housing
-variant ever sheltered anything through the missing cap. **Still open, and the bigger half:** the engine
-never *uses* the allowance either (no bed-and-ISA), which **understates** the sell-and-invest plans.
+variant ever sheltered anything through the missing cap. **Closed 2026-08-22 (card 0016), the bigger
+half:** `PathProjector::bedAndIsa()` now spends whatever is left of each person's allowance on money
+already sitting in their GIA, sized to keep the realised gain inside the remaining CGT annual exempt
+amount. On by default and disclosed as an assumed figure. The open question this section named
+(whether the tool should assume the household takes it) is answered yes, with the reasoning in
+DECISIONS 2026-08-22.
 See DECISIONS 2026-07-31.
 
 **Finding.** `applyContributions` routes `ongoingContributions` into a cash/GIA/ISA bucket by account type
@@ -354,14 +365,14 @@ only the build consequences are recorded here.
 _Revised 2026-07-28 after the answers above._ Accuracy first, then the reuse-heavy parity items.
 
 1. ~~**A1 fee drag**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). Next by this order: A2.
-2. ~~**A2 pension tax relief — `net_pay` path**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). The
-   AA/MPAA cap and the £3,600 non-earner route are still to wire in. Next by this order: B2.
+2. ~~**A2 pension tax relief**~~ — ✅ **BUILT** (`net_pay` 2026-07-31; the AA/MPAA cap and the £3,600
+   non-earner route 2026-08-22). Next by this order: B2.
 3. ~~**B2 protection gap**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). Next by this order: B1.
 4. ~~**B1 cost of advice**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). Next by this order: B5.
 5. **B5 capacity for loss** — mostly framing over existing stress machinery.
-6. ~~**A3 ISA rules**~~ — ✅ **PART-BUILT 2026-07-31**: the overall £20,000 cap is enforced (spilling to
-   GIA). What remains is not a rule but an *action*: bed-and-ISA, i.e. actually using the allowance,
-   which needs its own decision about whether the tool should assume the household takes it.
+6. ~~**A3 ISA rules**~~ — ✅ **BUILT**: the overall £20,000 cap is enforced 2026-07-31 (spilling to
+   GIA), and bed-and-ISA (actually using the allowance) 2026-08-22. The decision that gated it, whether
+   the tool should assume the household takes it, was answered yes: DECISIONS 2026-08-22.
 7. **A4 salary sacrifice** — generality, not this household's scheme; earns its place as the
    "what if your employer offered it?" comparison.
 8. **B3 estate checklist** — cheap, but the gifting half should land with an IHT re-verify.

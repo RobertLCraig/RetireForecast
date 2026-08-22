@@ -205,6 +205,13 @@ final class TaxYearRegistry
      * £60,000, MPAA £10,000, tapered-AA adjusted-income £260,000 / threshold-income
      * £200,000 / £10,000 floor; minimum pension age 55, rising to 57 on 6 April 2028
      * (HMRC "Increasing Normal Minimum Pension Age", effect on and after 6 April 2028).
+     *
+     * The non-earner relief limit is the £3,600 gross "basic amount" (£2,880 net of
+     * basic-rate relief), and relief on a member's own contributions ends at age 75,
+     * both statutory and unchanged for many years, so the same object serves both tax
+     * years. Source: gov.uk "Tax on your private pension contributions" (pension tax
+     * relief), the figure carried in docs/build/PLAN-adviser-parity.md A2 and verified
+     * there on 2026-07-28; the underlying rule is FA 2004 s190 ("the basic amount").
      */
     /**
      * ISA subscription limits. The overall allowance is £20,000 per person per tax year and has
@@ -243,6 +250,8 @@ final class TaxYearRegistry
             taperRate: Percent::fromPercent(50),
             pclsRate: Percent::fromPercent(25),
             normalMinimumPensionAge: 55,
+            nonEarnerReliefLimit: Money::fromPounds(3_600),
+            reliefMaximumAge: 75,
         );
     }
 

@@ -10,15 +10,78 @@ B5 capacity for loss, which is card 0011 and comes first in the plan's order.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 THE APP SHALL apply the ISA allowance in sell-and-invest plans, so those plans are no
+- [x] #1 THE APP SHALL apply the ISA allowance in sell-and-invest plans, so those plans are no
       longer understated by the absence of bed-and-ISA.
-- [ ] #2 THE APP SHALL model the GBP 3,600 non-earner relief route.
-- [ ] #3 THE APP SHALL cap relievable contributions by the annual allowance and the MPAA.
+- [x] #2 THE APP SHALL model the GBP 3,600 non-earner relief route.
+- [x] #3 THE APP SHALL cap relievable contributions by the annual allowance and the MPAA.
 <!-- AC:END -->
 
 ## Tasks
-- [ ] A3: ISA rules (note the engine never *uses* the allowance today, which is a decision to
+- [x] A3: ISA rules (note the engine never *uses* the allowance today, which is a decision to
       take rather than a rule to apply)
 - [ ] A4: salary sacrifice
 - [ ] B3: estate checklist
 - [ ] B4: annual review
+
+## Direction
+**2026-08-22** Built the three acceptance criteria, all engine-side with the app wiring they needed.
+
+**#1 bed-and-ISA.** `PathProjector::bedAndIsa()` runs after each year's contributions and disposals
+and moves money the household already holds in a taxable GIA into their ISA, up to whatever is left
+of each person's GBP 20,000 allowance. The allowance is one allowance: a new `$state['isaSubscribed']`
+is shared with money paid in, so it cannot be spent twice. The move is a real disposal, so it
+realises the pro-rata gain and consumes the matching cost basis, and it is sized to keep that gain
+inside what is left of the person's CGT annual exempt amount, which is what a real bed-and-ISA does
+and means the step never adds a tax bill the projection would have to fund. It runs in shortfall
+years too, which matters because a sell-and-invest plan has a shortfall in nearly all of them.
+`YearResult::$isaSheltered` reports what moved. Guarded by `BedAndIsaTest`, whose switch-off case
+reproduces the old understated plan, so it is a real guard rather than a tautology.
+
+**The decision the card flagged, and why I took it.** The task note said using the allowance is "a
+decision to take rather than a rule to apply", but acceptance #1 is written as THE APP SHALL apply
+it, so I read the decision as already taken and built it ON by default. The reasoning is in
+DECISIONS 2026-08-22: modelling nothing is itself a claim, and it was the wrong one, falling on one
+side of the sell-versus-stay comparison the tool exists to make. Three things make it safe to
+overrule: it is disclosed on the results page as an `assumed_figure` note naming the pounds the
+projection actually moved (read out of the forecast, so it cannot drift); it is switchable via
+`ForecastSettings::$useIsaAllowance` and the builder-state key `useIsaAllowance`; and spending has
+first claim on the CGT exempt amount, so it is the cautious way round. **If Rob wants it off by
+default, that is a one-line change and none of the machinery is wasted.**
+
+**#2 the GBP 3,600 non-earner route** is a new `PensionReliefMethod::NonEarner`, not a reopening of
+`ReliefAtSource` (which still throws). The member pays GBP 2,880 out of household surplus and GBP
+3,600 reaches the pot; capped at the statutory basic amount and stopping at 75. A separate case,
+because every member under 75 has the basic amount whatever they earn, so it needs no earnings test
+and cannot under-relieve anyone; general relief at source would give a higher-rate taxpayer 20% where
+they are due 40%, which is exactly why it throws. New `PensionParameters::$nonEarnerReliefLimit` and
+`$reliefMaximumAge` own the two figures. Third option added to the builder's relief dropdown.
+
+**#3 the contribution cap.** `mpaaHeadroom()` became `contributionHeadroom()`: the annual allowance
+(GBP 60,000) when the MPAA has not been triggered, the MPAA (GBP 10,000) when it has, in the one
+place a pot is credited. Both count the employer's contribution, because the statutory limit is on
+total pension input. What the cap blocks stays in pay, is taxed there and is saved, so nothing is
+dropped.
+
+**Assumed / not settled from the repository.**
+- The GBP 3,600 basic amount and the age-75 relief limit are entered from this plan's own 2026-07-28
+  verification of gov.uk, cited in the registry docblock. **They were not re-verified online this
+  session:** a ProgressBoard card session has no web access. Both are long-standing statutory figures
+  and neither has moved, but a figure-freshness pass should re-confirm them.
+- Deliberately not built, and now recorded in DATA-MODEL and METHODOLOGY as open: the high-income AA
+  taper (it needs adjusted and threshold income, which the year's own contributions move, and
+  `AnnualAllowanceCalculator` already prices it separately), carry-forward of unused allowance (its
+  absence is the cautious side), and the AA **charge** on the excess as distinct from a hard cap.
+- No builder checkbox turns bed-and-ISA off yet. The engine and the scenario key take it; adding the
+  UI control is the four-part builder-field change (blank default, validation, loadState backfill,
+  `BuilderStateFixture::full`) and would have grown the card past its acceptance.
+
+**Tasks A4, B3 and B4 are untouched and left open.** None of them has an acceptance criterion on this
+card, and building them would have been scope this card did not review. A4 salary sacrifice in
+particular is a generality item the plan already de-prioritised (this household's scheme is net pay).
+
+**Checks.** Whole suite green (`php artisan test`; the card asked for `.\vendor\bin\pest.bat`, which
+this repo does not have, it runs PHPUnit through artisan per CLAUDE.md). `php artisan scenarios:audit`
+clean across all 25 stored scenarios, and their figures have moved, as expected for a change that
+shelters GIA money. `vendor\bin\pint.bat` clean. **No browser check:** this worktree is not what Herd
+serves, so the new builder dropdown option and the new results-page note still need a look in a
+browser at `C:\Dev\RetireForecast`.

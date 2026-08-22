@@ -36,13 +36,13 @@ final class AssumedFiguresDisclosureTest extends TestCase
      * @param  array<string, mixed>  $housing
      * @return list<string> the assumed-figure disclosures a reader would see
      */
-    private function disclosures(array $housing, string $currentRunningCosts = ''): array
+    private function disclosures(array $housing, string $currentRunningCosts = '', string $accountType = 'isa'): array
     {
         $state = [
             'householdName' => 'Movers', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
             'people' => [['id' => 'p1', 'dob' => '1955-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
             'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
-            'accounts' => [['id' => 'a1', 'ownerId' => 'p1', 'type' => 'isa', 'balance' => '150000']],
+            'accounts' => [['id' => 'a1', 'ownerId' => 'p1', 'type' => $accountType, 'balance' => '150000']],
             'expenseLines' => [['id' => 'e1', 'amount' => '18000', 'category' => 'essential']],
             'expense' => ['survivorFactor' => '70'],
             'hasProperty' => true,
@@ -124,6 +124,28 @@ final class AssumedFiguresDisclosureTest extends TestCase
     public function test_a_plan_that_never_buys_discloses_nothing(): void
     {
         // Both defaults only bite on a purchase; a stay-put or rent plan must not be given noise.
+        $this->assertSame([], $this->disclosures(['salePrice' => '400000', 'annualRent' => '18000']));
+    }
+
+    public function test_using_the_isa_allowance_is_disclosed_because_nobody_asked_for_it(): void
+    {
+        // The engine moves money out of a taxable account into an ISA each year on the household's
+        // behalf. Nobody entered that: it is an ACTION the model takes, it changes the tax bill
+        // and therefore the answer, and until it was disclosed a reader had no way to know it had
+        // happened. The disclosure states the pounds the projection actually moved, so it cannot
+        // drift from what was done.
+        $disclosures = $this->disclosures(['salePrice' => '400000', 'annualRent' => '18000'], accountType: 'gia');
+
+        $this->assertCount(1, $disclosures);
+        $this->assertStringContainsString('ISA allowance', $disclosures[0]);
+        $this->assertMatchesRegularExpression('/£[\d,]+\.\d\d in \d{4}/', $disclosures[0],
+            'the disclosure must name what was actually moved, and when');
+    }
+
+    public function test_nothing_is_disclosed_about_isas_when_the_money_is_already_sheltered(): void
+    {
+        // No noise: a household holding nothing outside an ISA has nothing to move, so the note
+        // must not appear. (The default fixture account is an ISA.)
         $this->assertSame([], $this->disclosures(['salePrice' => '400000', 'annualRent' => '18000']));
     }
 

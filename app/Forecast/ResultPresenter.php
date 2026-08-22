@@ -764,13 +764,36 @@ final class ResultPresenter
         return $variant === ScenarioVariant::BuyOutright->value ? $action : null;
     }
 
-    public static function assumedFigures(Household $household, ?HousingAction $action): array
+    public static function assumedFigures(Household $household, ?HousingAction $action, ?ForecastResult $forecast = null): array
     {
-        if ($action === null) {
-            return [];
+        $out = [];
+
+        // Using the ISA allowance ("bed and ISA"). This one is not a blank input filled in, it is
+        // an ACTION the engine performs on the household's behalf: money they hold in a taxable
+        // account is moved into an ISA up to their unused allowance each year, so its growth and
+        // dividends stop being taxed. It moves the result, nobody entered it, and it is exactly
+        // the kind of figure this rule exists to surface. Read out of the forecast itself rather
+        // than restated, so the reader is told what the projection actually did.
+        if ($forecast !== null) {
+            $sheltered = array_map(static fn (YearResult $y): int => $y->isaSheltered()->pence, $forecast->years);
+            $total = array_sum($sheltered);
+            if ($total > 0) {
+                $firstYear = $forecast->years[array_key_first(array_filter($sheltered))];
+                $lifetime = Money::fromPence($total)->format();
+                $out[] = "We've assumed you use your ISA allowance on money you already hold outside one. Each year "
+                    .'the forecast moves what it can from your general investment account into an ISA, so from then on '
+                    ."its growth and dividends are tax-free: {$firstYear->isaSheltered()->format()} in {$firstYear->calendarYear}, "
+                    ."and {$lifetime} across the plan. Nobody entered this: it is what a "
+                    .'household holding money outside an ISA would normally do, and leaving it out would show you paying '
+                    .'tax you would not really pay. Each move is a sale, so it is kept small enough that the gain stays '
+                    .'inside your capital-gains allowance and costs nothing. If you would not do it, say so and we will '
+                    .'model the money staying where it is.';
+            }
         }
 
-        $out = [];
+        if ($action === null) {
+            return $out;
+        }
 
         // The bought home's upkeep: 1% of its value a year, when no figure was entered. On a £150,000
         // home that is £1,500/yr charged as an essential cost for the rest of the plan.
@@ -1618,7 +1641,7 @@ final class ResultPresenter
         // upkeep and the cost of moving) silently moved the result with nothing on any screen to
         // show for it. Every such figure is enumerated here, with its value and why it applies, so a
         // reader can challenge it. Each value is READ from the one place that owns it, never restated.
-        foreach (self::assumedFigures($household, $housingAction) as $assumed) {
+        foreach (self::assumedFigures($household, $housingAction, $forecast) as $assumed) {
             $notes[] = ['kind' => 'assumed_figure', 'text' => $assumed];
         }
 

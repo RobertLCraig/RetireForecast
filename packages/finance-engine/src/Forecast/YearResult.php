@@ -116,6 +116,7 @@ final class YearResult
         public readonly ?Money $mortgageBalance = null,
         public readonly ?Money $investmentCharges = null,
         public readonly ?self $nominal = null,
+        public readonly ?Money $isaSheltered = null,
     ) {
         $this->totalWealth = $liquidWealth->plus($pensionWealth)->plus($this->homeEquity());
     }
@@ -158,6 +159,17 @@ final class YearResult
     }
 
     /**
+     * What was moved out of a taxable General Investment Account into an ISA this year
+     * ("bed and ISA"), zero if none was. Not income and not spend: the same pounds simply stop
+     * being taxable, so it is carried on its own rather than folded into any flow, and it is
+     * what lets a screen state the sheltering the model performed instead of leaving it invisible.
+     */
+    public function isaSheltered(): Money
+    {
+        return $this->isaSheltered ?? Money::zero();
+    }
+
+    /**
      * A copy of this year with its investment (capital) growth and the ongoing charges taken
      * out of the pots set — both attached after growth is applied. $nominal replaces the
      * pre-deflation twin (the caller attaches the same flows in nominal pounds); omitted, the
@@ -173,6 +185,7 @@ final class YearResult
             $this->incomeBySource, $this->warnings, $investmentGrowth, $this->mortgageBalance,
             $investmentCharges ?? $this->investmentCharges,
             $nominal ?? $this->nominal,
+            $this->isaSheltered,
         );
     }
 }
