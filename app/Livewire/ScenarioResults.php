@@ -27,6 +27,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -56,6 +57,16 @@ class ScenarioResults extends Component
      * strategy-comparison chart (and their tables); the headline cards show both regardless.
      */
     public bool $includeHome = false;
+
+    /**
+     * Money basis for the three time-series charts. False (default) shows REAL today's money,
+     * the basis every other surface uses, so a 30-year series is on one yardstick; true shows
+     * the pounds of each year itself, which is what a bank statement in 2045 would say and is
+     * how most people picture a future figure. The nominal figures are the projector's own
+     * pre-deflation values ({@see YearResult::$nominal}),
+     * never these deflated ones multiplied back up here.
+     */
+    public bool $nominalPounds = false;
 
     /**
      * Which housing strategy the year-by-year cashflow ladder (and its life-event milestones)
@@ -403,7 +414,7 @@ class ScenarioResults extends Component
         // reads, so they can't drift from it. Overlay the same life-event verticals the ladder
         // milestones mark, so a step change (retirement, State Pension, a sale) is legible.
         $ladderMilestones = ResultPresenter::milestones($household, $ladderForecast, homeSold: $homeSold);
-        $timeSeries = ResultPresenter::timeSeriesCharts($ladderForecast);
+        $timeSeries = ResultPresenter::timeSeriesCharts($ladderForecast, $this->nominalPounds);
         $milestoneAnnotations = ResultPresenter::milestoneAnnotations($ladderMilestones);
         foreach (['income', 'wealth', 'costs'] as $chartKey) {
             $timeSeries[$chartKey]['options']['annotations']['xaxis'] = $milestoneAnnotations;

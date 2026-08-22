@@ -12,6 +12,8 @@ use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Forecast\YearResult;
+use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
@@ -24,6 +26,11 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
  * that occurs reaches the accessible table — no silent drop, even when the CHART folds the
  * smallest into "Other"). A chart that disagreed with the ladder would be the exact
  * inconsistent-aggregation failure the data-layer rule exists to prevent.
+ *
+ * The nominal-pounds toggle is held to the same bar, plus one of its own: the figures it shows
+ * must be the engine's own pre-deflation year ({@see YearResult::$nominal}), not these deflated
+ * ones multiplied back up, and a forecast that carries no such year must report the view as
+ * unavailable rather than label real money as nominal.
  */
 final class TimeSeriesChartsTest extends TestCase
 {
@@ -219,5 +226,123 @@ final class TimeSeriesChartsTest extends TestCase
             }
             $this->assertSame(MoneyText::toPence($row['total']), $sum, "income must reconcile in {$row['year']}");
         }
+    }
+
+    public function test_the_nominal_toggle_shows_the_engines_own_pre_deflation_figures(): void
+    {
+        $forecast = $this->forecast($this->richState());
+
+        $real = ResultPresenter::timeSeriesCharts($forecast);
+        $nominal = ResultPresenter::timeSeriesCharts($forecast, nominal: true);
+
+        $this->assertFalse($real['nominal']);
+        $this->assertTrue($nominal['nominal']);
+        $this->assertTrue($nominal['nominalAvailable']);
+
+        // Every plotted and tabulated figure is read STRAIGHT off YearResult::$nominal, the
+        // projector's pre-deflation year. Nothing here re-inflates a deflated figure, so this
+        // compares the presenter's output with the engine value it must have used.
+        $twinByYear = [];
+        foreach ($forecast->years as $year) {
+            $twinByYear[$year->calendarYear] = $year->nominal;
+        }
+
+        foreach ($nominal['wealth']['rows'] as $row) {
+            $twin = $twinByYear[$row['year']];
+            $this->assertSame($twin->pensionWealth->format(), $row['pension'], "pensions must be the engine's nominal figure in {$row['year']}");
+            $this->assertSame($twin->liquidWealth->format(), $row['liquid'], "savings must be the engine's nominal figure in {$row['year']}");
+            $this->assertSame($twin->homeEquity()->format(), $row['homeEquity'], "home equity must be the engine's nominal figure in {$row['year']}");
+            $this->assertSame($twin->totalWealth->format(), $row['total'], "the total must be the engine's nominal figure in {$row['year']}");
+        }
+
+        foreach ($nominal['costs']['rows'] as $row) {
+            $twin = $twinByYear[$row['year']];
+            $this->assertSame($twin->essentialSpend->format(), $row['essential'], "essential spend must be the engine's nominal figure in {$row['year']}");
+            $this->assertSame($twin->spendTarget->format(), $row['total'], "the spend target must be the engine's nominal figure in {$row['year']}");
+        }
+
+        foreach ($nominal['income']['rows'] as $row) {
+            $twin = $twinByYear[$row['year']];
+            foreach ($nominal['income']['sources'] as $source) {
+                $this->assertSame(
+                    ($twin->incomeBySource[$source] ?? Money::zero())->format(),
+                    $row['income'][$source],
+                    "income source {$source} must be the engine's nominal figure in {$row['year']}",
+                );
+            }
+        }
+
+        // The two views are the same money on two yardsticks, so the base year (price level 1.0)
+        // must read identically and the later years must not: a toggle that changed only the
+        // wording would pass the first of these and fail the second.
+        $this->assertSame($real['costs']['rows'][0]['total'], $nominal['costs']['rows'][0]['total']);
+        $lastReal = $real['costs']['rows'][count($real['costs']['rows']) - 1];
+        $lastNominal = $nominal['costs']['rows'][count($nominal['costs']['rows']) - 1];
+        $this->assertGreaterThan(MoneyText::toPence($lastReal['total']), MoneyText::toPence($lastNominal['total']));
+
+        // The basis is named once and every label follows it, so a chart can never be drawn on
+        // one basis and captioned as the other.
+        $this->assertSame('cash pounds', $nominal['basisShort']);
+        $this->assertSame('real pounds', $real['basisShort']);
+        $this->assertSame('Spending (cash £)', $nominal['costs']['options']['yaxis']['title']['text']);
+        $this->assertSame('Spending (real £)', $real['costs']['options']['yaxis']['title']['text']);
+    }
+
+    public function test_the_nominal_view_still_reconciles_and_lists_every_source(): void
+    {
+        $forecast = $this->forecast($this->richState());
+        $charts = ResultPresenter::timeSeriesCharts($forecast, nominal: true);
+
+        // Same completeness and reconciliation bar as the real view: the same sources occur,
+        // the columns sum to the row total, and the wealth legs sum to the net-worth total.
+        $this->assertSame(
+            ResultPresenter::timeSeriesCharts($forecast)['income']['sources'],
+            $charts['income']['sources'],
+        );
+
+        foreach ($charts['income']['rows'] as $row) {
+            $sum = 0;
+            foreach ($charts['income']['sources'] as $source) {
+                $sum += MoneyText::toPence($row['income'][$source]);
+            }
+            $this->assertSame(MoneyText::toPence($row['total']), $sum, "nominal income must reconcile in {$row['year']}");
+        }
+
+        foreach ($charts['wealth']['rows'] as $row) {
+            $this->assertSame(
+                MoneyText::toPence($row['total']),
+                MoneyText::toPence($row['pension']) + MoneyText::toPence($row['liquid']) + MoneyText::toPence($row['homeEquity']),
+                "nominal wealth legs must reconcile in {$row['year']}",
+            );
+        }
+    }
+
+    public function test_a_forecast_without_pre_deflation_figures_cannot_offer_the_nominal_view(): void
+    {
+        // A year restored from an older stored result carries no twin. Rather than show real
+        // money under a nominal label, the presenter reports the view as unavailable and hands
+        // back the real figures, so the caller hides the toggle.
+        $bare = new ForecastResult(
+            [
+                new YearResult(
+                    yearIndex: 0, calendarYear: 2026, ages: [], aliveCount: 2,
+                    grossIncome: Money::fromPounds(30_000), totalTax: Money::zero(),
+                    netIncome: Money::fromPounds(30_000), spendTarget: Money::fromPounds(25_000),
+                    essentialSpend: Money::fromPounds(20_000), shortfallFunded: Money::zero(),
+                    unmetSpend: Money::zero(), essentialsMet: true,
+                    liquidWealth: Money::fromPounds(100_000), pensionWealth: Money::zero(),
+                    propertyWealth: Money::zero(),
+                    incomeBySource: ['state_pension' => Money::fromPounds(30_000)],
+                ),
+            ],
+            true, true, null, Money::zero(), Money::zero(), 2026,
+        );
+
+        $charts = ResultPresenter::timeSeriesCharts($bare, nominal: true);
+
+        $this->assertFalse($charts['nominalAvailable']);
+        $this->assertFalse($charts['nominal']);
+        $this->assertSame('real pounds', $charts['basisShort']);
+        $this->assertSame(Money::fromPounds(25_000)->format(), $charts['costs']['rows'][0]['total']);
     }
 }

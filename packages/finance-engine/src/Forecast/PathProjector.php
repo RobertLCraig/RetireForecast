@@ -167,6 +167,12 @@ final class PathProjector
             $years[] = $year->withInvestmentGrowth(
                 Money::fromPence((int) round($grown['growth'] / $cumInflation)),
                 Money::fromPence((int) round($grown['charges'] / $cumInflation)),
+                // The pre-deflation twin takes the same two flows undivided, so the nominal
+                // view carries the growth and charges the pots actually saw.
+                $year->nominal?->withInvestmentGrowth(
+                    Money::fromPence($grown['growth']),
+                    Money::fromPence($grown['charges']),
+                ),
             );
 
             $prevAlive = $alive; // carry this year's living into next year's death detection
@@ -1205,29 +1211,33 @@ final class PathProjector
         // sum independently, or the total drifts from its legs by a penny
         // (round-of-sum != sum-of-rounds). Data-integrity rule: a reported total has one
         // definition, built from its components.
-        $liquidReal = $r($liquid);
-        $pensionReal = $r($pension);
-        $propertyReal = $r($state['property']);
-
-        return new YearResult(
+        //
+        // One assembly, two money bases: $m maps this year's nominal pence to the reported
+        // Money, so the real year and its pre-deflation twin are built from the SAME integers.
+        // The twin is what a nominal-pounds view reads; re-inflating the real figures instead
+        // would drift from these by the rounding the deflation threw away.
+        $build = fn (callable $m, ?YearResult $nominal): YearResult => new YearResult(
             yearIndex: $yearIndex,
             calendarYear: $calendarYear,
             ages: $ages,
             aliveCount: $aliveCount,
-            grossIncome: $r($grossIncomeNominal),
-            totalTax: $r($totalTaxNominal),
-            netIncome: $r($netCashNominal),
-            spendTarget: $r($spendNominal),
-            essentialSpend: $r($essentialNominal),
-            shortfallFunded: $r($fundedNominal),
-            unmetSpend: $r($unmetNominal),
+            grossIncome: $m($grossIncomeNominal),
+            totalTax: $m($totalTaxNominal),
+            netIncome: $m($netCashNominal),
+            spendTarget: $m($spendNominal),
+            essentialSpend: $m($essentialNominal),
+            shortfallFunded: $m($fundedNominal),
+            unmetSpend: $m($unmetNominal),
             essentialsMet: $essentialsMet,
-            liquidWealth: $liquidReal,
-            pensionWealth: $pensionReal,
-            propertyWealth: $propertyReal,
-            incomeBySource: array_map($r, $src),
-            mortgageBalance: $r($state['mortgageOutstanding']),
+            liquidWealth: $m($liquid),
+            pensionWealth: $m($pension),
+            propertyWealth: $m($state['property']),
+            incomeBySource: array_map($m, $src),
+            mortgageBalance: $m($state['mortgageOutstanding']),
+            nominal: $nominal,
         );
+
+        return $build($r, $build(Money::fromPence(...), null));
     }
 
     /**

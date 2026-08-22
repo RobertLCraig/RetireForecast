@@ -909,7 +909,7 @@ final class ResultPresenter
         // Drop columns for sources that never occur, so the table stays readable.
         $active = array_values(array_filter(
             YearResult::INCOME_SOURCES,
-            fn (string $source): bool => self::sourceOccurs($forecast, $source),
+            fn (string $source): bool => self::sourceOccurs($forecast->years, $source),
         ));
 
         // Show the capital-growth column only when the pots actually appreciate in some year
@@ -1007,9 +1007,10 @@ final class ResultPresenter
         ];
     }
 
-    private static function sourceOccurs(ForecastResult $forecast, string $source): bool
+    /** @param  list<YearResult>  $years */
+    private static function sourceOccurs(array $years, string $source): bool
     {
-        foreach ($forecast->years as $year) {
+        foreach ($years as $year) {
             $money = $year->incomeBySource[$source] ?? null;
             if ($money instanceof Money && $money->isPositive()) {
                 return true;
@@ -1037,28 +1038,50 @@ final class ResultPresenter
      * {@see ForecastResult::$years} the cashflow {@see ladder()} reads, so a chart can
      * never drift from the ladder (one definition — asserted in the reconciliation test).
      *
-     * All figures are REAL (today's money), like the ladder and fan; a stacked band is
-     * therefore always ≥ £0 (incomes, wealth legs and spend are each non-negative), so the
-     * axis anchors at zero with no shortfall band. The C1 stack is capped at the palette's
-     * eight hues: if more than eight income sources occur across the horizon, the
-     * smallest-contributing fold into a neutral "Other" band on the CHART — the income
-     * table + CSV still list every source, so nothing is silently dropped (completeness).
+     * Figures are REAL (today's money) by default, like the ladder and fan. Passing $nominal
+     * switches all three charts and their tables to the pounds of the year itself, read from
+     * {@see YearResult::$nominal} — the projector's OWN pre-deflation figures, never these real
+     * ones re-inflated here (which would drift from the engine by the rounding the deflation
+     * threw away). A forecast whose years carry no twin cannot offer the view at all: the
+     * returned `nominalAvailable` is then false and the real figures come back, so a caller can
+     * hide the toggle rather than label real money as nominal. Either way a stacked band is
+     * always ≥ £0 (incomes, wealth legs and spend are each non-negative), so the axis anchors at
+     * zero with no shortfall band. The C1 stack is capped at the palette's eight hues: if more
+     * than eight income sources occur across the horizon, the smallest-contributing fold into a
+     * neutral "Other" band on the CHART — the income table + CSV still list every source, so
+     * nothing is silently dropped (completeness).
      *
-     * @return array{income: array<string, mixed>, wealth: array<string, mixed>, costs: array<string, mixed>}
+     * @return array{income: array<string, mixed>, wealth: array<string, mixed>, costs: array<string, mixed>, nominal: bool, nominalAvailable: bool, basisLabel: string, basisShort: string}
      */
-    public static function timeSeriesCharts(ForecastResult $forecast): array
+    public static function timeSeriesCharts(ForecastResult $forecast, bool $nominal = false): array
     {
+        $twins = array_map(fn (YearResult $y): ?YearResult => $y->nominal, $forecast->years);
+        $available = $forecast->years !== [] && ! in_array(null, $twins, true);
+        $showNominal = $nominal && $available;
+        /** @var list<YearResult> $years */
+        $years = $showNominal ? array_values(array_filter($twins)) : $forecast->years;
+
         // The per-year age labels for the x-axis, straight from the engine's own per-year
         // ages (YearResult::ages), so the chart axis reads the same ages the ladder does.
         $ageByYear = [];
-        foreach ($forecast->years as $year) {
+        foreach ($years as $year) {
             $ageByYear[$year->calendarYear] = implode(' / ', $year->ages);
         }
 
+        // The axis suffix and the on-screen wording come from one place, so a chart can never
+        // be drawn on one basis and captioned as the other.
+        $basis = $showNominal ? 'cash £' : 'real £';
+
         return [
-            'income' => self::incomeStaircase($forecast, $ageByYear),
-            'wealth' => self::wealthComposition($forecast, $ageByYear),
-            'costs' => self::costsOverTime($forecast, $ageByYear),
+            'income' => self::incomeStaircase($years, $ageByYear, $basis),
+            'wealth' => self::wealthComposition($years, $ageByYear, $basis),
+            'costs' => self::costsOverTime($years, $ageByYear, $basis),
+            'nominal' => $showNominal,
+            'nominalAvailable' => $available,
+            'basisLabel' => $showNominal
+                ? 'the pounds of each year (what the money is called at the time)'
+                : "today's money (every year on the same yardstick)",
+            'basisShort' => $showNominal ? 'cash pounds' : 'real pounds',
         ];
     }
 
@@ -1066,14 +1089,15 @@ final class ResultPresenter
      * C1 — the income staircase: a stacked area of every income source that occurs, over
      * time, so the salary → DB → State-Pension → drawdown handover reads at a glance.
      *
+     * @param  list<YearResult>  $years
      * @return array{options: array<string, mixed>, sources: list<string>, sourceLabels: array<string, string>, rows: list<array<string, mixed>>, folded: list<string>}
      */
-    private static function incomeStaircase(ForecastResult $forecast, array $ageByYear): array
+    private static function incomeStaircase(array $years, array $ageByYear, string $basis): array
     {
         // Every source that pays out in some year, in canonical order (no silent drop).
         $active = array_values(array_filter(
             YearResult::INCOME_SOURCES,
-            fn (string $source): bool => self::sourceOccurs($forecast, $source),
+            fn (string $source): bool => self::sourceOccurs($years, $source),
         ));
 
         // Cap the CHART at the eight palette hues: keep the eight largest by horizon-total
@@ -1085,7 +1109,7 @@ final class ResultPresenter
             $totals = [];
             foreach ($active as $source) {
                 $sum = Money::zero();
-                foreach ($forecast->years as $year) {
+                foreach ($years as $year) {
                     $sum = $sum->plus($year->incomeBySource[$source] ?? Money::zero());
                 }
                 $totals[$source] = $sum->pence;
@@ -1103,7 +1127,7 @@ final class ResultPresenter
                 'name' => self::SOURCE_LABELS[$source],
                 'data' => array_map(
                     fn (YearResult $y): array => ['x' => $y->calendarYear, 'y' => self::pounds($y->incomeBySource[$source] ?? Money::zero())],
-                    $forecast->years,
+                    $years,
                 ),
             ];
             $colours[] = self::SERIES_COLOURS[$i];
@@ -1118,7 +1142,7 @@ final class ResultPresenter
                     }
 
                     return ['x' => $y->calendarYear, 'y' => self::pounds($sum)];
-                }, $forecast->years),
+                }, $years),
             ];
             $colours[] = self::OTHER_COLOUR;
         }
@@ -1137,10 +1161,10 @@ final class ResultPresenter
             }
 
             return ['year' => $y->calendarYear, 'ages' => implode(' / ', $y->ages), 'income' => $income, 'total' => $total->format()];
-        }, $forecast->years);
+        }, $years);
 
         return [
-            'options' => self::stackedArea($series, $colours, 'Income (real £)', $ageByYear),
+            'options' => self::stackedArea($series, $colours, "Income ({$basis})", $ageByYear),
             'sources' => $active,
             'sourceLabels' => self::SOURCE_LABELS,
             'rows' => $rows,
@@ -1153,9 +1177,10 @@ final class ResultPresenter
      * savings, home equity) over time. The three sum to {@see YearResult::$totalWealth} by
      * construction, so the stack total is the net-worth line.
      *
+     * @param  list<YearResult>  $years
      * @return array{options: array<string, mixed>, rows: list<array<string, mixed>>}
      */
-    private static function wealthComposition(ForecastResult $forecast, array $ageByYear): array
+    private static function wealthComposition(array $years, array $ageByYear, string $basis): array
     {
         $legs = [
             ['name' => 'Pensions', 'get' => fn (YearResult $y): Money => $y->pensionWealth],
@@ -1169,7 +1194,7 @@ final class ResultPresenter
                 'name' => $leg['name'],
                 'data' => array_map(
                     fn (YearResult $y): array => ['x' => $y->calendarYear, 'y' => self::pounds(($leg['get'])($y))],
-                    $forecast->years,
+                    $years,
                 ),
             ];
         }
@@ -1181,10 +1206,10 @@ final class ResultPresenter
             'liquid' => $y->liquidWealth->format(),
             'homeEquity' => $y->homeEquity()->format(),
             'total' => $y->totalWealth->format(),
-        ], $forecast->years);
+        ], $years);
 
         return [
-            'options' => self::stackedArea($series, array_slice(self::SERIES_COLOURS, 0, 3), 'Wealth (real £)', $ageByYear),
+            'options' => self::stackedArea($series, array_slice(self::SERIES_COLOURS, 0, 3), "Wealth ({$basis})", $ageByYear),
             'rows' => $rows,
         ];
     }
@@ -1194,20 +1219,21 @@ final class ResultPresenter
      * age-varying spending smile is legible. The two sum to {@see YearResult::$spendTarget}
      * (discretionary = target − essential, floored), the same split the ladder itemises.
      *
+     * @param  list<YearResult>  $years
      * @return array{options: array<string, mixed>, rows: list<array<string, mixed>>}
      */
-    private static function costsOverTime(ForecastResult $forecast, array $ageByYear): array
+    private static function costsOverTime(array $years, array $ageByYear, string $basis): array
     {
         $discretionary = fn (YearResult $y): Money => $y->spendTarget->minus($y->essentialSpend)->minZero();
 
         $series = [
             [
                 'name' => 'Essential',
-                'data' => array_map(fn (YearResult $y): array => ['x' => $y->calendarYear, 'y' => self::pounds($y->essentialSpend)], $forecast->years),
+                'data' => array_map(fn (YearResult $y): array => ['x' => $y->calendarYear, 'y' => self::pounds($y->essentialSpend)], $years),
             ],
             [
                 'name' => 'Discretionary',
-                'data' => array_map(fn (YearResult $y): array => ['x' => $y->calendarYear, 'y' => self::pounds($discretionary($y))], $forecast->years),
+                'data' => array_map(fn (YearResult $y): array => ['x' => $y->calendarYear, 'y' => self::pounds($discretionary($y))], $years),
             ],
         ];
 
@@ -1217,17 +1243,17 @@ final class ResultPresenter
             'essential' => $y->essentialSpend->format(),
             'discretionary' => $discretionary($y)->format(),
             'total' => $y->spendTarget->format(),
-        ], $forecast->years);
+        ], $years);
 
         return [
-            'options' => self::stackedArea($series, array_slice(self::SERIES_COLOURS, 0, 2), 'Spending (real £)', $ageByYear),
+            'options' => self::stackedArea($series, array_slice(self::SERIES_COLOURS, 0, 2), "Spending ({$basis})", $ageByYear),
             'rows' => $rows,
         ];
     }
 
     /**
-     * A stacked-area ApexCharts option blob shared by the three time-series charts: real
-     * pounds on a £-abbreviated y-axis anchored at zero, the calendar-year x-axis relabelled
+     * A stacked-area ApexCharts option blob shared by the three time-series charts: money on
+     * a £-abbreviated y-axis anchored at zero (the basis is named in $yTitle), the x-axis relabelled
      * with ages ({@see agesByYear}), a 1px surface stroke between bands (the marks spec's
      * surface gap), and the same `moneyAxis` / `ageByYear` flags {@see \resources\js\charts.js}
      * resolves client-side. Milestone x-axis annotations are merged in by the caller.

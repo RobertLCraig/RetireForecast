@@ -3,6 +3,32 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-08-22 — A nominal-pounds view reads the engine's pre-deflation year, never a re-inflated one
+**Context:** card 0013, deferred from slice #3 of
+[PLAN-output-inflation-and-charts.md](build/PLAN-output-inflation-and-charts.md). Every reported figure is
+real today's money, which is correct and comparable but counter-intuitive: a couple pictures "£X in 2045",
+not "£X in today's money in 2045". The projector already works in nominal pounds internally and divides by
+the price level on the way out.
+
+**Decisions:**
+1. **Each `YearResult` carries `$nominal`, the same year built from the same nominal integers before that
+   division.** *Rationale:* the cheap alternative was to multiply the reported real figure back up in the
+   presenter, and that recovers a number the engine never held. Deflation rounds to the penny, so
+   re-inflating a rounded figure drifts from the projector's own arithmetic, and every reconciliation the
+   charts are held to (legs summing to the total, sources summing to gross) would then be checking a figure
+   the engine cannot vouch for. One extra assembly per projected year costs about 4% of that year's work,
+   measured, so there is no flag to gate it and the deterministic and Monte Carlo paths stay identical.
+2. **The toggle covers the three time-series charts, not the whole page.** *Rationale:* that is the scope
+   slice #3 specified, and a page half in one basis and half in the other, without the reader being told
+   which is which, is worse than a page consistently in real terms. The prose beside the charts names the
+   basis in force, and warns on the nominal view that later figures look bigger because prices rise.
+3. **A forecast whose years carry no twin cannot offer the view at all.** `timeSeriesCharts()` returns
+   `nominalAvailable: false` and the real figures, and the toggle is not rendered. *Rationale:* the no-
+   invisible-figures rule cuts both ways. Showing real money under a nominal label is the same defect as
+   showing a figure the user cannot see.
+
+**Status:** active
+
 ## 2026-08-19 — A "fill the bands" pension draw is a UFPLS, and flexible access caps what can go back in
 **Context:** card 0007, the last two slices of [PLAN-withdrawal-sequencing.md](build/PLAN-withdrawal-sequencing.md).
 `fundShortfall`'s draw closure took pension money gross and taxed 100% of it, applying the 25% tax-free

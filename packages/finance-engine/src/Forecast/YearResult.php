@@ -40,6 +40,15 @@ use RetireForecast\FinanceEngine\Support\Warning;
  * GIAs (cash deposits bear none). Zero when no charge is modelled. Carried as its own
  * figure rather than netted silently into $investmentGrowth, because a charge the reader
  * cannot see is indistinguishable from one we invented.
+ *
+ * $nominal is this same year in the projector's own PRE-DEFLATION pounds: the cash actually
+ * changing hands in that calendar year, before the division by the price level that produces
+ * every figure above. It is built alongside the real year from the identical nominal integers,
+ * so a nominal-pounds view is the engine's own arithmetic and never a presenter re-inflating a
+ * deflated figure (which would drift from it by the rounding the deflation threw away). It is
+ * null on a hand-built {@see self} (a fixture, or a year restored from an older stored result),
+ * so a caller offering the nominal view must check for it rather than showing real figures under
+ * a nominal label. A nominal year carries no twin of its own.
  */
 final class YearResult
 {
@@ -106,6 +115,7 @@ final class YearResult
         public readonly ?Money $investmentGrowth = null,
         public readonly ?Money $mortgageBalance = null,
         public readonly ?Money $investmentCharges = null,
+        public readonly ?self $nominal = null,
     ) {
         $this->totalWealth = $liquidWealth->plus($pensionWealth)->plus($this->homeEquity());
     }
@@ -149,9 +159,11 @@ final class YearResult
 
     /**
      * A copy of this year with its investment (capital) growth and the ongoing charges taken
-     * out of the pots set — both attached after growth is applied.
+     * out of the pots set — both attached after growth is applied. $nominal replaces the
+     * pre-deflation twin (the caller attaches the same flows in nominal pounds); omitted, the
+     * existing twin is carried, so a nominal year's own copy stays twinless.
      */
-    public function withInvestmentGrowth(Money $investmentGrowth, ?Money $investmentCharges = null): self
+    public function withInvestmentGrowth(Money $investmentGrowth, ?Money $investmentCharges = null, ?self $nominal = null): self
     {
         return new self(
             $this->yearIndex, $this->calendarYear, $this->ages, $this->aliveCount,
@@ -160,6 +172,7 @@ final class YearResult
             $this->liquidWealth, $this->pensionWealth, $this->propertyWealth,
             $this->incomeBySource, $this->warnings, $investmentGrowth, $this->mortgageBalance,
             $investmentCharges ?? $this->investmentCharges,
+            $nominal ?? $this->nominal,
         );
     }
 }
