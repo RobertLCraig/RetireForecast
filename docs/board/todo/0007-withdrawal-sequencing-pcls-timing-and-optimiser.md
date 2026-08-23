@@ -654,3 +654,48 @@ tax-free cash.
   this worktree. Nothing this pass changed a screen, but everything the earlier passes left for Rob's
   eye is still waiting.
 
+### 2026-08-23 review (v20260823123311-405e)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 156s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+**#1** `PathProjector::fundShortfall` sends every FillBands pension step through `$drawPensionUfpls`, including the CGT-funding one. The 25% split has one home, `PathProjector::ufplsSplit`, capped by `PathProjector::maxUfplsGross` and `PathProjector::lsaHeadroom`. `PathProjectorTest::test_a_fill_bands_pension_draw_is_taken_ufpls_style_and_pays_less_lifetime_tax` holds it under the pinned figure; the no-allowance case reproduces that figure to the penny.
+
+**#2** Both closures in `PathProjector::fundShortfall` gate on `earliestAccessAge`. Every pot carries that key (set at build, and 0 for an inherited pot), and a missing age falls to 0, which blocks rather than opens. Pinned by `test_fill_bands_never_ufpls_draws_a_pot_before_its_owner_reaches_its_access_age`.
+
+**#3** `PathProjector::payIntoPot` is the only site that credits a pot. It caps at `PathProjector::contributionHeadroom`, and `mpContributed` resets each year in `PathProjector::projectYear`. All three trigger sites now call `PathProjector::triggerFlexibleAccess`, so the three optimiser candidates carry equal terms.
+
+**#4** `PathProjector::fundShortfall` skips both banded pension steps when `$onGuaranteeCredit`, which `PathProjector::projectYear` passes from `meansTestedBenefitNominal`. Capital runs first. Pinned by `test_fill_bands_is_pension_credit_aware_and_leaves_the_pension_intact`.
+
+**#5** `WithdrawalStrategyComparison::for` subtracts two `lifetimeTax` sums of engine `YearResult::$totalTax`. Both templates read `panel()`.
+
+VERDICT: sound
+
+**scope: defect**
+
+I read the card commits, the plan's fence, `PathProjector`, `WithdrawalStrategyComparison` and both templates.
+
+**The fenced orders moved a second time, and the plan says they did not.**
+`PathProjector::plannedWithdrawals` runs under every draw order, not just `FillBands`. It now caps a planned `WithdrawalKind::Pcls` at the pot's *uncrystallised* balance, feeds the crystallised slice into `PathProjector::ufplsSplit`, and debits through `PathProjector::drawFromPot`. So a plan with a lump sum plus a later planned draw on the same pot pays more tax under `TaxEfficient` and `PensionAware` too. `docs/build/PLAN-withdrawal-sequencing.md` section "#5", step 1, records only the `$drawPension` MPAA breach and then says "The rest of the fence stands"; its "Done-when" still says "TaxEfficient/PensionAware/HMRC examples unchanged". The movement itself is recorded (DECISIONS 2026-08-19 items 9 and 11, the engine stamp, HANDOVER), so it is not hidden ÔÇö but the doc that owns the fence, and that a fresh agent is told to read first, now states the opposite.
+
+**Half done, but routed:** the plan's #6 goal is a search "beyond the three named strategies"; `WithdrawalStrategyComparison::CANDIDATES` holds exactly those three. #6 says to ask Rob first, and card 0078 carries that question.
+
+Everything else that grew ÔÇö crystallisation, the inherited-pot exclusions, the MPAA cap and its disclosure ÔÇö repairs a defect this card's own UFPLS split created.
+
+VERDICT: defect
+
+**breakage: defect**
+
+I traced the newest change (pot crystallisation) through every draw site.
+
+**1. A second lump sum still hands out a second quarter.** `PathProjector::plannedWithdrawals` (Pcls case) caps the cash to the *uncrystallised* balance, then debits it with `PathProjector::drawFromPot`, which takes *crystallised* money first. The pot loses crystallised pence it never paid out. Trace: ┬ú400k pot, ┬ú50k PCLS at 66 correctly leaves ┬ú150k crystallised; a second ┬ú50k at 68 should leave the whole ┬ú300k crystallised, the code leaves ┬ú250k. That ┬ú50k stays uncrystallised, so the next FillBands draw takes ┬ú12,500 tax-free that is not due ÔÇö the exact bug this commit says it closed. It compounds with each further lump sum. `ScenarioBuilder::addWithdrawal` lets a reader add any number of rows per pension; every test builds one.
+
+**2. The 25% rule has two homes again.** `FlexibleWithdrawalAssessor::assessUfpls`, used by `LumpSumTaxShock::for`, splits 25% with no crystallised concept. A UFPLS after a PCLS on the same pot is wholly taxable in the projector and a quarter tax-free on that screen.
+
+**3. Docs contradict the MPAA fix.** DECISIONS.md item 2 (2026-08-22) and DATA-MODEL.md's CLOSED 2026-08-22 entry still say blocked contributions are "never given up". Only `PathProjector::contributionHeadroom` and `mpaaWarnings` were corrected.
+
+VERDICT: defect
+
