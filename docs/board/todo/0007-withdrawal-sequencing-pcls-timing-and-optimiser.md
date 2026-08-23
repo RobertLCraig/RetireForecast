@@ -969,3 +969,54 @@ You've hit your session limit ┬À resets 2:30pm (Europe/London)
 
 You've hit your session limit ┬À resets 2:30pm (Europe/London)
 
+### 2026-08-23 review (v20260823142825-82d5)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 159s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+**#1 UFPLS-style FillBands draw.** `PathProjector::fundShortfall` sends every FillBands pension step ÔÇö both banded steps, the last-resort step and the CGT-funding step ÔÇö through its `$drawPensionUfpls` closure. The 25% rule has one home, `PathProjector::ufplsSplit`, sized by `PathProjector::maxUfplsGross` and paid for out of `PathProjector::lsaHeadroom`. Pinned by `PathProjectorTest::test_a_fill_bands_pension_draw_is_taken_ufpls_style_and_pays_less_lifetime_tax` against the pinned ┬ú103,538.10; the no-allowance case reproduces it exactly.
+
+**#2 Access age.** The same gate sits in both `$drawPension` and `$drawPensionUfpls` inside `PathProjector::fundShortfall`. Every pot carries `earliestAccessAge` (`PathProjector::initialState`, and the estate pass). Pinned by `PathProjectorTest::test_fill_bands_never_ufpls_draws_a_pot_before_its_owner_reaches_its_access_age`.
+
+**#3 MPAA.** `PathProjector::payIntoPot` is the only place a pot is credited, and it caps at `PathProjector::contributionHeadroom`. All three trigger sites set it through `PathProjector::triggerFlexibleAccess`. Four tests pin it, including the inherited-pot exclusion.
+
+**#4 Guarantee Credit.** `PathProjector::fundShortfall` skips both banded pension steps when `$onGuaranteeCredit`, so capital goes first. Pinned by `test_fill_bands_is_pension_credit_aware_and_leaves_the_pension_intact`.
+
+**#5 Optimiser delta.** `WithdrawalStrategyComparison::for` subtracts two `WithdrawalStrategyComparison::lifetimeTax` sums of real engine runs. Both templates read `panel()`.
+
+I tried to break each and could not.
+
+VERDICT: sound
+
+**scope: defect**
+
+**scope**
+
+Read: the seven card commits (`1bf5b8f`ÔÇª`8aadc96`), the plan's #5/#6 and its fence, `PathProjector`, `WithdrawalStrategyComparison`, both templates, DECISIONS, DATA-MODEL, HANDOVER.
+
+**The fence held.** Nothing touched multi-property or Section 24 (card 0019), and #6 was built after #5 was green. Everything that grew past #5/#6 ÔÇö pot crystallisation, the inherited-pot exclusions, the MPAA trigger on `$drawPension`, the `LumpSumTaxShock` / `TaxFreeCashCalculator::split` parity ÔÇö repairs a defect this card's own UFPLS split created, and each is recorded in DECISIONS 2026-08-19 (items 4, 5, 7, 11, 12, 13) and on the plan's #5 step 1 as a named breach. Deferrals 0073ÔÇô0080 all have cards.
+
+**Half done: the record of the last round.** `App\Forecast\ScenarioForecaster::ENGINE_VERSION` is `finance-engine/repeated-pcls-crystallisation`. `docs/HANDOVER.md`, its "Last updated" paragraph, still says the stamp "is now `finance-engine/pcls-crystallisation`" ÔÇö the one sentence whose job is to stop a reader comparing a run stored before this card with one stored after names a stamp that no longer exists. The card's Direction stops at the fifth review; commit `8aadc96` moved figures under every draw order and bumped the stamp again with nothing written on the card. The plan's "Done-when (each slice)" requires that refresh.
+
+VERDICT: defect
+
+**breakage: defect**
+
+I traced the new code and tried to break it.
+
+**Finding: the optimiser picks a winner on a tax total that leaves out the tax the same page prints.**
+
+`App\Forecast\WithdrawalStrategyComparison::lifetimeTax` sums only `YearResult::$totalTax` and throws away `ForecastResult::$iht`, which the very same run computes (`PathProjector::recordFinalDeathIht`) and which `App\Livewire\ScenarioResults::render` prints beside it via `ResultPresenter::ihtPanel`. Both templates then label the total "tax paid across the plan", `panel()` publishes `optimiserSaving` as "less tax across the plan", and `App\Compliance\Interpretation::withdrawalSequencingNarrative` turns it into "the order to lean towards for tax".
+
+Two ways that is wrong when the scenario's IHT toggle is on:
+
+- A cheaper income-tax order ends with more wealth, so the estate pays roughly 40% of the "saving" straight back. The headline overstates it.
+- For a death before `PathProjector::PENSIONS_IN_ESTATE_FROM_YEAR`, pension is outside the estate and ISA is inside. Draw order changes which one survives, so IHT can move further than the income-tax gap and invert the ranking.
+
+No test runs a candidate comparison with IHT modelled, and no card (0078 covers breadth only) records the metric's blind spot.
+
+VERDICT: defect
+
