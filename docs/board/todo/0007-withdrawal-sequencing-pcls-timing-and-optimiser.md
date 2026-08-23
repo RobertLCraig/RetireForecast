@@ -116,3 +116,51 @@ that), and `usableWealth` still treats a pension pot as fully spendable. Both wa
   `composer update` on its own does **not** repair it.
 - **Not looked at in a browser.** Herd serves the site from `C:\Dev\RetireForecast`, not from this
   worktree, so the new panel line and the reworded steer still need Rob's eye on a real page.
+
+### 2026-08-23 review (v20260823093936-a81c)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 226s, run by this job rather than reported by the card.
+
+**acceptance: defect**
+
+Traced, all five, in `PathProjector` unless said:
+
+**#1** `fundShortfall` ÔåÆ `$drawPensionUfpls` on every FillBands pension step, split by `ufplsSplit`/`maxUfplsGross`; pinned by `PathProjectorTest::test_a_fill_bands_pension_draw_is_taken_ufpls_style_and_pays_less_lifetime_tax`.
+**#2** access-age gate inside `$drawPensionUfpls`; pinned by `test_fill_bands_never_ufpls_draws_a_pot_before_its_owner_reaches_its_access_age`.
+**#3** `payIntoPot` + `contributionHeadroom`; all three credit sites route through `payIntoPot`.
+**#4** `fundShortfall` skips both banded pension steps when `$onGuaranteeCredit`; the tax-free slice never enters `taxablePerPerson`, which is what `meansTestedBenefitNominal` assesses.
+**#5** `WithdrawalStrategyComparison::for` + `lifetimeTax`.
+
+One defect, on **#3**. `mpaaTriggered` is set only by `$drawPensionUfpls` and `plannedWithdrawals`. The sibling `$drawPension` closure in `fundShortfall` ÔÇö every ad-hoc draw under TaxEfficient and PensionAware ÔÇö takes taxable pension income and never sets it, though `WithdrawalKind::DrawdownIncome` says that is flexible access. A 55+ member still receiving contributions therefore keeps the full annual allowance and is filled beyond the MPAA. It also skews **#5**: only the FillBands candidate carries the restriction, so the optimiser compares three runs on unequal terms.
+
+VERDICT: defect
+
+**scope: defect**
+
+Read: the card commit `1bf5b8f`, the plan's #5/#6 sections, `PathProjector`, `WithdrawalStrategyComparison`, both view layers.
+
+**Half done ÔÇö the PDF was left behind.** `resources/views/pdf/partials/report.blade.php`, the "How you draw your money down" card, still prints two tiles and the old note. It never reads `candidateCount`, `cheapestLabel`, `optimiserSaving` or `optimiserSaves` from `WithdrawalStrategyComparison::panel()`. It *does* print `$withdrawal['steer']`, and `Interpretation::withdrawalSequencingNarrative()` now names the optimiser's winner and its saving. So the PDF tells a reader a third order saves ┬úX, and no figure on the page backs it. That is an invisible figure, which this project forbids. The write-up's claim that the PDF "now also report[s] the cheapest ... order" is not true. The same block's note still says FillBands draws pension as taxed income only; the screen partial gained the new tax-free-quarter sentence, the PDF did not.
+
+**A claim it did not build.** `WithdrawalStrategyComparison::CURRENT` says it is single-sourced from `ScenarioForecaster::settings()`. It is a second copy of that literal. Change the default and the baseline drifts, quietly.
+
+**Left on the floor.** Three deferrals were named and no board card was written for any.
+
+VERDICT: defect
+
+**breakage: defect**
+
+I tried to break it. Three things break.
+
+**1. The MPAA docblock says the wrong thing.**
+`PathProjector::contributionHeadroom` says the cap "bites from the year of the trigger rather than the day after it", and calls that the cautious side. It does not. In `PathProjector::projectYear`, `payEmployerContributions` and `payNetPayContributions` both run *before* `plannedWithdrawals` and `fundShortfall`, which are the only places `mpaaTriggered` is set. So in the trigger year the member still gets the full annual allowance on both routes. The card's own test, `test_flexible_access_caps_later_money_purchase_contributions_at_the_mpaa`, asserts "the year AFTER". The docblock is false, and false the un-cautious way.
+
+**2. The baseline is a copied literal.**
+`WithdrawalStrategyComparison::CURRENT` says it is "single-sourced" from `ScenarioForecaster::settings()`. It is a second copy of the same literal. No test ties them. Change the displayed default (the adviser's own next step) and the panel reports the saving against an order nobody is on.
+
+**3. The Guarantee Credit comment claims a clawback the model never applies.**
+`PathProjector::fundShortfall` says the tax-free quarter means "less of the credit is clawed back". The award is assessed from `$taxablePerPerson` before `fundShortfall` runs, and `fundShortfall` never writes back. No ad-hoc draw, taxed or not, ever reaches the means test.
+
+VERDICT: defect
+
