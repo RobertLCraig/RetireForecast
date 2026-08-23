@@ -42,6 +42,10 @@ final class FlexibleWithdrawalAssessor
      * @param  TaxableIncome  $otherIncome  the rest of the year's taxable income
      * @param  bool  $potEmptied  whether this empties the pension pot
      * @param  bool  $firstFlexibleAccessInYear  whether the emergency basis applies
+     * @param  Money|null  $crystallised  how much of the payment comes out of money an earlier
+     *                                    lump sum already designated to drawdown; that part has
+     *                                    had its quarter and is wholly taxable
+     *                                    ({@see TaxFreeCashCalculator::split})
      */
     public function assessUfpls(
         Money $gross,
@@ -49,8 +53,9 @@ final class FlexibleWithdrawalAssessor
         TaxableIncome $otherIncome,
         bool $potEmptied,
         bool $firstFlexibleAccessInYear = true,
+        ?Money $crystallised = null,
     ): FlexibleWithdrawalResult {
-        $split = $this->taxFreeCash->split($gross, $lsaRemaining);
+        $split = $this->taxFreeCash->split($gross, $lsaRemaining, $crystallised);
 
         return $this->assess(
             kind: WithdrawalKind::Ufpls,

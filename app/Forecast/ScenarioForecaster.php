@@ -37,7 +37,13 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-08-23 (pcls-crystallisation): tax-free cash taken as a planned lump sum now
+     * Bumped 2026-08-23 (repeated-pcls-crystallisation): a SECOND lump sum out of the same pot used to
+     * be debited from the residue the first one left behind, quietly turning that money
+     * uncrystallised again and handing a later draw a tax-free quarter of it. The whole slice is now
+     * designated before the cash is paid out of it, so a plan with more than one lump-sum row on a
+     * pension pays more tax than it did under the previous stamp, under EVERY draw order. See
+     * DECISIONS 2026-08-19 item 12.
+     * Previous bump 2026-08-23 (pcls-crystallisation): tax-free cash taken as a planned lump sum now
      * CRYSTALLISES the three quarters of the pot left behind it, so a later fill-the-bands draw
      * from that pot no longer takes a second tax-free quarter of the same money. Any run stored
      * under the previous stamp for a plan with both a lump sum and a fill-the-bands draw understates
@@ -61,7 +67,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/pcls-crystallisation';
+    public const ENGINE_VERSION = 'finance-engine/repeated-pcls-crystallisation';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

@@ -268,8 +268,20 @@ trust-critical tax code.
    > **The fence was breached on 2026-08-23, deliberately, and the reason is DECISIONS 2026-08-19 item 4.**
    > `$drawPension` now sets the MPAA trigger, because flexible access belongs to the draw and not to the draw
    > order: fencing it meant only `FillBands` carried the cap, so the optimiser (#6) compared its candidates on
-   > unequal terms. The rest of the fence stands — the UFPLS split itself is still `$drawPensionUfpls` only, and
-   > the HMRC worked examples are unmoved.
+   > unequal terms.
+   >
+   > **A second breach, recorded 2026-08-23: `plannedWithdrawals` moved too, and it runs under EVERY draw
+   > order.** Pot crystallisation had to be written there as well as in `$drawPensionUfpls`, because a planned
+   > `WithdrawalKind::Pcls` is what crystallises a pot in the first place: a lump sum now takes cash only out of
+   > UNCRYSTALLISED money, designates `cash / 25%` of the pot to drawdown, and debits through
+   > `PathProjector::drawFromPot`. Leaving it out of the planned route would have meant a lump sum crystallised
+   > nothing and every later fill-the-bands draw took a fresh quarter of the same money, which is the defect this
+   > card exists to close. **Consequence:** a plan with a lump sum plus a later planned draw on the same pot pays
+   > **more** tax under `TaxEfficient` and `PensionAware` too, so the "Done-when" below is superseded for those
+   > two. See DECISIONS 2026-08-19 items 9 and 11, and the `ScenarioForecaster::ENGINE_VERSION` bump.
+   >
+   > What still stands: the **UFPLS split on an ad-hoc draw** is `$drawPensionUfpls` only, and the **HMRC
+   > worked examples are unmoved** (none of them carries a lump sum followed by a draw on the same pot).
 
    For each alive person's pots with value and LSA headroom:
    draw a gross `G` whose **taxable** portion fills the person's income up to `$taxableLimit` (given `$alreadyTaxable`),
@@ -291,7 +303,10 @@ trust-critical tax code.
 - The **total tax-free cash** taken never exceeds the LSA across explicit PCLS instructions + ad-hoc UFPLS (the
   double-count guard — the shared `lsaUsed` is the single home).
 - A person who has already used their full LSA gets a fully-taxable FillBands draw (`$drawPensionUfpls` == old draw).
-- `TaxEfficient`/`PensionAware` + the **HMRC worked examples** are unchanged (they never call `$drawPensionUfpls`).
+- ~~`TaxEfficient`/`PensionAware` + the **HMRC worked examples** are unchanged (they never call
+  `$drawPensionUfpls`).~~ **Superseded 2026-08-23** by the two breaches recorded on step 1: the HMRC worked
+  examples are unmoved, but `TaxEfficient` and `PensionAware` have moved twice (the MPAA trigger, and pot
+  crystallisation in `plannedWithdrawals`).
 
 **Then:** no app change needed — `WithdrawalStrategyComparison` and the panel reflect the better FillBands
 automatically. Update the panel copy only if the framing shifts. Update Build order #4 + a DECISIONS entry.
@@ -320,5 +335,7 @@ strategy that pays more than the user's current; the candidate set is bounded.
 
 ### Done-when (each slice)
 - `php artisan test --testsuite=Engine` and `php artisan test` green; `vendor/bin/pint` clean on changed files.
-- Additive only; `TaxEfficient`/`PensionAware`/HMRC examples unchanged; commit **only your files** (no `git add -A`).
+- Additive only; the **HMRC examples** unchanged; commit **only your files** (no `git add -A`). *`TaxEfficient`
+  and `PensionAware` have moved twice, deliberately and recorded on #5 step 1; a further move needs the same
+  record plus an `ENGINE_VERSION` bump, because stored figures stop being comparable.*
 - Update this spec's "Build order" (mark the slice done) + append a DECISIONS entry; refresh the HANDOVER Lane C bullet.

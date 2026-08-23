@@ -948,6 +948,43 @@ final class PathProjectorTest extends TestCase
             'the tax on drawing a crystallised pot moved with the allowance, so it took a second tax-free quarter');
     }
 
+    public function test_two_lump_sums_crystallise_as_much_as_one_of_twice_the_size(): void
+    {
+        // Taking £50,000 of tax-free cash twice designates the same £400,000 of pot to drawdown as
+        // taking £100,000 once: each £X paid out crystallises £X / 25%. The second lump sum used to
+        // be debited out of the residue the FIRST one left behind, because drawFromPot takes
+        // crystallised money first — so £50,000 quietly turned uncrystallised again and the next
+        // fill-the-bands draw took a quarter of it tax-free. It compounds with each further row,
+        // and ScenarioBuilder lets a reader add as many rows per pension as they like.
+        //
+        // The tell needs no magic number: same pot, same cash, same year, same allowance. The two
+        // plans differ only in how the cash was instructed, so they must pay identical tax. The
+        // spend is set high enough to draw the pot right down — the leak is at the tail, because
+        // crystallised money is drawn first and a plan that stops short never reaches the pence
+        // that were wrongly left uncrystallised.
+        $build = fn (array $plan): Household => $this->couple(
+            new ExpenseProfile(Money::fromPounds(60_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+                new DcPension('p1', Money::fromPounds(400_000), Money::zero(), Money::zero(), 55, withdrawalPlan: $plan),
+            ],
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(20_000))],
+        );
+
+        $inOneGo = $this->lifetimeTax(DrawdownStrategy::FillBands, $build([
+            new WithdrawalInstruction(WithdrawalKind::Pcls, Money::fromPounds(100_000), 68),
+        ]));
+        $inTwoHalves = $this->lifetimeTax(DrawdownStrategy::FillBands, $build([
+            new WithdrawalInstruction(WithdrawalKind::Pcls, Money::fromPounds(50_000), 68),
+            new WithdrawalInstruction(WithdrawalKind::Pcls, Money::fromPounds(50_000), 68),
+        ]));
+
+        $this->assertGreaterThan(0, $inOneGo);
+        $this->assertSame($inOneGo, $inTwoHalves,
+            'splitting one lump sum in two left part of the pot uncrystallised, so a later draw took a second tax-free quarter');
+    }
+
     public function test_a_draw_out_of_crystallised_money_gets_no_second_tax_free_quarter(): void
     {
         $lsa = 268_275_00;

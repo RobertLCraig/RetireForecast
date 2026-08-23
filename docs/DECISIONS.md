@@ -30,8 +30,16 @@ them.
    capped them before, and only after flexible access, so until a member touched a pension the
    projector paid in any amount asked for. One cap, in the one place a pot is credited
    (`payIntoPot`), counting the employer's contribution too, because the statutory limit is measured
-   on total pension input. What the cap blocks is never given up: it stays in pay, is taxed there, and
-   is saved. *Not built, deliberately:* the high-income taper, because it needs adjusted and threshold
+   on total pension input. What the cap blocks depends on whose money it was, and this entry used to
+   claim it was never given up: **corrected 2026-08-23 (card 0007).** A NET-PAY contribution stays in
+   pay and is taxed there, and a SURPLUS-funded one stays in savings — neither is lost. An EMPLOYER
+   contribution the cap blocks is **not paid anywhere else**: it never passes through the household's
+   cashflow, so there is nowhere to put it and the plan simply loses it. That is the adverse side of
+   modelling the limit as a hard cap rather than as a charge on the excess (card **0073**), and it is
+   what `PathProjector::contributionHeadroom` and the reader-facing sentence in
+   `PathProjector::mpaaWarnings` say. Pinned by
+   `PathProjectorTest::test_an_employer_contribution_the_mpaa_blocks_is_not_paid_anywhere_else`.
+   *Not built, deliberately:* the high-income taper, because it needs adjusted and threshold
    income which the year's own contributions move, and `AnnualAllowanceCalculator` already prices it
    separately; and carry-forward, whose absence is the cautious side of the rule.
 3. **The £3,600 non-earner route is modelled as its own relief method, not by opening relief at
@@ -263,6 +271,27 @@ other asset and so biased every housing comparison towards realising property eq
     STARTING pot is treated as wholly uncrystallised, because `DcPension::$pclsTakenToDate` is an allowance
     ledger across all of the member's pensions rather than a record of what this pot crystallised, so the
     split cannot be inferred from it without inventing one. Board card **0080**.
+12. **A pot is crystallised BEFORE the cash is paid out of it, so a repeated lump sum cannot undo the
+    first one.** Decision 11 designated the residue after debiting the cash, and `drawFromPot` takes
+    crystallised money first, so a SECOND lump sum took its cash out of the residue the first one had left
+    behind. £50,000 of drawdown money turned uncrystallised again per extra row, and the next
+    fill-the-bands draw took a quarter of it: on the pinned household, £2,500.00 of lifetime tax. The whole
+    `cash / 25%` slice is now designated first and the cash comes out of it, which is also the true-to-life
+    order. Pinned by `PathProjectorTest::test_two_lump_sums_crystallise_as_much_as_one_of_twice_the_size`,
+    whose tell needs no magic number: one £100,000 lump sum and two £50,000 ones in the same year must pay
+    identical tax. `ENGINE_VERSION` → `finance-engine/repeated-pcls-crystallisation`; this moves figures
+    under **every** draw order, so it is the second recorded breach of the plan's `TaxEfficient` /
+    `PensionAware` fence (the first is item 4).
+13. **The lump-sum tax-shock panel obeys the same crystallisation rule as the forecast.** The 25% rule has
+    two implementations on purpose, `TaxFreeCashCalculator::split` in Money for the panel and
+    `PathProjector::ufplsSplit` in integer pence for the year loop. Only the projector learned about
+    crystallised money, so a UFPLS planned after a lump sum on the same pot was wholly taxable in the
+    forecast and a quarter tax-free on the panel: one withdrawal, two answers, out of one engine. The
+    calculator takes the crystallised slice too, `LumpSumTaxShock` works it out from the earlier lump-sum
+    rows on that pension, and `TaxFreeCashCrystallisationParityTest` holds the two implementations to the
+    same answer across a grid so the next change to either is caught here. *Accepted limit:* like the rest
+    of that panel it reads the entered pot value and ignores growth between now and the withdrawal age;
+    the full forecast is what models the balance year by year.
 
 **Status:** active
 

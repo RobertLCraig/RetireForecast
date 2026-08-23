@@ -542,7 +542,10 @@ from the original plan, flagged inline:
   allowance** (£60,000) less what has gone in this year, replaced by the **MPAA** (£10,000) once the
   member has flexibly accessed a pension. Both count the employer's contribution, because the
   statutory limit is measured on total pension input. What the cap blocks stays in pay and is taxed
-  and saved there, so nothing is dropped. New `PensionReliefMethod::NonEarner` models the statutory
+  there (net pay) or stays in savings (the surplus-funded route); an **employer** contribution it
+  blocks is lost, because that money never passes through the household's cashflow — see "Still open"
+  below (this line used to say nothing was dropped, corrected 2026-08-23 by card 0007).
+  New `PensionReliefMethod::NonEarner` models the statutory
   **basic amount**: the member pays £2,880 out of household surplus, the provider adds basic-rate
   relief, and £3,600 reaches the pot; new `PensionParameters::$nonEarnerReliefLimit` (£3,600) and
   `$reliefMaximumAge` (75) own both figures. `ContributionAllowanceTest` guards it. **Still open:**

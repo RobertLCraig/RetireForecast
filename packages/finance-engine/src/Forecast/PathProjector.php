@@ -1643,15 +1643,23 @@ final class PathProjector
                         // same rule the split applies on the ad-hoc one.
                         $tf = min($amount, $lsaRemaining, max(0, $pot['value'] - ($pot['crystallised'] ?? 0)));
                         $taxFree += $tf;
-                        $this->drawFromPot($pot, $tf);
                         // Taking £X of tax-free cash CRYSTALLISES £X / 25% of the pot: £X is paid out
                         // and the other three quarters are designated to drawdown. That residue has
                         // had its quarter, so a later draw from this pot cannot take another one
                         // ({@see ufplsSplit}). Without this the pot's whole remaining balance was
                         // still treated as uncrystallised and a fill-the-bands draw split it 25/75
                         // all over again, bounded only by the allowance ledger.
-                        $residue = $tf > 0 ? (int) round($tf / $pclsRate) - $tf : 0;
-                        $pot['crystallised'] = min($pot['value'], ($pot['crystallised'] ?? 0) + max(0, $residue));
+                        //
+                        // Crystallise the WHOLE slice first, then pay the cash out of it: {@see
+                        // drawFromPot} takes crystallised money first, so debiting before designating
+                        // took the cash out of the residue a PREVIOUS lump sum had left behind. A
+                        // second £X then turned £X of drawdown money uncrystallised again and handed
+                        // the next fill-the-bands draw a quarter of it, compounding per lump sum.
+                        // Pinned by test_two_lump_sums_crystallise_as_much_as_one_of_twice_the_size.
+                        if ($tf > 0) {
+                            $pot['crystallised'] = min($pot['value'], ($pot['crystallised'] ?? 0) + (int) round($tf / $pclsRate));
+                            $this->drawFromPot($pot, $tf);
+                        }
                         $state['lsaUsed'][$pid] += $tf;
                         break;
                     case WithdrawalKind::DrawdownIncome:

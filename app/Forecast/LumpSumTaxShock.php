@@ -62,7 +62,13 @@ final class LumpSumTaxShock
 
         $assessor = new FlexibleWithdrawalAssessor($config);
         $result = $instruction->kind === WithdrawalKind::Ufpls
-            ? $assessor->assessUfpls($instruction->amount, $lsaRemaining, $otherIncome, $potEmptied)
+            ? $assessor->assessUfpls(
+                $instruction->amount,
+                $lsaRemaining,
+                $otherIncome,
+                $potEmptied,
+                crystallised: $this->alreadyCrystallised($pension, $instruction->atAge, $config->pension->pclsRate->asFraction()),
+            )
             : $assessor->assessDrawdownIncome($instruction->amount, $otherIncome, $potEmptied);
 
         return $this->present($scenario, $household, $pension, $instruction, $otherIncome, $result);
@@ -93,6 +99,31 @@ final class LumpSumTaxShock
         }
 
         return $best;
+    }
+
+    /**
+     * How much of this pot is already designated to drawdown when the withdrawal happens, because
+     * an earlier tax-free lump sum crystallised it. Taking £C of cash crystallises £C / 25% and
+     * pays the £C out, so £C / 25% − £C stays behind, and that money has had its quarter: the
+     * forecast draws it first and taxes it in full ({@see \RetireForecast\FinanceEngine\Forecast\PathProjector::ufplsSplit}).
+     * Without this the panel showed a quarter of it tax-free while the forecast charged the lot —
+     * two figures for one withdrawal, from the same engine.
+     *
+     * Capped at the pot, so an oversized instruction cannot crystallise money that is not there.
+     * Like the rest of this panel it reads the entered pot value and ignores growth between now
+     * and the withdrawal age; the full forecast is the place that models the balance year by year.
+     */
+    private function alreadyCrystallised(DcPension $pension, int $atAge, float $pclsRate): Money
+    {
+        $cash = 0;
+        foreach ($pension->withdrawalPlan as $earlier) {
+            if ($earlier->kind === WithdrawalKind::Pcls && $earlier->atAge <= $atAge) {
+                $cash += $earlier->amount->pence;
+            }
+        }
+        $cash = min($cash, $pension->currentValue->pence);
+
+        return Money::fromPence(max(0, min($pension->currentValue->pence, (int) round($cash / $pclsRate)) - $cash));
     }
 
     private function otherIncome(?Person $owner, int $atAge): TaxableIncome

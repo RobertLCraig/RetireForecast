@@ -87,6 +87,43 @@ class LumpSumTaxShockTest extends TestCase
         $this->assertSame('£0.00', $shock['otherIncome']);
     }
 
+    public function test_a_ufpls_after_a_lump_sum_on_the_same_pot_gets_no_second_tax_free_quarter(): void
+    {
+        // £50,000 of tax-free cash at 60 crystallises £200,000 of the £400,000 pot: £50,000 is
+        // paid out and £150,000 is designated to drawdown. That money has had its quarter, and the
+        // forecast draws it first and taxes it in full. This panel used to split the later £60,000
+        // 25/75 regardless, so one withdrawal had two answers out of the same engine.
+        $state = [
+            'name' => 'Lump sum then UFPLS',
+            'householdName' => 'Lump sum then UFPLS',
+            'region' => 'england_wales_ni',
+            'baseTaxYear' => '2025-26',
+            'variant' => 'rent',
+            'ihtModelled' => false,
+            'people' => [
+                ['id' => 'p1', 'name' => '', 'dob' => '1965-01-01', 'sex' => 'male', 'employmentStatus' => 'employed',
+                    'grossSalary' => '20000', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => ''],
+            ],
+            'expense' => ['essential' => '18000', 'discretionary' => '6000', 'survivorFactor' => '70'],
+            'pensions' => [
+                ['ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '400000', 'ongoingContribution' => '',
+                    'employerContribution' => '', 'earliestAccessAge' => '55', 'pclsTakenToDate' => '0',
+                    'growthAssumptionOverride' => '', 'withdrawals' => [
+                        ['kind' => 'pcls', 'amount' => '50000', 'atAge' => '60'],
+                        ['kind' => 'ufpls', 'amount' => '60000', 'atAge' => '61'],
+                    ]],
+            ],
+            'hasProperty' => false,
+            'housing' => ['salePrice' => '0'],
+        ];
+
+        $shock = (new LumpSumTaxShock)->assess($this->scenarioWith($state));
+
+        $this->assertNotNull($shock);
+        $this->assertSame(0, $shock['raw']['taxFreePence'], 'the £150,000 residue covers the whole £60,000 draw');
+        $this->assertSame(6_000_000, $shock['raw']['taxablePence']);
+    }
+
     public function test_it_returns_null_when_no_flexible_withdrawal_is_planned(): void
     {
         $state = [
