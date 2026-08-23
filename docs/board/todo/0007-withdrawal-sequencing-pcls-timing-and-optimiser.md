@@ -220,3 +220,45 @@ form of the same draw. A pure PCLS still does not trigger it, and nothing about 
   this worktree, so the new PDF paragraph and the relabelled baseline tile still need Rob's eye on a
   real page and a real export.
 
+### 2026-08-23 review (v20260823101754-653a)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 159s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+All five criteria trace to real code. I tried to break each.
+
+**#1** `PathProjector::fundShortfall` routes every FillBands pension step through `$drawPensionUfpls`, including the CGT-funding one; the split rule has one home in `PathProjector::ufplsSplit`, capped by `PathProjector::maxUfplsGross`. `PathProjectorTest::test_a_fill_bands_pension_draw_is_taken_ufpls_style_and_pays_less_lifetime_tax` holds it under the pinned figure, and the no-allowance case reproduces that figure exactly.
+
+**#2** The access-age gate is inside both `$drawPension` and `$drawPensionUfpls` in `PathProjector::fundShortfall`; pinned by `PathProjectorTest::test_fill_bands_never_ufpls_draws_a_pot_before_its_owner_reaches_its_access_age`.
+
+**#3** `PathProjector::payIntoPot` is the only site that credits a pot (no other `$pot['value'] +=` exists), and it caps at `PathProjector::contributionHeadroom`. The trigger is now set in `plannedWithdrawals`, `$drawPension` and `$drawPensionUfpls` alike, so the three optimiser candidates carry the same restriction. Two tests pin it.
+
+**#4** `PathProjector::fundShortfall` skips both banded pension steps when `$onGuaranteeCredit`, which `projectYear` passes from `meansTestedBenefitNominal` (Guarantee Credit only). Pinned by `test_fill_bands_is_pension_credit_aware_and_leaves_the_pension_intact`.
+
+**#5** `WithdrawalStrategyComparison::for` subtracts two `lifetimeTax` sums of `YearResult::$totalTax`; pinned by `ScenarioForecasterTest::test_the_optimiser_returns_the_cheapest_candidate_and_reconciles_to_two_engine_runs`.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Grew past the fence.** `PathProjector::fundShortfall`'s `$drawPension` closure now sets `mpaaTriggered`. The plan's "#5" section says plainly: do not change `$drawPension`; `TaxEfficient`/`PensionAware` must stay byte-identical. Its "Done-when" repeats it. So the default draw order every scenario runs under changed behaviour. Acceptance #3 makes the fix right, but the fence makes it a change that had to be recorded. It was not.
+
+**Half done: the rationale.** `docs/DECISIONS.md`, entry "2026-08-19 ÔÇö A 'fill the bands' pension draw is a UFPLS". Decision 1 still says `TaxEfficient`/`PensionAware` "are untouched". Decision 3 still says the MPAA bites "from the year of the trigger rather than the day after it". That is the exact false claim the fix corrected in `PathProjector::contributionHeadroom` and carded as 0073. One home was fixed. The home that owns rationale still says the old thing.
+
+**Half done: the tile name.** `WithdrawalStrategyComparison::panel()` publishes `baselineLabel` from `label()`, but the second tile's name is still a literal in `resources/views/livewire/partials/withdrawal-sequencing.blade.php` and `resources/views/pdf/partials/report.blade.php`. Flip the default (card 0075) and both tiles name the same order. The key-coverage test cannot see a hard-coded label.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**1. An inherited pot now caps the heir's own pension allowance.** `PathProjector::fundShortfall`'s `$drawPension` sets `mpaaTriggered` on any pot it touches. Inherited pots are added by the estate pass in `PathProjector` (built with `earliestAccessAge => 0`, `firstAccessDone => true`), so a still-working survivor who draws one loses ┬ú60,000 of allowance for ┬ú10,000, for the rest of the plan ÔÇö even below age 55. Beneficiary drawdown is not a member trigger event. Nothing in `WithdrawalKind::triggersMpaa` or `FlexibleWithdrawalAssessor` knows about inherited pots, and no test builds this. The fix moved it onto the default order, so it is now the ordinary path. Blocked contributions stay in pay, so it is silent.
+
+**2. Two dead docblock links.** `PathProjector::plannedWithdrawals` and `$drawPensionUfpls` both say `{@see mpaaHeadroom}`. That method does not exist; it is `contributionHeadroom`. `plannedWithdrawals` also still says "One home for the trigger" ÔÇö there are now three sites, and only that one asks the enum.
+
+**3. The label fix is half.** Both templates still hard-code the second tile "Filling your tax-free allowances first", and `WithdrawalStrategyComparison::for` compares baseline against FillBands. Make FillBands the default (card 0075) and the panel shows one order twice, saving ┬ú0.
+
+VERDICT: defect
+
