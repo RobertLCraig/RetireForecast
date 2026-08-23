@@ -314,3 +314,46 @@ what to show a reader, so it belongs on 0075 with Rob, not here.
   this worktree, so the relabelled second tile on screen and in the PDF still needs Rob's eye on a real
   page and a real export.
 
+### 2026-08-23 review (v20260823104709-3f71)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 194s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+Traced each criterion to code and to a test. I tried to break all five.
+
+**#1** `PathProjector::fundShortfall` sends every FillBands pension step through the `$drawPensionUfpls` closure, including the one that funds CGT. The 25% rule has one home, `PathProjector::ufplsSplit`, capped by `PathProjector::maxUfplsGross`. Pinned by `PathProjectorTest::test_a_fill_bands_pension_draw_is_taken_ufpls_style_and_pays_less_lifetime_tax` against the pinned constant `FILL_BANDS_LIFETIME_TAX_BEFORE_UFPLS`, and the no-allowance case matches it to the penny.
+
+**#2** The access-age gate sits in both closures in `PathProjector::fundShortfall`. Pinned by `PathProjectorTest::test_fill_bands_never_ufpls_draws_a_pot_before_its_owner_reaches_its_access_age`.
+
+**#3** `PathProjector::payIntoPot` is the only place a pot is credited, and it caps at `PathProjector::contributionHeadroom`. All three routes (`payEmployerContributions`, `payNetPayContributions`, `applyContributions`) call it. The trigger has one home, `PathProjector::triggerFlexibleAccess`, called from `plannedWithdrawals` and both closures. Three tests pin it.
+
+**#4** `PathProjector::fundShortfall` skips both banded pension steps when the flag is set; `PathProjector::projectYear` passes it from `meansTestedBenefitNominal`, which is Guarantee Credit only. Pinned by `test_fill_bands_is_pension_credit_aware_and_leaves_the_pension_intact`.
+
+**#5** `WithdrawalStrategyComparison::for` subtracts two `lifetimeTax` sums of real runs.
+
+VERDICT: sound
+
+**scope: defect**
+
+**1. The engine stamp was not bumped.** `ScenarioForecaster::ENGINE_VERSION` still reads `finance-engine/phase-3-btl-finance-cost`, last moved 2026-07-09. This card moved figures: DECISIONS 2026-08-19 item 1 moves FillBands lifetime tax, and item 4 records that a scenario under the **default** order moved too. The project's own precedent (DECISIONS 2026-07-08, home maintenance) bumps the stamp when stored figures move. `SimulationRunner` and `ThresholdRunner` write it onto every stored run, and `ThresholdCsvExporter` prints it as the audit trail. So a run stored before this card and one stored after carry the same stamp and read as comparable. The move was recorded in prose, not in the one place code reads.
+
+**2. #6 searches nothing new.** The plan's #6 goal is a bounded search *"beyond the three named strategies"*. `WithdrawalStrategyComparison::CANDIDATES` is exactly those three, so the optimiser is a minimum over runs the panel already made. The plan's "manage taxable income to ┬úX" lever was neither built nor carded, while five other deferrals became cards 0073ÔÇô0077.
+
+**3. One naming site left behind.** The closing note of "How you draw your money down" in `resources/views/livewire/partials/withdrawal-sequencing.blade.php` and `resources/views/pdf/partials/report.blade.php` hard-codes "Filling your tax-free allowances" instead of reading `WithdrawalStrategyComparison::panel()`'s `alternativeLabel`.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**1. An inherited pot is given tax-free cash that is not the heir's, and spends the heir's allowance.**
+`PathProjector::fundShortfall`'s `$drawPensionUfpls` runs `ufplsSplit` on any pot it draws and adds the tax-free slice to `$state['lsaUsed'][$person->id]`. `PathProjector::settleEstates` hands the survivor a pot marked `inherited` with access age 0. `PathProjector::triggerFlexibleAccess` was taught that an inherited pot is not the heir's own pension; this closure was not. Beneficiary drawdown carries no 25% PCLS ÔÇö the deceased's fund has its own regime, which this file already states in `PathProjector::collectDeathInServiceBenefit`.
+
+So under FillBands the heir gets 25% of a dead partner's pot tax-free, and their own Lump Sum Allowance ÔÇö and through `deathBenefit['lsaUsed']` their death-benefit allowance ÔÇö is consumed by money that never was theirs. It is silent, it is on the ordinary path now that the optimiser runs FillBands for every scenario, and it inflates the FillBands lifetime-tax figure the panel publishes. No test builds an inherited pot under FillBands.
+
+**2. A comment the fix made false.** `$drawPensionUfpls`'s note still says "FillBands only: `$drawPension` stays byte-identical for TaxEfficient / PensionAware and the HMRC worked examples". `$drawPension` now sets the MPAA trigger.
+
+VERDICT: defect
+
