@@ -825,3 +825,21 @@ You've hit your session limit ┬À resets 2:30pm (Europe/London)
 
 You've hit your session limit ┬À resets 2:30pm (Europe/London)
 
+### 2026-08-23 review (v20260823134120-8ffb)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 154s, run by this job rather than reported by the card.
+
+**acceptance: unclear**
+
+You've hit your session limit ┬À resets 2:30pm (Europe/London)
+
+**scope: unclear**
+
+You've hit your session limit ┬À resets 2:30pm (Europe/London)
+
+**breakage: unclear**
+
+You've hit your session limit ┬À resets 2:30pm (Europe/London)
+
