@@ -721,6 +721,45 @@ final class PathProjectorTest extends TestCase
         $this->assertSame(Money::fromPounds(20_000)->pence, $b->years[2]->pensionWealth->pence - $b->years[1]->pensionWealth->pence);
     }
 
+    public function test_the_mpaa_caps_a_surplus_funded_contribution_in_the_trigger_year_itself(): void
+    {
+        // The OTHER half of the timing above, and the reason the docblock on contributionHeadroom
+        // cannot say the cap simply "bites the year after". projectYear pays the employer and
+        // net-pay routes before the withdrawals that set the trigger, so those escape the trigger
+        // year — but applyContributions, which funds a contribution out of the year's surplus, runs
+        // AFTER them, so that route is capped in the trigger year itself. Whether the cap bites
+        // therefore depends on which route the money took rather than on the date, which is an
+        // artefact of the year order and is carded as 0073. Pinned here so re-timing it is a
+        // deliberate change to a red test, not a silent one.
+        //
+        // p1 is 60 in 2026 and retired, so nothing but the surplus route can pay in. £60,000 of
+        // income against £12,000 of spend leaves far more surplus than the £20,000 contribution
+        // asks for, so the allowance is the only thing that can hold it back.
+        $expense = new ExpenseProfile(Money::fromPounds(12_000), Money::zero(), Percent::fromPercent(70));
+        $build = fn (array $plan): Household => $this->couple($expense,
+            pensions: [new DcPension('p1', Money::fromPounds(100_000), Money::fromPounds(20_000), Money::zero(), 55, withdrawalPlan: $plan)],
+            override1: new Person('p1', new DateTimeImmutable('1966-04-01'), Sex::Female, EmploymentStatus::Retired),
+            incomeStreams: [new IncomeStream('p1', IncomeStreamType::Other, Money::fromPounds(60_000), true, true, 0)],
+        );
+
+        $triggered = $this->forecaster()->forecast(
+            $build([new WithdrawalInstruction(WithdrawalKind::Ufpls, Money::fromPounds(4_000), 60)]),
+            $this->flatAssumptions(), $this->settings(),
+        );
+        $untouched = $this->forecaster()->forecast($build([]), $this->flatAssumptions(), $this->settings());
+
+        $mpaa = TaxYearRegistry::for('2026-27')->pension->moneyPurchaseAnnualAllowance->pence;
+
+        // Flat assumptions, so the pot at the end of year 0 is arithmetic: £100,000, less the
+        // £4,000 taken, plus only the MPAA of the £20,000 asked for — in the trigger year itself.
+        $this->assertSame(
+            Money::fromPounds(96_000)->pence + $mpaa,
+            $triggered->years[0]->pensionWealth->pence,
+        );
+        // ...where the same contribution goes in whole for a member who has not triggered it.
+        $this->assertSame(Money::fromPounds(120_000)->pence, $untouched->years[0]->pensionWealth->pence);
+    }
+
     public function test_an_ad_hoc_taxable_pension_draw_triggers_the_mpaa_too_not_only_a_ufpls(): void
     {
         // Flexible access is not only a UFPLS: taking taxable drawdown income out of a money-purchase
@@ -855,6 +894,27 @@ final class PathProjectorTest extends TestCase
             $gross = PathProjector::maxUfplsGross($room, 268_275_00, 0.25);
             $this->assertLessThanOrEqual($room, PathProjector::ufplsSplit($gross, 268_275_00, 0.25)[1]);
         }
+    }
+
+    public function test_only_the_members_own_pot_carries_lump_sum_allowance_to_spend(): void
+    {
+        $lsa = 268_275_00;
+        $own = ['inherited' => false];
+
+        // An ordinary pot spends what is left of the member's own allowance...
+        $this->assertSame($lsa, PathProjector::lsaHeadroom($lsa, 0, $own));
+        $this->assertSame(68_275_00, PathProjector::lsaHeadroom($lsa, 200_000_00, $own));
+        // ...never a negative one, so a ledger already over the allowance cannot hand a draw
+        // NEGATIVE headroom, which the split would read as a bigger taxable part than the draw.
+        $this->assertSame(0, PathProjector::lsaHeadroom($lsa, 300_000_00, $own));
+
+        // An inherited pot has none, whatever the heir has left: beneficiary drawdown is not the
+        // heir's pension, so there is no tax-free quarter in it and their allowance must not pay
+        // for one. Both routes into the split ask this, which is the point of it being one home —
+        // the ad-hoc closure knew the rule and the planned route did not.
+        $this->assertSame(0, PathProjector::lsaHeadroom($lsa, 0, ['inherited' => true]));
+        // A pot built before the flag existed is the member's own, not an inherited one.
+        $this->assertSame($lsa, PathProjector::lsaHeadroom($lsa, 0, []));
     }
 
     public function test_dc_contributions_funded_from_surplus_grow_the_pot(): void

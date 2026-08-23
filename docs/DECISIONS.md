@@ -174,17 +174,25 @@ other asset and so biased every housing comparison towards realising property eq
    wrong by roughly five points of tax on every pension pound. On the pinned test household lifetime tax
    falls from £103,538.10 to £81,749.09. The draw itself is a second closure rather than a rewrite of the
    first, so `TaxEfficient` / `PensionAware` and the HMRC worked examples keep their figures.
-2. **One home for the split and one ledger for the allowance.** `PathProjector::ufplsSplit` is now the only
-   place the 25% rule lives, shared with `plannedWithdrawals`, and both routes spend the same
-   `$state['lsaUsed']`. A member whose allowance is already gone gets the old fully-taxable draw **to the
-   penny**, which is the pinned regression guard.
+2. **One home for the split, one ledger for the allowance, and one home for the headroom.**
+   `PathProjector::ufplsSplit` is the only place the 25% rule lives, shared with `plannedWithdrawals`, and
+   both routes spend the same `$state['lsaUsed']`. A member whose allowance is already gone gets the old
+   fully-taxable draw **to the penny**, which is the pinned regression guard. Sharing the split was not
+   enough on its own: HOW MUCH allowance a given pot's draw may spend is a second question, each route
+   answered it for itself, and that is how the inherited-pot exclusion (decision 7) came to be written into
+   the ad-hoc closure and missed in the planned one. `PathProjector::lsaHeadroom` is now its one home and
+   both routes ask it.
 3. **Flexible access caps later money-purchase contributions at the MPAA.** Otherwise a plan could draw a pot
    down in the free bands and recycle the cash straight back in, which the law does not allow. Modelled as a
-   hard cap on what may be paid in rather than as an annual-allowance charge on the excess, and biting from
-   the year AFTER the trigger, because `projectYear` pays both contribution routes before it runs the
-   withdrawals that set it. That second one is the LESS cautious side of the rule, so it is carded (0073)
-   rather than merely noted; both are flagged on `contributionHeadroom`. What the cap blocks is never
-   dropped, it stays in pay or in surplus and is taxed or saved there.
+   hard cap on what may be paid in rather than as an annual-allowance charge on the excess. In the TRIGGER
+   YEAR itself, whether it bites depends on which of the three contribution routes the money took, which is
+   an artefact of `projectYear`'s order rather than a rule: the employer and net-pay routes are paid before
+   the withdrawals that set the trigger and so escape it, while `applyContributions` (the surplus-funded
+   route) runs after them and is capped in the trigger year. In life the cap applies to every contribution
+   paid after the trigger DATE, whichever route it took. Both are carded (0073) rather than merely noted,
+   both are flagged on `contributionHeadroom`, and both halves of the timing are pinned by a test so
+   re-timing them reddens the suite instead of moving quietly. What the cap blocks is never dropped, it
+   stays in pay or in surplus and is taxed or saved there.
 4. **The trigger belongs to the draw, not to the draw ORDER — so `$drawPension` had to change after all.**
    The plan's #5 fenced `$drawPension` off to keep `TaxEfficient` / `PensionAware` byte-identical, and slice
    #5 honoured that. It was wrong: taxable drawdown out of an uncrystallised pot is flexible access whichever
@@ -202,7 +210,10 @@ other asset and so biased every housing comparison towards realising property eq
    re-run the two forecasts the results panel already needs; `WithdrawalStrategyComparison` now runs its whole
    bounded `CANDIDATES` set once and reports the cheapest. Every saving stays the difference of two of the
    engine's own runs, never a re-derivation. The panel's two tiles are `CURRENT` and `ALTERNATIVE`, both named
-   through one `label()`, and a test refuses to let them become the same order.
+   through one `label()`, and a test refuses to let them become the same order. *Hand-off:* whoever changes the
+   displayed default (card 0075) must also pick the new `ALTERNATIVE` **and reword the panel's closing note**,
+   which describes what fill-the-bands does in prose. No test can see that prose go stale — the name guard only
+   catches a hard-coded label — so it is written on `WithdrawalStrategyComparison::ALTERNATIVE` and here.
 7. **An inherited pot carries no tax-free quarter either.** Decision 1 gave every FillBands pension draw the
    25% UFPLS split, and the closure applied it to whatever pot it touched — including the one the estate pass
    hands the survivor. Beneficiary drawdown is the deceased's fund under its own regime, not a pension of the
@@ -212,8 +223,9 @@ other asset and so biased every housing comparison towards realising property eq
    path now that the optimiser runs FillBands for every scenario. Zero headroom makes the split all-taxable,
    which is exactly the old draw, so the fix is the same one flag decision 5 added. *Not settled here:* where
    the member died under 75, beneficiary drawdown is in life tax-free income rather than fully taxable. The
-   model charges full income tax on it, as it always has under `$drawPension`; that is the cautious side and
-   it is unchanged by this card.
+   model charges full income tax on it, as it always has under `$drawPension`; that is the cautious side, it
+   is unchanged by this card, and it is board card **0079** rather than a note here, because
+   `PathProjector::settleEstates` stores no age at death so the two cases cannot currently be told apart.
 8. **The candidate set stops at the three named orders, and that limit is carded rather than hidden.** The
    plan's #6 also describes a "manage taxable income to £X" candidate. It is not built: #6 says to confirm the
    candidate set with Rob first, and decision 1 of 2026-07-01 ruled out a general planner in v1. So the search
@@ -222,6 +234,15 @@ other asset and so biased every housing comparison towards realising property eq
 9. **`ENGINE_VERSION` → `finance-engine/ufpls-fill-bands`.** Decisions 1 and 4 both move stored figures (a
    fill-the-bands run pays less tax; a default-order run with a working member contributes less), so a result
    stored before this card and one stored after are not comparable and must not carry the same stamp.
+10. **The MPAA is disclosed to the reader in the year it starts, as an assumed figure.** Decision 3 has the
+    model apply a statutory cap nobody entered, which from the trigger on shrinks what the contributions they
+    DID enter buy. The only place it was ever stated was the lump-sum tax-shock panel, and that panel needs a
+    PLANNED withdrawal instruction to say anything at all, so on an ordinary plan (a draw taken to meet a
+    shortfall) the cap bound and no screen mentioned it. That is exactly the no-invisible-figures rule.
+    `PathProjector::mpaaWarnings` emits one warning in the trigger year, carrying the allowance read from the
+    statutory constant, and `ResultPresenter::assumedFigures()` surfaces the engine's own sentence plus the
+    year. Not emitted where the member pays nothing into a money-purchase pension, because a cap on what may
+    be paid in changes nothing for them and the note list is only useful while everything on it bites.
 
 **Status:** active
 

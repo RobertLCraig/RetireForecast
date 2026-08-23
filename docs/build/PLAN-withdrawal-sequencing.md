@@ -172,7 +172,10 @@ before each engine edit, and claim the lane in HANDOVER.
    (`PathProjector::$drawPensionUfpls`): 25% tax-free while the Lump Sum Allowance lasts, the rest taxable,
    solved against both caps at once (`maxUfplsGross`). The split has one home (`ufplsSplit`, shared with
    `plannedWithdrawals`) and one LSA ledger, so an ad-hoc draw and a planned instruction cannot double-count
-   the allowance. Flexible access now caps later money-purchase contributions at the MPAA (`mpaaHeadroom`).
+   the allowance. Which pot's allowance a draw may spend has one home too (`lsaHeadroom`), so an
+   inherited pot cannot be excluded on one route and not the other. Flexible access now caps later
+   money-purchase contributions at the MPAA (`PathProjector::contributionHeadroom`), and the cap is
+   disclosed to the reader in the year it starts (`PathProjector::mpaaWarnings`).
 5. ✅ **Search-optimiser — BUILT (2026-08-19, card 0007).** `WithdrawalStrategyComparison` runs every candidate
    in its bounded `CANDIDATES` set (the three named strategies) and reports the cheapest plus its £ saving
    against the order in place. Extending the existing comparison rather than adding a sibling keeps it at one

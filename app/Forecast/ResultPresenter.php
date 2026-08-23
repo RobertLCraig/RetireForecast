@@ -789,6 +789,21 @@ final class ResultPresenter
                     .'inside your capital-gains allowance and costs nothing. If you would not do it, say so and we will '
                     .'model the money staying where it is.';
             }
+
+            // The Money Purchase Annual Allowance. Not a blank input filled in either: a statutory
+            // cap the projection starts applying the moment the plan takes money flexibly out of a
+            // pension, which from then on shrinks what the contributions the reader DID enter can
+            // buy. The panel that used to be the only mention of it needs a planned withdrawal
+            // instruction to say anything, and a draw taken to meet a shortfall is not one — so on
+            // an ordinary plan the cap bound and nothing said so. The engine writes the sentence
+            // (it owns the figure and reads the statutory constant); this only says when it starts.
+            foreach ($forecast->years as $year) {
+                $mpaa = self::firstWarning($year, WarningCode::MPAA_TRIGGERED);
+                if ($mpaa !== null) {
+                    $out[] = "{$mpaa} In this plan that starts in {$year->calendarYear}.";
+                    break;
+                }
+            }
         }
 
         if ($action === null) {
@@ -820,6 +835,22 @@ final class ResultPresenter
         }
 
         return $out;
+    }
+
+    /**
+     * The message of the first warning of $code this year carries, or null if it carries none.
+     * Lets a disclosure quote the ENGINE's own sentence, so the figure in it is the figure the
+     * projection used and the two cannot drift.
+     */
+    private static function firstWarning(YearResult $year, string $code): ?string
+    {
+        foreach ($year->warnings as $warning) {
+            if ($warning->code === $code) {
+                return $warning->message;
+            }
+        }
+
+        return null;
     }
 
     /**

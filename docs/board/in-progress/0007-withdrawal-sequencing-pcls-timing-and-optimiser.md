@@ -464,3 +464,69 @@ VERDICT: defect
 
 VERDICT: defect
 
+**2026-08-23 - the fourth review's defects fixed; acceptance unchanged.** The review found acceptance
+sound and the five ticks stand. Each finding was reproduced before it was touched, and nothing was
+reworded to make one go away.
+
+**The MPAA docblock, false the other way.** `contributionHeadroom` said the cap bites the year AFTER
+the trigger "because `projectYear` pays both contribution routes" first. There are three, and the
+third disagrees: `applyContributions` runs after the withdrawals, so a contribution funded from the
+year's surplus IS capped in the trigger year while employer and net-pay money is not. Whether the cap
+bites depends on which route the money took rather than on the date, which is an artefact of the year
+order and not a rule. Both halves are now stated, in the docblock and in DECISIONS item 3, and both
+are pinned:
+`PathProjectorTest::test_the_mpaa_caps_a_surplus_funded_contribution_in_the_trigger_year_itself` is
+new and holds the half nothing was watching. Re-timing them onto one rule stays card **0073**, whose
+acceptance #1 already asks for exactly that; I did not widen it here, because reordering the year
+loop moves figures for every scenario with a working member and belongs behind its own re-run of the
+stored set.
+
+**The inherited-pot rule in one of its two homes.** `$drawPensionUfpls` zeroed the allowance for an
+inherited pot and `plannedWithdrawals` did not, so only `inheritEstate` handing that pot an empty plan
+kept the planned route from spending the heir's Lump Sum Allowance on a dead partner's money. Sharing
+`ufplsSplit` was never enough on its own: how much allowance a draw may spend is a second question and
+each route answered it for itself. It now has one home, `PathProjector::lsaHeadroom`, asked by both,
+the pattern `triggerFlexibleAccess` already set for the MPAA trigger. Public static like the split it
+feeds, so `test_only_the_members_own_pot_carries_lump_sum_allowance_to_spend` tests it at the
+boundaries directly, including the floor at zero that stops an over-spent ledger handing a draw
+negative headroom. `plannedWithdrawals` no longer carries its own running allowance total either, so
+the local and the ledger cannot drift.
+
+**The cap was invisible, and this is the one that mattered.** The MPAA is a figure the reader never
+entered which, from the trigger on, shrinks what the contributions they DID enter buy - and the only
+screen that ever named it, the lump-sum tax-shock panel, needs a PLANNED withdrawal instruction to say
+anything at all. A draw taken to meet a shortfall is not one, and since the previous pass those
+trigger the cap under every draw order. So on an ordinary plan the cap bound and no screen mentioned
+it, which is the no-invisible-figures rule exactly. `PathProjector::mpaaWarnings` now emits one
+warning in the year the cap first applies, carrying the allowance read from the statutory constant,
+and `ResultPresenter::assumedFigures()` surfaces the engine's own sentence plus the year it starts -
+so the pounds and the prose have one home, in the engine that owns the figure. It reuses `YearResult`'s
+existing warnings list and the existing `WarningCode::MPAA_TRIGGERED` rather than adding a field.
+Guarded by two new tests in `AssumedFiguresDisclosureTest`: that it is disclosed with the statutory
+figure and the year, and that it stays silent for a member paying nothing into a pension, because a
+cap on what may be paid in changes nothing for them.
+
+**Assumed:** that the disclosure fires on "this member has money-purchase contributions in the plan"
+rather than on "the cap actually blocked pounds this year". The looser gate can name a cap that never
+binds (a small contribution, well under the allowance); the tighter one needs the blocked amount
+plumbed out of three separate cap sites, which would put the rule back in three homes - the defect
+this card keeps hitting. A missing disclosure is the failure this rule exists to prevent, so I took
+the side that over-discloses. The sentence stays true either way: nothing above the allowance can go
+in. Note the overlap with card **0073** acceptance #3, which asks to show the reader the allowance
+that applied AND any charge - the allowance half is now done, the charge half is still 0073's.
+
+**Could not settle from the repository:**
+- **The hand-off to card 0075 is still not on card 0075.** This session is forbidden from editing any
+  card but its own, so I could not put it there. What 0075 must do is now written in the two places
+  its author will actually be looking: `WithdrawalStrategyComparison::ALTERNATIVE` and DECISIONS
+  2026-08-19 item 6. It is that whoever flips the displayed default must pick a new `ALTERNATIVE` and
+  **reword the panel's closing note**, which describes what fill-the-bands does in prose. No test can
+  see that prose go stale - the name guard only catches a hard-coded label.
+- Still no Pest. `vendor/bin/` holds `phpunit` and `pint` only. What was run, from this worktree:
+  `php artisan test` green (1153 passed, 1 skipped - the posture-aware banned-phrasing partition),
+  `vendor\bin\pint.bat --dirty` clean, and `php artisan scenarios:audit` clean on every stored
+  scenario.
+- **Still not looked at in a browser.** Herd serves the site from `C:\Dev\RetireForecast`, not from
+  this worktree, so the new assumed-figure note needs Rob's eye on a real page and a real PDF export,
+  along with everything the earlier passes left for the same reason.
+

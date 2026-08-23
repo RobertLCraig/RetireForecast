@@ -776,6 +776,11 @@ final class PathProjector
         $state['mpContributed'] = array_fill_keys(array_keys($state['mpContributed']), 0);
         $state['isaSubscribed'] = array_fill_keys(array_keys($state['mpContributed']), 0);
 
+        // Who had already flexibly accessed a pension when the year opened. Compared at the end of
+        // it, this is how the year the MPAA FIRST applies is known — and therefore disclosed to the
+        // reader rather than quietly shrinking what their contributions buy ({@see mpaaWarnings}).
+        $mpaaAtYearStart = $state['mpaaTriggered'];
+
         // Any annuity purchases due this year convert part of a DC pot into a lifetime income
         // before the year's income is assembled, so the pot is reduced and the annuity pays
         // from its purchase year.
@@ -1278,6 +1283,7 @@ final class PathProjector
             pensionWealth: $m($pension),
             propertyWealth: $m($state['property']),
             incomeBySource: array_map($m, $src),
+            warnings: $this->mpaaWarnings($state, $mpaaAtYearStart),
             mortgageBalance: $m($state['mortgageOutstanding']),
             nominal: $nominal,
             isaSheltered: $m($isaShelteredNominal),
@@ -1578,7 +1584,7 @@ final class PathProjector
     {
         $taxable = 0;
         $taxFree = 0;
-        $lsaRemaining = $this->config->pension->lumpSumAllowance->pence - $state['lsaUsed'][$pid];
+        $lsa = $this->config->pension->lumpSumAllowance->pence;
         $pclsRate = $this->config->pension->pclsRate->asFraction();
 
         foreach ($state['pots'][$pid] as &$pot) {
@@ -1590,6 +1596,10 @@ final class PathProjector
                 if ($amount <= 0) {
                     continue;
                 }
+                // Re-read per instruction rather than carrying a running local: the ledger it reads
+                // is updated below, so the two cannot drift, and asking the same helper the ad-hoc
+                // closure asks is what keeps the inherited-pot rule from living in only one route.
+                $lsaRemaining = self::lsaHeadroom($lsa, $state['lsaUsed'][$pid], $pot);
 
                 if ($instruction->kind->triggersMpaa()) {
                     // Flexible access: from now on this member's money-purchase contributions are
@@ -1607,15 +1617,15 @@ final class PathProjector
                         $taxable += $tx;
                         $pot['value'] -= $amount;
                         $state['lsaUsed'][$pid] += $tf;
-                        $lsaRemaining -= $tf;
                         break;
                     case WithdrawalKind::Pcls:
-                        // amount = tax-free cash taken; the rest stays invested.
-                        $tf = min($amount, max(0, $lsaRemaining));
+                        // amount = tax-free cash taken; the rest stays invested. On an inherited pot
+                        // the headroom is nil, so nothing is taken and nothing is charged: there is
+                        // no tax-free cash in a beneficiary drawdown to instruct.
+                        $tf = min($amount, $lsaRemaining);
                         $taxFree += $tf;
                         $pot['value'] -= $tf;
                         $state['lsaUsed'][$pid] += $tf;
-                        $lsaRemaining -= $tf;
                         break;
                     case WithdrawalKind::DrawdownIncome:
                         $taxable += $amount;
@@ -1629,11 +1639,39 @@ final class PathProjector
     }
 
     /**
+     * How much tax-free Lump Sum Allowance a draw from THIS pot may still use. The companion to
+     * {@see ufplsSplit}: the split says what share of a draw is tax-free, this says whose allowance
+     * pays for it. Both routes into the split — a planned WithdrawalInstruction and the ad-hoc
+     * FillBands closure — ask this, so the rule below cannot be written into one of them and
+     * missed in the other, which is exactly how it was found.
+     *
+     * An INHERITED pot has NO headroom. Beneficiary drawdown is the deceased's fund under its own
+     * regime ({@see collectDeathInServiceBenefit} states it for the lump-sum form), not a pension
+     * of the heir's: there is no tax-free quarter in it, and the heir's own allowance (and, through
+     * deathBenefit['lsaUsed'], their death-benefit allowance) must not pay for it. Zero headroom
+     * makes the split all-taxable, which is exactly the fully-taxable draw the model has always
+     * charged on an inherited pot.
+     *
+     * Public static so it is unit-tested directly, like the split it feeds.
+     *
+     * @param  array<string, mixed>  $pot
+     */
+    public static function lsaHeadroom(int $lumpSumAllowance, int $lsaUsed, array $pot): int
+    {
+        if ($pot['inherited'] ?? false) {
+            return 0;
+        }
+
+        return max(0, $lumpSumAllowance - $lsaUsed);
+    }
+
+    /**
      * Split a gross UFPLS withdrawal into its tax-free and taxable parts: 25% is tax-free, but
      * only while the member's Lump Sum Allowance lasts, beyond which the whole withdrawal is
      * taxable. THE one home for the rule, so a planned WithdrawalInstruction and an ad-hoc
      * FillBands draw can never diverge (they used to be two copies of the same three lines).
-     * Public static so the split is unit-tested directly at the allowance boundary.
+     * How much allowance is left to spend is the other half of that, and has its own one home:
+     * {@see lsaHeadroom}. Public static so the split is unit-tested directly at the boundary.
      *
      * @return array{0: int, 1: int} [taxFree, taxable], both in pence
      */
@@ -2050,16 +2088,11 @@ final class PathProjector
                     if (($ages[$person->id] ?? 0) < ($pot['earliestAccessAge'] ?? 0)) {
                         continue;
                     }
-                    // An INHERITED pot has no tax-free quarter and cannot spend the heir's own Lump
-                    // Sum Allowance. Beneficiary drawdown is the deceased's fund under its own
-                    // regime ({@see collectDeathInServiceBenefit} states it for the lump-sum form),
-                    // not a pension of the heir's — so without this the heir took 25% of a dead
-                    // partner's pot tax-free and their own allowance (and, through
-                    // deathBenefit['lsaUsed'], their death-benefit allowance) paid for money that
-                    // was never theirs. No headroom makes the split all-taxable, which is exactly
-                    // $drawPension. Pinned by
+                    // Whose allowance, if any, this pot's tax-free quarter may spend — the same
+                    // question {@see plannedWithdrawals} asks, through the same helper, so an
+                    // inherited pot cannot be excluded on one route and not the other. Pinned by
                     // PathProjectorTest::test_a_fill_bands_draw_from_an_inherited_pot_takes_no_tax_free_quarter.
-                    $lsaRemaining = ($pot['inherited'] ?? false) ? 0 : max(0, $lsa - $state['lsaUsed'][$person->id]);
+                    $lsaRemaining = self::lsaHeadroom($lsa, $state['lsaUsed'][$person->id], $pot);
                     $cap = $pot['value'];
                     if ($taxableLimit !== null) {
                         $cap = min($cap, self::maxUfplsGross($taxableLimit - $alreadyTaxable, $lsaRemaining, $pclsRate));
@@ -2389,15 +2422,24 @@ final class PathProjector
      * prices that separately); carry-forward of unused allowance from the previous three years
      * is not tracked, so the cap is the cautious side of the rule; the high-income taper is not
      * applied here (it needs adjusted and threshold income, which this year's contributions
-     * themselves move; {@see AnnualAllowanceCalculator} prices it); and the MPAA first bites in
-     * the year AFTER the trigger, not the trigger year itself, because {@see projectYear} pays
-     * both contribution routes before it runs the withdrawals that set the trigger. That is the
-     * LESS cautious side of the rule — in life the cap applies to contributions paid after the
-     * trigger date, so a trigger early in the year leaves the model a year of full allowance it
-     * should not have. Pinned as behaviour by
-     * PathProjectorTest::test_flexible_access_caps_later_money_purchase_contributions_at_the_mpaa,
-     * and carded as 0073 with the missing annual-allowance charge. Both allowances are the frozen
-     * statutory figures, not indexed, because nothing has indexed them.
+     * themselves move; {@see AnnualAllowanceCalculator} prices it); and, in the TRIGGER YEAR
+     * itself, whether the cap bites depends on which of the three contribution routes the money
+     * took, which is an artefact of the year order rather than a rule. {@see projectYear} pays
+     * {@see payEmployerContributions} and {@see payNetPayContributions} before the withdrawals
+     * that set the trigger, so those two escape it and are first capped the year AFTER; but
+     * {@see applyContributions} — the surplus-funded route, including the non-earner basic-amount
+     * one — runs after them, so it IS capped in the trigger year. In life the cap applies to every
+     * contribution paid after the trigger DATE, whatever route it took. Both halves are pinned as
+     * behaviour, by
+     * PathProjectorTest::test_flexible_access_caps_later_money_purchase_contributions_at_the_mpaa
+     * and PathProjectorTest::test_the_mpaa_caps_a_surplus_funded_contribution_in_the_trigger_year_itself,
+     * so neither can move unseen; re-timing them onto one rule is carded as 0073, with the missing
+     * annual-allowance charge. Both allowances are the frozen statutory figures, not indexed,
+     * because nothing has indexed them.
+     *
+     * What the cap blocks is never silently dropped — it stays in pay and is taxed there, or stays
+     * in the surplus and is saved as cash — and the cap itself is disclosed to the reader in the
+     * year it starts rather than left invisible ({@see mpaaWarnings}).
      *
      * @param  array<string, mixed>  $state
      */
@@ -2409,6 +2451,54 @@ final class PathProjector
             : $params->annualAllowance->pence;
 
         return max(0, $limit - ($state['mpContributed'][$pid] ?? 0));
+    }
+
+    /**
+     * The year the MPAA first applies, said out loud — at most one warning, in that year only.
+     *
+     * The cap is a figure the reader never entered and can move their result by tens of thousands
+     * of pounds: from the trigger on, a contribution in their plan above the allowance is not paid
+     * in ({@see contributionHeadroom}). Until this existed the only place the MPAA was ever stated
+     * was the app's lump-sum tax-shock panel, which needs a PLANNED withdrawal instruction to say
+     * anything at all — yet an ad-hoc draw to meet a shortfall triggers the cap under every draw
+     * order. So on an ordinary plan the cap applied and no screen mentioned it. The house rule is
+     * that the model never uses a figure the reader cannot see, so it is disclosed with its value,
+     * read from the statutory constant that owns it, and the app surfaces it among its
+     * assumed-figure notes. (Named in prose, not as a doc link: an engine file must not carry a
+     * fully-qualified app class, which Pint has previously promoted into a real import.)
+     *
+     * Not emitted for a member with no money-purchase contributions in their plan: a cap on what
+     * may be paid in changes nothing for someone paying nothing in, and the disclosure list is
+     * only useful while everything on it bites.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $before  who had already triggered it when the year opened
+     * @return list<Warning>
+     */
+    private function mpaaWarnings(array $state, array $before): array
+    {
+        foreach ($state['mpaaTriggered'] as $pid => $triggered) {
+            if (! $triggered || ($before[$pid] ?? false)) {
+                continue;
+            }
+            foreach ($state['pots'][$pid] ?? [] as $pot) {
+                if (($pot['contribution'] ?? 0) > 0 || ($pot['employerContribution'] ?? 0) > 0) {
+                    // One per year, not one per member: the sentence names no one, so a couple
+                    // triggering together would only say the same thing twice.
+                    return [new Warning(
+                        WarningCode::MPAA_TRIGGERED,
+                        'Money is taken flexibly out of a pension in this plan, so from then on no more than '
+                        .$this->config->pension->moneyPurchaseAnnualAllowance->format()
+                        .' a year can be paid into that person\'s money-purchase pensions — the Money Purchase '
+                        .'Annual Allowance, which replaces the ordinary annual allowance for the rest of the plan. '
+                        .'Any contribution in the plan above it is not paid in, and is not lost: it stays in pay '
+                        .'and is taxed there, or stays in savings.',
+                    )];
+                }
+            }
+        }
+
+        return [];
     }
 
     /**

@@ -65,8 +65,14 @@ final class WithdrawalStrategyComparison
      * same order twice and report a £0 saving against itself; pinned by
      * ScenarioForecasterTest::test_the_panel_never_compares_the_current_order_against_itself, so
      * changing the displayed default (card 0075) turns the suite red rather than shipping that.
-     * The panel's explanatory note describes this order by name, so it is a deliberate constant
-     * rather than "whatever is left".
+     *
+     * A deliberate constant rather than "whatever is left", because both templates close with a
+     * sentence DESCRIBING what this order does (draw within the personal allowance, the CGT
+     * allowance, the tax-free quarter, the Pension Credit exception). That prose is true of
+     * fill-the-bands and of nothing else, and no test can see it is wrong — the name guard only
+     * catches a hard-coded LABEL. So whoever changes the default must also pick the new alternative
+     * and reword that sentence. Written here and in DECISIONS 2026-08-19 rather than only on the
+     * card, so it is in front of whoever edits this line.
      */
     public const ALTERNATIVE = DrawdownStrategy::FillBands;
 

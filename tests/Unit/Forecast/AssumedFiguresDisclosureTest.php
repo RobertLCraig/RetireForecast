@@ -149,6 +149,73 @@ final class AssumedFiguresDisclosureTest extends TestCase
         $this->assertSame([], $this->disclosures(['salePrice' => '400000', 'annualRent' => '18000']));
     }
 
+    /**
+     * @param  list<array<string, mixed>>  $pensions
+     * @return list<string>
+     */
+    private function disclosuresFor(array $pensions, string $dob = '1966-01-01'): array
+    {
+        $state = [
+            'householdName' => 'Savers', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
+            'people' => [['id' => 'p1', 'dob' => $dob, 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'pensions' => $pensions,
+            'accounts' => [['id' => 'a1', 'ownerId' => 'p1', 'type' => 'isa', 'balance' => '50000']],
+            'incomeStreams' => [['id' => 'i1', 'ownerId' => 'p1', 'type' => 'other', 'grossAnnual' => '60000',
+                'taxable' => true, 'inflationLinked' => false, 'startAge' => 0]],
+            'expenseLines' => [['id' => 'e1', 'amount' => '18000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => false,
+        ];
+
+        $assembler = new HouseholdAssembler;
+        $household = $assembler->household($state);
+        $forecast = (new DeterministicForecaster(
+            TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi),
+            new CohortLifeTable,
+        ))->forecast($household, AssumptionSetLibrary::default(), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'));
+
+        return array_values(array_map(
+            static fn (array $n): string => $n['text'],
+            array_filter(
+                ResultPresenter::inputNotes($household, $forecast, null),
+                static fn (array $n): bool => $n['kind'] === 'assumed_figure',
+            ),
+        ));
+    }
+
+    public function test_the_money_purchase_annual_allowance_is_disclosed_when_the_plan_triggers_it(): void
+    {
+        // Taking money flexibly out of a pension caps what may be paid back into one for the rest
+        // of the plan. Nobody enters that cap and it shrinks what the contributions they DID enter
+        // buy — and the only screen that ever mentioned it needs a PLANNED withdrawal instruction,
+        // which a draw taken to meet a shortfall is not. So it applied and nothing said so.
+        $disclosures = $this->disclosuresFor([[
+            'id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000',
+            'ongoingContribution' => '20000', 'earliestAccessAge' => '55',
+            'withdrawals' => [['kind' => 'ufpls', 'amount' => '10000', 'atAge' => '61']],
+        ]]);
+
+        $this->assertCount(1, $disclosures);
+        $this->assertStringContainsString(
+            TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi)->pension->moneyPurchaseAnnualAllowance->format(),
+            $disclosures[0],
+            'the disclosed cap must be the statutory figure the engine actually applies',
+        );
+        // p1 is 60 in 2026, so the instruction at 61 fires in 2027 — the reader is told when.
+        $this->assertStringContainsString('starts in 2027', $disclosures[0]);
+    }
+
+    public function test_nothing_is_disclosed_about_the_mpaa_when_nothing_is_being_paid_in(): void
+    {
+        // No noise: a cap on what may be paid INTO a pension changes nothing for a member paying
+        // nothing in, so the same withdrawal on a pot with no contributions discloses nothing.
+        $this->assertSame([], $this->disclosuresFor([[
+            'id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000',
+            'earliestAccessAge' => '55',
+            'withdrawals' => [['kind' => 'ufpls', 'amount' => '10000', 'atAge' => '61']],
+        ]]));
+    }
+
     public function test_the_disclosed_figures_are_read_from_the_engine_not_restated(): void
     {
         // Guards the drift this rule exists to prevent: if the engine's constant changed but the
