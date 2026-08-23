@@ -51,8 +51,9 @@ class ScenarioForecasterTest extends TestCase
         // The reported delta is the difference of two of the engine's OWN runs, never a
         // re-derivation: re-run the winner and the current order and subtract.
         $lifetimeTax = function (DrawdownStrategy $strategy) use ($forecaster): int {
-            $total = 0;
-            foreach ($forecaster->deterministicUnderStrategy($this->scenario(), $strategy)->years as $year) {
+            $run = $forecaster->deterministicUnderStrategy($this->scenario(), $strategy);
+            $total = $run->iht?->total->pence ?? 0;
+            foreach ($run->years as $year) {
                 $total += $year->totalTax->pence;
             }
 
@@ -73,6 +74,43 @@ class ScenarioForecasterTest extends TestCase
 
         // The search stays bounded: each candidate is a whole forecast, so this is the cost.
         $this->assertLessThanOrEqual(6, count(WithdrawalStrategyComparison::CANDIDATES));
+    }
+
+    public function test_the_lifetime_tax_the_optimiser_ranks_on_counts_the_tax_paid_at_death(): void
+    {
+        // The panel calls its totals "tax paid across the plan" and the steer turns the gap into
+        // "the order to lean towards for tax" — but the metric used to stop at the last living
+        // year and throw away the Inheritance Tax the SAME run computes and the same page prints.
+        // Two ways that misleads: an order that pays less income tax ends with more wealth, so the
+        // estate hands roughly 40% of the "saving" back; and a pension outside the estate versus an
+        // ISA inside it can swing IHT further than the income-tax gap and invert the winner.
+        $user = User::factory()->create();
+        $forecaster = new ScenarioForecaster;
+        $scenario = fn (bool $iht): Scenario => ScenarioFixture::rich($user, ['ihtModelled' => $iht]);
+
+        // The fixture has to actually pay the death tax, or this test proves nothing.
+        $modelled = $forecaster->deterministicUnderStrategy($scenario(true), WithdrawalStrategyComparison::CURRENT);
+        $this->assertGreaterThan(0, $modelled->iht?->total->pence ?? 0, 'the fixture pays no IHT, so it cannot pin this');
+
+        // Every candidate's total is its own year-by-year tax PLUS its own death tax — one run,
+        // both figures, never a re-derivation.
+        $yearlyTax = 0;
+        foreach ($modelled->years as $year) {
+            $yearlyTax += $year->totalTax->pence;
+        }
+        $withIht = WithdrawalStrategyComparison::for($forecaster, $scenario(true));
+        $this->assertSame($yearlyTax + $modelled->iht->total->pence, $withIht->baselineTaxPence);
+        $this->assertTrue($withIht->includesIht, 'the panel must say the death tax is in the total');
+
+        // ...and turning the toggle off leaves the yearly tax alone, so the difference between the
+        // two headline totals IS the death tax and nothing else has moved.
+        $withoutIht = WithdrawalStrategyComparison::for($forecaster, $scenario(false));
+        $this->assertSame($yearlyTax, $withoutIht->baselineTaxPence);
+        $this->assertFalse($withoutIht->includesIht, 'an unmodelled death tax must not be claimed as counted');
+        $this->assertSame(
+            $modelled->iht->total->pence,
+            $withIht->baselineTaxPence - $withoutIht->baselineTaxPence,
+        );
     }
 
     public function test_the_panel_never_compares_the_current_order_against_itself(): void

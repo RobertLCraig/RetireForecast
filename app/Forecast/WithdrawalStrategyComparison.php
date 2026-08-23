@@ -26,9 +26,11 @@ use RetireForecast\FinanceEngine\Money\Money;
  *
  * Neutral by construction: it reports figures and their differences, nothing more. The
  * directive "lean towards X" steer lives only in the walled-off {@see Interpretation}
- * (the guidance-only partition). Each figure is the engine's own summed {@see YearResult::$totalTax},
- * never a re-derivation (the displayed-figure provenance rule), and every saving is exactly the
- * difference of two of those runs (one figure, one home).
+ * (the guidance-only partition). Each figure is the engine's own — the summed
+ * {@see YearResult::$totalTax} plus that run's {@see ForecastResult::$iht} — never a
+ * re-derivation (the displayed-figure provenance rule), and every saving is exactly the
+ * difference of two of those runs (one figure, one home). See {@see lifetimeTax} for why the
+ * death tax belongs in the total the optimiser ranks on.
  */
 final class WithdrawalStrategyComparison
 {
@@ -83,13 +85,19 @@ final class WithdrawalStrategyComparison
         public readonly DrawdownStrategy $cheapest,
         public readonly int $cheapestTaxPence,
         public readonly int $optimiserSavingPence, // baselineTax - cheapestTax; never negative
+        public readonly bool $includesIht, // the totals carry the death tax as well as the yearly tax
     ) {}
 
     public static function for(ScenarioForecaster $forecaster, Scenario $scenario): self
     {
         $tax = [];
+        $includesIht = false;
         foreach (self::CANDIDATES as $candidate) {
-            $tax[$candidate->name] = self::lifetimeTax($forecaster->deterministicUnderStrategy($scenario, $candidate));
+            $run = $forecaster->deterministicUnderStrategy($scenario, $candidate);
+            $tax[$candidate->name] = self::lifetimeTax($run);
+            // Read off the run rather than the scenario's toggle, so what the page SAYS is in the
+            // total is read from the same object the total was summed out of.
+            $includesIht = $includesIht || $run->iht !== null;
         }
 
         // The cheapest candidate, starting from the current order so a TIE keeps it: the
@@ -111,13 +119,35 @@ final class WithdrawalStrategyComparison
             cheapest: $cheapest,
             cheapestTaxPence: $tax[$cheapest->name],
             optimiserSavingPence: $baseline - $tax[$cheapest->name],
+            includesIht: $includesIht,
         );
     }
 
-    /** Total tax paid across every year of the projection. */
+    /**
+     * EVERY pound of tax the plan pays: the year-by-year total ({@see YearResult::$totalTax} —
+     * income tax, NI, CGT, dividend and savings tax) PLUS the Inheritance Tax the same run
+     * settles at death ({@see ForecastResult::$iht}), which is zero-by-absence when the
+     * scenario does not model IHT.
+     *
+     * The death tax has to be in here, because a draw order changes it two ways and both are
+     * large enough to move the ranking:
+     *  - An order that pays less income tax ends with MORE wealth, so the estate hands roughly
+     *    40% of the "saving" straight back. On income tax alone the headline overstates it.
+     *  - For a death before pensions come into the estate (the projector owns that year) a
+     *    pension sits OUTSIDE the estate while an ISA sits inside it, so the draw order decides
+     *    which pot survives to be taxed at death. That swing can exceed the income-tax gap and
+     *    invert which order is cheapest.
+     * Both figures are REAL (today's money) and come from the same run, so they add.
+     *
+     * What makes "least tax" the right thing to rank on at all is that the spend target does NOT
+     * change with the draw order: same resources, same spending, so whatever tax does not go to
+     * HMRC is left in the plan. Minimising total tax is therefore exactly maximising what is left.
+     * FLAGGED (board card 0081): an order that RUNS OUT breaks that premise — it stops drawing, so
+     * it stops paying, and it can be reported as the cheapest while funding the least.
+     */
     private static function lifetimeTax(ForecastResult $forecast): int
     {
-        $total = 0;
+        $total = $forecast->iht?->total->pence ?? 0;
         foreach ($forecast->years as $year) {
             $total += $year->totalTax->pence;
         }
@@ -166,6 +196,10 @@ final class WithdrawalStrategyComparison
             'cheapestLabel' => $this->cheapestLabel(),
             'optimiserSaving' => Money::fromPence($this->optimiserSavingPence)->format(),
             'optimiserSaves' => $this->optimiserSaves(),
+            // WHAT is counted in every figure above. Without this the reader cannot tell whether
+            // "tax paid across the plan" stops at the last living year or runs to the estate, and
+            // the answer moves the totals by tens of thousands (no invisible figures).
+            'includesIht' => $this->includesIht,
         ];
     }
 

@@ -292,6 +292,22 @@ other asset and so biased every housing comparison towards realising property eq
     same answer across a grid so the next change to either is caught here. *Accepted limit:* like the rest
     of that panel it reads the entered pot value and ignores growth between now and the withdrawal age;
     the full forecast is what models the balance year by year.
+14. **The tax the optimiser ranks on includes the tax paid at DEATH.** `WithdrawalStrategyComparison`
+    summed `YearResult::$totalTax` and threw away `ForecastResult::$iht`, which the same run computes
+    and the same results page prints beside it. Both tiles then called their figure "tax paid across
+    the plan", and the steer turned the gap into "the order to lean towards for tax". On the rich test
+    household the discarded death tax is £424,550.09 against £99,233.52 of yearly tax — four times the
+    number the winner was being picked by. It misleads two ways: an order paying less income tax ends
+    with more wealth, so the estate hands roughly 40% of the "saving" straight back; and for a death
+    before pensions come into the estate a pension is outside it while an ISA is inside, so the draw
+    order decides which pot survives to be taxed and that swing can invert the ranking outright. Both
+    figures are real (today's money) and come from the same run, so they simply add. *What makes least
+    tax the right thing to rank on at all* is that the spend target does not move with the draw order,
+    so tax not paid is money left in the plan — minimising total tax is exactly maximising what is
+    left. **The panel now states what is counted**, in both templates and either way round, because
+    "tax paid across the plan" cannot be read without knowing whether it stops at the last living year.
+    *Not settled here:* an order that RUNS OUT breaks the equal-spend premise — it stops drawing, so it
+    stops paying, and it could be named cheapest while funding the least. Board card **0081**.
 
 **Status:** active
 

@@ -1020,3 +1020,79 @@ No test runs a candidate comparison with IHT modelled, and no card (0078 covers 
 
 VERDICT: defect
 
+**2026-08-23 - the sixth and seventh reviews' defects fixed; acceptance unchanged.** Two reviews are
+answered here, because the sixth review's fixes shipped in commit `8aadc96` with nothing written on
+this card and the seventh review said so. Both findings were reproduced before they were touched.
+
+**First, the record the last pass owed.** Commit `8aadc96` closed the sixth review and its Direction
+entry was never written. What it did: a SECOND lump sum out of the same pot was debited from the
+residue the first one left behind, so £50,000 of already-crystallised money turned uncrystallised
+again per extra row and the next fill-the-bands draw took a quarter of it (£2,500.00 of lifetime tax
+on the pinned household). The whole slice is now designated BEFORE the cash is paid out of it, which
+is also the true-to-life order, pinned by
+`PathProjectorTest::test_two_lump_sums_crystallise_as_much_as_one_of_twice_the_size` - one £100,000
+lump sum and two £50,000 ones in the same year must pay identical tax, so the tell needs no magic
+number. The same pass gave `TaxFreeCashCalculator::split` the crystallised slice as well, because
+the 25% rule has two implementations on purpose (Money for the tax-shock panel, integer pence for the
+year loop) and only the projector had learned about crystallisation, so one withdrawal got two
+answers out of one engine; `TaxFreeCashCrystallisationParityTest` now holds them to the same answer
+across a grid. It also corrected the two doc homes that still said a blocked contribution is never
+given up. `ENGINE_VERSION` went to `finance-engine/repeated-pcls-crystallisation`, and **the
+HANDOVER sentence whose whole job is to stop a reader comparing runs across a stamp change still
+named the previous one** - it now names the real stamp. DECISIONS 2026-08-19 items 12 and 13 already
+carried the rationale; this is the missing card-side half.
+
+**Then the seventh review's one finding: the optimiser picked a winner on a tax total that left out
+the tax the same page prints.** `WithdrawalStrategyComparison::lifetimeTax` summed
+`YearResult::$totalTax` and threw away `ForecastResult::$iht`, which the same run computes and
+`ResultPresenter::ihtPanel` prints beside it. Both tiles called that figure "tax paid across the
+plan" and the steer turned the gap into "the order to lean towards for tax". On the rich test
+household the discarded death tax is **£424,550.09** against **£99,233.52** of yearly tax - four
+times the number the winner was being picked by. `lifetimeTax` now adds the run's own `iht->total`;
+both figures are real (today's money) out of the same run, so they add rather than needing a
+conversion, and the delta stays the difference of two engine runs (acceptance #5 unmoved). Pinned by
+`ScenarioForecasterTest::test_the_lifetime_tax_the_optimiser_ranks_on_counts_the_tax_paid_at_death`,
+which runs the same household with the IHT toggle on and off and asserts the gap between the two
+headline totals IS the death tax and nothing else moved. It was run against the unfixed code first
+and fails there, £99,233.52 against £523,783.61.
+
+**Why total tax is the right thing to rank on, written down rather than assumed.** It is not obvious:
+"pay less tax" can reward a plan for being poorer. It holds here because the spend target does not
+move with the draw order - same resources, same spending - so tax not paid is money left in the plan,
+and minimising total tax is exactly maximising what is left. That is on `lifetimeTax`, because it is
+the premise the whole panel rests on and nothing else states it.
+
+**What is counted is now on the page.** "Tax paid across the plan" cannot be read without knowing
+whether it stops at the last living year, and the answer moves the total four-fold. Both templates
+print one sentence either way round, off a new `includesIht` key read from the run itself rather than
+from the scenario's toggle, so what the page says is in the total comes from the object the total was
+summed out of. The existing key-coverage guard picks the new key up automatically.
+
+**One new card, 0081 - the cheapest order can be the one that funds the least.** The equal-spend
+premise above breaks when an order runs out: a plan that cannot meet its spend stops drawing, so it
+stops paying, and a smaller estate pays less at death too, so both halves of the metric fall and the
+failing order can be named cheapest. It predates this pass (income-tax-only had the same hole, worse)
+and fixing it needs a call on what a reader should see when the candidates are not comparable, which
+is Rob's. Flagged on `lifetimeTax` and in DATA-MODEL "Known divergences".
+
+**Assumed:** that `IhtOutcome::$total` and `YearResult::$totalTax` are on one basis. Both are stated
+by their own docblocks to be real, today's-money figures out of the same projection, and the deaths
+are identical across candidates (median death ages, same household), so no candidate's IHT is
+deflated against a different year. Nothing had to be re-derived to add them.
+
+**No engine stamp bump.** This change is app-layer (`App\Forecast\WithdrawalStrategyComparison`) and
+moves no engine output, so nothing a `SimulationRunner` or `ThresholdRunner` has stored has changed
+meaning. What moved is a figure computed at render time.
+
+**Could not settle from the repository:**
+- **The hand-off to card 0075 is still not on card 0075**, for the fifth pass and the same reason:
+  this session may not edit another card. What 0075 must do is written where its author will be
+  looking, on `WithdrawalStrategyComparison::ALTERNATIVE` and in DECISIONS 2026-08-19 item 6.
+- Still no Pest. `vendor/bin/` holds `phpunit` and `pint` only. What was run, from this worktree:
+  `php artisan test` green (1161 passed, 1 skipped - the posture-aware banned-phrasing partition),
+  `vendor\bin\pint.bat --dirty` clean, and `php artisan scenarios:audit` clean on every stored
+  scenario.
+- **Still not looked at in a browser.** Herd serves the site from `C:\Dev\RetireForecast`, not from
+  this worktree, so the new "what is counted" sentence on screen and in the PDF needs Rob's eye on a
+  real page and a real export, along with everything the earlier passes left for the same reason.
+

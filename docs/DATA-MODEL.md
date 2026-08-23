@@ -578,7 +578,10 @@ from the original plan, flagged inline:
   full even where the member died **under 75**, when in life it is tax-free income, because
   `PathProjector::settleEstates` stores no age at death (card **0079**); and no ad-hoc draw, taxed or
   tax-free, reaches the Pension Credit means test, which is assessed before the shortfall is funded and
-  never written back (card **0077**).
+  never written back (card **0077**); and the panel that names the **cheapest draw order** ranks them on
+  the tax the plan pays (now including the tax paid at death, DECISIONS item 14), which is only the right
+  measure while every order funds the same spending — an order that runs out stops drawing, so it stops
+  paying, and could be named cheapest while funding the least (card **0081**).
 - **SUPERSEDED — pension contributions get no tax relief (flagged in code since v1).** `PathProjector::applyContributions`
   takes contributions from *net* surplus and adds no relief (see its own docblock), so the pot grows as if
   relief did not exist — understating a still-working household's accumulation and rigging any

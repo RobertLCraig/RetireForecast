@@ -850,6 +850,16 @@
                 plan than your current order.
             @endif
         </p>
+        <p class="note">
+            @if ($withdrawal['includesIht'])
+                Every figure here counts the tax paid year by year <em>and</em> the Inheritance Tax your estate pays at
+                the end, because the order you draw in changes both: paying less tax now leaves a bigger estate to be
+                taxed later.
+            @else
+                Every figure here counts the tax paid year by year. Inheritance Tax is not part of it, because this
+                plan does not model it.
+            @endif
+        </p>
         <p class="note">A central projection on your current assumptions. "{{ ucfirst($withdrawal['alternativeLabel']) }}"
             draws pension within your personal allowance and realises gains within your capital-gains allowance before
             taxed income; each pension draw is taken so a quarter of it is tax-free cash while your lump sum
