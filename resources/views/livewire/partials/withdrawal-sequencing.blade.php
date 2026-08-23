@@ -15,7 +15,7 @@
             <div class="text-xs text-gray-500">tax paid across the plan</div>
         </div>
         <div class="rounded-lg border border-gray-200 p-4">
-            <div class="text-xs tracking-wide text-gray-500 uppercase">Filling your tax-free allowances first</div>
+            <div class="text-xs tracking-wide text-gray-500 uppercase">{{ ucfirst($withdrawal['alternativeLabel']) }}</div>
             <div class="mt-1 text-2xl font-semibold text-gray-900">{{ $withdrawal['fillBands'] }}</div>
             <div class="text-xs text-gray-500">tax paid across the plan</div>
         </div>
@@ -24,7 +24,7 @@
     <p class="mt-3 text-sm text-gray-700">
         @if ($withdrawal['differs'])
             That is <span class="font-semibold">{{ $withdrawal['difference'] }}</span>
-            {{ $withdrawal['fillBandsSaves'] ? 'less tax over the plan by filling your tax-free allowances first' : 'less tax over the plan by keeping your current order' }}.
+            {{ $withdrawal['fillBandsSaves'] ? 'less tax over the plan by '.$withdrawal['alternativeLabel'] : 'less tax over the plan by keeping your current order' }}.
         @else
             On these figures the two orders pay the same tax over the plan.
         @endif

@@ -255,7 +255,14 @@ trust-critical tax code.
 
 **Approach (additive, FillBands-only):**
 1. Add a `$drawPensionUfpls(?int $taxableLimit)` closure in `fundShortfall` (do **not** change `$drawPension` —
-   `TaxEfficient`/`PensionAware` must stay byte-identical). For each alive person's pots with value and LSA headroom:
+   `TaxEfficient`/`PensionAware` must stay byte-identical).
+   > **The fence was breached on 2026-08-23, deliberately, and the reason is DECISIONS 2026-08-19 item 4.**
+   > `$drawPension` now sets the MPAA trigger, because flexible access belongs to the draw and not to the draw
+   > order: fencing it meant only `FillBands` carried the cap, so the optimiser (#6) compared its candidates on
+   > unequal terms. The rest of the fence stands — the UFPLS split itself is still `$drawPensionUfpls` only, and
+   > the HMRC worked examples are unmoved.
+
+   For each alive person's pots with value and LSA headroom:
    draw a gross `G` whose **taxable** portion fills the person's income up to `$taxableLimit` (given `$alreadyTaxable`),
    with the **25% tax-free** portion (capped by LSA headroom) on top, all capped by pot value and `$remaining` (net need).
    Split via the `plannedWithdrawals` UFPLS rule; income tax on the taxable portion via `marginalTax`; update

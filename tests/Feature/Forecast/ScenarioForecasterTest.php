@@ -75,6 +75,21 @@ class ScenarioForecasterTest extends TestCase
         $this->assertLessThanOrEqual(6, count(WithdrawalStrategyComparison::CANDIDATES));
     }
 
+    public function test_the_panel_never_compares_the_current_order_against_itself(): void
+    {
+        // The two tiles are "your current order" and one named alternative. Flip the displayed
+        // default to the alternative (card 0075) and the panel would print the same order twice
+        // and report a £0 saving against itself, which reads as "there is nothing to gain here".
+        // Fail loudly at that moment instead: whoever flips the default picks a new alternative.
+        $this->assertNotSame(
+            WithdrawalStrategyComparison::CURRENT,
+            WithdrawalStrategyComparison::ALTERNATIVE,
+            'the panel would show one draw order in both tiles',
+        );
+        $this->assertContains(WithdrawalStrategyComparison::ALTERNATIVE, WithdrawalStrategyComparison::CANDIDATES);
+        $this->assertContains(WithdrawalStrategyComparison::CURRENT, WithdrawalStrategyComparison::CANDIDATES);
+    }
+
     public function test_the_screen_and_the_printed_panel_both_read_every_figure_it_publishes(): void
     {
         // The optimiser's figures reached the screen partial and not the PDF one, while the steer

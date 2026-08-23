@@ -449,6 +449,9 @@ final class PathProjector
                     'reliefMethod' => $pension->reliefMethod,
                     'earliestAccessAge' => $pension->earliestAccessAge,
                     'growthOverrideReal' => $pension->growthAssumptionOverride?->asFraction(),
+                    // The member's OWN pot: drawing it flexibly is a trigger event for their MPAA.
+                    // An inherited pot is not ({@see inheritEstate}), so the two must be told apart.
+                    'inherited' => false,
                 ];
                 $lsaUsed[$pension->ownerId] += $pension->pclsTakenToDate?->pence ?? 0;
 
@@ -626,7 +629,10 @@ final class PathProjector
             if ($inherited > 0) {
                 // An inherited DC pot is a beneficiary drawdown — accessible at any age (access age 0);
                 // it grows at the blended assumption rate (the deceased's per-pot override is not carried).
-                $state['pots'][$heir][] = ['value' => $inherited, 'plan' => [], 'firstAccessDone' => true, 'contribution' => 0, 'employerContribution' => 0, 'reliefMethod' => null, 'earliestAccessAge' => 0, 'growthOverrideReal' => null];
+                // Marked inherited because drawing it is NOT a flexible-access trigger for the heir:
+                // beneficiary drawdown is not a member trigger event, so it must not cap the heir's own
+                // money-purchase allowance ({@see contributionHeadroom}).
+                $state['pots'][$heir][] = ['value' => $inherited, 'plan' => [], 'firstAccessDone' => true, 'contribution' => 0, 'employerContribution' => 0, 'reliefMethod' => null, 'earliestAccessAge' => 0, 'growthOverrideReal' => null, 'inherited' => true];
             }
             $state['pots'][$id] = [];
         }
@@ -1587,9 +1593,11 @@ final class PathProjector
 
                 if ($instruction->kind->triggersMpaa()) {
                     // Flexible access: from now on this member's money-purchase contributions are
-                    // capped at the MPAA ({@see mpaaHeadroom}). One home for the trigger, so an
-                    // ad-hoc UFPLS draw and a planned instruction cannot set it differently.
-                    $state['mpaaTriggered'][$pid] = true;
+                    // capped at the MPAA. The three sites that can trigger it (here and the two
+                    // ad-hoc draw closures in fundShortfall) all set it through one helper, so a
+                    // planned instruction and an ad-hoc draw cannot apply the rule differently.
+                    // {@see triggerFlexibleAccess}, {@see contributionHeadroom}.
+                    $this->triggerFlexibleAccess($state, $pid, $pot);
                 }
 
                 switch ($instruction->kind) {
@@ -1990,13 +1998,13 @@ final class PathProjector
                     $taxDelta = $this->marginalTax($alreadyTaxable, $gross, $thresholdFactor);
                     $net = $gross - $taxDelta;
                     $pot['value'] -= $gross;
-                    // Taxable pension income out of a money-purchase pot is flexible access, the
-                    // same event {@see WithdrawalKind::DrawdownIncome} triggers on: it caps this
-                    // member's future contributions at the MPAA ({@see contributionHeadroom}).
+                    // Taxable pension income out of the member's OWN money-purchase pot is flexible
+                    // access, the same event {@see WithdrawalKind::DrawdownIncome} triggers on: it
+                    // caps their future contributions at the MPAA ({@see contributionHeadroom}).
                     // Set here as well as in $drawPensionUfpls so the restriction does not depend
                     // on which drawdown strategy is running — otherwise the optimiser compared its
                     // candidates on unequal terms, only FillBands carrying the cap.
-                    $state['mpaaTriggered'][$person->id] = true;
+                    $this->triggerFlexibleAccess($state, $person->id, $pot);
                     $remaining -= $net;
                     $funded += $net;
                     $extraTax += $taxDelta;
@@ -2070,9 +2078,9 @@ final class PathProjector
                     $net = $gross - $taxDelta;
                     $pot['value'] -= $gross;
                     $state['lsaUsed'][$person->id] += $taxFree;
-                    // A UFPLS is flexible access: it caps this member's future money-purchase
-                    // contributions at the MPAA ({@see mpaaHeadroom}).
-                    $state['mpaaTriggered'][$person->id] = true;
+                    // A UFPLS from the member's own pot is flexible access: it caps their future
+                    // money-purchase contributions at the MPAA ({@see contributionHeadroom}).
+                    $this->triggerFlexibleAccess($state, $person->id, $pot);
                     $remaining -= $net;
                     $funded += $net;
                     $extraTax += $taxDelta;
@@ -2326,6 +2334,31 @@ final class PathProjector
             $this->payIntoPot($state, $pid, $pot, (int) round(($pot['employerContribution'] ?? 0) * $spendFactor * $workFraction));
         }
         unset($pot);
+    }
+
+    /**
+     * Record that $pid has flexibly accessed a pension, which permanently caps their later
+     * money-purchase contributions at the MPAA ({@see contributionHeadroom}). THE one place the
+     * trigger is set, so the planned route and the two ad-hoc draw closures cannot apply the rule
+     * differently — and so the one pot that must NOT set it is excluded once rather than three times.
+     *
+     * An INHERITED pot does not trigger it. Beneficiary drawdown is not a member trigger event: the
+     * heir did not flexibly access a pension of their own. Without this a still-working survivor who
+     * drew £10,000 of an inherited pot lost £50,000 of their own annual allowance for the rest of the
+     * plan, silently (blocked contributions stay in pay), and at any age — an inherited pot carries
+     * access age 0, so it bit below 55 too. Pinned by
+     * PathProjectorTest::test_drawing_an_inherited_pot_does_not_cap_the_heirs_own_contributions.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, mixed>  $pot
+     */
+    private function triggerFlexibleAccess(array &$state, string $pid, array $pot): void
+    {
+        if ($pot['inherited'] ?? false) {
+            return;
+        }
+
+        $state['mpaaTriggered'][$pid] = true;
     }
 
     /**

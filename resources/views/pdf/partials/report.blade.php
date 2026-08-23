@@ -829,13 +829,13 @@
         <table class="tiles">
             <tr>
                 <td><div class="tile"><p class="tile-label">{{ ucfirst($withdrawal['baselineLabel']) }} (your current order)</p><p class="tile-value">{{ $withdrawal['baseline'] }}</p><p class="tile-note">tax paid across the plan</p></div></td>
-                <td><div class="tile"><p class="tile-label">Filling your tax-free allowances first</p><p class="tile-value">{{ $withdrawal['fillBands'] }}</p><p class="tile-note">tax paid across the plan</p></div></td>
+                <td><div class="tile"><p class="tile-label">{{ ucfirst($withdrawal['alternativeLabel']) }}</p><p class="tile-value">{{ $withdrawal['fillBands'] }}</p><p class="tile-note">tax paid across the plan</p></div></td>
             </tr>
         </table>
         <p>
             @if ($withdrawal['differs'])
                 That is <strong>{{ $withdrawal['difference'] }}</strong>
-                {{ $withdrawal['fillBandsSaves'] ? 'less tax over the plan by filling your tax-free allowances first' : 'less tax over the plan by keeping your current order' }}.
+                {{ $withdrawal['fillBandsSaves'] ? 'less tax over the plan by '.$withdrawal['alternativeLabel'] : 'less tax over the plan by keeping your current order' }}.
             @else
                 On these figures the two orders pay the same tax over the plan.
             @endif

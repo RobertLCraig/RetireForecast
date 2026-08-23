@@ -51,6 +51,17 @@ final class WithdrawalStrategyComparison
      */
     public const CURRENT = ScenarioForecaster::DEFAULT_DRAWDOWN_STRATEGY;
 
+    /**
+     * The order the panel puts side by side with the current one — the second tile, and the one
+     * {@see $savingPence} prices. It must never BE the current order, or the panel would show the
+     * same order twice and report a £0 saving against itself; pinned by
+     * ScenarioForecasterTest::test_the_panel_never_compares_the_current_order_against_itself, so
+     * changing the displayed default (card 0075) turns the suite red rather than shipping that.
+     * The panel's explanatory note describes this order by name, so it is a deliberate constant
+     * rather than "whatever is left".
+     */
+    public const ALTERNATIVE = DrawdownStrategy::FillBands;
+
     private function __construct(
         public readonly int $baselineTaxPence,
         public readonly int $fillBandsTaxPence,
@@ -77,7 +88,7 @@ final class WithdrawalStrategyComparison
         }
 
         $baseline = $tax[self::CURRENT->name];
-        $fillBands = $tax[DrawdownStrategy::FillBands->name];
+        $fillBands = $tax[self::ALTERNATIVE->name];
 
         return new self(
             baselineTaxPence: $baseline,
@@ -129,6 +140,9 @@ final class WithdrawalStrategyComparison
         return [
             'baselineLabel' => self::label(self::CURRENT),
             'baseline' => Money::fromPence($this->baselineTaxPence)->format(),
+            // Both tiles and the sentence under them name their order from label(), so neither
+            // template can go on naming the order it used to show when a constant changes.
+            'alternativeLabel' => self::label(self::ALTERNATIVE),
             'fillBands' => Money::fromPence($this->fillBandsTaxPence)->format(),
             'difference' => Money::fromPence(abs($this->savingPence))->format(),
             'fillBandsSaves' => $this->fillBandsSaves(),

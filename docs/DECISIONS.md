@@ -172,21 +172,39 @@ other asset and so biased every housing comparison towards realising property eq
    the Lump Sum Allowance, 75% taxable), not as fully-taxable drawdown. *Rationale:* it is what a retiree
    drawing ad-hoc from an uncrystallised pot actually does, and the alternative is not conservative, it is
    wrong by roughly five points of tax on every pension pound. On the pinned test household lifetime tax
-   falls from £103,538.10 to £81,749.09. `TaxEfficient` / `PensionAware` and the HMRC worked examples are
-   untouched: the change is a second closure, not a rewrite of the first.
+   falls from £103,538.10 to £81,749.09. The draw itself is a second closure rather than a rewrite of the
+   first, so `TaxEfficient` / `PensionAware` and the HMRC worked examples keep their figures.
 2. **One home for the split and one ledger for the allowance.** `PathProjector::ufplsSplit` is now the only
    place the 25% rule lives, shared with `plannedWithdrawals`, and both routes spend the same
    `$state['lsaUsed']`. A member whose allowance is already gone gets the old fully-taxable draw **to the
    penny**, which is the pinned regression guard.
 3. **Flexible access caps later money-purchase contributions at the MPAA.** Otherwise a plan could draw a pot
    down in the free bands and recycle the cash straight back in, which the law does not allow. Modelled as a
-   hard cap on what may be paid in rather than as an annual-allowance charge on the excess, and from the year
-   of the trigger rather than the day after it: both simplifications are flagged on `mpaaHeadroom`. What the
-   cap blocks is never dropped, it stays in pay or in surplus and is taxed or saved there.
-4. **The optimiser extends the existing comparison rather than sitting beside it.** A sibling class would have
+   hard cap on what may be paid in rather than as an annual-allowance charge on the excess, and biting from
+   the year AFTER the trigger, because `projectYear` pays both contribution routes before it runs the
+   withdrawals that set it. That second one is the LESS cautious side of the rule, so it is carded (0073)
+   rather than merely noted; both are flagged on `contributionHeadroom`. What the cap blocks is never
+   dropped, it stays in pay or in surplus and is taxed or saved there.
+4. **The trigger belongs to the draw, not to the draw ORDER — so `$drawPension` had to change after all.**
+   The plan's #5 fenced `$drawPension` off to keep `TaxEfficient` / `PensionAware` byte-identical, and slice
+   #5 honoured that. It was wrong: taxable drawdown out of an uncrystallised pot is flexible access whichever
+   order asked for it, so only `FillBands` carried the cap and the optimiser compared its three candidates on
+   unequal terms — the fence broke the very criterion it sat inside. `$drawPension` now sets the trigger too.
+   *Consequence, recorded rather than hidden:* a member still being contributed to is restricted under the
+   default order as well, so a scenario with both a working member and an ad-hoc pension draw has moved.
+   The HMRC worked examples are unaffected (they contribute nothing after the draw).
+5. **An INHERITED pot does not trigger the heir's MPAA.** Beneficiary drawdown is not a member trigger event:
+   the heir has not flexibly accessed a pension of their own. Without the distinction a still-working survivor
+   who drew £10,000 of an inherited pot lost £50,000 of their own annual allowance for the rest of the plan,
+   silently and at any age, because an inherited pot carries access age 0. One flag on the pot, checked in the
+   one place the trigger is now set (`PathProjector::triggerFlexibleAccess`).
+6. **The optimiser extends the existing comparison rather than sitting beside it.** A sibling class would have
    re-run the two forecasts the results panel already needs; `WithdrawalStrategyComparison` now runs its whole
    bounded `CANDIDATES` set once and reports the cheapest. Every saving stays the difference of two of the
-   engine's own runs, never a re-derivation.
+   engine's own runs, never a re-derivation. The panel's two tiles are `CURRENT` and `ALTERNATIVE`, both named
+   through one `label()`, and a test refuses to let them become the same order.
+
+**Status:** active
 
 ## 2026-08-12 — Reporting Monte Carlo results: spendable money, not total wealth
 **Context:** a graph-led report over the full 10,000-path sweep of every scenario. The engine already

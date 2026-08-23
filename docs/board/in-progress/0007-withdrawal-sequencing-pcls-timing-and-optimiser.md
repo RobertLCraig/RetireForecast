@@ -262,3 +262,55 @@ VERDICT: defect
 
 VERDICT: defect
 
+**2026-08-23 - the second review's defects fixed; acceptance unchanged.** The review found acceptance
+sound and the ticks stand. Each finding was reproduced before it was touched.
+
+**The one behaviour bug: an inherited pot capped the heir's own allowance.** `$drawPension` set
+`mpaaTriggered` on any pot it drew, and the estate pass hands the survivor an inherited pot. So a
+still-working survivor who drew £10,000 of a dead partner's pot lost £50,000 of their own annual
+allowance for the rest of the plan - silently, because a blocked contribution stays in pay, and at
+any age, because an inherited pot carries access age 0. Beneficiary drawdown is not a member trigger
+event. The pot now carries an `inherited` flag and all three trigger sites (the planned route and
+both ad-hoc closures) set the trigger through one `PathProjector::triggerFlexibleAccess`, so the
+exclusion is written once rather than three times. Pinned by
+`PathProjectorTest::test_drawing_an_inherited_pot_does_not_cap_the_heirs_own_contributions`, built so
+the heir's own pot is locked (access age 60) and the dead partner's was never touchable (access age
+75, dead at 69): every draw in the window is therefore the inherited pot. The test was run against
+the unfixed code first and fails there - £10,000 a year in instead of £20,000.
+
+**The unrecorded fence breach.** The plan's #5 fenced `$drawPension` off, and the previous run changed
+it anyway to fix acceptance #3. The change was right and the record was missing.
+`PLAN-withdrawal-sequencing.md` #5 step 1 now carries the breach note, and DECISIONS 2026-08-19 gained
+item 4 saying why the fence was wrong (flexible access belongs to the draw, not the draw order, so
+fencing it made the optimiser compare its candidates on unequal terms) and naming the consequence: a
+scenario with both a working member and an ad-hoc pension draw has moved under the default order too.
+
+**The stale rationale.** DECISIONS 2026-08-19 decision 1 claimed `TaxEfficient`/`PensionAware` were
+"untouched" - it now says their figures are unmoved, which is what is true. Decision 3 repeated the
+false "from the year of the trigger" claim that had already been corrected in code; it now says the
+year AFTER, says that is the less cautious side, names card 0073 and points at `contributionHeadroom`
+rather than the non-existent `mpaaHeadroom`. The same two dead `{@see mpaaHeadroom}` links in
+`PathProjector` are fixed, and `plannedWithdrawals`' "One home for the trigger" comment now says what
+is true: three sites, one helper.
+
+**The half-done tile name.** Both templates now read `alternativeLabel` from `panel()`, for the tile
+and for the sentence under it, so no user-facing name for a draw order is written outside
+`WithdrawalStrategyComparison::label()`. The second tile's order is the constant `ALTERNATIVE` rather
+than a `FillBands` literal inside `for()`.
+
+**Assumed:** on the reviewer's "flip the default and the panel shows one order twice", I did not make
+the alternative derive itself from whatever is left. Deriving it would silently change today's second
+tile from fill-the-bands to pension-aware, and the panel's explanatory note describes fill-the-bands
+by name. Instead `test_the_panel_never_compares_the_current_order_against_itself` turns the suite RED
+the moment `CURRENT` and `ALTERNATIVE` become the same order, so card 0075 cannot ship that quietly -
+but whoever does 0075 must pick the new alternative and reword that note. That is a judgement about
+what to show a reader, so it belongs on 0075 with Rob, not here.
+
+**Could not settle from the repository:**
+- Still no Pest. `vendor/bin/` holds `phpunit` and `pint` only. What was run: `php artisan test` green
+  (1148 passed, 1 skipped - the posture-aware banned-phrasing partition), `vendor\bin\pint.bat --dirty`
+  clean, and `php artisan scenarios:audit` clean on every stored scenario.
+- **Still not looked at in a browser.** Herd serves the site from `C:\Dev\RetireForecast`, not from
+  this worktree, so the relabelled second tile on screen and in the PDF still needs Rob's eye on a real
+  page and a real export.
+

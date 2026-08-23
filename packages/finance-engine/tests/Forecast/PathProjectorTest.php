@@ -750,6 +750,54 @@ final class PathProjectorTest extends TestCase
         $this->assertSame($grew(1), $grew(2), 'the cap should hold, not lapse after one year');
     }
 
+    public function test_drawing_an_inherited_pot_does_not_cap_the_heirs_own_contributions(): void
+    {
+        // Beneficiary drawdown is not a member trigger event. p1 is 50, still working and still
+        // being paid into; p2 dies at 69 leaving a pot p2 could never touch (access age 75), so it
+        // passes whole to p1 as an inherited pot with access age 0. p1's own pot is locked until 60,
+        // so every ad-hoc draw in the window below comes out of the INHERITED pot. That must not
+        // cost p1 their own £60,000 allowance — and certainly not before they are even 55.
+        $household = $this->couple(
+            new ExpenseProfile(Money::fromPounds(40_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [
+                new DcPension('p1', Money::fromPounds(100_000), Money::zero(), Money::fromPounds(20_000), 60),
+                new DcPension('p2', Money::fromPounds(30_000), Money::zero(), Money::zero(), 75),
+            ],
+            override1: new Person('p1', new DateTimeImmutable('1976-04-01'), Sex::Female,
+                EmploymentStatus::Employed, grossSalary: Money::fromPounds(20_000), plannedRetirementAge: 70),
+            override2: new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male,
+                EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(69)),
+        );
+
+        $result = $this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings());
+
+        $byYear = [];
+        foreach ($result->years as $y) {
+            $byYear[$y->calendarYear] = $y->pensionWealth->pence;
+        }
+
+        // The inheritance really happened: p2's untouched £30,000 reaches p1 (nothing else adds to
+        // pension wealth beyond the £20,000 contribution, so a year that gains more than that is
+        // the transfer landing).
+        // The scenario really exercises the trigger: p2's pot was untouchable while p2 lived
+        // (£100k + £30k + the year's £20k in 2026), and from 2028 the shortfall is met out of the
+        // inherited pot, so the pot gains less than the contribution paid in.
+        $this->assertSame(Money::fromPounds(150_000)->pence, $byYear[2026], 'p2 could not touch a pot locked to 75');
+        $this->assertLessThan(Money::fromPounds(20_000)->pence, $byYear[2028] - $byYear[2027],
+            'the inherited pot was never drawn, so this proves nothing about the trigger');
+
+        // Once the inherited pot is spent, pension wealth is p1's own pot alone, so each year's
+        // growth IS the employer contribution. Full allowance, not the MPAA — flat assumptions, so
+        // these are exact. p1 turns 60 (their own access age) in 2036, so the window ends before it.
+        foreach ([2033, 2034, 2035] as $year) {
+            $this->assertSame(
+                Money::fromPounds(20_000)->pence,
+                $byYear[$year] - $byYear[$year - 1],
+                "drawing an inherited pot capped the heir's own contributions in {$year}",
+            );
+        }
+    }
+
     public function test_the_ufpls_split_respects_the_lump_sum_allowance_and_the_band_being_filled(): void
     {
         // 25% tax-free while the allowance lasts...
