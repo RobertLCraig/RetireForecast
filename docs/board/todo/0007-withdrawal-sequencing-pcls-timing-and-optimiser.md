@@ -416,3 +416,51 @@ picks the new alternative on card 0075.
 - **Still not looked at in a browser.** Herd serves the site from `C:\Dev\RetireForecast`, not from
   this worktree, so the reworded note still needs Rob's eye on a real page and a real PDF export.
 
+### 2026-08-23 review (v20260823111523-069d)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 161s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I traced each criterion to code and tried to break it.
+
+**#1** `PathProjector::fundShortfall` sends every FillBands pension step through `$drawPensionUfpls`, including the one that funds the CGT bill. The 25% rule has one home in `PathProjector::ufplsSplit`, capped by `PathProjector::maxUfplsGross`. `PathProjectorTest::test_a_fill_bands_pension_draw_is_taken_ufpls_style_and_pays_less_lifetime_tax` holds it under the pinned figure; the no-allowance run matches that figure exactly. No capital closure touches a pot.
+
+**#2** The access-age gate sits in both closures in `PathProjector::fundShortfall`, and fails closed on a missing age. Pinned by `PathProjectorTest::test_fill_bands_never_ufpls_draws_a_pot_before_its_owner_reaches_its_access_age`.
+
+**#3** `PathProjector::payIntoPot` is the only place a pot is credited (the sole other write is growth in `PathProjector::growState`), and it caps at `PathProjector::contributionHeadroom`. All three trigger sites go through `PathProjector::triggerFlexibleAccess`. Two tests pin it, and the inherited-pot exclusion is right.
+
+**#4** `PathProjector::fundShortfall` skips both banded pension steps when `$onGuaranteeCredit`, which `PathProjector::projectYear` sets from `meansTestedBenefitNominal` ÔÇö Guarantee Credit only.
+
+**#5** `WithdrawalStrategyComparison::for` subtracts two `WithdrawalStrategyComparison::lifetimeTax` sums of engine runs. Both views read it.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Over the fence:** nothing. No multiÔÇæproperty or Section 24 code was touched, and the `$drawPension` breach is now recorded in `docs/build/PLAN-withdrawal-sequencing.md` #5 and `docs/DECISIONS.md` 2026ÔÇæ08ÔÇæ19 item 4.
+
+**Left half done:**
+
+**1. A named deferral with no card.** `docs/DECISIONS.md` 2026ÔÇæ08ÔÇæ19 decision 7 says "*Not settled here*": a draw from an inherited pot is charged full income tax even where the member died under 75, which in life is taxÔÇæfree income. `PathProjector::settleEstates` stores no age at death, so the two cases cannot be told apart, and this pass deliberately routed the inherited pot into the allÔÇætaxable path. Card 0057 covers only the estate panel for deaths at or after 75. Five other deferrals became cards 0073ÔÇô0078. This one became prose.
+
+**2. A dead reference the last pass missed.** `docs/build/PLAN-withdrawal-sequencing.md` buildÔÇæorder item 4 still names `mpaaHeadroom`. The method is `PathProjector::contributionHeadroom`. The same dead link was fixed in code and in DECISIONS.
+
+**3. The handÔÇæoff to 0075 is not on 0075.** `WithdrawalStrategyComparison::ALTERNATIVE` says whoever flips the default picks a new alternative and rewords the panel note. `docs/board/todo/0075-the-draw-order-is-fixed-and-the-reader-cannot-see-or-change-it.md` says neither in its acceptance or tasks, and that note's prose is invisible to the name guard in `ScenarioForecasterTest::test_the_screen_and_the_printed_panel_both_read_every_figure_it_publishes`.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**1. The MPAA docblock is still false, now the other way.**
+`PathProjector::contributionHeadroom` says the cap "first bites in the year AFTER the trigger", because `projectYear` pays "both contribution routes" first. There are three. `PathProjector::applyContributions` runs *after* `plannedWithdrawals` and `fundShortfall`. So a member with a planned UFPLS at 55 and a surplus that year has that surplus contribution capped in the trigger year itself, while employer and net-pay money is not. The cap depends on which route the money took, not on the date. `test_flexible_access_caps_later_money_purchase_contributions_at_the_mpaa` builds only the employer route, so nothing sees this.
+
+**2. The inherited-pot rule is written in one of its two homes.**
+`PathProjector::$drawPensionUfpls` zeroes the allowance for an inherited pot. `PathProjector::plannedWithdrawals` does not: its `Ufpls` and `Pcls` branches still spend the heir's `lsaUsed`. Only `inheritEstate` handing that pot an empty `plan` keeps it unreachable. `PathProjector::ufplsSplit`'s docblock still claims the planned and ad-hoc routes "can never diverge". `PathProjector::triggerFlexibleAccess` is the pattern that would have held.
+
+**3. The cap is invisible.** `LumpSumTaxShock::assess` returns null with no planned instruction, so `ScenarioContext::taxShockFacts` never states the MPAA ÔÇö yet an ad-hoc draw now triggers it under every order.
+
+VERDICT: defect
+
