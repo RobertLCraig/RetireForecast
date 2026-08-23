@@ -576,3 +576,81 @@ VERDICT: defect
 
 VERDICT: defect
 
+**2026-08-23 - the fifth review's defects fixed; acceptance unchanged.** The review found acceptance
+sound and the five ticks stand. Each finding was reproduced before it was touched.
+
+**The one behaviour bug: money that had already had its tax-free quarter was given another.** Taking
+£100,000 of tax-free cash CRYSTALLISES £400,000 of pot - £100,000 is paid out and the other £300,000
+is designated to drawdown, which is taxed in full from then on. The projector reduced the pot by the
+cash taken and recorded nothing else, so `$drawPensionUfpls` split that residue 25/75 all over again,
+bounded only by the allowance ledger. Pots now carry a `crystallised` balance;
+`PathProjector::drawFromPot` is the one home that keeps it right at all six draw sites (it was six,
+which is why the previous passes kept finding the same rule written in one of two places); it grows
+with the pot so the SHARE holds rather than turning growth into fresh untaxed money; and
+`ufplsSplit` / `maxUfplsGross` take it, so the crystallised slice is drawn first and taxed in full.
+The planned route got the same rule in the same pass: a `Pcls` instruction can now only take cash out
+of uncrystallised money, so a second lump sum cannot take a quarter of what the first one left.
+Pinned by `PathProjectorTest::test_a_pcls_crystallises_the_rest_of_the_pot_so_a_later_draw_takes_no_second_quarter`,
+built so the tell needs no magic number: the tax on drawing a crystallised pot cannot depend on how
+much allowance is left, so the plan is run with £168,275 free after the lump sum and with none. It was
+run against the unfixed code first and fails there, by **£14,436.41** of lifetime tax.
+`test_a_draw_out_of_crystallised_money_gets_no_second_tax_free_quarter` tests the two public helpers
+at the boundary, including that the solved band-fill still fits the room at every pence with a
+crystallised slice in front of it. The write-only `firstAccessDone` flag the review pointed at is
+gone: `crystallised` is what it should always have been.
+
+**Where blocked employer money goes: "nowhere", and now both homes say so.** `contributionHeadroom`'s
+docblock and the reader-facing sentence in `mpaaWarnings` both promised that a contribution the MPAA
+blocks "stays in pay and is taxed there, or stays in savings". True of the net-pay route and true of
+the surplus-funded one, false of the employer's: their money never passes through the household's
+cashflow, so there is nowhere to put it and the plan simply loses it. That is the adverse side of the
+hard-cap simplification (in life it would be paid in and an annual-allowance charge levied - the other
+half of card 0073), so the behaviour is left alone and the two statements now say what happens, per
+route. Pinned by `test_an_employer_contribution_the_mpaa_blocks_is_not_paid_anywhere_else`, which caps
+a £20,000 employer contribution at the £10,000 MPAA and asserts the household ends up holding the same
+cash, to the penny, as one whose employer only ever offered £10,000. **Honest note:** that test pins
+current behaviour rather than reproducing a failure, because the defect was the claim and not the
+code. `DrawdownStrategy`'s "Both strategies ship" is fixed; three do.
+
+**The engine stamp.** `ENGINE_VERSION` is now `finance-engine/pcls-crystallisation`. A plan with both a
+lump sum and a fill-the-bands draw pays more tax than it did an hour ago, so a run stored under
+`ufpls-fill-bands` must not be read beside one stored after this.
+
+**The three v1 limits that never reached the list that owns them.** `docs/DATA-MODEL.md` "Known
+divergences" now carries them. The MPAA ones went onto the 2026-08-22 contribution-cap entry where
+they belong (the charge not priced, the trigger-year route dependency, and the employer money that
+goes nowhere - all card 0073). The rest got their own entry for this card, in the section's house
+form: the ladder filing an ad-hoc tax-free quarter as taxable drawdown (0074), an inherited pot taxed
+in full even under 75 (0079), an ad-hoc draw never reaching the Pension Credit means test (0077), and
+the new one below (0080).
+
+**`docs/HANDOVER.md` is refreshed.** Its "Last updated" line now names this card's four changes and
+says the engine stamp moved, which was the reviewer's point: without it a run stored before this card
+reads as comparable with one after. The card-0016 note is kept behind it rather than dropped.
+`docs/build/PLAN-withdrawal-sequencing.md`'s pot-shape note is corrected to the real shape.
+
+**Assumed:** that crystallised money is drawn FIRST. Pro-rata and uncrystallised-first are both
+defensible and both hand out tax-free cash sooner, so this is the cautious side; it also matches what
+a member holding a drawdown fund beside an uncrystallised pot would actually be charged. Stated on
+`drawFromPot` and in DECISIONS item 11.
+
+**One new card, 0080 - a pot the reader STARTS with is assumed wholly uncrystallised.** The builder
+does ask "Tax-free cash already taken (£)", but `DcPension::$pclsTakenToDate` is defined as allowance
+use **across all of the member's pensions**, so it does not say which pot the cash came out of or how
+much of that pot was crystallised to pay it. Inferring a crystallised share from it would be inventing
+a fact the repository does not hold, so the opening pot is left uncrystallised and the gap is carded
+with the choice on it. That choice is Rob's: it moves every stored scenario that has ever taken
+tax-free cash.
+
+**Could not settle from the repository:**
+- **The hand-off to card 0075 is still not on card 0075**, for the fourth pass and the same reason:
+  this session may not edit another card. What 0075 must do is written where its author will be
+  looking, on `WithdrawalStrategyComparison::ALTERNATIVE` and in DECISIONS 2026-08-19 item 6.
+- Still no Pest. `vendor/bin/` holds `phpunit` and `pint` only. What was run, from this worktree:
+  `php artisan test` green (1 skipped - the posture-aware banned-phrasing partition),
+  `vendor\bin\pint.bat --dirty` clean, and `php artisan scenarios:audit` clean on every stored
+  scenario, which also confirms no stored figure became unpresentable.
+- **Still not looked at in a browser.** Herd serves the site from `C:\Dev\RetireForecast`, not from
+  this worktree. Nothing this pass changed a screen, but everything the earlier passes left for Rob's
+  eye is still waiting.
+

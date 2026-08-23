@@ -870,6 +870,113 @@ final class PathProjectorTest extends TestCase
         }
     }
 
+    public function test_an_employer_contribution_the_mpaa_blocks_is_not_paid_anywhere_else(): void
+    {
+        // Where money the cap blocks ends up depends on whose money it was, and the employer's
+        // answer is "nowhere". Their contribution never passes through the household's cashflow, so
+        // unlike a net-pay or surplus-funded one it cannot fall back into pay or into savings — it
+        // is simply not paid, and the plan is that much poorer. contributionHeadroom's docblock and
+        // the reader-facing sentence in mpaaWarnings both used to promise it landed somewhere.
+        //
+        // The tell: cap a £20,000 employer contribution at the £10,000 MPAA and the household must
+        // end up no better off than one whose employer only ever offered £10,000.
+        $worker = fn (): Person => new Person('p1', new DateTimeImmutable('1966-04-01'), Sex::Female,
+            EmploymentStatus::Employed, grossSalary: Money::fromPounds(80_000), plannedRetirementAge: 70);
+        $expense = new ExpenseProfile(Money::fromPounds(30_000), Money::zero(), Percent::fromPercent(70));
+        $build = fn (int $employer): Household => $this->couple($expense, pensions: [
+            new DcPension('p1', Money::fromPounds(100_000), Money::zero(), Money::fromPounds($employer), 55,
+                withdrawalPlan: [new WithdrawalInstruction(WithdrawalKind::Ufpls, Money::fromPounds(4_000), 60)]),
+        ], override1: $worker());
+
+        $generous = $this->forecaster()->forecast($build(20_000), $this->flatAssumptions(), $this->settings());
+        $capped = $this->forecaster()->forecast($build(10_000), $this->flatAssumptions(), $this->settings());
+
+        $mpaa = TaxYearRegistry::for('2026-27')->pension->moneyPurchaseAnnualAllowance->pence;
+
+        // Flat assumptions, so each year's pot movement IS the contribution. From the year after the
+        // trigger both receive the same MPAA, so the £10,000 the cap blocked reached no pot...
+        foreach ([2, 3, 4] as $y) {
+            $this->assertSame($mpaa, $generous->years[$y]->pensionWealth->pence - $generous->years[$y - 1]->pensionWealth->pence);
+            $this->assertSame($mpaa, $capped->years[$y]->pensionWealth->pence - $capped->years[$y - 1]->pensionWealth->pence);
+            // ...and it reached no bank account either: both households hold the same cash to the
+            // penny. (p1 works to 70, so no pot is drawn to fund a shortfall in this window and the
+            // larger pot cannot make the two diverge for any other reason.)
+            $this->assertSame($capped->years[$y]->liquidWealth->pence, $generous->years[$y]->liquidWealth->pence,
+                'the employer money the MPAA blocked turned up as cash');
+        }
+    }
+
+    public function test_a_pcls_crystallises_the_rest_of_the_pot_so_a_later_draw_takes_no_second_quarter(): void
+    {
+        // Taking £100,000 of tax-free cash crystallises £400,000 of pot: £100,000 is paid out and
+        // the other £300,000 is designated to drawdown, which has had its quarter. The fill-the-bands
+        // closure used to split whatever was left in the pot 25/75 all over again, bounded only by
+        // the allowance ledger — so the same money paid for a tax-free quarter twice, and this card
+        // put that on the optimiser's path for every scenario.
+        //
+        // The tell needs no magic number. Once the residue is crystallised, the tax on drawing it
+        // cannot depend on how much Lump Sum Allowance the member has left — there is no quarter to
+        // spend it on. So run the same plan twice: once with £168,275 of allowance still free after
+        // the lump sum, and once with exactly enough for the lump sum and nothing after it.
+        $lsa = TaxYearRegistry::for('2026-27')->pension->lumpSumAllowance;
+        $pcls = Money::fromPounds(100_000);
+        $build = fn (?Money $alreadyTaken): Household => $this->couple(
+            new ExpenseProfile(Money::fromPounds(45_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+                new DcPension('p1', Money::fromPounds(400_000), Money::zero(), Money::zero(), 55,
+                    withdrawalPlan: [new WithdrawalInstruction(WithdrawalKind::Pcls, $pcls, 68)],
+                    pclsTakenToDate: $alreadyTaken),
+            ],
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(20_000))],
+        );
+
+        // Premise: the residue really is drawn later, so the runs below are measuring something.
+        $run = $this->forecaster()->forecast($build(null), $this->flatAssumptions(), $this->settings(DrawdownStrategy::FillBands));
+        $this->assertLessThan(
+            Money::fromPounds(300_000)->pence,
+            $run->years[count($run->years) - 1]->pensionWealth->pence,
+            'the crystallised residue was never drawn, so this proves nothing',
+        );
+
+        $roomLeftOver = $this->lifetimeTax(DrawdownStrategy::FillBands, $build(null));
+        $noRoomLeftOver = $this->lifetimeTax(DrawdownStrategy::FillBands, $build(Money::fromPence($lsa->pence - $pcls->pence)));
+
+        $this->assertGreaterThan(0, $roomLeftOver);
+        $this->assertSame($roomLeftOver, $noRoomLeftOver,
+            'the tax on drawing a crystallised pot moved with the allowance, so it took a second tax-free quarter');
+    }
+
+    public function test_a_draw_out_of_crystallised_money_gets_no_second_tax_free_quarter(): void
+    {
+        $lsa = 268_275_00;
+
+        // Money already designated to drawdown is drawn first and is wholly taxable, so only the
+        // rest of a draw is split: £2,000 crystallised out of a £4,000 draw leaves £500 tax-free.
+        $this->assertSame([500_00, 3_500_00], PathProjector::ufplsSplit(4_000_00, $lsa, 0.25, 2_000_00));
+        // A wholly crystallised pot is wholly taxable, whatever allowance is left — which is
+        // exactly the fully-taxable draw the model has always charged.
+        $this->assertSame([0, 4_000_00], PathProjector::ufplsSplit(4_000_00, $lsa, 0.25, 4_000_00));
+        $this->assertSame([0, 4_000_00], PathProjector::ufplsSplit(4_000_00, $lsa, 0.25, 9_000_00));
+        // Nil crystallised is the ordinary uncrystallised pot, and is the default.
+        $this->assertSame(
+            PathProjector::ufplsSplit(4_000_00, $lsa, 0.25),
+            PathProjector::ufplsSplit(4_000_00, $lsa, 0.25, 0),
+        );
+
+        // The band being filled is spent pound for pound while the crystallised slice lasts...
+        $this->assertSame(2_000_00, PathProjector::maxUfplsGross(2_000_00, $lsa, 0.25, 2_000_00));
+        // ...and the ordinary two-cap solve applies to whatever room is left after it.
+        $this->assertSame(6_000_00, PathProjector::maxUfplsGross(5_000_00, $lsa, 0.25, 2_000_00));
+
+        // The solved cap still fits the room at every pence of it, crystallised slice and all.
+        foreach (range(1, 400) as $room) {
+            $gross = PathProjector::maxUfplsGross($room, $lsa, 0.25, 200);
+            $this->assertLessThanOrEqual($room, PathProjector::ufplsSplit($gross, $lsa, 0.25, 200)[1]);
+        }
+    }
+
     public function test_the_ufpls_split_respects_the_lump_sum_allowance_and_the_band_being_filled(): void
     {
         // 25% tax-free while the allowance lasts...

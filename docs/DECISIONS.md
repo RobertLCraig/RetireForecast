@@ -191,8 +191,13 @@ other asset and so biased every housing comparison towards realising property eq
    route) runs after them and is capped in the trigger year. In life the cap applies to every contribution
    paid after the trigger DATE, whichever route it took. Both are carded (0073) rather than merely noted,
    both are flagged on `contributionHeadroom`, and both halves of the timing are pinned by a test so
-   re-timing them reddens the suite instead of moving quietly. What the cap blocks is never dropped, it
-   stays in pay or in surplus and is taxed or saved there.
+   re-timing them reddens the suite instead of moving quietly. **Where blocked money goes depends on whose
+   it was, and one of the three answers is "nowhere".** A net-pay contribution stays in pay and is taxed
+   there; a surplus-funded one stays in the surplus and is saved as cash; but the EMPLOYER's never passes
+   through the household's cashflow, so it is simply not paid and the plan is that much poorer. That is the
+   adverse side of the hard cap (in life it would be paid and charged), and it is what the docblock and the
+   reader-facing warning now say, having both previously promised the money landed somewhere. Pinned by
+   `PathProjectorTest::test_an_employer_contribution_the_mpaa_blocks_is_not_paid_anywhere_else`.
 4. **The trigger belongs to the draw, not to the draw ORDER — so `$drawPension` had to change after all.**
    The plan's #5 fenced `$drawPension` off to keep `TaxEfficient` / `PensionAware` byte-identical, and slice
    #5 honoured that. It was wrong: taxable drawdown out of an uncrystallised pot is flexible access whichever
@@ -231,9 +236,10 @@ other asset and so biased every housing comparison towards realising property eq
    candidate set with Rob first, and decision 1 of 2026-07-01 ruled out a general planner in v1. So the search
    reports the cheapest of the orders the tool can actually run — which is what the panel says — and board card
    **0078** owns widening it, carrying the two calls only Rob can make.
-9. **`ENGINE_VERSION` → `finance-engine/ufpls-fill-bands`.** Decisions 1 and 4 both move stored figures (a
-   fill-the-bands run pays less tax; a default-order run with a working member contributes less), so a result
-   stored before this card and one stored after are not comparable and must not carry the same stamp.
+9. **`ENGINE_VERSION` → `finance-engine/pcls-crystallisation`** (via `finance-engine/ufpls-fill-bands`).
+   Decisions 1, 4 and 11 each move stored figures (a fill-the-bands run pays less tax; a default-order run
+   with a working member contributes less; a plan with a lump sum pays more), so a result stored before this
+   card and one stored after are not comparable and must not carry the same stamp.
 10. **The MPAA is disclosed to the reader in the year it starts, as an assumed figure.** Decision 3 has the
     model apply a statutory cap nobody entered, which from the trigger on shrinks what the contributions they
     DID enter buy. The only place it was ever stated was the lump-sum tax-shock panel, and that panel needs a
@@ -243,6 +249,20 @@ other asset and so biased every housing comparison towards realising property eq
     statutory constant, and `ResultPresenter::assumedFigures()` surfaces the engine's own sentence plus the
     year. Not emitted where the member pays nothing into a money-purchase pension, because a cap on what may
     be paid in changes nothing for them and the note list is only useful while everything on it bites.
+11. **Tax-free cash CRYSTALLISES the rest of the pot, so no pound gets a second quarter.** Decision 1 gave
+    every FillBands draw the 25% split and the closure asked only how much allowance was left, never whether
+    the money had already had its quarter. Taking £100,000 of tax-free cash crystallises £400,000: £100,000 is
+    paid out and the other £300,000 is designated to drawdown. The projector reduced the pot by the cash taken
+    and nothing else, so a later fill-the-bands draw split that residue 25/75 all over again — on the pinned
+    household, £14,436.41 of lifetime tax avoided on money that had already been relieved, and on the ordinary
+    path now the optimiser runs FillBands for every scenario. Pots now carry a `crystallised` balance, one
+    `PathProjector::drawFromPot` keeps it right at all six draw sites, it grows with the pot so the SHARE
+    holds, and `ufplsSplit` / `maxUfplsGross` take it. **Crystallised money is drawn first:** it is the
+    cautious order (pro-rata and uncrystallised-first both hand out tax-free cash sooner) and it matches what
+    a member with a drawdown fund beside an uncrystallised pot would be charged. *Not settled here:* a
+    STARTING pot is treated as wholly uncrystallised, because `DcPension::$pclsTakenToDate` is an allowance
+    ledger across all of the member's pensions rather than a record of what this pot crystallised, so the
+    split cannot be inferred from it without inventing one. Board card **0080**.
 
 **Status:** active
 

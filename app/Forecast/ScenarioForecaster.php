@@ -37,7 +37,12 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-08-23 (ufpls-fill-bands): an ad-hoc "fill the bands" pension draw is now taken
+     * Bumped 2026-08-23 (pcls-crystallisation): tax-free cash taken as a planned lump sum now
+     * CRYSTALLISES the three quarters of the pot left behind it, so a later fill-the-bands draw
+     * from that pot no longer takes a second tax-free quarter of the same money. Any run stored
+     * under the previous stamp for a plan with both a lump sum and a fill-the-bands draw understates
+     * its tax. See DECISIONS 2026-08-19 item 8.
+     * Previous bump 2026-08-23 (ufpls-fill-bands): an ad-hoc "fill the bands" pension draw is now taken
      * UFPLS-style (a quarter tax-free while the Lump Sum Allowance lasts) instead of being taxed on
      * 100% of the gross, so fill-the-bands tax stored earlier is too high; and flexible access now
      * caps later money-purchase contributions at the MPAA under EVERY draw order, so a run stored
@@ -56,7 +61,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/ufpls-fill-bands';
+    public const ENGINE_VERSION = 'finance-engine/pcls-crystallisation';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

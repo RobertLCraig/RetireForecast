@@ -547,11 +547,35 @@ from the original plan, flagged inline:
   relief, and £3,600 reaches the pot; new `PensionParameters::$nonEarnerReliefLimit` (£3,600) and
   `$reliefMaximumAge` (75) own both figures. `ContributionAllowanceTest` guards it. **Still open:**
   the cap is a hard limit on what may be paid in rather than an annual-allowance **charge** on the
-  excess (`AnnualAllowanceCalculator` prices that separately and is still not wired in); carry-forward
-  of unused allowance is not tracked (the cautious side of the rule); the high-income **taper** is not
-  applied in the projector, because it needs adjusted and threshold income which the year's own
-  contributions move; and `ReliefAtSource` still throws, so a higher-rate taxpayer wanting relief
-  above the basic amount must use net pay.
+  excess (`AnnualAllowanceCalculator` prices that separately and is still not wired in — card 0073);
+  in the MPAA **trigger year** whether the cap bites depends on which of the three contribution routes
+  the money took rather than on the date, an artefact of `projectYear`'s order (employer and net-pay
+  are paid before the withdrawals that set the trigger and escape it; the surplus-funded route runs
+  after and is capped — card 0073); an EMPLOYER contribution the cap blocks is **not paid anywhere
+  else**, because it never passes through the household's cashflow, so the plan simply loses it (the
+  adverse side, card 0073 again); carry-forward of unused allowance is not tracked (the cautious side
+  of the rule); the high-income **taper** is not applied in the projector, because it needs adjusted
+  and threshold income which the year's own contributions move; and `ReliefAtSource` still throws, so
+  a higher-rate taxpayer wanting relief above the basic amount must use net pay.
+- **CLOSED 2026-08-23: a fill-the-bands pension draw is a UFPLS, and tax-free cash crystallises what
+  it leaves behind** (card 0007, DECISIONS 2026-08-19). An ad-hoc draw to meet a shortfall under
+  `DrawdownStrategy::FillBands` used to be taxed on 100% of the gross; it is now split 25/75 while the
+  Lump Sum Allowance lasts (`PathProjector::ufplsSplit`, capped by `maxUfplsGross` and `lsaHeadroom`).
+  Pots carry a **`crystallised`** balance, so money that has already had its tax-free quarter cannot
+  get a second one: a planned `WithdrawalKind::Pcls` crystallises cash / 25% of the pot, the residue is
+  drawn first and taxed in full, and it grows with the pot so the share holds. An **inherited** pot
+  has neither a quarter nor any of the heir's allowance to spend, and drawing it is not a flexible-access
+  trigger for the heir. **Still open:** a **starting** pot is assumed wholly uncrystallised, because
+  `DcPension::$pclsTakenToDate` is an allowance ledger across all of the member's pensions rather than a
+  per-pot crystallisation record, so a reader who has already taken tax-free cash is given a second
+  quarter of it (card **0080**); the tax-free part of an **ad-hoc** UFPLS is reported on the cashflow
+  ladder under `pension_drawdown` rather than `pension_lump_sum`, because `fundShortfall` returns one
+  `fromPension` total, so the money is visible and the year reconciles but a reader adding up taxable
+  income off the ladder gets too big a figure (card **0074**); a draw from an inherited pot is taxed in
+  full even where the member died **under 75**, when in life it is tax-free income, because
+  `PathProjector::settleEstates` stores no age at death (card **0079**); and no ad-hoc draw, taxed or
+  tax-free, reaches the Pension Credit means test, which is assessed before the shortfall is funded and
+  never written back (card **0077**).
 - **SUPERSEDED — pension contributions get no tax relief (flagged in code since v1).** `PathProjector::applyContributions`
   takes contributions from *net* surplus and adds no relief (see its own docblock), so the pot grows as if
   relief did not exist — understating a still-working household's accumulation and rigging any

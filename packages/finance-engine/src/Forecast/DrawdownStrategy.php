@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Forecast;
 
 /**
- * How the household funds a spending shortfall. Both strategies ship and are
- * compared side by side (see DECISIONS.md); tax-efficient is the default display.
+ * How the household funds a spending shortfall. All three ship, and the optimiser runs every one of
+ * them and reports the cheapest (see DECISIONS.md); tax-efficient is the default display.
  *
  *  - TaxEfficient: spend non-pension assets first (cash, then GIA, then ISA) and
  *    leave the pension to grow, drawing it only as a last resort.

@@ -231,9 +231,11 @@ every change **additive** so `TaxEfficient`/`PensionAware` + the HMRC worked-exa
 
 ### Model facts you need (verified 2026-07-01 — re-confirm against the current file first)
 - Pot state: `$state['pots'][$personId]` is a list; each pot is
-  `['value' => int pence, 'plan' => WithdrawalInstruction[], 'firstAccessDone' => bool, 'contribution' => int,
-  'earliestAccessAge' => int, 'growthOverrideReal' => ?int]` (the last two added by the 2026-07-02 review pass —
-  the access-age gate + the per-pot growth override).
+  `['value' => int pence, 'plan' => WithdrawalInstruction[], 'crystallised' => int pence, 'contribution' => int,
+  'earliestAccessAge' => int, 'growthOverrideReal' => ?int, 'inherited' => bool]`. `earliestAccessAge` and
+  `growthOverrideReal` came from the 2026-07-02 review pass (the access-age gate + the per-pot growth
+  override); `crystallised` and `inherited` from #5 (a write-only `firstAccessDone` flag was replaced by the
+  crystallised balance that actually decides whether a draw has a tax-free quarter).
 - **⚠️ Access-age gate (2026-07-02 HIGH fix — do not regress it in #5).** `drawPension` **skips a pot until its
   owner reaches `pot['earliestAccessAge']`** (`PathProjector.php`, DECISIONS 2026-07-02). The new
   `$drawPensionUfpls` closure in #5 **must apply the same gate** — a pot is drawable only once its owner is at or

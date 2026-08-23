@@ -441,7 +441,14 @@ final class PathProjector
                 $pots[$pension->ownerId][] = [
                     'value' => $pension->currentValue->pence,
                     'plan' => $pension->withdrawalPlan,
-                    'firstAccessDone' => false,
+                    // How much of this pot is already CRYSTALLISED — designated to drawdown, so it
+                    // has had its tax-free cash and can never have another quarter ({@see ufplsSplit}).
+                    // A starting pot is treated as wholly uncrystallised, which is a v1 limit rather
+                    // than a fact: $pclsTakenToDate is an allowance ledger across ALL of the member's
+                    // pensions, not a record of what THIS pot crystallised, so the split cannot be
+                    // inferred from it without inventing one. Only a PCLS taken WITHIN the projection
+                    // is tracked ({@see plannedWithdrawals}). Board card 0080.
+                    'crystallised' => 0,
                     // Kept apart, not summed: only the member's own contribution is the household's
                     // money (so only it may be funded from surplus) and only it attracts relief.
                     'contribution' => $pension->ongoingContribution->pence,
@@ -632,7 +639,13 @@ final class PathProjector
                 // Marked inherited because drawing it is NOT a flexible-access trigger for the heir:
                 // beneficiary drawdown is not a member trigger event, so it must not cap the heir's own
                 // money-purchase allowance ({@see contributionHeadroom}).
-                $state['pots'][$heir][] = ['value' => $inherited, 'plan' => [], 'firstAccessDone' => true, 'contribution' => 0, 'employerContribution' => 0, 'reliefMethod' => null, 'earliestAccessAge' => 0, 'growthOverrideReal' => null, 'inherited' => true];
+                // Wholly CRYSTALLISED: a beneficiary drawdown fund has already been through the
+                // deceased's regime, so no draw from it has a tax-free quarter. Today that agrees
+                // with {@see lsaHeadroom} returning nil for an inherited pot, but the two answer
+                // different questions (is there a quarter / whose allowance pays for it) and board
+                // card 0079 will give an under-75 inheritance headroom again — at which point this
+                // field is the only thing left stopping a second quarter on the same money.
+                $state['pots'][$heir][] = ['value' => $inherited, 'plan' => [], 'crystallised' => $inherited, 'contribution' => 0, 'employerContribution' => 0, 'reliefMethod' => null, 'earliestAccessAge' => 0, 'growthOverrideReal' => null, 'inherited' => true];
             }
             $state['pots'][$id] = [];
         }
@@ -1612,30 +1625,62 @@ final class PathProjector
 
                 switch ($instruction->kind) {
                     case WithdrawalKind::Ufpls:
-                        [$tf, $tx] = self::ufplsSplit($amount, $lsaRemaining, $pclsRate);
+                        // A UFPLS pays out everything it crystallises, so it leaves no drawdown
+                        // residue behind — but it can be taken out of one, in which case that part
+                        // of it is all taxable.
+                        [$tf, $tx] = self::ufplsSplit($amount, $lsaRemaining, $pclsRate, $pot['crystallised'] ?? 0);
                         $taxFree += $tf;
                         $taxable += $tx;
-                        $pot['value'] -= $amount;
+                        $this->drawFromPot($pot, $amount);
                         $state['lsaUsed'][$pid] += $tf;
                         break;
                     case WithdrawalKind::Pcls:
                         // amount = tax-free cash taken; the rest stays invested. On an inherited pot
                         // the headroom is nil, so nothing is taken and nothing is charged: there is
-                        // no tax-free cash in a beneficiary drawdown to instruct.
-                        $tf = min($amount, $lsaRemaining);
+                        // no tax-free cash in a beneficiary drawdown to instruct. Only UNCRYSTALLISED
+                        // money can produce tax-free cash, so a second lump sum cannot take a quarter
+                        // of the residue the first one left behind — the planned route's half of the
+                        // same rule the split applies on the ad-hoc one.
+                        $tf = min($amount, $lsaRemaining, max(0, $pot['value'] - ($pot['crystallised'] ?? 0)));
                         $taxFree += $tf;
-                        $pot['value'] -= $tf;
+                        $this->drawFromPot($pot, $tf);
+                        // Taking £X of tax-free cash CRYSTALLISES £X / 25% of the pot: £X is paid out
+                        // and the other three quarters are designated to drawdown. That residue has
+                        // had its quarter, so a later draw from this pot cannot take another one
+                        // ({@see ufplsSplit}). Without this the pot's whole remaining balance was
+                        // still treated as uncrystallised and a fill-the-bands draw split it 25/75
+                        // all over again, bounded only by the allowance ledger.
+                        $residue = $tf > 0 ? (int) round($tf / $pclsRate) - $tf : 0;
+                        $pot['crystallised'] = min($pot['value'], ($pot['crystallised'] ?? 0) + max(0, $residue));
                         $state['lsaUsed'][$pid] += $tf;
                         break;
                     case WithdrawalKind::DrawdownIncome:
                         $taxable += $amount;
-                        $pot['value'] -= $amount;
+                        $this->drawFromPot($pot, $amount);
                         break;
                 }
             }
         }
 
         return ['taxable' => $taxable, 'taxFree' => $taxFree];
+    }
+
+    /**
+     * Take $amount out of a pot. THE one place a pot is debited, so the crystallised balance cannot
+     * be kept up to date at five of the six draw sites and forgotten at the sixth.
+     *
+     * CRYSTALLISED money goes first. It is the cautious order — that money has already had its
+     * tax-free quarter, so drawing it first means the quarter is not handed out again early — and it
+     * matches what a member with a drawdown fund and an uncrystallised pot beside it would be
+     * charged. The alternative orders (pro-rata, or uncrystallised first) both hand out more
+     * tax-free cash sooner.
+     *
+     * @param  array<string, mixed>  $pot
+     */
+    private function drawFromPot(array &$pot, int $amount): void
+    {
+        $pot['value'] -= $amount;
+        $pot['crystallised'] = min(max(0, $pot['value']), max(0, ($pot['crystallised'] ?? 0) - max(0, $amount)));
     }
 
     /**
@@ -1673,11 +1718,17 @@ final class PathProjector
      * How much allowance is left to spend is the other half of that, and has its own one home:
      * {@see lsaHeadroom}. Public static so the split is unit-tested directly at the boundary.
      *
+     * $crystallised is how much of the pot is already designated to drawdown. That money has had its
+     * tax-free cash and gets no second quarter, and it is drawn first ({@see drawFromPot}), so the
+     * first $crystallised pence of any draw are wholly taxable and only what is left of the draw is
+     * split. Nil (the default) is the ordinary wholly-uncrystallised pot.
+     *
      * @return array{0: int, 1: int} [taxFree, taxable], both in pence
      */
-    public static function ufplsSplit(int $gross, int $lsaRemaining, float $pclsRate): array
+    public static function ufplsSplit(int $gross, int $lsaRemaining, float $pclsRate, int $crystallised = 0): array
     {
-        $taxFree = min((int) floor($gross * $pclsRate), max(0, $lsaRemaining));
+        $uncrystallised = max(0, $gross - max(0, $crystallised));
+        $taxFree = min((int) floor($uncrystallised * $pclsRate), max(0, $lsaRemaining));
 
         return [$taxFree, $gross - $taxFree];
     }
@@ -1692,11 +1743,20 @@ final class PathProjector
      * further pound is taxable (so room + allowance fits). The two agree exactly where they meet.
      * The final loop only ever costs one step: it repairs the penny that {@see ufplsSplit}'s floor
      * can add to the taxable part.
+     *
+     * A crystallised slice comes off the front, wholly taxable and pound for pound against the room
+     * ({@see ufplsSplit}); once it is spent the two-cap solve applies to whatever room is left.
      */
-    public static function maxUfplsGross(int $taxableRoom, int $lsaRemaining, float $pclsRate): int
+    public static function maxUfplsGross(int $taxableRoom, int $lsaRemaining, float $pclsRate, int $crystallised = 0): int
     {
         if ($taxableRoom <= 0) {
             return 0;
+        }
+        $crystallised = max(0, $crystallised);
+        if ($crystallised > 0) {
+            return $taxableRoom <= $crystallised
+                ? $taxableRoom
+                : $crystallised + self::maxUfplsGross($taxableRoom - $crystallised, $lsaRemaining, $pclsRate);
         }
         $allowance = max(0, $lsaRemaining);
         $gross = (int) floor($taxableRoom / (1.0 - $pclsRate));
@@ -1743,7 +1803,7 @@ final class PathProjector
                     break;
                 }
                 $take = min($needed, $pot['value']);
-                $pot['value'] -= $take;
+                $this->drawFromPot($pot, $take);
                 $needed -= $take;
                 $bought += $take;
             }
@@ -2035,7 +2095,7 @@ final class PathProjector
                     }
                     $taxDelta = $this->marginalTax($alreadyTaxable, $gross, $thresholdFactor);
                     $net = $gross - $taxDelta;
-                    $pot['value'] -= $gross;
+                    $this->drawFromPot($pot, $gross);
                     // Taxable pension income out of the member's OWN money-purchase pot is flexible
                     // access, the same event {@see WithdrawalKind::DrawdownIncome} triggers on: it
                     // caps their future contributions at the MPAA ({@see contributionHeadroom}).
@@ -2093,9 +2153,12 @@ final class PathProjector
                     // inherited pot cannot be excluded on one route and not the other. Pinned by
                     // PathProjectorTest::test_a_fill_bands_draw_from_an_inherited_pot_takes_no_tax_free_quarter.
                     $lsaRemaining = self::lsaHeadroom($lsa, $state['lsaUsed'][$person->id], $pot);
+                    // Any part of the pot already designated to drawdown has had its tax-free cash,
+                    // so it is drawn first and taxed in full ({@see ufplsSplit}, {@see drawFromPot}).
+                    $crystallised = $pot['crystallised'] ?? 0;
                     $cap = $pot['value'];
                     if ($taxableLimit !== null) {
-                        $cap = min($cap, self::maxUfplsGross($taxableLimit - $alreadyTaxable, $lsaRemaining, $pclsRate));
+                        $cap = min($cap, self::maxUfplsGross($taxableLimit - $alreadyTaxable, $lsaRemaining, $pclsRate, $crystallised));
                     }
                     if ($cap <= 0) {
                         continue;
@@ -2105,7 +2168,7 @@ final class PathProjector
                     // grossUpPension, where only the taxable part carries tax.
                     $gross = $remaining;
                     for ($i = 0; $i < 8; $i++) {
-                        $tax = $this->marginalTax($alreadyTaxable, self::ufplsSplit($gross, $lsaRemaining, $pclsRate)[1], $thresholdFactor);
+                        $tax = $this->marginalTax($alreadyTaxable, self::ufplsSplit($gross, $lsaRemaining, $pclsRate, $crystallised)[1], $thresholdFactor);
                         $next = $remaining + $tax;
                         if (abs($next - $gross) <= 1) {
                             $gross = $next;
@@ -2118,10 +2181,10 @@ final class PathProjector
                         continue;
                     }
 
-                    [$taxFree, $taxablePart] = self::ufplsSplit($gross, $lsaRemaining, $pclsRate);
+                    [$taxFree, $taxablePart] = self::ufplsSplit($gross, $lsaRemaining, $pclsRate, $crystallised);
                     $taxDelta = $this->marginalTax($alreadyTaxable, $taxablePart, $thresholdFactor);
                     $net = $gross - $taxDelta;
-                    $pot['value'] -= $gross;
+                    $this->drawFromPot($pot, $gross);
                     $state['lsaUsed'][$person->id] += $taxFree;
                     // A UFPLS from the member's own pot is flexible access: it caps their future
                     // money-purchase contributions at the MPAA ({@see contributionHeadroom}).
@@ -2437,9 +2500,18 @@ final class PathProjector
      * annual-allowance charge. Both allowances are the frozen statutory figures, not indexed,
      * because nothing has indexed them.
      *
-     * What the cap blocks is never silently dropped — it stays in pay and is taxed there, or stays
-     * in the surplus and is saved as cash — and the cap itself is disclosed to the reader in the
-     * year it starts rather than left invisible ({@see mpaaWarnings}).
+     * Where blocked money goes depends on whose it was, and one of the three answers is "nowhere".
+     * A NET-PAY contribution stays in pay and is taxed there ({@see payNetPayContributions} returns
+     * only what reached the pot, and the caller deducts only that). A SURPLUS-funded one stays in
+     * the surplus and is saved as cash ({@see applyContributions} caps before it spends the
+     * surplus). But the EMPLOYER's ({@see payEmployerContributions}) never passes through the
+     * household's cashflow, so there is nowhere to put it: it is simply not paid, and the household
+     * is that much poorer. That is the adverse side of the hard-cap simplification above — in life
+     * the money would be paid in and an annual-allowance charge levied on the excess, which is the
+     * other half of card 0073 — and it is pinned by
+     * PathProjectorTest::test_an_employer_contribution_the_mpaa_blocks_is_not_paid_anywhere_else.
+     * The cap itself is disclosed to the reader in the year it starts rather than left invisible
+     * ({@see mpaaWarnings}), and says which of the three answers applies.
      *
      * @param  array<string, mixed>  $state
      */
@@ -2491,8 +2563,10 @@ final class PathProjector
                         .$this->config->pension->moneyPurchaseAnnualAllowance->format()
                         .' a year can be paid into that person\'s money-purchase pensions — the Money Purchase '
                         .'Annual Allowance, which replaces the ordinary annual allowance for the rest of the plan. '
-                        .'Any contribution in the plan above it is not paid in, and is not lost: it stays in pay '
-                        .'and is taxed there, or stays in savings.',
+                        .'Any contribution in the plan above it is not paid in. Money the person would have paid '
+                        .'themselves is not lost — it stays in their pay, or in their savings. Money their EMPLOYER '
+                        .'would have paid above the allowance is simply not paid at all: it never passes through '
+                        .'their hands, so there is nowhere for it to go, and the plan is that much poorer.',
                     )];
                 }
             }
@@ -2854,7 +2928,14 @@ final class PathProjector
                     : $investNominal;
                 $potGrown = (int) round($pot['value'] * (1.0 + $potNominal));
                 $grown += $potGrown;
+                $wasWorth = $pot['value'];
                 $pot['value'] = $charged($potGrown);
+                // A drawdown fund grows with the rest of the pot, so the crystallised SHARE has to
+                // hold. Growing only the total would quietly turn growth into fresh uncrystallised
+                // money and hand it a second tax-free quarter ({@see ufplsSplit}).
+                if (($pot['crystallised'] ?? 0) > 0 && $wasWorth > 0) {
+                    $pot['crystallised'] = min($pot['value'], (int) round($pot['crystallised'] * $pot['value'] / $wasWorth));
+                }
             }
             unset($pot);
 
