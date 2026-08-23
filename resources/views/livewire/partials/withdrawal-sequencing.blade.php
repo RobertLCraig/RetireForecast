@@ -41,10 +41,10 @@
     </p>
 
     <p class="mt-2 text-xs text-gray-500">
-        A central projection on your current assumptions. "Filling your tax-free allowances" draws pension within your
-        personal allowance and realises gains within your capital-gains allowance before taxed income; each pension draw
-        is taken so a quarter of it is tax-free cash while your lump sum allowance lasts. If you receive Pension Credit it
-        draws your savings first, so pension income does not reduce the credit.
+        A central projection on your current assumptions. "{{ ucfirst($withdrawal['alternativeLabel']) }}" draws pension
+        within your personal allowance and realises gains within your capital-gains allowance before taxed income; each
+        pension draw is taken so a quarter of it is tax-free cash while your lump sum allowance lasts. If you receive
+        Pension Credit it draws your savings first, so pension income does not reduce the credit.
     </p>
 
     @if (! empty($withdrawal['steer']))

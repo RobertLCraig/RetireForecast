@@ -203,6 +203,25 @@ other asset and so biased every housing comparison towards realising property eq
    bounded `CANDIDATES` set once and reports the cheapest. Every saving stays the difference of two of the
    engine's own runs, never a re-derivation. The panel's two tiles are `CURRENT` and `ALTERNATIVE`, both named
    through one `label()`, and a test refuses to let them become the same order.
+7. **An inherited pot carries no tax-free quarter either.** Decision 1 gave every FillBands pension draw the
+   25% UFPLS split, and the closure applied it to whatever pot it touched — including the one the estate pass
+   hands the survivor. Beneficiary drawdown is the deceased's fund under its own regime, not a pension of the
+   heir's, so there is no tax-free cash in it and the heir's own Lump Sum Allowance (and, through
+   `deathBenefit['lsaUsed']`, their death-benefit allowance) must not pay for it. On the pinned household the
+   heir was avoiding £22,817.68 of lifetime tax on money that was never theirs, silently, and on the ordinary
+   path now that the optimiser runs FillBands for every scenario. Zero headroom makes the split all-taxable,
+   which is exactly the old draw, so the fix is the same one flag decision 5 added. *Not settled here:* where
+   the member died under 75, beneficiary drawdown is in life tax-free income rather than fully taxable. The
+   model charges full income tax on it, as it always has under `$drawPension`; that is the cautious side and
+   it is unchanged by this card.
+8. **The candidate set stops at the three named orders, and that limit is carded rather than hidden.** The
+   plan's #6 also describes a "manage taxable income to £X" candidate. It is not built: #6 says to confirm the
+   candidate set with Rob first, and decision 1 of 2026-07-01 ruled out a general planner in v1. So the search
+   reports the cheapest of the orders the tool can actually run — which is what the panel says — and board card
+   **0078** owns widening it, carrying the two calls only Rob can make.
+9. **`ENGINE_VERSION` → `finance-engine/ufpls-fill-bands`.** Decisions 1 and 4 both move stored figures (a
+   fill-the-bands run pays less tax; a default-order run with a working member contributes less), so a result
+   stored before this card and one stored after are not comparable and must not carry the same stamp.
 
 **Status:** active
 

@@ -109,6 +109,17 @@ class ScenarioForecasterTest extends TestCase
                 $this->assertStringContainsString("\$withdrawal['{$key}']", $source,
                     "The {$where} withdrawal panel never reads \$withdrawal['{$key}'], so it shows less than the other one does.");
             }
+
+            // ...and no draw order is NAMED by hand. Reading every key is not enough on its own:
+            // a tile that reads baselineLabel while its caption spells one order out still renames
+            // itself the moment a constant moves, and the key check cannot see a literal. So the
+            // names live only in WithdrawalStrategyComparison::label(), which is what card 0075
+            // has to change and nothing else.
+            foreach (WithdrawalStrategyComparison::CANDIDATES as $candidate) {
+                $phrase = implode(' ', array_slice(explode(' ', WithdrawalStrategyComparison::label($candidate)), 0, 3));
+                $this->assertStringNotContainsStringIgnoringCase($phrase, $source,
+                    "The {$where} withdrawal panel writes the draw order \"{$phrase}\" out by hand instead of reading it from label(), so it will keep that name after the order changes.");
+            }
         }
     }
 

@@ -2018,8 +2018,11 @@ final class PathProjector
         // The same draw, taken UFPLS-style: 25% of each withdrawal is tax-free (while the Lump
         // Sum Allowance lasts) and only the rest is taxable income. This is what a retiree
         // drawing ad-hoc from an uncrystallised pot actually does, and taxing 100% of it instead
-        // mispriced pension wealth against every other asset. FillBands only: $drawPension stays
-        // byte-identical for TaxEfficient / PensionAware and the HMRC worked examples.
+        // mispriced pension wealth against every other asset. FillBands only: the SPLIT lives here
+        // and nowhere else, so TaxEfficient / PensionAware and the HMRC worked examples keep their
+        // figures. ($drawPension is no longer byte-identical — it sets the MPAA trigger too, which
+        // is deliberate and is DECISIONS 2026-08-19 item 4: flexible access belongs to the draw,
+        // not to the draw order. It moves no figure the worked examples assert.)
         //
         // Two caps bind at once: the band being filled ($taxableLimit, which only the TAXABLE
         // part consumes, so the draw is ~a third larger for the same taxable income) and the
@@ -2047,7 +2050,16 @@ final class PathProjector
                     if (($ages[$person->id] ?? 0) < ($pot['earliestAccessAge'] ?? 0)) {
                         continue;
                     }
-                    $lsaRemaining = max(0, $lsa - $state['lsaUsed'][$person->id]);
+                    // An INHERITED pot has no tax-free quarter and cannot spend the heir's own Lump
+                    // Sum Allowance. Beneficiary drawdown is the deceased's fund under its own
+                    // regime ({@see collectDeathInServiceBenefit} states it for the lump-sum form),
+                    // not a pension of the heir's — so without this the heir took 25% of a dead
+                    // partner's pot tax-free and their own allowance (and, through
+                    // deathBenefit['lsaUsed'], their death-benefit allowance) paid for money that
+                    // was never theirs. No headroom makes the split all-taxable, which is exactly
+                    // $drawPension. Pinned by
+                    // PathProjectorTest::test_a_fill_bands_draw_from_an_inherited_pot_takes_no_tax_free_quarter.
+                    $lsaRemaining = ($pot['inherited'] ?? false) ? 0 : max(0, $lsa - $state['lsaUsed'][$person->id]);
                     $cap = $pot['value'];
                     if ($taxableLimit !== null) {
                         $cap = min($cap, self::maxUfplsGross($taxableLimit - $alreadyTaxable, $lsaRemaining, $pclsRate));

@@ -37,7 +37,13 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-07-09 (btl-finance-cost): a let property's mortgage interest now yields the
+     * Bumped 2026-08-23 (ufpls-fill-bands): an ad-hoc "fill the bands" pension draw is now taken
+     * UFPLS-style (a quarter tax-free while the Lump Sum Allowance lasts) instead of being taxed on
+     * 100% of the gross, so fill-the-bands tax stored earlier is too high; and flexible access now
+     * caps later money-purchase contributions at the MPAA under EVERY draw order, so a run stored
+     * earlier for a household with both a working member and an ad-hoc pension draw over-funds the
+     * pot. See DECISIONS 2026-08-19.
+     * Previous bump 2026-07-09 (btl-finance-cost): a let property's mortgage interest now yields the
      * basic-rate (20%) buy-to-let finance-cost tax reducer, so rental income on a mortgaged let
      * is no longer taxed with no relief for the interest — let-plan tax stored earlier is too high.
      * Previous bump 2026-07-08 (home-maintenance): a bought freehold home with no explicit upkeep now
@@ -50,7 +56,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/phase-3-btl-finance-cost';
+    public const ENGINE_VERSION = 'finance-engine/ufpls-fill-bands';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

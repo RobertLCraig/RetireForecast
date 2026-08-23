@@ -35,6 +35,14 @@ final class WithdrawalStrategyComparison
     /**
      * The bounded candidate set the optimiser searches: the named strategies, nothing generated.
      *
+     * FLAGGED (board card 0078), because "nothing generated" is a real limit and not just a choice
+     * of size: the plan's #6 also describes a "manage taxable income to £X" candidate, tried at a
+     * few values of X, and one of those can beat all three of these. It is not here because the plan
+     * says to confirm the candidate set with Rob first, and because his decision 1 of 2026-07-01 was
+     * a third NAMED strategy and "not a general planner yet". So the search reports the cheapest of
+     * the orders the tool can actually run, which is what it says on the page, and 0078 owns
+     * widening it. The plan's ceiling is 4 to 6: each candidate is a whole deterministic forecast.
+     *
      * @var list<DrawdownStrategy>
      */
     public const CANDIDATES = [

@@ -357,3 +357,62 @@ So under FillBands the heir gets 25% of a dead partner's pot tax-free, and their
 
 VERDICT: defect
 
+**2026-08-23 - the third review's defects fixed; acceptance unchanged.** The review found acceptance
+sound and the ticks stand. Every finding was reproduced before it was touched.
+
+**The one behaviour bug: an inherited pot was given tax-free cash that was not the heir's.**
+`$drawPensionUfpls` ran `ufplsSplit` on whatever pot it drew, and the estate pass hands the survivor
+an inherited one. So under FillBands the heir took a quarter of a dead partner's pot tax-free and
+their own Lump Sum Allowance - and through `deathBenefit['lsaUsed']` their death-benefit allowance -
+paid for money that was never theirs. Beneficiary drawdown is the deceased's fund under its own
+regime, which this file already states for the lump-sum form in `collectDeathInServiceBenefit`. The
+pot's `inherited` flag (added last run for the MPAA) now also zeroes the allowance headroom the split
+reads, so the draw is all-taxable, which is exactly `$drawPension` - the graceful-degradation
+property the card already pinned, reused rather than re-derived. Pinned by
+`PathProjectorTest::test_a_fill_bands_draw_from_an_inherited_pot_takes_no_tax_free_quarter`, built so
+the tell is visible without a magic number: the plan is run twice, once with the heir's whole
+allowance and once with none of it, and the tax on an inherited pot cannot depend on that. It was run
+against the unfixed code first and fails there, by **£22,817.68** of lifetime tax.
+
+**The engine stamp.** `ENGINE_VERSION` is now `finance-engine/ufpls-fill-bands`. Two things this card
+did move stored figures - a fill-the-bands run pays less tax, and a default-order run with a working
+member contributes less - so a result stored before it and one stored after must not read as
+comparable. The docblock says which change moved what, in the house form.
+
+**#6 searching nothing new.** True, and now recorded rather than left implied.
+`WithdrawalStrategyComparison::CANDIDATES` is the three named orders because the plan's own #6 says
+to confirm the candidate set with Rob before building the "manage taxable income to £X" lever, and
+Rob's decision 1 of 2026-07-01 was a third NAMED strategy, "not a general planner yet". So it was not
+mine to add: it is **card 0078**, carrying the two calls only Rob can make (how many targets, and
+whether it waits for 0075). The limit is flagged on `CANDIDATES`, in the plan's build-order #5 and in
+DECISIONS.
+
+**The last naming site.** Both templates' closing note now reads `alternativeLabel` instead of
+spelling the order out. The key-coverage test could not see a literal, so the guard now also asserts
+that neither template contains any candidate's name written by hand - which is what kept coming back.
+
+**The false comment.** `$drawPensionUfpls`'s note claimed `$drawPension` was byte-identical. It says
+what is true: the SPLIT is FillBands-only, `$drawPension` sets the MPAA trigger as well, and that is
+DECISIONS 2026-08-19 item 4.
+
+**Assumed:** that beneficiary drawdown is taxed in full as the heir's income. In life it is tax-free
+income where the member died under 75, and taxable only where they died at 75 or over. The model has
+always charged full income tax on an inherited pot through `$drawPension`; this change makes the
+UFPLS path agree with it rather than inventing a third treatment. That is the cautious side, it is
+unchanged by this card, and it is stated in DECISIONS item 7 rather than left in the code alone.
+
+**Not changed, deliberately:** the closing note still DESCRIBES fill-the-bands in prose ("draws
+pension within your personal allowance..."). That is a description of what an order does, not a name
+for it, and it is correct while `ALTERNATIVE` is fill-the-bands - which
+`test_the_panel_never_compares_the_current_order_against_itself` turns the suite red the moment
+anyone changes. Rewording it is a judgement about what to show a reader, so it belongs to whoever
+picks the new alternative on card 0075.
+
+**Could not settle from the repository:**
+- Still no Pest. `vendor/bin/` holds `phpunit` and `pint` only. What was run: `php artisan test`
+  green (1149 passed, 1 skipped - the posture-aware banned-phrasing partition),
+  `vendor\bin\pint.bat --dirty` clean, and `php artisan scenarios:audit` clean on every stored
+  scenario.
+- **Still not looked at in a browser.** Herd serves the site from `C:\Dev\RetireForecast`, not from
+  this worktree, so the reworded note still needs Rob's eye on a real page and a real PDF export.
+

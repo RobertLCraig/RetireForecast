@@ -750,6 +750,39 @@ final class PathProjectorTest extends TestCase
         $this->assertSame($grew(1), $grew(2), 'the cap should hold, not lapse after one year');
     }
 
+    public function test_a_fill_bands_draw_from_an_inherited_pot_takes_no_tax_free_quarter(): void
+    {
+        // Beneficiary drawdown carries no 25% tax-free cash — the deceased's fund is under its own
+        // regime, not the heir's pension — and so it cannot spend the heir's own Lump Sum Allowance
+        // either. It did: the UFPLS closure split any pot it touched, so the heir got a quarter of a
+        // dead partner's pot tax-free and their own allowance paid for it. The tell is that the tax
+        // then DEPENDS on the heir's headroom, so run the same plan with all of it and with none.
+        //
+        // p2 dies at 69 leaving a pot p2 could never touch (access age 75), so it passes whole to p1
+        // as an inherited pot. p1's own pension is an empty pot that exists only to carry the
+        // tax-free cash already taken, which is what seeds their allowance ledger — so the two runs
+        // differ in nothing but the heir's headroom.
+        $lsa = TaxYearRegistry::for('2026-27')->pension->lumpSumAllowance;
+        $build = fn (?Money $heirPclsTaken): Household => $this->couple(
+            new ExpenseProfile(Money::fromPounds(45_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+                new DcPension('p1', Money::zero(), Money::zero(), Money::zero(), 55, pclsTakenToDate: $heirPclsTaken),
+                new DcPension('p2', Money::fromPounds(400_000), Money::zero(), Money::zero(), 75),
+            ],
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(20_000))],
+            override2: new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male,
+                EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(69)),
+        );
+
+        $withHeadroom = $this->lifetimeTax(DrawdownStrategy::FillBands, $build(null));
+
+        $this->assertGreaterThan(0, $withHeadroom, 'the inherited pot is never drawn, so this proves nothing');
+        $this->assertSame($withHeadroom, $this->lifetimeTax(DrawdownStrategy::FillBands, $build($lsa)),
+            "the heir's own allowance changed the tax on an inherited pot, so it took a tax-free quarter of it");
+    }
+
     public function test_drawing_an_inherited_pot_does_not_cap_the_heirs_own_contributions(): void
     {
         // Beneficiary drawdown is not a member trigger event. p1 is 50, still working and still
