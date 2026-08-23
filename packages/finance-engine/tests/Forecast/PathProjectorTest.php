@@ -721,6 +721,35 @@ final class PathProjectorTest extends TestCase
         $this->assertSame(Money::fromPounds(20_000)->pence, $b->years[2]->pensionWealth->pence - $b->years[1]->pensionWealth->pence);
     }
 
+    public function test_an_ad_hoc_taxable_pension_draw_triggers_the_mpaa_too_not_only_a_ufpls(): void
+    {
+        // Flexible access is not only a UFPLS: taking taxable drawdown income out of a money-purchase
+        // pot triggers the MPAA just the same. Under the tax-efficient order a shortfall is funded
+        // straight out of the pot as taxable income, so a member still being paid into is restricted
+        // from the next year. Without this only the fill-the-bands candidate carried the cap, and the
+        // optimiser compared its three runs on unequal terms.
+        $worker = new Person('p1', new DateTimeImmutable('1966-04-01'), Sex::Female,
+            EmploymentStatus::Employed, grossSalary: Money::fromPounds(20_000), plannedRetirementAge: 70);
+        $household = $this->couple(
+            new ExpenseProfile(Money::fromPounds(40_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [new DcPension('p1', Money::fromPounds(300_000), Money::zero(), Money::fromPounds(20_000), 55)],
+            override1: $worker,
+        );
+
+        // Tax-efficient: no pot is drawn by instruction, only to meet the £20k-a-year shortfall.
+        $result = $this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings());
+
+        $mpaa = TaxYearRegistry::for('2026-27')->pension->moneyPurchaseAnnualAllowance->pence;
+        $pot = fn (int $i): int => $result->years[$i]->pensionWealth->pence;
+        $grew = fn (int $i): int => $pot($i) - ($i === 0 ? Money::fromPounds(300_000)->pence : $pot($i - 1));
+
+        // Flat assumptions, flat pay and flat spend, so the draw is the same size every year and the
+        // only thing that changes between year 0 and year 1 is the contribution the MPAA now blocks:
+        // £20,000 goes in the year of the trigger, the MPAA every year after it.
+        $this->assertSame(Money::fromPounds(20_000)->pence - $mpaa, $grew(0) - $grew(1));
+        $this->assertSame($grew(1), $grew(2), 'the cap should hold, not lapse after one year');
+    }
+
     public function test_the_ufpls_split_respects_the_lump_sum_allowance_and_the_band_being_filled(): void
     {
         // 25% tax-free while the allowance lasts...

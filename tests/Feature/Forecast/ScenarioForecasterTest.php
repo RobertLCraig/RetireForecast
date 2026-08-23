@@ -75,6 +75,28 @@ class ScenarioForecasterTest extends TestCase
         $this->assertLessThanOrEqual(6, count(WithdrawalStrategyComparison::CANDIDATES));
     }
 
+    public function test_the_screen_and_the_printed_panel_both_read_every_figure_it_publishes(): void
+    {
+        // The optimiser's figures reached the screen partial and not the PDF one, while the steer
+        // (which both print) named the winner and its saving — so the PDF told a reader a third
+        // order saves £X with no figure on the page behind it. That is an invisible figure. The
+        // section-level PDF completeness test could not see it: the section was there, only its
+        // figures were not. So pin it at the level it broke, the keys of the shared panel().
+        $panel = WithdrawalStrategyComparison::for(new ScenarioForecaster, $this->scenario())->panel();
+        $this->assertNotNull($panel);
+
+        foreach ([
+            'screen' => 'views/livewire/partials/withdrawal-sequencing.blade.php',
+            'printed' => 'views/pdf/partials/report.blade.php',
+        ] as $where => $template) {
+            $source = (string) file_get_contents(resource_path($template));
+            foreach (array_keys($panel) as $key) {
+                $this->assertStringContainsString("\$withdrawal['{$key}']", $source,
+                    "The {$where} withdrawal panel never reads \$withdrawal['{$key}'], so it shows less than the other one does.");
+            }
+        }
+    }
+
     public function test_the_monte_carlo_run_records_its_seed_and_bounded_probabilities(): void
     {
         $result = (new ScenarioForecaster)->simulate($this->scenario(), nPaths: 50, seed: 7);

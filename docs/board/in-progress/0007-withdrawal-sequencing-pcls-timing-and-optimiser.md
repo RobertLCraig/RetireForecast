@@ -164,3 +164,59 @@ I tried to break it. Three things break.
 
 VERDICT: defect
 
+**2026-08-23 - the review's defects fixed; the acceptance ticks stand.** Every finding above was
+reproduced before it was touched. Nothing was reworded to make it go away.
+
+**The one real behaviour bug (acceptance #3, and the #5 skew it caused).** `$drawPension` - the
+closure every ad-hoc draw under `TaxEfficient` and `PensionAware` goes through - took taxable pension
+income and never set `mpaaTriggered`, so a member still receiving contributions kept the full annual
+allowance. It now sets it, at the same point in the closure its UFPLS sibling does. That was also why
+the optimiser compared its three candidates on unequal terms: only `FillBands` carried the
+restriction. Pinned by
+`PathProjectorTest::test_an_ad_hoc_taxable_pension_draw_triggers_the_mpaa_too_not_only_a_ufpls`, which
+builds a worker whose spend outruns her pay, so the shortfall is funded straight out of the pot, and
+asserts the year-0 pot credit exceeds the year-1 credit by exactly employer contribution minus MPAA.
+
+**The half-built PDF.** `resources/views/pdf/partials/report.blade.php` now prints the optimiser
+paragraph and the tax-free-quarter sentence the screen partial had, so the printed steer's saving has
+a figure on the page behind it. The section-level PDF completeness test could not catch that (the
+section was present, only its figures were not), so the guard is now at the level it broke:
+`ScenarioForecasterTest::test_the_screen_and_the_printed_panel_both_read_every_figure_it_publishes`
+asserts both templates read every key `WithdrawalStrategyComparison::panel()` returns.
+
+**The copied baseline literal.** `ScenarioForecaster::DEFAULT_DRAWDOWN_STRATEGY` is now the one home
+for the default order, and `WithdrawalStrategyComparison::CURRENT` reads that constant. The same
+drift sat in the tile LABEL, which hard-coded "Spending your savings first" in both templates, so
+`panel()` now publishes `baselineLabel` from a shared `label()` and both templates read it. Changing
+the default no longer leaves either the figure or its name behind.
+
+**The two false comments.** The MPAA docblock claimed the cap bites from the year of the trigger and
+called that cautious. It bites from the year AFTER, because `projectYear` pays both contribution
+routes before it runs the withdrawals that set the trigger, and that is the LESS cautious side. The
+docblock now says so and names the test that pins it. The Guarantee Credit comment claimed a clawback
+the model never applies; it now states what the code does (capital first, so the credit is not clawed
+back) and, separately, that no ad-hoc draw reaches the means test at all.
+
+**The deferrals left on the floor.** Five cards written, and each deferral in the code now names its
+card instead of saying "its own card": **0073** the MPAA binds a year late and the annual-allowance
+charge is not priced; **0074** the tax-free quarter of an ad-hoc draw is filed on the ladder as
+taxable drawdown; **0075** the draw order is fixed and undisclosed - this is the adviser's "change the
+displayed default", widened to letting the reader choose and disclosing what was chosen for them,
+because picking that number for a private scenario set is Rob's call and not mine; **0076** spendable
+wealth counts a pension pot gross of tax, which is the adviser's `usableWealth` netting; **0077** an
+ad-hoc pension draw never reaches the Pension Credit means test, found while fixing the false comment
+and not covered by 0046.
+
+**Assumed:** that taxable drawdown income out of an uncrystallised pot is flexible access for MPAA
+purposes, matching what `WithdrawalKind::DrawdownIncome::triggersMpaa()` already rules for the planned
+form of the same draw. A pure PCLS still does not trigger it, and nothing about that changed.
+
+**Could not settle from the repository:**
+- The instructions say to run `.\vendor\bin\pest.bat`. There is still no Pest here; `vendor/bin/`
+  holds `phpunit`, `pint` and nothing else. What was run: `php artisan test` green (1 skipped, the
+  posture-aware banned-phrasing partition), `vendor\bin\pint.bat --dirty` clean, and
+  `php artisan scenarios:audit` clean on every stored scenario.
+- **Still not looked at in a browser.** Herd serves the site from `C:\Dev\RetireForecast`, not from
+  this worktree, so the new PDF paragraph and the relabelled baseline tile still need Rob's eye on a
+  real page and a real export.
+

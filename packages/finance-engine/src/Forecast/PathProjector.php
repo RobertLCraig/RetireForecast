@@ -1203,6 +1203,10 @@ final class PathProjector
             $funded = $this->fundShortfall($household, $settings, $state, $alive, $ages, $taxablePerPerson, $shortfall, $thresholdFactor, $benefitNominal > 0, $seedGains);
             $fundedNominal = $funded['funded'];
             $totalTaxNominal += $funded['extraTax'];
+            // FLAGGED (board card 0074): fundShortfall returns ONE fromPension total, so the
+            // tax-free quarter of a UFPLS-style draw is filed here as taxable drawdown. The money
+            // is visible and the year reconciles, but a reader adding up taxable income off the
+            // ladder gets too big a figure.
             $src['pension_drawdown'] += $funded['fromPension'];
             $src['asset_drawdown'] += $funded['fromAssets'];
             // The disposals that funded the year already counted against each person's CGT
@@ -1986,6 +1990,13 @@ final class PathProjector
                     $taxDelta = $this->marginalTax($alreadyTaxable, $gross, $thresholdFactor);
                     $net = $gross - $taxDelta;
                     $pot['value'] -= $gross;
+                    // Taxable pension income out of a money-purchase pot is flexible access, the
+                    // same event {@see WithdrawalKind::DrawdownIncome} triggers on: it caps this
+                    // member's future contributions at the MPAA ({@see contributionHeadroom}).
+                    // Set here as well as in $drawPensionUfpls so the restriction does not depend
+                    // on which drawdown strategy is running — otherwise the optimiser compared its
+                    // candidates on unequal terms, only FillBands carrying the cap.
+                    $state['mpaaTriggered'][$person->id] = true;
                     $remaining -= $net;
                     $funded += $net;
                     $extraTax += $taxDelta;
@@ -2085,9 +2096,15 @@ final class PathProjector
                 $drawPensionUfpls($basicLimit); // pension within the basic-rate band (20%)
             }
             $drawNonPension();                  // remaining GIA (CGT on gains beyond the AEA)
-            // Remaining pension - last resort. On Guarantee Credit this is the ONLY pension step,
-            // and taking it UFPLS-style means a quarter of it arrives as tax-free CAPITAL, which
-            // the means test disregards as income, so less of the credit is clawed back.
+            // Remaining pension - last resort. On Guarantee Credit this is the ONLY pension step:
+            // capital comes first precisely so the credit is not clawed back pound for pound.
+            // NOTE what the model does NOT do: this year's award was already assessed in
+            // {@see meansTestedBenefitNominal}, from the income known BEFORE the shortfall is
+            // funded, and nothing here writes back. So no ad-hoc draw - taxed or tax-free -
+            // reduces the award, in this year or any later one. A v1 simplification, and the
+            // un-cautious side: in life a drawdown draw is assessable income and would cut the
+            // credit. Assessing after the draw needs a fixed point (the award moves the shortfall,
+            // which moves the draw, which moves the award), which is board card 0077.
             $drawPensionUfpls(null);
         } elseif ($strategy === DrawdownStrategy::PensionAware) {
             $drawPension($basicLimit);   // pension up to the basic-rate band first
@@ -2327,9 +2344,15 @@ final class PathProjector
      * prices that separately); carry-forward of unused allowance from the previous three years
      * is not tracked, so the cap is the cautious side of the rule; the high-income taper is not
      * applied here (it needs adjusted and threshold income, which this year's contributions
-     * themselves move; {@see AnnualAllowanceCalculator} prices it); and the MPAA bites from the
-     * year of the trigger rather than the day after it. Both are the frozen statutory figures,
-     * not indexed, because nothing has indexed them.
+     * themselves move; {@see AnnualAllowanceCalculator} prices it); and the MPAA first bites in
+     * the year AFTER the trigger, not the trigger year itself, because {@see projectYear} pays
+     * both contribution routes before it runs the withdrawals that set the trigger. That is the
+     * LESS cautious side of the rule — in life the cap applies to contributions paid after the
+     * trigger date, so a trigger early in the year leaves the model a year of full allowance it
+     * should not have. Pinned as behaviour by
+     * PathProjectorTest::test_flexible_access_caps_later_money_purchase_contributions_at_the_mpaa,
+     * and carded as 0073 with the missing annual-allowance charge. Both allowances are the frozen
+     * statutory figures, not indexed, because nothing has indexed them.
      *
      * @param  array<string, mixed>  $state
      */

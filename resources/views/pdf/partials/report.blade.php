@@ -828,7 +828,7 @@
             over your whole plan.</p>
         <table class="tiles">
             <tr>
-                <td><div class="tile"><p class="tile-label">Spending your savings first (your current order)</p><p class="tile-value">{{ $withdrawal['baseline'] }}</p><p class="tile-note">tax paid across the plan</p></div></td>
+                <td><div class="tile"><p class="tile-label">{{ ucfirst($withdrawal['baselineLabel']) }} (your current order)</p><p class="tile-value">{{ $withdrawal['baseline'] }}</p><p class="tile-note">tax paid across the plan</p></div></td>
                 <td><div class="tile"><p class="tile-label">Filling your tax-free allowances first</p><p class="tile-value">{{ $withdrawal['fillBands'] }}</p><p class="tile-note">tax paid across the plan</p></div></td>
             </tr>
         </table>
@@ -840,9 +840,20 @@
                 On these figures the two orders pay the same tax over the plan.
             @endif
         </p>
+        <p>
+            @if ($withdrawal['optimiserSaves'])
+                Of the {{ $withdrawal['candidateCount'] }} draw orders we tried, the cheapest is
+                <strong>{{ $withdrawal['cheapestLabel'] }}</strong>: it pays
+                <strong>{{ $withdrawal['optimiserSaving'] }}</strong> less tax across the plan than your current order.
+            @else
+                We tried {{ $withdrawal['candidateCount'] }} draw orders in all. None of them pays less tax across the
+                plan than your current order.
+            @endif
+        </p>
         <p class="note">A central projection on your current assumptions. "Filling your tax-free allowances" draws
             pension within your personal allowance and realises gains within your capital-gains allowance before
-            taxed income; if you receive Pension Credit it draws your savings first, so pension income does not
+            taxed income; each pension draw is taken so a quarter of it is tax-free cash while your lump sum
+            allowance lasts. If you receive Pension Credit it draws your savings first, so pension income does not
             reduce the credit.</p>
         @if (! empty($withdrawal['steer']))
             <ul>

@@ -10,7 +10,7 @@
 
     <div class="mt-4 grid gap-4 sm:grid-cols-2">
         <div class="rounded-lg border border-gray-200 p-4">
-            <div class="text-xs tracking-wide text-gray-500 uppercase">Spending your savings first (your current order)</div>
+            <div class="text-xs tracking-wide text-gray-500 uppercase">{{ ucfirst($withdrawal['baselineLabel']) }} (your current order)</div>
             <div class="mt-1 text-2xl font-semibold text-gray-900">{{ $withdrawal['baseline'] }}</div>
             <div class="text-xs text-gray-500">tax paid across the plan</div>
         </div>

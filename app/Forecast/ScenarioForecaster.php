@@ -52,6 +52,15 @@ final class ScenarioForecaster
      */
     public const ENGINE_VERSION = 'finance-engine/phase-3-btl-finance-cost';
 
+    /**
+     * The draw order every scenario is forecast under unless one is named. THE one home for it:
+     * {@see WithdrawalStrategyComparison::CURRENT} reads this constant rather than
+     * repeating the value, so the "your current order" baseline every saving is measured against
+     * cannot drift from the order the rest of the page is actually showing. FLAGGED (board card
+     * 0075): the reader cannot choose the order, and this default is not disclosed to them.
+     */
+    public const DEFAULT_DRAWDOWN_STRATEGY = DrawdownStrategy::TaxEfficient;
+
     /** The central best-estimate forecast: median death ages, expected returns, no sampling. */
     public function deterministic(Scenario $scenario): ForecastResult
     {
@@ -262,7 +271,7 @@ final class ScenarioForecaster
         return new ForecastSettings(
             baseYear: (int) substr($scenario->base_tax_year, 0, 4),
             baseTaxYear: $scenario->base_tax_year,
-            drawdownStrategy: $strategy ?? DrawdownStrategy::TaxEfficient,
+            drawdownStrategy: $strategy ?? self::DEFAULT_DRAWDOWN_STRATEGY,
             annualRent: $action?->annualRent,
             rentInflationReal: $action?->rentInflationReal ?? ($forcedSale ? $scenario->assumptionSet?->toDto()?->rentInflation : null),
             modelCareCost: (bool) ($scenario->effectiveBuilderState()['modelCareCost'] ?? false),

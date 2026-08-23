@@ -45,10 +45,11 @@ final class WithdrawalStrategyComparison
 
     /**
      * The order a scenario is actually forecast under today, and so the baseline every saving is
-     * measured against. Single-sourced from the same default {@see ScenarioForecaster::settings()}
-     * applies, so the "your current order" column cannot drift from what the rest of the page shows.
+     * measured against. Read from the constant {@see ScenarioForecaster::settings()} itself applies
+     * rather than restated, so the "your current order" column cannot drift from what the rest of
+     * the page shows when the displayed default changes.
      */
-    public const CURRENT = DrawdownStrategy::TaxEfficient;
+    public const CURRENT = ScenarioForecaster::DEFAULT_DRAWDOWN_STRATEGY;
 
     private function __construct(
         public readonly int $baselineTaxPence,
@@ -126,6 +127,7 @@ final class WithdrawalStrategyComparison
         }
 
         return [
+            'baselineLabel' => self::label(self::CURRENT),
             'baseline' => Money::fromPence($this->baselineTaxPence)->format(),
             'fillBands' => Money::fromPence($this->fillBandsTaxPence)->format(),
             'difference' => Money::fromPence(abs($this->savingPence))->format(),
@@ -146,7 +148,17 @@ final class WithdrawalStrategyComparison
      */
     public function cheapestLabel(): string
     {
-        return match ($this->cheapest) {
+        return self::label($this->cheapest);
+    }
+
+    /**
+     * THE one home for a draw order's user-facing name, so the baseline tile, the cheapest-order
+     * sentence and the steer all name the same order the same way — and the tile keeps naming the
+     * right order if {@see ScenarioForecaster::DEFAULT_DRAWDOWN_STRATEGY} changes.
+     */
+    public static function label(DrawdownStrategy $strategy): string
+    {
+        return match ($strategy) {
             DrawdownStrategy::TaxEfficient => 'spending your savings first',
             DrawdownStrategy::PensionAware => 'drawing your pension first, up to the basic-rate band',
             DrawdownStrategy::FillBands => 'filling your tax-free allowances first',
