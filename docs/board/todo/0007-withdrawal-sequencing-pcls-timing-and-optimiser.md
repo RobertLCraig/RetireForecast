@@ -530,3 +530,49 @@ that applied AND any charge - the allowance half is now done, the charge half is
   this worktree, so the new assumed-figure note needs Rob's eye on a real page and a real PDF export,
   along with everything the earlier passes left for the same reason.
 
+### 2026-08-23 review (v20260823115517-7044)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 156s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I traced all five criteria to real code and tried to break each.
+
+**#1** ÔÇö Under `FillBands`, every pension step in `PathProjector::fundShortfall` calls `$drawPensionUfpls` (all four: personal-allowance, basic-rate, last-resort, and the CGT-funding one). `$drawPension` is unreachable on that path. The 25% split has one home, `PathProjector::ufplsSplit`, capped by `PathProjector::maxUfplsGross` and `PathProjector::lsaHeadroom`. The pin is self-checking: `PathProjectorTest::test_a_fill_bands_draw_with_no_lump_sum_allowance_left_is_fully_taxable_as_before` reproduces the pinned figure exactly, so the constant is the real pre-#5 number.
+
+**#2** ÔÇö Same age gate in both closures in `PathProjector::fundShortfall`.
+
+**#3** ÔÇö `PathProjector::payIntoPot` is the only site that credits a pot (every other `$pot['value']` write is a draw or growth), and it caps at `PathProjector::contributionHeadroom`. All three trigger sites go through `PathProjector::triggerFlexibleAccess`.
+
+**#4** ÔÇö `PathProjector::projectYear` passes `$benefitNominal > 0`, and `PathProjector::meansTestedBenefitNominal` returns Guarantee Credit only. Both banded pension steps are skipped; capital runs first.
+
+**#5** ÔÇö `WithdrawalStrategyComparison::for` subtracts two sums from `WithdrawalStrategyComparison::lifetimeTax`, each a real `ScenarioForecaster::deterministicUnderStrategy` run.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Over the fence:** nothing new. No multi-property or Section 24 code, and the `$drawPension` breach stays recorded in `docs/build/PLAN-withdrawal-sequencing.md` #5 and `docs/DECISIONS.md` 2026-08-19 item 4.
+
+**Left half done**
+
+**1. Three new v1 limits never reached the list that owns them.** `docs/HANDOVER.md` points a reader at `docs/DATA-MODEL.md` "Known divergences"; its 2026-08-22 contribution-cap entry ends in a "Still open" list ÔÇö the exact home. This card added three siblings and put none there: the MPAA binds a year late on two of three contribution routes (0073), the ladder files an ad-hoc tax-free quarter as taxable drawdown (0074), an inherited pot is taxed in full even under 75 (0079). Each is carded and in a docblock; the list is silent.
+
+**2. `docs/HANDOVER.md` was never refreshed**, which the plan's "Done-when (each slice)" requires. It reads "Last updated: 2026-08-22 (card 0016ÔÇª)", names no sequencing work, and never says `ScenarioForecaster::ENGINE_VERSION` moved to `ufpls-fill-bands` ÔÇö so a run stored before this card reads as comparable with one after. Card 0016 got its line while still in ai-review, so the lane is not the reason.
+
+**3. The hand-off in `WithdrawalStrategyComparison::ALTERNATIVE`** (pick a new alternative, reword the panel prose no test can see) is still absent from `docs/board/todo/0075-the-draw-order-is-fixed-and-the-reader-cannot-see-or-change-it.md`. Third pass.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**1. Blocked employer money vanishes, and two places say it cannot.** `PathProjector::payEmployerContributions` throws away `payIntoPot`'s return, so an employer contribution above the MPAA is not paid in, not left in pay (it never was pay) and not left in the surplus. Yet `PathProjector::contributionHeadroom`'s docblock and the reader-facing sentence in `PathProjector::mpaaWarnings` both say it "is not lost: it stays in pay and is taxed there, or stays in savings." The card's own `PathProjectorTest::test_flexible_access_caps_later_money_purchase_contributions_at_the_mpaa` pins the drop ÔÇö ┬ú20,000 employer, ┬ú10,000 credited, nothing asserts where the rest went. Silent, and on a disclosure that claims completeness.
+
+**2. Crystallised money gets a second tax-free quarter.** `PathProjector::lsaHeadroom` asks only whether a pot is inherited; `firstAccessDone` is written (pot build, estate pass) and read nowhere. After a planned `WithdrawalKind::Pcls`, which reduces the pot only by the cash taken, every later FillBands draw through `$drawPensionUfpls` in `PathProjector::fundShortfall` splits the crystallised residue 25/75 again, bounded only by the LSA ledger. No test builds PCLS-then-ad-hoc, and this card put it on the optimiser's path for every scenario.
+
+**3.** `DrawdownStrategy`'s docblock still says "Both strategies ship and are compared side by side"; three are.
+
+VERDICT: defect
+
