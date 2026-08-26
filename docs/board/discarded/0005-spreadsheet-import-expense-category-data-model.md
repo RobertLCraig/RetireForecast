@@ -32,3 +32,8 @@ blocked on it.
 
 ## Decided
 <!-- -->
+
+## Comments
+<!-- The card's thread, appended by ProgressBoard. Append-only: entries are added, never edited or removed. An entry beginning **Decided:** is an answer, and that is what a decision card exits on. -->
+
+**2026-08-26** **Decided:** No. The xlsx import is not wanted, which the card itself says is a real answer that closes it outright: nothing else is blocked on it. The category data model question below falls away with it and option 2 is not taken - it was conditional on the import being built.
