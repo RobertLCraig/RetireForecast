@@ -108,7 +108,7 @@
         <table class="tiles">
             <tr>
                 <td><div class="tile"><p class="tile-label">Essentials always met</p><p class="tile-value">{{ $primary['successEssentials'] }}</p></div></td>
-                <td><div class="tile"><p class="tile-label">Full spending met</p><p class="tile-value">{{ $primary['successFullSpend'] }}</p></div></td>
+                <td><div class="tile"><p class="tile-label">Full spending met every year</p><p class="tile-value">{{ $primary['successFullSpend'] }}</p><p class="tile-note">in {{ $primary['fullSpendMostYearsThreshold'] }}%+ of years: {{ $primary['successFullSpendMostYears'] ?? '—' }}</p></div></td>
                 <td><div class="tile"><p class="tile-label">Chance of running out</p><p class="tile-value">{{ $primary['depletionRate'] }}</p><p class="tile-note">if so, typically by {{ $primary['medianDepletionYear'] ?? '—' }}</p></div></td>
                 <td><div class="tile"><p class="tile-label">Usable wealth left (excl. home)</p><p class="tile-value">{{ $primary['usableP50'] ?? '—' }}</p></div></td>
                 <td><div class="tile"><p class="tile-label">Total wealth left (incl. home)</p><p class="tile-value">{{ $primary['terminalP50'] }}</p></div></td>

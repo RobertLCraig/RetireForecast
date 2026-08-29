@@ -37,7 +37,13 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-08-23 (repeated-pcls-crystallisation): a SECOND lump sum out of the same pot used to
+     * Bumped 2026-08-29 (one-off-spend-split): a one-off CAPITAL lump the plan cannot fund (an
+     * unfunded purchase, a mortgage redeemed from capital) is now charged the year's shortfall
+     * first and judged on its own, so it no longer fails the all-or-nothing full-spend test. That
+     * lump is a year-0 constant on every sampled path, so any full-spend probability stored under
+     * the previous stamp for a plan with a funding gap reads 0.0% and is not comparable with one
+     * stored after. Essentials, wealth, tax and depletion are unchanged. See board card 0025.
+     * Previous bump 2026-08-23 (repeated-pcls-crystallisation): a SECOND lump sum out of the same pot used to
      * be debited from the residue the first one left behind, quietly turning that money
      * uncrystallised again and handing a later draw a tax-free quarter of it. The whole slice is now
      * designated before the cash is paid out of it, so a plan with more than one lump-sum row on a
@@ -67,7 +73,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/repeated-pcls-crystallisation';
+    public const ENGINE_VERSION = 'finance-engine/one-off-spend-split';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

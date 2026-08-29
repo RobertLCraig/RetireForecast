@@ -12,6 +12,11 @@ use RetireForecast\FinanceEngine\Money\Money;
  * summary the UI leads with — whether essentials and the full spend were met every
  * year, when (if ever) the money ran out, and the terminal wealth left over.
  *
+ * $essentialsAlwaysMet / $fullSpendAlwaysMet are all-or-nothing across the whole path, so a
+ * single short year reads identically to a plan that never worked. Read them beside
+ * {@see fullSpendYearsMetFraction()} / {@see essentialsYearsMetFraction()}, which say HOW MUCH
+ * of the plan held; both are derived from $years, so the pair cannot disagree.
+ *
  * Terminal wealth is reported two ways so the asset-rich / cash-poor case reads
  * honestly: $terminalUsableWealth is the spendable part (cash, investments, ISAs
  * and pension pots) and $terminalTotalWealth adds the illiquid primary residence's
@@ -57,5 +62,33 @@ final class ForecastResult
     public function careCostReal(): Money
     {
         return $this->careCostRealValue ?? Money::zero();
+    }
+
+    /**
+     * The share of this path's years in which the full spending target was met, 0.0 to 1.0. The
+     * honest companion to $fullSpendAlwaysMet, which is all-or-nothing across the whole path and
+     * so reports a fifty-year plan that fell short in one year exactly as it reports one that
+     * never funded a penny. DERIVED from $years, never stored, so it cannot drift from the flag.
+     * 1.0 for an empty path — no year fell short.
+     */
+    public function fullSpendYearsMetFraction(): float
+    {
+        return $this->yearsMetFraction(static fn (YearResult $y): bool => $y->fullSpendMet());
+    }
+
+    /** The same measure for the essential floor — the companion the full-spend share is read against. */
+    public function essentialsYearsMetFraction(): float
+    {
+        return $this->yearsMetFraction(static fn (YearResult $y): bool => $y->essentialsMet);
+    }
+
+    /** @param  callable(YearResult): bool  $met */
+    private function yearsMetFraction(callable $met): float
+    {
+        if ($this->years === []) {
+            return 1.0;
+        }
+
+        return count(array_filter($this->years, $met)) / count($this->years);
     }
 }

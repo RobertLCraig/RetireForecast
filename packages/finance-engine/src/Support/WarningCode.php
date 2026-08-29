@@ -30,4 +30,11 @@ final class WarningCode
 
     /** The first death passed to a spouse / civil partner, so no IHT was due then (spouse exemption). */
     public const IHT_SPOUSE_EXEMPTION = 'iht_spouse_exemption';
+
+    /**
+     * A one-off CAPITAL cost (an unfunded home purchase, a mortgage redeemed from capital) could
+     * not be funded in the year it falls. Raised on that year so the lump is named and findable,
+     * rather than only depressing a spending probability that reads as a whole-plan failure.
+     */
+    public const UNFUNDED_ONE_OFF_COST = 'unfunded_one_off_cost';
 }

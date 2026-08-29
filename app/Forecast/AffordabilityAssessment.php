@@ -31,6 +31,12 @@ use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
  * "comfortable"; meeting only the essential floor is "the essentials are covered". Anything that
  * runs the essentials short before the end does not work.
  *
+ * "Meeting the full budget" is all-or-nothing across the path, so the verdict also states in HOW
+ * MANY of the plan's years it was met: one short year in fifty is a different plan from one that
+ * is short throughout, and the flag alone cannot tell them apart. A one-off capital lump the plan
+ * cannot fund (an unfunded purchase) is judged separately by the engine and named in its own
+ * warning, so it no longer drags an otherwise-funded budget onto the failing side.
+ *
  * No figure is invented here — every number comes from the engine's own {@see ForecastResult} /
  * {@see SimulationResult}; this only classifies and phrases them. The one directive "the plan to
  * lean towards" sentence is gated by the caller behind the walled-off `interpret` ability, exactly
@@ -166,7 +172,12 @@ final class AffordabilityAssessment
         $moneyLeft = $forecast->terminalUsableWealth;
         $monthlyRentLabel = $monthlyRent !== null ? '£'.number_format($monthlyRent) : null;
 
-        $verdict = self::verdict($tier, $runsOutYear, $runsOutAges, $yearsFromNow, $moneyLeft);
+        // How much of the plan actually held, not just whether all of it did. "Full spending met"
+        // is all-or-nothing across the whole path, so one short year in fifty reads exactly like a
+        // plan that never funded a penny. Say WHICH — the reader can act on "48 of 50 years", not
+        // on a bare "no" (board card 0025).
+        $fullSpendYears = $forecast->fullSpendYearsMetFraction();
+        $verdict = self::verdict($tier, $runsOutYear, $runsOutAges, $yearsFromNow, $moneyLeft, $fullSpendYears, count($forecast->years));
 
         return [
             'id' => $plan->id,
@@ -252,13 +263,19 @@ final class AffordabilityAssessment
      * recommendation. It sits in the neutral zone, so it stays on the guidance side of the
      * line that {@see OutputPhrasing} draws.
      */
-    private static function verdict(string $tier, ?int $runsOutYear, ?string $runsOutAges, ?int $yearsFromNow, Money $moneyLeft): string
+    private static function verdict(string $tier, ?int $runsOutYear, ?string $runsOutAges, ?int $yearsFromNow, Money $moneyLeft, float $fullSpendYears, int $planYears): string
     {
+        // How many of the plan's years the full budget was actually met in. "There are years it
+        // can't stretch" is true of one short year and of forty; the count is what a reader needs.
+        $met = (int) round($fullSpendYears * $planYears);
+        $howMany = $planYears > 0 ? " The full budget is met in {$met} of the plan's {$planYears} years." : '';
+
         return match ($tier) {
             'comfortable' => 'Yes — on the expected path this covers your full budget for the rest of your life, and still leaves money behind ('
                 .self::roughPounds($moneyLeft).').',
-            'essentials_only' => 'Mostly — the essentials (your must-pay costs) stay covered for life, but there are years the full budget can’t stretch to every extra. The money does not run out.',
-            default => self::failVerdict($runsOutYear, $runsOutAges, $yearsFromNow),
+            'essentials_only' => 'Mostly — the essentials (your must-pay costs) stay covered for life, but there are years the full budget can’t stretch to every extra. The money does not run out.'
+                .$howMany,
+            default => self::failVerdict($runsOutYear, $runsOutAges, $yearsFromNow).$howMany,
         };
     }
 

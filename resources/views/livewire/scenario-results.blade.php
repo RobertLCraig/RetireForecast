@@ -233,7 +233,8 @@
                 <p class="mt-2 rounded-md px-3 py-2 text-sm font-medium {{ $verdictStyle }}" @if ($v['verdict']['level'] === 'high') role="alert" @endif>{{ $v['verdict']['text'] }}</p>
                 <dl class="mt-3 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
                     <div class="flex justify-between"><dt class="text-gray-600">Essentials always met</dt><dd class="font-medium">{{ $v['successEssentials'] }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-600">Full spending met</dt><dd class="font-medium">{{ $v['successFullSpend'] }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-600">Full spending met every year</dt><dd class="font-medium">{{ $v['successFullSpend'] }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-600">Full spending met in {{ $v['fullSpendMostYearsThreshold'] }}%+ of years</dt><dd class="font-medium">{{ $v['successFullSpendMostYears'] ?? '—' }}</dd></div>
                     <div class="flex justify-between"><dt class="text-gray-600">Chance of running out</dt><dd class="font-medium">{{ $v['depletionRate'] }}</dd></div>
                     <div class="flex justify-between"><dt class="text-gray-600">If so, typically by</dt><dd class="font-medium">{{ $v['medianDepletionYear'] ?? '—' }}</dd></div>
                     @if ($v['usableP50'])
@@ -242,7 +243,7 @@
                     <div class="flex justify-between"><dt class="text-gray-600">Total wealth left (incl. home equity)</dt><dd class="font-medium">{{ $v['terminalP50'] }}</dd></div>
                 </dl>
             </div>
-            <p class="mt-3 text-xs text-gray-500">"Chance of running out" counts the simulated futures with at least one year your essential spending isn't fully covered by income and savings — a shortfall a future may later recover from as guaranteed income catches up. "Wealth left" is the median amount at the very end. So an option can leave money at the end yet still have run short along the way — and "total wealth left" includes the equity in any home you would still own (its value net of any mortgage still owed), which stays high even when the usable cash for day-to-day spending has run out.</p>
+            <p class="mt-3 text-xs text-gray-500">"Full spending met every year" is all-or-nothing: one year short out of fifty takes it to 0%, so read it beside the {{ $v['fullSpendMostYearsThreshold'] }}%-of-years figure, which says how much of the plan held. A one-off cost with nothing to fund it is judged separately and named in the notes on your inputs, not counted against your year-to-year spending. "Chance of running out" counts the simulated futures with at least one year your essential spending isn't fully covered by income and savings — a shortfall a future may later recover from as guaranteed income catches up. "Wealth left" is the median amount at the very end. So an option can leave money at the end yet still have run short along the way — and "total wealth left" includes the equity in any home you would still own (its value net of any mortgage still owed), which stays high even when the usable cash for day-to-day spending has run out.</p>
         </section>
 
         {{-- Longevity: how long the money may need to last, read off the joint-life mortality

@@ -3,6 +3,40 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-08-29: A one-off capital lump is judged apart from recurring spend, and is funded last
+**Context:** card 0025 (expert panel 2026-08-19, engineer F3, reached independently by the property
+reviewer). `ForecastResult::$fullSpendAlwaysMet` is all-or-nothing across a whole path, and an
+unfunded home-purchase gap is charged as a year-0 one-off. That gap is a constant, identical on
+every sampled path, so it produced unmet spend on 100% of them: the full-spend probability read
+exactly 0.000 for plans whose ordinary spending was met in every single year, while essentials
+read a clean 100%. Scenario 51 was the visible case, at 76.4% essentials against 0.0% full spend.
+
+**Decision:** three things, together.
+
+- **Recurring spend is funded before a one-off capital lump.** The year's shortfall is charged
+  against its one-off lumps first (a documented one-off cost, and a mortgage redeemed from
+  capital), in reverse declaration order. This is the same funding order `essentialsMet` already
+  assumed; the alternative would have a purchase gap starve the food bill, which is not what a
+  household does.
+- **`YearResult::fullSpendMet()` judges the recurring budget only.** The lump is not forgiven: it
+  stays inside `$unmetSpend`, so the net-position fan, the year-0 charge and `scenarios:audit`
+  check 6 are untouched, and the year carries a `WarningCode::UNFUNDED_ONE_OFF_COST` naming the
+  cost and the amount.
+- **The all-or-nothing flags gain derived companions.** `ForecastResult::fullSpendYearsMetFraction()`
+  and `essentialsYearsMetFraction()` are methods over `$years`, never stored fields, so they cannot
+  drift from the flags. `SimulationResult::$successProbabilityFullSpendMostYears` reports the share
+  of paths meeting the target in at least `FULL_SPEND_MOST_YEARS_THRESHOLD` (95%) of their years;
+  it is `null` on a run stored before it existed and must show as a dash, never 0%.
+
+**Why:** the model was behaving correctly and reporting it in a way nobody could read. A single
+unfunded pound failing a fifty-year plan is not a conservative reading, it is an uninformative one,
+and it was moving the ranked comparison. Naming the lump tells the reader the actionable thing
+(which purchase has no money behind it) that a depressed probability never could. `ENGINE_VERSION`
+bumped to `finance-engine/one-off-spend-split`: any full-spend probability stored earlier for a plan
+with a funding gap is not comparable with one stored after. Card 0023 is confirmed by this rather
+than fixed: scenario 51's residual gap is £1.37, not £46,412.
+**Status:** active
+
 ## 2026-08-29: The assistant may assemble a what-if; the "never builds" rule is narrowed, not dropped
 **Context:** card 0020 built Phase 1 of
 [PLAN-assistant-scenario-editing.md](build/PLAN-assistant-scenario-editing.md), whose scope Rob

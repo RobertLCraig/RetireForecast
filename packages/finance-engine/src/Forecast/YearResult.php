@@ -17,6 +17,17 @@ use RetireForecast\FinanceEngine\Support\Warning;
  * $unmetSpend is the part of the target spend that could not be funded because
  * assets were exhausted — the first year it is positive is when the money runs out.
  *
+ * $unmetOneOffSpend is the part of $unmetSpend that is a one-off CAPITAL lump (an unfunded
+ * home purchase, a mortgage redeemed from capital) rather than the household's recurring
+ * budget. Recurring spend is funded first — the same order {@see $essentialsMet} already
+ * assumes — so a shortfall is charged against the year's one-offs before anything else, and
+ * {@see fullSpendMet()} judges the RECURRING budget only. Without the split, one unfunded
+ * pound of a year-0 purchase failed a fifty-year plan on every path.
+ * The lump is not swept under the carpet: it stays inside $unmetSpend (so the net-position
+ * fan and the audit still see it) and the year carries a {@see WarningCode::UNFUNDED_ONE_OFF_COST}
+ * warning naming the cost. Null on a hand-built year or one restored from an older stored
+ * result, which reads as "none identified".
+ *
  * $essentialSpend is the essential floor within $spendTarget (rent or property running
  * costs included, survivor factor applied) — the bar the "essentials always met" measure
  * is judged against, and the figure the income-floor readout compares secure income to.
@@ -117,14 +128,25 @@ final class YearResult
         public readonly ?Money $investmentCharges = null,
         public readonly ?self $nominal = null,
         public readonly ?Money $isaSheltered = null,
+        public readonly ?Money $unmetOneOffSpend = null,
     ) {
         $this->totalWealth = $liquidWealth->plus($pensionWealth)->plus($this->homeEquity());
     }
 
-    /** The full target spend was met in this year (nothing went unfunded). */
+    /**
+     * The full RECURRING target spend was met in this year. A one-off capital lump the year could
+     * not fund ({@see $unmetOneOffSpend}) is excluded, because it is a failure of that lump — named
+     * by its own warning — and not of the household's ordinary spending.
+     */
     public function fullSpendMet(): bool
     {
-        return $this->unmetSpend->isZero();
+        return $this->unmetSpend->minus($this->unmetOneOffSpend())->minZero()->isZero();
+    }
+
+    /** The part of this year's unmet spend that is an unfunded one-off capital lump (zero if none). */
+    public function unmetOneOffSpend(): Money
+    {
+        return $this->unmetOneOffSpend ?? Money::zero();
     }
 
     /**
@@ -186,6 +208,7 @@ final class YearResult
             $investmentCharges ?? $this->investmentCharges,
             $nominal ?? $this->nominal,
             $this->isaSheltered,
+            $this->unmetOneOffSpend,
         );
     }
 }

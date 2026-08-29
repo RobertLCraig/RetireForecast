@@ -28,6 +28,7 @@ final class SimulationResultMapper
             'seed' => $result->seed,
             'successProbabilityEssentials' => $result->successProbabilityEssentials,
             'successProbabilityFullSpend' => $result->successProbabilityFullSpend,
+            'successProbabilityFullSpendMostYears' => $result->successProbabilityFullSpendMostYears,
             'depletionRate' => $result->depletionRate,
             'medianDepletionYear' => $result->medianDepletionYear,
             'terminalWealthPercentiles' => self::penceBands($result->terminalWealthPercentiles),
@@ -68,6 +69,11 @@ final class SimulationResultMapper
             careImpact: self::careImpactFromArray($data['careImpact'] ?? null),
             // Runs persisted before the IHT distribution (or with IHT off) have no key — default to null.
             ihtDistribution: self::ihtDistributionFromArray($data['ihtDistribution'] ?? null),
+            // Runs persisted before the "met in most years" measure landed have no key — null, which
+            // the presenter shows as "not measured". Never 0.0: that would read as "never met".
+            successProbabilityFullSpendMostYears: isset($data['successProbabilityFullSpendMostYears'])
+                ? (float) $data['successProbabilityFullSpendMostYears']
+                : null,
         );
     }
 

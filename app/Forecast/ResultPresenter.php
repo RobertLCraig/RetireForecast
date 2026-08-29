@@ -326,6 +326,13 @@ final class ResultPresenter
             'label' => self::LABELS[$variant],
             'successEssentials' => self::formatPercent($r->successProbabilityEssentials),
             'successFullSpend' => self::formatPercent($r->successProbabilityFullSpend),
+            // The "nearly always" companion to the all-or-nothing figure above: one short year in
+            // fifty takes that one to 0%, which reads as a plan that never worked. Null (shown as
+            // a dash) for a run stored before the measure existed, never 0% — see the mapper.
+            'successFullSpendMostYears' => $r->successProbabilityFullSpendMostYears === null
+                ? null
+                : self::formatPercent($r->successProbabilityFullSpendMostYears),
+            'fullSpendMostYearsThreshold' => (int) round(SimulationResult::FULL_SPEND_MOST_YEARS_THRESHOLD * 100),
             'depletionRate' => self::formatPercent($r->depletionRate),
             'medianDepletionYear' => $r->medianDepletionYear ?? null,
             // A plain-English verdict that drives the risk home. Factual (anchored to the
@@ -1674,6 +1681,21 @@ final class ResultPresenter
         // reader can challenge it. Each value is READ from the one place that owns it, never restated.
         foreach (self::assumedFigures($household, $housingAction, $forecast) as $assumed) {
             $notes[] = ['kind' => 'assumed_figure', 'text' => $assumed];
+        }
+
+        // (c6) A one-off CAPITAL lump the plan cannot fund in the year it falls: the unfunded part
+        // of a home purchase, or a mortgage the plan redeems from capital it does not have. It used
+        // to show only as a depressed full-spending probability — and because a year-0 purchase gap
+        // is the same constant on every sampled path, that probability read exactly 0%, which says
+        // "this plan never works" about a plan whose year-to-year spending is met throughout. Name
+        // the cost and its size instead. The sentence is the ENGINE's own (it owns the figure the
+        // projection charged), quoted rather than restated, so the two cannot drift.
+        foreach ($forecast->years as $year) {
+            foreach ($year->warnings as $warning) {
+                if ($warning->code === WarningCode::UNFUNDED_ONE_OFF_COST) {
+                    $notes[] = ['kind' => 'unfunded_one_off', 'text' => "In {$year->calendarYear}: {$warning->message}"];
+                }
+            }
         }
 
         // (d) Cohabiting-couple survivor caveats. The married/civil-partner survivor rights the

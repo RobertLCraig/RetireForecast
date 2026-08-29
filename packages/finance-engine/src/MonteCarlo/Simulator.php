@@ -63,6 +63,7 @@ final class Simulator
 
         $essentials = 0;
         $fullSpend = 0;
+        $fullSpendMostYears = 0;
         $depleted = 0;
         $depletionYears = [];
         $terminalWealth = [];
@@ -118,6 +119,9 @@ final class Simulator
 
             $essentials += $result->essentialsAlwaysMet ? 1 : 0;
             $fullSpend += $result->fullSpendAlwaysMet ? 1 : 0;
+            // The "nearly always" companion: one short year in fifty takes the all-or-nothing
+            // figure above to zero, which reads as a plan that never worked at all.
+            $fullSpendMostYears += $result->fullSpendYearsMetFraction() >= SimulationResult::FULL_SPEND_MOST_YEARS_THRESHOLD ? 1 : 0;
             if ($result->depletionCalendarYear !== null) {
                 $depleted++;
                 $depletionYears[] = $result->depletionCalendarYear;
@@ -163,6 +167,7 @@ final class Simulator
             careImpact: $settings->modelCareCost ? $this->careImpact($careCosts, $nPaths) : null,
             netPositionFanChart: $this->fanChart($netByYearIndex, $settings->baseYear),
             ihtDistribution: $settings->modelIht ? $this->ihtDistribution($ihtTotals, $nPaths) : null,
+            successProbabilityFullSpendMostYears: $fullSpendMostYears / $nPaths,
         );
     }
 

@@ -7,6 +7,16 @@
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
 _Last updated: 2026-08-29. The exceptions a fresh session needs, newest first:_
 
+- **A full-spend measure is now recurring-spend only, and every stored figure moved with it.**
+  Card 0025: a one-off capital lump the plan cannot fund (an unfunded purchase, a mortgage redeemed
+  from capital) is charged the year's shortfall FIRST and judged on its own, so it no longer fails
+  the all-or-nothing full-spend test on every path. **Any Monte Carlo full-spend probability stored
+  before this is not comparable with one stored after** — re-run before reading one beside the
+  other. `ForecastResult::fullSpendYearsMetFraction()` and `SimulationResult::$successProbability`
+  `FullSpendMostYears` (95%+ of years) are the honest companions; the latter is `null` on an older
+  stored run and must show as a dash, never 0%. Card 0023 is confirmed, not fixed: #51's completion
+  gap is **£1.37**, not £46,412, so its 0.0% was the artefact — its remaining acceptance is the
+  stale SCENARIO-V2.local.md warning and a clean audit exit.
 - **The assistant can now propose a what-if, behind a flag that is off.** Card 0020 built Phase 1 of
   [PLAN-assistant-scenario-editing.md](build/PLAN-assistant-scenario-editing.md): a "Change plan" tab
   that turns what the reader says into a reviewable diff, written only on confirm and only as an
@@ -25,8 +35,8 @@ _Last updated: 2026-08-29. The exceptions a fresh session needs, newest first:_
   is Rob's and sits on that card: whether a second property exists to model at all. DECISIONS 2026-08-29.
 - **Card 0018's migration has not been applied to the app database.** Run `php artisan migrate` after
   this branch merges, or a completed run carries no integrity stamp and no cache key.
-- **`ScenarioForecaster::ENGINE_VERSION` is `finance-engine/repeated-pcls-crystallisation`** (card
-  0007). Figures moved, so a run stored before it must not be read beside one stored after.
+- **`ScenarioForecaster::ENGINE_VERSION` is `finance-engine/one-off-spend-split`** (card 0025).
+  Figures moved, so a run stored before it must not be read beside one stored after.
 - **Cards 0011 to 0016** are summarised in [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md). What still
   stands from them: the stress-test data licence and the human WCAG 2.2 pass are open, and the
   comparison should not be read off until the ranking-movers at the head of the queue are fixed.
@@ -76,21 +86,21 @@ Full log and rationale: [DECISIONS.md](DECISIONS.md). The load-bearing "do not r
 ## Current state
 - **Done:** the tool is feature-complete for personal use. An HMRC-accurate deterministic engine (income tax and NI, the pension lump-sum suite including Month-1 emergency tax and reclaim, State Pension, SDLT/CGT/PRR, means-tested benefits, IHT, care) sits behind a Monte Carlo with stochastic joint-life mortality and stochastic house-price, salary and care-cost paths. Around it: encrypted DTO persistence, Fortify auth, GDPR, Filament, queued runs with progress and cancel, a Livewire UI with charts, spreadsheet import, a complete PDF export with server-drawn charts (an export of more than eight forecasts is queued and built one at a time, delivered as a zip), 2FA and a CSP. Decision support covers lever thresholds, a combination comparison, the survivor cliff, capacity for loss (how far wealth can fall before the essential floor breaks), a 2-D trade-off map and a local-model assistant. Housing covers stay-put, buy-cheaper, rent, park homes (a bought home that depreciates), let-to-let, equity release and real amortising repayment mortgages pinned to a lender illustration. The adviser-parity sweep is now closed bar A4 salary sacrifice, B3 the estate checklist, B4 the annual review and B5 capacity for loss (card 0011): investment charges, net-pay contribution relief, the protection gap (employer death-in-service cover and the life cover that would restore a survivor's plan), the cost-of-advice comparison and the ISA subscription cap shipped on 2026-07-31, and the annual-allowance / MPAA contribution cap, the £3,600 non-earner relief route and bed-and-ISA on 2026-08-22.
 - **In progress:** nothing mid-edit.
-- **Known bugs / broken:** a reviewed defect backlog, carded as **0024 to 0065** in [docs/board/todo/](board/todo/); do not restate it here, read the lane. The shape of it: five independent senior reviewers (software engineering, financial planning, welfare benefits, property, estate planning) read the docs, the engine and the stored scenarios on 2026-08-19. Findings four or more reviewers reached separately are the load-bearing ones. **Several change which plan the comparison ranks first**, so the ranked chart and card 0022 should not be read off until the head of the queue is cleared. Card **0023** is no longer undetermined: it is diagnosed as the unfunded-one-off defect and now blocked on 0025. The full report, with the private figures the cards deliberately omit, is the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`. Documented v1 scope limits remain flagged in code and listed in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" (for example Scotland income tax throws rather than guessing; emergency tax models the over-deduction magnitude, not PAYE-table pennies).
+- **Known bugs / broken:** a reviewed defect backlog, carded as **0024 to 0065** in [docs/board/todo/](board/todo/); do not restate it here, read the lane. The shape of it: five independent senior reviewers (software engineering, financial planning, welfare benefits, property, estate planning) read the docs, the engine and the stored scenarios on 2026-08-19. Findings four or more reviewers reached separately are the load-bearing ones. **Several change which plan the comparison ranks first**, so the ranked chart and card 0022 should not be read off until the head of the queue is cleared. Card **0023** is unblocked: 0025 fixed the unfunded-one-off defect behind it, so what remains there is a confirmation, not an investigation. The full report, with the private figures the cards deliberately omit, is the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
+Documented v1 scope limits remain flagged in code and listed in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" (for example Scotland income tax throws rather than guessing; emergency tax models the over-deduction magnitude, not PAYE-table pennies).
 - **Data hygiene is currently breached** (card 0043): private detail about the couple is in eleven tracked files, including this doc's own Blockers section historically. Cards written from 2026-08-19 carry no private figures and point at the gitignored captures instead. Keep it that way.
 - **Live carry-over:** the real couple's data is captured privately in the gitignored `docs/SCENARIO-V2.local.md`, which is the durable source to rebuild from after a DB wipe. **Read it before touching any V2 figure.** What each broker has actually offered, with dates and sources, is in the gitignored `docs/HOUSING-OFFERS.local.md`; the stored mortgage scenarios are priced off it.
 
 ## What's next (in order)
 **The queue is [docs/board/todo/](board/todo/), one card per file.** Do not restate it here. At the head:
 
-**The first four are the ranking-movers.** They change which plan wins, so they come before any
+**The first three are the ranking-movers.** They change which plan wins, so they come before any
 feature work and before card 0022 is answered. Re-run every stored scenario and `scenarios:audit`
 after each.
 
 1. **0024 an interest-only mortgage payment is CPI-indexed and survivor-scaled.** The repayment instalment was fixed for this in July 2026; the fix never reached the other three product shapes. It removes the inflation hedge on a nominal debt, so it penalises every borrowing route against selling. Biggest single distortion found.
-2. **0025 an unfunded one-off zeroes the full-spend probability on every path.** Also the diagnosis for 0023, which is blocked on it.
-3. **0034 a year-0 purchase cannot see a capital receipt arriving the same year**, so a plan borrows for life beside money it already has.
-4. **0035 and 0036 dead and mis-timed income inputs**: the defined-benefit escalation dropdown is never read, and the retirement year pays a part-year salary with a full year of pension and no National Insurance.
+2. **0034 a year-0 purchase cannot see a capital receipt arriving the same year**, so a plan borrows for life beside money it already has.
+3. **0035 and 0036 dead and mis-timed income inputs**: the defined-benefit escalation dropdown is never read, and the retirement year pays a part-year salary with a full year of pension and no National Insurance.
 
 Then the pre-review queue resumes at the head of [docs/board/todo/](board/todo/).
 

@@ -30,9 +30,23 @@ use RetireForecast\FinanceEngine\Money\Money;
  * year's shortfall, so the fan shows how DEEP the funding gap gets, not just that it hit
  * zero. It equals $usableFanChart exactly while solvent (no unmet spend). Empty for a run
  * persisted before it existed — consumers fall back to $usableFanChart.
+ *
+ * $successProbabilityFullSpendMostYears is the share of paths that met the full spending target in
+ * at least {@see FULL_SPEND_MOST_YEARS_THRESHOLD} of their years — the "nearly always" figure to
+ * read beside the all-or-nothing $successProbabilityFullSpend, which one short year in fifty takes
+ * to zero. Null for a run persisted before it existed; a caller must show that as "not measured"
+ * rather than as 0%.
  */
 final class SimulationResult
 {
+    /**
+     * The bar {@see $successProbabilityFullSpendMostYears} is measured against: a path counts as
+     * a success when it met the full spending target in at least this share of its years. The
+     * all-or-nothing $successProbabilityFullSpend fails a path on one short year out of fifty,
+     * which is a real but very different outcome from a plan that is short throughout.
+     */
+    public const FULL_SPEND_MOST_YEARS_THRESHOLD = 0.95;
+
     /**
      * @param  array{p10: Money, p25: Money, p50: Money, p75: Money, p90: Money}  $terminalWealthPercentiles
      * @param  list<array{calendarYear: int, paths: int, p10: Money, p25: Money, p50: Money, p75: Money, p90: Money}>  $fanChart
@@ -55,5 +69,6 @@ final class SimulationResult
         public readonly ?CareImpact $careImpact = null,
         public readonly array $netPositionFanChart = [],
         public readonly ?IhtDistribution $ihtDistribution = null,
+        public readonly ?float $successProbabilityFullSpendMostYears = null,
     ) {}
 }

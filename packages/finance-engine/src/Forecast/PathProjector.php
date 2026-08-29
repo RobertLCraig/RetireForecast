@@ -1106,9 +1106,19 @@ final class PathProjector
             $essentialPence += $escalation;
         }
 
-        $spendNominal = (int) round($targetPence * $state['spendFactor'] * $survivor)
-            + $this->oneOffCostsNominal($household, $ages, $cumInflation)
-            + $repayOneOff;
+        // The year's one-off CAPITAL lumps, kept as a labelled list rather than one anonymous
+        // total: a documented one-off cost (the unfunded part of a home purchase is the worked
+        // example) plus a mortgage redeemed from capital. They join the spend target like any
+        // other outflow, but they are told apart from the recurring budget when the year is
+        // judged below — a lump the plan cannot fund is a failure of that lump, not of the
+        // household's ordinary spending.
+        $oneOffs = $this->oneOffCostsNominal($household, $ages, $cumInflation);
+        if ($repayOneOff > 0) {
+            $oneOffs[] = ['label' => 'Mortgage redemption', 'amount' => $repayOneOff];
+        }
+        $oneOffTotalNominal = array_sum(array_column($oneOffs, 'amount'));
+
+        $spendNominal = (int) round($targetPence * $state['spendFactor'] * $survivor) + $oneOffTotalNominal;
         $essentialNominal = (int) round($essentialPence * $state['spendFactor'] * $survivor);
 
         // A capital-and-interest mortgage instalment is added HERE, after the CPI and survivor
@@ -1262,6 +1272,15 @@ final class PathProjector
         $unmetNominal = max(0, $spendNominal - $metSpend);
         $essentialsMet = $metSpend >= $essentialNominal;
 
+        // Recurring spend is funded BEFORE a one-off capital lump — a household eats and heats
+        // itself before it completes a purchase — which is the same funding order $essentialsMet
+        // above already assumes. So charge the year's shortfall against its one-offs first. What
+        // remains is the recurring budget that genuinely went short, and it is that (not the
+        // lump) which {@see YearResult::fullSpendMet()} judges: a year-0 purchase gap is the same
+        // constant on every sampled path, so folding it in reported the full-spend probability as
+        // exactly 0.000 for a plan whose ordinary spending was met in every single year.
+        $unmetOneOffNominal = min($unmetNominal, $oneOffTotalNominal);
+
         // Real (today's money) figures.
         $realFactor = 1.0 / $cumInflation;
         $r = fn (int $nominal): Money => Money::fromPence((int) round($nominal * $realFactor));
@@ -1291,12 +1310,16 @@ final class PathProjector
             essentialSpend: $m($essentialNominal),
             shortfallFunded: $m($fundedNominal),
             unmetSpend: $m($unmetNominal),
+            unmetOneOffSpend: $m($unmetOneOffNominal),
             essentialsMet: $essentialsMet,
             liquidWealth: $m($liquid),
             pensionWealth: $m($pension),
             propertyWealth: $m($state['property']),
             incomeBySource: array_map($m, $src),
-            warnings: $this->mpaaWarnings($state, $mpaaAtYearStart),
+            warnings: [
+                ...$this->mpaaWarnings($state, $mpaaAtYearStart),
+                ...$this->unfundedOneOffWarnings($oneOffs, $unmetOneOffNominal, $m),
+            ],
             mortgageBalance: $m($state['mortgageOutstanding']),
             nominal: $nominal,
             isaSheltered: $m($isaShelteredNominal),
@@ -2396,7 +2419,16 @@ final class PathProjector
         return (int) round($this->incomeTax->totalPence($deflated) * $factor);
     }
 
-    private function oneOffCostsNominal(Household $household, array $ages, float $cumInflation): int
+    /**
+     * The documented one-off costs falling in this year, each with its label, in nominal pence.
+     * Returned as a labelled list rather than a total so an unfunded lump can be NAMED in a
+     * warning — a reader cannot act on "£125,000 of spending went unmet" without knowing which
+     * cost it was.
+     *
+     * @param  array<string, int>  $ages
+     * @return list<array{label: string, amount: int}>
+     */
+    private function oneOffCostsNominal(Household $household, array $ages, float $cumInflation): array
     {
         // v1 limitation (flagged): a one-off cost has an `atAge` but no `personId`, so it fires on
         // the FIRST-declared person's age only. A cost meant to land at the second person's age
@@ -2404,14 +2436,50 @@ final class PathProjector
         // advancing after that person dies. Add a per-cost personId to lift this.
         $referenceId = array_key_first($ages);
         $referenceAge = $ages[$referenceId] ?? null;
-        $total = 0;
+        $due = [];
         foreach ($household->expenseProfile->oneOffCosts as $cost) {
             if ($referenceAge !== null && ($cost['atAge'] ?? null) === $referenceAge) {
-                $total += (int) round($cost['amount']->pence * $cumInflation);
+                $due[] = [
+                    'label' => $cost['label'] ?? 'One-off cost',
+                    'amount' => (int) round($cost['amount']->pence * $cumInflation),
+                ];
             }
         }
 
-        return $total;
+        return $due;
+    }
+
+    /**
+     * One warning per one-off capital cost this year could not fund, naming the cost and the
+     * amount left unfunded. The shortfall is charged against the costs in REVERSE declaration
+     * order (the last lump added is the first to go unfunded), so the attribution is deterministic
+     * rather than arbitrary. Empty when everything was funded.
+     *
+     * @param  list<array{label: string, amount: int}>  $oneOffs
+     * @param  callable(int): Money  $m  nominal pence -> the reported Money (real, or the nominal twin)
+     * @return list<Warning>
+     */
+    private function unfundedOneOffWarnings(array $oneOffs, int $unmetOneOffNominal, callable $m): array
+    {
+        $warnings = [];
+        foreach (array_reverse($oneOffs) as $cost) {
+            if ($unmetOneOffNominal <= 0) {
+                break;
+            }
+            $unfunded = min($unmetOneOffNominal, $cost['amount']);
+            $unmetOneOffNominal -= $unfunded;
+            if ($unfunded <= 0) {
+                continue;
+            }
+            $warnings[] = new Warning(
+                WarningCode::UNFUNDED_ONE_OFF_COST,
+                "{$cost['label']}: ".$m($unfunded)->format().' of this one-off cost has nothing to fund it '
+                .'in the year it falls, so the plan is charged for money it does not have. Your ordinary '
+                .'year-to-year spending is judged separately and is not counted short because of it.',
+            );
+        }
+
+        return $warnings;
     }
 
     /**

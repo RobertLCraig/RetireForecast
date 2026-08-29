@@ -116,4 +116,25 @@ class SimulationResultMappingTest extends TestCase
         unset($payload['ihtDistribution']);
         $this->assertNull(SimulationResultMapper::fromArray($payload)->ihtDistribution);
     }
+
+    public function test_a_run_persisted_before_the_most_years_measure_rehydrates_with_null_not_zero(): void
+    {
+        $result = (new Simulator(TaxYearRegistry::for('2026-27')))->run(
+            HouseholdFixture::household(),
+            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+            AssumptionSetLibrary::default(),
+            new CohortLifeTable,
+            nPaths: 20,
+            seed: 5,
+        );
+
+        $this->assertNotNull($result->successProbabilityFullSpendMostYears);
+
+        // An older stored run has no key. It must rehydrate to null, which the presenter shows as
+        // a dash: 0.0 would read as "the full spend was never met", a figure nobody measured.
+        $payload = SimulationResultMapper::toArray($result);
+        unset($payload['successProbabilityFullSpendMostYears']);
+
+        $this->assertNull(SimulationResultMapper::fromArray($payload)->successProbabilityFullSpendMostYears);
+    }
 }
