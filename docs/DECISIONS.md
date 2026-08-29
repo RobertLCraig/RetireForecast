@@ -3,6 +3,40 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-08-29: The assistant may assemble a what-if; the "never builds" rule is narrowed, not dropped
+**Context:** card 0020 built Phase 1 of
+[PLAN-assistant-scenario-editing.md](build/PLAN-assistant-scenario-editing.md), whose scope Rob
+approved on 2026-07-04. That plan deliberately widens the doctrine set on 2026-07-03 (RESEARCH-local-assistant
+§0/§3/A4: *"the model never builds anything, never edits code, never offers to build"*), so the
+widening is recorded here rather than shipped quietly.
+
+**Decision:** the assistant may turn **the reader's own stated figures** into a **proposed what-if**,
+shown as a diff and written only on a confirm click, as an ordinary delta-child. Everything the old
+rule protected still holds, and each part is now a named, tested guardrail:
+
+- **C1 input grounding** (`ScenarioEditGrounding`): a figure not present in the reader's own words is
+  refused. The model supplies no number, rounds none, and works none out. This is the input-side twin
+  of G1, and it matters more: an invented input is forecast on, then comes back wearing the engine's
+  authority.
+- **C2 closed vocabulary** (`ScenarioEditVocabulary`): the model picks from a menu the app builds out
+  of the base's own form-state. It cannot name a path the menu does not carry, so its agency is
+  bounded structurally rather than by prompt.
+- **C3 mandatory confirm**: proposing writes nothing at all. The confirm card is
+  `WhatIfChanges::compute`, the same base-value → new-value diff a saved what-if is described by, so
+  the reader checks the figures on the surface they already read what-ifs on.
+- **C4 child only**: the base plan is never edited. Phase 3 base editing is **not built** and has no
+  config key.
+- Off by default behind its own switch, `config('assistant.can_edit_scenarios')`, so the explain-only
+  assistant stays exactly that until it is deliberately turned on.
+
+**Why:** the old rule protected three things: the model is never the source of a number, never
+computes an outcome, and every write is reversible and human-reviewed. Creating a what-if breaks none
+of them: it produces **inputs only**, all of them the reader's, and the existing engine still does the
+forecasting. What stays ruled out is unchanged: the model never writes code, never predicts, never
+sources a figure. A field the chat cannot reach is fine (chat is a subset of the builder); a field it
+reaches wrongly is not, which is why the menu is pinned to `BuilderStateFixture::full` in test.
+**Status:** active
+
 ## 2026-08-29: Multi-property leaves DRAFT — extend `Property`, keep the main home separate, Phase 1 only
 **Context:** card 0019. [PLAN-multi-property.md](build/PLAN-multi-property.md) had sat as a DRAFT
 proposal since 2026-06-30 (Lane D) with five open questions, so no code could honestly be written

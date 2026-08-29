@@ -33,7 +33,12 @@
                 <div>
                     <h2 id="assistant-heading" class="text-base font-semibold text-gray-900">Ask about this forecast</h2>
                     <p class="mt-0.5 text-xs text-gray-500">
-                        Runs locally on this machine. It only states figures from your forecast and can’t change your plan.
+                        Runs locally on this machine. It only states figures from your forecast.
+                        @if ($this->canEditScenarios())
+                            It can fill in a what-if for you to check, but nothing is saved until you say so.
+                        @else
+                            It can’t change your plan.
+                        @endif
                     </p>
                 </div>
                 <div class="flex shrink-0 items-center gap-1">
@@ -68,6 +73,12 @@
                     class="border-b-2 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 {{ $tab === 'ideas' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800' }}">
                     Ideas
                 </button>
+                @if ($this->canEditScenarios())
+                    <button type="button" role="tab" wire:click="switchTab('change')" @if ($tab === 'change') aria-selected="true" @endif
+                        class="border-b-2 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 {{ $tab === 'change' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800' }}">
+                        Change plan
+                    </button>
+                @endif
             </div>
 
             @if ($tab === 'ask')
@@ -162,6 +173,70 @@
                 <p class="mt-2 text-xs text-gray-400">
                     Explanation only — not a personal recommendation or regulated advice. See Pension Wise / MoneyHelper.
                 </p>
+            </form>
+            @elseif ($tab === 'change')
+            {{-- Change-plan tab: the assistant fills in a what-if from what you say. Two steps, always:
+                 propose (writes NOTHING) then confirm. The confirm card is the same base-value → new-value
+                 diff a saved what-if is described by, so you check the figures before anything exists.
+                 Creating one makes an ordinary delta-child what-if; your base plan is never touched. --}}
+            <div class="flex-1 space-y-3 overflow-y-auto p-4">
+                <p class="text-sm text-gray-600">
+                    Say what you want to try, in your own words and with your own figures, for example
+                    “retire at 68 and put essentials up to £32,000”. I fill it in, show you the change, and
+                    save nothing until you press Create.
+                </p>
+
+                @if ($changeNotice !== '')
+                    <p role="status" class="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">{{ $changeNotice }}</p>
+                @endif
+
+                @if ($this->proposedChanges() !== [])
+                    <div role="status" class="rounded-md border border-blue-300 bg-blue-50 p-3">
+                        <p class="text-sm font-semibold text-blue-900">Check this before it is created</p>
+                        <dl class="mt-2 space-y-1.5">
+                            @foreach ($this->proposedChanges() as $change)
+                                <div class="text-sm">
+                                    <dt class="font-medium text-gray-900">{{ $change['label'] }}</dt>
+                                    <dd class="text-gray-700">{{ $change['from'] }} &rarr; <span class="font-semibold">{{ $change['to'] }}</span></dd>
+                                </div>
+                            @endforeach
+                        </dl>
+                        <p class="mt-2 text-xs text-blue-900">
+                            This creates a new what-if alongside your plan. Your plan itself does not change.
+                        </p>
+                        <div class="mt-3 flex items-center gap-2">
+                            <button type="button" wire:click="confirmChange" wire:loading.attr="disabled" wire:target="confirmChange"
+                                class="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                                Create this what-if
+                            </button>
+                            <button type="button" wire:click="discardChange"
+                                class="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                Discard
+                            </button>
+                        </div>
+                    </div>
+                @endif
+            </div>
+
+            <form wire:submit="proposeChange" class="border-t border-gray-200 p-3">
+                <label for="assistant-change" class="sr-only">What would you like to change?</label>
+                <textarea
+                    id="assistant-change"
+                    wire:model="changeRequest"
+                    wire:loading.attr="disabled"
+                    wire:target="proposeChange"
+                    rows="2"
+                    placeholder="e.g. what if I retire at 68?"
+                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                ></textarea>
+                <div class="mt-2 flex items-center justify-between gap-2">
+                    <p class="text-xs text-gray-400">Nothing is saved until you confirm.</p>
+                    <button type="submit" wire:loading.attr="disabled" wire:target="proposeChange"
+                        class="shrink-0 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="proposeChange">Show me the change</span>
+                        <span wire:loading wire:target="proposeChange">Reading…</span>
+                    </button>
+                </div>
             </form>
             @else
             {{-- Ideas tab: capture an idea for the tool. The model structures it into a queued item; it

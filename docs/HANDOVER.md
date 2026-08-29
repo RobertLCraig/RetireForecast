@@ -7,6 +7,18 @@
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
 _Last updated: 2026-08-29. The exceptions a fresh session needs, newest first:_
 
+- **The assistant can now propose a what-if, behind a flag that is off.** Card 0020 built Phase 1 of
+  [PLAN-assistant-scenario-editing.md](build/PLAN-assistant-scenario-editing.md): a "Change plan" tab
+  that turns what the reader says into a reviewable diff, written only on confirm and only as an
+  ordinary delta-child. It is invisible until `ASSISTANT_CAN_EDIT_SCENARIOS=true`. This narrows the
+  "the model never builds" doctrine; DECISIONS 2026-08-29 records the guardrails. Not yet exercised
+  against a real `qwen3:14b`, and not yet seen in a browser.
+- **An override cannot create a map the base does not have.** `BuilderStateDelta::merge` drops
+  `assumptionOverrides.inflation` when the base overrides no assumption at all, so a what-if that is
+  the first in its family to touch an assumption does not get it. It is not silent (the path reports
+  as an orphan, which the results, compare, PDF and `scenarios:audit` surfaces all show), but the
+  what-if does not model what was asked. Found during card 0020, which works around it by offering
+  only assumptions the base already carries; the underlying fix is uncarded.
 - **Card 0019 settled the multi-property plan and wrote no code.**
   [PLAN-multi-property.md](build/PLAN-multi-property.md) is out of DRAFT with its five scope questions
   answered, and card 0019 now carries the Phase-1 acceptance behind `needs: 0029, 0030`. One question

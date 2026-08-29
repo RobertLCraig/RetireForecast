@@ -247,4 +247,120 @@ final class ScenarioAssistantTest extends TestCase
 
         $this->assertDatabaseHas('assistant_backlog_items', ['id' => $theirs->id]);
     }
+
+    // --- The Change tab: propose a what-if, review it, then confirm (card 0020) ---
+
+    /** Enable the Change tab with a model that returns $reply to the one extraction call. */
+    private function fakeEditingModel(string $reply): void
+    {
+        config(['assistant.enabled' => true, 'assistant.can_edit_scenarios' => true]);
+        Http::fake([
+            '*/api/tags' => Http::response(['models' => []]),
+            '*/api/chat' => Http::response(['message' => ['content' => $reply]]),
+        ]);
+    }
+
+    public function test_a_proposed_change_is_shown_for_review_and_writes_nothing_until_it_is_confirmed(): void
+    {
+        $this->fakeEditingModel('{"edits":[{"field":"people.p1.plannedRetirementAge","value":"68"}],"question":""}');
+        $base = ScenarioFixture::rich($this->user);
+
+        $component = Livewire::test(ScenarioAssistant::class, ['scenario' => $base])
+            ->set('open', true)
+            ->call('switchTab', 'change')
+            ->set('changeRequest', 'what if I retire at 68?')
+            ->call('proposeChange')
+            ->assertSee('Check this before it is created')
+            ->assertSee('P1 · planned retirement age')
+            ->assertSee('66')                                  // the value it changes FROM
+            ->assertSee('68')                                  // the value it changes TO
+            ->assertSet('proposedEdits', ['people.p1.plannedRetirementAge' => '68']);
+
+        // Guardrail C3: the proposal exists only in the panel. Nothing is stored, and the base
+        // plan is untouched.
+        $this->assertSame(0, $base->children()->count());
+        $this->assertSame('66', $base->fresh()->effectiveBuilderState()['people'][0]['plannedRetirementAge']);
+
+        $component->call('confirmChange')->assertRedirect();
+
+        $child = $base->children()->firstOrFail();
+        $this->assertSame('what if I retire at 68?', $child->name);
+    }
+
+    public function test_a_confirmed_change_is_stored_exactly_like_a_hand_built_what_if(): void
+    {
+        $this->fakeEditingModel('{"edits":[{"field":"expenseLines.ess1.amount","value":"32000"}],"question":""}');
+        $base = ScenarioFixture::rich($this->user);
+
+        Livewire::test(ScenarioAssistant::class, ['scenario' => $base])
+            ->set('open', true)
+            ->call('switchTab', 'change')
+            ->set('changeRequest', 'essentials to £32k')
+            ->call('proposeChange')
+            ->call('confirmChange');
+
+        // A delta-child on the same builder-state model the UI writes: its own builder_state is
+        // empty, its inputs are the base's overlaid with a sparse dot-path override.
+        $child = $base->children()->firstOrFail();
+        $this->assertSame($base->id, $child->parent_scenario_id);
+        $this->assertSame([], $child->builder_state);
+        $this->assertSame(['name' => 'essentials to £32k', 'expenseLines.ess1.amount' => '32000'], $child->overrides);
+        $this->assertSame('32000', $child->effectiveBuilderState()['expenseLines'][0]['amount']);
+        $this->assertSame('28000', $base->fresh()->effectiveBuilderState()['expenseLines'][0]['amount']);
+    }
+
+    public function test_a_refused_proposal_says_why_and_creates_nothing(): void
+    {
+        // A figure the reader never stated (guardrail C1) never reaches an override.
+        $this->fakeEditingModel('{"edits":[{"field":"accounts.acc1.balance","value":"95000"}],"question":""}');
+        $base = ScenarioFixture::rich($this->user);
+
+        Livewire::test(ScenarioAssistant::class, ['scenario' => $base])
+            ->set('open', true)
+            ->call('switchTab', 'change')
+            ->set('changeRequest', 'put my ISA up a bit')
+            ->call('proposeChange')
+            ->assertSet('proposedEdits', [])
+            ->assertSee('only be guessing')
+            ->assertDontSee('Check this before it is created');
+
+        $this->assertSame(0, $base->children()->count());
+    }
+
+    public function test_discarding_a_proposal_leaves_nothing_behind(): void
+    {
+        $this->fakeEditingModel('{"edits":[{"field":"people.p1.plannedRetirementAge","value":"68"}],"question":""}');
+        $base = ScenarioFixture::rich($this->user);
+
+        Livewire::test(ScenarioAssistant::class, ['scenario' => $base])
+            ->set('open', true)
+            ->call('switchTab', 'change')
+            ->set('changeRequest', 'retire at 68')
+            ->call('proposeChange')
+            ->call('discardChange')
+            ->assertSet('proposedEdits', [])
+            ->assertDontSee('Check this before it is created')
+            ->call('confirmChange');
+
+        $this->assertSame(0, $base->children()->count());
+    }
+
+    public function test_the_change_tab_is_absent_and_inert_unless_its_own_flag_is_on(): void
+    {
+        config(['assistant.enabled' => true, 'assistant.can_edit_scenarios' => false]);
+        $base = ScenarioFixture::rich($this->user);
+
+        Livewire::test(ScenarioAssistant::class, ['scenario' => $base])
+            ->set('open', true)
+            ->assertDontSee('Change plan')
+            ->call('switchTab', 'change')
+            ->assertSet('tab', 'ask')                       // an unknown tab falls back to Ask
+            ->set('changeRequest', 'retire at 68')
+            ->call('proposeChange')
+            ->assertSet('proposedEdits', [])
+            ->set('proposedEdits', ['people.p1.plannedRetirementAge' => '68'])
+            ->call('confirmChange');
+
+        $this->assertSame(0, $base->children()->count());
+    }
 }

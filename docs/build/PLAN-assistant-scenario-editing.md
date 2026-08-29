@@ -3,10 +3,12 @@
 _Specced 2026-07-04. Purpose: Rob wants the in-app local assistant to **create scenarios** — ask
 targeted questions about what the reader wants to change **from the base**, then build the what-if
 for them; and, **only on an explicit request**, update the base plan itself. This doc is the
-spec-before-build. Status: **APPROVED scope (2026-07-04) — awaiting build.** Rob's calls: **widen the
+spec-before-build. Status: **Phase 1 BUILT (card 0020, 2026-08-29)** behind
+`config('assistant.can_edit_scenarios')`, default off. **Phases 2 (add/remove rows) and 3 (base
+editing) are NOT built**, and `can_edit_base` does not exist as a config key yet. Rob's calls: **widen the
 doctrine fully** (conversational what-ifs **and** gated base editing), with **base editing deferred to
 Phase 3, `can_edit_base` default off**. Minor items (§8 Q3–Q5) ride on the recommendations unless
-changed. Needs a DECISIONS entry at build/checkpoint._
+changed. DECISIONS entry: 2026-08-29._
 
 > **The one-line framing:** the assistant turns the reader's **own stated changes** into a
 > **reviewable what-if**, using the same delta-child machinery a hand-built what-if uses. It never
@@ -133,7 +135,9 @@ chooses to edit; we never guess that an "explain" question was secretly an edit 
 
 ## 5. Phasing (each ships + is verified E2E vs real `qwen3:14b`, like the prior phases)
 
-1. **Phase 1 — conversational what-if, value edits only.** Change **existing** leaf fields: each
+1. **Phase 1 — conversational what-if, value edits only. BUILT 2026-08-29 (card 0020),** except the
+   E2E pass against a real `qwen3:14b`, which the build session had no local runtime for; the
+   guardrails are proved against a fake client instead. Change **existing** leaf fields: each
    person's `plannedRetirementAge` / `grossSalary`, each pension/account `currentValue`/`balance`,
    each `expenseLines.*.amount`, the six `assumptionOverrides`, the `variant`. No structural
    add/remove. Confirm → child via `WhatIfWriter::create`. **This is the core ask and the safest

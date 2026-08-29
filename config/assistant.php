@@ -18,14 +18,24 @@ return [
     | from the engine (App\Assistant\ScenarioContext) and re-checked at runtime
     | (App\Assistant\FigureGrounding, guardrail G1); recommendation phrasing is held
     | to the same partition as the rest of the app (App\Compliance\OutputPhrasing,
-    | guardrail G2). And the model NEVER builds: its only future write is a backlog
-    | append (Phase 3). See docs/RESEARCH-local-assistant.md + DECISIONS 2026-07-03.
+    | guardrail G2). And the model NEVER builds — with one sanctioned narrowing of that
+    | rule (2026-07-04): it may ASSEMBLE a reviewable what-if from figures the reader
+    | themselves stated, which is data entry, not authorship. It still writes nothing
+    | without a confirm click, still supplies no figure of its own, and still never
+    | predicts an outcome. See docs/RESEARCH-local-assistant.md,
+    | docs/build/PLAN-assistant-scenario-editing.md + DECISIONS 2026-07-03.
     |
     */
 
     // Master switch. Off by default: the feature is inert until the local runtime is
     // deliberately wired up, so a machine without Ollama shows nothing (no silent errors).
     'enabled' => env('ASSISTANT_ENABLED', false),
+
+    // The Change tab: the assistant may turn what the reader says into a PROPOSED what-if, shown
+    // as a diff and written only on a confirm click, as a delta-child (the base is never touched).
+    // Its own switch, off by default, so the explain-only assistant stays exactly that until this
+    // is deliberately turned on. Base editing (Phase 3) is not built.
+    'can_edit_scenarios' => env('ASSISTANT_CAN_EDIT_SCENARIOS', false),
 
     // The local Ollama endpoint. Localhost only — do not point this at a remote host;
     // that would exfiltrate the household's financial data (guardrail: local-only).

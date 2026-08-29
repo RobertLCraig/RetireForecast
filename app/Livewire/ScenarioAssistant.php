@@ -9,18 +9,29 @@ use App\Assistant\AssistantTurnRunner;
 use App\Assistant\BacklogCapture;
 use App\Assistant\ChatClient;
 use App\Assistant\OllamaChatClient;
+use App\Assistant\ScenarioEditCapture;
+use App\Assistant\ScenarioEditVocabulary;
 use App\Enums\SimulationStatus;
+use App\Forecast\BuilderStateDelta;
+use App\Forecast\WhatIfChanges;
+use App\Forecast\WhatIfWriter;
 use App\Jobs\RunAssistantTurn;
 use App\Models\AssistantBacklogItem;
 use App\Models\AssistantTurn;
 use App\Models\Scenario;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Livewire\Component;
+use Throwable;
 
 /**
  * The in-page assistant: a plain-English explainer over THIS scenario's forecast, running on a
- * LOCAL model. It only explains — it cannot change the plan, run anything, or build anything.
+ * LOCAL model. It explains, it captures an idea for the backlog, and — only when
+ * `config('assistant.can_edit_scenarios')` is on — it can PROPOSE a what-if from what the reader
+ * says. It never runs anything, never builds anything, and never changes a stored plan: a
+ * proposal is shown as a diff and written only on a confirm click, and then only as a new
+ * delta-child what-if. See {@see proposeChange()} and docs/build/PLAN-assistant-scenario-editing.md.
  *
  * It is inert unless `config('assistant.enabled')` is on (so a machine without the local runtime
  * shows nothing). Every figure it may state is engine-derived and re-verified at runtime; the
@@ -43,7 +54,7 @@ class ScenarioAssistant extends Component
      *  stays out of the content until the reader wants it (a docked panel, not a floating chat bubble). */
     public bool $open = false;
 
-    /** Which view the panel shows: 'ask' (explain this forecast) or 'ideas' (capture backlog items). */
+    /** Which view the panel shows: 'ask' (explain), 'ideas' (capture backlog items), 'change' (propose a what-if). */
     public string $tab = 'ask';
 
     public string $question = '';
@@ -53,6 +64,20 @@ class ScenarioAssistant extends Component
 
     /** A one-line confirmation after capturing an idea (visible, never silent). */
     public string $captureNotice = '';
+
+    /** What the reader asked to change, on the Change tab. */
+    public string $changeRequest = '';
+
+    /**
+     * The proposed edits (form-state dot-path => new value), held UNWRITTEN until the reader
+     * confirms — guardrail C3. Nothing here has touched a stored scenario.
+     *
+     * @var array<string, string>
+     */
+    public array $proposedEdits = [];
+
+    /** The assistant's question back, or the reason a proposal was refused (visible, never silent). */
+    public string $changeNotice = '';
 
     public function toggle(): void
     {
@@ -76,11 +101,13 @@ class ScenarioAssistant extends Component
         $this->question = '';
     }
 
-    /** Switch between the Ask (explain) and Ideas (capture) views. */
+    /** Switch between the Ask (explain), Ideas (capture) and Change (propose a what-if) views. */
     public function switchTab(string $tab): void
     {
-        $this->tab = in_array($tab, ['ask', 'ideas'], true) ? $tab : 'ask';
+        $tabs = $this->canEditScenarios() ? ['ask', 'ideas', 'change'] : ['ask', 'ideas'];
+        $this->tab = in_array($tab, $tabs, true) ? $tab : 'ask';
         $this->captureNotice = '';
+        $this->discardChange();
     }
 
     /**
@@ -134,6 +161,99 @@ class ScenarioAssistant extends Component
             ->latest()
             ->limit(30)
             ->get();
+    }
+
+    // --- The Change tab: propose a what-if, then confirm it (PLAN-assistant-scenario-editing) ---
+
+    /** Whether this panel may propose plan changes at all — its own switch, off by default (C4). */
+    public function canEditScenarios(): bool
+    {
+        return (bool) config('assistant.enabled') && (bool) config('assistant.can_edit_scenarios');
+    }
+
+    /**
+     * Turn what the reader asked for into a PROPOSAL. This writes nothing: it fills in the
+     * changes and hands them back for review (guardrail C3), so a stored scenario is never
+     * mutated by a sentence. The model may only pick from the app's closed menu (C2) and may
+     * only carry figures the reader stated (C1) — see {@see ScenarioEditCapture}.
+     *
+     * Synchronous, like the Ideas tab's capture: this is one short structured-extraction call,
+     * not the long grounded generation the Ask tab queues onto the worker.
+     */
+    public function proposeChange(): void
+    {
+        if (! $this->canEditScenarios()) {
+            return;
+        }
+
+        $this->discardChange();
+
+        $proposal = (new ScenarioEditCapture($this->chatClient()))->propose(
+            ScenarioEditVocabulary::for($this->scenario),
+            $this->changeRequest,
+        );
+
+        $this->proposedEdits = $proposal['edits'];
+        $this->changeNotice = $proposal['question'];
+    }
+
+    /**
+     * Write the reviewed proposal as an ordinary delta-child what-if — the same sparse override
+     * delta over the same base that a hand-built what-if stores, through the same writer, so an
+     * assistant edit and a manual one are indistinguishable afterwards. The base plan itself is
+     * untouched (C4: base editing is not built). An edit that will not assemble is reported and
+     * creates nothing (SE-5).
+     */
+    public function confirmChange(): mixed
+    {
+        if (! $this->canEditScenarios() || $this->proposedEdits === []) {
+            return null;
+        }
+
+        // A what-if is always a child of the base, even when proposed from a child's results.
+        $base = $this->scenario->baseScenario();
+        $baseState = $base->effectiveBuilderState();
+        $overrides = BuilderStateDelta::diff($baseState, BuilderStateDelta::merge($baseState, $this->proposedEdits));
+
+        if ($overrides === []) {
+            $this->discardChange();
+            $this->changeNotice = 'That would not change anything in this plan, so nothing was created.';
+
+            return null;
+        }
+
+        try {
+            $child = WhatIfWriter::create($base, Str::limit(trim($this->changeRequest), 60, ''), $overrides);
+        } catch (Throwable $e) {
+            $this->discardChange();
+            $this->changeNotice = 'That change would not add up: '.$e->getMessage().' Nothing was saved.';
+
+            return null;
+        }
+
+        return $this->redirect(route('scenarios.results', $child), navigate: true);
+    }
+
+    /** Drop an unconfirmed proposal. Nothing was written, so there is nothing to undo. */
+    public function discardChange(): void
+    {
+        $this->proposedEdits = [];
+        $this->changeNotice = '';
+    }
+
+    /**
+     * The proposal as the reader reviews it — the same base-value → new-value diff a saved
+     * what-if is described by, so the confirm card and the what-if afterwards read alike.
+     *
+     * @return list<array{label: string, from: string, to: string}>
+     */
+    public function proposedChanges(): array
+    {
+        if ($this->proposedEdits === []) {
+            return [];
+        }
+
+        return WhatIfChanges::compute($this->scenario->baseScenario()->effectiveBuilderState(), $this->proposedEdits);
     }
 
     /**
@@ -335,7 +455,7 @@ class ScenarioAssistant extends Component
             ->find($this->pendingTurnId);
     }
 
-    /** The local chat client, built from config — used by the Ideas tab's idea-capture structurer. */
+    /** The local chat client, built from config — used by the Ideas and Change tabs' structurers. */
     private function chatClient(): ChatClient
     {
         return new OllamaChatClient(

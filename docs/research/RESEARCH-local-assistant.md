@@ -10,6 +10,14 @@ discipline, and the phasing. **Post-v1; specced before building.**_
 > capturing, never predicting or calculating**. Every number it says comes from the engine; the only
 > thing it may *write* is a line on the development backlog. It never builds, edits code, or offers to.
 
+> **Narrowed 2026-08-29 (card 0020, one sanctioned exception).** The model may also **assemble a
+> proposed what-if from figures the reader themselves stated**: data entry, not authorship. It writes
+> nothing without a confirm click, supplies no figure of its own (guard C1), may only touch fields on a
+> menu the app builds (guard C2), and creates a throwaway delta-child, never an edit to the base plan.
+> Everything else below still stands: it never builds code, never predicts, never sources a figure. See
+> [PLAN-assistant-scenario-editing.md](../build/PLAN-assistant-scenario-editing.md) + DECISIONS 2026-08-29;
+> §0, §3 and risk A4 are read subject to it.
+
 **Build status (2026-07-03):** **All three phases are BUILT** — (1) grounded scenario-explainer, (2) methodology
 doc-RAG, (3) idea capture (the model's only write). `App\Assistant\` + `App\Livewire\ScenarioAssistant`, both
 guardrails tested, each phase verified end-to-end against `qwen3:14b` (+ `nomic-embed-text` for Phase 2); see §6.

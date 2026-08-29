@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Forecast;
 
+use App\Assistant\ScenarioEditVocabulary;
 use App\Models\AssumptionSet;
 use App\Models\Scenario;
 use Illuminate\Support\Str;
@@ -147,11 +148,13 @@ final class WhatIfChanges
 
     /**
      * A readable label for an override path: a top-level field, an assumption/housing/
-     * property figure, or a list row addressed by id ("<row name> · <field>").
+     * property figure, or a list row addressed by id ("<row name> · <field>"). Public so the
+     * assistant's edit menu ({@see ScenarioEditVocabulary}) names a field the
+     * same way the resulting what-if diff will — one labelling, two surfaces.
      *
      * @param  array<string, mixed>  $baseState
      */
-    private static function label(string $path, array $baseState): string
+    public static function label(string $path, array $baseState): string
     {
         $segments = explode('.', $path);
         $head = $segments[0];
