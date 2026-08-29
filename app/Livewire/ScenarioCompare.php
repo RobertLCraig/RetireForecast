@@ -46,7 +46,11 @@ class ScenarioCompare extends Component
      */
     public bool $hideNonViable = false;
 
-    /** How many plans the last "re-run all" click queued (0 = none yet). */
+    /**
+     * How many plans the last "re-run all" click actually queued (0 = none yet). A plan whose
+     * inputs have not moved since its last run is served that run instead of recomputing, so
+     * this counts the fresh runs, not the plans compared.
+     */
     public int $familyQueued = 0;
 
     /**
@@ -78,12 +82,17 @@ class ScenarioCompare extends Component
      * run; after a model change or a new assumption those go stale, so this refreshes the whole
      * set in one click rather than opening each plan. The runs execute in the background on the
      * worker; a queued-count note confirms.
+     *
+     * A plan whose inputs are unchanged since its last full run is handed that run back rather
+     * than recomputed ({@see SimulationRunner::dispatch}), so re-clicking this costs nothing. The
+     * batch still tracks every plan, but only the genuinely fresh runs are counted queued.
      */
     public function runFullFamily(): void
     {
         $runner = app(SimulationRunner::class);
-        $this->runIds = $this->plans()->map(fn (Scenario $plan): int => $runner->dispatch($plan)->id)->all();
-        $this->familyQueued = count($this->runIds);
+        $runs = $this->plans()->map(fn (Scenario $plan): SimulationRun => $runner->dispatch($plan));
+        $this->runIds = $runs->map(fn (SimulationRun $run): int => $run->id)->all();
+        $this->familyQueued = $runs->filter(fn (SimulationRun $run): bool => $run->wasRecentlyCreated)->count();
     }
 
     /** wire:poll target while the batch is in flight; the render pass re-reads its progress. */

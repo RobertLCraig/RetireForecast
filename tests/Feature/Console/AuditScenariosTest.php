@@ -9,6 +9,7 @@ use App\Enums\ScenarioVariant;
 use App\Finance\Mapping\AssumptionSetMapper;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
+use App\Forecast\SimulationRunner;
 use App\Models\AssumptionSet;
 use App\Models\Scenario;
 use App\Models\User;
@@ -246,5 +247,26 @@ final class AuditScenariosTest extends TestCase
             ),
             'the depreciation must be disclosed, which is what the audit checks for',
         );
+    }
+
+    public function test_it_catches_a_stored_result_that_no_longer_matches_its_integrity_stamp(): void
+    {
+        $scenario = $this->base();
+        $run = (new SimulationRunner(new ScenarioForecaster))->preview($scenario, seed: 1, paths: 20);
+
+        // A freshly stamped run audits clean.
+        $this->assertSame([], $this->auditProblems());
+
+        // Doctor a stored figure the way a database edit would; the stamp no longer matches, so
+        // the audit refuses to read the result off as the engine's own.
+        $result = $run->results()->where('variant', 'rent')->firstOrFail();
+        $payload = $result->payload;
+        $payload['successProbabilityEssentials'] = 1.0;
+        $result->payload = $payload;
+        $result->save();
+
+        $problems = $this->auditProblems();
+        $this->assertNotEmpty($problems);
+        $this->assertStringContainsString('integrity stamp', implode(' | ', $problems));
     }
 }

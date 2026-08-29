@@ -25,6 +25,8 @@ use RetireForecast\FinanceEngine\Dto\AssumptionSet;
  * @property string $engine_version
  * @property string $taxyear_config_version
  * @property array $assumption_snapshot
+ * @property string|null $inputs_hash
+ * @property string|null $integrity_hash
  * @property string|null $error
  * @property int $scenario_id
  * @property int|null $user_id
@@ -33,8 +35,8 @@ class SimulationRun extends Model
 {
     protected $fillable = [
         'scenario_id', 'user_id', 'mode', 'n_paths', 'seed', 'status', 'progress_pct',
-        'engine_version', 'taxyear_config_version', 'assumption_snapshot', 'error',
-        'started_at', 'finished_at',
+        'engine_version', 'taxyear_config_version', 'assumption_snapshot', 'inputs_hash',
+        'integrity_hash', 'error', 'started_at', 'finished_at',
     ];
 
     protected function casts(): array
@@ -92,5 +94,57 @@ class SimulationRun extends Model
         $this->assumption_snapshot = AssumptionSetMapper::toArray($set);
 
         return $this;
+    }
+
+    /**
+     * The tamper-evident stamp over this run: everything that says what was computed
+     * (scenario, mode, paths, seed, engine + tax-year stamps, inputs hash, the frozen
+     * assumptions) and everything that came out of it (each variant's decrypted result
+     * payload). Edit any stored figure or any provenance column and this no longer matches
+     * what was recorded, so an altered result is evident rather than silently believed.
+     *
+     * Keyed with the app key, so re-forging the stamp needs more than database access. The
+     * mutable lifecycle columns (status, progress, timestamps, error) are deliberately OUT:
+     * cancelling or re-reading a run changes those legitimately, and a stamp that moved
+     * every time would report tampering it had not found.
+     */
+    public function integrityHash(): string
+    {
+        $results = $this->results()
+            ->orderBy('variant')
+            ->get()
+            ->mapWithKeys(fn (Result $result): array => [$result->variant->value => $result->payload])
+            ->all();
+
+        return hash_hmac('sha256', json_encode([
+            'scenario_id' => $this->scenario_id,
+            'mode' => $this->mode->value,
+            'n_paths' => $this->n_paths,
+            'seed' => $this->seed,
+            'engine_version' => $this->engine_version,
+            'taxyear_config_version' => $this->taxyear_config_version,
+            'inputs_hash' => $this->inputs_hash,
+            'assumptions' => $this->assumption_snapshot,
+            'results' => $results,
+        ], JSON_THROW_ON_ERROR), (string) config('app.key'));
+    }
+
+    /** Stamp this run with its integrity hash. Called once the results are persisted. */
+    public function recordIntegrityHash(): static
+    {
+        $this->integrity_hash = $this->integrityHash();
+
+        return $this;
+    }
+
+    /**
+     * True when this run still hashes to the stamp recorded when it finished. False means
+     * either it was never stamped (a run predating the column, which cannot be vouched for)
+     * or a stored figure has moved since. The audit reports both rather than hiding either.
+     */
+    public function isIntact(): bool
+    {
+        return $this->integrity_hash !== null
+            && hash_equals($this->integrity_hash, $this->integrityHash());
     }
 }

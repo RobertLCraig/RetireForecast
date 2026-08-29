@@ -41,7 +41,8 @@ changes. Do not act on a partial read. This follows the global project documenta
   example — its zeroed spend line read as "no mortgage is charged"). Run **`php artisan
   scenarios:audit`** to sweep every stored scenario for correctness *and* correct disclosure
   (mislabelled variants, orphaned overrides, an unseeable mortgage, monthly figures that don't
-  reconcile, a depreciating home that doesn't say so, an unfunded purchase that isn't charged). It
+  reconcile, a depreciating home that doesn't say so, an unfunded purchase that isn't charged, a
+  stored result that no longer matches its tamper-evident stamp). It
   exits non-zero, so it can gate a release; `AuditScenariosTest` proves it catches each defect.
 - **Data-layer integrity (hard rule — see DECISIONS 2026-06-25).** Every quantity has **one
   definition, one home.** Derive totals from their parts; never store a total that can drift

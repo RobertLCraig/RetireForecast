@@ -3,6 +3,43 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-08-29: A forecast run is stamped for tampering and cached on its inputs
+**Context:** card 0018, the CI and data-hygiene remainder. `threshold_results` already carried an
+`inputs_hash` cache key; `simulation_runs`, the far more expensive computation, carried neither that
+nor any integrity stamp. Two nullable columns on `simulation_runs` close both.
+
+**Decisions:**
+1. **A completed run is stamped with an app-key HMAC (`integrity_hash`) over its provenance and its
+   stored figures.** *Rationale:* every screen, PDF and CSV in the tool reads a stored result and
+   presents it as what the engine produced. Nothing checked that claim, so a figure edited in the
+   database (by hand, by a bad migration, by anything) would be believed and printed. The stamp
+   makes an altered result *evident*: `SimulationRun::isIntact()` re-derives it, and
+   `php artisan scenarios:audit` now reports any completed run that no longer matches (check 8), so
+   the same command that already gates a release on correct figures gates it on unaltered ones.
+   *Why an HMAC and not a plain hash:* a plain sha256 can be recomputed by whoever did the editing,
+   which makes it a checksum against accident, not against tampering. Keying it with `APP_KEY` means
+   forging the stamp needs the application secret, not just database access.
+2. **The stamp deliberately excludes the mutable lifecycle columns** (status, progress, timestamps,
+   error). *Rationale:* those move for legitimate reasons: a cancel, a progress tick, a re-read. A
+   stamp that fired on them would report tampering it had not found, and a guard that cries wolf is
+   switched off. It covers what the run *claims* (scenario, mode, paths, seed, engine and tax-year
+   stamps, inputs hash, frozen assumptions) and what it *produced* (every variant's result payload).
+3. **A run is not recomputed when nothing about it changed:** `inputs_hash` is the cache key, and
+   `SimulationRunner::preview()` / `dispatch()` hand back the matching run instead of running the
+   Monte Carlo again. *Rationale:* "Re-run all" on Compare queued a fresh 10,000-path run per plan on
+   every click, and a second click on a plan's own results page queued a duplicate beside the one the
+   worker already had. Saving an edited scenario still deletes its runs (that stays the primary
+   invalidation), so the hash is the belt-and-braces, and it catches the two things deletion cannot
+   see: an `ENGINE_VERSION` bump, and an admin editing the assumption-set row a scenario points at.
+   Which is why the hash covers the **frozen assumptions**, not merely the builder form-state.
+4. **The seed is hashed as given, not as resolved.** *Rationale:* the app never passes a seed (one is
+   drawn at random and recorded for reproducibility), so hashing the drawn value would make every
+   request unique and the cache dead on arrival. An unseeded request therefore matches an earlier
+   unseeded run; an explicitly seeded one asks for that seed and gets a cache entry of its own.
+5. **Both columns are nullable, and a null is reported rather than trusted.** A run stored before this
+   card has no hash: it is never served as a cache hit, and the audit calls it unverifiable rather
+   than altered. Distinguishing "never stamped" from "changed since" is the honest reading.
+
 ## 2026-08-22 — Adviser parity: the ISA allowance is used, not just enforced; contributions are capped; a non-earner gets relief
 **Context:** card 0016, the remainder of docs/build/PLAN-adviser-parity.md. A1 fee drag, A2 net-pay
 relief, B1 cost of advice and B2 the protection gap shipped on 2026-07-31, along with the enforcement
