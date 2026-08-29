@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Enums\SimulationStatus;
 use App\Finance\Mapping\AssumptionSetMapper;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
@@ -230,6 +231,19 @@ final class AuditScenarios extends Command
         $disclosed = $this->notesOfKind($household, $forecast, $applicable, 'assumed_figure');
         if (count($assumed) !== count($disclosed)) {
             $problems[] = "#{$id} uses ".count($assumed).' assumed figure(s) but shows '.count($disclosed);
+        }
+
+        // 8. A stored result must still be the one the engine produced. Every completed run
+        //    carries a tamper-evident stamp over its provenance and its figures; a run that no
+        //    longer matches its stamp is reported, never quietly read off a screen.
+        foreach ($scenario->simulationRuns()->where('status', SimulationStatus::Done)->get() as $run) {
+            if (! $run->isIntact()) {
+                $problems[] = $run->integrity_hash === null
+                    ? "#{$id} run {$run->id} carries no integrity stamp (it predates the column), so its stored "
+                        .'figures cannot be vouched for — re-run the scenario to replace it'
+                    : "#{$id} run {$run->id} no longer matches its integrity stamp — its stored figures have "
+                        .'changed since the engine produced them, so nothing may be read off it';
+            }
         }
 
         $rows[] = [

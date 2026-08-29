@@ -202,7 +202,8 @@ the overrides are an app-layer edit on top, never a parallel store.
 scenario_id, mode (`preview` \| `full`), n_paths (int), seed (int?; null = random, always
 recorded), horizon (joint-life), status (`queued` \| `running` \| `done` \| `failed`),
 progress_pct (int), engine_version, taxyear_config_version,
-assumption_set_snapshot 🔒 (frozen copy — results survive later default changes).
+assumption_set_snapshot 🔒 (frozen copy — results survive later default changes),
+inputs_hash (the cache key), integrity_hash (the tamper-evident stamp).
 
 ### Result
 simulation_run_id, success_probability { essentials, full_spend },
@@ -251,7 +252,16 @@ unbacked `WithdrawalKind` by case name. (The pre-rebuild `households` + `scenari
   `seed` (always recorded), `status` (`queued|running|done|failed|cancelled`), `progress_pct`,
   `engine_version`, `taxyear_config_version`, `started_at?`, `finished_at?`, `error?`. Encrypted
   `assumption_snapshot`: a frozen copy of the `AssumptionSet` DTO used, so a stored result stays
-  reproducible after the live set is edited.
+  reproducible after the live set is edited. Two hashes, the same pair of jobs `threshold_results`
+  does: `inputs_hash?` (sha256 of the effective builder-state + the frozen assumptions + the engine
+  and tax-year stamps + mode/paths/seed — **the cache key**, so an unchanged scenario is handed its
+  stored run rather than recomputing a 10,000-path Monte Carlo; `SimulationRunner::inputsHash()`),
+  and `integrity_hash?` (**the tamper-evident stamp**, an app-key HMAC over that provenance *plus*
+  every variant's stored result payload, written when the run completes; `SimulationRun::isIntact()`
+  re-derives it and `scenarios:audit` reports any run that no longer matches). The mutable lifecycle
+  columns — status, progress, timestamps, error — are deliberately outside the stamp, so cancelling
+  a run is not mistaken for tampering. Both are nullable: a run predating them is never served as a
+  cache hit and is reported as unverifiable rather than as altered.
 - **results** — clear: `simulation_run_id`, `variant` (unique per run). Encrypted `payload`: the
   engine's `SimulationResult` (success probabilities, terminal-wealth percentiles, fan-chart
   bands). A buy-vs-rent run produces three (stay_put, buy_outright, rent) on identical seeds.
