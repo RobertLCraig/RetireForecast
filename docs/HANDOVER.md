@@ -5,16 +5,19 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-08-29 (card **0018** stamped and cached the forecast run. A completed run now
-carries an app-key HMAC over its provenance and its stored figures, so an altered result is evident
-rather than believed (`SimulationRun::isIntact()`), swept by `scenarios:audit` as its eighth check,
-which also reports a run stored before this card as unvouchable until it is re-run. And a run is no
-longer recomputed when nothing about it changed: `simulation_runs.inputs_hash` is a cache key over
-the effective form-state, the frozen assumptions and the engine + tax-year stamps, so "Re-run all"
-on Compare and a second click on a results page hand back the stored run instead of queueing another
-10,000-path Monte Carlo. **The migration has not been applied to the app database: run
-`php artisan migrate` after this branch merges.** See DECISIONS 2026-08-29. Previously, card **0007**
-built the last two slices of withdrawal sequencing: an ad-hoc "fill the bands" pension draw is now taken **UFPLS-style** (a quarter tax-free while the Lump Sum Allowance lasts) instead of being taxed on 100% of the gross; tax-free cash **crystallises** the rest of the pot so no pound gets a second quarter; **flexible access caps later money-purchase contributions at the MPAA** under every draw order, disclosed as an assumed figure in the year it starts; and the **optimiser** runs all three named orders and reports the cheapest with its saving, as the difference of two of the engine's own runs — ranked on **every** pound of tax the plan pays, the year-by-year total plus the Inheritance Tax the same run settles at death, which the panel now states either way round. An inherited pot is excluded from all of it. **`ScenarioForecaster::ENGINE_VERSION` is now `finance-engine/repeated-pcls-crystallisation`** — figures moved, so a run stored before this card must not be read beside one stored after. Deferred and carded: 0073 to 0081. Nothing here has been looked at in a browser. Cards 0011 to 0016 are summarised in [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md); what still stands from them is that the stress-test data licence and the human WCAG 2.2 pass are open, and the comparison should not be read off until the ranking-movers at the head of the queue are fixed)_
+_Last updated: 2026-08-29. The exceptions a fresh session needs, newest first:_
+
+- **Card 0019 settled the multi-property plan and wrote no code.**
+  [PLAN-multi-property.md](build/PLAN-multi-property.md) is out of DRAFT with its five scope questions
+  answered, and card 0019 now carries the Phase-1 acceptance behind `needs: 0029, 0030`. One question
+  is Rob's and sits on that card: whether a second property exists to model at all. DECISIONS 2026-08-29.
+- **Card 0018's migration has not been applied to the app database.** Run `php artisan migrate` after
+  this branch merges, or a completed run carries no integrity stamp and no cache key.
+- **`ScenarioForecaster::ENGINE_VERSION` is `finance-engine/repeated-pcls-crystallisation`** (card
+  0007). Figures moved, so a run stored before it must not be read beside one stored after.
+- **Cards 0011 to 0016** are summarised in [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md). What still
+  stands from them: the stress-test data licence and the human WCAG 2.2 pass are open, and the
+  comparison should not be read off until the ranking-movers at the head of the queue are fixed.
 
 ## Goal & success criteria
 Full plan: [docs/build/PLAN.md](build/PLAN.md); PRD: [PRD.md](PRD.md). Summary:

@@ -3,6 +3,64 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-08-29: Multi-property leaves DRAFT — extend `Property`, keep the main home separate, Phase 1 only
+**Context:** card 0019. [PLAN-multi-property.md](build/PLAN-multi-property.md) had sat as a DRAFT
+proposal since 2026-06-30 (Lane D) with five open questions, so no code could honestly be written
+against it. Four of the five are design questions the repository settles; the board's own rule
+(`docs/board/README.md`, "Is this actually a person's to decide?") says an agent answers those and
+records what it applied.
+
+**Decisions:**
+1. **Extend `Dto\Property` with the let-only fields rather than add an `InvestmentProperty` DTO**
+   (`?Money $grossAnnualRent`, `?int $plannedDisposalYear`, `AcquisitionType $acquisition`), all
+   nullable so every stored scenario stays byte-identical. *Rationale:* `Property` already carries
+   value, ownership share, three mortgage shapes, running costs, growth override, `everLet`, `isLet`,
+   `cgtHistory` and a redemption event — everything a let property needs. A second DTO would hold a
+   **second copy of the mortgage exclusivity invariant** (`repaymentTerms` XOR `mortgageRollUpRate`),
+   and two copies of an invariant is one that drifts. The draft's objection, that a residence would
+   carry nonsense rent fields, is answered by making **`isLet` the discriminator** rather than
+   `isPrimaryResidence`: a let-to-let main home genuinely does have rent.
+2. **`primaryResidence` keeps its own slot; additional properties are a separate list.**
+   *Rationale:* 43 references across 11 files, 16 inside `PathProjector`, whose property state is
+   scalar throughout (`property`, `mortgageOutstanding`, `repaymentSchedule`, `propertyGrowthReal`,
+   `ownershipShare`, `mortgageRollUpRate`). Unifying rewrites the hot loop for no behaviour gain and
+   turns the residence's five special behaviours (PRR, RNRB, essential spend, means-test exemption,
+   the thing buy-vs-rent sells) into per-row flags every consumer must re-test.
+3. **An unsold additional property counts in total wealth and never in usable wealth.**
+   *Rationale:* two independent reasons agreeing. It is already how the main home is treated
+   (`SimulationResult::$usableWealthPercentiles` is "the spendable part (excl. the home)"), so no new
+   rule and nothing new to explain; and of the plausible readings it is the **more adverse**, which is
+   the standing rule for a modelling default. A "sell it if cash runs low" flag is Phase 2 and must be
+   an explicit user choice.
+4. **The standalone `rental` `IncomeStream` is kept, not retired; the overlap is made visible.**
+   `Property::grossAnnualRent` null → the standalone stream is the source (today's behaviour, no
+   migration); set → the property is. *Rationale:* retiring it would break a live scenario —
+   `PathProjector::rentalIncomeNominal()` sums `IncomeStreamType::Rental` streams, and that sum is the
+   base of the Section 24 finance-cost reducer for let-to-let (card 0021's scenario 43). A household
+   may legitimately hold both a modelled let and a bare rent figure, so the engine must not throw;
+   instead an input-sanity note and a new `scenarios:audit` check report the overlap with both figures.
+   This is the one-definition-one-home rule applied as "a mismatch is a visible failure", which is what
+   the project already does for imports.
+5. **Scope stops at Phase 1, and it is blocked on cards 0029 and 0030.** *Rationale:* 0030 is building
+   the letting-cost model (management, void, maintenance, service charge as a deductible letting
+   expense) and 0029 is changing what a per-property growth override means in the Monte Carlo. Building
+   multi-property first writes both a second time and then reconciles two copies — the failure the
+   one-definition rule exists to stop. Cards 0027 and 0032 similarly own sale friction and leasehold
+   selling costs, which a disposal here reuses.
+
+**Also recorded:** the draft was stale in four ways that each make the feature smaller — Section 24 is
+already modelled (2026-07-09), `Property` already amortises (2026-07-29), `isLet` already exists
+(2026-07-02), and the letting-cost machinery is being built by the review backlog. The plan carries the
+table.
+
+**Not settled, and it is not an agent's to settle:** whether a second property exists to model at all.
+The draft's motivating case is a property inherited and then let out; nothing tracked records one, and
+what is recorded is a household owning one flat they live in, on a buy-to-let mortgage (2026-06-30).
+That question is on card 0019 for Rob and decides whether the card is built or discarded.
+
+**Status:** plan settled, nothing built. Card 0019 is the backlog entry; the old promise to fold this
+into `PLAN.md` is dropped, because the board replaced that backlog and a second copy would drift.
+
 ## 2026-08-29: A forecast run is stamped for tampering and cached on its inputs
 **Context:** card 0018, the CI and data-hygiene remainder. `threshold_results` already carried an
 `inputs_hash` cache key; `simulation_runs`, the far more expensive computation, carried neither that
