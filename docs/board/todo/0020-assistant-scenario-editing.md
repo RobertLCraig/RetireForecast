@@ -70,3 +70,22 @@ One defect found on the way, outside this card's scope and now noted in HANDOVER
 as an orphan. That hits hand-built what-ifs too, not just this feature. I worked around it rather
 than widening the card: the menu offers an assumption only once the base already carries one, which
 is also the plan's own "every target is a real, resolvable path" rule.
+
+### 2026-08-29 review (v20260829193445-36c8)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 235s, run by this job rather than reported by the card.
+
+**acceptance: unclear**
+
+You've hit your session limit ┬À resets 7:40pm (Europe/London)
+
+**scope: unclear**
+
+You've hit your session limit ┬À resets 7:40pm (Europe/London)
+
+**breakage: unclear**
+
+You've hit your session limit ┬À resets 7:40pm (Europe/London)
+
