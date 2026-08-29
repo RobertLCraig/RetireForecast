@@ -12,18 +12,18 @@ These were the tail of HANDOVER.md's "Last updated" line, which had grown to a 2
 paragraph. Each also has a DECISIONS entry and the full record in `git log`; what still *stands* from
 them is carried in the live handover, and the cards themselves are in `docs/board/`.
 
-- **0016 — adviser parity remainder** (the criteria it had): the engine now **uses** the ISA
+- **0016, adviser parity remainder** (the criteria it had): the engine now **uses** the ISA
   allowance as well as enforcing it (bed-and-ISA, on by default, disclosed as an assumed figure and
   switchable via `ForecastSettings::$useIsaAllowance`, so stored-scenario figures moved);
   contributions are capped by the annual allowance as well as the MPAA; and a non-earner can pay
   £2,880 for £3,600 of pot. A4 salary sacrifice, B3 the estate checklist and B4 the annual review
   were listed as tasks on that card, carry no acceptance criterion, and are **not built**.
-- **0015 — v1 refinements:** two of six closed (a resident's Pension Credit now counts into the care
+- **0015, v1 refinements:** two of six closed (a resident's Pension Credit now counts into the care
   charge; CGT deemed-occupation absences are entered as such rather than by hand). The other four
   stay open on that card, three of them wanting a sourced modelling figure the repo does not hold.
-- **0014 — export all to PDF:** queued and built one forecast at a time past eight of them, arriving
+- **0014, export all to PDF:** queued and built one forecast at a time past eight of them, arriving
   as a zip of one PDF each.
-- **0013 — nominal-pounds toggle** on the time-series charts, reading the projector's own
+- **0013, nominal-pounds toggle** on the time-series charts, reading the projector's own
   pre-deflation year.
 - **0011 capacity for loss** and **0012 release blockers**, the latter partly: nonce CSP and the
   guidance-only posture done, and a11y clean on every page a machine can reach with the

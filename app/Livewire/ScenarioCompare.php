@@ -84,8 +84,8 @@ class ScenarioCompare extends Component
      * worker; a queued-count note confirms.
      *
      * A plan whose inputs are unchanged since its last full run is handed that run back rather
-     * than recomputed ({@see SimulationRunner::dispatch}), so re-clicking this costs nothing —
-     * the batch still tracks every plan, but only the genuinely fresh runs are counted queued.
+     * than recomputed ({@see SimulationRunner::dispatch}), so re-clicking this costs nothing. The
+     * batch still tracks every plan, but only the genuinely fresh runs are counted queued.
      */
     public function runFullFamily(): void
     {

@@ -91,7 +91,7 @@ class SimulationRunnerTest extends TestCase
         $runner = $this->runner();
 
         // Built through createRun + execute, not preview(), so the inputs-hash cache cannot
-        // answer the second request with the first run — this must compare two real computations.
+        // answer the second request with the first run: this must compare two real computations.
         $a = $runner->createRun($scenario, SimulationMode::Preview, seed: 9, paths: 30);
         $runner->execute($a);
         $b = $runner->createRun($scenario, SimulationMode::Preview, seed: 9, paths: 30);
@@ -211,7 +211,7 @@ class SimulationRunnerTest extends TestCase
     {
         $run = $this->runner()->preview($this->scenario(), seed: 1, paths: 20);
 
-        // Status, progress and timestamps are lifecycle, not evidence — moving them must not
+        // Status, progress and timestamps are lifecycle, not evidence, so moving them must not
         // fire the tamper check, or every legitimate state change would cry wolf.
         $run->update([
             'status' => SimulationStatus::Cancelled,

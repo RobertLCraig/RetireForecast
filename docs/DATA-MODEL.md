@@ -254,12 +254,12 @@ unbacked `WithdrawalKind` by case name. (The pre-rebuild `households` + `scenari
   `assumption_snapshot`: a frozen copy of the `AssumptionSet` DTO used, so a stored result stays
   reproducible after the live set is edited. Two hashes, the same pair of jobs `threshold_results`
   does: `inputs_hash?` (sha256 of the effective builder-state + the frozen assumptions + the engine
-  and tax-year stamps + mode/paths/seed — **the cache key**, so an unchanged scenario is handed its
+  and tax-year stamps + mode/paths/seed: **the cache key**, so an unchanged scenario is handed its
   stored run rather than recomputing a 10,000-path Monte Carlo; `SimulationRunner::inputsHash()`),
   and `integrity_hash?` (**the tamper-evident stamp**, an app-key HMAC over that provenance *plus*
   every variant's stored result payload, written when the run completes; `SimulationRun::isIntact()`
   re-derives it and `scenarios:audit` reports any run that no longer matches). The mutable lifecycle
-  columns — status, progress, timestamps, error — are deliberately outside the stamp, so cancelling
+  columns (status, progress, timestamps, error) are deliberately outside the stamp, so cancelling
   a run is not mistaken for tampering. Both are nullable: a run predating them is never served as a
   cache hit and is reported as unverifiable rather than as altered.
 - **results** — clear: `simulation_run_id`, `variant` (unique per run). Encrypted `payload`: the

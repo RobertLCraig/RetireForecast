@@ -26,7 +26,7 @@ use Throwable;
  *
  * A forecast is not recomputed when nothing about it has changed. Each run records an
  * {@see inputsHash} of everything that moves the answer, and {@see preview} / {@see dispatch}
- * hand back the matching run instead of running the Monte Carlo again — the same cache
+ * hand back the matching run instead of running the Monte Carlo again, the same cache
  * {@see ThresholdRunner} uses for a sweep. Saving an edited scenario deletes its runs (that is
  * the primary invalidation, in the builder); the hash is the belt-and-braces, so an engine bump
  * or an edited assumption set can never be served a result computed under the old one. A caller
@@ -86,7 +86,7 @@ final class SimulationRunner
 
     /**
      * A quick synchronous preview: the finished run for these inputs, computed now if there
-     * isn't one. Only a completed run is re-used — a preview must return something to read.
+     * isn't one. Only a completed run is re-used, because a preview must return something to read.
      */
     public function preview(Scenario $scenario, ?int $seed = null, ?int $paths = null): SimulationRun
     {
@@ -182,7 +182,7 @@ final class SimulationRunner
             }
 
             // Stamp the finished run: its provenance plus the figures just written. Any later
-            // edit to either — in the database, by hand, by anything — stops matching the stamp,
+            // edit to either (in the database, by hand, by anything) stops matching the stamp,
             // so a doctored result is evident instead of being read as the engine's own.
             $run->recordIntegrityHash();
             $run->update(['status' => SimulationStatus::Done, 'progress_pct' => 100, 'finished_at' => now()]);

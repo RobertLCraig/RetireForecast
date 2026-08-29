@@ -7,11 +7,11 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Two hashes on a forecast run, mirroring what `threshold_results` already carries:
  *
- * - `inputs_hash` — the cache key. Everything that changes the answer (the effective
+ * - `inputs_hash`, the cache key. Everything that changes the answer (the effective
  *   form-state, the frozen assumptions, the engine + tax-year stamps, the compute
  *   parameters), so an unchanged scenario re-uses its run instead of recomputing a
  *   10,000-path Monte Carlo.
- * - `integrity_hash` — the tamper-evident stamp over the run's provenance AND its stored
+ * - `integrity_hash`, the tamper-evident stamp over the run's provenance AND its stored
  *   figures, keyed with the app key so it cannot be re-forged from database access alone.
  *
  * Both are nullable because runs predating this migration have neither: a null

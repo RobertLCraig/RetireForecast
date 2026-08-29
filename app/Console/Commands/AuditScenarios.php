@@ -240,8 +240,8 @@ final class AuditScenarios extends Command
             if (! $run->isIntact()) {
                 $problems[] = $run->integrity_hash === null
                     ? "#{$id} run {$run->id} carries no integrity stamp (it predates the column), so its stored "
-                        .'figures cannot be vouched for — re-run the scenario to replace it'
-                    : "#{$id} run {$run->id} no longer matches its integrity stamp — its stored figures have "
+                        .'figures cannot be vouched for; re-run the scenario to replace it'
+                    : "#{$id} run {$run->id} no longer matches its integrity stamp: its stored figures have "
                         .'changed since the engine produced them, so nothing may be read off it';
             }
         }

@@ -140,7 +140,7 @@ class SimulationRun extends Model
     /**
      * True when this run still hashes to the stamp recorded when it finished. False means
      * either it was never stamped (a run predating the column, which cannot be vouched for)
-     * or a stored figure has moved since — both of which the audit reports rather than hides.
+     * or a stored figure has moved since. The audit reports both rather than hiding either.
      */
     public function isIntact(): bool
     {
