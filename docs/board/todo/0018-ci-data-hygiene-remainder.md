@@ -74,3 +74,22 @@ is untouched.
 **Note on the runner.** The card instructions name `.\vendor\bin\pest.bat`; this project has no
 Pest, it is PHPUnit. Ran `php artisan test` (whole suite green, one skip: the posture-aware
 `BannedPhrasingTest`, which is expected in advice mode) and `.\vendor\bin\pint.bat --dirty`.
+
+### 2026-08-29 review (v20260829192917-a004)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 200s, run by this job rather than reported by the card.
+
+**acceptance: unclear**
+
+You've hit your session limit ┬À resets 7:40pm (Europe/London)
+
+**scope: unclear**
+
+You've hit your session limit ┬À resets 7:40pm (Europe/London)
+
+**breakage: unclear**
+
+You've hit your session limit ┬À resets 7:40pm (Europe/London)
+
