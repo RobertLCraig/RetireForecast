@@ -70,3 +70,22 @@ sign-off, along with the browser look card 0001 already gates on. The whole PHP 
 One thing I did not change, so it is not a regression but is worth naming: the two **CSV download
 buttons are `wire:click`**, so the CSV itself has always needed JavaScript. The accessible table
 next to each chart is the no-script path, and that is intact.
+
+### 2026-08-29 review (v20260829192215-6fb5)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 198s, run by this job rather than reported by the card.
+
+**acceptance: unclear**
+
+You've hit your session limit ┬À resets 7:40pm (Europe/London)
+
+**scope: unclear**
+
+You've hit your session limit ┬À resets 7:40pm (Europe/London)
+
+**breakage: unclear**
+
+You've hit your session limit ┬À resets 7:40pm (Europe/London)
+
