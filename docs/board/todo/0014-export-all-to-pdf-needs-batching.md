@@ -68,3 +68,42 @@ Could not settle here:
   only. Add it to the 0001 browser sign-off.
 - The card asked for `.\vendor\bin\pest.bat`; this project has no Pest. The suite is PHPUnit, run
   with `php artisan test` (`vendor/bin/phpunit.bat` also works). Pint ran clean.
+
+### 2026-08-29 review (v20260829174938-0883)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 206s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+Both criteria trace to real code. I tried to break each one.
+
+**AC#1 ÔÇö queued past one pass.** `ScenarioPdfController::downloadAll` asks `ScenarioExport::fitsOneRequest` (threshold `ScenarioExport::BATCH_ABOVE`, 8). Above it, `ScenarioExport::queue` dispatches `BuildScenarioExport`, and the request returns a redirect, so nothing renders in it. `BuildScenarioExport::handle` calls `ScenarioExport::build`, which renders one report per forecast into a zip. Real, not decorative.
+
+**AC#2 ÔÇö 30 without hitting memory or gateway.** `ScenarioExport::build` loops one scenario at a time. The flat-memory claim rests on `ScenarioExport::render` getting a fresh renderer each call; I checked the vendor code, and `Barryvdh\DomPDF\Facade\Pdf::__callStatic` does bypass the cached facade instance, so peak cost is one report, not thirty. `BuildScenarioExport::$timeout` is 3600, so the worker does not cut a long build off. The gateway never sees a render: `downloadAll` redirects and `ScenarioExport::download` streams the file from disk.
+
+Attempts to break it that failed: `ScenarioReport::scenarios` ends with `values()`, so the loop keys are 0..n-1 and neither `ScenarioExport::entryName` nor the progress count can skew. A dead worker lands terminal via `BuildScenarioExport::failed` ÔåÆ `ScenarioExport::fail`.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Fence: held.** `ScenarioPdfController::download()` is untouched, and the report body moved into `App\Export\ScenarioReport::data()` byte-for-byte identical to the old controller method. Single-scenario export did not change.
+
+**Left half done ÔÇö retention.** `ScenarioExport::clear()` is called from one place only, `GdprService::erase()`. No schedule, no expiry sweep. The zip (~35 MB for 30 forecasts, a full copy of the household's figures) sits on the local disk forever. The Direction says the status expires after 24 hours "after which the dashboard offers a rebuild rather than a stale download", but `ScenarioPdfController::downloadArchive()` checks only `ScenarioExport::exists()` ÔÇö never the state or the age. A bookmarked `/scenarios/pdf/archive` serves a months-old archive, or the previous archive after a build failed. Only half of the stated policy is built.
+
+**Left half done ÔÇö a stuck build.** In `ScenarioPdfController::downloadAll()`, a state of `building` skips the queue but still tells the user "Building your export ÔÇª in the background". With no worker running (see card 0009), nothing is queued, the panel polls forever, and the user cannot retry for 24 hours. There is no cancel and no rebuild path.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**1. Job timeout outruns the queue's `retry_after`.**
+`App\Jobs\BuildScenarioExport::$timeout` is 3600, but `config/queue.php` sets the `database` connection's `retry_after` to 90 (no `DB_QUEUE_RETRY_AFTER` in `.env`). Laravel's own rule is that `retry_after` must exceed the longest job. The app's own copy in `resources/views/livewire/dashboard.blade.php` says a big export "takes a few minutes", so this job crosses 90s by design. Failure: with a second worker running, the row is re-reserved at 90s; attempts 2 beats `$tries = 1`, so `failed()` fires and `ScenarioExport::fail()` tells the user the export broke while the first process is still writing the same zip. Both then race on one path.
+
+**2. The memory claim in the code is not true.**
+`App\Export\ScenarioExport` class docblock, and `build()`, say peak memory "is the cost of the BIGGEST SINGLE report" and "stops growing with the count". `ZipArchive::addFromString` keeps every added string in memory until `close()`, so the loop retains the sum of all rendered PDFs (~1.2 MB each; the Direction's own 35 MB zip at 30). It grows linearly, just with a smaller slope.
+
+VERDICT: defect
+
