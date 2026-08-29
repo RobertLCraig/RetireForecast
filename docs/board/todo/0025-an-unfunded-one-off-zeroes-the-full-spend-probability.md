@@ -85,3 +85,58 @@ gate until that migration runs.
 **Still needs a browser check.** This worktree is not what Herd serves, so the two blade changes
 (the new headline row / PDF tile note, and the unfunded-cost input note) have been proven by the
 suite and by a direct projection, but nobody has looked at them on a screen.
+
+### 2026-08-29 review (v20260829194831-95e9)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 255s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+**AC #1 ÔÇö fraction of years met.** `ForecastResult::fullSpendYearsMetFraction()` and `essentialsYearsMetFraction()` (packages/finance-engine/src/Forecast/ForecastResult.php), derived from `$years`, not stored. Surfaced by `AffordabilityAssessment::verdict()` ("The full budget is met in X of the plan's Y years"), appended on both the `essentials_only` and `fails` tiers ÔÇö every case where the target is missed. Traced.
+
+**AC #2 ÔÇö distinct warning naming the cost.** `PathProjector::oneOffCostsNominal()` keeps the label; `PathProjector::unfundedOneOffWarnings()` emits `WarningCode::UNFUNDED_ONE_OFF_COST` with label + amount. `ResultPresenter::inputNotes()` turns it into a `unfunded_one_off` note, rendered by both `resources/views/livewire/scenario-results.blade.php` and `resources/views/pdf/partials/report.blade.php`. Traced.
+
+**AC #3 ÔÇö no divergence beyond years actually unfunded.** `PathProjector` sets `unmetOneOffNominal = min(unmet, oneOffTotal)`, so `YearResult::fullSpendMet()` can only be false when recurring spend went short. I checked the algebra: `fullSpendMet` implies `essentialsMet` in every year, so the path flags and the two Monte Carlo probabilities (`Simulator::run()`) cannot diverge except on genuinely short years. Traced.
+
+I tried to break it on rehydration too: only `PathProjector` builds a `YearResult`, so no stored year loses the split.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Scope: the fix grew past the card.**
+
+**1. Mortgage redemption was pulled in, and it changes an existing safety signal.**
+`PathProjector::projectYear()` now appends `$repayOneOff` ("Mortgage redemption") to the exempt one-off list. The card diagnosed only `ExpenseProfile::withOneOffCost()` / `HousingComparison::withHousing()`. Effect: a keep-the-home plan that cannot repay its mortgage no longer fails `fullSpendAlwaysMet`, nor the new most-years probability. It only gets a warning.
+
+The same function's own redemption comment still says the shortfall "surfaces, flagging the keep-the-home option as unaffordable". That is now false.
+
+`PathProjectorTest::test_a_repay_from_capital_redemption_the_household_cannot_afford_shows_a_shortfall` only checks `unmetSpend` is positive, so the suite stayed green while the meaning changed. No test covers redemption under the new measure.
+
+**2. Left half done.**
+`ForecastResult::essentialsYearsMetFraction()` has no production caller ÔÇö only `UnfundedPurchaseTest` uses it.
+
+The years-met fraction reaches one screen only: `AffordabilityAssessment::verdict()`, used by `App\Livewire\Affordability`. `ResultPresenter::headline()` and the PDF got the 95% probability instead, which is a different number.
+
+VERDICT: defect
+
+**breakage: defect**
+
+I read the change (commit `1ebc542`), traced every consumer of `fullSpendAlwaysMet`, and checked the persistence and audit paths. The mapper, the integrity stamp (`SimulationRun::integrityHash()` hashes the *stored* `engine_version`, so old runs stay intact) and audit check 6 all survive. One thing does not.
+
+**The new warning only reaches two surfaces; the flag it replaced was read by five.**
+
+`PathProjector::projectYear()` now excludes an unfunded lump from `fullSpendMet()`, so `fullSpendAlwaysMet` flips to `true` for a plan whose purchase is not funded. The replacement signal is a `YearResult` warning, and it is picked up **only** by `ResultPresenter::inputNotes()`, rendered by `scenario-results.blade.php` and `pdf/partials/report.blade.php`.
+
+Three readers of the old flag got nothing back:
+
+- `AffordabilityAssessment::card()` now tiers such a plan `comfortable`, and `verdict()`'s `comfortable` branch answers "Yes ÔÇö this covers your full budget for the rest of your life". `affordability.blade.php` shows no note, so a ┬ú125,000 unfunded purchase is invisible there.
+- `Interpretation::outcome()` states "your full spending is funded every year" ÔÇö advice mode is on.
+- `SustainableSpend::forScenario()`'s `$holds()` used the flag; it now returns a spendable figure where it previously returned `null` ("this plan is broken").
+
+No test builds these three paths.
+
+VERDICT: defect
+
