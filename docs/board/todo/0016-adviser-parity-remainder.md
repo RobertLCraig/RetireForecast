@@ -85,3 +85,52 @@ clean across all 25 stored scenarios, and their figures have moved, as expected 
 shelters GIA money. `vendor\bin\pint.bat` clean. **No browser check:** this worktree is not what Herd
 serves, so the new builder dropdown option and the new results-page note still need a look in a
 browser at `C:\Dev\RetireForecast`.
+
+### 2026-08-29 review (v20260829190302-b425)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 278s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I checked each criterion against the code.
+
+**#1 ISA allowance in sell-and-invest plans.** Real. `PathProjector::bedAndIsa()` moves GIA money into the ISA up to each person's unused subscription, sized to stay inside the remaining CGT exempt amount. It is called from `PathProjector::projectYear()` (which takes `$state` by reference, so the move persists), after the disposal step that credits sale proceeds to `$state['gia']`. The one shared counter `$state['isaSubscribed']` is also decremented by the paid-in ISA branch of `applyContributions()`, so the allowance cannot be spent twice. Gated by `ForecastSettings::$useIsaAllowance` (default true) and wired in `ScenarioForecaster`. Reported by `YearResult::$isaSheltered`.
+
+**#2 ┬ú3,600 non-earner route.** Real. `PensionReliefMethod::NonEarner` is handled in `PathProjector::applyContributions()`: net taken from surplus, grossed at the basic rate, capped at `PensionParameters::$nonEarnerReliefLimit`, stopped at `$reliefMaximumAge`. Both figures live in `TaxYearRegistry::forTaxYear()`. Reachable from the app via `HouseholdAssembler` and `ScenarioBuilder`.
+
+**#3 AA and MPAA cap.** Real. `PathProjector::contributionHeadroom()` picks MPAA or annual allowance, and `PathProjector::payIntoPot()` is the only pot-credit site ÔÇö employer, net-pay and surplus contributions all route through it.
+
+I could not break any of the three.
+
+VERDICT: sound
+
+**scope: defect**
+
+I read the card, the build commit `1ee9bc5`, and the code it touched.
+
+**Over the fence: nothing.** B5 / capacity for loss is untouched. The diff stays inside A2 and A3.
+
+**Half done, and it reaches the screen.** `ResultPresenter::assumedFigures()` prints to the user: *"If you would not do it, say so and we will model the money staying where it is."* There is nothing to say it with. `ScenarioForecaster::settings()` reads `effectiveBuilderState()['useIsaAllowance']`, but nothing anywhere writes that key. `app/Livewire/ScenarioBuilder.php` has no public property for it, no entry in `rules()`, no line in its state-save, and `resources/views/livewire/scenario-builder.blade.php` has no control. The sibling switch `homeToDescendants` has all four, plus a label in `WhatIfChanges`. So the engine flag is unreachable and the results page advertises a control that does not exist. The Direction admits the checkbox is missing; it does not admit the copy points at it.
+
+**Left open.** Tasks A4, B3 and B4 untouched: one of the card's four tasks delivered.
+
+Fix is small: add the control, or cut the "say so" sentence.
+
+VERDICT: defect
+
+**breakage: defect**
+
+Found one real break.
+
+**`HousingComparison::rentSettings` drops the new setting.** It rebuilds `ForecastSettings` field by field and never copies `useIsaAllowance`, so the rent arm always gets the constructor default `true`. `HousingComparison::variantInputs` passes the caller's `$settings` unchanged to `stay_put` and `buy_outright`, so those two arms honour the toggle and the third does not.
+
+This matters because of what the rent arm holds. `HousingComparison::withHousing` puts the whole sale proceeds into a `Gia` account, which is exactly the money `PathProjector::bedAndIsa` shelters. A reader who turns bed-and-ISA off in the builder (`ScenarioForecaster::forecastSettings` reads `useIsaAllowance`) removes the shelter from stay-put and buy, and leaves it running in rent. Rent then wins partly on a setting it ignored. Nothing fails: the comparison just tilts, silently, in the one direction this card was built to correct.
+
+No test builds it. `BedAndIsaTest` runs `PathProjector` directly and never goes through `HousingComparison`; `HousingComparisonTest` never sets `useIsaAllowance: false`.
+
+The same method also drops `modelIht`, `homeToDescendants` and `sellingCosts`, which predates this card.
+
+VERDICT: defect
+
