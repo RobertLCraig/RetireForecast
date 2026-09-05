@@ -25,14 +25,62 @@ The repayment amortisation schedule, which is already correct and pinned to a le
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a mortgage payment is charged from `ExpenseProfile::$mortgageCosts`, THE APP SHALL hold it fixed in nominal terms rather than escalating it with CPI.
-- [ ] #2 WHEN a household member dies, THE APP SHALL charge the survivor the full mortgage payment, unreduced by the survivor factor.
-- [ ] #3 WHEN a let property's finance cost is computed for the Section 24 credit, THE APP SHALL use nominal interest rather than a CPI-inflated figure.
+- [x] #1 WHEN a mortgage payment is charged from `ExpenseProfile::$mortgageCosts`, THE APP SHALL hold it fixed in nominal terms rather than escalating it with CPI.
+- [x] #2 WHEN a household member dies, THE APP SHALL charge the survivor the full mortgage payment, unreduced by the survivor factor.
+- [x] #3 WHEN a let property's finance cost is computed for the Section 24 credit, THE APP SHALL use nominal interest rather than a CPI-inflated figure.
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Move `mortgageCosts` out of the CPI and survivor multiply in `PathProjector`
-- [ ] Fix `financeCost` (around line 924) the same way
-- [ ] Test: a fixed-rate interest-only payment is the same pence in year 1 and year 20
-- [ ] Test: the payment does not change at the first death
+- [x] Move `mortgageCosts` out of the CPI and survivor multiply in `PathProjector`
+- [x] Fix `financeCost` (around line 924) the same way
+- [x] Test: a fixed-rate interest-only payment is the same pence in year 1 and year 20
+- [x] Test: the payment does not change at the first death
 - [ ] Re-run every stored scenario, then `php artisan scenarios:audit`
+
+## Comments
+
+**2026-09-05**
+RESULT: done
+TESTS: +3 new, all green
+TOUCHED:
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Forecast/ContingentCostsTest.php
+packages/finance-engine/tests/Forecast/BuyToLetFinanceCostTest.php
+app/Forecast/ScenarioForecaster.php
+docs/spec/METHODOLOGY.md
+docs/board/todo/0082-section-24-credit-outlives-the-mortgage-it-relieves.md
+docs/HANDOVER.md
+OUT-OF-SCOPE: 0082
+
+The "Mortgage" expense line now comes out of the CPI-and-survivor multiply **always**, and is added
+back after it as a fixed nominal cost while the debt is still owed. That merges the two payment
+paths: the amortisation schedule and the expense line are now charged through one block, differing
+only in where the figure comes from, so the treatment the repayment instalment got in July 2026
+cannot be got right for one shape and wrong for the other three again. `$financeCost` behind the
+Section 24 credit is nominal interest for the same reason.
+
+Each test was watched failing first, for the fault its criterion names: #1 charged £15,171.34 in
+2046 against £12,000 in 2026; #2 charged £8,400 to the survivor against £12,000 before the death;
+#3 gave a credit of £3,927.14 against the correct £3,234.19. #2 runs on a flat (0% CPI) economy so
+the survivor factor is the only thing that can move the charge across the death, rather than the
+two faults masking one another.
+
+Two existing tests moved with the fix, both legitimately: `ContingentCostsTest`'s
+repay-from-capital and refinance tests compare REAL spend two years apart, which is now the right
+answer minus two years of the payment's lost real value. Both now run flat, where real == nominal
+and the £12,000 they assert is exact; that also makes them assert what they are about (does the
+payment STOP) rather than how it is indexed.
+
+`ScenarioForecaster::ENGINE_VERSION` is bumped to `finance-engine/nominal-mortgage-payment`: every
+borrowing plan's spend was overstated under the old stamp, so its wealth, depletion year and
+success odds were too pessimistic against selling. Stored runs are not comparable across the bump.
+
+Not done: the stored-scenario re-run. It writes to the shared live Postgres database that Rob's own
+tree serves, from a worktree whose code is not merged yet, so it belongs after the merge and not
+here. `php artisan scenarios:audit` was run read-only and exits 1 on exactly the 120 pre-existing
+"run N carries no integrity stamp" lines HANDOVER already records, and on nothing else: this change
+introduced no new problem class.
+
+Nothing here has been seen in a browser. Herd serves the app from `C:\Dev\RetireForecast`, not from
+this worktree, so the results, compare and PDF surfaces that read `spendTarget` still need Rob's
+sign-off (card 0001).

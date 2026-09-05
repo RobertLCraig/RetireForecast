@@ -37,7 +37,14 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-08-29 (one-off-spend-split): a one-off CAPITAL lump the plan cannot fund (an
+     * Bumped 2026-09-05 (nominal-mortgage-payment): a mortgage payment charged from the "Mortgage"
+     * expense line (interest-only, RIO, buy-to-let, a serviced lifetime mortgage — every shape
+     * except the amortisation schedule, which already had this treatment) is now FIXED NOMINAL and
+     * NOT survivor-scaled, and the buy-to-let finance cost behind the Section 24 credit is nominal
+     * interest too. Stored runs charged it CPI-indexed and cut it to the survivor factor at the
+     * first death, so every borrowing plan's spend is overstated under the previous stamp and its
+     * wealth, depletion and success odds are too pessimistic against selling. See board card 0024.
+     * Previous bump 2026-08-29 (one-off-spend-split): a one-off CAPITAL lump the plan cannot fund (an
      * unfunded purchase, a mortgage redeemed from capital) is now charged the year's shortfall
      * first and judged on its own, so it no longer fails the all-or-nothing full-spend test. That
      * lump is a year-0 constant on every sampled path, so any full-spend probability stored under
@@ -73,7 +80,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/one-off-spend-split';
+    public const ENGINE_VERSION = 'finance-engine/nominal-mortgage-payment';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

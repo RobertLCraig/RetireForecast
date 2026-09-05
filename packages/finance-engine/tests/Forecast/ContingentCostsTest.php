@@ -13,6 +13,7 @@ use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
+use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Person;
@@ -127,9 +128,9 @@ final class ContingentCostsTest extends TestCase
         $spend = $this->spendByYear($this->forecastRedeemer(MortgageMaturityAction::RepayFromCapital));
 
         // Compare 2029 (mortgage still paid) with 2031 (redeemed, payment gone); 2030 itself
-        // carries the one-off repayment spike, so it is not the clean comparison. Real terms, so
-        // the £12k payment is the whole difference (allow a few pounds of deflation rounding).
-        $this->assertEqualsWithDelta(Money::fromPounds(12_000)->pence, $spend[2029] - $spend[2031], Money::fromPounds(60)->pence);
+        // carries the one-off repayment spike, so it is not the clean comparison. Zero inflation,
+        // so real == nominal and the fixed-nominal £12k payment is the whole difference.
+        $this->assertSame(Money::fromPounds(12_000)->pence, $spend[2029] - $spend[2031]);
     }
 
     public function test_the_mortgage_payment_persists_when_the_mortgage_is_refinanced(): void
@@ -138,7 +139,113 @@ final class ContingentCostsTest extends TestCase
         // maturity year (the same £12k is charged in 2029 and 2031).
         $spend = $this->spendByYear($this->forecastRedeemer(MortgageMaturityAction::Refinance));
 
-        $this->assertEqualsWithDelta(0, $spend[2029] - $spend[2031], Money::fromPounds(60)->pence);
+        $this->assertSame(0, $spend[2029] - $spend[2031]);
+    }
+
+    public function test_an_interest_only_mortgage_payment_is_fixed_nominal_and_does_not_rise_with_cpi(): void
+    {
+        // Interest on a fixed balance at a fixed rate is fixed in CASH terms, so the "Mortgage"
+        // expense line must not ride the CPI multiply the rest of spend does — else the nominal
+        // debt keeps its full real cost for ever and every borrowing route is penalised.
+        $charge = $this->mortgageChargeByYear();
+
+        $this->assertSame(Money::fromPounds(12_000)->pence, $charge[2026], 'the opening year charges the payment');
+        $this->assertSame(Money::fromPounds(12_000)->pence, $charge[2046], 'twenty years on it is the same pence');
+    }
+
+    public function test_the_mortgage_payment_does_not_shrink_when_one_of_the_couple_dies(): void
+    {
+        // A lender does not reduce the payment because a borrower died: the survivor owes the
+        // whole thing, even as the food bill drops to the survivor factor. Run flat (0% CPI) so
+        // the survivor factor is the ONLY thing that could move the charge across the death.
+        $charge = $this->mortgageChargeByYear(inflationPercent: 0);
+
+        $alive = [];
+        $baseline = [];
+        foreach ($this->forecastInterestOnly(0, inflationPercent: 0)->years as $year) {
+            $alive[$year->calendarYear] = $year->aliveCount;
+            $baseline[$year->calendarYear] = $year->nominal->essentialSpend->pence;
+        }
+
+        $firstDeathYear = null;
+        foreach ($alive as $calendarYear => $count) {
+            if ($count === 1 && ($alive[$calendarYear - 1] ?? 0) === 2) {
+                $firstDeathYear = $calendarYear;
+                break;
+            }
+        }
+        $this->assertNotNull($firstDeathYear, 'the fixture must contain a first death for this to test anything');
+
+        // The survivor factor is live: the ordinary budget really does fall at the death.
+        $this->assertLessThan(
+            $baseline[$firstDeathYear - 1],
+            $baseline[$firstDeathYear],
+            'the baseline household\'s ordinary spend must fall at the first death',
+        );
+
+        // The mortgage does not move with it.
+        $this->assertSame(Money::fromPounds(12_000)->pence, $charge[$firstDeathYear], 'the survivor owes the lender the whole payment');
+        $this->assertSame(Money::fromPounds(12_000)->pence, $charge[$firstDeathYear - 1]);
+    }
+
+    /**
+     * What the £12,000 "Mortgage" expense line adds to NOMINAL essential spend, year by year:
+     * the same household with and without it.
+     *
+     * @return array<int, int> calendarYear => nominal pence
+     */
+    private function mortgageChargeByYear(int $inflationPercent = 3): array
+    {
+        $baseline = [];
+        foreach ($this->forecastInterestOnly(0, $inflationPercent)->years as $year) {
+            $baseline[$year->calendarYear] = $year->nominal->essentialSpend->pence;
+        }
+
+        $charge = [];
+        foreach ($this->forecastInterestOnly(12_000, $inflationPercent)->years as $year) {
+            $charge[$year->calendarYear] = $year->nominal->essentialSpend->pence - $baseline[$year->calendarYear];
+        }
+
+        return $charge;
+    }
+
+    private function forecastInterestOnly(int $mortgageLine, int $inflationPercent = 3): ForecastResult
+    {
+        // A couple with an interest-only mortgage that runs the whole projection (no redemption
+        // year, no amortisation schedule) and enough cash that nothing depletes. p1 dies at 80
+        // (2035), so the survivor factor bites mid-projection. £500k of cash and a modest budget
+        // keep every year funded, so spend is never disturbed by a shortfall.
+        $household = new Household(
+            'Interest only',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1955-01-01'), Sex::Male, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(80)),
+                new Person('p2', new DateTimeImmutable('1957-01-01'), Sex::Female, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(95)),
+            ],
+            new ExpenseProfile(
+                Money::fromPounds(18_000 + $mortgageLine),
+                Money::zero(),
+                Percent::fromPercent(70),
+                mortgageCosts: $mortgageLine > 0 ? Money::fromPounds($mortgageLine) : null,
+            ),
+            pensions: [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(241, 30)),
+            ],
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(500_000))],
+            primaryResidence: new Property(
+                currentValue: Money::fromPounds(400_000),
+                ownership: OwnershipType::Mortgaged,
+                outstandingMortgage: Money::fromPounds(200_000),
+            ),
+        );
+
+        return (new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
+            ->forecast(
+                $household,
+                AssumptionSetLibrary::default()->withInflationMean(Percent::fromPercent($inflationPercent)),
+                new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+            );
     }
 
     private function forecastRedeemer(MortgageMaturityAction $action): ForecastResult
@@ -167,8 +274,15 @@ final class ContingentCostsTest extends TestCase
             ),
         );
 
+        // Zero inflation, so real == nominal and the fixed-nominal mortgage payment is the same
+        // pence in every reported year — these two tests ask whether the payment STOPS, and a
+        // live CPI would fold the fall in its real value into the same comparison.
         return (new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
-            ->forecast($household, AssumptionSetLibrary::default(), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'));
+            ->forecast(
+                $household,
+                AssumptionSetLibrary::default()->withInflationMean(Percent::fromPercent(0)),
+                new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+            );
     }
 
     /** @return array<int, int> calendarYear => spendTarget pence */

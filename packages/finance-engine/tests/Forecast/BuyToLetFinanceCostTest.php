@@ -97,4 +97,50 @@ final class BuyToLetFinanceCostTest extends TestCase
             $residential->totalTax->pence - $let->totalTax->pence,
         );
     }
+
+    public function test_the_relievable_finance_cost_is_nominal_interest_not_a_cpi_inflated_figure(): void
+    {
+        // Interest-only interest on a fixed balance is fixed in cash terms, so the relievable
+        // finance cost is the same £16,170.96 in year 10 as in year 0. Inflating it with CPI
+        // overstates the credit — and here it would push the base past the £21,600 rent, so the
+        // credit would be read off the rent (20% × £21,600) instead of the interest.
+        $residential = $this->yearsByCalendar($this->landlord(isLet: false));
+        $let = $this->yearsByCalendar($this->landlord(isLet: true));
+
+        $this->assertSame(
+            (int) round(0.20 * self::INTEREST),
+            $residential[2036]->totalTax->pence - $let[2036]->totalTax->pence,
+            'ten years of CPI must not change the finance-cost credit on a fixed interest-only loan',
+        );
+    }
+
+    /**
+     * Every year of the forecast in NOMINAL pounds, keyed by calendar year, under live 3% CPI
+     * and with every source of investment income switched off — no dividend yield, and a real
+     * return low enough that the nominal cash rate floors at zero. That matters: the credit is
+     * cash, and cash the residential household never got would otherwise earn taxable interest,
+     * so the year-10 tax gap would be the credit MINUS the tax on ten years of that interest
+     * rather than the credit itself. Off, the gap is the credit exactly.
+     *
+     * @return array<int, YearResult>
+     */
+    private function yearsByCalendar(Household $household): array
+    {
+        $forecast = (new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
+            ->forecast(
+                $household,
+                AssumptionSetLibrary::default()
+                    ->withInflationMean(Percent::fromPercent(3))
+                    ->withInvestmentIncomeYield(Percent::fromPercent(0))
+                    ->withRealReturnShift(Percent::fromPercent(-20)),
+                new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+            );
+
+        $out = [];
+        foreach ($forecast->years as $year) {
+            $out[$year->calendarYear] = $year->nominal;
+        }
+
+        return $out;
+    }
 }

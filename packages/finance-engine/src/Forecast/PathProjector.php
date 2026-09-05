@@ -963,11 +963,14 @@ final class PathProjector
         // the tax due (a reducer cannot create a refund).
         // The relievable finance cost is mortgage INTEREST only — capital repaid never attracts
         // relief. An amortising loan knows its own interest for the year (falling as the balance
-        // falls); otherwise the whole Mortgage expense line is interest (an interest-only loan),
-        // inflated like the spend it rides on.
+        // falls); otherwise the whole Mortgage expense line is interest (an interest-only loan).
+        // Both are FIXED NOMINAL, exactly as the payment is charged below: interest on a fixed
+        // balance at a fixed rate is the same cash every year, so CPI-indexing it overstated the
+        // credit (and, once the inflated figure passed the rent, silently read the reducer base
+        // off the rent instead of the interest).
         $financeCost = $state['repaymentSchedule'] !== null
             ? (int) round($state['repaymentSchedule']->interestIn($calendarYear)->pence * $state['ownershipShare'])
-            : (int) round($household->expenseProfile->mortgageCosts()->pence * $state['spendFactor']);
+            : $household->expenseProfile->mortgageCosts()->pence;
         if (($household->primaryResidence?->isLet ?? false) && $financeCost > 0) {
             $rentalIncome = $this->rentalIncomeNominal($household, $alive, $ages, $cumInflation);
             $reducerBase = min($financeCost, $rentalIncome);
@@ -1069,19 +1072,23 @@ final class PathProjector
             $state['homeSold'] = true;
         }
 
-        // Once the mortgage is redeemed its ongoing payment stops (unlike service charge / ground
-        // rent, which continue while the home is owned) — drop the while_mortgaged spend from the
-        // redemption year on. Sell variants already removed it via withoutPropertyCosts.
+        // The "Mortgage" expense line comes out of the CPI-and-survivor-multiplied buckets
+        // ALWAYS, and is re-added below as a fixed nominal cost when it is still owed. A mortgage
+        // payment is neither indexed nor survivor-scaled: interest on a fixed balance at a fixed
+        // rate is the same cash every year (so CPI-indexing it held its real cost flat and
+        // removed the inflation hedge on a nominal debt, penalising every borrowing route), and
+        // a lender does not reduce the payment because a borrower died. This is the treatment the
+        // amortisation schedule already had; the other three product shapes (interest-only, RIO,
+        // buy-to-let, a serviced lifetime mortgage) never got it.
         //
-        // The same "Mortgage" expense line is dropped ALWAYS when the home carries a
-        // capital-and-interest mortgage: there the engine charges the amortisation schedule's own
-        // fixed-nominal instalment instead (added below, after the CPI and survivor multiplies),
-        // so the schedule is the single definition of the payment and the two cannot double-count.
-        if ($state['mortgageRepaid'] || $state['repaymentSchedule'] !== null) {
-            $mortgagePay = $household->expenseProfile->mortgageCosts()->pence;
-            $targetPence = max(0, $targetPence - $mortgagePay);
-            $essentialPence = max(0, $essentialPence - $mortgagePay);
-        }
+        // Dropping it here also stops it being charged at all once it is no longer owed: the
+        // mortgage was redeemed from capital (unlike service charge / ground rent, which continue
+        // while the home is owned), or the home was sold, or the household carries a
+        // capital-and-interest schedule that owns the payment itself. Sell variants already
+        // removed the line via withoutPropertyCosts.
+        $mortgagePay = $household->expenseProfile->mortgageCosts()->pence;
+        $targetPence = max(0, $targetPence - $mortgagePay);
+        $essentialPence = max(0, $essentialPence - $mortgagePay);
 
         // After a forced sale the home is gone, so its property costs (service charge / ground
         // rent — the while_owning_home bucket) stop too, alongside the running costs below. The
@@ -1121,18 +1128,22 @@ final class PathProjector
         $spendNominal = (int) round($targetPence * $state['spendFactor'] * $survivor) + $oneOffTotalNominal;
         $essentialNominal = (int) round($essentialPence * $state['spendFactor'] * $survivor);
 
-        // A capital-and-interest mortgage instalment is added HERE, after the CPI and survivor
-        // multiplies, because it is neither: it is FIXED NOMINAL (a £1,318.54 instalment is
-        // £1,318.54 in year 16, falling in real terms), and the survivor owes the lender exactly
-        // what the couple owed — a death does not shrink it the way it shrinks the food bill. It
-        // is an essential cost (the alternative is repossession), it steps when the deal rate
-        // reverts, and it stops dead at the end of the term, when the schedule returns zero.
-        if ($state['repaymentSchedule'] !== null && ! $state['mortgageRepaid'] && ! $state['homeSold']) {
-            $instalmentNominal = (int) round(
-                $state['repaymentSchedule']->paymentIn($calendarYear)->pence * $state['ownershipShare']
-            );
-            $spendNominal += $instalmentNominal;
-            $essentialNominal += $instalmentNominal;
+        // The mortgage payment is added back HERE, after the CPI and survivor multiplies, because
+        // it is neither: it is FIXED NOMINAL (a £1,318.54 instalment is £1,318.54 in year 16,
+        // falling in real terms), and the survivor owes the lender exactly what the couple owed —
+        // a death does not shrink it the way it shrinks the food bill. It is an essential cost
+        // (the alternative is repossession) and it stops dead once the debt does.
+        //
+        // A capital-and-interest mortgage is charged from its own amortisation schedule, which
+        // steps when the deal rate reverts and returns zero at the end of the term; every other
+        // product shape (interest-only, RIO, buy-to-let, a serviced lifetime mortgage) is charged
+        // the "Mortgage" expense line taken out of the buckets above.
+        if (! $state['mortgageRepaid'] && ! $state['homeSold']) {
+            $paymentNominal = $state['repaymentSchedule'] !== null
+                ? (int) round($state['repaymentSchedule']->paymentIn($calendarYear)->pence * $state['ownershipShare'])
+                : $mortgagePay;
+            $spendNominal += $paymentNominal;
+            $essentialNominal += $paymentNominal;
         }
 
         // Rent (the "sell and rent" leg) is an essential cost with its own inflation. It applies

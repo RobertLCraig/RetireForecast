@@ -363,9 +363,10 @@ Each projected year the engine:
    models the three shapes a mortgage can take: **interest-only** (the balance stays level and the
    interest is a spending line), **equity-release roll-up** (the balance compounds unpaid and is
    repaid from the estate, capped at the home's value), and **repayment / capital & interest** (the
-   balance amortises to zero over the term and the instalment stops when it does). A repayment
-   instalment is treated as what it is — **fixed in cash terms**, so it costs less in real money each
-   year, and **unchanged when one partner dies**, unlike ordinary household spending.
+   balance amortises to zero over the term and the instalment stops when it does). Whichever shape
+   it takes, a mortgage payment is treated as what it is — **fixed in cash terms**, so it costs less
+   in real money each year, and **unchanged when one partner dies**, unlike ordinary household
+   spending.
 6. Funds any shortfall by the chosen **withdrawal strategy**, grossing pension withdrawals up for
    tax; invests any surplus.
 7. Charges capital gains tax on any GIA disposal, and on death passes the estate to the survivor (so

@@ -5,8 +5,18 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-08-29. The exceptions a fresh session needs, newest first:_
+_Last updated: 2026-09-05. The exceptions a fresh session needs, newest first:_
 
+- **A mortgage payment is now fixed nominal and not survivor-scaled, whatever shape the mortgage is.**
+  Card 0024: the "Mortgage" expense line comes out of the CPI-and-survivor multiply always and is
+  added back after it, so interest-only / RIO / buy-to-let / a serviced lifetime mortgage get the
+  treatment the amortisation schedule already had. The Section 24 finance cost is nominal interest
+  too. **Every borrowing plan's spend was overstated before this**, so its wealth, depletion year and
+  success odds were too pessimistic against selling; the ranked comparison moves.
+  `ScenarioForecaster::ENGINE_VERSION` is `finance-engine/nominal-mortgage-payment` and stored runs
+  are not comparable across the bump. **The stored-scenario re-run is still owed** (it was built in a
+  worktree, so it could not touch the live database). Adjacent fault raised as card 0082: the
+  Section 24 credit is still granted after the mortgage is redeemed or the home sold.
 - **A full-spend measure is now recurring-spend only, and every stored figure moved with it.**
   Card 0025: a one-off capital lump the plan cannot fund (an unfunded purchase, a mortgage redeemed
   from capital) is charged the year's shortfall FIRST and judged on its own, so it no longer fails
@@ -43,8 +53,6 @@ _Last updated: 2026-08-29. The exceptions a fresh session needs, newest first:_
   is Rob's and sits on that card: whether a second property exists to model at all. DECISIONS 2026-08-29.
 - **Card 0018's migration has not been applied to the app database.** Run `php artisan migrate` after
   this branch merges, or a completed run carries no integrity stamp and no cache key.
-- **`ScenarioForecaster::ENGINE_VERSION` is `finance-engine/one-off-spend-split`** (card 0025).
-  Figures moved, so a run stored before it must not be read beside one stored after.
 - **Cards 0011 to 0016** are summarised in [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md). What still
   stands from them: the stress-test data licence and the human WCAG 2.2 pass are open, and the
   comparison should not be read off until the ranking-movers at the head of the queue are fixed.
@@ -102,13 +110,12 @@ Documented v1 scope limits remain flagged in code and listed in [DATA-MODEL.md](
 ## What's next (in order)
 **The queue is [docs/board/todo/](board/todo/), one card per file.** Do not restate it here. At the head:
 
-**The first three are the ranking-movers.** They change which plan wins, so they come before any
+**The first two are the ranking-movers.** They change which plan wins, so they come before any
 feature work and before card 0022 is answered. Re-run every stored scenario and `scenarios:audit`
 after each.
 
-1. **0024 an interest-only mortgage payment is CPI-indexed and survivor-scaled.** The repayment instalment was fixed for this in July 2026; the fix never reached the other three product shapes. It removes the inflation hedge on a nominal debt, so it penalises every borrowing route against selling. Biggest single distortion found.
-2. **0034 a year-0 purchase cannot see a capital receipt arriving the same year**, so a plan borrows for life beside money it already has.
-3. **0035 and 0036 dead and mis-timed income inputs**: the defined-benefit escalation dropdown is never read, and the retirement year pays a part-year salary with a full year of pension and no National Insurance.
+1. **0034 a year-0 purchase cannot see a capital receipt arriving the same year**, so a plan borrows for life beside money it already has.
+2. **0035 and 0036 dead and mis-timed income inputs**: the defined-benefit escalation dropdown is never read, and the retirement year pays a part-year salary with a full year of pension and no National Insurance.
 
 Then the pre-review queue resumes at the head of [docs/board/todo/](board/todo/).
 
