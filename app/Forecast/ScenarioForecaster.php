@@ -39,7 +39,16 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-05 (drawdown-marginal-tax-on-full-income): an ad-hoc pension withdrawal is now priced
+     * Bumped 2026-09-05 (liquid-wealth-split-between-owners): liquid wealth no longer lands on whoever was
+     * DECLARED FIRST. The proceeds of a jointly owned home, sold in year 0 or forced mid-projection,
+     * are now credited to each owner in equal shares, and a year's banked surplus goes to whoever's
+     * income produced it (evenly where nothing produced it, such as a Pension Credit award). The
+     * care means test is deliberately individual, so the second-declared person used to reach care
+     * with an empty balance sheet and be funded by the local authority years early. Any stored plan
+     * with TWO people moves under this stamp wherever the split changes a per-person allowance or
+     * assessment: care charges, Pension Credit, the capital gains annual exempt amount and the
+     * savings and dividend allowances. A one-person household is byte-identical. See board card 0040.
+     * Previous bump 2026-09-05 (drawdown-marginal-tax-on-full-income): an ad-hoc pension withdrawal is now priced
      * against the whole of the person's income for the year. Savings interest and dividends stack
      * ABOVE non-savings income in the band order, so a withdrawal pushes them across band
      * boundaries and halves the Personal Savings Allowance; the cost of it was read off the
@@ -171,7 +180,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/drawdown-marginal-tax-on-full-income';
+    public const ENGINE_VERSION = 'finance-engine/liquid-wealth-split-between-owners';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

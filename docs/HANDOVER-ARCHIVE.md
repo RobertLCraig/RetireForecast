@@ -6,6 +6,82 @@
 > that); this is the "how we got here" detail. Each item also has a dated DECISIONS.md
 > entry and the full record in `git log`. Newest-first within each part.
 
+## The "what is built" inventory, moved out of the live handover on 2026-09-05
+
+One 1,591-character line under "Current state" listed every feature the tool has. A fresh session
+does not work differently for having read it: the tree, [docs/build/PLAN.md](build/PLAN.md) and this
+archive all hold it, and an inventory of what works is the invariant rather than the exception the
+live handover is for. Kept here verbatim.
+
+> **Done:** the tool is feature-complete for personal use. An HMRC-accurate deterministic engine
+> (income tax and NI, the pension lump-sum suite including Month-1 emergency tax and reclaim, State
+> Pension, SDLT/CGT/PRR, means-tested benefits, IHT, care) sits behind a Monte Carlo with stochastic
+> joint-life mortality and stochastic house-price, salary and care-cost paths. Around it: encrypted
+> DTO persistence, Fortify auth, GDPR, Filament, queued runs with progress and cancel, a Livewire UI
+> with charts, spreadsheet import, a complete PDF export with server-drawn charts (an export of more
+> than eight forecasts is queued and built one at a time, delivered as a zip), 2FA and a CSP.
+> Decision support covers lever thresholds, a combination comparison, the survivor cliff, capacity
+> for loss (how far wealth can fall before the essential floor breaks), a 2-D trade-off map and a
+> local-model assistant. Housing covers stay-put, buy-cheaper, rent, park homes (a bought home that
+> depreciates), let-to-let, equity release and real amortising repayment mortgages pinned to a lender
+> illustration. The adviser-parity sweep is now closed bar A4 salary sacrifice, B3 the estate
+> checklist, B4 the annual review and B5 capacity for loss (card 0011): investment charges, net-pay
+> contribution relief, the protection gap (employer death-in-service cover and the life cover that
+> would restore a survivor's plan), the cost-of-advice comparison and the ISA subscription cap
+> shipped on 2026-07-31, and the annual-allowance / MPAA contribution cap, the £3,600 non-earner
+> relief route and bed-and-ISA on 2026-08-22.
+
+## Card 0030, moved out of the live handover on 2026-09-05
+
+Folded out on the same test. Its rates and their sourcing gap live in `docs/spec/ASSUMPTIONS.md`
+(§14) and card 0087, its adjacent fault is card 0088, its stamp is in the
+`ScenarioForecaster::ENGINE_VERSION` docblock, and its owed re-run is covered by the standing
+"re-run every stored scenario" line in the live handover.
+
+- **A let property no longer earns its rent gross.** Card 0030: three rates on `Property`
+  (`lettingManagementRate()` / `lettingVoidRate()` / `lettingMaintenanceRate()`, defaults 12% / 8% /
+  5%, a quarter of gross rent) come off every `IncomeStreamType::Rental` stream when the home is
+  `isLet`, and the let home's service charge is deducted from rental profit instead of being taxed as
+  though it were not paid. The Section 24 credit is read off that profit, not gross rent. All three
+  rates are builder inputs (step 3, shown once the home is flagged as let, alongside a new `isLet`
+  checkbox that had no control before) and are disclosed as `assumed_figure` notes reading their own
+  constants; a new `letting_caveats` note states the freeholder-consent, EPC C and council-tax gaps
+  that were previously only in a docblock. Every let-to-let plan banks less rent and is taxed on less
+  profit, so its stored wealth, depletion year and success odds are too favourable; a home the
+  household lives in is byte-identical. `ENGINE_VERSION` was `finance-engine/letting-costs`.
+
+## Cards 0029 and 0025, moved out of the live handover on 2026-09-05
+
+Folded out with the inventory above, on the same test: neither changes what the next session does.
+Card 0029's figure and its sourcing gap live in `docs/spec/ASSUMPTIONS.md` (§13) and card 0086, its
+stamp is in the `ScenarioForecaster::ENGINE_VERSION` docblock, and its owed re-run is covered by the
+standing "re-run every stored scenario" line in the live handover. Card 0025 is closed: 0023
+confirmed it against the stored set and needed no code.
+
+- **An overridden home is no longer a certainty, and one home is now modelled over double the index
+  volatility.** Card 0029: `PathDraws::propertyGrowthReal($yearIndex, $meanReal)` replaces
+  `houseGrowthReal()`. A property growth override used to REPLACE the sampled house path, so a park
+  home or a hand-priced flat carried no house risk at all; it now sets the MEAN the year's shock is
+  re-centred on. The shock is also widened by `AssumptionSet::SINGLE_PROPERTY_VOLATILITY_MULTIPLE`
+  (2.0, so 18% real on the default set) because the sampled figure is an INDEX one, disclosed as an
+  `assumed_figure` note and editable as the `propertyVolatility` assumption. `ReturnModel` is
+  untouched, so the RNG stream is byte-identical and only what the home does with each draw changed.
+  The deterministic projection is unchanged; every Monte Carlo band, success probability and
+  capacity-for-loss reading on a plan that keeps or buys a home is now WIDER. `ENGINE_VERSION` was
+  `finance-engine/single-property-house-risk`, and the re-run includes the park-home scenarios,
+  whose range card 0029 asked for.
+
+- **A full-spend measure is now recurring-spend only, and every stored figure moved with it.**
+  Card 0025: a one-off capital lump the plan cannot fund (an unfunded purchase, a mortgage redeemed
+  from capital) is charged the year's shortfall FIRST and judged on its own, so it no longer fails
+  the all-or-nothing full-spend test on every path. Any Monte Carlo full-spend probability stored
+  before this is not comparable with one stored after. `ForecastResult::fullSpendYearsMetFraction()`
+  and `SimulationResult::$successProbability` `FullSpendMostYears` (95%+ of years) are the honest
+  companions; the latter is `null` on an older stored run and must show as a dash, never 0%. Card
+  0023 confirmed it against the stored set and needed no code: #51's completion gap is £1.37, it is
+  the only stored scenario carrying an unfunded lump at all, and its full-spend probability now sits
+  within a point of its essentials one.
+
 ## Cards 0024 and 0028, moved out of the live handover on 2026-09-05
 
 Folded out to keep HANDOVER.md loadable in one session. Nothing in either is load-bearing any more:

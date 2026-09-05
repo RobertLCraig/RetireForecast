@@ -27,6 +27,7 @@ use RetireForecast\FinanceEngine\Iht\IhtOutcome;
 use RetireForecast\FinanceEngine\Iht\IhtResult;
 use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\PenceSplit;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Pension\WithdrawalKind;
 use RetireForecast\FinanceEngine\Property\AmortisationSchedule;
@@ -811,6 +812,10 @@ final class PathProjector
     ): YearResult {
         $ages = [];
         $taxablePerPerson = [];   // nominal non-savings taxable income
+        // Net cash each person's OWN income produced this year, which is what a surplus is
+        // attributed by ({@see attributeSurplus}). Household money nobody generated (Pension
+        // Credit, the letting finance-cost reducer) is deliberately absent from it.
+        $netPerPerson = array_fill_keys(array_map(static fn ($person): string => $person->id, $household->persons), 0);
         $taxFreeCashNominal = 0;  // pension tax-free cash received this year
         $taxFreeIncomeNominal = 0; // tax-free income streams (e.g. DLA) received this year
         $grossIncomeNominal = 0;
@@ -888,6 +893,9 @@ final class PathProjector
             $taxablePerPerson[$person->id] += $earnings + $db + $sp + $otherTaxable + $wd['taxable'];
             $taxFreeIncomeNominal += $taxFreeStream;
             $taxFreeCashNominal += $wd['taxFree'] + $commutationCash;
+            // The untaxed part of this person's own income: it never reaches the tax pass below,
+            // so it is banked here or it drops out of the attribution altogether.
+            $netPerPerson[$person->id] += $taxFreeStream + $wd['taxFree'] + $commutationCash;
 
             $src['salary'] += $earnings;
             $src['defined_benefit'] += $db;
@@ -931,6 +939,7 @@ final class PathProjector
             $taxablePerPerson[$deathBenefit['heirId']] += $deathBenefit['taxable'];
             $meansTestExcluded[$deathBenefit['heirId']] = $deathBenefit['taxable'];
             $taxFreeCashNominal += $deathBenefit['taxFree'];
+            $netPerPerson[$deathBenefit['heirId']] += $deathBenefit['taxFree'];
             $src['death_in_service'] += $deathBenefit['taxable'] + $deathBenefit['taxFree'];
         }
 
@@ -988,6 +997,7 @@ final class PathProjector
             $ni = $this->niForPerson($household, $person->id, $state, $yearIndex);
             $totalTaxNominal += $tax + $ni;
             $netCashNominal += $taxable + $investmentIncome - $tax - $ni;
+            $netPerPerson[$person->id] += $taxable + $investmentIncome - $tax - $ni;
             $src['investment_income'] += $investmentIncome;
         }
         $grossIncomeNominal += $taxFreeCashNominal + $taxFreeIncomeNominal;
@@ -1007,6 +1017,11 @@ final class PathProjector
             $netCashNominal += $amount;
             $grossIncomeNominal += $amount;
             $src['capital_receipt'] += $amount;
+            // A receipt is the named owner's money while they live; once they have died it is the
+            // household's and is shared like any other unattributable sum.
+            if ($alive[$receipt->ownerId] ?? false) {
+                $netPerPerson[$receipt->ownerId] += $amount;
+            }
         }
 
         // Buy-to-let finance-cost restriction (since April 2020): a landlord can no longer deduct
@@ -1111,15 +1126,17 @@ final class PathProjector
                 $this->config,
             );
 
-            // The net proceeds become investable liquid wealth in the first living person's GIA
-            // (drawable now, invested per the run's assumptions and drawn per the strategy). Cost
-            // basis = proceeds, so no latent gain is taxed on a later disposal. Once in the GIA the
-            // freed equity is assessable capital for Pension Credit (it is no longer the exempt
-            // main residence), so a forced sale can erode the award / cross the £16k cliff.
-            $owner = $this->firstLiving($household, $alive);
-            if ($owner !== null) {
-                $state['gia'][$owner] += $proceeds->netProceeds->pence;
-                $state['giaBasis'][$owner] += $proceeds->netProceeds->pence;
+            // The net proceeds become investable liquid wealth, split equally between the living
+            // OWNERS' GIAs (drawable now, invested per the run's assumptions and drawn per the
+            // strategy). Cost basis = proceeds, so no latent gain is taxed on a later disposal.
+            // Once in the GIA the freed equity is assessable capital for Pension Credit (it is no
+            // longer the exempt main residence), so a forced sale can erode the award / cross the
+            // £16k cliff. It is split rather than banked to the first living person (board card
+            // 0040) because the care means test assesses the individual: crediting one of them
+            // with the whole home sent the other into care owning nothing.
+            foreach (PenceSplit::evenly($proceeds->netProceeds->pence, $this->livingIds($household, $alive)) as $ownerId => $share) {
+                $state['gia'][$ownerId] += $share;
+                $state['giaBasis'][$ownerId] += $share;
             }
 
             // Clear the home and its debt; flip onto a renting footing from here.
@@ -1323,13 +1340,16 @@ final class PathProjector
             $gainsThisYear = $funded['realisedGain'];
         } elseif ($shortfall < 0) {
             // Surplus first funds any planned contributions to long-term assets
-            // (DC pension top-ups, regular account savings); what remains is saved
-            // into the first living person's cash.
+            // (DC pension top-ups, regular account savings); what remains is saved as cash, in the
+            // name of whoever's income produced it (board card 0040). Banking it all to the first
+            // living person made the care means test, which assesses the individual, depend on the
+            // order the two people were typed in.
             $surplus = -$shortfall;
             $surplus -= $this->applyContributions($household, $state, $alive, $ages, $state['spendFactor'], $surplus);
-            $surplusOwner = $this->firstLiving($household, $alive);
-            if ($surplusOwner !== null && $surplus > 0) {
-                $state['cash'][$surplusOwner] += $surplus;
+            if ($surplus > 0) {
+                foreach ($this->attributeSurplus($surplus, $netPerPerson, $alive) as $ownerId => $share) {
+                    $state['cash'][$ownerId] += $share;
+                }
             }
         }
 
@@ -3238,13 +3258,62 @@ final class PathProjector
 
     private function firstLiving(Household $household, array $alive): ?string
     {
-        foreach ($household->persons as $person) {
-            if ($alive[$person->id]) {
-                return $person->id;
+        return $this->livingIds($household, $alive)[0] ?? null;
+    }
+
+    /**
+     * Who this year's banked surplus belongs to, in pence (board card 0040).
+     *
+     * The surplus is what the household's income left over after its spending, so it is banked in
+     * PROPORTION to the net income each living member produced: their taxable income after tax and
+     * NI, their investment income, their tax-free streams and pension cash, and a capital receipt
+     * in their own name. That is the "where it is attributable" half of the criterion.
+     *
+     * The other half is money nobody generated. Pension Credit is a household award and the
+     * buy-to-let finance-cost reducer is modelled household-wide, so neither carries a person's
+     * name; on a year whose whole surplus is of that kind, no weight is positive and
+     * {@see PenceSplit::byWeight} shares it evenly. A dead member is excluded, so their share
+     * passes to the survivors rather than accumulating in a name nobody can spend.
+     *
+     * Spending is NOT netted off person by person: the engine holds one household expense profile,
+     * so there is no honest per-person share of it to subtract. Proportion of net income is the
+     * approximation, and it is flagged here rather than hidden: a couple where one earns
+     * everything and the other pays all the bills would in life bank differently from this.
+     *
+     * @param  array<string, int>  $netPerPerson
+     * @param  array<string, bool>  $alive
+     * @return array<string, int>
+     */
+    private function attributeSurplus(int $surplus, array $netPerPerson, array $alive): array
+    {
+        $weights = [];
+        foreach ($netPerPerson as $personId => $net) {
+            if ($alive[$personId] ?? false) {
+                $weights[$personId] = $net;
             }
         }
 
-        return null;
+        return PenceSplit::byWeight($surplus, $weights);
+    }
+
+    /**
+     * Everyone still alive, in declaration order. Money that belongs to the household rather than
+     * to one member is divided over this ({@see PenceSplit}), so it cannot land on whoever was
+     * typed first.
+     *
+     * @param  array<string, bool>  $alive
+     * @return list<string>
+     */
+    private function livingIds(Household $household, array $alive): array
+    {
+        $ids = [];
+        foreach ($household->persons as $person) {
+            if ($alive[$person->id]) {
+                $ids[] = $person->id;
+            }
+        }
+
+        return $ids;
     }
 
     /**

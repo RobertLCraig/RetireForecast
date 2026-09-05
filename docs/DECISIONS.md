@@ -3,6 +3,38 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-05: Liquid wealth belongs to its owners, not to whoever was typed first
+**Context:** card 0040 (expert panel 2026-08-19, engineer finding F8). Three places handed money to
+`persons[0]` or to `firstLiving()`: the year-0 sale proceeds in `HousingComparison::withHousing()`,
+the forced-sale proceeds in `PathProjector`, and every year's banked surplus. The care means test is
+deliberately INDIVIDUAL, because that is how the English test works, so the second-declared person
+reached care with an empty balance sheet and was assessed onto local-authority funding years before
+they would be in life. The model's answer moved with the order two people were typed in.
+
+**Decision: money is credited to the person it belongs to, by three rules with one home
+(`Money\PenceSplit`).**
+
+- **A jointly held home splits EQUALLY between the household's members.** The DTO carries one
+  `Property::$ownershipShare`, which is the household's beneficial share of a home held with
+  outsiders, and no per-person share at all. Equal is therefore the only split the repository knows,
+  and it is the rule `PathProjector::careAssessableCapital()` already applied to the equity it does
+  not disregard, so the two now agree. A couple who own 70/30 cannot say so: board card 0102.
+- **A banked surplus is attributed in proportion to the NET INCOME each living member produced**
+  (taxable income after tax and NI, investment income, tax-free streams and pension cash, and a
+  capital receipt in their own name). Spending is not netted off person by person, because the
+  engine holds one household expense profile and there is no honest per-person share of it.
+- **Money nobody generated splits evenly.** A Pension Credit award is a household award and the
+  buy-to-let finance-cost reducer is modelled household-wide, so neither carries a name.
+
+Every division is ORDER-INDEPENDENT by construction: the leftover pennies that no whole division can
+place go to the lowest person id rather than to the first-declared person, which is the difference
+between a rule and a coincidence.
+
+What this does NOT settle: the funding waterfall still SPENDS the first-declared person's accounts
+first, so a care spell paid for by drawing down still moves with typing order after the first year.
+That is a modelling decision of its own (whose assets pay for shared spending) and is board card 0101.
+**Status:** active
+
 ## 2026-09-05: The Monte Carlo has a golden master, and re-pinning it is a decision
 **Context:** card 0039 (expert panel 2026-08-19, engineer finding F4). The PRD claims "Monte Carlo is
 reproducible under a fixed seed, golden-master test" as a success criterion, and `ReturnModel`'s

@@ -5,10 +5,29 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-05. The exceptions a fresh session needs, newest first. Cards 0024 and 0028
-were folded out to [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) on 2026-09-05 to keep this
-loadable in one session:_
+_Last updated: 2026-09-05. The exceptions a fresh session needs, newest first. The "what is built"
+inventory and cards 0024, 0025, 0028, 0029 and 0030 were folded out to
+[docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) on 2026-09-05 to keep this loadable in one session:_
 
+- **Liquid wealth no longer lands on whoever was typed first, and the care answer no longer moves
+  with typing order in the year care starts.** Card 0040. Three places handed money to `persons[0]`
+  or `firstLiving()`: the year-0 sale proceeds in `HousingComparison::withHousing()`, the forced-sale
+  proceeds in `PathProjector`, and every year's banked surplus. The care means test is deliberately
+  INDIVIDUAL, so the second-declared person reached care with an empty balance sheet. A jointly held
+  home now splits EQUALLY between the members (the DTO has no per-person share, and equal is the rule
+  `careAssessableCapital()` already used), and a surplus is banked in proportion to the net income
+  each living member produced, evenly where nothing produced it. The one home of all three is the new
+  `Money\PenceSplit`, whose leftover pennies go to the lowest person id rather than the first
+  declared, so nothing turns on order. **Every stored plan with TWO people moves wherever the split
+  changes a per-person allowance or assessment** (care, Pension Credit, the CGT annual exempt amount,
+  the savings and dividend allowances); a one-person household is byte-identical. `ENGINE_VERSION` is
+  `finance-engine/liquid-wealth-split-between-owners` and the **stored-scenario re-run is owed**
+  (built in a worktree). No screen changed. `GoldenMasterTest` did NOT redden and needs no re-pin:
+  its frozen household stays put, never sells, and is in drawdown from year 0, so it banks no
+  surplus. **The card's third criterion is NOT met and is left open**: the funding waterfall still
+  SPENDS the first-declared person's accounts first, so a care spell paid for by drawing down still
+  moves with typing order after its first year. That is card **0101**. The adjacent gap, that a
+  couple owning 70/30 cannot say so, is card **0102**. See DECISIONS 2026-09-05.
 - **How long the State Pension triple lock lasts is now a choice, and three engine defaults that
   reach every projection are on the screen.** Card 0038. `growState` used to raise the State Pension
   by `max($infl, 0.025)`: no source, no setting, no control, nothing on any screen. Because
@@ -164,49 +183,6 @@ loadable in one session:_
   is the fourth sourcing gap in [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§15) and is raised as
   card 0091. The deposit cap is statute and is sourced. The adjacent gap, that a mid-projection
   forced sale starts a tenancy and is charged no deposit, is raised as card 0090.
-- **A let property no longer earns its rent gross.** Card 0030: three rates on `Property`
-  (`lettingManagementRate()` / `lettingVoidRate()` / `lettingMaintenanceRate()`, defaults 12% / 8% /
-  5%, a quarter of gross rent) come off every `IncomeStreamType::Rental` stream when the home is
-  `isLet`, and the let home's service charge is deducted from rental profit instead of being taxed as
-  though it were not paid. The Section 24 credit is read off that profit, not gross rent. All three
-  rates are builder inputs (step 3, shown once the home is flagged as let, alongside a new `isLet`
-  checkbox that had no control before) and are disclosed as `assumed_figure` notes reading their own
-  constants; a new `letting_caveats` note states the freeholder-consent, EPC C and council-tax gaps
-  that were previously only in a docblock. **Every let-to-let plan banks less rent and is taxed on
-  less profit, so its stored wealth, depletion year and success odds are too favourable**; a home the
-  household lives in is byte-identical. `ENGINE_VERSION` is `finance-engine/letting-costs` and the
-  **stored-scenario re-run is owed** (built in a worktree). The 12/8/5 is the 2026-08-19 property
-  reviewer's judgement, not a published series; that is the third sourcing gap in
-  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§14) and is raised as card 0087. The adjacent
-  fault, that a let home's own running costs are still charged as household spend (council tax and
-  all) and are not deducted from profit either, is raised as card 0088.
-- **An overridden home is no longer a certainty, and one home is now modelled over double the index
-  volatility.** Card 0029: `PathDraws::propertyGrowthReal($yearIndex, $meanReal)` replaces
-  `houseGrowthReal()`. A property growth override used to REPLACE the sampled house path, so a park
-  home or a hand-priced flat carried no house risk at all; it now sets the MEAN the year's shock is
-  re-centred on. The shock is also widened by `AssumptionSet::SINGLE_PROPERTY_VOLATILITY_MULTIPLE`
-  (2.0, so 18% real on the default set) because the sampled figure is an INDEX one, disclosed as an
-  `assumed_figure` note and editable as the `propertyVolatility` assumption. `ReturnModel` is
-  untouched, so the RNG stream is byte-identical and only what the home does with each draw changed.
-  **The deterministic projection is unchanged; every Monte Carlo band, success probability and
-  capacity-for-loss reading on a plan that keeps or buys a home is now WIDER.** `ENGINE_VERSION` is
-  `finance-engine/single-property-house-risk` and the **stored-scenario re-run is owed**, including
-  the park-home scenarios, whose range card 0029 asked for and which a worktree session should not
-  write to the live database. The 2.0 is the 2026-08-19 property reviewer's judgement, not a
-  published series; that is the second sourcing gap in
-  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§13) and is raised as card 0086.
-- **A full-spend measure is now recurring-spend only, and every stored figure moved with it.**
-  Card 0025: a one-off capital lump the plan cannot fund (an unfunded purchase, a mortgage redeemed
-  from capital) is charged the year's shortfall FIRST and judged on its own, so it no longer fails
-  the all-or-nothing full-spend test on every path. **Any Monte Carlo full-spend probability stored
-  before this is not comparable with one stored after** — re-run before reading one beside the
-  other. `ForecastResult::fullSpendYearsMetFraction()` and `SimulationResult::$successProbability`
-  `FullSpendMostYears` (95%+ of years) are the honest companions; the latter is `null` on an older
-  stored run and must show as a dash, never 0%. Card 0023 confirmed it against the stored set and
-  needed no code: #51's completion gap is **£1.37**, not £46,412, it is the only stored scenario
-  carrying an unfunded lump at all, and its full-spend probability now sits within a point of its
-  essentials one. Its stale SCENARIO-V2.local.md warning is rewritten; only a clean audit exit
-  remains open there.
 - **`scenarios:audit` cannot be used as a gate until every stored scenario is re-run.** It exits 1
   on 120 lines, all of them "run N carries no integrity stamp (it predates the column)", with no
   other problem class anywhere. Applying the pending `add_hashes_to_simulation_runs_table` migration
@@ -279,7 +255,11 @@ Full log and rationale: [DECISIONS.md](DECISIONS.md). The load-bearing "do not r
 - **The Monte Carlo has a golden master, and re-pinning it is a decision** (2026-09-05, card 0039). `MonteCarlo\GoldenMasterTest` pins one frozen run to the penny, so any change to draw ordering, projector arithmetic or a default assumption reddens it. Expect it red beside your next `ENGINE_VERSION` bump: re-pin the values, bump the test's `PIN_REVISION`, and add the DECISIONS.md entry its companion test then demands. Never widen or delete it to get green.
 
 ## Current state
-- **Done:** the tool is feature-complete for personal use. An HMRC-accurate deterministic engine (income tax and NI, the pension lump-sum suite including Month-1 emergency tax and reclaim, State Pension, SDLT/CGT/PRR, means-tested benefits, IHT, care) sits behind a Monte Carlo with stochastic joint-life mortality and stochastic house-price, salary and care-cost paths. Around it: encrypted DTO persistence, Fortify auth, GDPR, Filament, queued runs with progress and cancel, a Livewire UI with charts, spreadsheet import, a complete PDF export with server-drawn charts (an export of more than eight forecasts is queued and built one at a time, delivered as a zip), 2FA and a CSP. Decision support covers lever thresholds, a combination comparison, the survivor cliff, capacity for loss (how far wealth can fall before the essential floor breaks), a 2-D trade-off map and a local-model assistant. Housing covers stay-put, buy-cheaper, rent, park homes (a bought home that depreciates), let-to-let, equity release and real amortising repayment mortgages pinned to a lender illustration. The adviser-parity sweep is now closed bar A4 salary sacrifice, B3 the estate checklist, B4 the annual review and B5 capacity for loss (card 0011): investment charges, net-pay contribution relief, the protection gap (employer death-in-service cover and the life cover that would restore a survivor's plan), the cost-of-advice comparison and the ISA subscription cap shipped on 2026-07-31, and the annual-allowance / MPAA contribution cap, the £3,600 non-earner relief route and bed-and-ISA on 2026-08-22.
+- **Done:** the tool is feature-complete for personal use. The inventory of what that covers was
+  folded out to [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) on 2026-09-05; scope lives in
+  [docs/build/PLAN.md](build/PLAN.md). The one exception still worth carrying: the adviser-parity
+  sweep is closed bar A4 salary sacrifice, B3 the estate checklist, B4 the annual review and B5
+  capacity for loss, all of which are card 0011.
 - **In progress:** nothing mid-edit.
 - **Known bugs / broken:** a reviewed defect backlog, carded as **0024 to 0065** in [docs/board/todo/](board/todo/); do not restate it here, read the lane. The shape of it: five independent senior reviewers (software engineering, financial planning, welfare benefits, property, estate planning) read the docs, the engine and the stored scenarios on 2026-08-19. Findings four or more reviewers reached separately are the load-bearing ones. **Several change which plan the comparison ranks first**, so the ranked chart and card 0022 should not be read off until the head of the queue is cleared. The full report, with the private figures the cards deliberately omit, is the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
 Documented v1 scope limits remain flagged in code and listed in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" (for example Scotland income tax throws rather than guessing; emergency tax models the over-deduction magnitude, not PAYE-table pennies).

@@ -15,6 +15,7 @@ use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\PenceSplit;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\MonteCarlo\Simulator;
@@ -392,8 +393,8 @@ final class HousingComparison
     }
 
     /**
-     * Rebuild the household with a different primary residence and the freed cash added to a
-     * new invested (GIA) account for the first person. $mortgageInterest, when set, is the
+     * Rebuild the household with a different primary residence and the freed cash added as a new
+     * invested (GIA) account for EACH owner, split equally between them. $mortgageInterest, when set, is the
      * ongoing interest-only payment on a mortgage taken to fund a buy above the proceeds; it is
      * added back as the new home's mortgage cost (the old home's was stripped below).
      * $accounts, when given, replaces the household's accounts — a savings-funded buy passes
@@ -413,7 +414,18 @@ final class HousingComparison
     {
         $accounts ??= $household->accounts;
         if ($investedCash->isPositive()) {
-            $accounts[] = new Account($household->persons[0]->id, AccountType::Gia, $investedCash);
+            // The proceeds of a jointly owned home belong to its OWNERS, one account each, not to
+            // whoever was declared first (board card 0040). The care means test assesses the
+            // individual, so crediting the whole sale to one of them sent the other into care with
+            // an empty balance sheet. There is no per-person share on the DTO, so a jointly held
+            // home splits equally, the same rule the care assessment already applies to the equity
+            // it does not disregard.
+            $owners = array_map(static fn ($person): string => $person->id, $household->persons);
+            foreach (PenceSplit::evenly($investedCash->pence, $owners) as $ownerId => $share) {
+                if ($share > 0) {
+                    $accounts[] = new Account($ownerId, AccountType::Gia, Money::fromPence($share));
+                }
+            }
         }
 
         // The current home is sold in both sell variants, so its housing-linked spend (mortgage
