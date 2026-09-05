@@ -1,3 +1,7 @@
+---
+needs: 0101
+---
+
 # All the money lands on whoever was entered first, which changes the care means test
 
 ## Why
@@ -19,8 +23,17 @@ Care is one of the two headline risks the tool exists to surface, and the model'
 depends on the order the two people were typed in. It also skews the first-death estate, which is
 immaterial for a married couple but material for the cohabiting case the codebase supports.
 
+## Links
+
+**Blocked by**
+- `0101` - the funding waterfall still spends the first-declared person's accounts to zero before
+  the second's, so the third criterion's care charge keeps moving with typing order until that is
+  settled. Nothing else on this card waits on it.
+
 ## Not this card
 The care means-test rules themselves, which are card 0055.
+
+Whose assets pay for shared spending, which is card 0101 and is what the third criterion waits on.
 
 ## Acceptance
 <!-- AC:BEGIN -->
@@ -92,3 +105,53 @@ All five tests were watched failing against the unfixed engine first, each for t
 criterion describes and not for a missing class. The care charge is the instrument in four of them
 because it is the only per-person figure `ForecastResult` exposes; two of the four are narrowed to
 the first care year for the reason above, and both say so in a comment naming card 0101.
+
+**2026-09-05**
+RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED:
+- docs/board/in-progress/0040-liquid-wealth-all-lands-on-the-first-person.md
+OUT-OF-SCOPE: none
+
+A second unattended session on this card. It wrote no engine code, because the one thing still open
+is criterion 3, and criterion 3 cannot be met inside this card. What it did instead was check the
+previous session's diagnosis rather than inherit it, and then make the blocker machine-readable, so
+the loop stops re-opening a card it cannot finish.
+
+**The blocker is real, and it was re-measured here.** The criterion-3 fixture already in
+`OwnerAttributionTest` does NOT move over a whole care spell, because the couple in it are rich
+enough to self-fund every year in either order, so widening its assertion would have proved nothing.
+A leaner household does move: two people, no home, one taxable income of 15,000 pounds each, 150,000
+pounds of cash each, household spend equal to their combined income, one of them in care from age 88
+to death at 90. Swapping the order those two people are declared in moves the care bill the household
+bears from **240,000 pounds to 133,030.80 pounds**. The whole of that gap is the funding waterfall:
+`PathProjector::fundShortfall` walks `$household->persons` in declaration order inside each bucket,
+so the first-declared person's cash is spent to zero before the second's is touched, and the resident
+either keeps her capital or loses it depending only on where she was typed.
+
+**Card 0101 is correctly aimed, which was worth proving before waiting on it.** A throwaway patch
+splitting each bucket's draw across the living holders in proportion to what they hold, capped at
+each balance with a second pass for whoever the first pass filled, made that same fixture identical
+in both orders. So the waterfall is the LAST site of this fault, not merely the next one, and
+criterion 3 closes when 0101 lands rather than uncovering a fifth site behind it. The patch was
+reverted and nothing from it is committed; `PenceSplit::byWeight` already carries the split rule 0101
+needs.
+
+**Why it was not just fixed here.** Three reasons, and any one of them is enough. It is a modelling
+rule with a genuine alternative, not a tidy-up: a couple planning for care might deliberately spend
+the non-resident's money first, and pro rata is a neutral default rather than an obvious one, so it
+belongs on a card somebody reviews. It moves every stored two-person plan that ever draws down, which
+means an `ENGINE_VERSION` bump, a `MonteCarlo\GoldenMasterTest` re-pin and a DECISIONS entry that
+0101 already lists as its own tasks. And building it here would leave 0101 sitting in `todo/`
+describing a fault that no longer exists, which an unattended session cannot correct because it may
+not edit another card.
+
+**What changed on this card.** `needs: 0101` in the frontmatter and a `## Links` / `Blocked by`
+entry naming it, which is the board's own convention and the half the previous session left in
+prose. The README is explicit that a blocker named only in a paragraph is one no view can show, and
+that the unattended loop will not start a card whose `needs:` is unresolved. That is the intended
+behaviour here: this card should wait for 0101 rather than be handed to a third session that finds
+the same wall. `## Not this card` gained the matching scope fence.
+
+Criteria 1 and 2 stay ticked and were re-run green (Engine suite, 518 tests). Criterion 3 stays open.
+Still built in a worktree and still nothing new to look at in a browser: no screen changed.
