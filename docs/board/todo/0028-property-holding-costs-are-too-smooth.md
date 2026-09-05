@@ -110,3 +110,50 @@ Livewire render test only; Herd serves the app from `C:\Dev\RetireForecast`, not
 `ForcedSaleTest`'s two households were given an explicit `propertyCostsRealGrowth: Percent::zero()`:
 they exist to prove housing costs stop at a sale, which needs the £12k that stops to still be £12k in
 the sale year, and a blank rate no longer means flat.
+
+### 2026-09-05 review (v20260905062657-4366)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 174s, run by this job rather than reported by the card.
+
+**acceptance: defect**
+
+All three criteria trace to real code.
+
+**#1** ÔÇö entry: `ScenarioBuilder::addOneOff()` plus the `oneOffCosts.*.condition` rule and the sparse strip in `ScenarioBuilder::saveState()`; the select is in step 4 of `resources/views/livewire/scenario-builder.blade.php`. It reaches the engine via `HouseholdAssembler::expenseProfile()` and is charged, and dropped after a sale, by `PathProjector::oneOffCostsNominal()` and `ExpenseProfile::withoutPropertyCosts()`.
+
+**#2** ÔÇö `ExpenseProfile::propertyCostsRealGrowth()` returns the constant when null and the bucket is positive; `ExpenseProfile::propertyCostsGrowthIsAssumed()` gates the note in `ResultPresenter::assumedFigures()`, which reads the constant. `HouseholdAssembler::percent()` keeps an explicit `'0'`, so a stated zero is not swallowed.
+
+**#3** ÔÇö the input and its help copy exist, reading `ScenarioBuilder::propertyCostsGrowthDefaultPct()`.
+
+One defect, in #3's own copy. That help paragraph says "Whichever you pick is shown on your results as an assumption you can challenge." It is not. `ResultPresenter::assumedFigures()` emits the note only when the rate is null, proved by `test_nothing_is_assumed_about_property_costs_when_the_reader_gave_a_rate`, and no other view prints the rate. A reader who takes the 1.5% option the same sentence offers sees it nowhere on results or in the PDF report.
+
+VERDICT: defect
+
+**scope: defect**
+
+**Left half done**
+
+1. Task 4 ("Re-run every stored scenario") is still open. `ScenarioForecaster::ENGINE_VERSION` is bumped, so every stored stay-put result with a service charge and no explicit rate is now too favourable. The card is marked done with the fix owed.
+
+2. Task 2 ("Re-source the leasehold default, with `source` and `verified_on`") is ticked but was not done. `ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS` names card 0028 as its source. A card is not a source for its own requirement. That tick should come off; 0085 holds the real work.
+
+3. `ResultPresenter::keepsCurrentHome()` is new and no test calls it. Nothing proves the note is hidden on a sell or buy plan. `AssumedFiguresDisclosureTest::disclosures()` never passes a variant, so the gate, and the four signature changes that carry it, are unproven.
+
+**Over the fence**
+
+4. AC#2 says leasehold. `ExpenseProfile::propertyCostsRealGrowth()` fires on any positive while-owning-home bucket, and `ScenarioBuilder::rules()` lets a reader tag any expense line that way. So a freeholder's "Buildings insurance" line now compounds at CPI+3%, a rate sourced for block service charges only. Insurance is card 0033's ground.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Two callers were not brought along.**
+
+**1. `ResultPresenter::inputNotes()` ÔÇö the `property_costs_growth` note is not variant-gated.** `assumedFigures()` learned `keepsCurrentHome($variant)`; its sibling note in the same file did not. `ScenarioResults::render()`, `ScenarioReport`, and `AuditScenarios` all pass `$scenario->toHousehold()`, the BASE household, so the profile still carries the service charge on a sell-and-rent variant. Before this card the note fired only if a user typed a positive rate; now the engine supplies 3% to every household with a bucket, so every sell/rent plan is told "Home-ownership costs ... are modelled rising 3% a year above inflation while you own the home" for costs its projection strips. `AuditScenarios` check 7 counts only `assumed_figure` notes, so the sweep cannot see it.
+
+**2. `EssentialSpendLever::apply()` and `DiscretionarySpendLever::apply()` drop the rate.** Both rebuild `ExpenseProfile` without `propertyCostsRealGrowth`, carrying `propertyCosts` through. "Null is not zero" now means the sweep re-reads the 3% default. A user who enters `0` gets a base run at 0% and `SustainableSpend` / `LeverThresholdService` answers at 3%. Both docblocks claim the profile is otherwise carried unchanged.
+
+VERDICT: defect
+
