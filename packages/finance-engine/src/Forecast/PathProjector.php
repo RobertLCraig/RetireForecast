@@ -20,6 +20,7 @@ use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
 use RetireForecast\FinanceEngine\Housing\HousingProceeds;
+use RetireForecast\FinanceEngine\Housing\Tenancy;
 use RetireForecast\FinanceEngine\Iht\EstateValuation;
 use RetireForecast\FinanceEngine\Iht\EstateValuer;
 use RetireForecast\FinanceEngine\Iht\IhtOutcome;
@@ -1163,10 +1164,11 @@ final class PathProjector
         // primaryResidence), or from the sale year for a forced sale. An owner still in the home
         // pays no rent (even where a post-sale rent figure is set for the forced-sale years).
         $ownsHome = $home !== null && ! $state['homeSold'];
+        $rentChargedNominal = 0;
         if ($settings->annualRent !== null && ! $ownsHome) {
-            $rentNominal = (int) round($settings->annualRent->pence * $state['rentFactor']);
-            $spendNominal += $rentNominal;
-            $essentialNominal += $rentNominal;
+            $rentChargedNominal = (int) round($settings->annualRent->pence * $state['rentFactor']);
+            $spendNominal += $rentChargedNominal;
+            $essentialNominal += $rentChargedNominal;
         }
 
         // Property running costs (maintenance, insurance, council tax) for owners are
@@ -1342,6 +1344,8 @@ final class PathProjector
             warnings: [
                 ...$this->mpaaWarnings($state, $mpaaAtYearStart),
                 ...$this->unfundedOneOffWarnings($oneOffs, $unmetOneOffNominal, $m),
+                ...$this->tenancyUpFrontWarnings($oneOffs, $rentChargedNominal, $m),
+                ...$this->rentReferencingWarnings($rentChargedNominal, $grossIncomeNominal, $m),
             ],
             mortgageBalance: $m($state['mortgageOutstanding']),
             nominal: $nominal,
@@ -2588,6 +2592,94 @@ final class PathProjector
         }
 
         return $warnings;
+    }
+
+    /**
+     * The tenancy is not only a question of whether the money lasts: it has to be GRANTED. A
+     * letting agent's standard reference asks for gross annual income of at least
+     * {@see Tenancy::REFERENCING_INCOME_MULTIPLE} times the monthly rent, and it is an INCOME
+     * test — the proceeds of the sale the plan has just banked count for nothing towards it. So
+     * a household with a large pot and a small pension hits a wall the money-lasts projection
+     * cannot see, and until board card 0031 nothing said so.
+     *
+     * Raised on every year the household's income falls short, not just the first, because rent
+     * rises and income does not always keep up: a tenancy granted at 68 can be refused at 78, and
+     * a renewal is a fresh reference. The message states both normal ways round it and the money
+     * each costs, because a flag that only says "no" leaves the reader nowhere.
+     *
+     * @param  callable(int): Money  $m  nominal pence -> the reported Money (real, or the nominal twin)
+     * @return list<Warning>
+     */
+    private function rentReferencingWarnings(int $rentChargedNominal, int $grossIncomeNominal, callable $m): array
+    {
+        if ($rentChargedNominal <= 0) {
+            return [];
+        }
+
+        $rent = $m($rentChargedNominal);
+        $income = $m($grossIncomeNominal);
+        if (Tenancy::referencePasses($rent, $income)) {
+            return [];
+        }
+
+        $monthly = Tenancy::monthlyRent($rent);
+
+        return [new Warning(
+            WarningCode::RENT_REFERENCING_FAILED,
+            "Renting here needs a landlord to say yes, and on this year's income one normally would not. "
+            ."Your income is {$income->format()}. A letting agent's standard reference asks for gross annual "
+            .'income of at least '.Tenancy::REFERENCING_INCOME_MULTIPLE.' times the monthly rent — the rent is '
+            ."{$monthly->format()} a month, so the bar is ".Tenancy::referencingIncomeRequired($rent)->format()
+            .' a year. It is an INCOME test: the money from the sale does not count towards it, however large it is. '
+            .'The two usual ways round a failed reference both cost money. One is a UK homeowner guarantor, '
+            .'referenced at '.Tenancy::GUARANTOR_INCOME_MULTIPLE.' times the monthly rent against their own income ('
+            .Tenancy::guarantorIncomeRequired($rent)->format().' a year) — and a household that has just sold no '
+            .'longer has a homeowner in it. The other is rent paid in advance, normally '
+            .Tenancy::ADVANCE_MONTHS_MIN.' to '.Tenancy::ADVANCE_MONTHS_MAX.' months of it: '
+            .Tenancy::rentInAdvance($rent, Tenancy::ADVANCE_MONTHS_MIN)->format().' to '
+            .Tenancy::rentInAdvance($rent, Tenancy::ADVANCE_MONTHS_MAX)->format().' of capital locked up and asked '
+            .'for again at every renewal, so it is not invested and not earning while the tenancy runs.',
+        )];
+    }
+
+    /**
+     * What starting the tenancy costs before the keys change hands, stated once, in the year the
+     * charge falls. The deposit is charged as a real cost; the first month's rent is NOT charged
+     * again on top, because a monthly-in-advance tenancy makes twelve payments in its first year
+     * and the rent line already charges twelve. The reader still needs the day-one total, so it
+     * is named here — the two figures being invisible was the point of board card 0031.
+     *
+     * @param  list<array{label: string, amount: int}>  $oneOffs
+     * @param  callable(int): Money  $m  nominal pence -> the reported Money (real, or the nominal twin)
+     * @return list<Warning>
+     */
+    private function tenancyUpFrontWarnings(array $oneOffs, int $rentChargedNominal, callable $m): array
+    {
+        if ($rentChargedNominal <= 0) {
+            return [];
+        }
+
+        foreach ($oneOffs as $cost) {
+            if ($cost['label'] !== Tenancy::UP_FRONT_LABEL) {
+                continue;
+            }
+            $deposit = $m($cost['amount']);
+            $monthly = Tenancy::monthlyRent($m($rentChargedNominal));
+
+            return [new Warning(
+                WarningCode::TENANCY_UP_FRONT_COST,
+                'Starting a tenancy costs money before you get the keys: a deposit of '
+                .$deposit->format().' ('.Tenancy::DEPOSIT_WEEKS.' weeks\' rent, the most a landlord may hold '
+                .'under the Tenant Fees Act 2019) plus the first month\'s rent of '.$monthly->format().' in '
+                .'advance — '.$deposit->plus($monthly)->format().' you have to produce on day one. The deposit '
+                .'is charged here as a cost of the plan: it is held for as long as you rent, re-lodged every '
+                .'time you move, and only what is left of it comes back at the end. The first month is not '
+                .'charged again on top, because a year of monthly-in-advance rent is twelve payments and this '
+                .'year\'s rent already charges twelve.',
+            )];
+        }
+
+        return [];
     }
 
     /**

@@ -1185,6 +1185,18 @@
     @else
         <p class="verdict verdict-none">Usable money never runs out on this strategy.</p>
     @endif
+    {{-- Would a landlord grant this tenancy, and what does moving in cost on day one? Printed
+         beside the money-lasts verdict, so print cannot drift from the screen (card 0031). --}}
+    @if ($ladder['rentReferencing'])
+        <p class="verdict verdict-medium">Renting has to be agreed as well as afforded. From
+            {{ $ladder['rentReferencing']['firstYear'] }}, and in {{ $ladder['rentReferencing']['years'] }}
+            {{ \Illuminate\Support\Str::plural('year', $ladder['rentReferencing']['years']) }} of this plan, the
+            income would not pass a letting agent's standard reference.
+            {{ $ladder['rentReferencing']['message'] }}</p>
+    @endif
+    @if ($ladder['tenancyUpFront'])
+        <p class="note"><strong>Moving in.</strong> {{ $ladder['tenancyUpFront'] }}</p>
+    @endif
     <p class="note">Rows are tinted: green where income covers the spend, plain where savings are being drawn on,
         amber where the spend is not fully met, red where usable money sits below your safety buffer.</p>
 

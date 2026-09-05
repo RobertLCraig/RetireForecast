@@ -127,7 +127,7 @@ final class HousingComparison
         return [
             'stay_put' => ['household' => $household, 'settings' => $settings],
             'buy_outright' => ['household' => $this->buyVariant($household, $action, $settings), 'settings' => $settings],
-            'rent' => ['household' => $this->rentVariant($household, $netProceeds), 'settings' => $this->rentSettings($settings, $assumptions, $action)],
+            'rent' => ['household' => $this->rentVariant($household, $netProceeds, $action, $settings), 'settings' => $this->rentSettings($settings, $assumptions, $action)],
         ];
     }
 
@@ -258,10 +258,27 @@ final class HousingComparison
         return $this->withHousing($household, $newProperty, $outcome->surplus, $interest, $accounts, $oneOffCost, $realisedGains);
     }
 
-    private function rentVariant(Household $household, Money $netProceeds): Household
+    private function rentVariant(Household $household, Money $netProceeds, HousingAction $action, ForecastSettings $settings): Household
     {
+        // Starting a tenancy costs money before the keys change hands, and until board card 0031
+        // this plan was handed one for free. The DEPOSIT is the part charged on top of the rent
+        // line: capped by the Tenant Fees Act, held for as long as they rent, re-lodged at every
+        // move, and only partly returned. The first month's rent in advance is NOT charged again —
+        // a year of a monthly-in-advance tenancy is twelve payments and the rent line already
+        // charges twelve — but it is named in the disclosure, because the day-one cash is what a
+        // household actually has to produce. Keyed to the FIRST person's base-year age, the
+        // one-off convention the projector fires on ({@see buyVariant}).
+        $rent = $action->annualRent;
+        $oneOffCost = $rent !== null && $rent->isPositive()
+            ? [
+                'atAge' => $settings->baseYear - (int) $household->persons[0]->dob->format('Y'),
+                'amount' => Tenancy::deposit($rent),
+                'label' => Tenancy::UP_FRONT_LABEL,
+            ]
+            : null;
+
         // No property; all proceeds invested.
-        return $this->withHousing($household, null, $netProceeds);
+        return $this->withHousing($household, null, $netProceeds, oneOffCost: $oneOffCost);
     }
 
     private function rentSettings(ForecastSettings $settings, AssumptionSet $assumptions, HousingAction $action): ForecastSettings

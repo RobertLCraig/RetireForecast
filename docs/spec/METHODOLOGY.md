@@ -121,6 +121,19 @@ mortgage rate, the shortfall is **borrowed** and carries a lifetime interest cos
 rent**, the whole net proceeds are invested and rent is paid each year, growing at its own inflation
 rate.
 
+**Renting has to be agreed as well as afforded.** A landlord's referencing agency asks for gross
+annual income of at least **30 times the monthly rent**, and it is an income test: the money the sale
+frees does not count towards it, however large it is. The tool checks each year of a rent plan
+against that bar and flags the years that fall short, because no amount of capital gets a household
+over it. Where it is short, it states the two normal ways round it and what each costs: a UK
+homeowner **guarantor** referenced at 36 times the monthly rent against their own income, or **rent
+paid in advance**, normally 6 to 12 months of it, which locks that capital up and is asked for again
+at every renewal. The **deposit** is charged as a real cost at the start of a rent plan, capped as the
+Tenant Fees Act 2019 caps it: five weeks' rent, or six weeks at an annual rent of £50,000 or more.
+The first month's rent in advance is not charged twice, because the first year of a
+monthly-in-advance tenancy is twelve payments and the year's rent already charges twelve; the
+day-one total you would have to produce is stated on the result.
+
 **Stamp duty (SDLT)** is charged band by band (0% to £125k, 2% to £250k, 5% to £925k, 10% to £1.5m,
 12% above). The 3%–5% **additional-property surcharge** exists in the engine but is **not applied**
 in the buy-vs-rent comparison, which assumes you are replacing your main residence.

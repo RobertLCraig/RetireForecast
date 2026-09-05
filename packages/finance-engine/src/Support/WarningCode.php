@@ -37,4 +37,14 @@ final class WarningCode
      * rather than only depressing a spending probability that reads as a whole-plan failure.
      */
     public const UNFUNDED_ONE_OFF_COST = 'unfunded_one_off_cost';
+
+    /**
+     * The household's gross income in this year falls below what a standard tenant reference
+     * asks for at the rent being paid. It is an INCOME test, so capital does not answer it: the
+     * plan may be perfectly affordable and still not be a tenancy anyone would grant.
+     */
+    public const RENT_REFERENCING_FAILED = 'rent_referencing_failed';
+
+    /** What starting a tenancy costs on day one — the deposit and the first month's rent. */
+    public const TENANCY_UP_FRONT_COST = 'tenancy_up_front_cost';
 }

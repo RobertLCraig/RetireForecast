@@ -19,6 +19,7 @@ use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\HistoricalBacktester;
 use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestResult;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
+use RetireForecast\FinanceEngine\Housing\Tenancy;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\MonteCarlo\Simulator;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -38,7 +39,13 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-05 (letting-costs): a LET property no longer earns its rent gross. The agent's
+     * Bumped 2026-09-05 (tenancy-deposit): a sell-and-rent plan is charged the tenancy DEPOSIT as a
+     * year-0 one-off ({@see Tenancy::deposit}, the Tenant Fees Act cap on the rent), where before it
+     * was handed the tenancy for nothing. Every rent variant spends more in its first year under
+     * this stamp, so its wealth and terminal figures stored earlier are very slightly too
+     * favourable; no other variant moves, and the referencing flag beside it changes no figure at
+     * all. See board card 0031.
+     * Previous bump 2026-09-05 (letting-costs): a LET property no longer earns its rent gross. The agent's
      * fee, the empty weeks between tenants and the repairs and safety certificates come off it
      * ({@see Property::DEFAULT_LETTING_MANAGEMENT_BPS} and its
      * siblings, about a quarter of gross rent between them), and the let home's service charge is
@@ -105,7 +112,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/letting-costs';
+    public const ENGINE_VERSION = 'finance-engine/tenancy-deposit';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

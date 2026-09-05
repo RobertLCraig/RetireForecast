@@ -7,6 +7,25 @@
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
 _Last updated: 2026-09-05. The exceptions a fresh session needs, newest first:_
 
+- **A rent plan is now tested against the landlord, not only against the money.** Card 0031: a new
+  `Housing\Tenancy` owns four figures, and `PathProjector` raises
+  `WarningCode::RENT_REFERENCING_FAILED` on any year whose gross income falls below 30 times the
+  monthly rent (a standard tenant reference, which is an INCOME test and ignores capital entirely).
+  The message states the two ways round it, a guarantor at 36 times and 6 to 12 months' rent in
+  advance, with the money each costs. `HousingComparison::rentVariant` also charges the tenancy
+  DEPOSIT (the Tenant Fees Act cap: 5 weeks' rent, 6 at £50,000+) as a year-0 one-off; the first
+  month's rent is deliberately NOT charged again, because the year's rent line already carries twelve
+  payments, and the disclosure names the day-one cash instead. Both notices reach screen, PDF and
+  audit through `ResultPresenter::ladder()` (`rentReferencing` / `tenancyUpFront`), because
+  `inputNotes()` is handed the STAY-PUT forecast on the screen, which is a separate defect raised as
+  card 0089. **Every rent variant spends one deposit more in year 0**, so its stored wealth and
+  terminal figures are very slightly too favourable; no other variant moves and the flag changes no
+  number. `ENGINE_VERSION` is `finance-engine/tenancy-deposit` and the **stored-scenario re-run is
+  owed** (built in a worktree, so **the results page has not been seen in a browser**). The 30x, 36x
+  and 6-to-12-months are the 2026-08-19 property reviewer's judgement, not a published series; that
+  is the fourth sourcing gap in [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§15) and is raised as
+  card 0091. The deposit cap is statute and is sourced. The adjacent gap, that a mid-projection
+  forced sale starts a tenancy and is charged no deposit, is raised as card 0090.
 - **A let property no longer earns its rent gross.** Card 0030: three rates on `Property`
   (`lettingManagementRate()` / `lettingVoidRate()` / `lettingMaintenanceRate()`, defaults 12% / 8% /
   5%, a quarter of gross rent) come off every `IncomeStreamType::Rental` stream when the home is

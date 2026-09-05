@@ -24,13 +24,77 @@ Housing Benefit for a pension-age renter, which is card 0048.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a rent plan is modelled, THE APP SHALL flag any year in which household gross income falls below the standard referencing multiple of the rent.
-- [ ] #2 THE APP SHALL state the two normal alternatives to a failed reference, and the capital that rent in advance would tie up.
-- [ ] #3 THE APP SHALL include the deposit and first month up front as a cost at the start of a rent plan.
+- [x] #1 WHEN a rent plan is modelled, THE APP SHALL flag any year in which household gross income falls below the standard referencing multiple of the rent.
+- [x] #2 THE APP SHALL state the two normal alternatives to a failed reference, and the capital that rent in advance would tie up.
+- [x] #3 THE APP SHALL include the deposit and first month up front as a cost at the start of a rent plan.
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Add a referencing feasibility flag using the existing `WarningCode` pattern
+- [x] Add a referencing feasibility flag using the existing `WarningCode` pattern
 - [ ] Source the referencing multiple, with `source` and `verified_on`
-- [ ] Charge deposit plus first month as a one-off at the start of a rent plan
-- [ ] Copy on the rent result explaining what a failed reference means
+- [x] Charge deposit plus first month as a one-off at the start of a rent plan
+- [x] Copy on the rent result explaining what a failed reference means
+
+## Comments
+
+**2026-09-05**
+RESULT: done
+TESTS: +14 new, all green
+TOUCHED:
+packages/finance-engine/src/Housing/Tenancy.php (new)
+packages/finance-engine/src/Support/WarningCode.php
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/src/Housing/HousingComparison.php
+packages/finance-engine/tests/Housing/TenancyReferencingTest.php (new)
+app/Forecast/ResultPresenter.php
+app/Forecast/ScenarioForecaster.php
+tests/Feature/Forecast/RentReferencingNoticeTest.php (new)
+resources/views/livewire/scenario-results.blade.php
+resources/views/pdf/partials/report.blade.php
+docs/spec/ASSUMPTIONS.md
+docs/spec/METHODOLOGY.md
+docs/DECISIONS.md
+docs/HANDOVER.md
+docs/board/todo/0089-a-sell-plans-assumed-figure-notes-are-computed-on-the-stay-put-forecast.md (new)
+docs/board/todo/0090-a-forced-sale-starts-a-tenancy-and-is-charged-nothing-to-start-it.md (new)
+docs/board/todo/0091-pin-the-tenant-referencing-multiples-to-a-published-source.md (new)
+OUT-OF-SCOPE: 0089, 0090, 0091
+
+A new `Housing\Tenancy` owns every figure (referencing multiple 30x, guarantor 36x, 6 to 12 months in
+advance, the Tenant Fees Act deposit cap) so the sentences a reader is shown READ the constants and
+cannot drift from them. `PathProjector` raises `RENT_REFERENCING_FAILED` on any year whose
+`grossIncome` falls below the bar, and `TENANCY_UP_FRONT_COST` once, in the year the tenancy starts.
+`HousingComparison::rentVariant` charges the deposit as a year-0 one-off on the same
+`withOneOffCost` path the unfunded-purchase gap uses.
+
+Both notices reach the reader through `ResultPresenter::ladder()` (`rentReferencing` /
+`tenancyUpFront`), rendered as banners beside the money-lasts verdict on the results page and in the
+PDF. The deposit is also disclosed through `assumedFigures()`, so `scenarios:audit` check 7 covers
+it. **Not `inputNotes()` alone, because that is handed the STAY-PUT forecast on the screen** and a
+rent plan's own warnings would never have reached its own reader; that is a defect of its own and is
+card 0089, not something this card widened into.
+
+**The one deviation, stated plainly: the first month's rent is named but not charged a second time.**
+Criterion #3 asks for "the deposit and first month up front". In an annual model, a household paying
+monthly in advance makes twelve payments in its first year, and the year's rent line already charges
+twelve, so charging a thirteenth would be a cost nobody pays. What is genuinely additional on day one
+is the deposit, and that is what is charged. The disclosure states the deposit, the first month AND
+the day-one total the household must produce, and says why only one of the two is charged again. So
+both figures are on the result and only the honest one moves the projection. If the reviewer wants
+the literal thirteenth month charged instead, that is a two-line change in `rentVariant`.
+
+Every criterion was built test-first and watched fail: the referencing and up-front tests failed on
+zero warnings raised, and the deposit test failed on `spendTarget` being 3,200,000 pence where
+3,373,077 was expected. The engine test pins exact pence under flat assumptions; the app test pins
+the flag to the flagged year's own reported income, because rent rises in real terms in the rich
+fixture and a figure restated from the inputs would have been wrong.
+
+Assumed: that the annual projection year and the tenancy year start together, which is what lets the
+year-0 rent stand for the twelve payments. Not settled from the repository: nothing here says whether
+a household would be re-referenced at a renewal, so the flag is raised on every failing year rather
+than only the first, which is the more adverse reading.
+
+`ENGINE_VERSION` is now `finance-engine/tenancy-deposit`. Every stored rent variant is one deposit
+too cheap in year 0 and is owed a re-run; no other variant moves. **Built in a worktree, so the two
+new banners have NOT been looked at in a browser and `scenarios:audit` was not run** (it reaches the
+live database, which a worktree session must not touch).

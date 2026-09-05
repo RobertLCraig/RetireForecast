@@ -1459,6 +1459,22 @@
             @else
                 <p class="mt-3 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm font-medium text-green-900">✓ Usable money never runs out on this strategy.</p>
             @endif
+
+            {{-- Would a landlord grant this tenancy? A separate question from whether the money
+                 lasts, and one the capital from the sale does not answer, so it gets its own
+                 banner rather than a footnote (board card 0031). --}}
+            @if ($ladder['rentReferencing'])
+                <p class="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="note">
+                    <strong>⚠ Renting has to be agreed as well as afforded.</strong>
+                    From {{ $ladder['rentReferencing']['firstYear'] }}, and in {{ $ladder['rentReferencing']['years'] }} {{ \Illuminate\Support\Str::plural('year', $ladder['rentReferencing']['years']) }} of this plan, the income would not pass a letting agent's standard reference.
+                    {{ $ladder['rentReferencing']['message'] }}
+                </p>
+            @endif
+            @if ($ladder['tenancyUpFront'])
+                <p class="mt-3 rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800" role="note">
+                    <strong>Moving in.</strong> {{ $ladder['tenancyUpFront'] }}
+                </p>
+            @endif
             {{-- gray-600, not gray-500: the tinted swatch spans below inherit it, and gray-500 on the
                  red-50 tint is 4.42:1 (under AA). --}}
             <p class="mt-1 text-xs text-gray-600">Rows are tinted: <span class="rounded bg-green-50 px-1">surplus</span> (income covers spend), plain (drawing on savings), <span class="rounded bg-amber-50 px-1">shortfall</span> (spend not fully met), <span class="rounded bg-red-50 px-1">below buffer</span>.</p>

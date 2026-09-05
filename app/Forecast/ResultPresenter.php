@@ -891,6 +891,18 @@ final class ResultPresenter
                     break;
                 }
             }
+
+            // The tenancy deposit (board card 0031). Nobody enters it, it is worked out from the
+            // rent against the Tenant Fees Act cap, and it is charged as real money in the year the
+            // tenancy starts, so it is exactly the kind of figure this rule exists to surface. The
+            // engine writes the sentence, because it owns both the cap and the pounds.
+            foreach ($forecast->years as $year) {
+                $tenancy = self::firstWarning($year, WarningCode::TENANCY_UP_FRONT_COST);
+                if ($tenancy !== null) {
+                    $out[] = $tenancy;
+                    break;
+                }
+            }
         }
 
         if ($action === null) {
@@ -1071,6 +1083,13 @@ final class ResultPresenter
 
         $rows = [];
         $floorBreachYear = null;
+        // Renting has a second gate the money-lasts projection cannot see: the tenancy has to be
+        // GRANTED. Referencing is an income test, so a household sitting on the sale proceeds can
+        // fail it outright (board card 0031). Collected here rather than recomputed, so the row
+        // marks, the banner and the year it starts all read the engine's own per-year warning.
+        $referencingYears = [];
+        $referencingMessage = null;
+        $tenancyUpFront = null;
         foreach ($forecast->years as $year) {
             $income = [];
             foreach ($active as $source) {
@@ -1104,6 +1123,13 @@ final class ResultPresenter
             // {@see spendableFor} — derived there so results, Compare, /afford and the PDF cannot drift.
             $spendable = self::spendableFor($year);
 
+            $failsReference = self::firstWarning($year, WarningCode::RENT_REFERENCING_FAILED);
+            if ($failsReference !== null) {
+                $referencingYears[] = $year->calendarYear;
+                $referencingMessage ??= $failsReference;
+            }
+            $tenancyUpFront ??= self::firstWarning($year, WarningCode::TENANCY_UP_FRONT_COST);
+
             $rows[] = [
                 'year' => $year->calendarYear,
                 'ages' => implode(' / ', $year->ages),
@@ -1127,6 +1153,9 @@ final class ResultPresenter
                 'totalWealth' => $year->totalWealth->format(),
                 'status' => $status,
                 'belowFloor' => $belowFloor,
+                // This year's income would not pass a letting agent's standard reference at this
+                // rent. Marked per row because it can come and go: it is the income that moves.
+                'failsReference' => $failsReference !== null,
             ];
         }
 
@@ -1145,6 +1174,18 @@ final class ResultPresenter
             'bufferMonths' => $bufferMonths,
             'floorBreachYear' => $floorBreachYear,
             'depletionYear' => $forecast->depletionCalendarYear,
+            // Whether a landlord would GRANT this tenancy, which is a different question from
+            // whether the money lasts and is not answered by the capital the sale frees. Null on
+            // any plan that pays no rent. The sentence is the engine's own (it owns the multiple
+            // and the pounds), quoted rather than restated so the two cannot drift.
+            'rentReferencing' => $referencingMessage === null ? null : [
+                'firstYear' => min($referencingYears),
+                'years' => count($referencingYears),
+                'message' => $referencingMessage,
+            ],
+            // What starting the tenancy costs on day one: the deposit charged here plus the first
+            // month's rent, which the year's rent line already carries. Null when no rent is paid.
+            'tenancyUpFront' => $tenancyUpFront,
         ];
     }
 

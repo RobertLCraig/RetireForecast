@@ -176,7 +176,7 @@ cash **−0.5%**.
    CPI + 3% real central, CPI + 1.5% real as the optimistic sensitivity. User-editable per scenario (builder
    step 4), with both figures on the input, and disclosed as an assumed figure on the results page reading
    the constant. An explicit rate, **including an explicit zero**, always wins.
-   **⚠️ SOURCING GAP, and it is the only one in this document.** The figures are the judgement of the
+   **⚠️ SOURCING GAP, the first in this document.** The figures are the judgement of the
    property reviewer in the five-discipline expert review of **2026-08-19** (gitignored
    `docs/REVIEW-PANEL-2026-08-19.local.md`; board card 0028). That is a reviewer's opinion, **not a published
    series**. Every other figure above cites a primary or fetchable secondary source; this one does not.
@@ -231,7 +231,30 @@ cash **−0.5%**.
    no web access. Board card **0087** carries pinning them to published data (a letting-agent fee survey,
    an ARLA/Propertymark void statistic, and a landlord repairs-cost series).
    **Confirm you are happy with 12% / 8% / 5% until that lands.**
+15. **A tenancy has to be GRANTED as well as afforded (added 2026-09-05; lives in
+   `Housing\Tenancy`).** Four figures, all applying to a sell-and-rent plan only:
+   **30x the monthly rent** is the gross ANNUAL income a standard tenant reference asks for
+   (`REFERENCING_INCOME_MULTIPLE`); **36x** is the higher bar a homeowner guarantor is referenced at
+   (`GUARANTOR_INCOME_MULTIPLE`); **6 to 12 months** is the rent in advance a landlord asks of an
+   applicant who fails (`ADVANCE_MONTHS_MIN` / `MAX`); and the **deposit** is capped at **5 weeks'
+   rent**, or **6 weeks** at an annual rent of £50,000 or more.
+   **Why it matters.** Referencing is an INCOME test and takes no account of capital, so a retired
+   household sitting on the whole proceeds of a sale can fail it outright however well the
+   money-lasts projection reads. That is a wall, not a cost, and the forecast could not see it. Only
+   the deposit changes a projected figure (it is charged as a year-0 one-off); the referencing flag
+   changes no number, it states a condition on the plan. The first month's rent in advance is
+   deliberately **not** charged on top: a year of a monthly-in-advance tenancy is twelve payments and
+   the rent line already charges twelve, so the disclosure names the day-one cash instead.
+   **The deposit cap is statute** and is not part of the gap below: Tenant Fees Act 2019 c.4,
+   Schedule 1 paragraph 2, verified_on 2026-09-05.
+   **⚠️ SOURCING GAP, the fourth in this document,** and it covers the three multiples only. 30x, 36x
+   and 6-to-12 months are the judgement of the property reviewer in the five-discipline expert review
+   of **2026-08-19** (gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`; board card 0031). They match
+   common UK referencing practice, but **no primary source was fetched**, because the unattended build
+   loop has no web access. Board card **0091** carries pinning them to the referencing providers' own
+   published criteria. **Confirm you are happy with 30x / 36x / 6-12 months until that lands.**
 
+- Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees
 - FCA Handbook COBS 13 Annex 2 (projection rates): https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html

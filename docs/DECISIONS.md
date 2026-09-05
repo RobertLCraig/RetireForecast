@@ -3,6 +3,50 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-05: A rent plan is tested against the landlord, not only against the money
+**Context:** card 0031 (expert panel 2026-08-19, property finding 6). The engine asked only whether a
+sell-and-rent plan's money lasts. It never asked whether the tenancy would be granted. Standard
+tenant referencing is an INCOME test at 30 times the monthly rent and takes no account of capital, so
+a retired household with a large pot and a small pension fails it however well the projection reads.
+The plan was also handed the tenancy for nothing: no deposit, no up-front cost of any kind.
+
+**Decision:** three changes, all confined to a plan that pays rent.
+
+- **A per-year referencing flag, on the same `WarningCode` mechanism as every other pitfall.**
+  `PathProjector` raises `RENT_REFERENCING_FAILED` on any year whose `grossIncome` falls below
+  `Tenancy::referencingIncomeRequired()`. Placed where the RENT is charged rather than on the rent
+  variant, so a forced sale that starts renting mid-projection is covered by the same guard.
+  It is raised on **every** failing year, not only the first: rent rises, income does not always
+  follow, and a renewal is a fresh reference.
+- **The flag states the two ways round it, with the money each costs.** A homeowner guarantor at 36
+  times the monthly rent against their own income, and 6 to 12 months' rent in advance with the
+  pounds that would tie up. A flag that only says "no" leaves the reader nowhere, and the second
+  route is exactly the kind of capital lock-up the plan's own arithmetic assumes away.
+- **The tenancy deposit is charged as a year-0 one-off**, at the Tenant Fees Act cap
+  (`Tenancy::deposit()`, five weeks' rent, six at £50,000 a year or more), on the same
+  `withOneOffCost` path the unfunded-purchase gap uses.
+
+**The first month's rent in advance is deliberately NOT charged on top.** A year of a
+monthly-in-advance tenancy is twelve payments, and the year's rent line already charges twelve, so a
+thirteenth would be money nobody pays. The card asked for "the deposit and first month up front" and
+the honest reading of that in an annual model is: charge what is additional, and NAME the day-one
+cash. The disclosure states the deposit, the first month and the total the household must produce
+before it gets the keys, and says why only one of the two is charged again.
+
+**Both notices reach the reader through `ResultPresenter::ladder()`, not `inputNotes()`.** The ladder
+is handed the SELECTED variant's forecast on the screen, in the PDF and in `scenarios:audit`, so a
+rent plan's own warnings can reach a rent plan's own reader. `inputNotes()` is handed the stay-put
+forecast on the screen and the variant forecast in the audit, which is a defect in its own right and
+is carded as **0089**; this card routed around it rather than widening into it. The deposit is
+additionally disclosed through `assumedFigures()`, so the audit's disclosure check covers it.
+
+**The 30x, 36x and 6-to-12 months are the reviewer's judgement, not published series.** The deposit
+cap is statute. The citations for the other three are owed and carded as **0091**. See
+ASSUMPTIONS.md §15.
+
+`ENGINE_VERSION` is `finance-engine/tenancy-deposit`; every stored rent variant is one deposit too
+cheap in its first year and is owed a re-run.
+
 ## 2026-09-05: Letting a property does not earn its rent
 **Context:** card 0030 (expert panel 2026-08-19, property finding 5). A let-to-let plan took its rent
 GROSS. No agent fee, no void, no repairs, no compliance, no licensing, and the service charge on the
