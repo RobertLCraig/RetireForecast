@@ -113,3 +113,52 @@ estimated series, so it is cited by policy definition in the enum docblock and i
 §19, which states plainly that gov.uk was not reached this session. No sourcing card was raised for
 it, unlike §12 to §18, because those are reviewer judgement figures with no published definition
 and this one is a policy's own number.
+
+### 2026-09-05 review (v20260905231954-45dd)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 262s, run by this job rather than reported by the card.
+
+**acceptance: defect**
+
+AC#1 ÔÇö traces. `ResultPresenter::assumedFigures()` builds three notes, each reading its owner: `StatePensionUprating::floor()`, `ForecastSettings::allocation()`, `CareAssumptions::default()` (all seven care fields).
+
+AC#2 ÔÇö traces. Options in `ScenarioBuilder::render()`, control in `resources/views/livewire/scenario-builder.blade.php`, validated in `ScenarioBuilder::rules()`, read by `AssumptionOverrides::statePensionUprating()`, carried by `ScenarioForecaster::settings()`, applied in `PathProjector::growState()` via `StatePensionUprating::increase()`. The choice also enters `SimulationRunner::inputsHash()`, so a changed choice re-runs.
+
+AC#3 ÔÇö traces to screen and print: `ScenarioResults::render()` and `ScenarioReport` both pass the settings.
+
+DEFECT, AC#1 and AC#3. The State Pension note is gated on the household holding a `StatePensionEntitlement`. The floor does not stop there. `PathProjector::meansTestedBenefitNominal()` uprates the Pension Credit applicable amount by `$state['spFactor']`, and that method requires no State Pension entitlement, only that everyone alive is past State Pension age. So a low-income household with no State Pension gets its benefit floor lifted by the undisclosed 2.5% every year. The note's own text says the guarantee rises with the floor, so the gate contradicts it.
+
+Same shape, weaker: under `TripleLockUntil` the floor still runs to the chosen year, but `ForecastSettings::statePensionUpratingIsAssumed()` is false, so its value never reaches the results page.
+
+VERDICT: defect
+
+**scope: defect**
+
+## Scope review of card 0038
+
+**1. The new choice does not reach every projection.** `HousingComparison::rentSettings()` builds a fresh `ForecastSettings` with named arguments and stops at `modelCareCost`. It never copies `statePensionUprating` or `tripleLockUntilYear`, so both fall back to the constructor default, `TripleLock`.
+
+Failure: a reader picks "rises with prices only". `variantInputs()` in the same class hands the rent leg those rebuilt settings. Stay-put and buy-outright run prices only; the rent leg keeps the 2.5% floor for life, plus the Pension Credit guarantee it uprates. Renting is then scored against a richer State Pension than the two it is compared with.
+
+Worse for this card's own purpose: `ScenarioForecaster::variantInputs()` returns the rent leg as the MAIN forecast for a scenario whose variant is `rent`. `ResultPresenter::assumedFigures()` is gated on `ForecastSettings::statePensionUpratingIsAssumed()` reading `ScenarioForecaster::settings()`, which still holds the reader's choice, so the screen shows no triple-lock note while the projection used it. That is the invisible figure the card exists to remove. `AuditScenarios::auditOne()` reads the same un-dropped settings, so it cannot catch this.
+
+`ForecastSettings::withModelCareCost()` was updated; this sibling rebuild was not.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Breakage: the sell-and-rent variant ignores the new choice.**
+
+`HousingComparison::rentSettings()` (`packages/finance-engine/src/Housing/HousingComparison.php`) builds a fresh `ForecastSettings` and copies only eight fields. It does not copy `statePensionUprating` or `tripleLockUntilYear`, so both fall back to the constructor default: the full triple lock.
+
+`HousingComparison::variantInputs()` hands those settings to the rent plan. `PathProjector::initialState()` reads `$settings->statePensionUprating` from them. So a reader who picks "prices only" gets prices-only on stay-put and buy-outright, and the full lock on rent ÔÇö through the deterministic ladder, `compareHousing()`, `CapacityForLoss::forScenario()`, `ProtectionGap::forScenario()` and `SustainableSpend`. The rent plan is scored more optimistically than the plans it is compared against.
+
+It is silent. `ScenarioResults::render()` and `AuditScenarios` both pass `ScenarioForecaster::settings()`, the base settings, so the disclosure states the reader's choice while the rent projection used another. `ForecastSettings::statePensionUpratingIsAssumed()` returns false there, so no assumed-figure note fires either, and audit check 7 counts nothing missing.
+
+No test runs a rent variant with a non-default choice; `StatePensionUpratingTest` never touches `rentSettings`.
+
+VERDICT: defect
+
