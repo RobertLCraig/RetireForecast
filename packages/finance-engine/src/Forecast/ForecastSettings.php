@@ -11,6 +11,7 @@ use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 
 /**
  * Settings that shape a forecast run but are not part of the household or the
@@ -53,6 +54,13 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * would shelter them, and modelling them never doing so charges tax they would not pay. It is a
  * modelled ACTION rather than an economic assumption, so it is disclosed on the results page as
  * an assumed figure and can be turned off here for a household that would not take it.
+ *
+ * $statePensionUprating (with $tripleLockUntilYear) is how long the triple lock is assumed to
+ * survive: {@see StatePensionUprating}. It rides here rather than on the AssumptionSet because it
+ * is a POLICY choice about the future, not an economic series with a source and a mean, and it
+ * sits beside the other policy choices ($modelIht, $useIsaAllowance) the reader makes about what
+ * the model should assume happens. It moves the State Pension AND the Pension Credit guarantee,
+ * which is uprated by the same running factor.
  */
 final class ForecastSettings
 {
@@ -72,11 +80,32 @@ final class ForecastSettings
         public readonly bool $modelIht = false,
         public readonly bool $homeToDescendants = true,
         public readonly bool $useIsaAllowance = true,
+        public readonly StatePensionUprating $statePensionUprating = StatePensionUprating::TripleLock,
+        public readonly ?int $tripleLockUntilYear = null,
     ) {}
 
     public function allocation(): PortfolioAllocation
     {
         return $this->allocation ?? PortfolioAllocation::cautious40_60();
+    }
+
+    /**
+     * Is the allocation in play one the ENGINE supplied? True whenever the caller passed none,
+     * which is the condition the no-invisible-figures disclosure is gated on.
+     */
+    public function allocationIsAssumed(): bool
+    {
+        return $this->allocation === null;
+    }
+
+    /**
+     * Is the State Pension uprating in play the ENGINE's own default rather than a choice the
+     * reader made? The default is the full triple lock, which is the optimistic branch of
+     * contested policy, so a reader who did not choose it has to be told it was chosen for them.
+     */
+    public function statePensionUpratingIsAssumed(): bool
+    {
+        return $this->statePensionUprating === StatePensionUprating::TripleLock;
     }
 
     /**
@@ -90,6 +119,7 @@ final class ForecastSettings
             $this->baseYear, $this->baseTaxYear, $this->drawdownStrategy, $this->allocation,
             $this->freezeEndYear, $this->annualRent, $this->rentInflationReal, $on,
             $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
+            $this->statePensionUprating, $this->tripleLockUntilYear,
         );
     }
 }

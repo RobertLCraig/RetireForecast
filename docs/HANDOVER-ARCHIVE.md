@@ -6,6 +6,34 @@
 > that); this is the "how we got here" detail. Each item also has a dated DECISIONS.md
 > entry and the full record in `git log`. Newest-first within each part.
 
+## Cards 0024 and 0028, moved out of the live handover on 2026-09-05
+
+Folded out to keep HANDOVER.md loadable in one session. Nothing in either is load-bearing any more:
+the figures and their sourcing gaps live in `docs/spec/ASSUMPTIONS.md` (§12), the gaps are carried
+by cards 0085 and 0082, each `ENGINE_VERSION` stamp and what it moved is in the
+`ScenarioForecaster::ENGINE_VERSION` docblock, and the owed re-runs are covered by the standing
+"re-run every stored scenario" line at the head of the live handover's "What's next".
+
+- **A mortgage payment is fixed nominal and not survivor-scaled, whatever shape the mortgage is.**
+  Card 0024: the "Mortgage" expense line comes out of the CPI-and-survivor multiply always and is
+  added back after it, so interest-only / RIO / buy-to-let / a serviced lifetime mortgage get the
+  treatment the amortisation schedule already had. The Section 24 finance cost is nominal interest
+  too. A borrowing plan's spend was overstated before this, so a figure stored under an earlier
+  stamp is too pessimistic against selling and the ranked comparison moves. `ENGINE_VERSION` was
+  `finance-engine/nominal-mortgage-payment`. The adjacent fault is card 0082: the Section 24 credit
+  is still granted after the mortgage is redeemed or the home sold.
+
+- **A service charge with no rate entered rises at CPI + 3%, and a major-works bill can die with the
+  home.** `ExpenseProfile::propertyCostsRealGrowth()` supplies
+  `DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS` when the rate is null and the `while_owning_home` bucket
+  is positive (an explicit rate, including zero, still wins), disclosed as an `assumed_figure` note
+  reading that constant. A one-off cost row can carry `condition: while_owning_home`, so a Section 20
+  demand is dropped on the buy/rent variants and after a mid-projection sale. Every stay-put plan
+  carrying a service charge and no explicit rate spends more than it did before, so a figure stored
+  under an earlier stamp is too favourable; `ENGINE_VERSION` was
+  `finance-engine/property-costs-default-growth`. The 3% is the 2026-08-19 property reviewer's
+  judgement, not a published series.
+
 ## Card summaries 0011 to 0016, moved out of the live handover on 2026-08-29
 
 These were the tail of HANDOVER.md's "Last updated" line, which had grown to a 2,600-character

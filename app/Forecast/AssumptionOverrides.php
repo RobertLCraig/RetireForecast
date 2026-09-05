@@ -7,6 +7,7 @@ namespace App\Forecast;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 
 /**
  * The user-editable economic assumptions: a sparse delta of percentage figures the
@@ -30,6 +31,14 @@ final class AssumptionOverrides
 {
     /** The override keys, in the same order the read-only assumptions panel lists them. */
     public const KEYS = ['investmentGrowth', 'inflation', 'houseGrowth', 'propertyVolatility', 'rentGrowth', 'salaryGrowth', 'incomeYield', 'careCostGrowth', 'investmentCharge'];
+
+    /**
+     * The overrides that are NOT percentages, so they cannot ride {@see KEYS} (which the panel,
+     * the placeholders and the assistant all read as rates). One choice today: how long the State
+     * Pension triple lock is assumed to last, and the year it ends where the reader named one.
+     * Blank means the engine's own default, exactly as a blank rate does.
+     */
+    public const CHOICE_KEYS = ['statePensionUprating', 'statePensionUpratingUntilYear'];
 
     /**
      * Derive the effective assumption set: the preset overlaid with the user's filled
@@ -114,13 +123,39 @@ final class AssumptionOverrides
     public static function sparse(array $overrides): array
     {
         $clean = [];
-        foreach (self::KEYS as $key) {
+        foreach ([...self::KEYS, ...self::CHOICE_KEYS] as $key) {
             if (self::filled($overrides, $key)) {
                 $clean[$key] = (string) $overrides[$key];
             }
         }
 
         return $clean;
+    }
+
+    /**
+     * How long the State Pension triple lock is assumed to last, and the year it ends. A blank or
+     * unknown choice is the engine's own default (the full lock), which is what every scenario
+     * stored before board card 0038 was run on, so an old scenario reproduces unchanged.
+     *
+     * The year is only meaningful for {@see StatePensionUprating::TripleLockUntil} and is passed
+     * through as null otherwise, so a reader who picks an end year and then changes their mind
+     * back to the full lock does not leave a stale year behind changing the answer.
+     *
+     * @param  array<string, mixed>  $overrides  the sparse `assumptionOverrides` map
+     * @return array{0: StatePensionUprating, 1: ?int}
+     */
+    public static function statePensionUprating(array $overrides): array
+    {
+        $basis = self::filled($overrides, 'statePensionUprating')
+            ? StatePensionUprating::tryFrom((string) $overrides['statePensionUprating'])
+            : null;
+        $basis ??= StatePensionUprating::TripleLock;
+
+        $year = $basis === StatePensionUprating::TripleLockUntil && self::filled($overrides, 'statePensionUpratingUntilYear')
+            ? (int) $overrides['statePensionUpratingUntilYear']
+            : null;
+
+        return [$basis, $year];
     }
 
     private static function filled(array $overrides, string $key): bool

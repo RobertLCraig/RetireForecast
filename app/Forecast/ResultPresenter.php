@@ -10,6 +10,7 @@ use App\Models\Result;
 use App\Models\Scenario;
 use Illuminate\Support\Collection;
 use RetireForecast\FinanceEngine\Benchmark\RetirementLivingStandards;
+use RetireForecast\FinanceEngine\Care\CareAssumptions;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
@@ -22,6 +23,7 @@ use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
+use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestOutcome;
 use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
@@ -38,6 +40,7 @@ use RetireForecast\FinanceEngine\MonteCarlo\LongevityDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\Property\AmortisationSchedule;
 use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
+use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 use RetireForecast\FinanceEngine\Support\WarningCode;
 
 /**
@@ -785,7 +788,7 @@ final class ResultPresenter
         return $variant === null || $variant === ScenarioVariant::StayPut->value;
     }
 
-    public static function assumedFigures(Household $household, ?HousingAction $action, ?ForecastResult $forecast = null, ?string $variant = null, ?AssumptionSet $set = null): array
+    public static function assumedFigures(Household $household, ?HousingAction $action, ?ForecastResult $forecast = null, ?string $variant = null, ?AssumptionSet $set = null, ?ForecastSettings $settings = null): array
     {
         $out = [];
 
@@ -887,6 +890,75 @@ final class ResultPresenter
                 .'condition while the index does nothing, and a household whose wealth is mostly one home carries '
                 .'all of that. It does not change the central projection, only how wide the range of outcomes '
                 .'around it is. If you think your home is steadier or twitchier than that, enter your own figure.';
+        }
+
+        // How long the State Pension triple lock is assumed to last (board card 0038). Until that
+        // card the projector raised the pension by the greater of inflation and 2.5% with no
+        // source, no setting and nothing on any screen. With inflation modelled near 2% the floor
+        // binds in most years, so the State Pension grew in REAL terms for the whole plan and the
+        // Pension Credit guarantee, uprated by the same running factor, rose with it. Assuming a
+        // contested policy holds for forty years is the OPTIMISTIC branch, which is the reverse
+        // of how every other default here is set. The floor is READ from the enum that owns it.
+        $hasStatePension = false;
+        foreach ($household->pensions as $pension) {
+            $hasStatePension = $hasStatePension || $pension instanceof StatePensionEntitlement;
+        }
+        if ($hasStatePension && $settings !== null && $settings->statePensionUpratingIsAssumed()) {
+            $floor = self::ratePct(StatePensionUprating::floor()->asPercent());
+            $out[] = "You didn't say how long the State Pension triple lock should be assumed to last, so we've "
+                ."assumed it lasts for the whole of this plan: your State Pension rises by at least {$floor} a year "
+                .'however low inflation goes. That is the cheerful assumption, and it is the one place we make one. '
+                .'The floor is a government policy rather than a law, no government has promised it beyond the '
+                .'current Parliament, and the plan here runs for decades. Because we model inflation at around two '
+                ."percent, the {$floor} floor lifts your pension in most years, so it keeps growing in real terms "
+                .'for life, and the Pension Credit guarantee rises with it, because that is uprated by the same '
+                .'figure. If you would rather not plan on that, you can end the lock in a year of your choosing or '
+                .'have the State Pension rise with prices alone. One thing works the other way: the real lock is the '
+                .'highest of earnings, prices and the floor, and we do not model the earnings part, because we hold '
+                .'no national wage series. So in a year when wages outrun both, this is on the cautious side.';
+        }
+
+        // How the invested money is split across asset classes. Nobody has ever entered this: the
+        // engine falls back to a cautious 40/60 and no caller passes anything else, so the largest
+        // single determinant of the whole answer is a figure the reader has never been shown. The
+        // weights, the class names and the return they blend to are all READ from the engine.
+        if ($settings !== null && $set !== null && $settings->allocationIsAssumed()) {
+            $allocation = $settings->allocation();
+            $parts = [];
+            foreach ($allocation->weights as $i => $weight) {
+                $name = $set->assetClasses[$i]->name ?? 'other';
+                $parts[] = self::ratePct($weight * 100).' '.mb_strtolower($name);
+            }
+            $blended = self::ratePct($allocation->blendedRealReturn($set) * 100);
+            $out[] = "You didn't say how your invested money is split between shares, bonds and cash, so we've "
+                .'assumed a cautious mix of '.implode(', ', $parts).', and applied it to every pension, ISA and '
+                .'investment account in the plan. On this assumption set that blends to a real return of '
+                ."{$blended} a year above inflation, which is the figure your pots grow at. This is the single "
+                .'biggest thing driving whether the money lasts, so it is worth knowing it is ours and not yours: '
+                .'a mix with more shares in it would show more money and a wider range of outcomes, and one with '
+                .'less would show the opposite. It is not yet something you can change on this screen.';
+        }
+
+        // Every figure behind the modelled care risk. They only reach a projection when the care
+        // toggle is on, and then they set the size of the tail the toggle exists to show: the
+        // chance of needing care, how long it runs, how often it is nursing rather than
+        // residential, and what a week costs. All READ from the assumptions the sampler uses.
+        if ($settings !== null && $settings->modelCareCost) {
+            $care = CareAssumptions::default();
+            $male = self::ratePct($care->probabilityOfCareMale * 100);
+            $female = self::ratePct($care->probabilityOfCareFemale * 100);
+            $mean = rtrim(rtrim(number_format($care->meanDurationYears, 2), '0'), '.');
+            $nursing = self::ratePct($care->probabilityNursing * 100);
+            $out[] = 'You asked us to model the risk of late-life care, and every figure in that model is ours, '
+                ."not yours. We give a man a {$male} chance of needing residential or nursing care in later life "
+                ."and a woman a {$female} chance, because women live longer and more often outlive the person who "
+                ."would have cared for them. A spell lasts {$mean} years on average, capped at {$care->maxDurationYears}, "
+                ."and we place it at the end of life. {$nursing} of spells are nursing rather than residential. "
+                ."The bill is {$care->residentialWeekly->format()} a week residential and {$care->nursingWeekly->format()} "
+                .'a week nursing, before the means test takes off what the council would pay. These come from '
+                .'national studies, not from anything about you: your own family history, your health today and '
+                .'where you live all move them, and the fees in London and the South East run twenty to thirty-five '
+                .'per cent above these. Read the care numbers as the shape of a risk, not as a prediction.';
         }
 
         // Using the ISA allowance ("bed and ISA"). This one is not a blank input filled in, it is
@@ -1701,7 +1773,7 @@ final class ResultPresenter
      *
      * @return list<array{kind: string, text: string}>
      */
-    public static function inputNotes(Household $household, ForecastResult $forecast, ?HousingAction $housingAction = null, ?string $variant = null, ?AssumptionSet $set = null): array
+    public static function inputNotes(Household $household, ForecastResult $forecast, ?HousingAction $housingAction = null, ?string $variant = null, ?AssumptionSet $set = null, ?ForecastSettings $settings = null): array
     {
         if ($forecast->years === []) {
             return [];
@@ -1854,7 +1926,7 @@ final class ResultPresenter
         // upkeep and the cost of moving) silently moved the result with nothing on any screen to
         // show for it. Every such figure is enumerated here, with its value and why it applies, so a
         // reader can challenge it. Each value is READ from the one place that owns it, never restated.
-        foreach (self::assumedFigures($household, $housingAction, $forecast, $variant, $set) as $assumed) {
+        foreach (self::assumedFigures($household, $housingAction, $forecast, $variant, $set, $settings) as $assumed) {
             $notes[] = ['kind' => 'assumed_figure', 'text' => $assumed];
         }
 

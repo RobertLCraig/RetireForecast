@@ -5,8 +5,30 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-05. The exceptions a fresh session needs, newest first:_
+_Last updated: 2026-09-05. The exceptions a fresh session needs, newest first. Cards 0024 and 0028
+were folded out to [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) on 2026-09-05 to keep this
+loadable in one session:_
 
+- **How long the State Pension triple lock lasts is now a choice, and three engine defaults that
+  reach every projection are on the screen.** Card 0038. `growState` used to raise the State Pension
+  by `max($infl, 0.025)`: no source, no setting, no control, nothing on any screen. Because
+  inflation is modelled near 2%, that floor binds in most years, so the State Pension grew in REAL
+  terms for the whole plan and the Pension Credit guarantee, uprated by the same running factor,
+  rose with it. The rule now lives on `StatePension\StatePensionUprating` (an enum owning
+  `TRIPLE_LOCK_FLOOR_BPS`, whose `increase()` mirrors `PensionEscalationBasis::increase()`); the
+  choice rides `ForecastSettings` beside the other policy toggles rather than `AssumptionSet` (the
+  card's Task said the set, its comment thread says why not), and the reader picks the full lock,
+  the lock ending in a year they name, or prices alone. Alongside it `assumedFigures()` discloses
+  the **portfolio allocation** (nothing ever passed one, so every projection has run on a cautious
+  40/60 nobody was shown) and **every care assumption**; `inputNotes()` and `assumedFigures()` now
+  take the run settings, and the results page, the PDF and `scenarios:audit` all pass them.
+  **No `ENGINE_VERSION` bump and no stored re-run owed**: the default reproduces the old rule and
+  every stored figure is byte-identical. Built in a worktree, so the new builder control and the
+  three new notes **have not been seen in a browser**. Two things were carded, not settled: **0099**,
+  the default (the full lock) is the OPTIMISTIC branch where the standing rule is to default
+  adverse, and moving it moves every stored plan, so it is Rob's; and **0100**, only two of the
+  lock's three limbs are modelled, because the engine holds no national earnings series and an
+  unattended session cannot fetch one. See [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§19).
 - **A pension withdrawal is now priced against the whole of the person's income, and a second draw
   in the same year starts where the first one finished.** Card 0037. `marginalTax` and
   `grossUpPension` took an int of non-savings income; they now take a `TaxableIncome`, fed by the
@@ -173,29 +195,6 @@ _Last updated: 2026-09-05. The exceptions a fresh session needs, newest first:_
   write to the live database. The 2.0 is the 2026-08-19 property reviewer's judgement, not a
   published series; that is the second sourcing gap in
   [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§13) and is raised as card 0086.
-- **A service charge with no rate entered now rises at CPI + 3%, and a major-works bill can die with
-  the home.** Card 0028: `ExpenseProfile::propertyCostsRealGrowth()` supplies
-  `DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS` when the rate is null and the `while_owning_home` bucket
-  is positive (an explicit rate, including zero, still wins), disclosed as an `assumed_figure` note
-  reading that constant. A one-off cost row can carry `condition: while_owning_home`, so a Section 20
-  demand is dropped on the buy/rent variants and after a mid-projection sale. **Every stay-put plan
-  carrying a service charge and no explicit rate now spends more**, so its stored wealth, depletion
-  year and success odds are too favourable; `ENGINE_VERSION` is
-  `finance-engine/property-costs-default-growth` and the **stored-scenario re-run is owed** (built in
-  a worktree, so it could not touch the live database). **The 3% is the 2026-08-19 property
-  reviewer's judgement, not a published series**, and the only figure in
-  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§12) without a primary citation, because an
-  unattended session has no web access. Raised as card 0085.
-- **A mortgage payment is now fixed nominal and not survivor-scaled, whatever shape the mortgage is.**
-  Card 0024: the "Mortgage" expense line comes out of the CPI-and-survivor multiply always and is
-  added back after it, so interest-only / RIO / buy-to-let / a serviced lifetime mortgage get the
-  treatment the amortisation schedule already had. The Section 24 finance cost is nominal interest
-  too. **Every borrowing plan's spend was overstated before this**, so its wealth, depletion year and
-  success odds were too pessimistic against selling; the ranked comparison moves.
-  `ScenarioForecaster::ENGINE_VERSION` is `finance-engine/nominal-mortgage-payment` and stored runs
-  are not comparable across the bump. **The stored-scenario re-run is still owed** (it was built in a
-  worktree, so it could not touch the live database). Adjacent fault raised as card 0082: the
-  Section 24 credit is still granted after the mortgage is redeemed or the home sold.
 - **A full-spend measure is now recurring-spend only, and every stored figure moved with it.**
   Card 0025: a one-off capital lump the plan cannot fund (an unfunded purchase, a mortgage redeemed
   from capital) is charged the year's shortfall FIRST and judged on its own, so it no longer fails

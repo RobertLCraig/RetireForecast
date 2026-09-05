@@ -278,6 +278,45 @@ class ScenarioForecasterTest extends TestCase
         );
     }
 
+    /**
+     * Board card 0038. The three uprating choices have to be three different futures by the time
+     * they reach the projector, not three labels on one. The ordering is the whole point: the
+     * full lock is the most generous, prices alone the least, and ending the lock in a stated
+     * year lands between them.
+     */
+    public function test_the_chosen_state_pension_uprating_reaches_the_forecast(): void
+    {
+        $user = User::factory()->create();
+        $forecaster = new ScenarioForecaster;
+
+        $wealthUnder = fn (array $overrides): int => $forecaster->deterministic(
+            ScenarioFixture::rich($user, ['assumptionOverrides' => $overrides]),
+        )->terminalTotalWealth->pence;
+
+        $lock = $wealthUnder([]); // the engine's default: the lock never ends
+        $until = $wealthUnder(['statePensionUprating' => 'triple_lock_until', 'statePensionUpratingUntilYear' => '2035']);
+        $prices = $wealthUnder(['statePensionUprating' => 'inflation']);
+
+        $this->assertLessThan($lock, $until, 'ending the lock in 2035 must leave less than a lock that never ends');
+        $this->assertLessThan($until, $prices, 'and prices alone must leave less again');
+    }
+
+    public function test_an_unreadable_uprating_choice_falls_back_to_the_engine_default(): void
+    {
+        // A half-filled or corrupted choice must not silently become a DIFFERENT policy: a
+        // scenario stored before card 0038 carries no choice at all and has to reproduce
+        // byte-identically, so anything unrecognised is the engine's own default.
+        $user = User::factory()->create();
+        $forecaster = new ScenarioForecaster;
+
+        $this->assertSame(
+            $forecaster->deterministic(ScenarioFixture::rich($user))->terminalTotalWealth->pence,
+            $forecaster->deterministic(
+                ScenarioFixture::rich($user, ['assumptionOverrides' => ['statePensionUprating' => 'nonsense']]),
+            )->terminalTotalWealth->pence,
+        );
+    }
+
     public function test_the_assumption_set_carries_the_users_edits(): void
     {
         $user = User::factory()->create();

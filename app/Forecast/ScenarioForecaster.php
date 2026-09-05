@@ -389,6 +389,10 @@ final class ScenarioForecaster
             && $home?->mortgageRedemptionYear !== null;
         $action = $forcedSale ? $this->housingAction($scenario) : null;
 
+        [$upratingBasis, $upratingUntilYear] = AssumptionOverrides::statePensionUprating(
+            $scenario->effectiveBuilderState()['assumptionOverrides'] ?? [],
+        );
+
         return new ForecastSettings(
             baseYear: (int) substr($scenario->base_tax_year, 0, 4),
             baseTaxYear: $scenario->base_tax_year,
@@ -407,6 +411,11 @@ final class ScenarioForecaster
             // understates every plan that sells a home and invests the proceeds; disclosed on the
             // results page as an assumed figure, so it is a choice the reader can see and reject.
             useIsaAllowance: (bool) ($scenario->effectiveBuilderState()['useIsaAllowance'] ?? true),
+            // How long the State Pension triple lock is assumed to hold, and the year it ends.
+            // Absent = the full lock, so every scenario stored before board card 0038 reproduces
+            // unchanged; the full lock is the optimistic branch, and is disclosed as such.
+            statePensionUprating: $upratingBasis,
+            tripleLockUntilYear: $upratingUntilYear,
         );
     }
 

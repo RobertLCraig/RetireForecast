@@ -169,6 +169,11 @@ class ScenarioReport
                 ResultPresenter::housingActionFor($action, $ladderContext->selected),
                 $ladderContext->selected,
                 $assumptions,
+                // The run settings carry the figures the engine supplies for ITSELF rather than
+                // for a home: the portfolio split, the care assumptions and how long the triple
+                // lock is assumed to hold. Without them the print drops three disclosures the
+                // screen shows, which is the drift this whole layer exists to prevent.
+                $forecaster->settings($scenario),
             ),
             'runDiff' => $runDiff,
             // Care isn't modelled unless the toggle is on; say so rather than let "the money

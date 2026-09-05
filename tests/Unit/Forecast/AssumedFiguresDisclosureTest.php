@@ -8,16 +8,19 @@ use App\Forecast\HouseholdAssembler;
 use App\Forecast\ResultPresenter;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Care\CareAssumptions;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
+use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
@@ -41,7 +44,7 @@ final class AssumedFiguresDisclosureTest extends TestCase
      * @param  list<array<string, mixed>>|null  $expenseLines
      * @return list<string> the assumed-figure disclosures a reader would see
      */
-    private function disclosures(array $housing, string $currentRunningCosts = '', string $accountType = 'isa', ?array $expenseLines = null, ?string $propertyCostsGrowthPct = null, ?AssumptionSet $set = null, ?string $variant = null, array $property = []): array
+    private function disclosures(array $housing, string $currentRunningCosts = '', string $accountType = 'isa', ?array $expenseLines = null, ?string $propertyCostsGrowthPct = null, ?AssumptionSet $set = null, ?string $variant = null, array $property = [], ?ForecastSettings $settings = null): array
     {
         $state = [
             'householdName' => 'Movers', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
@@ -60,14 +63,17 @@ final class AssumedFiguresDisclosureTest extends TestCase
 
         $assembler = new HouseholdAssembler;
         $household = $assembler->household($state);
+        $run = $settings ?? new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27');
         $forecast = (new DeterministicForecaster(
             TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi),
             new CohortLifeTable,
-        ))->forecast($household, AssumptionSetLibrary::default(), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'));
+        ))->forecast($household, AssumptionSetLibrary::default(), $run);
 
-        // The assumption set is passed only where a test is about a figure that lives in one, so
-        // every other case keeps asserting on the household's own defaults and nothing else.
-        $notes = ResultPresenter::inputNotes($household, $forecast, $assembler->housingAction($housing), $variant, $set);
+        // The assumption set and the run settings are passed only where a test is about a figure
+        // that lives in one, so every other case keeps asserting on the household's own defaults
+        // and nothing else. The forecast runs on the SAME settings the notes are computed from,
+        // so a disclosure can never describe a run that did not happen.
+        $notes = ResultPresenter::inputNotes($household, $forecast, $assembler->housingAction($housing), $variant, $set, $settings);
 
         return array_values(array_map(
             static fn (array $n): string => $n['text'],
@@ -280,6 +286,154 @@ final class AssumedFiguresDisclosureTest extends TestCase
     private static function pct(float $percent): string
     {
         return rtrim(rtrim(number_format($percent, 2), '0'), '.');
+    }
+
+    /**
+     * The one disclosure that mentions $needle, asserting there is exactly one. Lets a test about
+     * one default assert on it without depending on the order the others are listed in.
+     *
+     * @param  list<string>  $disclosures
+     */
+    private function only(array $disclosures, string $needle): string
+    {
+        $matched = array_values(array_filter($disclosures, static fn (string $d): bool => str_contains($d, $needle)));
+        $this->assertCount(1, $matched, "exactly one disclosure should mention \"{$needle}\"");
+
+        return $matched[0];
+    }
+
+    /**
+     * Card 0038. The triple lock is a POLICY assumption, and the engine was making it silently:
+     * `growState` raised the State Pension by the greater of inflation and 2.5% with nothing on
+     * any screen. On the modelled inflation path the floor binds in most years, so the pension
+     * grew in real terms for the whole plan and the Pension Credit guarantee rose with it.
+     */
+    public function test_the_state_pension_uprating_floor_is_disclosed_with_its_value(): void
+    {
+        $disclosures = $this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            variant: 'rent',
+            settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+        );
+
+        $note = $this->only($disclosures, 'triple lock');
+        $this->assertStringContainsString(
+            self::pct(StatePensionUprating::floor()->asPercent()).'%',
+            $note,
+            'the disclosed floor must be the one the engine actually applies',
+        );
+        // Why it applies: nobody chose it, and it is the optimistic branch.
+        $this->assertStringContainsString('Pension Credit', $note, 'the benefit floor it also uprates');
+    }
+
+    public function test_nothing_is_assumed_about_uprating_when_the_reader_chose_a_basis(): void
+    {
+        // No noise, and no overriding: a reader who asked for prices alone is not being given a
+        // figure the engine supplied, so nothing about the lock should be claimed as assumed.
+        $disclosures = $this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            variant: 'rent',
+            settings: new ForecastSettings(
+                baseYear: 2026, baseTaxYear: '2026-27',
+                statePensionUprating: StatePensionUprating::Inflation,
+            ),
+        );
+
+        $this->assertSame([], array_values(array_filter(
+            $disclosures,
+            static fn (string $d): bool => str_contains($d, 'triple lock'),
+        )));
+    }
+
+    /**
+     * Card 0038. The allocation is the single largest determinant of the answer and nothing ever
+     * passes one, so every projection ever run has used a cautious 40/60 nobody was told about.
+     * The weights and the return they buy are both READ from the engine.
+     */
+    public function test_the_assumed_portfolio_allocation_is_disclosed_with_its_weights(): void
+    {
+        $set = AssumptionSetLibrary::default();
+        $settings = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27');
+        $disclosures = $this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            set: $set, variant: 'rent', settings: $settings,
+        );
+
+        $note = $this->only($disclosures, 'split');
+        foreach ($settings->allocation()->weights as $i => $weight) {
+            $this->assertStringContainsString(
+                self::pct($weight * 100).'% '.mb_strtolower($set->assetClasses[$i]->name),
+                $note,
+                'every weight the engine actually uses must be named, with the asset class it belongs to',
+            );
+        }
+        $this->assertStringContainsString(
+            self::pct($settings->allocation()->blendedRealReturn($set) * 100).'%',
+            $note,
+            'and the blended real return those weights buy',
+        );
+    }
+
+    public function test_nothing_is_assumed_about_an_allocation_the_caller_supplied(): void
+    {
+        $disclosures = $this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            set: AssumptionSetLibrary::default(), variant: 'rent',
+            settings: new ForecastSettings(
+                baseYear: 2026, baseTaxYear: '2026-27',
+                allocation: new PortfolioAllocation([0.6, 0.4, 0.0]),
+            ),
+        );
+
+        $this->assertSame([], array_values(array_filter(
+            $disclosures,
+            static fn (string $d): bool => str_contains($d, 'split'),
+        )));
+    }
+
+    /**
+     * Card 0038. Every care figure is the engine's: the chance of needing care, how long it
+     * lasts, how often it is nursing rather than residential, and what a week costs. They set
+     * the size of the tail risk the whole care toggle exists to show, and none of them reached
+     * a screen.
+     */
+    public function test_the_care_assumptions_are_disclosed_when_care_is_modelled(): void
+    {
+        $care = CareAssumptions::default();
+        $disclosures = $this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            variant: 'rent',
+            settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelCareCost: true),
+        );
+
+        $note = $this->only($disclosures, 'care');
+        foreach ([
+            self::pct($care->probabilityOfCareMale * 100).'%',
+            self::pct($care->probabilityOfCareFemale * 100).'%',
+            self::pct($care->meanDurationYears).' years',
+            (string) $care->maxDurationYears,
+            self::pct($care->probabilityNursing * 100).'%',
+            $care->residentialWeekly->format(),
+            $care->nursingWeekly->format(),
+        ] as $figure) {
+            $this->assertStringContainsString($figure, $note, "the disclosure must name {$figure}, which the sampler actually uses");
+        }
+    }
+
+    public function test_nothing_is_assumed_about_care_when_care_is_not_modelled(): void
+    {
+        // No noise: with the care toggle off no care figure reaches a projection, so telling the
+        // reader what we assumed about care asserts a cost the model never charges them.
+        $disclosures = $this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            variant: 'rent',
+            settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+        );
+
+        $this->assertSame([], array_values(array_filter(
+            $disclosures,
+            static fn (string $d): bool => str_contains($d, 'care'),
+        )));
     }
 
     /**

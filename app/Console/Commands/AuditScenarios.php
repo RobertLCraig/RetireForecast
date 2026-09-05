@@ -14,6 +14,7 @@ use App\Models\Scenario;
 use Illuminate\Console\Command;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet as AssumptionSetDto;
+use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use Throwable;
 
 /**
@@ -238,8 +239,9 @@ final class AuditScenarios extends Command
         //    be shown, and pass a scenario that omitted a disclosure it should.
         $applicable = ResultPresenter::housingActionFor($action, $variant);
         $set = $forecaster->assumptions($scenario);
-        $assumed = ResultPresenter::assumedFigures($household, $applicable, $forecast, $variant, $set);
-        $disclosed = $this->notesOfKind($household, $forecast, $applicable, 'assumed_figure', $variant, $set);
+        $runSettings = $forecaster->settings($scenario);
+        $assumed = ResultPresenter::assumedFigures($household, $applicable, $forecast, $variant, $set, $runSettings);
+        $disclosed = $this->notesOfKind($household, $forecast, $applicable, 'assumed_figure', $variant, $set, $runSettings);
         if (count($assumed) !== count($disclosed)) {
             $problems[] = "#{$id} uses ".count($assumed).' assumed figure(s) but shows '.count($disclosed);
         }
@@ -290,10 +292,10 @@ final class AuditScenarios extends Command
     }
 
     /** @return list<array{kind: string, text: string}> */
-    private function notesOfKind($household, $forecast, $action, string $kind, ?string $variant = null, ?AssumptionSetDto $set = null): array
+    private function notesOfKind($household, $forecast, $action, string $kind, ?string $variant = null, ?AssumptionSetDto $set = null, ?ForecastSettings $settings = null): array
     {
         return array_values(array_filter(
-            ResultPresenter::inputNotes($household, $forecast, $action, $variant, $set),
+            ResultPresenter::inputNotes($household, $forecast, $action, $variant, $set, $settings),
             static fn (array $note): bool => $note['kind'] === $kind,
         ));
     }

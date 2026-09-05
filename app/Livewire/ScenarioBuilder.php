@@ -31,6 +31,7 @@ use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Property\CgtPrivateResidenceCalculator;
+use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
@@ -286,6 +287,13 @@ class ScenarioBuilder extends Component
             // any real UK platform + fund + advice stack, so a typo is caught but a legacy
             // high-charge product can still be modelled.
             'assumptionOverrides.investmentCharge' => ['nullable', 'numeric', 'between:0,5'],
+            // How long the State Pension triple lock is assumed to hold (board card 0038). Not a
+            // rate, so it does not ride the numeric block above: blank is the engine's default
+            // (the lock never ends), and the end year only means anything for the middle choice.
+            // The year is bounded at the earliest tax year the app models and at a life beyond
+            // any plausible plan, so a two-digit or mistyped year is caught.
+            'assumptionOverrides.statePensionUprating' => ['nullable', Rule::in(array_column(StatePensionUprating::cases(), 'value'))],
+            'assumptionOverrides.statePensionUpratingUntilYear' => ['nullable', 'integer', 'between:2026,2100'],
 
             // The adviser's ongoing fee to PRICE (not to charge the forecast). Blank = the
             // benchmarked average. The upper bound is well above any UK ongoing advice fee, so a
@@ -1618,6 +1626,15 @@ class ScenarioBuilder extends Component
                 ['key' => 'incomeYield', 'label' => 'Investment income yield (nominal)', 'note' => 'the part of the return paid out and taxed each year'],
                 ['key' => 'careCostGrowth', 'label' => 'Care cost growth (real)', 'note' => 'how fast care-home fees rise above inflation (they outrun general prices)'],
                 ['key' => 'investmentCharge', 'label' => 'Investment charges (a year)', 'note' => 'platform and fund fees taken from pensions, ISAs and investments; cash pays none'],
+            ],
+            // How long the State Pension triple lock is assumed to hold (board card 0038). Not a
+            // rate, so it is a choice rather than a box: the blank option is the engine's own
+            // default, exactly as a blank rate above is the preset's. The floor is READ from the
+            // enum that owns it, so re-sourcing the figure moves this label with it.
+            'statePensionUpratingOptions' => [
+                ['value' => '', 'label' => 'Lasts for the whole plan ('.rtrim(rtrim(number_format(StatePensionUprating::floor()->asPercent(), 2), '0'), '.').'% floor for ever)'],
+                ['value' => StatePensionUprating::TripleLockUntil->value, 'label' => 'Lasts until a year I choose, then rises with prices only'],
+                ['value' => StatePensionUprating::Inflation->value, 'label' => 'Not assumed at all: the State Pension rises with prices only'],
             ],
             // The chosen preset's current figures, so each editable assumption shows the
             // value it would override as its placeholder (and updates when the set changes).

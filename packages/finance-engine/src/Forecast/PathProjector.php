@@ -576,6 +576,11 @@ final class PathProjector
             'dbFactors' => array_map(static fn (): float => 1.0, $dbSchemes),
             'dbSchemes' => $dbSchemes,
             'spFactor' => 1.0,
+            // How the State Pension is uprated, and (for a lock with an end date) the last year
+            // the 2.5% floor applies. It also carries the Pension Credit guarantee, which rides
+            // the same running factor. {@see StatePensionUprating} for what each choice means.
+            'spUprating' => $settings->statePensionUprating,
+            'spTripleLockUntilYear' => $settings->tripleLockUntilYear,
             'spendFactor' => 1.0,
             'rentFactor' => 1.0,
             'rentInflationReal' => $settings->rentInflationReal?->asFraction() ?? 0.0,
@@ -3397,7 +3402,14 @@ final class PathProjector
             $state['salaryFactor'][$pid] = $factor * (1.0 + $personSalaryNominal);
         }
         $this->escalateDbPensions($state, $infl, $yearIndex);
-        $state['spFactor'] *= (1.0 + max($infl, 0.025)); // triple-lock proxy
+        // The State Pension's uprating, on the basis the reader chose ({@see StatePensionUprating}).
+        // Bump number n carries the factor into year n, the same boundary escalateDbPensions uses,
+        // so "the lock ends in 2036" means 2036 is the last year the floor lifts the pension into.
+        $state['spFactor'] *= 1.0 + $state['spUprating']->increase(
+            $infl,
+            $state['baseYear'] + $yearIndex + 1,
+            $state['spTripleLockUntilYear'],
+        );
         $state['spendFactor'] *= (1.0 + $infl);
         $state['rentFactor'] *= (1.0 + $rentNominal);
 

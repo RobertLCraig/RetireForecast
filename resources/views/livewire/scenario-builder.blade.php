@@ -305,6 +305,37 @@
                     @endforeach
                 </div>
 
+                {{-- How long the State Pension triple lock is assumed to hold (board card 0038).
+                     It is a policy guess, not a rate, so it is a choice rather than a box. Blank
+                     is the engine's default, and that default is the OPTIMISTIC branch, which is
+                     said here rather than left for the reader to work out. --}}
+                <div class="mt-6 border-t border-gray-200 pt-4">
+                    <label for="statePensionUprating" class="{{ $label }}">Assume the State Pension triple lock</label>
+                    <select id="statePensionUprating" wire:model.live="assumptionOverrides.statePensionUprating"
+                        class="{{ $field }} sm:max-w-md"
+                        @error('assumptionOverrides.statePensionUprating') aria-invalid="true" aria-describedby="statePensionUprating-error" @enderror>
+                        @foreach ($statePensionUpratingOptions as $option)
+                            <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">
+                        The triple lock raises the State Pension by the highest of earnings, prices and a fixed floor. The floor is government policy, not law, and no government has promised it beyond the current Parliament, so assuming it survives a whole retirement is the <strong>cheerful</strong> choice. It also lifts the Pension Credit guarantee, which is uprated by the same figure. We do not model the earnings part of the lock, so in a year when wages beat both this runs on the cautious side.
+                    </p>
+                    @error('assumptionOverrides.statePensionUprating') <p id="statePensionUprating-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+
+                    @if (($assumptionOverrides['statePensionUprating'] ?? '') === 'triple_lock_until')
+                        <div class="mt-3">
+                            <label for="statePensionUpratingUntilYear" class="{{ $label }}">Last year the lock applies</label>
+                            <input id="statePensionUpratingUntilYear" type="text" inputmode="numeric"
+                                wire:model="assumptionOverrides.statePensionUpratingUntilYear"
+                                class="{{ $field }} sm:max-w-xs"
+                                @error('assumptionOverrides.statePensionUpratingUntilYear') aria-invalid="true" aria-describedby="statePensionUpratingUntilYear-error" @enderror>
+                            <p class="mt-1 text-xs text-gray-500">The lock lifts your pension up to and including this year; after it the State Pension rises with prices alone. Leave it blank and we use prices alone throughout, rather than quietly giving you the lock back.</p>
+                            @error('assumptionOverrides.statePensionUpratingUntilYear') <p id="statePensionUpratingUntilYear-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                        </div>
+                    @endif
+                </div>
+
                 {{-- The adviser's ongoing fee is NOT an economic assumption: the forecast never
                      charges it. It is the parameter of the results page's "what paying for advice
                      would cost" comparison, so it sits below the assumptions with that said out loud. --}}

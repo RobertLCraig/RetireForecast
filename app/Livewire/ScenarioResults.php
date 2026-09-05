@@ -519,6 +519,11 @@ class ScenarioResults extends Component
                 ResultPresenter::housingActionFor($action, $selectedStrategy),
                 $selectedStrategy,
                 $assumptions,
+                // The run settings carry the figures the engine supplies for ITSELF rather than
+                // for a home: the portfolio split, the care assumptions and how long the triple
+                // lock is assumed to hold. All three reach every projection and none of them was
+                // on any screen before board card 0038.
+                $forecaster->settings($this->scenario),
             ),
             // Temporary "new in this build" review markers — the recent additions are mostly
             // new rows / notes inside existing cards, so point at where each one shows. Prune

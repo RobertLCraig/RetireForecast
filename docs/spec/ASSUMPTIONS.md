@@ -1,6 +1,6 @@
 # Economic assumptions — SIGNED OFF 2026-06-24
 
-_Last updated: 2026-09-05 (§18: how a defined-benefit pension increases, and the two figures behind it that are not sourced)_
+_Last updated: 2026-09-05 (§19: how long the State Pension triple lock is assumed to last, now a choice)_
 
 > **Status: SIGNED OFF by Rob (2026-06-24), adopted as proposed.** Set A (FCA default) is the
 > engine default; Sets B and C ship as runtime compare overlays. Re-verification against source
@@ -322,6 +322,31 @@ cash **−0.5%**.
    are overridden by what the reader enters (the fixed rate is now a builder input). Board card
    **0095** carries pinning them to published data. **Confirm you are happy with RPI-as-CPI and 3%
    until that lands.**
+19. **How long the State Pension triple lock is assumed to last (added 2026-09-05; lives in
+   `StatePension\StatePensionUprating`).** Board card 0038. The projector used to raise the State
+   Pension by the greater of inflation and **2.5%** with no source, no setting and no control.
+   Because inflation is modelled near 2%, that floor binds in most years, so the State Pension
+   grew in REAL terms for the whole plan, and the Pension Credit guarantee, uprated by the same
+   running factor, rose with it.
+   The 2.5% is not an estimated series: it is the named parameter of the triple-lock policy, which
+   raises the new and basic State Pension by the highest of average weekly earnings growth, CPI
+   inflation and 2.5%. The earnings limb is statutory (Social Security Administration Act 1992
+   s.150A); the CPI and 2.5% limbs are Government policy, re-confirmed at each fiscal event.
+   **It was not re-fetched from gov.uk when this was written**, because the unattended build loop
+   has no web access, so treat the citation as a statement of the policy rather than a verified
+   quotation of it.
+   Two things about the modelling, both stated on the results page:
+   - **The earnings limb is not modelled.** The only earnings series the engine holds is the
+     household's own real salary growth, which is an assumption about one couple's pay and not
+     about national average weekly earnings, so using it would model one thing with another.
+     Leaving it out understates the State Pension, which errs the cautious way. Board card
+     **0100** carries closing it.
+   - **The default is the full lock for the whole plan**, which reproduces every scenario stored
+     before this card byte-identically, and is the OPTIMISTIC branch of contested policy. That is
+     the reverse of the standing "adverse default, user-editable" rule, and it is a choice about
+     what to assume rather than a figure to look up, so it is Rob's: board card **0099**.
+   The reader can now choose the full lock, the lock ending in a year they name (prices alone
+   after it), or prices alone throughout.
 
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/

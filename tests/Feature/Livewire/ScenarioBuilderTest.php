@@ -16,6 +16,7 @@ use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
+use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\HouseholdFixture;
 use Tests\TestCase;
@@ -111,6 +112,82 @@ class ScenarioBuilderTest extends TestCase
         $off = $save(fn ($c) => $c->set('ihtModelled', true)->set('homeToDescendants', false));
         $this->assertFalse($off->effectiveBuilderState()['homeToDescendants']);
         $this->assertFalse(app(ScenarioForecaster::class)->settings($off)->homeToDescendants);
+    }
+
+    /**
+     * Board card 0038. The triple lock was assumed to survive the whole plan with no source, no
+     * setting and no control, which is the optimistic branch of contested policy chosen silently.
+     * The reader now picks one of three futures, and the picked one has to reach the settings the
+     * projection runs on, not just the form.
+     */
+    public function test_the_state_pension_uprating_choice_reaches_the_forecast_settings(): void
+    {
+        $save = function (array $overrides): Scenario {
+            $component = Livewire::test(ScenarioBuilder::class);
+            foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+                $component->set($key, $value);
+            }
+            foreach ($overrides as $key => $value) {
+                $component->set("assumptionOverrides.{$key}", $value);
+            }
+            $component->call('save')->assertHasNoErrors();
+
+            return Scenario::latest('id')->firstOrFail();
+        };
+
+        // Untouched: stored sparsely (absent = the engine's default), so a scenario predating the
+        // control and a what-if that changes nothing record no delta for it.
+        $default = $save([]);
+        $this->assertArrayNotHasKey('assumptionOverrides', $default->effectiveBuilderState());
+        $settings = app(ScenarioForecaster::class)->settings($default);
+        $this->assertSame(StatePensionUprating::TripleLock, $settings->statePensionUprating);
+        $this->assertTrue($settings->statePensionUpratingIsAssumed(), 'an untouched choice is the engine\'s, and has to disclose itself');
+
+        // The middle choice carries its year through to the projection.
+        $until = app(ScenarioForecaster::class)->settings($save([
+            'statePensionUprating' => 'triple_lock_until',
+            'statePensionUpratingUntilYear' => '2035',
+        ]));
+        $this->assertSame(StatePensionUprating::TripleLockUntil, $until->statePensionUprating);
+        $this->assertSame(2035, $until->tripleLockUntilYear);
+        $this->assertFalse($until->statePensionUpratingIsAssumed());
+
+        // And prices alone, which is the adverse branch and the one nobody could ask for before.
+        $this->assertSame(
+            StatePensionUprating::Inflation,
+            app(ScenarioForecaster::class)->settings($save(['statePensionUprating' => 'inflation']))->statePensionUprating,
+        );
+    }
+
+    public function test_the_state_pension_uprating_control_offers_all_three_choices(): void
+    {
+        // The floor on the label is READ from the enum that owns it, so re-sourcing the figure
+        // moves the screen with it rather than leaving a number the projection is not using.
+        $floor = rtrim(rtrim(number_format(StatePensionUprating::floor()->asPercent(), 2), '0'), '.');
+
+        Livewire::test(ScenarioBuilder::class)
+            ->set('step', 1)
+            ->assertSee("{$floor}% floor for ever")
+            ->assertSee('Lasts until a year I choose, then rises with prices only')
+            ->assertSee('the State Pension rises with prices only')
+            // The end-year box only exists for the choice that needs one, so a reader on the full
+            // lock is not shown a year that would change nothing.
+            ->assertDontSee('Last year the lock applies')
+            ->set('assumptionOverrides.statePensionUprating', 'triple_lock_until')
+            ->assertSee('Last year the lock applies');
+    }
+
+    public function test_a_state_pension_uprating_end_year_outside_the_modelled_range_is_rejected(): void
+    {
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+
+        $component->set('assumptionOverrides.statePensionUprating', 'triple_lock_until')
+            ->set('assumptionOverrides.statePensionUpratingUntilYear', '35')
+            ->call('save')
+            ->assertHasErrors('assumptionOverrides.statePensionUpratingUntilYear');
     }
 
     public function test_an_unannuitised_pot_stores_no_annuity_fields(): void
