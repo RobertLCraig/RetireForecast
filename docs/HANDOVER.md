@@ -7,6 +7,25 @@
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
 _Last updated: 2026-09-05. The exceptions a fresh session needs, newest first:_
 
+- **The pension escalation dropdowns are no longer dead, and revaluation is a separate rule from
+  escalation.** Card 0035. `PathProjector` ran one household-wide factor pinned to full CPI, so a
+  scheme set to no increases, or to a capped basis, rose with prices for thirty years anyway. It now
+  carries one factor PER scheme (`state['dbFactors']` / `dbSchemes`, keyed by the pension's position
+  in the household list) and `escalateDbPensions()` picks the basis by phase: the revaluation basis
+  while the member is deferred, the in-payment basis from normal retirement age. The rule itself
+  lives on `PensionEscalationBasis::increase()`, which also owns the two statutory limited-price
+  ceilings via `capBasisPoints()`; a new `cpi_capped_2_5` case covers post-2005 accrual, and the caps
+  are floored at zero because a scheme does not cut a pension when prices fall. `DbPension` gains
+  `fixedEscalationRate` (a builder input, blank = the disclosed `DEFAULT_FIXED_ESCALATION_BPS` of 3%).
+  **Every stored plan whose scheme is not on plain CPI in BOTH phases moves**, and the direction
+  depends on the choice: a frozen or capped pension was banking income nobody promised it, so its
+  wealth, depletion year and success odds are too FAVOURABLE; a scheme on plain CPI throughout is
+  byte-identical. `ENGINE_VERSION` is `finance-engine/db-escalation-per-scheme` and the
+  **stored-scenario re-run is owed** (built in a worktree, so the two new builder controls **have not
+  been seen in a browser**). Two figures ship as judgement with no fetched source, the RPI-over-CPI
+  wedge (zero, on the reading that RPI aligns to CPIH from 2030) and the 3% fixed default; both are
+  disclosed as assumed figures reading their own constants, written up in
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§18), and raised as card 0095.
 - **A purchase now spends the money arriving that year before it borrows.** Card 0034. The year-0
   funding waterfall in `HousingComparison::fundingFor` read the household's accounts and nothing
   else, so a `CapitalReceipt` dated the purchase year was invisible to it and the plan took a
@@ -229,7 +248,7 @@ Documented v1 scope limits remain flagged in code and listed in [DATA-MODEL.md](
 feature work and before card 0022 is answered. Re-run every stored scenario and `scenarios:audit`
 after it.
 
-1. **0035 and 0036 dead and mis-timed income inputs**: the defined-benefit escalation dropdown is never read, and the retirement year pays a part-year salary with a full year of pension and no National Insurance.
+1. **0036 the mis-timed retirement year**: it pays a part-year salary with a full year of pension and no National Insurance.
 
 Then the pre-review queue resumes at the head of [docs/board/todo/](board/todo/).
 

@@ -9,6 +9,7 @@ use App\Forecast\ResultPresenter;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
+use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
@@ -346,6 +347,57 @@ final class AssumedFiguresDisclosureTest extends TestCase
             'earliestAccessAge' => '55',
             'withdrawals' => [['kind' => 'ufpls', 'amount' => '10000', 'atAge' => '61']],
         ]]));
+    }
+
+    public function test_an_assumed_fixed_db_escalation_rate_is_disclosed_with_its_value(): void
+    {
+        // A scheme set to a FIXED increase with no rate entered takes the engine's default, and
+        // that rate compounds on guaranteed income for thirty years. Board card 0035 added the
+        // input; without this the default would be exactly the invisible figure the rule bans.
+        $disclosures = $this->disclosuresFor([[
+            'id' => 'db1', 'ownerId' => 'p1', 'subtype' => 'db', 'accruedAnnualPension' => '12000',
+            'normalRetirementAge' => '65', 'revaluationBasis' => 'cpi', 'escalationInPayment' => 'fixed',
+        ]]);
+
+        $this->assertCount(1, $disclosures);
+        $this->assertStringContainsString(
+            self::pct(DbPension::DEFAULT_FIXED_ESCALATION_BPS / 100).'%',
+            $disclosures[0],
+            'the disclosed rate must be the one the engine actually escalates at',
+        );
+    }
+
+    public function test_nothing_is_assumed_about_a_fixed_rate_the_reader_entered(): void
+    {
+        $this->assertSame([], $this->disclosuresFor([[
+            'id' => 'db1', 'ownerId' => 'p1', 'subtype' => 'db', 'accruedAnnualPension' => '12000',
+            'normalRetirementAge' => '65', 'revaluationBasis' => 'cpi', 'escalationInPayment' => 'fixed',
+            'fixedEscalationRate' => '5',
+        ]]));
+    }
+
+    public function test_nothing_is_assumed_about_a_scheme_that_is_not_on_a_fixed_basis(): void
+    {
+        // No noise: a default that never applies is not disclosed.
+        $this->assertSame([], $this->disclosuresFor([[
+            'id' => 'db1', 'ownerId' => 'p1', 'subtype' => 'db', 'accruedAnnualPension' => '12000',
+            'normalRetirementAge' => '65', 'revaluationBasis' => 'cpi', 'escalationInPayment' => 'cpi_capped_5',
+        ]]));
+    }
+
+    public function test_an_rpi_basis_discloses_that_the_model_treats_it_as_cpi(): void
+    {
+        // The engine models no RPI-over-CPI wedge (PensionEscalationBasis::RPI_OVER_CPI_WEDGE_BPS).
+        // A reader who picked RPI and was told nothing would reasonably believe the model heard
+        // them, which is the exact failure board card 0035 was raised for.
+        $disclosures = $this->disclosuresFor([[
+            'id' => 'db1', 'ownerId' => 'p1', 'subtype' => 'db', 'accruedAnnualPension' => '12000',
+            'normalRetirementAge' => '65', 'revaluationBasis' => 'rpi', 'escalationInPayment' => 'rpi',
+        ]]);
+
+        $this->assertCount(1, $disclosures);
+        $this->assertStringContainsString('RPI', $disclosures[0]);
+        $this->assertStringContainsString('CPI', $disclosures[0]);
     }
 
     public function test_the_disclosed_figures_are_read_from_the_engine_not_restated(): void

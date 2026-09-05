@@ -39,7 +39,16 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-05 (year-zero-receipt-funding): the year-0 purchase-funding waterfall could see the
+     * Bumped 2026-09-05 (db-escalation-per-scheme): a Defined Benefit pension now increases on the basis
+     * the reader chose, and on a DIFFERENT basis while deferred from the one it uses in payment
+     * ({@see PathProjector::escalateDbPensions}). Both dropdowns were previously collected and read
+     * by nothing: every DB pension escalated at full CPI for ever. Any stored plan whose scheme is
+     * NOT on plain CPI in both phases moves under this stamp, and the direction depends on what was
+     * chosen: a frozen or capped pension banked income it was never promised, so its wealth,
+     * depletion year and success odds are too FAVOURABLE; a deferred pension revalued at more than
+     * its in-payment basis moves the other way. A scheme on plain CPI throughout is byte-identical.
+     * See board card 0035.
+     * Previous bump 2026-09-05 (year-zero-receipt-funding): the year-0 purchase-funding waterfall could see the
      * household's accounts and nothing else, so a documented capital receipt landing in the
      * purchase year was invisible to it and the plan borrowed for life beside money it already
      * had. A same-year receipt is now spent on the purchase FIRST, before savings are drawn and
@@ -140,7 +149,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/year-zero-receipt-funding';
+    public const ENGINE_VERSION = 'finance-engine/db-escalation-per-scheme';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

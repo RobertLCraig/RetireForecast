@@ -605,24 +605,30 @@
                                 </div>
                                 <div>
                                     <label for="pensions-{{ $i }}-revaluationBasis" class="{{ $label }}">Revaluation (pre-payment)</label>
-                                    <select id="pensions-{{ $i }}-revaluationBasis" wire:model="pensions.{{ $i }}.revaluationBasis" class="{{ $field }}">
-                                        <option value="none">None</option>
-                                        <option value="cpi">CPI</option>
-                                        <option value="rpi">RPI</option>
-                                        <option value="cpi_capped_5">CPI capped at 5%</option>
-                                        <option value="fixed">Fixed</option>
+                                    <select id="pensions-{{ $i }}-revaluationBasis" wire:model.live="pensions.{{ $i }}.revaluationBasis" class="{{ $field }}">
+                                        @foreach (\App\Livewire\ScenarioBuilder::escalationBases() as $basis)
+                                            <option value="{{ $basis->value }}">{{ $basis->label() }}</option>
+                                        @endforeach
                                     </select>
+                                    <p class="mt-1 text-xs text-gray-500">How the pension grows between now and the day it starts being paid.</p>
                                 </div>
                                 <div>
                                     <label for="pensions-{{ $i }}-escalationInPayment" class="{{ $label }}">Escalation (in payment)</label>
-                                    <select id="pensions-{{ $i }}-escalationInPayment" wire:model="pensions.{{ $i }}.escalationInPayment" class="{{ $field }}">
-                                        <option value="none">None</option>
-                                        <option value="cpi">CPI</option>
-                                        <option value="rpi">RPI</option>
-                                        <option value="cpi_capped_5">CPI capped at 5%</option>
-                                        <option value="fixed">Fixed</option>
+                                    <select id="pensions-{{ $i }}-escalationInPayment" wire:model.live="pensions.{{ $i }}.escalationInPayment" class="{{ $field }}">
+                                        @foreach (\App\Livewire\ScenarioBuilder::escalationBases() as $basis)
+                                            <option value="{{ $basis->value }}">{{ $basis->label() }}</option>
+                                        @endforeach
                                     </select>
+                                    <p class="mt-1 text-xs text-gray-500">How it grows once it is being paid. Pre-1997 service often has no increases at all, and that is a different rule from the one above.</p>
                                 </div>
+                                @if (($pension['revaluationBasis'] ?? '') === 'fixed' || ($pension['escalationInPayment'] ?? '') === 'fixed')
+                                    <div>
+                                        <label for="pensions-{{ $i }}-fixedEscalationRate" class="{{ $label }}">Fixed increase (%/yr)</label>
+                                        <input id="pensions-{{ $i }}-fixedEscalationRate" type="text" inputmode="decimal" placeholder="{{ rtrim(rtrim(number_format(\RetireForecast\FinanceEngine\Dto\DbPension::DEFAULT_FIXED_ESCALATION_BPS / 100, 2), '0'), '.') }}" wire:model="pensions.{{ $i }}.fixedEscalationRate" class="{{ $field }}">
+                                        @error('pensions.'.$i.'.fixedEscalationRate') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                        <p class="mt-1 text-xs text-gray-500">The rate your scheme rules grant. Leave blank and we use {{ rtrim(rtrim(number_format(\RetireForecast\FinanceEngine\Dto\DbPension::DEFAULT_FIXED_ESCALATION_BPS / 100, 2), '0'), '.') }}%, which we tell you about in your results.</p>
+                                    </div>
+                                @endif
                                 <div>
                                     <label for="pensions-{{ $i }}-spousePensionFraction" class="{{ $label }}">Survivor fraction (%)</label>
                                     <input id="pensions-{{ $i }}-spousePensionFraction" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.spousePensionFraction" class="{{ $field }}">

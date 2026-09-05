@@ -7,6 +7,7 @@ namespace Tests\Unit\Forecast;
 use App\Forecast\HouseholdAssembler;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
@@ -116,6 +117,40 @@ class HouseholdAssemblerTest extends TestCase
 
         // Toggle on but the amount left blank → nothing built (no half-specified annuity).
         $this->assertNull($dc(['annuitise' => true, 'annuityAtAge' => '65'])->annuityPurchase);
+    }
+
+    /**
+     * Completeness for the Defined Benefit escalation controls (board card 0035). Every basis the
+     * select offers must reach the DTO, and the fixed rate with it: the whole defect was a field
+     * that was stored, validated, rendered and mapped, and then read by nothing. A basis that
+     * cannot even be assembled is dead one step earlier.
+     */
+    public function test_every_db_escalation_basis_and_its_fixed_rate_reach_the_dto(): void
+    {
+        $db = fn (array $fields) => (new HouseholdAssembler)->household([
+            'householdName' => 'Escalation', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1960-01-01', 'sex' => 'male', 'employmentStatus' => 'retired']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '20000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'pensions' => [array_merge(
+                ['id' => 'pn1', 'subtype' => 'db', 'ownerId' => 'p1', 'accruedAnnualPension' => '9000', 'normalRetirementAge' => '65'],
+                $fields,
+            )],
+        ])->pensions[0];
+
+        foreach (PensionEscalationBasis::cases() as $basis) {
+            $assembled = $db(['revaluationBasis' => $basis->value, 'escalationInPayment' => $basis->value]);
+            $this->assertSame($basis, $assembled->revaluationBasis);
+            $this->assertSame($basis, $assembled->escalationInPayment);
+        }
+
+        // The reader's fixed rate arrives as entered; blank falls back to the disclosed default.
+        $this->assertSame(500, $db(['fixedEscalationRate' => '5'])->fixedEscalationRate()->basisPoints);
+        $this->assertNull($db(['fixedEscalationRate' => ''])->fixedEscalationRate);
+        $this->assertSame(
+            DbPension::DEFAULT_FIXED_ESCALATION_BPS,
+            $db(['fixedEscalationRate' => ''])->fixedEscalationRate()->basisPoints,
+        );
     }
 
     public function test_an_income_amount_is_annualised_by_its_pay_frequency(): void

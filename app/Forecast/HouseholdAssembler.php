@@ -547,6 +547,10 @@ final class HouseholdAssembler
                 spousePensionFraction: $this->percent($p['spousePensionFraction'] ?? null),
                 commutationLumpSum: $this->money($p['commutationLumpSum'] ?? null),
                 commutationFactor: $this->floatOrNull($p['commutationFactor'] ?? null),
+                // Blank = take the engine's disclosed default for a Fixed-basis scheme, so a
+                // scenario saved before this input existed does not silently shift and no
+                // what-if child records a delta for it.
+                fixedEscalationRate: $this->percent($p['fixedEscalationRate'] ?? null),
             ),
             'state' => new StatePensionEntitlement(
                 ownerId: (string) $p['ownerId'],

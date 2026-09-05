@@ -1,6 +1,6 @@
 # Economic assumptions — SIGNED OFF 2026-06-24
 
-_Last updated: 2026-09-05 (§17: the 1%-of-value upkeep of a home you would buy, and the open question about its basis)_
+_Last updated: 2026-09-05 (§18: how a defined-benefit pension increases, and the two figures behind it that are not sourced)_
 
 > **Status: SIGNED OFF by Rob (2026-06-24), adopted as proposed.** Set A (FCA default) is the
 > engine default; Sets B and C ship as runtime compare overlays. Re-verification against source
@@ -300,6 +300,28 @@ cash **−0.5%**.
    Documented in the meantime rather than changed: it is disclosed on the results page as an
    assumed figure reading the constant, and an entered running cost always wins.
    **Confirm you are happy with 1% of value until that lands.**
+18. **How a defined-benefit pension increases (added 2026-09-05; lives in
+   `PensionEscalationBasis` and `DbPension`).** Board card 0035 made both escalation dropdowns
+   live: a scheme now revalues on its revaluation basis until normal retirement age and escalates
+   on its in-payment basis afterwards, instead of every scheme rising at full CPI for ever.
+   The two capped bases are **statute and are sourced**: limited price indexation is 5% for
+   pensionable service before 6 April 2005 and 2.5% for service after it (Pensions Act 1995 s.51,
+   as amended by Pensions Act 2004 s.278), and it is a floor as well as a cap, so a capped pension
+   is not cut when prices fall.
+   **⚠️ SOURCING GAP, the sixth in this document.** Two figures beside them are this build's own
+   judgement with **no primary source fetched**, because the unattended build loop has no web access:
+   - **RPI escalates at CPI** (`PensionEscalationBasis::RPI_OVER_CPI_WEDGE_BPS` = 0). The reasoning
+     is that RPI is being aligned with CPIH from February 2030, so a plan of this length spends
+     nearly all of its years past the point the two agree, and zero is the cautious reading for
+     income the household receives. That alignment was not verified against the UK Statistics
+     Authority statement, and the pre-2030 years do carry a real wedge the model does not apply.
+   - **A Fixed basis with no rate entered escalates at 3%** (`DbPension::DEFAULT_FIXED_ESCALATION_BPS`).
+     3% and 5% are the two rates scheme rules commonly grant and 3% is the lower, which is the
+     adverse reading; neither the pair nor the choice is cited.
+   Both are disclosed on the results page as assumed figures reading their own constants, and both
+   are overridden by what the reader enters (the fixed rate is now a builder input). Board card
+   **0095** carries pinning them to published data. **Confirm you are happy with RPI-as-CPI and 3%
+   until that lands.**
 
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/

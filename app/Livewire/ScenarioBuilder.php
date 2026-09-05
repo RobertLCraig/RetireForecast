@@ -26,6 +26,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
+use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -373,8 +374,9 @@ class ScenarioBuilder extends Component
             'pensions.*.annuitySurvivorFraction' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'pensions.*.accruedAnnualPension' => [...$money, 'required_if:pensions.*.subtype,db'],
             'pensions.*.normalRetirementAge' => ['nullable', 'integer', 'min:50', 'max:75', 'required_if:pensions.*.subtype,db'],
-            'pensions.*.revaluationBasis' => ['nullable', Rule::in(['none', 'cpi', 'rpi', 'cpi_capped_5', 'fixed'])],
-            'pensions.*.escalationInPayment' => ['nullable', Rule::in(['none', 'cpi', 'rpi', 'cpi_capped_5', 'fixed'])],
+            'pensions.*.revaluationBasis' => ['nullable', Rule::in(array_column(self::escalationBases(), 'value'))],
+            'pensions.*.escalationInPayment' => ['nullable', Rule::in(array_column(self::escalationBases(), 'value'))],
+            'pensions.*.fixedEscalationRate' => ['nullable', 'numeric', 'min:0', 'max:20'],
             'pensions.*.spousePensionFraction' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'pensions.*.commutationLumpSum' => $money,
             'pensions.*.commutationFactor' => ['nullable', 'numeric', 'min:0'],
@@ -776,6 +778,13 @@ class ScenarioBuilder extends Component
         // A person saved before the death-in-service inputs existed has none of these keys; default
         // them empty so the select and its two inputs bind. Empty = no cover, which is exactly the
         // old behaviour and the adverse assumption.
+        // A defined-benefit pension saved before the fixed-rate input existed has no key; default
+        // it blank so the input binds. Blank = the engine's disclosed default, which is exactly
+        // how a scheme saved before card 0035 behaved.
+        foreach ($this->pensions as $i => $pension) {
+            $this->pensions[$i]['fixedEscalationRate'] ??= '';
+        }
+
         foreach ($this->people as $i => $person) {
             $this->people[$i]['deathInServiceMode'] ??= '';
             $this->people[$i]['deathInServiceMultiple'] ??= '';
@@ -1711,6 +1720,17 @@ class ScenarioBuilder extends Component
         ];
     }
 
+    /**
+     * The escalation bases a Defined Benefit scheme can be set to, straight off the engine enum,
+     * so the select, the validation and the projector cannot offer or accept three different sets.
+     *
+     * @return list<PensionEscalationBasis>
+     */
+    public static function escalationBases(): array
+    {
+        return PensionEscalationBasis::cases();
+    }
+
     private function blankPension(string $subtype): array
     {
         return [
@@ -1718,7 +1738,10 @@ class ScenarioBuilder extends Component
             'currentValue' => '', 'ongoingContribution' => '', 'employerContribution' => '', 'reliefMethod' => '',
             'earliestAccessAge' => '57', 'pclsTakenToDate' => '', 'growthAssumptionOverride' => '', 'withdrawals' => [],
             'accruedAnnualPension' => '', 'normalRetirementAge' => '65', 'revaluationBasis' => 'cpi',
-            'escalationInPayment' => 'cpi', 'spousePensionFraction' => '', 'commutationLumpSum' => '', 'commutationFactor' => '',
+            // Blank fixed rate = the engine's disclosed default, so adding this input shifts no
+            // existing scenario and creates no what-if delta.
+            'escalationInPayment' => 'cpi', 'fixedEscalationRate' => '',
+            'spousePensionFraction' => '', 'commutationLumpSum' => '', 'commutationFactor' => '',
             'weeklyForecast' => '', 'qualifyingYears' => '', 'deferralWeeks' => '0',
             ...$this->blankAnnuity(),
         ];

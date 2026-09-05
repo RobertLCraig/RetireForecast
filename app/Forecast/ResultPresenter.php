@@ -17,6 +17,7 @@ use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
+use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
@@ -831,6 +832,39 @@ final class ResultPresenter
                 .'those costs out does not just flatter a letting plan: on a single flat they are usually about a '
                 .'quarter of the rent, which is enough to turn what looks like money coming in into money going '
                 .'out. If you self-manage, or you have a long-standing tenant, enter your own figures.';
+        }
+
+        // What a Defined Benefit pension's increases were taken to mean. Board card 0035 made both
+        // escalation dropdowns live, and two of the choices a reader can make are not taken wholly
+        // at their word: a FIXED basis with no rate falls back to the engine's, and RPI is modelled
+        // at CPI because no wedge between them is sourced. Both compound on guaranteed income for
+        // the whole plan, and a reader told nothing would believe the model heard them.
+        $fixedIsAssumed = false;
+        $rpiChosen = false;
+        foreach ($household->pensions as $pension) {
+            if (! $pension instanceof DbPension) {
+                continue;
+            }
+            $fixedIsAssumed = $fixedIsAssumed || $pension->fixedEscalationIsAssumed();
+            $rpiChosen = $rpiChosen
+                || $pension->revaluationBasis === PensionEscalationBasis::Rpi
+                || $pension->escalationInPayment === PensionEscalationBasis::Rpi;
+        }
+        if ($fixedIsAssumed) {
+            // READ from the constant that owns it, so re-sourcing the rate moves this sentence.
+            $fixed = self::ratePct(Percent::fromBasisPoints(DbPension::DEFAULT_FIXED_ESCALATION_BPS)->asPercent());
+            $out[] = "You set one of your defined-benefit pensions to a FIXED increase but didn't say what rate, "
+                ."so we've used {$fixed} a year. Scheme rules commonly grant 3% or 5%, and we take the lower of the "
+                .'two so the plan is not flattered. Over thirty years the difference between them roughly doubles the '
+                .'pension, so this is worth getting right: your scheme booklet or your annual statement will say '
+                .'which rate applies, and you can enter it on the pension.';
+        }
+        if ($rpiChosen) {
+            $out[] = 'You set one of your defined-benefit pensions to increase with RPI. We increase it at CPI '
+                .'instead: RPI is being brought into line with CPIH from 2030, so on a plan of this length the two '
+                .'are the same for nearly all of it, and we have no published figure for the gap in the years before '
+                .'that. It means an RPI pension is modelled slightly LOW rather than slightly high, which is the '
+                .'direction we err in. If your scheme is RPI-linked and you want the difference modelled, say so.';
         }
 
         // How widely the home's value is modelled as swinging. The set's house volatility is an
