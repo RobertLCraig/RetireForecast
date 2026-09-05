@@ -98,3 +98,49 @@ than only the first, which is the more adverse reading.
 too cheap in year 0 and is owed a re-run; no other variant moves. **Built in a worktree, so the two
 new banners have NOT been looked at in a browser and `scenarios:audit` was not run** (it reaches the
 live database, which a worktree session must not touch).
+
+### 2026-09-05 review (v20260905103005-1c98)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 194s, run by this job rather than reported by the card.
+
+**acceptance: defect**
+
+I checked each criterion against the code.
+
+**#1 ÔÇö flag the failing years.** Real. `PathProjector::rentReferencingWarnings()` raises `WarningCode::RENT_REFERENCING_FAILED` on every year where the year's gross income is under `Tenancy::referencePasses()`. It is called from the year loop in `PathProjector` beside the other warnings. `ResultPresenter::ladder()` collects every failing year and marks each row `failsReference`. Banners exist in `resources/views/livewire/scenario-results.blade.php` and `resources/views/pdf/partials/report.blade.php`.
+
+**#2 ÔÇö the two alternatives and the locked capital.** Real. The same message in `rentReferencingWarnings()` names the guarantor bar (`Tenancy::guarantorIncomeRequired`) and 6 to 12 months rent in advance in pounds (`Tenancy::rentInAdvance`).
+
+**#3 ÔÇö deposit and first month up front.** Charged in `HousingComparison::rentVariant()`. The first month is named, not charged twice. That is honest and correct for a yearly model.
+
+**One defect inside #3.** `PathProjector::tenancyUpFrontWarnings()` writes the words "5 weeks' rent" from `Tenancy::DEPOSIT_WEEKS`, but `Tenancy::deposit()` uses 6 weeks once annual rent reaches ┬ú50,000. At that rent the reader is told a wrong basis for a charged figure. The test pins only the 5-week side.
+
+VERDICT: defect
+
+**scope: defect**
+
+Reviewed the commit `6bc8a09` against the card.
+
+**1. The flag reaches plans the card did not name.**
+`PathProjector::rentReferencingWarnings()` fires on any year where rent is charged, not on a rent plan. `ScenarioForecaster::settings()` sets `annualRent` for a **forced-sale** scenario, so the stay-put forecast of an interest-only household now shows the referencing banner too. The document shipped with it says the opposite: `docs/spec/ASSUMPTIONS.md` ┬º15 says the figures apply "to a sell-and-rent plan only". Code and doc disagree, and one of them is wrong.
+
+**2. That same widening is half wired.** The deposit is charged only in `HousingComparison::rentVariant()`, so a forced-sale tenancy gets the warning but no start-up cost. The build raised that as card 0090 instead of keeping the two halves together.
+
+**3. A row mark nothing shows.** `ResultPresenter::ladder()` adds `failsReference` to every row, with a comment about the table marking it. No template reads it, on screen or in the PDF. Only the test does.
+
+**4. Left undone, declared:** the task "Source the referencing multiple, with `source` and `verified_on`" is unticked and pushed to card 0091. Honest, but the card is not finished.
+
+VERDICT: defect
+
+**breakage: defect**
+
+Two things break.
+
+**1. The deposit sentence names the wrong cap.** `Tenancy::deposit()` charges six weeks' rent once the annual rent reaches ┬ú50,000, but `PathProjector::tenancyUpFrontWarnings` always writes `Tenancy::DEPOSIT_WEEKS` (five) into the sentence: "┬úX (5 weeks' rent, the most a landlord may hold)". Above the threshold the pounds are six weeks and the words say five, so the disclosure disagrees with the money it discloses. `housing.annualRent` has no upper bound in `ScenarioBuilder::rules()`, so a user can reach it. `TenancyReferencingTest::test_the_deposit_cap_steps_to_six_weeks_above_the_statutory_rent_threshold` tests only the arithmetic, never the message.
+
+**2. One rent path is never flagged.** Both new warnings are gated on `$settings->annualRent` in `PathProjector::projectYear`. `QuickWhatIf::letOutAndRent` models its rent as an essential expense line ("Rent (our home)") on a `stay_put` variant that still owns the home, so no reference test, no deposit, nothing on screen ÔÇö the exact hole card 0031 exists to close. Card `docs/board/todo/0090` states the flag "is raised in `PathProjector` wherever rent is charged"; that sentence is now false.
+
+VERDICT: defect
+
