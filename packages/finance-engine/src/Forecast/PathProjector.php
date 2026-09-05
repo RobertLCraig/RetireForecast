@@ -1119,7 +1119,7 @@ final class PathProjector
         // other outflow, but they are told apart from the recurring budget when the year is
         // judged below — a lump the plan cannot fund is a failure of that lump, not of the
         // household's ordinary spending.
-        $oneOffs = $this->oneOffCostsNominal($household, $ages, $cumInflation);
+        $oneOffs = $this->oneOffCostsNominal($household, $ages, $cumInflation, $state['homeSold']);
         if ($repayOneOff > 0) {
             $oneOffs[] = ['label' => 'Mortgage redemption', 'amount' => $repayOneOff];
         }
@@ -2439,7 +2439,7 @@ final class PathProjector
      * @param  array<string, int>  $ages
      * @return list<array{label: string, amount: int}>
      */
-    private function oneOffCostsNominal(Household $household, array $ages, float $cumInflation): array
+    private function oneOffCostsNominal(Household $household, array $ages, float $cumInflation, bool $homeSold): array
     {
         // v1 limitation (flagged): a one-off cost has an `atAge` but no `personId`, so it fires on
         // the FIRST-declared person's age only. A cost meant to land at the second person's age
@@ -2447,8 +2447,17 @@ final class PathProjector
         // advancing after that person dies. Add a per-cost personId to lift this.
         $referenceId = array_key_first($ages);
         $referenceAge = $ages[$referenceId] ?? null;
+        // A lump marked `while_owning_home` is a liability of OWNING the current home (a Section 20
+        // major-works demand), so it follows the same rule the service charge does: once the home
+        // is gone the bill belongs to whoever bought it. The year-0 sell variants drop these in
+        // withoutPropertyCosts; a home sold DURING the projection is caught here.
+        $ownsHome = ! $homeSold && $household->primaryResidence !== null;
+
         $due = [];
         foreach ($household->expenseProfile->oneOffCosts as $cost) {
+            if (! $ownsHome && ($cost['condition'] ?? null) === 'while_owning_home') {
+                continue;
+            }
             if ($referenceAge !== null && ($cost['atAge'] ?? null) === $referenceAge) {
                 $due[] = [
                     'label' => $cost['label'] ?? 'One-off cost',

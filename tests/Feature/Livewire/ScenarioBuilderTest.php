@@ -133,6 +133,65 @@ class ScenarioBuilderTest extends TestCase
         $this->assertArrayNotHasKey('annuityRate', $pension);
     }
 
+    public function test_the_property_cost_growth_input_offers_its_sourced_alternatives(): void
+    {
+        // Card 0028: the rate has to be a figure the reader can see, challenge and change, so the
+        // input states the default that applies when it is blank AND the optimistic alternative,
+        // with where both came from. The default is READ from the constant that owns it, so the
+        // screen cannot drift from what the projection charges.
+        $default = ScenarioBuilder::propertyCostsGrowthDefaultPct();
+
+        Livewire::test(ScenarioBuilder::class)
+            ->set('step', 4)
+            ->assertSee("{$default}% a year above inflation")
+            ->assertSee('1.5%')
+            ->assertSee('expert property review of 2026-08-19');
+    }
+
+    public function test_a_one_off_cost_can_be_tied_to_owning_the_home(): void
+    {
+        // Card 0028: a Section 20 major-works demand is a liability of owning the flat. The builder
+        // has to be able to say so, store it, and land it on the engine profile. Otherwise the
+        // only shape a lumpy property bill can take is one that follows the household after a sale.
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component->call('addOneOff')
+            ->set('oneOffCosts.0.atAge', '78')
+            ->set('oneOffCosts.0.amount', '15000')
+            ->set('oneOffCosts.0.label', 'Section 20 major works')
+            ->set('oneOffCosts.0.condition', 'while_owning_home')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $scenario = Scenario::latest('id')->firstOrFail();
+        $this->assertSame('while_owning_home', $scenario->builder_state['oneOffCosts'][0]['condition']);
+        $this->assertSame(
+            'while_owning_home',
+            $scenario->toHousehold()->expenseProfile->oneOffCosts[0]['condition'] ?? null,
+            'the marker must reach the engine, or the cost is charged after the home is sold',
+        );
+    }
+
+    public function test_an_ordinary_one_off_cost_stores_no_condition(): void
+    {
+        // Sparse, like the growth rate: an unmarked one-off is charged always, so it records no
+        // key, so a base saved before the field and a what-if that changes nothing carry no delta.
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component->call('addOneOff')
+            ->set('oneOffCosts.0.atAge', '80')
+            ->set('oneOffCosts.0.amount', '5000')
+            ->set('oneOffCosts.0.label', 'New car')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertArrayNotHasKey('condition', Scenario::latest('id')->firstOrFail()->builder_state['oneOffCosts'][0]);
+    }
+
     public function test_property_costs_growth_stores_sparsely_and_reaches_the_profile(): void
     {
         $save = function (callable $mutate) {

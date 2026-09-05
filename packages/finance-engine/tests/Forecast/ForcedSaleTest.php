@@ -100,6 +100,11 @@ final class ForcedSaleTest extends TestCase
                 Money::fromPounds(18_000), Money::zero(), Percent::fromPercent(70),
                 propertyCosts: Money::fromPounds(3_000),
                 mortgageCosts: Money::fromPounds(6_000),
+                // Explicitly flat, so the "spend is unchanged across the sale" construction above
+                // holds. A BLANK rate now takes the engine's above-CPI default (card 0028), which
+                // would grow the service charge year on year; that is PropertyCostsGrowthTest's
+                // subject, not this file's.
+                propertyCostsRealGrowth: Percent::zero(),
             ),
             accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(400_000))],
             primaryResidence: new Property(
@@ -172,6 +177,11 @@ final class ForcedSaleTest extends TestCase
                 Money::fromPounds(18_000), Money::zero(), Percent::fromPercent(70),
                 propertyCosts: Money::fromPounds(3_000),
                 mortgageCosts: Money::fromPounds(6_000),
+                // Explicitly flat: this file tests that housing costs STOP at the sale and rent
+                // begins, which needs the £12k that stops to still be £12k in the sale year. A
+                // blank rate now escalates it above CPI (card 0028), which PropertyCostsGrowthTest
+                // covers.
+                propertyCostsRealGrowth: Percent::zero(),
             ),
             accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(400_000))],
             primaryResidence: new Property(

@@ -771,9 +771,40 @@ final class ResultPresenter
         return $variant === ScenarioVariant::BuyOutright->value ? $action : null;
     }
 
-    public static function assumedFigures(Household $household, ?HousingAction $action, ?ForecastResult $forecast = null): array
+    /**
+     * Does the plan on display KEEP the current home? The sibling of {@see housingActionFor}, for
+     * the defaults that belong to the home already owned rather than to one being bought: a
+     * buy-cheaper or sell-and-rent projection strips the service charge with the flat, so telling
+     * its reader what we assumed about that charge asserts a cost the model never charges.
+     *
+     * Null (no variant given) means "the household as entered", which keeps its home.
+     */
+    public static function keepsCurrentHome(?string $variant): bool
+    {
+        return $variant === null || $variant === ScenarioVariant::StayPut->value;
+    }
+
+    public static function assumedFigures(Household $household, ?HousingAction $action, ?ForecastResult $forecast = null, ?string $variant = null): array
     {
         $out = [];
+
+        // The above-CPI escalation of the home-ownership cost bucket (service charge, ground rent,
+        // levies), where the reader gave no rate of their own. Until card 0028 a blank meant "rises
+        // with CPI": a figure nobody entered, that the evidence rules out, and that compounds
+        // quietly into thousands a year of real spend by the survivor's years. The rate and the
+        // pounds it grows are both READ from the engine, so this cannot drift from what was charged.
+        $profile = $household->expenseProfile;
+        if (self::keepsCurrentHome($variant) && $profile->propertyCostsGrowthIsAssumed()) {
+            $rate = $profile->propertyCostsRealGrowth();
+            $pct = rtrim(rtrim(number_format($rate->asPercent(), 2), '0'), '.');
+            $out[] = "You didn't say how fast your home-ownership costs rise, so we've assumed {$pct}% a year above "
+                ."inflation on the {$profile->propertyCosts()->format()} a year you pay while you own this home "
+                .'(service charge, ground rent and levies). Those costs are not ordinary shopping: block insurance, '
+                .'building-safety work and the energy a communal bill buys have all risen faster than prices since '
+                .'2019, so charging them at plain inflation would flatter the plan, most of all in the years one of '
+                .'you is on their own. If your managing agent has given you a different figure, enter it: over a long '
+                .'plan the gap between this and inflation-only is thousands of pounds a year.';
+        }
 
         // Using the ISA allowance ("bed and ISA"). This one is not a blank input filled in, it is
         // an ACTION the engine performs on the household's behalf: money they hold in a taxable
@@ -1546,7 +1577,7 @@ final class ResultPresenter
      *
      * @return list<array{kind: string, text: string}>
      */
-    public static function inputNotes(Household $household, ForecastResult $forecast, ?HousingAction $housingAction = null): array
+    public static function inputNotes(Household $household, ForecastResult $forecast, ?HousingAction $housingAction = null, ?string $variant = null): array
     {
         if ($forecast->years === []) {
             return [];
@@ -1679,7 +1710,7 @@ final class ResultPresenter
         // upkeep and the cost of moving) silently moved the result with nothing on any screen to
         // show for it. Every such figure is enumerated here, with its value and why it applies, so a
         // reader can challenge it. Each value is READ from the one place that owns it, never restated.
-        foreach (self::assumedFigures($household, $housingAction, $forecast) as $assumed) {
+        foreach (self::assumedFigures($household, $housingAction, $forecast, $variant) as $assumed) {
             $notes[] = ['kind' => 'assumed_figure', 'text' => $assumed];
         }
 

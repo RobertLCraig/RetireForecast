@@ -517,6 +517,7 @@ class ScenarioResults extends Component
                 $household,
                 $forecast,
                 ResultPresenter::housingActionFor($action, $selectedStrategy),
+                $selectedStrategy,
             ),
             // Temporary "new in this build" review markers — the recent additions are mostly
             // new rows / notes inside existing cards, so point at where each one shows. Prune

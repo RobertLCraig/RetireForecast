@@ -1167,8 +1167,11 @@
                     </div>
                     <div>
                         <label for="expense-propertyCostsGrowthPct" class="{{ $label }}">Home-ownership costs rise above inflation by (% a year)</label>
-                        <input id="expense-propertyCostsGrowthPct" type="text" inputmode="decimal" wire:model="expense.propertyCostsGrowthPct" class="{{ $field }}" placeholder="0" @error('expense.propertyCostsGrowthPct') aria-invalid="true" @enderror>
-                        <p class="mt-1 text-xs text-gray-500">Applies to the spend lines charged while you own the home (service charge, ground rent, levies) — these have outpaced inflation sector-wide. Blank = they rise with inflation like everything else. The mortgage payment is contractual and is not escalated.</p>
+                        <input id="expense-propertyCostsGrowthPct" type="text" inputmode="decimal" wire:model="expense.propertyCostsGrowthPct" class="{{ $field }}" placeholder="{{ \App\Livewire\ScenarioBuilder::propertyCostsGrowthDefaultPct() }}" @error('expense.propertyCostsGrowthPct') aria-invalid="true" @enderror>
+                        <p class="mt-1 text-xs text-gray-500">Applies to the spend lines charged while you own the home (service charge, ground rent, levies). Insurance, building-safety work and communal energy have all risen faster than prices since 2019, so these do not track inflation.</p>
+                        <p class="mt-1 text-xs text-gray-500">
+                            <strong>Leave it blank and we assume {{ \App\Livewire\ScenarioBuilder::propertyCostsGrowthDefaultPct() }}% a year above inflation</strong>, the cautious figure from the expert property review of 2026-08-19. Its optimistic case is <strong>1.5%</strong>. Enter <strong>0</strong> if you want them to rise with inflation like everything else. Whichever you pick is shown on your results as an assumption you can challenge. The mortgage payment is contractual and is never escalated.
+                        </p>
                         @error('expense.propertyCostsGrowthPct') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                     </div>
                 </div>
@@ -1191,9 +1194,18 @@
                             <input id="oneOffCosts-{{ $i }}-label" type="text" wire:model="oneOffCosts.{{ $i }}.label" class="{{ $field }}">
                         </div>
                         <button type="button" wire:click="removeOneOff({{ $i }})" class="mb-2 text-sm text-red-700 underline">Remove</button>
+                        <div class="sm:col-span-4">
+                            <label for="oneOffCosts-{{ $i }}-condition" class="text-xs text-gray-600">Applies</label>
+                            <select id="oneOffCosts-{{ $i }}-condition" wire:model="oneOffCosts.{{ $i }}.condition" class="{{ $field }} sm:max-w-md">
+                                <option value="">Always, whatever happens to your home</option>
+                                <option value="while_owning_home">Only while you own this home (major works on the block)</option>
+                            </select>
+                            @error('oneOffCosts.'.$i.'.condition') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                        </div>
                     </div>
                 @endforeach
                 <button type="button" wire:click="addOneOff" class="mt-1 rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100">+ Add one-off cost</button>
+                <p class="mt-1 text-xs text-gray-500">A one-off cost is charged in full in the year the first person reaches that age. A major-works bill on a block (a "Section 20" demand) goes here: mark it <em>only while you own this home</em> and it stops if a plan sells the home, because the bill then belongs to the buyer.</p>
             </fieldset>
         @endif
 

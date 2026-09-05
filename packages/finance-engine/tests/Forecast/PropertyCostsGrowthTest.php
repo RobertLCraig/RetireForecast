@@ -28,11 +28,18 @@ use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
 /**
- * Above-CPI growth of the home-ownership cost bucket (service charge / ground rent /
- * levies): the property-costs marker carries an optional REAL growth rate, compounded per
- * projection year, charged only while the home is owned. Zero growth is byte-identical to
- * the pre-feature engine; the escalation follows the bucket when a sale strips it. Zero
- * growth/inflation draws, so figures are penny-exact.
+ * Home-ownership costs, both ways they move (card 0028).
+ *
+ * **Smoothly:** the property-costs bucket (service charge / ground rent / levies) carries a REAL
+ * growth rate compounded per projection year, charged only while the home is owned. An EXPLICIT
+ * zero keeps it flat; a BLANK rate takes {@see ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS},
+ * because plain CPI is the one shape the evidence rules out.
+ *
+ * **In a lump:** a dated one-off cost marked `while_owning_home` (a Section 20 major-works demand)
+ * is charged in the year it falls and dies with the home, so a sold flat's bill never follows the
+ * household into a buy, a rent or a post-forced-sale year.
+ *
+ * Zero growth/inflation draws, so figures are penny-exact.
  */
 final class PropertyCostsGrowthTest extends TestCase
 {
@@ -69,14 +76,18 @@ final class PropertyCostsGrowthTest extends TestCase
         return $out;
     }
 
-    private function household(?Percent $growth, ?Property $property = null): Household
+    /**
+     * @param  list<array{atAge: int, amount: Money, label: string, condition?: string}>  $oneOffCosts
+     */
+    private function household(?Percent $growth, ?Property $property = null, ?Money $propertyCosts = null, array $oneOffCosts = []): Household
     {
         return new Household(
             'PropGrowth', RegionProfile::EnglandWalesNi,
             [new Person('p1', new DateTimeImmutable('1958-01-01'), Sex::Female, EmploymentStatus::Retired)],
             new ExpenseProfile(
                 Money::fromPounds(18_000), Money::zero(), Percent::fromPercent(100),
-                propertyCosts: Money::fromPence(self::PROPERTY_COSTS),
+                oneOffCosts: $oneOffCosts,
+                propertyCosts: $propertyCosts ?? Money::fromPence(self::PROPERTY_COSTS),
                 propertyCostsRealGrowth: $growth,
             ),
             accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(400_000))],
@@ -102,16 +113,41 @@ final class PropertyCostsGrowthTest extends TestCase
         );
     }
 
-    public function test_zero_growth_is_byte_identical_to_no_growth(): void
+    public function test_an_explicit_zero_rate_keeps_the_bucket_flat(): void
     {
-        $none = $this->byYear($this->household(null));
+        // An explicit zero is the reader SAYING their service charge tracks inflation, which beats
+        // the engine's default. (Before card 0028 a null rate meant the same thing; it no longer
+        // does, because a blank input now takes the disclosed default below.)
         $zero = $this->byYear($this->household(Percent::zero()));
 
-        foreach ($none as $calendarYear => $year) {
-            $this->assertSame($year->spendTarget->pence, $zero[$calendarYear]->spendTarget->pence);
-            $this->assertSame($year->liquidWealth->pence, $zero[$calendarYear]->liquidWealth->pence);
-        }
-        $this->assertSame(Money::fromPounds(18_000)->pence, $none[2036]->spendTarget->pence, 'flat without the lever');
+        $this->assertSame(Money::fromPounds(18_000)->pence, $zero[2026]->spendTarget->pence);
+        $this->assertSame(Money::fromPounds(18_000)->pence, $zero[2036]->spendTarget->pence, 'flat when the reader says flat');
+    }
+
+    public function test_a_blank_rate_escalates_the_bucket_at_the_engine_default(): void
+    {
+        // Card 0028: a service charge left with no rate used to ride plain CPI, which is the one
+        // shape the evidence rules out: block insurance, building-safety compliance and the energy
+        // inside a service charge have all compounded above CPI. A blank input now takes the
+        // adverse-but-defensible default the profile owns, and the figure is READ from that
+        // constant so the test cannot drift from what the projection charged.
+        $rate = Percent::fromBasisPoints(ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS)->asFraction();
+        $escalation = static fn (int $yearIndex): int => (int) round(self::PROPERTY_COSTS * ((1.0 + $rate) ** $yearIndex - 1.0));
+
+        $years = $this->byYear($this->household(null));
+
+        $this->assertGreaterThan(0, $escalation(1), 'the default must be ABOVE CPI, or it discloses nothing');
+        $this->assertSame(Money::fromPounds(18_000)->pence, $years[2026]->spendTarget->pence, 'year 0 charges the figure as entered');
+        $this->assertSame(Money::fromPounds(18_000)->pence + $escalation(10), $years[2036]->spendTarget->pence);
+    }
+
+    public function test_a_household_with_no_property_costs_gets_no_default_escalation(): void
+    {
+        // No noise: the default belongs to the while-owning-home bucket. A household with no
+        // service charge at all must not have spend invented for it.
+        $years = $this->byYear($this->household(null, propertyCosts: Money::zero()));
+
+        $this->assertSame(Money::fromPounds(18_000)->pence, $years[2036]->spendTarget->pence);
     }
 
     public function test_the_escalation_stops_when_a_forced_sale_removes_the_bucket(): void
@@ -131,6 +167,62 @@ final class PropertyCostsGrowthTest extends TestCase
         $escalation = static fn (int $yearIndex): int => (int) round(self::PROPERTY_COSTS * (1.02 ** $yearIndex - 1.0));
         $this->assertSame(Money::fromPounds(18_000)->pence + $escalation(3), $years[2029]->spendTarget->pence, 'escalating while owned');
         $this->assertSame(Money::fromPounds(15_000)->pence, $years[2031]->spendTarget->pence, 'bucket and escalation both gone after the sale');
+    }
+
+    public function test_a_major_works_cost_is_charged_in_the_year_it_falls(): void
+    {
+        // The lumpy half of card 0028. A Section 20 major-works demand on a block is legally
+        // enforceable, cannot be deferred and lands as ONE bill: the shape of liability a thin
+        // margin cannot absorb. p1 is 68 in 2026, so the age-70 demand falls in 2028.
+        $works = Money::fromPounds(12_000);
+        $base = $this->byYear($this->household(Percent::zero()));
+        $withWorks = $this->byYear($this->household(Percent::zero(), oneOffCosts: [
+            ['atAge' => 70, 'amount' => $works, 'label' => 'Section 20 major works', 'condition' => 'while_owning_home'],
+        ]));
+
+        $this->assertSame($works->pence, $withWorks[2028]->spendTarget->pence - $base[2028]->spendTarget->pence);
+        $this->assertSame(0, $withWorks[2029]->spendTarget->pence - $base[2029]->spendTarget->pence, 'one bill, one year');
+    }
+
+    public function test_a_major_works_cost_is_not_charged_once_the_home_has_been_sold(): void
+    {
+        // A major-works demand is a liability of OWNING the flat, so it must follow the property
+        // costs it belongs beside. The home is force-sold in 2030; the age-74 demand falls in 2032
+        // and belongs to whoever bought the flat, not to this household.
+        $forcedSale = static fn (): Property => new Property(
+            currentValue: Money::fromPounds(300_000),
+            ownership: OwnershipType::Mortgaged,
+            outstandingMortgage: Money::fromPounds(50_000),
+            mortgageRedemptionYear: 2030,
+            mortgageMaturityAction: MortgageMaturityAction::ForcedSale,
+        );
+
+        $base = $this->byYear($this->household(Percent::zero(), $forcedSale()));
+        $withWorks = $this->byYear($this->household(Percent::zero(), $forcedSale(), oneOffCosts: [
+            ['atAge' => 74, 'amount' => Money::fromPounds(12_000), 'label' => 'Section 20 major works', 'condition' => 'while_owning_home'],
+        ]));
+
+        $this->assertSame(0, $withWorks[2032]->spendTarget->pence - $base[2032]->spendTarget->pence);
+    }
+
+    public function test_a_sell_variant_drops_a_major_works_cost_with_the_rest_of_the_property_costs(): void
+    {
+        // withoutPropertyCosts is the buy/rent variants' profile. A demand on the flat they sold
+        // in year 0 must go with the service charge, or the comparison charges them for a building
+        // they never owned in that plan. An ordinary one-off (care, a new car) is NOT property-
+        // linked and stays.
+        $profile = new ExpenseProfile(
+            Money::fromPounds(18_000), Money::zero(), Percent::fromPercent(100),
+            oneOffCosts: [
+                ['atAge' => 74, 'amount' => Money::fromPounds(12_000), 'label' => 'Section 20 major works', 'condition' => 'while_owning_home'],
+                ['atAge' => 80, 'amount' => Money::fromPounds(5_000), 'label' => 'New car'],
+            ],
+            propertyCosts: Money::fromPence(self::PROPERTY_COSTS),
+        );
+
+        $sold = $profile->withoutPropertyCosts();
+
+        $this->assertSame(['New car'], array_column($sold->oneOffCosts, 'label'));
     }
 
     public function test_a_variant_without_property_costs_never_escalates(): void

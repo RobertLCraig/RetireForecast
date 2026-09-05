@@ -8,6 +8,7 @@ use App\Forecast\HouseholdAssembler;
 use App\Forecast\ResultPresenter;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
@@ -34,17 +35,21 @@ final class AssumedFiguresDisclosureTest extends TestCase
 {
     /**
      * @param  array<string, mixed>  $housing
+     * @param  list<array<string, mixed>>|null  $expenseLines
      * @return list<string> the assumed-figure disclosures a reader would see
      */
-    private function disclosures(array $housing, string $currentRunningCosts = '', string $accountType = 'isa'): array
+    private function disclosures(array $housing, string $currentRunningCosts = '', string $accountType = 'isa', ?array $expenseLines = null, ?string $propertyCostsGrowthPct = null): array
     {
         $state = [
             'householdName' => 'Movers', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
             'people' => [['id' => 'p1', 'dob' => '1955-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
             'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
             'accounts' => [['id' => 'a1', 'ownerId' => 'p1', 'type' => $accountType, 'balance' => '150000']],
-            'expenseLines' => [['id' => 'e1', 'amount' => '18000', 'category' => 'essential']],
-            'expense' => ['survivorFactor' => '70'],
+            'expenseLines' => $expenseLines ?? [['id' => 'e1', 'amount' => '18000', 'category' => 'essential']],
+            'expense' => array_filter([
+                'survivorFactor' => '70',
+                'propertyCostsGrowthPct' => $propertyCostsGrowthPct,
+            ], static fn (?string $v): bool => $v !== null),
             'hasProperty' => true,
             'property' => ['currentValue' => '400000', 'ownership' => 'outright', 'runningCosts' => $currentRunningCosts],
             'housing' => $housing,
@@ -147,6 +152,42 @@ final class AssumedFiguresDisclosureTest extends TestCase
         // No noise: a household holding nothing outside an ISA has nothing to move, so the note
         // must not appear. (The default fixture account is an ISA.)
         $this->assertSame([], $this->disclosures(['salePrice' => '400000', 'annualRent' => '18000']));
+    }
+
+    public function test_the_assumed_property_cost_growth_is_disclosed_with_its_value(): void
+    {
+        // Card 0028. A household paying a service charge and giving no growth rate used to have
+        // that charge ride plain CPI: a figure nobody entered, that the evidence rules out, and
+        // that compounds into thousands a year by the survivor's years. The engine now supplies a
+        // rate for itself, so it must be on the screen with its value and its reason.
+        $disclosures = $this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            expenseLines: [
+                ['id' => 'e1', 'amount' => '18000', 'category' => 'essential'],
+                ['id' => 'e2', 'label' => 'Service charge', 'amount' => '3000', 'category' => 'essential'],
+            ],
+        );
+
+        $this->assertCount(1, $disclosures);
+        $rate = Percent::fromBasisPoints(ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS);
+        $pct = rtrim(rtrim(number_format($rate->asPercent(), 2), '0'), '.');
+
+        $this->assertStringContainsString("{$pct}% a year above inflation", $disclosures[0]);
+        $this->assertStringContainsString(Money::fromPounds(3_000)->format(), $disclosures[0], 'the bucket it applies to');
+    }
+
+    public function test_nothing_is_assumed_about_property_costs_when_the_reader_gave_a_rate(): void
+    {
+        // No noise, and no overriding: an explicit rate (including an explicit zero) is the reader's
+        // figure, not one the engine supplied, so it must not be reported as assumed.
+        $this->assertSame([], $this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            expenseLines: [
+                ['id' => 'e1', 'amount' => '18000', 'category' => 'essential'],
+                ['id' => 'e2', 'label' => 'Service charge', 'amount' => '3000', 'category' => 'essential'],
+            ],
+            propertyCostsGrowthPct: '0',
+        ));
     }
 
     /**

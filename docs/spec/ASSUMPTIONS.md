@@ -1,6 +1,6 @@
 # Economic assumptions — SIGNED OFF 2026-06-24
 
-_Last updated: 2026-07-18 (added stochastic salary growth: volatility + salary-equity correlation)_
+_Last updated: 2026-09-05 (§12: home-ownership costs default to CPI + 3% real when no rate is entered)_
 
 > **Status: SIGNED OFF by Rob (2026-06-24), adopted as proposed.** Set A (FCA default) is the
 > engine default; Sets B and C ship as runtime compare overlays. Re-verification against source
@@ -162,6 +162,27 @@ cash **−0.5%**.
    **Not modelled:** a one-off / initial advice charge (commonly £1,500–£4,000, or a percentage of the amount
    invested) is charged on top and is stated as unmodelled on the panel. User-editable per scenario — the
    benchmark average is a starting figure and a real quote is better.
+12. **Home-ownership costs escalate at CPI + 3% real when no rate is entered (added 2026-09-05;
+   verified_on 2026-08-19; lives in `ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS`).** It applies
+   to the `while_owning_home` spend bucket only: service charge, ground rent and block levies. Until now a
+   blank input meant "rises with CPI", which is the one shape the evidence rules out. The three largest
+   components of a block service charge have each compounded faster than prices since 2019: buildings
+   insurance (post-Grenfell risk repricing), building-safety compliance (surveys, waking watch, remediation,
+   the new regulatory regime), and the communal energy a charge covering water and lighting buys. Over a
+   long projection the gap against a CPI escalator is thousands a year of real spend, concentrated in the
+   survivor years, which is enough to change which housing plan ranks first.
+   **Why 3%.** Per the adverse-default rule the shipped value is the cautious end of the reviewed range:
+   CPI + 3% real central, CPI + 1.5% real as the optimistic sensitivity. User-editable per scenario (builder
+   step 4), with both figures on the input, and disclosed as an assumed figure on the results page reading
+   the constant. An explicit rate, **including an explicit zero**, always wins.
+   **⚠️ SOURCING GAP, and it is the only one in this document.** The figures are the judgement of the
+   property reviewer in the five-discipline expert review of **2026-08-19** (gitignored
+   `docs/REVIEW-PANEL-2026-08-19.local.md`; board card 0028). That is a reviewer's opinion, **not a published
+   series**. Every other figure above cites a primary or fetchable secondary source; this one does not.
+   Board card **0085** carries the work of pinning it to a published statistic (ONS/Hometrack service-charge
+   series, ABI buildings-insurance premium data, or an equivalent), which the unattended build loop cannot do
+   because it has no web access. **Confirm you are happy with CPI + 3% until that lands.**
+
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees
 - FCA Handbook COBS 13 Annex 2 (projection rates): https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html

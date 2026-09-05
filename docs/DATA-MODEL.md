@@ -147,13 +147,26 @@ explicit override wins):
   mortgage's stop condition is stricter than "while owning".
 - `employmentCosts` (`while_working`) — commuting; the projector drops it in years no one earns.
 
-**Above-CPI property-cost growth (2026-07-08):** `propertyCostsRealGrowth` (Percent?, null = none)
-is an optional **real** annual growth rate on the `propertyCosts` bucket only — service charges and
-levies have outpaced CPI sector-wide, so a leaseholder can model "CPI + x%" on exactly those lines.
-The projector compounds it per projection year on top of the CPI all spend rides; it follows the
-bucket (a sold home escalates nothing; the mortgage payment is contractual and is NOT escalated).
-Builder key `expense.propertyCostsGrowthPct`, stored **sparsely** (absent when blank, so pre-field
-scenarios and unchanged what-ifs record no delta). Surfaced as a results-page input note.
+**Above-CPI property-cost growth (2026-07-08; default added 2026-09-05):**
+`propertyCostsRealGrowth` (Percent?) is the **real** annual growth rate on the `propertyCosts`
+bucket only. The projector compounds it per projection year on top of the CPI all spend rides; it
+follows the bucket (a sold home escalates nothing; the mortgage payment is contractual and is NOT
+escalated). Builder key `expense.propertyCostsGrowthPct`, stored **sparsely** (absent when blank, so
+pre-field scenarios and unchanged what-ifs record no delta).
+**Null is no longer "no growth" (card 0028).** `propertyCostsRealGrowth()` returns
+`ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS` (**CPI + 3%**) when the rate is null **and**
+the bucket is positive; an explicit rate, including an explicit **zero**, is the reader's own figure
+and wins. The default is disclosed as an `assumed_figure` input note reading that constant, and only
+on a plan that keeps the current home (`ResultPresenter::keepsCurrentHome`): a buy or rent variant
+stripped the bucket, so a note about it would assert a cost its projection never charges. Source and
+its open primary-citation gap: ASSUMPTIONS.md §12.
+
+**Property-linked one-off costs (2026-09-05):** an `ExpenseProfile::$oneOffCosts` row carries an
+optional `condition` of `while_owning_home`, making the lump a liability of owning the **current**
+home (a Section 20 major-works demand on a block). It is then dropped by `withoutPropertyCosts()`
+(the buy/rent variants) and skipped by the projector once the home is sold mid-projection, exactly as
+the service charge is. Absent = charged always, the pre-existing behaviour. Builder key
+`oneOffCosts.*.condition`, stored **sparsely**.
 
 **Bought-home maintenance default (2026-07-08):** the buy variant's new home takes its
 `runningCosts` from `HousingComparison::newHomeRunningCosts` — the current home's `runningCosts`

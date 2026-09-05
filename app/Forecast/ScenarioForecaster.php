@@ -37,7 +37,14 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-05 (nominal-mortgage-payment): a mortgage payment charged from the "Mortgage"
+     * Bumped 2026-09-05 (property-costs-default-growth): home-ownership costs (the while-owning-home
+     * bucket: service charge, ground rent, levies) with no rate entered now escalate at the
+     * disclosed default above CPI ({@see ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS})
+     * instead of riding plain CPI, and a dated one-off marked as a liability of owning the home
+     * stops when that home is sold. Any stay-put plan carrying a service charge and no explicit
+     * rate spends MORE under this stamp than it did before, most of all in its late years, so its
+     * wealth, depletion year and success odds stored earlier are too favourable. See board card 0028.
+     * Previous bump 2026-09-05 (nominal-mortgage-payment): a mortgage payment charged from the "Mortgage"
      * expense line (interest-only, RIO, buy-to-let, a serviced lifetime mortgage — every shape
      * except the amortisation schedule, which already had this treatment) is now FIXED NOMINAL and
      * NOT survivor-scaled, and the buy-to-let finance cost behind the Section 24 credit is nominal
@@ -80,7 +87,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/nominal-mortgage-payment';
+    public const ENGINE_VERSION = 'finance-engine/property-costs-default-growth';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

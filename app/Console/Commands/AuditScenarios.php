@@ -227,8 +227,8 @@ final class AuditScenarios extends Command
         //    that buys — so auditing the raw action would demand a disclosure the reader must not
         //    be shown, and pass a scenario that omitted a disclosure it should.
         $applicable = ResultPresenter::housingActionFor($action, $variant);
-        $assumed = ResultPresenter::assumedFigures($household, $applicable, $forecast);
-        $disclosed = $this->notesOfKind($household, $forecast, $applicable, 'assumed_figure');
+        $assumed = ResultPresenter::assumedFigures($household, $applicable, $forecast, $variant);
+        $disclosed = $this->notesOfKind($household, $forecast, $applicable, 'assumed_figure', $variant);
         if (count($assumed) !== count($disclosed)) {
             $problems[] = "#{$id} uses ".count($assumed).' assumed figure(s) but shows '.count($disclosed);
         }
@@ -279,10 +279,10 @@ final class AuditScenarios extends Command
     }
 
     /** @return list<array{kind: string, text: string}> */
-    private function notesOfKind($household, $forecast, $action, string $kind): array
+    private function notesOfKind($household, $forecast, $action, string $kind, ?string $variant = null): array
     {
         return array_values(array_filter(
-            ResultPresenter::inputNotes($household, $forecast, $action),
+            ResultPresenter::inputNotes($household, $forecast, $action, $variant),
             static fn (array $note): bool => $note['kind'] === $kind,
         ));
     }

@@ -7,6 +7,19 @@
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
 _Last updated: 2026-09-05. The exceptions a fresh session needs, newest first:_
 
+- **A service charge with no rate entered now rises at CPI + 3%, and a major-works bill can die with
+  the home.** Card 0028: `ExpenseProfile::propertyCostsRealGrowth()` supplies
+  `DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS` when the rate is null and the `while_owning_home` bucket
+  is positive (an explicit rate, including zero, still wins), disclosed as an `assumed_figure` note
+  reading that constant. A one-off cost row can carry `condition: while_owning_home`, so a Section 20
+  demand is dropped on the buy/rent variants and after a mid-projection sale. **Every stay-put plan
+  carrying a service charge and no explicit rate now spends more**, so its stored wealth, depletion
+  year and success odds are too favourable; `ENGINE_VERSION` is
+  `finance-engine/property-costs-default-growth` and the **stored-scenario re-run is owed** (built in
+  a worktree, so it could not touch the live database). **The 3% is the 2026-08-19 property
+  reviewer's judgement, not a published series**, and the only figure in
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§12) without a primary citation, because an
+  unattended session has no web access. Raised as card 0085.
 - **A mortgage payment is now fixed nominal and not survivor-scaled, whatever shape the mortgage is.**
   Card 0024: the "Mortgage" expense line comes out of the CPI-and-survivor multiply always and is
   added back after it, so interest-only / RIO / buy-to-let / a serviced lifetime mortgage get the

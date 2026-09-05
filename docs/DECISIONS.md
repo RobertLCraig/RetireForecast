@@ -3,6 +3,37 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-05: A blank home-ownership cost growth means CPI + 3%, not CPI
+**Context:** card 0028 (expert panel 2026-08-19, property findings 2 and 10). A service charge with
+no rate entered rode plain CPI, and no scenario carried a major-works event at all. Both understate
+a leaseholder's running cost in the same direction, and the panel put the difference at thousands a
+year of real spend concentrated in the survivor years.
+
+**Decision:** three things.
+
+- **A blank rate takes a default above CPI.** `ExpenseProfile::propertyCostsRealGrowth()` returns
+  `DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS` (**CPI + 3% real**) when the rate is null and the
+  `while_owning_home` bucket is positive. An explicit rate, **including an explicit zero**, is the
+  reader's own figure and wins; a household with no service charge gets nothing. Disclosed as an
+  `assumed_figure` note reading that constant, and only on a plan that keeps the current home.
+  The figure is the property reviewer's judgement, not a published series: the primary citation is
+  still owed and is carded as **0085**. See ASSUMPTIONS.md §12.
+- **A one-off cost can be a liability of owning the home.** `oneOffCosts.*.condition ==
+  'while_owning_home'` makes a dated lump (a Section 20 major-works demand) follow the service
+  charge: dropped by `withoutPropertyCosts()` on the buy and rent variants, skipped by the projector
+  from a mid-projection sale. Absent = charged always, as before. The alternative considered and
+  rejected was leaving one-offs unconditional: a plan that sold the flat in year 0 was being charged
+  a demand on a building it never owned, which moves the very comparison the tool exists to make.
+- **`inputNotes()` and `assumedFigures()` take the variant.** `ResultPresenter::keepsCurrentHome()`
+  is the sibling of `housingActionFor()`: defaults belonging to the home already owned are disclosed
+  only where that home is kept, exactly as a bought home's defaults are disclosed only where a plan
+  buys. One home for the rule, so screen, PDF and `scenarios:audit` agree.
+
+`ENGINE_VERSION` is `finance-engine/property-costs-default-growth`. **Any stay-put plan carrying a
+service charge and no explicit rate spends more under this stamp**, so its wealth, depletion year and
+success odds stored earlier are too favourable. The stored-scenario re-run is owed (this was built in
+a worktree and could not touch the live database).
+
 ## 2026-08-29: A one-off capital lump is judged apart from recurring spend, and is funded last
 **Context:** card 0025 (expert panel 2026-08-19, engineer F3, reached independently by the property
 reviewer). `ForecastResult::$fullSpendAlwaysMet` is all-or-nothing across a whole path, and an

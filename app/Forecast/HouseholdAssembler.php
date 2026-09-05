@@ -251,11 +251,22 @@ final class HouseholdAssembler
             essentialAnnualSpend: $essentialPath->startAmount(),
             discretionaryAnnualSpend: $discretionaryPath->startAmount(),
             survivorSpendFactor: $this->percent($e['survivorFactor'] ?? null) ?? Percent::fromPercent(70),
-            oneOffCosts: array_map(fn (array $c): array => [
-                'atAge' => (int) $c['atAge'],
-                'amount' => $this->moneyRequired($c['amount'] ?? null),
-                'label' => (string) ($c['label'] ?? ''),
-            ], $state['oneOffCosts'] ?? []),
+            oneOffCosts: array_map(function (array $c): array {
+                $cost = [
+                    'atAge' => (int) $c['atAge'],
+                    'amount' => $this->moneyRequired($c['amount'] ?? null),
+                    'label' => (string) ($c['label'] ?? ''),
+                ];
+
+                // A lump the reader tied to owning this home (a Section 20 major-works demand)
+                // dies with the home, like the service charge beside it. Carried sparsely: an
+                // unmarked one-off is charged always, exactly as before.
+                if (($c['condition'] ?? '') === 'while_owning_home') {
+                    $cost['condition'] = 'while_owning_home';
+                }
+
+                return $cost;
+            }, $state['oneOffCosts'] ?? []),
             propertyCosts: $propertyCosts->isPositive() ? $propertyCosts : null,
             employmentCosts: $employmentCosts->isPositive() ? $employmentCosts : null,
             mortgageCosts: $mortgageCosts->isPositive() ? $mortgageCosts : null,

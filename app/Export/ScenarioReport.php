@@ -167,6 +167,7 @@ class ScenarioReport
                 $household,
                 $forecast,
                 ResultPresenter::housingActionFor($action, $ladderContext->selected),
+                $ladderContext->selected,
             ),
             'runDiff' => $runDiff,
             // Care isn't modelled unless the toggle is on; say so rather than let "the money

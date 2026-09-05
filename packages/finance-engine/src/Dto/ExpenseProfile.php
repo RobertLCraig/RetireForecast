@@ -53,6 +53,34 @@ use RetireForecast\FinanceEngine\Money\Percent;
  */
 final class ExpenseProfile
 {
+    /**
+     * The REAL (above-CPI) annual growth charged on the $propertyCosts bucket when the reader gives
+     * no rate of their own: **CPI + 3%**.
+     *
+     * Plain CPI is the one shape the evidence rules out. The three largest components of a block
+     * service charge have each compounded faster than prices since 2019: buildings insurance
+     * (post-Grenfell risk repricing), building-safety compliance (surveys, waking watch, remediation
+     * and the new regulatory regime), and the communal energy a charge covering water and lighting
+     * buys, none of which a CPI escalator captures. Over a long projection the difference is
+     * thousands a year of real spend concentrated in the survivor years, which is enough to flip a
+     * verdict, so leaving it at zero was not the neutral choice it looked like.
+     *
+     * **Adverse by rule, editable by design** (Rob's standing default rule): where several figures
+     * are defensible the shipped one is the most adverse, and it is exposed as a user input with its
+     * alternatives beside it. CPI + 1.5% is the optimistic sensitivity.
+     *
+     * **PUBLIC so a presenter can DISCLOSE it without restating it**, the no-invisible-figures rule.
+     * It applies ONLY when $propertyCosts is positive: a household with no service charge has nothing
+     * for it to grow. An explicit rate, INCLUDING an explicit zero, is the reader's own figure and
+     * always wins.
+     *
+     * **Source of record: the expert property review of 2026-08-19** (board card 0028), which models
+     * CPI + 3% real with CPI + 1.5% as the optimistic sensitivity; verified_on 2026-08-19. That is a
+     * reviewer's judgement, NOT a published series, so a primary citation is still owed (board
+     * card 0085). See docs/spec/ASSUMPTIONS.md §12.
+     */
+    public const DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS = 300; // CPI + 3.00% a year
+
     /** The essential floor as an age-varying real path — its first band is $essentialAnnualSpend. */
     public readonly SpendPath $essentialSpendPath;
 
@@ -60,7 +88,10 @@ final class ExpenseProfile
     public readonly SpendPath $discretionarySpendPath;
 
     /**
-     * @param  list<array{atAge: int, amount: Money, label: string}>  $oneOffCosts
+     * @param  list<array{atAge: int, amount: Money, label: string, condition?: string}>  $oneOffCosts
+     *                                                                                                  An optional `condition` of `while_owning_home` makes the lump a liability of OWNING the
+     *                                                                                                  current home (a Section 20 major-works demand on a block), so it dies with that home
+     *                                                                                                  exactly as the service charge does. Absent = charged always, whatever happens to the home.
      */
     public function __construct(
         public readonly Money $essentialAnnualSpend,
@@ -73,12 +104,16 @@ final class ExpenseProfile
         ?SpendPath $essentialSpendPath = null,
         ?SpendPath $discretionarySpendPath = null,
         /**
-         * Optional REAL (above-inflation) annual growth of the $propertyCosts bucket — service
+         * The REAL (above-inflation) annual growth of the $propertyCosts bucket: service
          * charges and levies have outpaced CPI sector-wide (insurance, building safety), so a
-         * leaseholder can model "CPI + x%" on exactly those lines. The projector compounds it
+         * leaseholder models "CPI + x%" on exactly those lines. The projector compounds it
          * per projection year on top of the CPI all spend rides. Applies ONLY to $propertyCosts
-         * (a mortgage payment is contractual and does not escalate with it). Null = grows with
-         * CPI like everything else.
+         * (a mortgage payment is contractual and does not escalate with it).
+         *
+         * **Null is not zero.** It means "no figure given", and the reader is then charged
+         * {@see DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS}. Pass an explicit Percent::zero() to say
+         * the bucket really does track CPI. Read it through {@see propertyCostsRealGrowth()},
+         * never off this property, or the default is silently skipped.
          */
         public readonly ?Percent $propertyCostsRealGrowth = null,
     ) {
@@ -134,10 +169,28 @@ final class ExpenseProfile
         return $this->employmentCosts ?? Money::zero();
     }
 
-    /** The real (above-inflation) growth of the property-costs bucket (zero if none). */
+    /**
+     * The real (above-inflation) growth of the property-costs bucket.
+     *
+     * An explicit rate, INCLUDING an explicit zero, is the reader's own figure and wins. A blank
+     * one takes {@see DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS}, which the presenter discloses, but
+     * only where there is a bucket to grow: no service charge, no escalation, no invented spend.
+     */
     public function propertyCostsRealGrowth(): Percent
     {
-        return $this->propertyCostsRealGrowth ?? Percent::zero();
+        if ($this->propertyCostsRealGrowth !== null) {
+            return $this->propertyCostsRealGrowth;
+        }
+
+        return $this->propertyCosts()->isPositive()
+            ? Percent::fromBasisPoints(self::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS)
+            : Percent::zero();
+    }
+
+    /** True when the growth above is a figure the ENGINE supplied, so a presenter must disclose it. */
+    public function propertyCostsGrowthIsAssumed(): bool
+    {
+        return $this->propertyCostsRealGrowth === null && $this->propertyCosts()->isPositive();
     }
 
     /**
@@ -146,11 +199,21 @@ final class ExpenseProfile
      * (service charge / ground rent) AND the mortgage payment: a sold home pays neither.
      * The costs are essential by nature and flat, so they come out of every band of the
      * essential path (capped at zero); the discretionary path is unchanged.
+     *
+     * The dated lumps marked `while_owning_home` go with them. A major-works demand is a
+     * liability of owning the flat, so a plan that sold it in year 0 must not be charged for a
+     * building it never owned. That is the same rule as the service charge, applied to those costs
+     * in their lumpy form.
      */
     public function withoutPropertyCosts(): self
     {
         $housing = $this->propertyCosts()->plus($this->mortgageCosts());
-        if (! $housing->isPositive()) {
+        $oneOffs = array_values(array_filter(
+            $this->oneOffCosts,
+            static fn (array $cost): bool => ($cost['condition'] ?? null) !== 'while_owning_home',
+        ));
+
+        if (! $housing->isPositive() && count($oneOffs) === count($this->oneOffCosts)) {
             return $this;
         }
 
@@ -160,7 +223,7 @@ final class ExpenseProfile
             essentialAnnualSpend: $essentialPath->startAmount(),
             discretionaryAnnualSpend: $this->discretionaryAnnualSpend,
             survivorSpendFactor: $this->survivorSpendFactor,
-            oneOffCosts: $this->oneOffCosts,
+            oneOffCosts: $oneOffs,
             propertyCosts: null,
             employmentCosts: $this->employmentCosts,
             mortgageCosts: null,

@@ -25,6 +25,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -335,6 +336,9 @@ class ScenarioBuilder extends Component
             'oneOffCosts.*.atAge' => ['required', 'integer', 'min:0', 'max:110'],
             'oneOffCosts.*.amount' => $moneyReq,
             'oneOffCosts.*.label' => ['nullable', 'string', 'max:255'],
+            // Only the home-ownership condition applies to a lump (major works on the block).
+            // Blank = charged always, whatever happens to the home.
+            'oneOffCosts.*.condition' => ['nullable', Rule::in(['', 'while_owning_home'])],
 
             'pensions.*.subtype' => ['required', Rule::in(['dc', 'db', 'state'])],
             'pensions.*.ownerId' => ['required', Rule::in($ids)],
@@ -734,8 +738,15 @@ class ScenarioBuilder extends Component
         }
 
         // An expense section saved before the above-CPI growth input existed has no key; default
-        // it empty so the input binds (empty = property costs grow with CPI only, the old model).
+        // it empty so the input binds. Empty no longer means "CPI only": the engine now applies a
+        // disclosed default above CPI to the home-ownership costs (card 0028).
         $this->expense['propertyCostsGrowthPct'] ??= '';
+
+        // A one-off saved before the home-ownership marker existed has no key; default it empty
+        // so the select binds. Empty = charged always, which is exactly the old behaviour.
+        foreach ($this->oneOffCosts as $i => $cost) {
+            $this->oneOffCosts[$i]['condition'] ??= '';
+        }
 
         // A person saved before the death-in-service inputs existed has none of these keys; default
         // them empty so the select and its two inputs bind. Empty = no cover, which is exactly the
@@ -859,6 +870,15 @@ class ScenarioBuilder extends Component
             unset($expense['propertyCostsGrowthPct']);
         }
 
+        // Same rule for a one-off's home-ownership marker: stored only when set, so an ordinary
+        // lump records no key and no spurious delta.
+        $oneOffCosts = $this->oneOffCosts;
+        foreach ($oneOffCosts as $i => $cost) {
+            if (($cost['condition'] ?? '') === '') {
+                unset($oneOffCosts[$i]['condition']);
+            }
+        }
+
         // Selling costs are the component breakdown now; never store the legacy single rate
         // beside it, so the two shapes can't coexist and drift (one home per figure).
         $housing = $this->housing;
@@ -925,7 +945,7 @@ class ScenarioBuilder extends Component
             'people' => $this->people,
             'expense' => $expense,
             'expenseLines' => $expenseLines,
-            'oneOffCosts' => $this->oneOffCosts,
+            'oneOffCosts' => $oneOffCosts,
             'pensions' => $pensions,
             'accounts' => $this->accounts,
             'incomeStreams' => $this->incomeStreams,
@@ -1367,7 +1387,21 @@ class ScenarioBuilder extends Component
 
     public function addOneOff(): void
     {
-        $this->oneOffCosts[] = ['id' => $this->newRowId(), 'atAge' => '', 'amount' => '', 'label' => ''];
+        // `condition` is sparse (empty = charged always), so a row added here and left alone
+        // records no key and no what-if delta. See saveState().
+        $this->oneOffCosts[] = ['id' => $this->newRowId(), 'atAge' => '', 'amount' => '', 'label' => '', 'condition' => ''];
+    }
+
+    /**
+     * The above-inflation growth the engine charges on home-ownership costs when this input is
+     * left blank, as a percentage string for the screen. READ from the constant that owns the
+     * figure ({@see ExpenseProfile}), so the label and the projection cannot disagree.
+     */
+    public static function propertyCostsGrowthDefaultPct(): string
+    {
+        $pct = ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS / 100;
+
+        return rtrim(rtrim(number_format($pct, 2), '0'), '.');
     }
 
     public function removeOneOff(int $i): void
