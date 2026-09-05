@@ -89,10 +89,12 @@ final class DbCommutationTest extends TestCase
     public function test_commutation_reduces_the_pension_and_pays_a_tax_free_lump_sum_at_retirement(): void
     {
         // £24k lump sum at factor 12 gives up £2,000/yr → an £18,000 pension from age 65 (2031).
+        // 2031 itself is a PART year (the pension starts on the January birthday, board card 0036),
+        // so the annual rate is read from 2032, the first whole year.
         $s = $this->bySource(Money::fromPounds(24_000), 12.0);
 
         $this->assertSame(0, $s[2030]['db'], 'no DB income before normal retirement age');
-        $this->assertSame(Money::fromPounds(18_000)->pence, $s[2031]['db'], 'the pension is permanently reduced by the commutation');
+        $this->assertSame(Money::fromPounds(18_000)->pence, $s[2032]['db'], 'the pension is permanently reduced by the commutation');
         $this->assertSame(Money::fromPounds(18_000)->pence, $s[2035]['db']);
 
         // The tax-free lump sum lands once, in the year the member turns 65.
@@ -106,7 +108,7 @@ final class DbCommutationTest extends TestCase
         // Same £24k lump sum, no explicit factor → defaults to 12 → the same £18,000 reduced pension.
         $s = $this->bySource(Money::fromPounds(24_000), null);
 
-        $this->assertSame(Money::fromPounds(18_000)->pence, $s[2031]['db']);
+        $this->assertSame(Money::fromPounds(18_000)->pence, $s[2032]['db']);
         $this->assertSame(Money::fromPounds(24_000)->pence, $s[2031]['lumpSum']);
     }
 
@@ -114,7 +116,7 @@ final class DbCommutationTest extends TestCase
     {
         $s = $this->bySource(null, null);
 
-        $this->assertSame(Money::fromPounds(20_000)->pence, $s[2031]['db'], 'the full pension without a commutation');
+        $this->assertSame(Money::fromPounds(20_000)->pence, $s[2032]['db'], 'the full pension without a commutation');
         $this->assertSame(0, $s[2031]['lumpSum']);
         $this->assertSame(0, $s[2035]['lumpSum']);
     }

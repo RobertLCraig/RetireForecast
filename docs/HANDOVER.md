@@ -7,6 +7,26 @@
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
 _Last updated: 2026-09-05. The exceptions a fresh session needs, newest first:_
 
+- **The retirement year is now split on both sides, and National Insurance no longer stops early.**
+  Card 0036. Salary was already prorated by `workFraction`, but the income replacing it was not: a
+  State Pension paid a full year from the claim year, a DB pension a full year from normal retirement
+  age, and `niForPerson` switched NI off for the whole calendar year State Pension age fell in.
+  `initialState` now keeps `spaMonth` beside `spaYear` (it was computing the date and discarding the
+  month), and `startFraction($month)` sits beside `workFraction` as its exact complement: month n
+  divides the year at the end of that month, salary takes n/12 and what replaces it takes (12 - n)/12.
+  NI is charged on `min(workFraction, spaMonth/12)` of the salary, with the calculator's own State
+  Pension age switch off, because the slice handed to it already excludes everything after that date.
+  `dbIncome` now takes the `Person`, not the id, since it needs the birth month. **Every stored plan
+  with a retirement inside its horizon banked too much income and too little NI in that year, so its
+  wealth, depletion year and success odds are too FAVOURABLE**; a plan whose members are all past
+  State Pension age and normal retirement age in the base year is byte-identical. `ENGINE_VERSION` is
+  `finance-engine/transition-year-proration` and the **stored-scenario re-run is owed** (built in a
+  worktree). No new UI control, so nothing new to look at, but every results page moves. Two adjacent
+  faults were carded rather than fixed: **0096**, NI thresholds are annual where real NI is assessed
+  per pay period, so a part year is charged against a whole year's threshold (noted as a v1 limit in
+  `niForPerson`); and **0097**, the Pension Credit qualifying-age gate awards fifty-two weeks in the
+  year State Pension age is reached, which this card makes worse in passing because the now-correct
+  part-year State Pension lowers the assessable income the award is computed from.
 - **The pension escalation dropdowns are no longer dead, and revaluation is a separate rule from
   escalation.** Card 0035. `PathProjector` ran one household-wide factor pinned to full CPI, so a
   scheme set to no increases, or to a capped basis, rose with prices for thirty years anyway. It now
@@ -248,7 +268,8 @@ Documented v1 scope limits remain flagged in code and listed in [DATA-MODEL.md](
 feature work and before card 0022 is answered. Re-run every stored scenario and `scenarios:audit`
 after it.
 
-1. **0036 the mis-timed retirement year**: it pays a part-year salary with a full year of pension and no National Insurance.
+1. **0037 pension draws taxed as if there were no savings or dividends**: the marginal rate a
+   withdrawal is priced at ignores the rest of the person's income.
 
 Then the pre-review queue resumes at the head of [docs/board/todo/](board/todo/).
 

@@ -371,6 +371,7 @@ final class PathProjector
     {
         $baseAge = [];
         $spaYear = [];
+        $spaMonth = [];
         $spClaimYear = [];
         $cash = [];
         $gia = [];
@@ -386,7 +387,12 @@ final class PathProjector
         foreach ($household->persons as $person) {
             $birthYear = (int) $person->dob->format('Y');
             $baseAge[$person->id] = $settings->baseYear - $birthYear;
-            $spaYear[$person->id] = (int) StatePensionAge::for($person->dob)->dateReached->format('Y');
+            // The MONTH is kept as well as the year: State Pension age is reached on a date, not on
+            // 1 January, so the year it falls in is a part year for both the pension it starts and
+            // the National Insurance it ends ({@see startFraction}).
+            $spaDate = StatePensionAge::for($person->dob)->dateReached;
+            $spaYear[$person->id] = (int) $spaDate->format('Y');
+            $spaMonth[$person->id] = (int) $spaDate->format('n');
             // Deferring the State Pension delays the CLAIM (not State Pension age itself): the
             // person forgoes payments for the deferral period, then draws the uplifted rate from
             // the later start. Modelled by shifting the claim year by whole years of deferral; the
@@ -516,6 +522,7 @@ final class PathProjector
             'baseYear' => $settings->baseYear,
             'baseAge' => $baseAge,
             'spaYear' => $spaYear,
+            'spaMonth' => $spaMonth,
             'spClaimYear' => $spClaimYear,
             'cash' => $cash,
             'gia' => $gia,
@@ -856,8 +863,8 @@ final class PathProjector
             }
 
             // Guaranteed pension / other income, kept split by source.
-            $db = $this->dbIncome($household, $person->id, $age, $state['dbFactors']);
-            $sp = $this->statePensionIncome($household, $person->id, $calendarYear, $state['spClaimYear'][$person->id], $state['spFactor']);
+            $db = $this->dbIncome($household, $person, $age, $state['dbFactors']);
+            $sp = $this->statePensionIncome($household, $person->id, $calendarYear, $state['spClaimYear'][$person->id], $state['spaMonth'][$person->id], $state['spFactor']);
             $otherTaxable = $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: true);
             $taxFreeStream = $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: false);
 
@@ -1508,14 +1515,20 @@ final class PathProjector
      * list, because escalation is a per-scheme rule: one pre-1997 slice frozen for life and one
      * CPI-linked slice in the same household must not share a factor.
      *
+     * The year the member REACHES normal retirement age is a part year: the pension starts on that
+     * birthday, so it pays the months after it and no more ({@see startFraction}).
+     *
      * @param  array<array-key, float>  $dbFactors
      */
-    private function dbIncome(Household $household, string $pid, int $age, array $dbFactors): int
+    private function dbIncome(Household $household, Person $person, int $age, array $dbFactors): int
     {
         $total = 0;
         foreach ($household->pensions as $key => $pension) {
-            if ($pension instanceof DbPension && $pension->ownerId === $pid && $age >= $pension->normalRetirementAge) {
-                $total += (int) round($this->commutedAnnualPence($pension) * ($dbFactors[$key] ?? 1.0));
+            if ($pension instanceof DbPension && $pension->ownerId === $person->id && $age >= $pension->normalRetirementAge) {
+                $fraction = $age === $pension->normalRetirementAge
+                    ? self::startFraction((int) $person->dob->format('n'))
+                    : 1.0;
+                $total += (int) round($this->commutedAnnualPence($pension) * ($dbFactors[$key] ?? 1.0) * $fraction);
             }
         }
 
@@ -1565,7 +1578,7 @@ final class PathProjector
         return $total;
     }
 
-    private function statePensionIncome(Household $household, string $pid, int $calendarYear, int $spClaimYear, float $spFactor): int
+    private function statePensionIncome(Household $household, string $pid, int $calendarYear, int $spClaimYear, int $spaMonth, float $spFactor): int
     {
         // Nothing is paid before the claim year: at State Pension age if undeferred, later by the
         // deferral period if deferring — the forgone income is what makes deferral a genuine
@@ -1573,13 +1586,17 @@ final class PathProjector
         if ($calendarYear < $spClaimYear) {
             return 0;
         }
+        // The claim year is a PART year: entitlement begins on the State Pension age date (shifted
+        // whole years by any deferral, so the month is the same either way), and a pension starting
+        // in November pays two months, not twelve.
+        $fraction = $calendarYear === $spClaimYear ? self::startFraction($spaMonth) : 1.0;
         foreach ($household->pensions as $pension) {
             if ($pension instanceof StatePensionEntitlement && $pension->ownerId === $pid) {
                 $base = $pension->weeklyForecast !== null
                     ? $this->statePension->fromWeeklyForecast($pension->weeklyForecast, $pension->deferralWeeks)
                     : $this->statePension->fromQualifyingYears($pension->qualifyingYears ?? 0, $pension->deferralWeeks);
 
-                return (int) round($base->annual->pence * $spFactor);
+                return (int) round($base->annual->pence * $spFactor * $fraction);
             }
         }
 
@@ -2068,8 +2085,9 @@ final class PathProjector
     }
 
     /**
-     * Class 1 NI on this person's employment earnings, or zero if not employed, past
-     * planned retirement, or at/after State Pension age (NI ends at SPA).
+     * Class 1 NI on this person's employment earnings, or zero if not employed, past planned
+     * retirement, or past State Pension age (NI ends at SPA). The YEAR State Pension age falls in
+     * is part liable: NI is due on the earnings before that date.
      *
      * @param  array<string, mixed>  $state
      */
@@ -2086,13 +2104,27 @@ final class PathProjector
             return 0;
         }
 
+        // NI stops ON the day State Pension age is reached, not on the 1 January before it, so the
+        // months worked earlier in that year are still liable. The liable slice is the part of the
+        // year worked that also falls before that date: min of the two fractions, which leaves every
+        // earlier year at the work fraction and every later one at nothing.
         $calendarYear = $state['baseYear'] + $yearIndex;
-        $reachedSpa = $calendarYear >= $state['spaYear'][$pid];
+        $spaYear = $state['spaYear'][$pid];
+        $liable = match (true) {
+            $calendarYear > $spaYear => 0.0,
+            $calendarYear === $spaYear => min($fraction, $state['spaMonth'][$pid] / 12.0),
+            default => $fraction,
+        };
+        if ($liable <= 0.0) {
+            return 0;
+        }
 
-        // NI on the actual (prorated in the retirement year) earnings; it ends at State Pension age.
-        $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor'][$person->id] * $fraction);
+        // The slice already excludes everything after State Pension age, so the calculator is asked
+        // about a still-liable earner. (v1 limit: thresholds are annual, where real NI is assessed
+        // per pay period, so a part year is charged against a whole year's threshold, board card 0096.)
+        $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor'][$person->id] * $liable);
 
-        return $this->ni->onEmploymentEarnings(Money::fromPence($earnings), hasReachedStatePensionAge: $reachedSpa, category: $person->niCategory)->total->pence;
+        return $this->ni->onEmploymentEarnings(Money::fromPence($earnings), hasReachedStatePensionAge: false, category: $person->niCategory)->total->pence;
     }
 
     /**
@@ -2112,6 +2144,18 @@ final class PathProjector
         }
 
         return ((int) $person->dob->format('n')) / 12.0;
+    }
+
+    /**
+     * The fraction of the calendar year an income is paid when it STARTS part way through it, on a
+     * date falling in month $month: the complement of {@see workFraction}, because the income
+     * replacing a salary begins where the salary stops. A pension starting in March pays 9/12 of
+     * the year, not 12/12 — the transition year is the one an affordability cliff shows in, so
+     * paying a whole year of it flatters exactly the year that must not be flattered.
+     */
+    private static function startFraction(int $month): float
+    {
+        return (12 - $month) / 12.0;
     }
 
     /**

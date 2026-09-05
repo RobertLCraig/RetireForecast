@@ -365,9 +365,14 @@ Each projected year the engine:
 
 1. Adds up every living person's income by source — part-year earnings in a retirement year, DB
    pension, State Pension, income streams, planned pension withdrawals, annuities, survivor pensions.
+   **The retirement year is split on both sides.** Pay stops on the birthday you retire, and the
+   income replacing it starts on its own date rather than on 1 January: a State Pension first paid in
+   November counts two months in that year, and a DB pension counts only the months after the normal
+   retirement age birthday. Each is counted to the nearest whole month.
 2. Taxes each person individually (income tax in the combined pass above, plus employee NI on
-   earnings). Unwrapped savings interest and GIA dividends are taxed each year while the asset itself
-   grows at capital only; ISAs are tax-free.
+   earnings). **National Insurance stops at State Pension age**, so the earnings of the months before
+   that date in the year you reach it are still charged. Unwrapped savings interest and GIA dividends
+   are taxed each year while the asset itself grows at capital only; ISAs are tax-free.
 3. Credits any Pension Credit.
 4. Meets the household's spending — an essential floor plus discretionary spending, with costs that
    switch off when they should (mortgage costs when the mortgage ends, property costs when the home

@@ -39,7 +39,18 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-05 (db-escalation-per-scheme): a Defined Benefit pension now increases on the basis
+     * Bumped 2026-09-05 (transition-year-proration): the year a person retires is a TRANSITION year, and
+     * the income that replaces their salary now starts part way through it, as the salary already
+     * stopped part way through it ({@see PathProjector::startFraction}). A State Pension starting in
+     * November pays two months, not twelve; a Defined Benefit pension pays only the months after the
+     * normal retirement age birthday; and National Insurance is charged on the earnings BEFORE the
+     * State Pension age date instead of being switched off for the whole calendar year. All three
+     * ran the household's way, in the one year an affordability cliff would show, so any plan with a
+     * retirement inside its horizon has too much income and too little NI in that year under an
+     * earlier stamp: its wealth, depletion year and success odds are too FAVOURABLE. A plan whose
+     * members are all past State Pension age and normal retirement age in the base year is
+     * byte-identical. See board card 0036.
+     * Previous bump 2026-09-05 (db-escalation-per-scheme): a Defined Benefit pension now increases on the basis
      * the reader chose, and on a DIFFERENT basis while deferred from the one it uses in payment
      * ({@see PathProjector::escalateDbPensions}). Both dropdowns were previously collected and read
      * by nothing: every DB pension escalated at full CPI for ever. Any stored plan whose scheme is
@@ -149,7 +160,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/db-escalation-per-scheme';
+    public const ENGINE_VERSION = 'finance-engine/transition-year-proration';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

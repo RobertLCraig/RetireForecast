@@ -104,10 +104,12 @@ final class StatePensionDeferralTest extends TestCase
         $undeferred = $this->spByYear(deferralWeeks: 0, deathAge: 95);
         $deferred = $this->spByYear(deferralWeeks: 104, deathAge: 95);
 
-        // At the claim year the deferred pension is the uplifted rate (2 years ≈ 11.5% more), so it
-        // is materially higher than the same year's undeferred figure (same triple-lock uprating).
-        $this->assertGreaterThan($undeferred[2027], $deferred[2027], 'the deferred pension is uplifted once it starts');
-        $ratio = $deferred[2027] / $undeferred[2027];
+        // 2027 is the deferred claim year and a PART year (the claim starts on the January
+        // entitlement date, board card 0036), so the annual RATE is read from 2028, the first whole
+        // year for both. There the deferred pension is the uplifted rate (2 years ≈ 11.5% more), so
+        // it is materially higher than the same year's undeferred figure (same triple-lock uprating).
+        $this->assertGreaterThan($undeferred[2028], $deferred[2028], 'the deferred pension is uplifted once it starts');
+        $ratio = $deferred[2028] / $undeferred[2028];
         $this->assertGreaterThan(1.10, $ratio, 'roughly the 1%-per-9-weeks uplift over 104 weeks');
         $this->assertLessThan(1.13, $ratio);
     }

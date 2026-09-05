@@ -178,7 +178,13 @@ final class DbEscalationTest extends TestCase
         );
 
         $this->assertSame(0, $db[2035], 'nothing is paid before normal retirement age');
-        $this->assertSame(Money::fromPounds(self::ACCRUED)->pence, $db[2036], 'a pension revalued on None arrives at its accrued amount');
+        // 2036 is a PART year: the pension starts on the member's January birthday, so eleven
+        // twelfths of it are paid (board card 0036). The arrival LEVEL is what this test is about.
+        $this->assertSame(
+            (int) round(Money::fromPounds(self::ACCRUED)->pence * 11 / 12),
+            $db[2036],
+            'a pension revalued on None arrives at its accrued amount',
+        );
         $this->assertEqualsWithDelta($this->compounded(5.0, 10), $db[2046], 50.0, 'and then escalates on its in-payment basis');
     }
 
@@ -196,8 +202,10 @@ final class DbEscalationTest extends TestCase
             memberBirthYear: 1971,
         );
 
-        $this->assertEqualsWithDelta($this->compounded(5.0, 10), $db[2036], 50.0, 'ten years of deferred revaluation reach the payment date');
-        $this->assertSame($db[2036], $db[2046], 'and nothing is added once it is in payment');
+        // 2036 is the January birthday, so eleven twelfths of the revalued rate are paid in it
+        // (board card 0036); 2037 is the first whole year and the one to compare a frozen pension on.
+        $this->assertEqualsWithDelta($this->compounded(5.0, 10) * 11 / 12, $db[2036], 50.0, 'ten years of deferred revaluation reach the payment date');
+        $this->assertSame($db[2037], $db[2046], 'and nothing is added once it is in payment');
     }
 
     /**
