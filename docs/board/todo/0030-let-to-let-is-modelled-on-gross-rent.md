@@ -109,3 +109,45 @@ tests went red on the deduction, which is them working. The third stayed green f
 at a basic-rate marginal rate the tax saved by deducting an expense happens to equal the reducer on
 the same amount, so a reducer read off the wrong base still landed on the expected number. Pinning
 the rates to zero keeps those tests about the reducer alone.
+
+### 2026-09-05 review (v20260905084758-ef60)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 187s, run by this job rather than reported by the card.
+
+**acceptance: defect**
+
+AC #1 traces. Deduction: `PathProjector::lettingCostsPerOwner()`, applied in `PathProjector::projectYear()`. Editable: `ScenarioBuilder::blankProperty()` and `rules()` into `HouseholdAssembler::property()`. Disclosed: `Property::assumedLettingRates()` read by `ResultPresenter::assumedFigures()`. Met.
+
+AC #3 traces: the `letting_caveats` note in `ResultPresenter::inputNotes()`, rendered by `resources/views/livewire/scenario-results.blade.php`. Met.
+
+AC #2 fails, and worse than the build note admits. `lettingCostsPerOwner()` adds `propertyCostsNominal()` to the deduction. `projectYear()` subtracts that from `$taxablePerPerson`, and `$netCashNominal` is summed from `$taxablePerPerson`, so **cash falls, not just the tax base**. The same bucket stays inside `targetAnnualSpendAt()` in the spend pass ÔÇö `projectYear()` strips it only on `homeSold`, and `ExpenseProfile::withoutPropertyCosts()` documents it as "a marked subset, not an addition" of the spend.
+
+So a let flat with a ┬ú3,000 service charge is charged ┬ú3,000 twice every year, compounding over the projection. The note's claim that "the cash outflow is unchanged" is wrong. Fix: deduct it from the tax base only, or drop the bucket from spend while let.
+
+VERDICT: defect
+
+**scope: defect**
+
+**Over the fence.** `## Not this card` names Section 24. `PathProjector::projectYear()` changed the reducer base from gross rent to profit, `rentalIncomeNominal()` (whose docblock said it existed for that reducer) was replaced by `rentalIncomePerOwner()`, and `BuyToLetFinanceCostTest::landlord()` was rewritten to keep it green. The law forces this (s.274A caps the reducer at property business profits), so the arithmetic is right, but the fence was crossed and the card never said so.
+
+**Grew.** A new "I let this home out" checkbox in `ScenarioBuilder::blankProperty()` and `scenario-builder.blade.php` makes letting a first-class builder option; before, only `QuickWhatIf::letOutAndRent()` could set it. Nobody asked for the capability and nobody has opened it in a browser.
+
+**Half done.**
+1. Task 4 (re-run, `scenarios:audit`) is unticked while `ScenarioForecaster::ENGINE_VERSION` was bumped, so stored let results are now stale.
+2. AC#2 is ticked, but `PathProjector::lettingCostsPerOwner()` only deducts the service charge for tax; the spend path still charges it. "Rather than household spend" is not met.
+3. The `letting_caveats` note in `ResultPresenter::inputNotes()` claims time let reduces PRR. Only `everLet` builds `cgtHistory` in `HouseholdAssembler::property()`; neither new path sets it. The caveat states as modelled something that is not.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**1. The service charge is now paid twice.**
+In `PathProjector::projectYear()` the letting deduction subtracts the charge from `$taxablePerPerson`. A few lines below, `$netCashNominal += $taxable + $investmentIncome - $tax - $ni`. So the deduction removes the **cash**, not only the tax. The same bucket is still inside `$targetPence` and `$essentialPence`: `propertyCosts()` is subtracted only when `$state['homeSold']`. The household pays the charge once as lost income and again as spend. The docblock on `PathProjector::lettingCostsPerOwner()` and the comment in `LettingCostsTest::test_a_let_homes_service_charge_is_a_letting_expense_not_taxed_as_profit` both say the cash is unchanged. That is now false. No test compares `netIncome` against spend, so it is silent. The three percentage costs are correct; only the expense leg is wrong.
+
+**2. A tax-free rental stream shelters a pension.**
+`PathProjector::rentalIncomePerOwner()` filters on type only, never on `IncomeStream::$taxable`. `HouseholdAssembler::incomeStream()` defaults `taxable` to false, and `scenario-builder.blade.php` offers `rental`. That rent never reaches `$taxablePerPerson`, but the deduction still comes off it, and `other_taxable` can go negative. It defeats `test_letting_costs_can_never_shelter_income_that_is_not_rent`.
+
+VERDICT: defect
+
