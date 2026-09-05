@@ -2567,8 +2567,9 @@ final class ResultPresenter
      *    (£0 on a main home via PRR in v1) = net proceeds;
      *  - if selling and renting: the full net proceeds are invested;
      *  - if selling and buying: net − buy price − SDLT − moving = the surplus invested; a buy
-     *    above the proceeds is funded from documented sources only (savings drawn, then an
-     *    interest-only mortgage), and anything left is reported as the unfunded gap;
+     *    above the proceeds is funded from documented sources only (a capital receipt arriving
+     *    that year, then savings drawn, then an interest-only mortgage), and anything left is
+     *    reported as the unfunded gap;
      *  - and the assumption the invested money then grows at (the blended real return), with
      *    a share paid out each year as taxable income (the income yield) rather than sitting idle.
      *
@@ -2578,7 +2579,7 @@ final class ResultPresenter
      * Returns null when no sale is configured (sale price zero) — e.g. a stay-put plan — so
      * the section simply does not render. Factual throughout, never a recommendation.
      *
-     * @return array{sellingCostsAssumed: bool, sellingCostBreakdown: list<array{label: string, value: string, detail: ?string}>, cgtDetail: ?array{gain: string, relievedGain: string, chargeableGain: string, allowanceUsed: string, taxableGain: string, ratePct: string}, proceeds: array{salePrice: string, mortgage: string, hasMortgage: bool, sellingCosts: string, cgt: string, cgtCharged: bool, netProceeds: string, clearsCosts: bool}, rent: array{invested: string, annualRent: ?string}, buy: ?array{netProceeds: string, buyPrice: string, sdlt: string, movingCosts: string, surplus: string, coversPurchase: bool, isFullyFunded: bool, fundedFromSavings: ?string, mortgage: ?string, mortgageInterest: ?string, unfundedGap: ?string}, blendedReturnPct: string, incomeYieldPct: string}|null
+     * @return array{sellingCostsAssumed: bool, sellingCostBreakdown: list<array{label: string, value: string, detail: ?string}>, cgtDetail: ?array{gain: string, relievedGain: string, chargeableGain: string, allowanceUsed: string, taxableGain: string, ratePct: string}, proceeds: array{salePrice: string, mortgage: string, hasMortgage: bool, sellingCosts: string, cgt: string, cgtCharged: bool, netProceeds: string, clearsCosts: bool}, rent: array{invested: string, annualRent: ?string}, buy: ?array{netProceeds: string, buyPrice: string, sdlt: string, movingCosts: string, surplus: string, coversPurchase: bool, isFullyFunded: bool, fundedFromReceipts: ?string, fundedFromSavings: ?string, mortgage: ?string, mortgageInterest: ?string, unfundedGap: ?string}, blendedReturnPct: string, incomeYieldPct: string}|null
      */
     public static function saleExplainer(
         HousingProceeds $proceeds,
@@ -2653,6 +2654,7 @@ final class ResultPresenter
                 'surplus' => $purchase->surplus->format(),
                 'coversPurchase' => $purchase->coversPurchase(),
                 'isFullyFunded' => $purchase->isFullyFunded(),
+                'fundedFromReceipts' => $purchase->fundedFromReceipts->isPositive() ? $purchase->fundedFromReceipts->format() : null,
                 'fundedFromSavings' => $purchase->fundedFromSavings->isPositive() ? $purchase->fundedFromSavings->format() : null,
                 'mortgage' => $purchase->mortgage->isPositive() ? $purchase->mortgage->format() : null,
                 'mortgageInterest' => ($purchase->mortgage->isPositive() && $action->buyMortgageRate !== null)

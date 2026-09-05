@@ -69,6 +69,7 @@ final class HousingProceedsReconciliationTest extends TestCase
     {
         $this->assertSame(
             $outcome->netProceeds->pence
+                + $outcome->fundedFromReceipts->pence
                 + $outcome->fundedFromSavings->pence
                 + $outcome->mortgage->pence
                 + $outcome->unfundedGap->pence,
@@ -263,7 +264,7 @@ final class HousingProceedsReconciliationTest extends TestCase
     {
         // Sell £400k (no mortgage) → net £384k after 4% costs; buy a £200k home.
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(200_000));
-        $outcome = $this->comparison()->buyOutcome($this->household(), $action);
+        $outcome = $this->comparison()->buyOutcome($this->household(), $action, 2026);
 
         // The net proceeds are exactly the purchase, its costs and the invested surplus — no
         // pence created or lost. This is the buy-side half of the housing-boundary identity.
@@ -287,7 +288,7 @@ final class HousingProceedsReconciliationTest extends TestCase
         // Buying dearer than the net proceeds with nothing to fund the gap: the shortfall is
         // reported as an unfunded gap, never absorbed (the home is not handed over for free).
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(500_000));
-        $outcome = $this->comparison()->buyOutcome($this->household(), $action);
+        $outcome = $this->comparison()->buyOutcome($this->household(), $action, 2026);
 
         $this->assertSame(0, $outcome->surplus->pence);
         $this->assertSame(0, $outcome->mortgage->pence, 'a cash-only buy borrows nothing');
@@ -308,7 +309,7 @@ final class HousingProceedsReconciliationTest extends TestCase
             buyPrice: Money::fromPounds(500_000),
             buyMortgageRate: Percent::fromPercent(6),
         );
-        $outcome = $this->comparison()->buyOutcome($this->household(), $action);
+        $outcome = $this->comparison()->buyOutcome($this->household(), $action, 2026);
 
         $this->assertTrue($outcome->mortgage->isPositive(), 'the shortfall is borrowed');
         $this->assertSame(0, $outcome->surplus->pence, 'all the cash goes into the purchase');
@@ -327,7 +328,7 @@ final class HousingProceedsReconciliationTest extends TestCase
             buyMortgageRate: Percent::fromPercent(6),
         );
         $household = $this->household(accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(60_000))]);
-        $outcome = $this->comparison()->buyOutcome($household, $action);
+        $outcome = $this->comparison()->buyOutcome($household, $action, 2026);
 
         $this->assertSame(Money::fromPounds(60_000)->pence, $outcome->fundedFromSavings->pence);
         $this->assertSame(Money::fromPounds(73_000)->pence, $outcome->mortgage->pence);
@@ -375,7 +376,7 @@ final class HousingProceedsReconciliationTest extends TestCase
         // Net £384k; buy £510k + £15.5k SDLT + £2k moving = £527.5k → gap £143.5k, far above the
         // £43k of liquid savings: everything liquid is drawn (in order), the rest is unfunded.
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(510_000));
-        $outcome = $this->comparison()->buyOutcome($household, $action);
+        $outcome = $this->comparison()->buyOutcome($household, $action, 2026);
 
         $this->assertSame(Money::fromPounds(43_000)->pence, $outcome->fundedFromSavings->pence);
         $this->assertFundingReconciles($outcome);
@@ -415,7 +416,7 @@ final class HousingProceedsReconciliationTest extends TestCase
             primaryResidence: new Property(currentValue: Money::fromPounds(400_000), ownership: OwnershipType::Outright),
         );
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(430_000));
-        $outcome = $this->comparison()->buyOutcome($household, $action);
+        $outcome = $this->comparison()->buyOutcome($household, $action, 2026);
 
         $this->assertSame(Money::fromPounds(59_500)->pence, $outcome->fundedFromSavings->pence);
         $this->assertSame(0, $outcome->unfundedGap->pence);
@@ -445,7 +446,7 @@ final class HousingProceedsReconciliationTest extends TestCase
         // Net £384k; buy £395k + £9.75k SDLT + £2k moving = £406.75k → gap £22,750, which the
         // £30k of savings covers with room to spare, so the draw ORDER is what the test can see.
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(395_000));
-        $outcome = $this->comparison()->buyOutcome($household, $action);
+        $outcome = $this->comparison()->buyOutcome($household, $action, 2026);
 
         $this->assertSame(Money::fromPounds(22_750)->pence, $outcome->fundedFromSavings->pence);
         $this->assertSame(0, $outcome->unfundedGap->pence);
@@ -473,7 +474,7 @@ final class HousingProceedsReconciliationTest extends TestCase
         // covered by the GIA. The expected gain slice is derived from the drawn figure itself
         // so the assertion tracks the engine's own SDLT.
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(430_000));
-        $outcome = $this->comparison()->buyOutcome($household, $action);
+        $outcome = $this->comparison()->buyOutcome($household, $action, 2026);
         $gap = $outcome->fundedFromSavings->pence;
 
         $variants = $this->comparison()->variantInputs(
@@ -499,6 +500,7 @@ final class HousingProceedsReconciliationTest extends TestCase
             movingCosts: Money::zero(),
             surplus: Money::zero(),
             mortgage: Money::zero(),
+            fundedFromReceipts: Money::zero(),
             fundedFromSavings: Money::zero(),
             unfundedGap: Money::zero(), // £100k of the purchase traces to no source
         );
@@ -537,7 +539,7 @@ final class HousingProceedsReconciliationTest extends TestCase
             buyPrice: Money::fromPounds(500_000),
             buyMortgageRate: Percent::fromPercent(6),
         );
-        $outcome = $this->comparison()->buyOutcome($this->household(), $action);
+        $outcome = $this->comparison()->buyOutcome($this->household(), $action, 2026);
         $variants = $this->comparison()->variantInputs(
             $this->household(),
             new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),

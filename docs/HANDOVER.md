@@ -7,6 +7,21 @@
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
 _Last updated: 2026-09-05. The exceptions a fresh session needs, newest first:_
 
+- **A purchase now spends the money arriving that year before it borrows.** Card 0034. The year-0
+  funding waterfall in `HousingComparison::fundingFor` read the household's accounts and nothing
+  else, so a `CapitalReceipt` dated the purchase year was invisible to it and the plan took a
+  lifetime mortgage beside money it already had, paying interest on it for the rest of the
+  projection. The order is now receipt, then savings, then mortgage, then unfunded gap. Receipt
+  ahead of savings because spending it realises no gain, where a GIA draw to the same value pays
+  CGT nobody owes. The spent part is CONSUMED (`HousingComparison::spendReceipts`): fully spent is
+  dropped, partly spent keeps its remainder, another year's is untouched, so the projector credits
+  only what reached the bank. `HousingPurchase` carries `fundedFromReceipts` and its constructor
+  identity grows that term; `buyOutcome()` now takes the base year as a REQUIRED argument.
+  **Every stored buy plan carrying a receipt in its base year borrows too much, so its spend,
+  wealth, depletion year and success odds are too PESSIMISTIC**; stay-put, rent and any buy plan
+  with no base-year receipt are byte-identical. `ENGINE_VERSION` is
+  `finance-engine/year-zero-receipt-funding` and the **stored-scenario re-run is owed** (built in a
+  worktree, so the new receipt line on the sale waterfall **has not been seen in a browser**).
 - **A sold service charge no longer takes the water and the electricity with it, and home insurance
   is essential wherever it was filed.** Card 0033. A `while_owning_home` spend line can now say how
   much of it buys utilities (`ExpenseProfile::$propertyCostsUtilities`, builder key
@@ -210,12 +225,11 @@ Documented v1 scope limits remain flagged in code and listed in [DATA-MODEL.md](
 ## What's next (in order)
 **The queue is [docs/board/todo/](board/todo/), one card per file.** Do not restate it here. At the head:
 
-**The first two are the ranking-movers.** They change which plan wins, so they come before any
+**The head of the queue is a ranking-mover.** It changes which plan wins, so it comes before any
 feature work and before card 0022 is answered. Re-run every stored scenario and `scenarios:audit`
-after each.
+after it.
 
-1. **0034 a year-0 purchase cannot see a capital receipt arriving the same year**, so a plan borrows for life beside money it already has.
-2. **0035 and 0036 dead and mis-timed income inputs**: the defined-benefit escalation dropdown is never read, and the retirement year pays a part-year salary with a full year of pension and no National Insurance.
+1. **0035 and 0036 dead and mis-timed income inputs**: the defined-benefit escalation dropdown is never read, and the retirement year pays a part-year salary with a full year of pension and no National Insurance.
 
 Then the pre-review queue resumes at the head of [docs/board/todo/](board/todo/).
 

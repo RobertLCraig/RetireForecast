@@ -9,6 +9,7 @@ use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
+use RetireForecast\FinanceEngine\Dto\CapitalReceipt;
 use RetireForecast\FinanceEngine\Dto\CgtHistory;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
@@ -65,7 +66,7 @@ final class SaleExplainerTest extends TestCase
 
         return ResultPresenter::saleExplainer(
             $comparison->saleProceeds($household, $action),
-            $comparison->buyOutcome($household, $action),
+            $comparison->buyOutcome($household, $action, 2026),
             $action,
             blendedRealReturn: 0.0176,
             investmentIncomeYield: 0.02,
@@ -140,7 +141,7 @@ final class SaleExplainerTest extends TestCase
         ]);
         $se = ResultPresenter::saleExplainer(
             $comparison->saleProceeds($household, $action),
-            $comparison->buyOutcome($household, $action),
+            $comparison->buyOutcome($household, $action, 2026),
             $action,
             blendedRealReturn: 0.0176,
             investmentIncomeYield: 0.02,
@@ -242,7 +243,7 @@ final class SaleExplainerTest extends TestCase
         );
         $se = ResultPresenter::saleExplainer(
             $comparison->saleProceeds($household, $action),
-            $comparison->buyOutcome($household, $action),
+            $comparison->buyOutcome($household, $action, 2026),
             $action,
             blendedRealReturn: 0.0176,
             investmentIncomeYield: 0.02,
@@ -253,6 +254,46 @@ final class SaleExplainerTest extends TestCase
         $this->assertSame(Money::fromPounds(109_500)->format(), $se['buy']['mortgage']);
         $this->assertSame(Money::fromPounds(109_500)->applyRate(Percent::fromPercent(6))->format(), $se['buy']['mortgageInterest']);
         $this->assertNull($se['buy']['unfundedGap']);
+    }
+
+    public function test_a_purchase_paid_for_by_a_same_year_receipt_shows_that_receipt_as_its_own_line(): void
+    {
+        // Card 0034: the receipt moves the result (it is why no mortgage is taken), so the reader
+        // has to be able to see it. £169,500 gap, a £100,000 receipt landing in the purchase year,
+        // £60,000 of cash: the receipt goes first, the savings next, the RIO takes £9,500.
+        $comparison = $this->comparison();
+        $household = new Household(
+            'Sale',
+            RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(20_000), Money::fromPounds(2_000), Percent::fromPercent(70)),
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(60_000))],
+            primaryResidence: new Property(
+                currentValue: Money::fromPounds(400_000),
+                ownership: OwnershipType::Mortgaged,
+                outstandingMortgage: Money::fromPounds(350_000),
+            ),
+            capitalReceipts: [new CapitalReceipt('p1', 'Inheritance', Money::fromPounds(100_000), 2026)],
+        );
+        $action = new HousingAction(
+            salePrice: Money::fromPounds(400_000),
+            buyPrice: Money::fromPounds(200_000),
+            buyMortgageRate: Percent::fromPercent(6),
+        );
+        $se = ResultPresenter::saleExplainer(
+            $comparison->saleProceeds($household, $action),
+            $comparison->buyOutcome($household, $action, 2026),
+            $action,
+            blendedRealReturn: 0.0176,
+            investmentIncomeYield: 0.02,
+        );
+
+        $this->assertSame(Money::fromPounds(100_000)->format(), $se['buy']['fundedFromReceipts']);
+        $this->assertSame(Money::fromPounds(60_000)->format(), $se['buy']['fundedFromSavings']);
+        $this->assertSame(Money::fromPounds(9_500)->format(), $se['buy']['mortgage']);
+
+        // A plan with no receipt shows no receipt line, so the row cannot appear reading £0.
+        $this->assertNull($this->explainer($action)['buy']['fundedFromReceipts']);
     }
 
     public function test_the_blended_return_and_income_yield_are_shown_as_percentages(): void

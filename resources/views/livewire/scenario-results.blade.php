@@ -1364,6 +1364,9 @@
                             <div class="flex justify-between gap-3"><dt>less the home bought</dt><dd class="tabular-nums">−{{ $se['buy']['buyPrice'] }}</dd></div>
                             <div class="flex justify-between gap-3"><dt>less stamp duty</dt><dd class="tabular-nums">−{{ $se['buy']['sdlt'] }}</dd></div>
                             <div class="flex justify-between gap-3"><dt>less moving costs</dt><dd class="tabular-nums">−{{ $se['buy']['movingCosts'] }}</dd></div>
+                            @if ($se['buy']['fundedFromReceipts'])
+                                <div class="flex justify-between gap-3"><dt>plus the capital receipt arriving that year</dt><dd class="tabular-nums">+{{ $se['buy']['fundedFromReceipts'] }}</dd></div>
+                            @endif
                             @if ($se['buy']['fundedFromSavings'])
                                 <div class="flex justify-between gap-3"><dt>plus from your savings (cash → GIA → ISA)</dt><dd class="tabular-nums">+{{ $se['buy']['fundedFromSavings'] }}</dd></div>
                             @endif
@@ -1375,6 +1378,9 @@
                             @endif
                             <div class="flex justify-between gap-3 border-t border-gray-200 pt-1 font-semibold text-gray-900"><dt>Surplus invested</dt><dd class="tabular-nums">{{ $se['buy']['surplus'] }}</dd></div>
                         </dl>
+                        @if ($se['buy']['fundedFromReceipts'])
+                            <p class="mt-3 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-900" role="note">{{ $se['buy']['fundedFromReceipts'] }} of this purchase is paid for by the capital receipt that arrives in the same year, before any savings are drawn and before anything is borrowed. That part of the receipt goes into the home, so the forecast no longer shows it as income that year; anything left over still arrives as normal.</p>
+                        @endif
                         @if ($se['buy']['fundedFromSavings'] && $se['buy']['isFullyFunded'])
                             <p class="mt-3 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-900" role="note">{{ $se['buy']['fundedFromSavings'] }} of this purchase is funded from your savings, drawn cash → GIA → ISA (never pensions). That money leaves the plan on day one{{ $se['buy']['mortgage'] ? ', and the rest of the gap is borrowed' : '' }}.</p>
                         @endif

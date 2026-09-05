@@ -7,6 +7,7 @@ namespace RetireForecast\FinanceEngine\Housing;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
+use RetireForecast\FinanceEngine\Dto\CapitalReceipt;
 use RetireForecast\FinanceEngine\Dto\CgtHistory;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
@@ -38,9 +39,10 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  * surplus (or full proceeds when renting) goes into an invested account that then
  * follows the chosen allocation.
  *
- * A buy above the net proceeds is funded from documented sources only: the household's
- * liquid savings, then an interest-only (RIO) mortgage when configured; any remainder is
- * an unfunded gap charged as a year-0 cost so the plan visibly fails ({@see fundingFor}).
+ * A buy above the net proceeds is funded from documented sources only: a capital receipt
+ * landing in the purchase year, then the household's liquid savings, then an interest-only
+ * (RIO) mortgage when configured; any remainder is an unfunded gap charged as a year-0 cost
+ * so the plan visibly fails ({@see fundingFor}).
  *
  * v1 simplifications (documented): the additional-property SDLT surcharge is not applied
  * (a straight replacement of the main residence).
@@ -154,25 +156,31 @@ final class HousingComparison
      * Decompose the buy leg into how the purchase is funded (single source —
      * {@see HousingPurchase}). Public so the figures can be surfaced and reconciled rather
      * than recomputed: {@see buyVariant} reads it, and so does any UI breakdown.
+     *
+     * $baseYear is REQUIRED, not optional: it is the year the purchase happens, and therefore
+     * which capital receipts can pay for it. A caller allowed to omit it would surface a
+     * mortgage the projected plan never takes.
      */
-    public function buyOutcome(Household $household, HousingAction $action): HousingPurchase
+    public function buyOutcome(Household $household, HousingAction $action, int $baseYear): HousingPurchase
     {
-        return $this->fundingFor($household, $action)['purchase'];
+        return $this->fundingFor($household, $action, $baseYear)['purchase'];
     }
 
     /**
      * The ONE home of the purchase-funding waterfall. A purchase above the net sale
-     * proceeds is funded from documented sources only, in order: the household's liquid
-     * savings (drawn cash → GIA → ISA, never pensions — {@see SavingsFunding}), then an
-     * interest-only (RIO) mortgage when a rate is configured; anything left is the
-     * unfunded gap, which {@see buyVariant} charges as a year-0 one-off cost so the plan
-     * visibly fails rather than being handed the home for free. Both {@see buyOutcome}
-     * (the surfaced figures) and {@see buyVariant} (the projected household) read this,
-     * so the reported decomposition and the accounts actually drawn can never disagree.
+     * proceeds is funded from documented sources only, in order: a documented capital
+     * receipt dated $baseYear (the purchase year, {@see spendReceipts}), then the
+     * household's liquid savings (drawn cash → GIA → ISA, never pensions —
+     * {@see SavingsFunding}), then an interest-only (RIO) mortgage when a rate is
+     * configured; anything left is the unfunded gap, which {@see buyVariant} charges as a
+     * year-0 one-off cost so the plan visibly fails rather than being handed the home for
+     * free. Both {@see buyOutcome} (the surfaced figures) and {@see buyVariant} (the
+     * projected household) read this, so the reported decomposition, the accounts actually
+     * drawn and the receipts actually credited can never disagree.
      *
-     * @return array{purchase: HousingPurchase, accounts: list<Account>, realisedGains: array<string, Money>}
+     * @return array{purchase: HousingPurchase, accounts: list<Account>, realisedGains: array<string, Money>, capitalReceipts: list<CapitalReceipt>}
      */
-    private function fundingFor(Household $household, HousingAction $action): array
+    private function fundingFor(Household $household, HousingAction $action, int $baseYear): array
     {
         $netProceeds = $this->saleProceeds($household, $action)->netProceeds;
         $buyPrice = $action->buyPrice ?? Money::zero();
@@ -188,15 +196,27 @@ final class HousingComparison
                     $netProceeds, $buyPrice, $sdlt, $moving,
                     surplus: $netProceeds->minus($totalCost),
                     mortgage: Money::zero(),
+                    fundedFromReceipts: Money::zero(),
                     fundedFromSavings: Money::zero(),
                     unfundedGap: Money::zero(),
                 ),
                 'accounts' => $household->accounts,
                 'realisedGains' => [],
+                'capitalReceipts' => $household->capitalReceipts,
             ];
         }
 
-        // Savings first (own money before interest-bearing debt), then the mortgage takes
+        // A documented capital receipt landing in the SAME year as the purchase is money the
+        // household actually has that year, so it buys the home FIRST. Before card 0034 the
+        // waterfall could see the accounts and nothing else, so a plan took out a lifetime
+        // mortgage while the money to close the gap sat beside it as a receipt, and paid interest
+        // on that loan for the rest of the projection. Receipt ahead of savings, not behind: the
+        // money is arriving anyway and spending it realises no gain, where drawing a GIA to the
+        // same value realises its pro-rata slice and pays CGT nobody owes.
+        [$receipts, $fromReceipts] = self::spendReceipts($household->capitalReceipts, $baseYear, $gap);
+        $gap = $gap->minus($fromReceipts);
+
+        // Savings next (own money before interest-bearing debt), then the mortgage takes
         // whatever the savings couldn't cover — only when a rate is configured. Any residue
         // is the unfunded gap, reported never absorbed.
         $funding = SavingsFunding::draw($household, $gap);
@@ -208,17 +228,63 @@ final class HousingComparison
                 $netProceeds, $buyPrice, $sdlt, $moving,
                 surplus: Money::zero(),
                 mortgage: $mortgage,
+                fundedFromReceipts: $fromReceipts,
                 fundedFromSavings: $funding->drawn,
                 unfundedGap: $remainder->minus($mortgage),
             ),
             'accounts' => $funding->accounts,
             'realisedGains' => $funding->realisedGains,
+            'capitalReceipts' => $receipts,
         ];
+    }
+
+    /**
+     * Spend the capital receipts dated $year on $need, in declaration order, and report both
+     * what survives and what was spent. A receipt spent in full is DROPPED and one spent in part
+     * keeps only its unspent remainder, so the projector credits exactly the money that reached
+     * the bank; without that the same pound would both buy the home and arrive as that year's
+     * income, which is the mirror image of the defect card 0034 fixes. A receipt dated any other
+     * year is untouched: that money does not exist yet and cannot pay for anything today.
+     *
+     * @param  list<CapitalReceipt>  $receipts
+     * @return array{0: list<CapitalReceipt>, 1: Money}
+     */
+    private static function spendReceipts(array $receipts, int $year, Money $need): array
+    {
+        $remaining = $need->pence;
+        $spent = 0;
+        $kept = [];
+
+        foreach ($receipts as $receipt) {
+            $take = $receipt->calendarYear === $year
+                ? max(0, min($remaining, $receipt->amount->pence))
+                : 0;
+            $spent += $take;
+            $remaining -= $take;
+
+            if ($take === 0) {
+                $kept[] = $receipt;
+            } elseif ($take < $receipt->amount->pence) {
+                $kept[] = new CapitalReceipt(
+                    $receipt->ownerId,
+                    $receipt->label,
+                    Money::fromPence($receipt->amount->pence - $take),
+                    $receipt->calendarYear,
+                );
+            }
+        }
+
+        return [$kept, Money::fromPence($spent)];
     }
 
     private function buyVariant(Household $household, HousingAction $action, ForecastSettings $settings): Household
     {
-        ['purchase' => $outcome, 'accounts' => $accounts, 'realisedGains' => $gains] = $this->fundingFor($household, $action);
+        [
+            'purchase' => $outcome,
+            'accounts' => $accounts,
+            'realisedGains' => $gains,
+            'capitalReceipts' => $receipts,
+        ] = $this->fundingFor($household, $action, $settings->baseYear);
         // GIA gains realised by the year-0 savings draw, carried so the projector charges the
         // CGT in year 0 (against that year's annual exempt amount) — a disposal is never free.
         $realisedGains = array_filter($gains, fn (Money $gain): bool => $gain->isPositive());
@@ -255,7 +321,7 @@ final class HousingComparison
             ]
             : null;
 
-        return $this->withHousing($household, $newProperty, $outcome->surplus, $interest, $accounts, $oneOffCost, $realisedGains);
+        return $this->withHousing($household, $newProperty, $outcome->surplus, $interest, $accounts, $oneOffCost, $realisedGains, $receipts);
     }
 
     private function rentVariant(Household $household, Money $netProceeds, HousingAction $action, ForecastSettings $settings): Household
@@ -335,12 +401,15 @@ final class HousingComparison
      * $oneOffCost, when given, is a dated lump charge appended to the profile — the unfunded
      * part of a purchase, charged so it surfaces as a shortfall instead of appearing for free.
      * $realisedGains carries the GIA gains a year-0 savings draw realised, per person, so the
-     * projector charges the CGT in year 0.
+     * projector charges the CGT in year 0. $capitalReceipts, when given, replaces the household's
+     * receipts — a purchase part-funded by a same-year receipt passes the list REDUCED by what it
+     * spent, so the projector credits only the money that actually reached the bank.
      *
      * @param  array{atAge: int, amount: Money, label: string}|null  $oneOffCost
      * @param  array<string, Money>  $realisedGains
+     * @param  list<CapitalReceipt>|null  $capitalReceipts
      */
-    private function withHousing(Household $household, ?Property $property, Money $investedCash, ?Money $mortgageInterest = null, ?array $accounts = null, ?array $oneOffCost = null, array $realisedGains = []): Household
+    private function withHousing(Household $household, ?Property $property, Money $investedCash, ?Money $mortgageInterest = null, ?array $accounts = null, ?array $oneOffCost = null, array $realisedGains = [], ?array $capitalReceipts = null): Household
     {
         $accounts ??= $household->accounts;
         if ($investedCash->isPositive()) {
@@ -369,7 +438,7 @@ final class HousingComparison
             incomeStreams: $household->incomeStreams,
             primaryResidence: $property,
             relationshipStatus: $household->relationshipStatus,
-            capitalReceipts: $household->capitalReceipts,
+            capitalReceipts: $capitalReceipts ?? $household->capitalReceipts,
             realisedGainsAtStart: $realisedGains,
         );
     }

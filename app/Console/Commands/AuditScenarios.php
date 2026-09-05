@@ -218,7 +218,9 @@ final class AuditScenarios extends Command
         //    not surface as unmet spend — that year's income and savings may cover it.
         $unfunded = null;
         if ($variant === 'buy_outright') {
-            $unfunded = $forecaster->housingComparison($scenario)->buyOutcome($household, $action)->unfundedGap;
+            $unfunded = $forecaster->housingComparison($scenario)
+                ->buyOutcome($household, $action, $forecaster->settings($scenario)->baseYear)
+                ->unfundedGap;
             if ($unfunded->isPositive()) {
                 $baseline = $household->expenseProfile->targetAnnualSpend()->pence;
                 if ($forecast->years[0]->spendTarget->pence < $baseline + intdiv($unfunded->pence, 2)) {

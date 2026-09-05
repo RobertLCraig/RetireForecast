@@ -562,7 +562,7 @@ class ScenarioResults extends Component
             'saleExplainer' => $ladderContext->homeSold()
                 ? ResultPresenter::saleExplainer(
                     $housing->saleProceeds($household, $action),
-                    $housing->buyOutcome($household, $action),
+                    $housing->buyOutcome($household, $action, $forecaster->settings($this->scenario)->baseYear),
                     $action,
                     $allocation->blendedRealReturn($assumptions),
                     $assumptions->investmentIncomeYield->asFraction(),

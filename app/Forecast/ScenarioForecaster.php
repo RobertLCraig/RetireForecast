@@ -39,7 +39,16 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-05 (expenses-across-the-sell-boundary): two spend lines were filed under the wrong
+     * Bumped 2026-09-05 (year-zero-receipt-funding): the year-0 purchase-funding waterfall could see the
+     * household's accounts and nothing else, so a documented capital receipt landing in the
+     * purchase year was invisible to it and the plan borrowed for life beside money it already
+     * had. A same-year receipt is now spent on the purchase FIRST, before savings are drawn and
+     * before anything is borrowed, and only its unspent remainder is credited as that year's
+     * income ({@see HousingComparison::buyOutcome}, whose decomposition names it as
+     * `fundedFromReceipts`). Any buy plan stored under an earlier stamp that carries a receipt in
+     * its base year borrows too much, so its spend, wealth, depletion year and success odds are
+     * too PESSIMISTIC; every other plan is byte-identical. See board card 0034.
+     * Previous bump 2026-09-05 (expenses-across-the-sell-boundary): two spend lines were filed under the wrong
      * heading. A home-ownership cost can now say how much of it BUYS UTILITIES
      * ({@see ExpenseProfile::$propertyCostsUtilities}), and that part is carried across a sale
      * instead of being deleted with the service charge, because a house or a park home still has to
@@ -131,7 +140,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/expenses-across-the-sell-boundary';
+    public const ENGINE_VERSION = 'finance-engine/year-zero-receipt-funding';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

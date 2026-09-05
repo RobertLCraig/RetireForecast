@@ -399,15 +399,17 @@ class ScenarioCompare extends Component
             return null;
         }
 
-        $outcome = $forecaster->housingComparison($plan)->buyOutcome($plan->toHousehold(), $plan->toHousingAction());
+        $outcome = $forecaster->housingComparison($plan)
+            ->buyOutcome($plan->toHousehold(), $plan->toHousingAction(), $forecaster->settings($plan)->baseYear);
 
         return $outcome->unfundedGap->isPositive() ? $outcome->unfundedGap->format() : null;
     }
 
     /**
      * For a "sell & buy" plan where the purchase costs more than the sale frees, a note of the
-     * documented sources funding the gap — the savings drawn (cash → GIA → ISA) and/or the
-     * interest-only mortgage taken (with its yearly cost) — so a buy above the proceeds reads
+     * documented sources funding the gap — a capital receipt arriving that year, the savings
+     * drawn (cash → GIA → ISA) and/or the interest-only mortgage taken (with its yearly cost),
+     * in the order the engine spends them — so a buy above the proceeds reads
      * as financed by real money, never conjured. Null when the plan is not a buy or the
      * proceeds alone cover it.
      */
@@ -418,9 +420,13 @@ class ScenarioCompare extends Component
         }
 
         $action = $plan->toHousingAction();
-        $outcome = $forecaster->housingComparison($plan)->buyOutcome($plan->toHousehold(), $action);
+        $outcome = $forecaster->housingComparison($plan)
+            ->buyOutcome($plan->toHousehold(), $action, $forecaster->settings($plan)->baseYear);
 
         $parts = [];
+        if ($outcome->fundedFromReceipts->isPositive()) {
+            $parts[] = "{$outcome->fundedFromReceipts->format()} from a capital receipt arriving that year";
+        }
         if ($outcome->fundedFromSavings->isPositive()) {
             $parts[] = "{$outcome->fundedFromSavings->format()} from savings";
         }

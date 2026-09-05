@@ -3,6 +3,43 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-05: A purchase spends the money arriving that year before it borrows
+**Context:** card 0034 (expert panel 2026-08-19, property finding 8). The year-0 purchase-funding
+waterfall in `HousingComparison::fundingFor` read `$household->accounts` and nothing else. A
+`CapitalReceipt` is credited by the projector during its calendar year, so a receipt dated the
+purchase year was invisible to the funding decision. The result was a plan taking out a lifetime
+mortgage to close a gap that the money beside it already closed, and paying interest on that loan for
+the rest of the projection. No household would do that. The direction of the error is pessimistic,
+so it never overstated a plan, but correcting it moves a plan UP the ranking, which is what card
+0022 turns on.
+
+**Decision: a capital receipt landing in the purchase year is spent on the purchase first, ahead of
+savings and long ahead of any borrowing.** The waterfall is now receipt → savings → mortgage →
+unfunded gap. Two consequences are load-bearing:
+
+- **Receipt before savings, not after.** A receipt is money arriving anyway, and spending it realises
+  no gain, where drawing a GIA to the same value realises its pro-rata slice and pays CGT on it. A
+  household with both would spend the cheque. Putting savings first would charge a tax nobody owes.
+- **The receipt is CONSUMED, not copied.** The buy variant carries the receipts reduced by exactly
+  what the purchase spent: one spent in full is dropped, one spent in part keeps its unspent
+  remainder, and one dated any other year is untouched, because that money does not exist yet. So the
+  projector credits only what actually reached the bank. Without this the same pound both bought the
+  home and arrived as income, which is the mirror-image defect of the one being fixed and is guarded
+  by its own projection-level test.
+
+**`HousingPurchase` gains `fundedFromReceipts` and the reconciliation identity grows a term**
+(`netProceeds + fundedFromReceipts + fundedFromSavings + mortgage + unfundedGap == buyPrice + SDLT +
+moving + surplus`), still asserted in the constructor. The receipt is its own named line on the sale
+waterfall on screen, in the PDF, on Compare and in the assistant's facts, with a note saying the
+spent part is no longer shown as that year's income: a figure that moves the result has to be one the
+reader can see. `HousingComparison::buyOutcome` therefore takes the base year as a REQUIRED argument
+rather than an optional one, because a caller that could omit it would surface a mortgage the
+projected plan never takes.
+
+**Only the buy variant is touched.** Stay-put and rent buy nothing, so they keep their receipts
+exactly as entered; a plan with no base-year receipt is byte-identical. `ENGINE_VERSION` is
+`finance-engine/year-zero-receipt-funding` and the stored-scenario re-run is owed.
+
 ## 2026-09-05: Selling costs are priced for a leasehold flat, and a taxable disposal pays for its return
 **Context:** card 0032 (expert panel 2026-08-19, property finding 9 and adviser finding 14). The
 engine's default cost of selling was **2% of the sale price**, and the builder shipped an agent fee,

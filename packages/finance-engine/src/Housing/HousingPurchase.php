@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Housing;
 
+use RetireForecast\FinanceEngine\Dto\CapitalReceipt;
 use RetireForecast\FinanceEngine\Money\Money;
 
 /**
@@ -14,18 +15,24 @@ use RetireForecast\FinanceEngine\Money\Money;
  * from documented sources only, in order:
  *
  *   1. the net sale proceeds;
- *   2. the household's liquid savings ($fundedFromSavings — drawn cash → GIA → ISA,
+ *   2. a documented capital receipt landing in the SAME year as the purchase
+ *      ($fundedFromReceipts — a gift, an inheritance, an outside-asset sale; see
+ *      {@see CapitalReceipt}). It comes before the
+ *      savings because it is money arriving anyway and spending it realises no gain,
+ *      where drawing a GIA to the same value pays CGT nobody owes. The spent part is
+ *      consumed, so the projection does not also bank it as that year's income;
+ *   3. the household's liquid savings ($fundedFromSavings — drawn cash → GIA → ISA,
  *      never pensions; see {@see SavingsFunding});
- *   3. an interest-only (RIO) mortgage on the new home ($mortgage), when one is
+ *   4. an interest-only (RIO) mortgage on the new home ($mortgage), when one is
  *      configured;
- *   4. anything left is $unfundedGap — money the plan does NOT have. It is never
+ *   5. anything left is $unfundedGap — money the plan does NOT have. It is never
  *      conjured: the forecast charges it as a year-0 one-off cost, so an unfunded
  *      buy visibly fails instead of being handed the home for free.
  *
  * Holding every part is what makes the figures reconcilable. The invariant, asserted
  * at construction so a non-reconciling decomposition can never exist:
  *
- *   netProceeds + fundedFromSavings + mortgage + unfundedGap
+ *   netProceeds + fundedFromReceipts + fundedFromSavings + mortgage + unfundedGap
  *     == buyPrice + stampDuty + movingCosts + surplus
  *
  * This is the single source for the buy-side figures: {@see HousingComparison::buyVariant}
@@ -40,16 +47,17 @@ final class HousingPurchase
         public readonly Money $movingCosts,
         public readonly Money $surplus,
         public readonly Money $mortgage,
+        public readonly Money $fundedFromReceipts,
         public readonly Money $fundedFromSavings,
         public readonly Money $unfundedGap,
     ) {
-        $in = $netProceeds->pence + $fundedFromSavings->pence + $mortgage->pence + $unfundedGap->pence;
+        $in = $netProceeds->pence + $fundedFromReceipts->pence + $fundedFromSavings->pence + $mortgage->pence + $unfundedGap->pence;
         $out = $buyPrice->pence + $stampDuty->pence + $movingCosts->pence + $surplus->pence;
         if ($in !== $out) {
             throw new \InvalidArgumentException(
                 "HousingPurchase does not reconcile: sources {$in}p != uses {$out}p "
-                .'(netProceeds + fundedFromSavings + mortgage + unfundedGap must equal '
-                .'buyPrice + stampDuty + movingCosts + surplus).'
+                .'(netProceeds + fundedFromReceipts + fundedFromSavings + mortgage + unfundedGap '
+                .'must equal buyPrice + stampDuty + movingCosts + surplus).'
             );
         }
     }

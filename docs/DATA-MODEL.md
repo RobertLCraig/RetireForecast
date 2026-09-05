@@ -468,8 +468,8 @@ Recorded here so the rebuild does not fork the model:
   re-deriving the death age; (2) **`Housing\HousingPurchase`** (a reconciled value object beside `HousingProceeds`) —
   the single source of the buy-side funding decomposition, read by `HousingComparison::buyVariant` and the
   sale-explainer. **2026-07-16 — the full funding identity, asserted in its constructor** (a non-reconciling
-  decomposition cannot be constructed): `netProceeds + fundedFromSavings + mortgage + unfundedGap ==
-  buyPrice + stampDuty + movingCosts + surplus` (see the no-magic-money workstream below). The results-page **view-models** (`ResultPresenter::saleExplainer`
+  decomposition cannot be constructed): `netProceeds + fundedFromReceipts + fundedFromSavings + mortgage +
+  unfundedGap == buyPrice + stampDuty + movingCosts + surplus` (see the no-magic-money workstream below). The results-page **view-models** (`ResultPresenter::saleExplainer`
   / `assumptionsPanel` / `milestones` / `inputNotes`, plus the ladder's essential/discretionary split) are app-side
   presentation derived from these + the household — they add **no** persisted entity and **no** canonical-shape change.
 
@@ -505,7 +505,10 @@ from the original plan, flagged inline:
 - ✅ **(C) Feasibility** is a **derived** result note (no stored field): `HousingComparison` exposes the purchase's
   funding decomposition, surfaced by `ResultPresenter`. **Buy-with-a-mortgage (2026-07-03):** `HousingAction` gained
   `buyMortgageRate: Percent?` (builder `housing.buyMortgageRate`). **Superseded by the funding waterfall
-  (2026-07-16, no-magic-money):** a buy above the proceeds is funded savings-first (cash+Premium Bonds → GIA → ISA,
+  (2026-07-16, no-magic-money):** a buy above the proceeds is funded receipt-first (**card 0034, 2026-09-05**: a
+  `CapitalReceipt` dated the base year is spent on the purchase before anything else, reported as
+  `HousingPurchase::$fundedFromReceipts`, and the buy variant carries the receipts REDUCED by what it spent so the
+  same pound is never both spent and banked), then savings (cash+Premium Bonds → GIA → ISA,
   never pensions — `Housing\SavingsFunding`, the drawn accounts actually reduced in the variant household), then the
   RIO mortgage takes the *post-savings remainder* (interest via `ExpenseProfile::withMortgageCosts`); anything left is
   `HousingPurchase::$unfundedGap`, charged as a year-0 one-off cost (`ExpenseProfile::withOneOffCost`) so the plan

@@ -1010,6 +1010,9 @@
                     <tr><td>less the home bought</td><td class="num">−{{ $se['buy']['buyPrice'] }}</td></tr>
                     <tr><td>less stamp duty</td><td class="num">−{{ $se['buy']['sdlt'] }}</td></tr>
                     <tr><td>less moving costs</td><td class="num">−{{ $se['buy']['movingCosts'] }}</td></tr>
+                    @if ($se['buy']['fundedFromReceipts'])
+                        <tr><td>plus the capital receipt arriving that year</td><td class="num">+{{ $se['buy']['fundedFromReceipts'] }}</td></tr>
+                    @endif
                     @if ($se['buy']['fundedFromSavings'])
                         <tr><td>plus from your savings (cash &rarr; GIA &rarr; ISA)</td><td class="num">+{{ $se['buy']['fundedFromSavings'] }}</td></tr>
                     @endif
@@ -1032,6 +1035,12 @@
                 <p class="note">{{ $se['buy']['fundedFromSavings'] }} of this purchase is funded from savings, drawn
                     cash &rarr; GIA &rarr; ISA (never pensions). That money leaves the plan on day
                     one{{ $se['buy']['mortgage'] ? ', and the rest of the gap is borrowed' : '' }}.</p>
+            @endif
+            @if ($se['buy']['fundedFromReceipts'])
+                <p class="note">{{ $se['buy']['fundedFromReceipts'] }} of this purchase is paid for by the capital
+                    receipt that arrives in the same year, before any savings are drawn and before anything is
+                    borrowed. That part of the receipt goes into the home, so the forecast no longer shows it as
+                    income that year; anything left over still arrives as normal.</p>
             @endif
         @endif
 

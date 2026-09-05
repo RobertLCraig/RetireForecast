@@ -183,7 +183,7 @@ final class AssistantTurnRunner
 
         return ResultPresenter::saleExplainer(
             $housing->saleProceeds($household, $action),
-            $housing->buyOutcome($household, $action),
+            $housing->buyOutcome($household, $action, $forecaster->settings($scenario)->baseYear),
             $action,
             $allocation->blendedRealReturn($assumptions),
             $assumptions->investmentIncomeYield->asFraction(),

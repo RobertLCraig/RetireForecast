@@ -210,8 +210,12 @@ final class ScenarioContext implements AssistantContext
             if ($b['coversPurchase']) {
                 $facts[] = new AssistantFact('Home sale — surplus left over to invest after buying', $b['surplus']);
             }
-            // The funding waterfall for a buy above the proceeds: savings drawn, then a
-            // mortgage; anything unfunded is a loud failure fact, never silently absorbed.
+            // The funding waterfall for a buy above the proceeds: a capital receipt landing that
+            // year, then savings drawn, then a mortgage; anything unfunded is a loud failure
+            // fact, never silently absorbed.
+            if (($b['fundedFromReceipts'] ?? null) !== null) {
+                $facts[] = new AssistantFact('Home sale — purchase part-funded by a capital receipt arriving the same year (spent on the home before any savings are drawn or anything is borrowed, so that part is not also banked as income)', $b['fundedFromReceipts']);
+            }
             if (($b['fundedFromSavings'] ?? null) !== null) {
                 $facts[] = new AssistantFact('Home sale — purchase part-funded from savings (drawn cash → GIA → ISA, never pensions)', $b['fundedFromSavings']);
             }
