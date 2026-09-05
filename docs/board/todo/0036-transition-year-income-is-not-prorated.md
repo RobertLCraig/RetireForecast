@@ -103,3 +103,54 @@ about one block.
 
 Nothing needed a figure the repository could not supply: the month comes from `StatePensionAge`,
 which `initialState` was already computing and throwing away, and from the date of birth.
+
+### 2026-09-05 review (v20260905182913-d18f)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 221s, run by this job rather than reported by the card.
+
+**acceptance: defect**
+
+I traced each criterion.
+
+**#1** ÔÇö `PathProjector::statePensionIncome` multiplies the annual figure by `self::startFraction($spaMonth)` in the claim year; `PathProjector::initialState` keeps `spaMonth` from `StatePensionAge::dateReached`. Real. Covered by `TransitionYearProrationTest::test_state_pension_is_prorated_in_the_year_the_entitlement_starts`.
+
+**#2** ÔÇö `PathProjector::dbIncome` applies `startFraction` on the birth month when `age === normalRetirementAge`. It is the only place DB income is paid. Real.
+
+**#3** ÔÇö `PathProjector::niForPerson` charges `min(workFraction, spaMonth/12)` of salary and passes `hasReachedStatePensionAge: false`. It is the only caller of `onEmploymentEarnings` in the engine. Real.
+
+One defect, in what the work says the code does.
+
+`PathProjector::startFraction` divides the year at the **end** of month n, so a November State Pension pays **1/12**. But `PathProjector::statePensionIncome`'s comment says "a pension starting in November pays two months", and `docs/spec/METHODOLOGY.md` (the yearly-loop step 1) tells the reader the same: "a State Pension first paid in November counts two months in that year... counted to the nearest whole month". The engine pays half that, and does not round to nearest. The spec now describes a behaviour the engine does not have.
+
+VERDICT: defect
+
+**scope: defect**
+
+**Scope check on card 0036.**
+
+**The fence held.** `workFraction` in `packages/finance-engine/src/Forecast/PathProjector.php` is untouched. Salary proration was not re-opened.
+
+**Nothing grew past the ask.** The code change is only the three named functions plus the helper: `startFraction`, `statePensionIncome`, `dbIncome`, `niForPerson`, and the `spaMonth` entry in `initialState`. The `dbIncome` signature change from an id to a `Person` is needed for the birth month, not extra work. `docs/spec/METHODOLOGY.md` and the `ENGINE_VERSION` docblock in `app/Forecast/ScenarioForecaster.php` are the house rules, not creep. Cards 0096 and 0097 raise adjacent faults instead of fixing them, which is correct.
+
+**One task is left undone, and the card says so.** "Re-run every stored scenario" is unticked in `docs/board/ai-review/0036-transition-year-income-is-not-prorated.md`. `ENGINE_VERSION` in `app/Forecast/ScenarioForecaster.php` was bumped, so every stored result was made stale by this change and nothing re-ran. The build happened in a worktree, so it could not run. That is the card's own task list, unfinished.
+
+Also noted, not counted against the card: `notionalDeferredStatePensionNominal` still counts a whole year, so one run now holds two State Pension conventions. Card 0097 owns it.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Finding ÔÇö the same rule, asserted in two of three siblings.**
+
+`PathProjector::processAnnuityPurchases` buys an annuity when the owner reaches `atAge`, which is a birthday part way through the year, exactly like the DB normal retirement age this card just fixed. `PathProjector::annuityIncomeNominal` then pays `baseIncomeNominal` in full for that whole calendar year. The pot is emptied on the birthday and twelve months of income come back. That is the third head of the same asymmetry named in the card, it runs the household's way, and it is neither fixed nor carded (0096 and 0097 cover other things).
+
+`PathProjector::incomeStreamsNominal` has the same shape at `startAge`.
+
+This makes the docs false, not just incomplete. `docs/spec/METHODOLOGY.md`, step 1 of "Putting it together", lists annuities among the sources and then states the general rule: "The retirement year is split on both sides... the income replacing it starts on its own date rather than on 1 January." An annuity bought at 66 does not. `PathProjector::startFraction`'s own docblock states the same general rationale.
+
+Fix: apply `startFraction` in the purchase year, or card it and narrow the doc claim.
+
+VERDICT: defect
+
