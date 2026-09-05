@@ -125,3 +125,51 @@ electricity?" input on step 4 has only been proved by a render assertion.
 positionally, so I passed the new field through both rather than ship a fresh hole. They still drop
 `propertyCostsRealGrowth`, which I left alone: that is not this card's, and it is already written up as
 finding 2 of the breakage review on card 0028.
+
+### 2026-09-05 review (v20260905141658-eae6)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 285s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I traced each criterion to code.
+
+**#1** `ExpenseProfile::withoutPropertyCosts()` subtracts the charge **less** `propertyCostsUtilities()`, so the water and power stay in the essential floor. Its only caller, `HousingComparison::withHousing()`, builds both sell variants. The mid-plan forced sale repeats the same sum in `PathProjector::ÔÇª` (the `homeSold` branch). `HouseholdAssembler::expenseProfile()` sums the figure from while-owning-home lines only, and `ScenarioBuilder::spendKeepsUtilities()` shows the input on exactly those lines (both use the same condition rule). The value saves and reloads.
+
+**#2** `HouseholdAssembler::tierOf()` is one rule, read by all three totals: `HouseholdAssembler::essentialAndDiscretionary()`, `ScenarioBuilder::expenseTotals()`, `ResultPresenter::expenseBreakdown()`. I searched for another place that groups spend lines by the raw stored category and found none.
+
+**#3** `ResultPresenter::inputNotes()` adds a `computed_figure` note for the scale-by-price branch, and reads the pounds from `HousingComparison::newHomeRunningCosts()` instead of repeating the sum. Its four conditions match that method's branch exactly. The 1% branch is disclosed by `ResultPresenter::assumedFigures()`. Both views print notes by text, so nothing is filtered by kind.
+
+I tried to break it and could not.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Fence: clean.** Nothing crossed into 0028. Major works still drop whole (`ExpenseProfile::withoutPropertyCosts()` one-off filter) and the escalator in `PathProjector::projectYear()` is untouched. The extra surfaces (`ScenarioBuilder::expenseTotals()`, `ResultPresenter::expenseBreakdown()`) are one-rule consistency, not creep.
+
+**Left half done:**
+
+1. Task 4 has no owner. `ScenarioForecaster::ENGINE_VERSION` is bumped, so every stored result is now stale against its stamp, and `scenarios:audit` is the release gate in CLAUDE.md. No card on the board carries that re-run, and the card is marked done with the task open. Task 3 at least got card 0094; this got a paragraph.
+
+2. The new sub-figure is not carried by `ScenarioResults::applySliders()`. It scales each line's `amount` and leaves `utilities` fixed, so a negative spend slider drives the clamp in `ExpenseProfile::propertyCostsUtilities()` until the whole charge reads as utilities and a sell variant keeps a service charge it should drop.
+
+3. `ResultPresenter::plsaBenchmark()` still subtracts the entire `propertyCosts()`, including the part now known to buy water and energy, which the PLSA basis includes. The one figure this card created is ignored by a surface that needs it.
+
+VERDICT: defect
+
+**breakage: defect**
+
+I read the commit, the engine, the assembler, the presenter and the callers.
+
+**1. The energy bill escalates while you own it, then drops back when you sell.**
+`PathProjector::projectYear` grows the whole `propertyCosts` bucket at the default CPI+3% (`ExpenseProfile::propertyCostsRealGrowth`), utilities included. When `homeSold` is true it switches that growth off completely and keeps only base-level utilities. `ExpenseProfile::withoutPropertyCosts` does the same for year-0 sells. So the same water and electricity rises above inflation on "stay put" and stays flat on every sell and buy plan. Over 20 years that is roughly 1.8x. It makes selling look cheaper, which is the bias this card exists to remove. The `withoutPropertyCosts` docblock says no service-charge escalator belongs on an energy bill; the owning branch still puts one there.
+
+**2. A comment the change made false.** In `PathProjector::projectYear`, "a forced sale subtracts it above, so the escalation follows the bucket for free". It does not any more: part of the bucket now stays and loses its escalation.
+
+**3. The spend slider drifts the subset.** `ScenarioResults::applySliders` scales each line's `amount` and never its `utilities`. Slide spend +20% and the charge grows while the utilities inside it do not. Silent.
+
+VERDICT: defect
+
