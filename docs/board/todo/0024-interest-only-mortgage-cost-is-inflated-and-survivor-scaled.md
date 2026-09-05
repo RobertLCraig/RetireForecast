@@ -84,3 +84,48 @@ introduced no new problem class.
 Nothing here has been seen in a browser. Herd serves the app from `C:\Dev\RetireForecast`, not from
 this worktree, so the results, compare and PDF surfaces that read `spendTarget` still need Rob's
 sign-off (card 0001).
+
+### 2026-09-05 review (v20260905043040-ad18)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 235s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+Checked each criterion against real code.
+
+**AC #1 ÔÇö fixed nominal.** `PathProjector::projectYear` reads `$mortgagePay` from `ExpenseProfile::mortgageCosts()`, subtracts it from `$targetPence` and `$essentialPence` before the `* $state['spendFactor']` multiply, then adds it back after. So CPI never touches it. `ContingentCostsTest::test_an_interest_only_mortgage_payment_is_fixed_nominal_and_does_not_rise_with_cpi` charges ┬ú12,000 in 2026 and ┬ú12,000 in 2046 at 3% CPI.
+
+**AC #2 ÔÇö no survivor cut.** The same add-back sits after `* $survivor`, so the survivor pays the whole payment. `ContingentCostsTest::test_the_mortgage_payment_does_not_shrink_when_one_of_the_couple_dies` runs flat and proves the food bill falls at the death while the payment does not.
+
+**AC #3 ÔÇö nominal finance cost.** `PathProjector::projectYear` sets `$financeCost` from `mortgageCosts()->pence` with no `spendFactor`. `BuyToLetFinanceCostTest::test_the_relievable_finance_cost_is_nominal_interest_not_a_cpi_inflated_figure` holds the credit at 20% ├ù ┬ú16,170.96 in 2036.
+
+I tried to break the new `! $state['mortgageRepaid'] && ! $state['homeSold']` gate. Both flags start false in `PathProjector` state init, and only a forced sale sets them, so a buy variant's new mortgage from `ExpenseProfile::withMortgageCosts` is still charged.
+
+VERDICT: sound
+
+**scope: defect**
+
+Reviewed the diff at `3f48f5a` against the card.
+
+**1. The fix grew from "the mortgage payment" to "every `while_mortgaged` line."**
+`HouseholdAssembler::autoCondition` puts any label containing the word "mortgage" into that bucket ÔÇö "Mortgage life insurance", "Mortgage protection", a broker fee. `HouseholdAssembler::assemble` sums them all into `ExpenseProfile::$mortgageCosts`, and `PathProjector::projectYear` now takes that whole sum out of the CPI and survivor multiply and adds it back flat. An insurance premium is not interest on a fixed balance. It does rise with prices. It was indexed correctly before and is frozen now. The card asked for the payment, not the bucket.
+
+**2. A user-facing meaning changed and its own text did not.**
+`ScenarioBuilder::conditionHints` still describes "Only while the mortgage runs" by when it *stops*. It does not say the line no longer rises with inflation and no longer shrinks at a death. That is an invisible figure by this project's own rule.
+
+**3. Left undone (declared).** Task 5, the stored-scenario re-run plus `scenarios:audit`, is unticked and recorded in `docs/HANDOVER.md`.
+
+The "Not this card" fence holds: the schedule path was restructured but behaves the same.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**1. `PathProjector::projectYear` now assumes every `while_mortgaged` pound sits in essential spend.** The line `essentialPence = max(0, essentialPence ÔêÆ mortgagePay)` used to run only for a redeemed or amortising mortgage; it now runs for every household, every year. But `HouseholdAssembler::expenseProfile` sums `mortgageCosts` by *condition* alone, and `ScenarioBuilder::rules` lets a **discretionary** line carry `while_mortgaged` ÔÇö or auto-classify there on the word "mortgage" (a voluntary overpayment line, DATA-MODEL 2026-07-19). Real essential spend is then stripped, and once the clamp bites, deleted: essential ┬ú10,000 plus a discretionary ┬ú12,000 mortgage line reports an essential floor of ┬ú12,000 with ┬ú10,000 of food and heat gone. `ResultPresenter::incomeFloor`, the safety-buffer months and `successProbabilityEssentials` all read that figure. `ExpenseProfile`'s docblock asserts the subset is essential; nothing enforces it, and no test builds it.
+
+**2. The new treatment is invisible to the reader.** `ResultPresenter::inputNotes` states "fixed in cash termsÔÇª does not fall if one of you dies" only in the `repayment_mortgage` note, gated on `repaymentTerms`. METHODOLOGY.md now claims it for every shape, so an interest-only payment is held flat with nothing on screen saying so.
+
+VERDICT: defect
+
