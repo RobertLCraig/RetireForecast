@@ -85,9 +85,11 @@ final class DeterministicPathDraws implements PathDraws
         return $this->inflationRate;
     }
 
-    public function houseGrowthReal(int $yearIndex): float
+    public function propertyGrowthReal(int $yearIndex, ?float $meanReal = null): float
     {
-        return $this->houseGrowth;
+        // No shock on the central path, so a property override is simply the mean it names and
+        // the single-property uplift has nothing to widen.
+        return $meanReal ?? $this->houseGrowth;
     }
 
     public function salaryGrowthReal(int $yearIndex): float

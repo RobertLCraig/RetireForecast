@@ -95,9 +95,9 @@ final class CareMeansTestedChargeTest extends TestCase
                 return 0.0;
             }
 
-            public function houseGrowthReal(int $yearIndex): float
+            public function propertyGrowthReal(int $yearIndex, ?float $meanReal = null): float
             {
-                return 0.0;
+                return $meanReal ?? 0.0;
             }
 
             public function salaryGrowthReal(int $yearIndex): float

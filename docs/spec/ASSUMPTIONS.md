@@ -51,7 +51,8 @@ cash **−0.5%**.
 | Inflation mean | 2.0% | 3.0% | 2.0% |
 | Inflation volatility | 1.5% | 4.0% | 1.0% |
 | House growth (real) | 1.0% | 2.5% | 1.0% |
-| House growth volatility (real) | 9% | 11% | 9% |
+| House growth volatility (real, **index**) | 9% | 11% | 9% |
+| Single-property volatility (real, derived = index × 2.0, §13) | 18% | 22% | 18% |
 | House–equity correlation | 0.20 | 0.20 | 0.20 |
 | Rent inflation (real) | 0.5% | 0.5% | 0.0% |
 | Salary growth (real) | 1.0% | 1.5% | 1.0% |
@@ -182,6 +183,29 @@ cash **−0.5%**.
    Board card **0085** carries the work of pinning it to a published statistic (ONS/Hometrack service-charge
    series, ABI buildings-insurance premium data, or an equivalent), which the unattended build loop cannot do
    because it has no web access. **Confirm you are happy with CPI + 3% until that lands.**
+13. **One home is modelled over DOUBLE the index house-price volatility (added 2026-09-05;
+   verified_on 2026-08-19; lives in `AssumptionSet::SINGLE_PROPERTY_VOLATILITY_MULTIPLE`).** The 9% / 11%
+   in the table above is an INDEX figure: it is what a whole market does on average, so the part of the
+   risk belonging to one particular home has already been averaged out of it. A household whose net worth
+   is one flat is not exposed to index risk. Their flat is re-rated by its block, its lease, its street
+   and its condition while the index does nothing, and none of that diversifies away when you own exactly
+   one of them. So the sampled index shock is scaled by **2.0** at the point the home consumes it, giving
+   an effective **18%** (Set B **22%**) real spread on the primary residence. The central projection is
+   unchanged: this widens the fan, it does not move the mean.
+   **The companion change is that a per-property growth override now sets the MEAN and keeps the
+   variation** (card 0029). It used to replace the sampled path outright, which made every overridden home
+   a straight line, and overriding is exactly how somebody says a home is unusual: a park home, a flat in
+   a slow block. The homes that most needed a range of outcomes were the ones being given a point estimate.
+   User-editable per scenario (builder step 1, "Your home's price swing"), disclosed as an assumed figure
+   on the results page reading the constant, and shown beside the index figure in the assumptions panel so
+   the two can never be read for each other. An explicit figure always wins.
+   **⚠️ SOURCING GAP, the second in this document.** "Roughly double" is the judgement of the property
+   reviewer in the five-discipline expert review of **2026-08-19** (gitignored
+   `docs/REVIEW-PANEL-2026-08-19.local.md`; board card 0029). It is directionally the standard finding in
+   the repeat-sales literature, where idiosyncratic variance dominates index variance, but **no primary
+   source was fetched for the multiple itself**, because the unattended build loop has no web access.
+   Board card **0086** carries pinning it to a published estimate of UK single-property dispersion.
+   **Confirm you are happy with 2.0x until that lands.**
 
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees

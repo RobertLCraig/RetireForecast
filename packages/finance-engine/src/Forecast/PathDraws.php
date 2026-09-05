@@ -43,8 +43,21 @@ interface PathDraws
     /** Inflation rate (fraction) for the given year index. */
     public function inflation(int $yearIndex): float;
 
-    /** Real house-price growth for the given year index. */
-    public function houseGrowthReal(int $yearIndex): float;
+    /**
+     * Real growth of the household's OWN home for the given year index.
+     *
+     * $meanReal is the property's growth override, when it carries one, and it sets the MEAN the
+     * year's variation is drawn around. It does not switch the variation off. Overriding is how
+     * somebody says a home is not typical (a park home, a flat in a slow block), so the home that
+     * most needs a fan of outcomes is exactly the one an override used to flatten into a line.
+     * Null means "use the set's house-growth mean".
+     *
+     * The sampled house path is an INDEX path, and a single home carries the property-specific
+     * risk an index has averaged away, so a stochastic driver widens the index shock by
+     * {@see AssumptionSet::singlePropertyVolatilityMultiple()} before handing it over. A
+     * deterministic driver has no shock to widen and returns the mean.
+     */
+    public function propertyGrowthReal(int $yearIndex, ?float $meanReal = null): float;
 
     /** Real salary growth for the given year index. */
     public function salaryGrowthReal(int $yearIndex): float;

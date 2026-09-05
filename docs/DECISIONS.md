@@ -3,6 +3,42 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-05: A growth override sets the home's mean, and one home is not an index
+**Context:** card 0029 (expert panel 2026-08-19, property finding 13, adviser finding 9). Two faults
+in the same line of `PathProjector::growState`. A property growth override REPLACED the sampled
+house-price draw, so any overridden home became deterministic in the Monte Carlo. And the volatility
+being sampled is an INDEX figure, applied unchanged to a household whose net worth is one flat.
+
+**Decision:** two changes, both in how the home consumes the sampled path rather than in how the
+path is generated.
+
+- **An override sets the mean, not the risk.** `PathDraws::propertyGrowthReal($yearIndex, $meanReal)`
+  replaces `houseGrowthReal()`. The sampled index draw is split into its centre and its shock; the
+  shock is re-centred on whatever mean the home actually grows at. This is the design the per-person
+  salary override already had. The old behaviour was backwards: overriding is how somebody says a
+  home is unusual (a park home that depreciates, a flat in a slow block), so the least predictable
+  homes were the ones being handed a point estimate.
+- **The single-property spread is the index one doubled.** `AssumptionSet::singlePropertyVolatility()`
+  returns the reader's own figure, else the index volatility times
+  `SINGLE_PROPERTY_VOLATILITY_MULTIPLE` (**2.0**, so 18% real on the default set). An index averages
+  a whole market, so the property-specific component has already been diversified out of it, and a
+  household owning exactly one home diversifies nothing. Disclosed as an `assumed_figure` note
+  reading the constant, editable as the `propertyVolatility` assumption, and shown in the assumptions
+  panel beside the index row so the two cannot be read for each other. The 2.0 is the property
+  reviewer's judgement, not a published series; the citation is owed and carded as **0086**. See
+  ASSUMPTIONS.md §13.
+
+**Applied at consumption, not at generation.** `ReturnModel` is untouched, so the sampled index path
+and therefore the RNG stream are byte-identical, and a seed still lines up draw for draw. Only what
+the home does with each draw changed.
+
+**Consequence:** the deterministic central projection is unchanged (no shock to widen), so every
+worked example, wealth reconciliation and tax figure holds. Every Monte Carlo band, success
+probability and capacity-for-loss reading on a plan that keeps or buys a home is WIDER, and a plan
+with an overridden home carried no house risk at all before this. `ENGINE_VERSION` is
+`finance-engine/single-property-house-risk` and stored runs are not comparable across the bump.
+**Status:** active
+
 ## 2026-09-05: A blank home-ownership cost growth means CPI + 3%, not CPI
 **Context:** card 0028 (expert panel 2026-08-19, property findings 2 and 10). A service charge with
 no rate entered rode plain CPI, and no scenario carried a major-works event at all. Both understate

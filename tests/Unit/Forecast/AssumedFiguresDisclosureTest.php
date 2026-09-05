@@ -8,6 +8,7 @@ use App\Forecast\HouseholdAssembler;
 use App\Forecast\ResultPresenter;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
@@ -38,7 +39,7 @@ final class AssumedFiguresDisclosureTest extends TestCase
      * @param  list<array<string, mixed>>|null  $expenseLines
      * @return list<string> the assumed-figure disclosures a reader would see
      */
-    private function disclosures(array $housing, string $currentRunningCosts = '', string $accountType = 'isa', ?array $expenseLines = null, ?string $propertyCostsGrowthPct = null): array
+    private function disclosures(array $housing, string $currentRunningCosts = '', string $accountType = 'isa', ?array $expenseLines = null, ?string $propertyCostsGrowthPct = null, ?AssumptionSet $set = null, ?string $variant = null): array
     {
         $state = [
             'householdName' => 'Movers', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
@@ -62,7 +63,9 @@ final class AssumedFiguresDisclosureTest extends TestCase
             new CohortLifeTable,
         ))->forecast($household, AssumptionSetLibrary::default(), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'));
 
-        $notes = ResultPresenter::inputNotes($household, $forecast, $assembler->housingAction($housing));
+        // The assumption set is passed only where a test is about a figure that lives in one, so
+        // every other case keeps asserting on the household's own defaults and nothing else.
+        $notes = ResultPresenter::inputNotes($household, $forecast, $assembler->housingAction($housing), $variant, $set);
 
         return array_values(array_map(
             static fn (array $n): string => $n['text'],
@@ -188,6 +191,49 @@ final class AssumedFiguresDisclosureTest extends TestCase
             ],
             propertyCostsGrowthPct: '0',
         ));
+    }
+
+    public function test_the_single_property_volatility_uplift_is_disclosed_with_its_value(): void
+    {
+        // Card 0029. The modelled house volatility is an INDEX figure, and an index has averaged
+        // away the property-specific half of the risk. The engine widens it for a household whose
+        // home is one property, which moves the fan on every homeowner plan, so the reader must
+        // be told the figure, where it came from and that they can change it.
+        $set = AssumptionSetLibrary::default();
+        $disclosures = $this->disclosures(['salePrice' => '400000', 'annualRent' => '18000'], set: $set);
+
+        $this->assertCount(1, $disclosures);
+        $index = self::pct($set->houseGrowthVolatility?->asPercent() ?? 0.0);
+        $property = self::pct($set->singlePropertyVolatility()?->asPercent() ?? 0.0);
+
+        $this->assertStringContainsString("{$property}% a year", $disclosures[0], 'the widened figure actually used');
+        $this->assertStringContainsString("{$index}%", $disclosures[0], 'and the index figure it was widened from');
+    }
+
+    public function test_nothing_is_assumed_about_property_volatility_when_the_reader_gave_a_figure(): void
+    {
+        // No noise, and no overriding: the reader's own figure is not one the engine supplied.
+        $this->assertSame([], $this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            set: AssumptionSetLibrary::default()->withSinglePropertyVolatility(Percent::fromPercent(12)),
+        ));
+    }
+
+    public function test_nothing_is_assumed_about_property_volatility_on_a_plan_holding_no_home(): void
+    {
+        // A sell-and-rent plan owns no property for the widened spread to apply to, so telling its
+        // reader what we assumed about one asserts a risk the model never charges them.
+        $this->assertSame([], $this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            set: AssumptionSetLibrary::default(),
+            variant: 'rent',
+        ));
+    }
+
+    /** A rate as the disclosures write it: 18.0 -> "18", 2.50 -> "2.5". */
+    private static function pct(float $percent): string
+    {
+        return rtrim(rtrim(number_format($percent, 2), '0'), '.');
     }
 
     /**

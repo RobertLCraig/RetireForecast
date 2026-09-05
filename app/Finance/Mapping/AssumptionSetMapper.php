@@ -68,6 +68,9 @@ final class AssumptionSetMapper
             // Null = returns are gross of charges (no ongoing charge modelled); preserved through
             // the round-trip, so a run stored before charges existed reproduces byte-identically.
             'investmentCharge' => $set->investmentCharge !== null ? Codec::bps($set->investmentCharge) : null,
+            // Null = derive it from the index volatility; the RAW field is stored, not the derived
+            // figure, so a re-sourced index still moves a set the reader never overrode.
+            'singlePropertyVolatility' => $set->singlePropertyVolatility !== null ? Codec::bps($set->singlePropertyVolatility) : null,
         ];
     }
 
@@ -109,6 +112,10 @@ final class AssumptionSetMapper
             // Back-compat: a snapshot stored before 2026-07-31 has no charge figure; null keeps its
             // returns gross of charges, so an old stored run reproduces its byte-identical result.
             investmentCharge: isset($payload['investmentCharge']) ? Codec::percent($payload['investmentCharge']) : null,
+            // A snapshot stored before card 0029 carries no figure, so it derives the widened one,
+            // exactly as a fresh set does. Its stored RESULT is not comparable across that change,
+            // which is what the ENGINE_VERSION bump records.
+            singlePropertyVolatility: isset($payload['singlePropertyVolatility']) ? Codec::percent($payload['singlePropertyVolatility']) : null,
             isDefault: $isDefault,
         );
     }

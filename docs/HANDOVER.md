@@ -7,6 +7,21 @@
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
 _Last updated: 2026-09-05. The exceptions a fresh session needs, newest first:_
 
+- **An overridden home is no longer a certainty, and one home is now modelled over double the index
+  volatility.** Card 0029: `PathDraws::propertyGrowthReal($yearIndex, $meanReal)` replaces
+  `houseGrowthReal()`. A property growth override used to REPLACE the sampled house path, so a park
+  home or a hand-priced flat carried no house risk at all; it now sets the MEAN the year's shock is
+  re-centred on. The shock is also widened by `AssumptionSet::SINGLE_PROPERTY_VOLATILITY_MULTIPLE`
+  (2.0, so 18% real on the default set) because the sampled figure is an INDEX one, disclosed as an
+  `assumed_figure` note and editable as the `propertyVolatility` assumption. `ReturnModel` is
+  untouched, so the RNG stream is byte-identical and only what the home does with each draw changed.
+  **The deterministic projection is unchanged; every Monte Carlo band, success probability and
+  capacity-for-loss reading on a plan that keeps or buys a home is now WIDER.** `ENGINE_VERSION` is
+  `finance-engine/single-property-house-risk` and the **stored-scenario re-run is owed**, including
+  the park-home scenarios, whose range card 0029 asked for and which a worktree session should not
+  write to the live database. The 2.0 is the 2026-08-19 property reviewer's judgement, not a
+  published series; that is the second sourcing gap in
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§13) and is raised as card 0086.
 - **A service charge with no rate entered now rises at CPI + 3%, and a major-works bill can die with
   the home.** Card 0028: `ExpenseProfile::propertyCostsRealGrowth()` supplies
   `DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS` when the rate is null and the `while_owning_home` bucket

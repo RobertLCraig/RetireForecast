@@ -29,7 +29,7 @@ use RetireForecast\FinanceEngine\Money\Percent;
 final class AssumptionOverrides
 {
     /** The override keys, in the same order the read-only assumptions panel lists them. */
-    public const KEYS = ['investmentGrowth', 'inflation', 'houseGrowth', 'rentGrowth', 'salaryGrowth', 'incomeYield', 'careCostGrowth', 'investmentCharge'];
+    public const KEYS = ['investmentGrowth', 'inflation', 'houseGrowth', 'propertyVolatility', 'rentGrowth', 'salaryGrowth', 'incomeYield', 'careCostGrowth', 'investmentCharge'];
 
     /**
      * Derive the effective assumption set: the preset overlaid with the user's filled
@@ -51,6 +51,9 @@ final class AssumptionOverrides
         }
         if (self::filled($overrides, 'houseGrowth')) {
             $set = $set->withHouseGrowth(self::percent($overrides['houseGrowth']));
+        }
+        if (self::filled($overrides, 'propertyVolatility')) {
+            $set = $set->withSinglePropertyVolatility(self::percent($overrides['propertyVolatility']));
         }
         if (self::filled($overrides, 'rentGrowth')) {
             $set = $set->withRentInflation(self::percent($overrides['rentGrowth']));
@@ -84,6 +87,9 @@ final class AssumptionOverrides
             'investmentGrowth' => self::format($allocation->blendedRealReturn($set) * 100),
             'inflation' => self::format($set->inflationMean->asPercent()),
             'houseGrowth' => self::format($set->houseGrowth->asPercent()),
+            // The single-property figure, which is the index volatility widened when the reader has
+            // not given one of their own. Read from the set, so it tracks a re-sourced index.
+            'propertyVolatility' => self::format($set->singlePropertyVolatility()?->asPercent() ?? 0.0),
             'rentGrowth' => self::format($set->rentInflation->asPercent()),
             'salaryGrowth' => self::format($set->salaryGrowth->asPercent()),
             'incomeYield' => self::format($set->investmentIncomeYield->asPercent()),

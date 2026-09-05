@@ -105,9 +105,11 @@ final class HistoricalSequenceDraws implements PathDraws
         return HistoricalReturns::has($year) ? HistoricalReturns::inflation($year) : $this->fallbackInflation;
     }
 
-    public function houseGrowthReal(int $yearIndex): float
+    public function propertyGrowthReal(int $yearIndex, ?float $meanReal = null): float
     {
-        return $this->houseGrowth;
+        // The historical stress replays market returns and inflation, not house prices, so there
+        // is no house shock here either: an override is the mean it names (see the class docblock).
+        return $meanReal ?? $this->houseGrowth;
     }
 
     public function salaryGrowthReal(int $yearIndex): float

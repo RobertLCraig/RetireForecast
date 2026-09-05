@@ -26,6 +26,18 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * weakly, so selling a home and investing the proceeds genuinely diversifies
  * concentrated housing risk. Sourced defaults + judgement in docs/ASSUMPTIONS.md.
  *
+ * $singlePropertyVolatility is the annual standard deviation of REAL growth of ONE home, as
+ * against $houseGrowthVolatility, which is an INDEX figure. An index has already diversified
+ * the property-specific half of the risk away: it averages a whole market, so what is left in
+ * it is the market-wide move. A household whose net worth is one flat is not exposed to index
+ * risk: their flat can be re-rated by its block, its lease, its street or its condition while
+ * the index does nothing. Null (the default) DERIVES it as the index figure times
+ * {@see SINGLE_PROPERTY_VOLATILITY_MULTIPLE}, which is what {@see singlePropertyVolatility}
+ * returns and what {@see singlePropertyVolatilityIsAssumed} reports as an engine-supplied
+ * default; an explicit figure is the reader's own and wins outright. It scales the sampled
+ * index shock at the point the home consumes it, so the sampled index path, and therefore the
+ * RNG stream, is untouched.
+ *
  * $salaryGrowthVolatility is the same idea for REAL salary growth (null = deterministic
  * at its mean, the pre-2026-07-18 behaviour). When set, the Monte Carlo draws a per-year
  * salary-growth shock, correlated to the equity shock by $salaryEquityCorrelation, so a
@@ -34,7 +46,8 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * LOW (weaker than housing's): aggregate real wage growth is near-acyclical once workforce
  * composition nets out, so linking it too tightly to markets would overstate the co-movement.
  * A per-person Person::salaryGrowth override sets a trend, not a risk, so it bypasses the
- * shock (as the per-pot / per-property growth overrides bypass their sampled paths).
+ * shock, unlike a per-PROPERTY growth override, which since card 0029 re-centres the sampled
+ * house path rather than replacing it (an overridden home is the LEAST certain one there is).
  *
  * $investmentIncomeYield is the NOMINAL annual income yield (dividends + interest) of
  * a General Investment Account portfolio. The forecast splits a GIA's total return
@@ -66,6 +79,20 @@ use RetireForecast\FinanceEngine\Money\Percent;
 final class AssumptionSet
 {
     /**
+     * How much wider one property's real-growth spread is than the index's, when the reader
+     * gives no figure of their own ({@see $singlePropertyVolatility}). Roughly DOUBLE: the
+     * index has diversified away the property-specific component, which for a single home is
+     * of the same order as the market-wide one, and variances add. Applies to the primary
+     * residence, so it widens the fan on every plan that keeps or buys a home.
+     *
+     * SOURCE: the property reviewer's figure in the five-discipline expert review of
+     * 2026-08-19 (docs/REVIEW-PANEL-2026-08-19.local.md, gitignored). It is a reviewer's
+     * judgement rather than a published series. See docs/spec/ASSUMPTIONS.md §13, which
+     * flags the sourcing gap and the card raised to close it. User-editable per scenario.
+     */
+    public const SINGLE_PROPERTY_VOLATILITY_MULTIPLE = 2.0;
+
+    /**
      * @param  list<AssetClassAssumption>  $assetClasses
      * @param  list<list<float>>  $correlationMatrix  same order as $assetClasses
      */
@@ -86,6 +113,7 @@ final class AssumptionSet
         public readonly float $salaryEquityCorrelation = 0.1,
         public readonly ?Percent $careCostRealGrowth = null,
         public readonly ?Percent $investmentCharge = null,
+        public readonly ?Percent $singlePropertyVolatility = null,
         public readonly bool $isDefault = false,
     ) {}
 
@@ -93,6 +121,50 @@ final class AssumptionSet
     public function careCostRealGrowth(): Percent
     {
         return $this->careCostRealGrowth ?? Percent::zero();
+    }
+
+    /**
+     * The annual real-growth volatility of ONE home: the reader's own figure where they gave
+     * one, else the index figure widened by {@see SINGLE_PROPERTY_VOLATILITY_MULTIPLE}. Null
+     * when the set models house growth deterministically: there is no index spread to widen.
+     */
+    public function singlePropertyVolatility(): ?Percent
+    {
+        if ($this->singlePropertyVolatility !== null) {
+            return $this->singlePropertyVolatility;
+        }
+        if ($this->houseGrowthVolatility === null || $this->houseGrowthVolatility->basisPoints <= 0) {
+            return null;
+        }
+
+        return Percent::fromBasisPoints(
+            (int) round($this->houseGrowthVolatility->basisPoints * self::SINGLE_PROPERTY_VOLATILITY_MULTIPLE),
+        );
+    }
+
+    /**
+     * Is the single-property volatility in play a figure the ENGINE supplied? True only when it
+     * is actually applied and the reader gave none, which is the condition the no-invisible-figures
+     * disclosure is gated on.
+     */
+    public function singlePropertyVolatilityIsAssumed(): bool
+    {
+        return $this->singlePropertyVolatility === null && $this->singlePropertyVolatility() !== null;
+    }
+
+    /**
+     * How far the sampled INDEX shock is scaled when it reaches a single home: the effective
+     * single-property volatility over the index volatility. 1.0 when there is no index spread
+     * to scale, so a deterministic-house set is untouched.
+     */
+    public function singlePropertyVolatilityMultiple(): float
+    {
+        $property = $this->singlePropertyVolatility();
+        if ($property === null || $this->houseGrowthVolatility === null || $this->houseGrowthVolatility->basisPoints <= 0) {
+            return 1.0;
+        }
+
+        return $property->basisPoints / $this->houseGrowthVolatility->basisPoints;
     }
 
     /** The annual ongoing charge on invested balances (zero if none is modelled). */
@@ -159,6 +231,11 @@ final class AssumptionSet
         return $this->copy(investmentCharge: $value);
     }
 
+    public function withSinglePropertyVolatility(Percent $value): self
+    {
+        return $this->copy(singlePropertyVolatility: $value);
+    }
+
     /**
      * Clone with selected fields replaced (null = keep current). The non-replaceable
      * fields (name, source, volatilities, correlations — including the house-price and
@@ -176,6 +253,7 @@ final class AssumptionSet
         ?Percent $investmentIncomeYield = null,
         ?Percent $careCostRealGrowth = null,
         ?Percent $investmentCharge = null,
+        ?Percent $singlePropertyVolatility = null,
     ): self {
         return new self(
             $this->name,
@@ -194,6 +272,7 @@ final class AssumptionSet
             $this->salaryEquityCorrelation,
             $careCostRealGrowth ?? $this->careCostRealGrowth,
             $investmentCharge ?? $this->investmentCharge,
+            $singlePropertyVolatility ?? $this->singlePropertyVolatility,
             $this->isDefault,
         );
     }

@@ -272,6 +272,9 @@ class ScenarioBuilder extends Component
             'assumptionOverrides.investmentGrowth' => ['nullable', 'numeric', 'between:-10,30'],
             'assumptionOverrides.inflation' => ['nullable', 'numeric', 'between:0,30'],
             'assumptionOverrides.houseGrowth' => ['nullable', 'numeric', 'between:-15,30'],
+            // A volatility is a spread, so it cannot be negative; the ceiling is generous because
+            // a thin market (a park home, a short lease) genuinely swings further than an index.
+            'assumptionOverrides.propertyVolatility' => ['nullable', 'numeric', 'between:0,60'],
             'assumptionOverrides.rentGrowth' => ['nullable', 'numeric', 'between:-15,30'],
             'assumptionOverrides.salaryGrowth' => ['nullable', 'numeric', 'between:-15,30'],
             'assumptionOverrides.incomeYield' => ['nullable', 'numeric', 'between:0,30'],
@@ -1535,6 +1538,7 @@ class ScenarioBuilder extends Component
                 ['key' => 'investmentGrowth', 'label' => 'Investment growth (blended, real)', 'note' => 'for invested pots and proceeds'],
                 ['key' => 'inflation', 'label' => 'Inflation (CPI)', 'note' => 'figures are shown in today\'s money'],
                 ['key' => 'houseGrowth', 'label' => 'House price growth (real)', 'note' => 'a year above inflation'],
+                ['key' => 'propertyVolatility', 'label' => 'Your home\'s price swing (real)', 'note' => 'how far your OWN home\'s value moves year to year; wider than the index, because one home is not a market'],
                 ['key' => 'rentGrowth', 'label' => 'Rent growth (real)', 'note' => 'a year above inflation'],
                 ['key' => 'salaryGrowth', 'label' => 'Salary growth (real)', 'note' => 'a year above inflation'],
                 ['key' => 'incomeYield', 'label' => 'Investment income yield (nominal)', 'note' => 'the part of the return paid out and taxed each year'],

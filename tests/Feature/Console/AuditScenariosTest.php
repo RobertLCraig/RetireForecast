@@ -130,6 +130,28 @@ final class AuditScenariosTest extends TestCase
         $this->assertStringContainsString('NOT reaching any forecast', $output);
     }
 
+    public function test_a_shipped_figure_that_is_null_by_design_is_not_reported_as_missing(): void
+    {
+        // Not every shipped key carries a value. `singlePropertyVolatility` is null on every shipped
+        // set, because null is what DERIVES the widened figure from the index volatility (card 0029).
+        // The mapper hydrates a missing key and a null key identically, so a stored payload without
+        // it behaves exactly as one with it, and reporting that as a figure "NOT reaching any
+        // forecast" is a false alarm on a check that gates a release. A gate that cries wolf is one
+        // people learn to skip, which is the failure this whole audit exists to avoid.
+        $this->base();
+        $this->seed(AssumptionSetSeeder::class);
+
+        $stale = AssumptionSet::query()->firstOrFail();
+        $payload = $stale->payload;
+        unset($payload['singlePropertyVolatility']);
+        $stale->payload = $payload;
+        $stale->save();
+
+        $this->artisan('scenarios:audit', ['--user' => $this->user->id])
+            ->expectsOutputToContain('Audit clean')
+            ->assertExitCode(0);
+    }
+
     public function test_a_freshly_seeded_assumption_set_audits_clean(): void
     {
         // The other direction: the seeder's own output must satisfy the check, or it would cry wolf

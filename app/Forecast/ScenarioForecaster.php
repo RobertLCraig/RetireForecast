@@ -37,7 +37,15 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-05 (property-costs-default-growth): home-ownership costs (the while-owning-home
+     * Bumped 2026-09-05 (single-property-house-risk): a per-property growth override now sets the MEAN
+     * the sampled house path is centred on instead of replacing that path, and the home is moved over
+     * a SINGLE-PROPERTY spread rather than an index one
+     * ({@see AssumptionSet::SINGLE_PROPERTY_VOLATILITY_MULTIPLE}). The central projection is
+     * unchanged, so wealth, tax and depletion on the deterministic figures still reconcile; every
+     * Monte Carlo band, success probability and capacity-for-loss reading on a plan that keeps or
+     * buys a home is WIDER under this stamp, and an overridden home (a park home, a flat priced by
+     * hand) carried no house risk at all before it. See board card 0029.
+     * Previous bump 2026-09-05 (property-costs-default-growth): home-ownership costs (the while-owning-home
      * bucket: service charge, ground rent, levies) with no rate entered now escalate at the
      * disclosed default above CPI ({@see ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS})
      * instead of riding plain CPI, and a dated one-off marked as a liability of owning the home
@@ -87,7 +95,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/property-costs-default-growth';
+    public const ENGINE_VERSION = 'finance-engine/single-property-house-risk';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

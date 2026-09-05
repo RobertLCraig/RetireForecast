@@ -13,6 +13,7 @@ use App\Models\AssumptionSet;
 use App\Models\Scenario;
 use Illuminate\Console\Command;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\AssumptionSet as AssumptionSetDto;
 use Throwable;
 
 /**
@@ -106,9 +107,16 @@ final class AuditScenarios extends Command
     {
         $problems = [];
 
+        // Only a key carrying a VALUE can go missing in a way that matters. Where the shipped value
+        // is null the mapper hydrates a missing key and a present-but-null key identically, so its
+        // absence changes no forecast and reporting it would be a false alarm on a release gate.
+        // `singlePropertyVolatility` is the live example: null is what DERIVES the widened figure.
         $shipped = [];
         foreach (AssumptionSetLibrary::all() as $dto) {
-            $shipped[$dto->name] = array_keys(AssumptionSetMapper::payload($dto));
+            $shipped[$dto->name] = array_keys(array_filter(
+                AssumptionSetMapper::payload($dto),
+                static fn (mixed $value): bool => $value !== null,
+            ));
         }
 
         foreach (AssumptionSet::all() as $stored) {
@@ -227,8 +235,9 @@ final class AuditScenarios extends Command
         //    that buys — so auditing the raw action would demand a disclosure the reader must not
         //    be shown, and pass a scenario that omitted a disclosure it should.
         $applicable = ResultPresenter::housingActionFor($action, $variant);
-        $assumed = ResultPresenter::assumedFigures($household, $applicable, $forecast, $variant);
-        $disclosed = $this->notesOfKind($household, $forecast, $applicable, 'assumed_figure', $variant);
+        $set = $forecaster->assumptions($scenario);
+        $assumed = ResultPresenter::assumedFigures($household, $applicable, $forecast, $variant, $set);
+        $disclosed = $this->notesOfKind($household, $forecast, $applicable, 'assumed_figure', $variant, $set);
         if (count($assumed) !== count($disclosed)) {
             $problems[] = "#{$id} uses ".count($assumed).' assumed figure(s) but shows '.count($disclosed);
         }
@@ -279,10 +288,10 @@ final class AuditScenarios extends Command
     }
 
     /** @return list<array{kind: string, text: string}> */
-    private function notesOfKind($household, $forecast, $action, string $kind, ?string $variant = null): array
+    private function notesOfKind($household, $forecast, $action, string $kind, ?string $variant = null, ?AssumptionSetDto $set = null): array
     {
         return array_values(array_filter(
-            ResultPresenter::inputNotes($household, $forecast, $action, $variant),
+            ResultPresenter::inputNotes($household, $forecast, $action, $variant, $set),
             static fn (array $note): bool => $note['kind'] === $kind,
         ));
     }

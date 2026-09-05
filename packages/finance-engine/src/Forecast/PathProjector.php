@@ -2971,7 +2971,6 @@ final class PathProjector
         $infl = $draws->inflation($yearIndex);
         $investNominal = (1.0 + $draws->investmentRealReturn($yearIndex)) * (1.0 + $infl) - 1.0;
         $cashNominal = (1.0 + $draws->cashRealReturn($yearIndex)) * (1.0 + $infl) - 1.0;
-        $houseNominal = (1.0 + $draws->houseGrowthReal($yearIndex)) * (1.0 + $infl) - 1.0;
         $salaryNominal = (1.0 + $draws->salaryGrowthReal($yearIndex)) * (1.0 + $infl) - 1.0;
 
         // GIA/cash distribute their income (taxed in projectYear), so they grow at capital
@@ -3038,11 +3037,13 @@ final class PathProjector
             $growth += $grown - $before;
         }
 
-        // A per-property growth override grows the home at its own real rate; otherwise the
-        // assumption-set house-price growth.
-        $propertyNominal = $state['propertyGrowthReal'] !== null
-            ? (1.0 + $state['propertyGrowthReal']) * (1.0 + $infl) - 1.0
-            : $houseNominal;
+        // The home's own growth. A per-property override sets the MEAN it grows at; the driver
+        // keeps drawing the year's variation around that mean, at single-property width rather
+        // than index width ({@see PathDraws::propertyGrowthReal}). It used to REPLACE the draw,
+        // which made every overridden home a certainty, and an override is how somebody says a
+        // home is unusual, so the least predictable homes were the ones being flattened.
+        $propertyReal = $draws->propertyGrowthReal($yearIndex, $state['propertyGrowthReal']);
+        $propertyNominal = (1.0 + $propertyReal) * (1.0 + $infl) - 1.0;
         $state['property'] = (int) round($state['property'] * (1.0 + $propertyNominal));
         // The whole-property value tracks the same growth, so a forced sale reads the grown
         // whole figure for its CGT gain (share value / share, without the rounding drift).

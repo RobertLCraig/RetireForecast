@@ -7,6 +7,7 @@ namespace Tests\Unit\Finance;
 use App\Finance\Mapping\AssumptionSetMapper;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Money\Percent;
 use Tests\Feature\Persistence\ScenarioPersistenceTest;
 use Tests\Unit\Forecast\HouseholdAssemblerTest;
 
@@ -54,6 +55,16 @@ class MappingRoundTripTest extends TestCase
         // The ongoing investment charge likewise, or a stored run would silently revert to
         // holding the portfolio for free and overstate the wealth it ends with. 0.50% = 50 bps.
         $this->assertSame(50, $payload['investmentCharge']);
+
+        // The single-property volatility stores the RAW field, which is null on a shipped set: the
+        // widened figure is derived from the index one, so storing the derived number would freeze
+        // a set that should follow a re-sourced index (card 0029).
+        $this->assertNull($payload['singlePropertyVolatility']);
+        $this->assertSame(
+            1800,
+            AssumptionSetMapper::payload(AssumptionSetLibrary::default()->withSinglePropertyVolatility(Percent::fromPercent(18)))['singlePropertyVolatility'],
+            'a figure the reader entered must reach storage, or their edit is lost on the next run',
+        );
     }
 
     public function test_a_pre_stochastic_snapshot_hydrates_to_deterministic_house_and_salary_growth(): void
@@ -67,6 +78,7 @@ class MappingRoundTripTest extends TestCase
             $legacy['salaryGrowthVolatility'], $legacy['salaryEquityCorrelation'],
             $legacy['careCostRealGrowth'],
             $legacy['investmentCharge'],
+            $legacy['singlePropertyVolatility'],
         );
 
         $rebuilt = AssumptionSetMapper::hydrate('Legacy', 'legacy', true, $legacy);
@@ -81,5 +93,16 @@ class MappingRoundTripTest extends TestCase
         // Same contract for charges: a snapshot stored before they existed hydrates to null, so
         // its returns stay gross and the stored result reproduces byte-identically.
         $this->assertNull($rebuilt->investmentCharge);
+        // The single-property volatility is deliberately NOT that contract. A snapshot stored
+        // before card 0029 but after house growth went stochastic hydrates to null, which DERIVES
+        // the widened figure, so re-running it gives a wider fan than the stored one. That is the
+        // point: the stored fan was too narrow, and the ENGINE_VERSION bump records that the two
+        // are not comparable.
+        $stochastic = AssumptionSetMapper::payload(AssumptionSetLibrary::default());
+        unset($stochastic['singlePropertyVolatility']);
+        $widened = AssumptionSetMapper::hydrate('Legacy', 'legacy', true, $stochastic);
+
+        $this->assertNull($widened->singlePropertyVolatility);
+        $this->assertSame(1800, $widened->singlePropertyVolatility()?->basisPoints);
     }
 }

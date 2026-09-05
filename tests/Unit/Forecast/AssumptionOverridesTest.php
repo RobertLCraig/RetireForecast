@@ -7,6 +7,7 @@ namespace Tests\Unit\Forecast;
 use App\Forecast\AssumptionOverrides;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 
 /**
@@ -90,6 +91,28 @@ final class AssumptionOverridesTest extends TestCase
         $this->assertSame(125, $derived->rentInflation->basisPoints);
         $this->assertSame(50, $derived->salaryGrowth->basisPoints);
         $this->assertSame(280, $derived->investmentIncomeYield->basisPoints);
+    }
+
+    public function test_a_property_volatility_edit_reaches_the_set(): void
+    {
+        // Card 0029. The engine widens the index house volatility for a single home, and the rule
+        // is that any figure it supplies for itself must be one the reader can change. A typed
+        // figure replaces the derived one outright and stops being reported as assumed.
+        $base = AssumptionSetLibrary::default();
+        $derived = AssumptionOverrides::apply($base, ['propertyVolatility' => '12'], $this->allocation);
+
+        $this->assertSame(1200, $derived->singlePropertyVolatility()?->basisPoints);
+        $this->assertFalse($derived->singlePropertyVolatilityIsAssumed());
+
+        // The preset it was derived FROM is untouched and still derives its own figure.
+        $this->assertTrue($base->singlePropertyVolatilityIsAssumed());
+        $this->assertSame(
+            (int) round($base->houseGrowthVolatility->basisPoints * AssumptionSet::SINGLE_PROPERTY_VOLATILITY_MULTIPLE),
+            $base->singlePropertyVolatility()?->basisPoints,
+        );
+
+        // ...and the edit survives the sparse round trip that persists it in builder_state.
+        $this->assertSame(['propertyVolatility' => '12'], AssumptionOverrides::sparse(['propertyVolatility' => '12']));
     }
 
     public function test_preset_figures_surface_the_presets_own_values(): void

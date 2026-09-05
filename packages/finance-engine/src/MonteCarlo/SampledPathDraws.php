@@ -32,6 +32,8 @@ final class SampledPathDraws implements PathDraws
         $this->incomeYield = $set->investmentIncomeYield->asFraction();
         $this->careCostRealGrowth = $set->careCostRealGrowth()->asFraction();
         $this->investmentCharge = $set->investmentCharge()->asFraction();
+        $this->houseGrowth = $set->houseGrowth->asFraction();
+        $this->singlePropertyMultiple = $set->singlePropertyVolatilityMultiple();
     }
 
     /** Fallback salary growth (the set mean) for a path generated without a sampled salary series. */
@@ -43,6 +45,12 @@ final class SampledPathDraws implements PathDraws
 
     /** The ongoing charge on invested balances: a price, not a risk, so it is not sampled. */
     private readonly float $investmentCharge;
+
+    /** The set's house-growth mean: the centre the sampled index path was drawn around. */
+    private readonly float $houseGrowth;
+
+    /** How far one home's spread exceeds the index's ({@see AssumptionSet::singlePropertyVolatilityMultiple}). */
+    private readonly float $singlePropertyMultiple;
 
     public function investmentRealReturn(int $yearIndex): float
     {
@@ -69,9 +77,15 @@ final class SampledPathDraws implements PathDraws
         return $this->at($this->path['inflation'], $yearIndex);
     }
 
-    public function houseGrowthReal(int $yearIndex): float
+    public function propertyGrowthReal(int $yearIndex, ?float $meanReal = null): float
     {
-        return $this->at($this->path['house'], $yearIndex);
+        // Split the sampled INDEX draw into its centre and its shock, then re-centre the shock on
+        // whatever mean this home actually grows at and widen it to single-property scale. Doing
+        // it here rather than in {@see ReturnModel} leaves the sampled path, and so the RNG
+        // stream, exactly as it was, so a seed still lines up draw for draw.
+        $shock = $this->at($this->path['house'], $yearIndex) - $this->houseGrowth;
+
+        return ($meanReal ?? $this->houseGrowth) + $shock * $this->singlePropertyMultiple;
     }
 
     public function salaryGrowthReal(int $yearIndex): float

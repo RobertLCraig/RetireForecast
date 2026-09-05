@@ -784,7 +784,7 @@ final class ResultPresenter
         return $variant === null || $variant === ScenarioVariant::StayPut->value;
     }
 
-    public static function assumedFigures(Household $household, ?HousingAction $action, ?ForecastResult $forecast = null, ?string $variant = null): array
+    public static function assumedFigures(Household $household, ?HousingAction $action, ?ForecastResult $forecast = null, ?string $variant = null, ?AssumptionSet $set = null): array
     {
         $out = [];
 
@@ -804,6 +804,28 @@ final class ResultPresenter
                 .'2019, so charging them at plain inflation would flatter the plan, most of all in the years one of '
                 .'you is on their own. If your managing agent has given you a different figure, enter it: over a long '
                 .'plan the gap between this and inflation-only is thousands of pounds a year.';
+        }
+
+        // How widely the home's value is modelled as swinging. The set's house volatility is an
+        // INDEX figure, and an index averages a whole market, so the property-specific half of the
+        // risk has already been diversified out of it. One flat can be re-rated by its block, its
+        // lease or its street while the index does nothing, so the engine widens the figure for a
+        // household whose home is a single property. Nobody enters that, and it moves the fan on
+        // every homeowner plan. The multiple, the index figure and the widened figure are all READ
+        // from the set that owns them, so a re-sourced volatility moves this sentence with it.
+        $ownsAHome = (self::keepsCurrentHome($variant) && $household->primaryResidence !== null)
+            || ($action?->buyPrice !== null && $action->buyPrice->isPositive());
+        if ($ownsAHome && $set !== null && $set->singlePropertyVolatilityIsAssumed()) {
+            $index = self::ratePct($set->houseGrowthVolatility?->asPercent() ?? 0.0);
+            $property = self::ratePct($set->singlePropertyVolatility()?->asPercent() ?? 0.0);
+            $multiple = rtrim(rtrim(number_format(AssumptionSet::SINGLE_PROPERTY_VOLATILITY_MULTIPLE, 2), '0'), '.');
+            $out[] = "The house-price swing we model, {$index} a year, is an INDEX figure: it is what a whole "
+                .'market does on average, so the part of the risk that belongs to one particular home has already '
+                ."been averaged out of it. Your home is one property, so we've widened it {$multiple} times, to "
+                ."{$property} a year. Your flat can be re-rated by its block, its lease, its street or its "
+                .'condition while the index does nothing, and a household whose wealth is mostly one home carries '
+                .'all of that. It does not change the central projection, only how wide the range of outcomes '
+                .'around it is. If you think your home is steadier or twitchier than that, enter your own figure.';
         }
 
         // Using the ISA allowance ("bed and ISA"). This one is not a blank input filled in, it is
@@ -1577,7 +1599,7 @@ final class ResultPresenter
      *
      * @return list<array{kind: string, text: string}>
      */
-    public static function inputNotes(Household $household, ForecastResult $forecast, ?HousingAction $housingAction = null, ?string $variant = null): array
+    public static function inputNotes(Household $household, ForecastResult $forecast, ?HousingAction $housingAction = null, ?string $variant = null, ?AssumptionSet $set = null): array
     {
         if ($forecast->years === []) {
             return [];
@@ -1710,7 +1732,7 @@ final class ResultPresenter
         // upkeep and the cost of moving) silently moved the result with nothing on any screen to
         // show for it. Every such figure is enumerated here, with its value and why it applies, so a
         // reader can challenge it. Each value is READ from the one place that owns it, never restated.
-        foreach (self::assumedFigures($household, $housingAction, $forecast, $variant) as $assumed) {
+        foreach (self::assumedFigures($household, $housingAction, $forecast, $variant, $set) as $assumed) {
             $notes[] = ['kind' => 'assumed_figure', 'text' => $assumed];
         }
 
@@ -2577,13 +2599,22 @@ final class ResultPresenter
         ];
         // Show-your-working for the fan's width: when house growth is stochastic, surface the
         // volatility it is sampled over so the home-equity spread traces to a stated figure
-        // rather than appearing from nowhere. Not user-overridable, so it never flags as edited.
+        // rather than appearing from nowhere. The index figure itself is not user-overridable, so
+        // it never flags as edited; the figure the household's OWN home is modelled over is, and
+        // sits beside it, because the two are different numbers and reading one for the other
+        // would understate the risk of every plan that keeps a home.
         if ($set->houseGrowthVolatility !== null && $set->houseGrowthVolatility->basisPoints > 0) {
             array_splice($economic, 3, 0, [[
                 'key' => 'houseVolatility',
-                'label' => 'House price growth volatility (real)',
+                'label' => 'House price growth volatility (real, index)',
                 'value' => self::ratePct($set->houseGrowthVolatility->asPercent()),
-                'note' => 'the year-to-year spread the Monte Carlo samples house prices over; the central projection uses the mean above',
+                'note' => 'the year-to-year spread of the market as a whole; the central projection uses the mean above',
+            ]]);
+            array_splice($economic, 4, 0, [[
+                'key' => 'propertyVolatility',
+                'label' => 'Your home\'s price swing (real)',
+                'value' => self::ratePct($set->singlePropertyVolatility()?->asPercent() ?? 0.0),
+                'note' => 'the spread the Monte Carlo moves YOUR home over, wider than the index because one home is not a market; a growth rate you entered for the home sets where this spread is centred, not how wide it is',
             ]]);
         }
         // Same show-your-working for salary: when salary growth is stochastic, surface the volatility
