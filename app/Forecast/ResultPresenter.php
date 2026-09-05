@@ -1824,6 +1824,29 @@ final class ResultPresenter
             $notes[] = ['kind' => 'assumed_figure', 'text' => $assumed];
         }
 
+        // (c5a) COMPUTED FIGURES. The sibling of the rule above, for a number the model WORKED OUT
+        // from what the reader did enter rather than invented for itself (board card 0033). It is
+        // not an assumption to challenge, but on a screen it reads exactly like user input, so the
+        // rule that produced it has to be stated or the reader cannot check it. The one case is the
+        // bought home's upkeep when the current home has upkeep of its own: it is scaled by the two
+        // prices, and the 1%-of-value fallback beside it was disclosed while this was not.
+        $currentUpkeep = $household->primaryResidence?->runningCosts;
+        if ($housingAction?->buyPrice !== null && $housingAction->buyPrice->isPositive()
+            && $housingAction->buyRunningCosts === null
+            && $currentUpkeep !== null && $currentUpkeep->isPositive()
+            && ! $housingAction->salePrice->isZero()) {
+            // READ from the engine, never recomputed here, so the sentence cannot drift from the
+            // figure the projection actually charges.
+            $upkeep = HousingComparison::newHomeRunningCosts($household, $housingAction, $housingAction->buyPrice);
+            $notes[] = ['kind' => 'computed_figure', 'text' => "We worked out the upkeep of the home you'd buy rather than "
+                ."being told it: {$upkeep->format()} a year, charged as an essential cost for the whole plan. The rule is "
+                ."your current home's {$currentUpkeep->format()} a year scaled by the two prices ({$housingAction->buyPrice->format()} "
+                ."to buy against {$housingAction->salePrice->format()} to sell), on the reading that a cheaper home costs less "
+                .'to keep. That is a guess about a property you have not chosen: maintenance, insurance and council tax do not '
+                .'really track value, and a cheap flat can carry a service charge a costlier house never would. Enter the real '
+                .'figure once you know it.'];
+        }
+
         // (c6) A one-off CAPITAL lump the plan cannot fund in the year it falls: the unfunded part
         // of a home purchase, or a mortgage the plan redeems from capital it does not have. It used
         // to show only as a depressed full-spending probability — and because a year-0 purchase gap
@@ -2210,7 +2233,10 @@ final class ResultPresenter
             $subtotal = Money::zero();
             $subtotalMonthly = Money::zero();
             foreach ($lines as $line) {
-                if (($line['category'] ?? '') !== $key) {
+                // The tier is read through the assembler's rule, not off the line, so cover of the
+                // home is shown under Essentials exactly where the projection charges it. A
+                // breakdown grouping by the stored category would understate the floor it prints.
+                if (HouseholdAssembler::tierOf($line) !== $key) {
                     continue;
                 }
                 $amount = Money::fromPence(MoneyText::toPence((string) ($line['amount'] ?? '0')));

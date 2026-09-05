@@ -1,6 +1,6 @@
 # Economic assumptions — SIGNED OFF 2026-06-24
 
-_Last updated: 2026-09-05 (§12: home-ownership costs default to CPI + 3% real when no rate is entered)_
+_Last updated: 2026-09-05 (§17: the 1%-of-value upkeep of a home you would buy, and the open question about its basis)_
 
 > **Status: SIGNED OFF by Rob (2026-06-24), adopted as proposed.** Set A (FCA default) is the
 > engine default; Sets B and C ship as runtime compare overlays. Re-verification against source
@@ -284,6 +284,22 @@ cash **−0.5%**.
    was fetched for any of them**, because the unattended build loop has no web access. The 60-day
    deadline itself is statute and is not part of the gap. Board card **0092** carries pinning the
    money figures to published data. **Confirm you are happy with 4% and £750 until that lands.**
+17. **The upkeep of a home you would BUY is 1% of its value a year (in use since 2026-07-08;
+   verified_on 2026-07-08; lives in `HousingComparison::HOME_MAINTENANCE_RATE_BPS`).** It applies
+   only where the reader entered no running cost for the purchase AND the current home has none of
+   its own to scale, which is the usual case when the current home is a leasehold flat whose
+   maintenance sat inside its service charge. The figure is the widely-quoted UK rule of thumb
+   (Checkatrade's 2023 survey put average homeowner maintenance at about 1% of property value a
+   year, with older stock at 1.5% to 4%), so 1% is the cautious end of that range.
+   **The open question is the BASIS, not the number** (board card 0033). A roof, a boiler and a
+   rewire cost about the same in a cheap area as an expensive one, so a percentage of value is a
+   proxy for the quality of the stock rather than a driver of the cost, and it understates upkeep
+   at the low end, which is exactly where a downsizing purchase sits. A flat annual figure by
+   property type and age is the alternative basis, and choosing one needs a published maintenance
+   series this session could not fetch. Board card **0094** carries that comparison.
+   Documented in the meantime rather than changed: it is disclosed on the results page as an
+   assumed figure reading the constant, and an entered running cost always wins.
+   **Confirm you are happy with 1% of value until that lands.**
 
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/

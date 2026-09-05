@@ -39,7 +39,17 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-05 (leasehold-selling-costs): selling a home now costs what selling a LEASEHOLD
+     * Bumped 2026-09-05 (expenses-across-the-sell-boundary): two spend lines were filed under the wrong
+     * heading. A home-ownership cost can now say how much of it BUYS UTILITIES
+     * ({@see ExpenseProfile::$propertyCostsUtilities}), and that part is carried across a sale
+     * instead of being deleted with the service charge, because a house or a park home still has to
+     * be heated and plumbed. And buildings or contents insurance filed as discretionary now counts
+     * in the ESSENTIAL floor ({@see HouseholdAssembler::tierOf}), because cover a lender requires is
+     * not a nice-to-have. Any stored plan carrying such an insurance line has an essential floor
+     * that is too low under an earlier stamp, so its "essentials always met" probability and its
+     * capacity-for-loss reading are too favourable; the utilities figure is new input, so no stored
+     * scenario carries one and no sell plan moves until somebody enters it. See board card 0033.
+     * Previous bump 2026-09-05 (leasehold-selling-costs): selling a home now costs what selling a LEASEHOLD
      * flat costs. The engine's all-in default rate, applied when nothing is itemised, doubles to
      * {@see HousingProceeds::DEFAULT_SELLING_COST_RATE_BP} (it was an agent's fee and little else),
      * and a disposal that actually owes capital gains tax is charged
@@ -121,7 +131,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/leasehold-selling-costs';
+    public const ENGINE_VERSION = 'finance-engine/expenses-across-the-sell-boundary';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

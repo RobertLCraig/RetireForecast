@@ -116,6 +116,21 @@ final class ExpenseProfile
          * never off this property, or the default is silently skipped.
          */
         public readonly ?Percent $propertyCostsRealGrowth = null,
+        /**
+         * The part of $propertyCosts that BUYS UTILITIES — the water, and the communal or
+         * whole-flat electricity and heating, a block service charge commonly includes.
+         *
+         * It is a marked subset of $propertyCosts (never an addition), and it is the one part of
+         * the charge that does NOT die with the home: a house, a bungalow or a park home still has
+         * to be heated and plumbed, so {@see withoutPropertyCosts} carries it across the sale as
+         * ordinary always-charged essential spend. Without it every sell and every buy plan was
+         * cheaper than it can really be, by whatever the charge was buying.
+         *
+         * It is the reader's own figure — the engine never invents one — so null means the charge
+         * buys no utilities and the whole thing stops with the home, exactly as before. Read it
+         * through {@see propertyCostsUtilities()}, which clamps it to the bucket it comes out of.
+         */
+        public readonly ?Money $propertyCostsUtilities = null,
     ) {
         $this->essentialSpendPath = $this->resolvePath($essentialSpendPath, $essentialAnnualSpend, 'essential');
         $this->discretionarySpendPath = $this->resolvePath($discretionarySpendPath, $discretionaryAnnualSpend, 'discretionary');
@@ -163,6 +178,18 @@ final class ExpenseProfile
         return $this->mortgageCosts ?? Money::zero();
     }
 
+    /**
+     * The utilities bought by the housing-linked costs — the part of the service charge that
+     * survives a sale (zero if none). Clamped to the bucket it is a subset of, so a mis-entered
+     * figure larger than the charge can never ADD spend when the home goes.
+     */
+    public function propertyCostsUtilities(): Money
+    {
+        $utilities = $this->propertyCostsUtilities ?? Money::zero();
+
+        return $utilities->greaterThan($this->propertyCosts()) ? $this->propertyCosts() : $utilities;
+    }
+
     /** The employment-linked contingent costs (zero if none). */
     public function employmentCosts(): Money
     {
@@ -204,20 +231,29 @@ final class ExpenseProfile
      * liability of owning the flat, so a plan that sold it in year 0 must not be charged for a
      * building it never owned. That is the same rule as the service charge, applied to those costs
      * in their lumpy form.
+     *
+     * The ONE thing that does not go is {@see $propertyCostsUtilities}: a service charge that
+     * bought the water and the electricity was buying something the household needs wherever it
+     * lives, so that part stays in the essential floor as ordinary always-charged spend. It keeps
+     * no marker afterwards, because nothing may strip it a second time and no service-charge
+     * escalator belongs on an energy bill.
      */
     public function withoutPropertyCosts(): self
     {
-        $housing = $this->propertyCosts()->plus($this->mortgageCosts());
+        $gross = $this->propertyCosts()->plus($this->mortgageCosts());
         $oneOffs = array_values(array_filter(
             $this->oneOffCosts,
             static fn (array $cost): bool => ($cost['condition'] ?? null) !== 'while_owning_home',
         ));
 
-        if (! $housing->isPositive() && count($oneOffs) === count($this->oneOffCosts)) {
+        // The guard reads the GROSS buckets, not what is left after the utilities are kept back:
+        // a charge that is entirely utilities nets to nothing to remove, and returning $this there
+        // would leave the sold home's marker (and its escalator) on a plan that has no home.
+        if (! $gross->isPositive() && count($oneOffs) === count($this->oneOffCosts)) {
             return $this;
         }
 
-        $essentialPath = $this->essentialSpendPath->minusFlat($housing);
+        $essentialPath = $this->essentialSpendPath->minusFlat($gross->minus($this->propertyCostsUtilities()));
 
         return new self(
             essentialAnnualSpend: $essentialPath->startAmount(),
@@ -254,6 +290,7 @@ final class ExpenseProfile
             essentialSpendPath: $essentialPath,
             discretionarySpendPath: $this->discretionarySpendPath,
             propertyCostsRealGrowth: $this->propertyCostsRealGrowth,
+            propertyCostsUtilities: $this->propertyCostsUtilities,
         );
     }
 
@@ -280,6 +317,7 @@ final class ExpenseProfile
             essentialSpendPath: $this->essentialSpendPath,
             discretionarySpendPath: $this->discretionarySpendPath,
             propertyCostsRealGrowth: $this->propertyCostsRealGrowth,
+            propertyCostsUtilities: $this->propertyCostsUtilities,
         );
     }
 

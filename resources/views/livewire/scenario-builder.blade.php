@@ -1152,6 +1152,24 @@
                                         @endif
                                     </div>
                                 </div>
+
+                                {{-- A service charge often BUYS the water and the electricity. The charge
+                                     stops when the flat is sold; the utilities do not, because a house or
+                                     a park home still has to be heated. Shown only on a cost that dies
+                                     with the home, which is the only place the figure means anything. --}}
+                                @if (($spendKeepsUtilities[$i] ?? false))
+                                    <div class="sm:col-span-12 rounded-md bg-gray-50 p-2">
+                                        <label for="expenseLines-{{ $i }}-utilities" class="text-xs text-gray-600">
+                                            Of that, how much buys water, gas or electricity? (£ / year, leave blank for none)
+                                        </label>
+                                        <input id="expenseLines-{{ $i }}-utilities" type="text" inputmode="decimal" wire:model="expenseLines.{{ $i }}.utilities" class="{{ $field }} sm:max-w-xs" @error('expenseLines.'.$i.'.utilities') aria-invalid="true" @enderror>
+                                        <p class="mt-1 text-xs text-gray-500">
+                                            Selling the home stops the rest of this cost. This part carries on, because you
+                                            still have to heat and plumb wherever you live next.
+                                        </p>
+                                        @error('expenseLines.'.$i.'.utilities') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                                    </div>
+                                @endif
                             @endunless
 
                             {{-- Spending changes with age (the "smile"): the £/year above holds from the

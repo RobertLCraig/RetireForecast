@@ -7,6 +7,27 @@
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
 _Last updated: 2026-09-05. The exceptions a fresh session needs, newest first:_
 
+- **A sold service charge no longer takes the water and the electricity with it, and home insurance
+  is essential wherever it was filed.** Card 0033. A `while_owning_home` spend line can now say how
+  much of it buys utilities (`ExpenseProfile::$propertyCostsUtilities`, builder key
+  `expenseLines.*.utilities`, entered by the reader and never assumed); both routes out of the home,
+  `withoutPropertyCosts()` and the projector's forced sale, remove the bucket LESS that part, so the
+  replacement stays in the essential floor as ordinary spend with no marker and no escalator. And
+  `HouseholdAssembler::tierOf()` is the single rule that a DISCRETIONARY line naming insurance plus
+  the home counts as essential; the forecast, the builder's live totals and
+  `ResultPresenter::expenseBreakdown()` all read it, so no screen can disagree with the projection.
+  A third fix is disclosure only: the bought home's running costs, when SCALED from the current
+  home's rather than assumed at 1% of value, now carry a `computed_figure` note stating the rule and
+  reading `HousingComparison::newHomeRunningCosts()` (public and static for that). **Every stored
+  plan carrying an insurance line filed as discretionary had too low an essential floor, so its
+  "essentials always met" probability and capacity-for-loss reading are too favourable**; the
+  utilities figure is new input, so no stored scenario carries one and no sell plan moves until
+  somebody enters it. `ENGINE_VERSION` is `finance-engine/expenses-across-the-sell-boundary` and the
+  **stored-scenario re-run is owed** (built in a worktree, so **the new step-4 input has not been
+  seen in a browser**). The card's remaining task, whether upkeep should be a percentage of value at
+  all, is card 0094: it needs a published maintenance series and an unattended session has no web.
+  The 1% is now written up in [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§17) instead of living
+  only in a docblock.
 - **Selling a home is now priced as a leasehold sale, and a taxable disposal pays for its tax
   return.** Card 0032: `HousingProceeds::DEFAULT_SELLING_COST_RATE_BP` is **400** (4% all in, was 2%,
   an agent's fee and little else), and a disposal that actually owes CGT is charged

@@ -1106,8 +1106,12 @@ final class PathProjector
         // After a forced sale the home is gone, so its property costs (service charge / ground
         // rent — the while_owning_home bucket) stop too, alongside the running costs below. The
         // year-0 sell variants drop these via withoutPropertyCosts; here they drop from the sale year.
+        // What the charge BOUGHT in utilities is not dropped with it: the household still heats and
+        // plumbs whatever it lives in next, so that part stays as ordinary spend (the same rule the
+        // year-0 sell variants apply in withoutPropertyCosts).
         if ($state['homeSold']) {
-            $propCosts = $household->expenseProfile->propertyCosts()->pence;
+            $propCosts = $household->expenseProfile->propertyCosts()
+                ->minus($household->expenseProfile->propertyCostsUtilities())->pence;
             $targetPence = max(0, $targetPence - $propCosts);
             $essentialPence = max(0, $essentialPence - $propCosts);
         }

@@ -329,6 +329,10 @@ class ScenarioBuilder extends Component
             'expenseLines.*.condition' => ['nullable', Rule::in(['', 'always', 'while_owning_home', 'while_mortgaged', 'while_working'])],
             // A line switched off is excluded from the forecast but kept so it can be switched back on.
             'expenseLines.*.included' => ['boolean'],
+            // How much of a while-owning-home cost BUYS UTILITIES (the water and the communal or
+            // whole-flat electricity inside a service charge). That part survives the sale, because
+            // a house or a park home still has to be heated. Blank = none, and the whole cost goes.
+            'expenseLines.*.utilities' => $money,
             // Optional age bands giving a line's spend a "smile": the base amount holds from the
             // start, then steps to each band's amount from that age. Only an always-condition line
             // smiles (the assembler ignores bands on a contingent cost). Blank rows are dropped on save.
@@ -752,6 +756,10 @@ class ScenarioBuilder extends Component
         // real boolean; a line saved before the toggle existed (no flag) defaults to included.
         foreach ($this->expenseLines as $i => $line) {
             $this->expenseLines[$i]['included'] = ($line['included'] ?? true) !== false;
+            // The utilities-inside-a-service-charge figure is stored only when set, so backfill it
+            // blank for the input to bind to. Blank means the cost buys no utilities, which is how
+            // every line saved before card 0033 behaved.
+            $this->expenseLines[$i]['utilities'] ??= '';
         }
 
         // An expense section saved before the above-CPI growth input existed has no key; default
@@ -934,6 +942,12 @@ class ScenarioBuilder extends Component
                 unset($line['bands']);
             } else {
                 $line['bands'] = $bands;
+            }
+
+            // The utilities figure is sparse for the same reason: a blank one says nothing, and
+            // storing it would show as a delta on every what-if of a scenario that predates it.
+            if (trim((string) ($line['utilities'] ?? '')) === '') {
+                unset($line['utilities']);
             }
 
             return $line;
@@ -1323,15 +1337,46 @@ class ScenarioBuilder extends Component
     {
         $out = [];
         foreach ($this->expenseLines as $i => $line) {
-            $explicit = (string) ($line['condition'] ?? '');
-            $resolved = in_array($explicit, ['always', 'while_owning_home', 'while_mortgaged', 'while_working'], true)
-                ? $explicit
-                : HouseholdAssembler::autoCondition($line);
             $isSavedSelfInvestment = ($line['category'] ?? '') === 'self_investment' && ($line['savedAsAsset'] ?? false);
-            $out[$i] = $resolved === 'always' && ! $isSavedSelfInvestment;
+            $out[$i] = $this->resolvedCondition($line) === 'always' && ! $isSavedSelfInvestment;
         }
 
         return $out;
+    }
+
+    /**
+     * For each spend line, whether it may carry a "of that, how much is utilities" figure: only a
+     * cost that DIES with the home can leave utilities behind when the home is sold, so the input
+     * appears on a while-owning-home line and nowhere else. The assembler applies the same test,
+     * so a figure typed on any other line would be silently ignored rather than quietly charged.
+     * Keyed by line index to match the inputs' wire:model.
+     *
+     * @return array<int, bool>
+     */
+    private function spendKeepsUtilities(): array
+    {
+        $out = [];
+        foreach ($this->expenseLines as $i => $line) {
+            $out[$i] = $this->resolvedCondition($line) === 'while_owning_home';
+        }
+
+        return $out;
+    }
+
+    /**
+     * The condition a spend line is actually charged under: the reader's explicit override when
+     * they set one, else what the label auto-classifies to. Mirrors the assembler's own
+     * resolution, so what the builder shows and what the forecast charges cannot disagree.
+     *
+     * @param  array<string, mixed>  $line
+     */
+    private function resolvedCondition(array $line): string
+    {
+        $explicit = (string) ($line['condition'] ?? '');
+
+        return in_array($explicit, ['always', 'while_owning_home', 'while_mortgaged', 'while_working'], true)
+            ? $explicit
+            : HouseholdAssembler::autoCondition($line);
     }
 
     /**
@@ -1350,7 +1395,9 @@ class ScenarioBuilder extends Component
                 if (($line['included'] ?? true) === false) {
                     continue; // a switched-off line is excluded from the forecast, so from the totals too
                 }
-                if (($line['category'] ?? '') !== $category) {
+                // The tier is read through the assembler's rule, not off the line, so cover of the
+                // home shows in the Essential total here exactly as the forecast charges it.
+                if (HouseholdAssembler::tierOf($line) !== $category) {
                     continue;
                 }
                 if ($saved !== null && (bool) ($line['savedAsAsset'] ?? false) !== $saved) {
@@ -1584,6 +1631,8 @@ class ScenarioBuilder extends Component
             'conditionHints' => $this->conditionHints(),
             // Whether each spend line may carry an age-band "smile" (an always-charged spend line).
             'spendBandable' => $this->spendBandable(),
+            // Whether each spend line may say how much of it buys utilities (a while-owning-home cost).
+            'spendKeepsUtilities' => $this->spendKeepsUtilities(),
             // Live, indicative CGT readout for the home's capital-gains wizard (null = not shown).
             'cgtPreview' => $this->cgtPreview(),
             'importProfiles' => array_map(static fn ($p): array => [

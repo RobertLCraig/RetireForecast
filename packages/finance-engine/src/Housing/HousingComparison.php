@@ -229,7 +229,7 @@ final class HousingComparison
             ownership: $mortgaged ? OwnershipType::Mortgaged : OwnershipType::Outright,
             isPrimaryResidence: true,
             outstandingMortgage: $mortgaged ? $outcome->mortgage : null,
-            runningCosts: $this->newHomeRunningCosts($household, $action, $outcome->buyPrice),
+            runningCosts: self::newHomeRunningCosts($household, $action, $outcome->buyPrice),
             // A bought home can grow at its own real rate, INCLUDING a negative one — a park home
             // depreciates. Null keeps the assumption set's house growth, as before.
             growthAssumptionOverride: $action->buyGrowthOverride,
@@ -303,8 +303,12 @@ final class HousingComparison
      * is empty — fall back to the standard {@see HOME_MAINTENANCE_RATE_BPS} of the buy price, so
      * the freehold purchase is not modelled with zero upkeep. The maintenance default replaces
      * the service charge the sold flat no longer pays.
+     *
+     * PUBLIC and static so a presenter can DISCLOSE the figure by READING it rather than by
+     * repeating the arithmetic. Two of the three branches hand the reader a number they never
+     * typed, and a restated rule is one that drifts from the one actually charged.
      */
-    private function newHomeRunningCosts(Household $household, HousingAction $action, Money $buyPrice): Money
+    public static function newHomeRunningCosts(Household $household, HousingAction $action, Money $buyPrice): Money
     {
         // An explicit figure wins over any derivation: some homes' costs bear no relation to their
         // value (a park home's pitch fee is a flat annual charge, which the 1%-of-value proxy below

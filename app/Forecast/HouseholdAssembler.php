@@ -244,6 +244,14 @@ final class HouseholdAssembler
         $lines = $state['expenseLines'] ?? [];
         $isSpend = fn (array $l): bool => ! (($l['category'] ?? '') === 'self_investment' && ($l['savedAsAsset'] ?? false));
         $propertyCosts = $this->sumLines($lines, fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_owning_home');
+        // The part of those home-ownership costs that BUYS UTILITIES (a service charge covering the
+        // water and the communal electricity). It is the one part that survives the sale, so it is
+        // summed only off the lines that would otherwise take it with them.
+        $utilities = $this->sumLines(
+            $lines,
+            fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_owning_home',
+            'utilities',
+        );
         $mortgageCosts = $this->sumLines($lines, fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_mortgaged');
         $employmentCosts = $this->sumLines($lines, fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_working');
 
@@ -275,6 +283,10 @@ final class HouseholdAssembler
             // Above-CPI growth for the while-owning-home lines (service charge / ground rent /
             // levies) — a leaseholder's "rises faster than inflation" lever (see ExpenseProfile).
             propertyCostsRealGrowth: $this->percent($e['propertyCostsGrowthPct'] ?? null),
+            // What the home-ownership costs BUY in utilities, which the household keeps paying for
+            // wherever it lives next — so it is carried across a sale rather than deleted with the
+            // charge. Sparse: no figure entered means the charge buys none, as before.
+            propertyCostsUtilities: $utilities->isPositive() ? $utilities : null,
         );
     }
 
@@ -328,6 +340,44 @@ final class HouseholdAssembler
     }
 
     /**
+     * The tier a spend line actually counts in: the reader's own choice, except where the line is
+     * cover of the home. **Buildings and contents insurance is essential wherever cover is
+     * required** (board card 0033). Buildings cover is a condition of every mortgage, contents
+     * cover replaces the things a household cannot do without, and a leaseholder's separate policy
+     * sits on top of the buildings cover already inside the service charge. Filed as discretionary
+     * it sat outside the essential floor, which flattered the "essentials always met" probability
+     * on every scenario.
+     *
+     * Only a *discretionary* line moves. A reader who filed it as essential already agrees, and
+     * self-investment is a different question. The label has to name the home as well as the cover:
+     * pet, travel, car and gadget policies are genuinely optional, so promoting every line with
+     * "insurance" in it would overstate the floor rather than correct it.
+     *
+     * PUBLIC because three surfaces have to agree on the answer: the forecast (below), the
+     * builder's live totals and the results page's spending breakdown. One rule, one home. A second
+     * copy would let a screen and the projection disagree about the same pounds.
+     *
+     * @param  array<string, mixed>  $line
+     */
+    public static function tierOf(array $line): string
+    {
+        $category = (string) ($line['category'] ?? '');
+        $label = strtolower((string) ($line['label'] ?? ''));
+
+        if ($category !== 'discretionary' || ! str_contains($label, 'insurance')) {
+            return $category;
+        }
+
+        foreach (['building', 'contents', 'home', 'house', 'property'] as $keyword) {
+            if (str_contains($label, $keyword)) {
+                return 'essential';
+            }
+        }
+
+        return $category;
+    }
+
+    /**
      * The essential floor and the discretionary spend on top as age-varying paths, derived
      * from the 3-tier line items when present (essential = sum of essential line paths;
      * discretionary = sum of discretionary line paths + *spent* self-investment), else from
@@ -349,8 +399,10 @@ final class HouseholdAssembler
             ];
         }
 
-        $essential = $this->sumLinePaths($lines, fn (array $l): bool => ($l['category'] ?? '') === 'essential');
-        $discretionary = $this->sumLinePaths($lines, fn (array $l): bool => ($l['category'] ?? '') === 'discretionary'
+        // The tier is read through tierOf(), not off the line, so cover of the home lands in the
+        // floor whatever tier it was typed into (see tierOf). Every line still counts exactly once.
+        $essential = $this->sumLinePaths($lines, static fn (array $l): bool => self::tierOf($l) === 'essential');
+        $discretionary = $this->sumLinePaths($lines, static fn (array $l): bool => self::tierOf($l) === 'discretionary'
             || (($l['category'] ?? '') === 'self_investment' && ! ($l['savedAsAsset'] ?? false)));
 
         return [$essential, $discretionary];
@@ -448,17 +500,19 @@ final class HouseholdAssembler
     }
 
     /**
-     * Sum the (exact-pence) amounts of the expense lines matching $predicate.
+     * Sum the (exact-pence) amounts of the expense lines matching $predicate. $key names the field
+     * summed, so the same reduction serves a line's own amount and a sub-figure carried on it (the
+     * utilities inside a service charge).
      *
      * @param  list<array<string, mixed>>  $lines
      * @param  callable(array<string, mixed>): bool  $predicate
      */
-    private function sumLines(array $lines, callable $predicate): Money
+    private function sumLines(array $lines, callable $predicate, string $key = 'amount'): Money
     {
         $pence = 0;
         foreach ($lines as $line) {
             if ($predicate($line)) {
-                $pence += $this->toPence((string) ($line['amount'] ?? '0'));
+                $pence += $this->toPence((string) ($line[$key] ?? '0'));
             }
         }
 

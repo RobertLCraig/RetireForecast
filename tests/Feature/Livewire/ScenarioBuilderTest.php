@@ -406,6 +406,36 @@ class ScenarioBuilderTest extends TestCase
         $this->assertObjectNotHasProperty('note', $stream);
     }
 
+    public function test_only_a_cost_that_dies_with_the_home_is_asked_what_it_buys_in_utilities(): void
+    {
+        // Card 0033. The figure is only meaningful on a while-owning-home cost, because that is the
+        // only one a sale strips. Offering it elsewhere would collect a number the assembler ignores;
+        // NOT offering it on the service charge would make the engine's carry-across unreachable.
+        $state = BuilderStateFixture::full();
+        $state['step'] = 4;
+        $state['expenseLines'][] = ['id' => 'sc1', 'label' => 'Service charge', 'amount' => '4000', 'category' => 'essential', 'savedAsAsset' => false];
+
+        $this->fill($state)
+            ->assertSeeHtml('expenseLines-2-utilities')
+            ->assertDontSeeHtml('expenseLines-0-utilities');
+    }
+
+    public function test_the_utilities_inside_a_service_charge_survive_a_save_and_reach_the_engine(): void
+    {
+        // The figure has to round-trip through builder_state and land on the engine profile, or the
+        // sell variants go on deleting the water and the electricity with the charge.
+        $state = BuilderStateFixture::full();
+        $state['name'] = 'With a service charge';
+        $state['expenseLines'][] = ['id' => 'sc1', 'label' => 'Service charge', 'amount' => '4000', 'category' => 'essential', 'savedAsAsset' => false, 'utilities' => '1500'];
+
+        $this->fill($state)->call('save')->assertHasNoErrors();
+
+        $profile = Scenario::firstOrFail()->toHousehold()->expenseProfile;
+        $this->assertSame(150_000, $profile->propertyCostsUtilities()->pence);
+        // A line with no figure stores none, so a scenario predating the field records no delta.
+        $this->assertArrayNotHasKey('utilities', Scenario::firstOrFail()->builder_state['expenseLines'][0]);
+    }
+
     public function test_a_complete_forecast_shows_a_live_deterministic_preview(): void
     {
         // A forecastable set of inputs renders the verdict + end-wealth readout (one cheap

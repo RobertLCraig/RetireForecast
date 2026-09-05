@@ -147,6 +147,23 @@ explicit override wins):
   mortgage's stop condition is stricter than "while owning".
 - `employmentCosts` (`while_working`) — commuting; the projector drops it in years no one earns.
 
+**Utilities inside a home-ownership cost (card 0033, 2026-09-05):** `propertyCostsUtilities`
+(Money?) is a marked subset of `propertyCosts` — the water, gas and electricity a block service
+charge BUYS. It is the one part that does **not** die with the home: `withoutPropertyCosts()` and
+the projector's mid-projection forced sale both remove `propertyCosts − propertyCostsUtilities` and
+leave the remainder in the essential floor as ordinary always-charged spend (no marker, so no
+service-charge escalator applies to it and nothing can strip it twice). Read it through
+`propertyCostsUtilities()`, which clamps it to the bucket it comes out of. Builder key
+`expenseLines.*.utilities`, offered only on a `while_owning_home` line and stored **sparsely**;
+the reader always enters it, the engine never supplies one.
+
+**Insurance is essential where cover is required (card 0033, 2026-09-05):** a spend line's tier is
+read through `HouseholdAssembler::tierOf()`, not off its stored `category`. A **discretionary** line
+whose label names insurance *and* the home (buildings / contents / home / house / property) counts
+in the essential floor instead; nothing else moves, so pet, travel and car cover stay where the
+reader put them. The assembler, the builder's live totals and `ResultPresenter::expenseBreakdown()`
+all read that one rule, so the screen and the projection cannot disagree about the same pounds.
+
 **Above-CPI property-cost growth (2026-07-08; default added 2026-09-05):**
 `propertyCostsRealGrowth` (Percent?) is the **real** annual growth rate on the `propertyCosts`
 bucket only. The projector compounds it per projection year on top of the CPI all spend rides; it
@@ -173,7 +190,10 @@ the service charge is. Absent = charged always, the pre-existing behaviour. Buil
 scaled pro-rata when it has them, else a standard **1%-of-value** home-maintenance default (the UK
 rule of thumb, sourced in-code), so a freehold bought after selling a leasehold flat (whose upkeep
 was inside its stripped service charge) is not modelled upkeep-free. A real `Property::runningCosts`
-overrides it. See DECISIONS 2026-07-08.
+overrides it. See DECISIONS 2026-07-08. **Both derived branches are now on screen (card 0033):** the
+1%-of-value fallback as an `assumed_figure` note, and the pro-rata scaling as a `computed_figure`
+note stating the rule (the current figure, the two prices) and reading the engine's own answer, so
+a number the reader never typed no longer looks like one they did.
 
 ### Scenario
 household_id, name, variant (`buy_outright` \| `rent` \| `stay_put`),

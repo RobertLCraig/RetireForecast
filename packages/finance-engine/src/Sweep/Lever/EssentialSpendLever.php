@@ -35,6 +35,7 @@ final class EssentialSpendLever implements SweepLever
             $e->employmentCosts,
             $e->mortgageCosts,
             discretionarySpendPath: $e->discretionarySpendPath,
+            propertyCostsUtilities: $e->propertyCostsUtilities,
         );
 
         return new SweepInputs(
