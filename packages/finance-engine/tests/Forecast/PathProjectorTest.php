@@ -626,8 +626,15 @@ final class PathProjectorTest extends TestCase
      * Lifetime tax under FillBands BEFORE slice #5, when every ad-hoc pension draw was taxed on
      * 100% of the gross. Pinned so the improvement is measured against a real number rather than
      * asserted vaguely; recomputing it means reverting PathProjector, not editing this constant.
+     *
+     * Re-pinned once, 4p lower, for board card 0037: FillBands draws pension in three passes, and
+     * each used to restart from the PRE-drawdown income, so the second and third were priced (and
+     * capped) in a band the member had already left. They now carry the running total forward.
+     * This couple's cash interest stays inside the Personal Savings Allowance throughout and their
+     * draws stay in the basic-rate band, so the other half of that card, stacking savings and
+     * dividends under the draw, moves nothing here.
      */
-    private const FILL_BANDS_LIFETIME_TAX_BEFORE_UFPLS = 10_353_810;
+    private const FILL_BANDS_LIFETIME_TAX_BEFORE_UFPLS = 10_353_806;
 
     public function test_a_fill_bands_pension_draw_is_taken_ufpls_style_and_pays_less_lifetime_tax(): void
     {

@@ -39,7 +39,18 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-05 (transition-year-proration): the year a person retires is a TRANSITION year, and
+     * Bumped 2026-09-05 (drawdown-marginal-tax-on-full-income): an ad-hoc pension withdrawal is now priced
+     * against the whole of the person's income for the year. Savings interest and dividends stack
+     * ABOVE non-savings income in the band order, so a withdrawal pushes them across band
+     * boundaries and halves the Personal Savings Allowance; the cost of it was read off the
+     * non-savings leg alone and none of that reached the bill. A second draw in the same year also
+     * restarted from the pre-drawdown income, so under a strategy that draws in more than one pass
+     * every later draw was charged in a band the person had already left. Any stored plan that both
+     * holds unwrapped savings or shares and draws a pension to meet its spending pays too LITTLE
+     * tax under an earlier stamp, so its wealth, depletion year and success odds are too
+     * FAVOURABLE; a plan whose taxable accounts are all ISAs and which never draws is
+     * byte-identical. See board card 0037.
+     * Previous bump 2026-09-05 (transition-year-proration): the year a person retires is a TRANSITION year, and
      * the income that replaces their salary now starts part way through it, as the salary already
      * stopped part way through it ({@see PathProjector::startFraction}). A State Pension starting in
      * November pays two months, not twelve; a Defined Benefit pension pays only the months after the
@@ -160,7 +171,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/transition-year-proration';
+    public const ENGINE_VERSION = 'finance-engine/drawdown-marginal-tax-on-full-income';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

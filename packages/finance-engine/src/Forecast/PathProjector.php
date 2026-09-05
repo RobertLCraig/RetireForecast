@@ -952,6 +952,14 @@ final class PathProjector
         // streams (e.g. DLA) are added untaxed alongside pension tax-free cash.
         $netCashNominal = $taxFreeCashNominal + $taxFreeIncomeNominal;
         $totalTaxNominal = 0;
+        // Kept per person so the shortfall draw can be priced against the WHOLE of this
+        // year's income. Savings and dividends stack above non-savings income, so an extra
+        // pension withdrawal pushes them across band boundaries and shrinks the Personal
+        // Savings Allowance; costing the withdrawal on non-savings income alone understated
+        // it (board card 0037). Both are read off OPENING balances here, before any draw,
+        // so they are settled for the year and cannot move under the drawing below.
+        $savingsPerPerson = [];
+        $dividendsPerPerson = [];
         foreach ($household->persons as $person) {
             if (! $alive[$person->id]) {
                 continue;
@@ -959,6 +967,8 @@ final class PathProjector
             $cashInterest = (int) round($state['cash'][$person->id] * $cashInterestRate);
             $giaDividends = (int) round($state['gia'][$person->id] * $this->effectiveGiaYield($state, $person->id, $giaYield));
             $investmentIncome = $cashInterest + $giaDividends;
+            $savingsPerPerson[$person->id] = $cashInterest;
+            $dividendsPerPerson[$person->id] = $giaDividends;
 
             $taxable = $taxablePerPerson[$person->id];
             $grossIncomeNominal += $taxable + $investmentIncome;
@@ -1293,7 +1303,7 @@ final class PathProjector
         $fundedNominal = 0;
         $gainsThisYear = $seedGains;
         if ($shortfall > 0) {
-            $funded = $this->fundShortfall($household, $settings, $state, $alive, $ages, $taxablePerPerson, $shortfall, $thresholdFactor, $benefitNominal > 0, $seedGains);
+            $funded = $this->fundShortfall($household, $settings, $state, $alive, $ages, $taxablePerPerson, $savingsPerPerson, $dividendsPerPerson, $shortfall, $thresholdFactor, $benefitNominal > 0, $seedGains);
             $fundedNominal = $funded['funded'];
             $totalTaxNominal += $funded['extraTax'];
             // FLAGGED (board card 0074): fundShortfall returns ONE fromPension total, so the
@@ -2166,10 +2176,12 @@ final class PathProjector
      *
      * @param  array<string, mixed>  $state
      * @param  array<string, bool>  $alive
-     * @param  array<string, int>  $taxablePerPerson
+     * @param  array<string, int>  $taxablePerPerson  nominal NON-SAVINGS taxable income per person
+     * @param  array<string, int>  $savingsPerPerson  nominal savings income (interest) per person
+     * @param  array<string, int>  $dividendsPerPerson  nominal dividend income per person
      * @return array{funded: int, extraTax: int, fromPension: int, fromAssets: int}
      */
-    private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $ages, array $taxablePerPerson, int $shortfall, float $thresholdFactor = 1.0, bool $onGuaranteeCredit = false, array $seedGains = []): array
+    private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $ages, array $taxablePerPerson, array $savingsPerPerson, array $dividendsPerPerson, int $shortfall, float $thresholdFactor = 1.0, bool $onGuaranteeCredit = false, array $seedGains = []): array
     {
         $remaining = $shortfall;
         $funded = 0;
@@ -2188,6 +2200,26 @@ final class PathProjector
         $params = $this->config->incomeTax;
         $paLimit = $params->personalAllowance->pence;
         $basicLimit = $paLimit + $params->basicRateBand->pence;
+
+        // Each person's non-savings income AS THIS YEAR'S DRAWING LEAVES IT. A strategy draws
+        // pension in more than one pass — PensionAware twice, FillBands three times, and either
+        // once more to pay the CGT below — and every pass must start from where the last one
+        // finished. Restarting each from the pre-drawdown figure priced every later draw in a
+        // band the person had already left, which is the same fault as costing it without their
+        // savings (board card 0037). Held apart from $taxablePerPerson, which stays the
+        // PRE-drawdown income the CGT band split and the means test were assessed on.
+        $drawnTaxable = $taxablePerPerson;
+
+        // One person's whole taxable income, given where their NON-SAVINGS income has reached.
+        // Every pricing of a pension draw goes through this, so a draw can never be costed
+        // against a slice of an income the rest of which sits above it in the band stack
+        // (board card 0037). The band-filling CAPS below stay on non-savings income, because
+        // that is the strategy's own question — which band the pension itself should fill.
+        $incomeOf = fn (string $pid, int $nonSavings): TaxableIncome => new TaxableIncome(
+            Money::fromPence($nonSavings),
+            Money::fromPence($savingsPerPerson[$pid] ?? 0),
+            Money::fromPence($dividendsPerPerson[$pid] ?? 0),
+        );
 
         $drawNonPension = function () use (&$state, &$remaining, &$funded, &$fromAssets, &$realisedGain, $alive, $household): void {
             foreach (['cash', 'gia', 'isa'] as $bucket) {
@@ -2277,7 +2309,7 @@ final class PathProjector
         // Draw taxable pension income, per person, capped so the person's taxable income does
         // not exceed $taxableLimit (null = uncapped). Grosses up so the after-tax cash meets
         // the remaining need.
-        $drawPension = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, $alive, $ages, $household, $taxablePerPerson, $thresholdFactor): void {
+        $drawPension = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, &$drawnTaxable, $alive, $ages, $household, $incomeOf, $thresholdFactor): void {
             foreach ($household->persons as $person) {
                 if ($remaining <= 0) {
                     return;
@@ -2285,7 +2317,7 @@ final class PathProjector
                 if (! $alive[$person->id]) {
                     continue;
                 }
-                $alreadyTaxable = $taxablePerPerson[$person->id];
+                $alreadyTaxable = $drawnTaxable[$person->id];
                 foreach ($state['pots'][$person->id] as &$pot) {
                     if ($remaining <= 0 || $pot['value'] <= 0) {
                         continue;
@@ -2304,11 +2336,12 @@ final class PathProjector
                     if ($cap <= 0) {
                         continue;
                     }
-                    $gross = $this->grossUpPension($remaining, $alreadyTaxable, $cap, $thresholdFactor);
+                    $existing = $incomeOf($person->id, $alreadyTaxable);
+                    $gross = $this->grossUpPension($remaining, $existing, $cap, $thresholdFactor);
                     if ($gross <= 0) {
                         continue;
                     }
-                    $taxDelta = $this->marginalTax($alreadyTaxable, $gross, $thresholdFactor);
+                    $taxDelta = $this->marginalTax($existing, $gross, $thresholdFactor);
                     $net = $gross - $taxDelta;
                     $this->drawFromPot($pot, $gross);
                     // Taxable pension income out of the member's OWN money-purchase pot is flexible
@@ -2325,6 +2358,7 @@ final class PathProjector
                     $alreadyTaxable += $gross;
                 }
                 unset($pot);
+                $drawnTaxable[$person->id] = $alreadyTaxable;
             }
         };
 
@@ -2341,7 +2375,7 @@ final class PathProjector
         // part consumes, so the draw is ~a third larger for the same taxable income) and the
         // person's remaining Lump Sum Allowance. {@see maxUfplsGross} solves both. With no
         // allowance left the split is all-taxable, so this degrades exactly to $drawPension.
-        $drawPensionUfpls = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, $alive, $ages, $household, $taxablePerPerson, $thresholdFactor): void {
+        $drawPensionUfpls = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, &$drawnTaxable, $alive, $ages, $household, $incomeOf, $thresholdFactor): void {
             $pclsRate = $this->config->pension->pclsRate->asFraction();
             $lsa = $this->config->pension->lumpSumAllowance->pence;
 
@@ -2352,7 +2386,7 @@ final class PathProjector
                 if (! $alive[$person->id]) {
                     continue;
                 }
-                $alreadyTaxable = $taxablePerPerson[$person->id];
+                $alreadyTaxable = $drawnTaxable[$person->id];
                 foreach ($state['pots'][$person->id] as &$pot) {
                     if ($remaining <= 0 || $pot['value'] <= 0) {
                         continue;
@@ -2381,9 +2415,10 @@ final class PathProjector
 
                     // Gross up so the after-tax cash meets the need, on the same iteration as
                     // grossUpPension, where only the taxable part carries tax.
+                    $existing = $incomeOf($person->id, $alreadyTaxable);
                     $gross = $remaining;
                     for ($i = 0; $i < 8; $i++) {
-                        $tax = $this->marginalTax($alreadyTaxable, self::ufplsSplit($gross, $lsaRemaining, $pclsRate, $crystallised)[1], $thresholdFactor);
+                        $tax = $this->marginalTax($existing, self::ufplsSplit($gross, $lsaRemaining, $pclsRate, $crystallised)[1], $thresholdFactor);
                         $next = $remaining + $tax;
                         if (abs($next - $gross) <= 1) {
                             $gross = $next;
@@ -2397,7 +2432,7 @@ final class PathProjector
                     }
 
                     [$taxFree, $taxablePart] = self::ufplsSplit($gross, $lsaRemaining, $pclsRate, $crystallised);
-                    $taxDelta = $this->marginalTax($alreadyTaxable, $taxablePart, $thresholdFactor);
+                    $taxDelta = $this->marginalTax($existing, $taxablePart, $thresholdFactor);
                     $net = $gross - $taxDelta;
                     $this->drawFromPot($pot, $gross);
                     $state['lsaUsed'][$person->id] += $taxFree;
@@ -2411,6 +2446,7 @@ final class PathProjector
                     $alreadyTaxable += $taxablePart;
                 }
                 unset($pot);
+                $drawnTaxable[$person->id] = $alreadyTaxable;
             }
         };
 
@@ -2552,15 +2588,15 @@ final class PathProjector
     }
 
     /**
-     * Gross pension withdrawal whose after-tax value meets $netNeeded, given the
-     * person's existing taxable income, capped at $maxGross. Iterates to convergence
-     * (income tax is piecewise linear, so this is exact within a few rounds).
+     * Gross pension withdrawal whose after-tax value meets $netNeeded, given the person's
+     * existing income IN FULL, capped at $maxGross. Iterates to convergence (income tax is
+     * piecewise linear, so this is exact within a few rounds).
      */
-    private function grossUpPension(int $netNeeded, int $existingTaxable, int $maxGross, float $thresholdFactor = 1.0): int
+    private function grossUpPension(int $netNeeded, TaxableIncome $existing, int $maxGross, float $thresholdFactor = 1.0): int
     {
         $gross = $netNeeded;
         for ($i = 0; $i < 8; $i++) {
-            $tax = $this->marginalTax($existingTaxable, $gross, $thresholdFactor);
+            $tax = $this->marginalTax($existing, $gross, $thresholdFactor);
             $next = $netNeeded + $tax;
             if (abs($next - $gross) <= 1) {
                 $gross = $next;
@@ -2572,10 +2608,27 @@ final class PathProjector
         return min($gross, $maxGross);
     }
 
-    private function marginalTax(int $existingTaxable, int $extra, float $thresholdFactor = 1.0): int
+    /**
+     * The tax an extra $extra of NON-SAVINGS income (a pension withdrawal) costs a person who
+     * already has $existing. It takes the whole income, not the non-savings part of it, because
+     * savings and dividends sit ABOVE non-savings in the band stack: the extra pound pushes them
+     * across band boundaries and shrinks the Personal Savings Allowance, and none of that cost
+     * is visible from the non-savings leg alone. Board card 0037; before it the withdrawal was
+     * priced as though the person held no savings and no shares, and the household was left
+     * holding tax it would really have paid.
+     *
+     * Because the charge is a difference of two FULL-income computations, and each draw starts
+     * from where the last one left off, the year's increments telescope exactly onto one
+     * recomputation from the final income — the reconciliation DrawdownMarginalTaxTest pins.
+     */
+    private function marginalTax(TaxableIncome $existing, int $extra, float $thresholdFactor = 1.0): int
     {
-        $base = $this->indexedTotalPence(TaxableIncome::ofNonSavings(Money::fromPence($existingTaxable)), $thresholdFactor);
-        $with = $this->indexedTotalPence(TaxableIncome::ofNonSavings(Money::fromPence($existingTaxable + $extra)), $thresholdFactor);
+        $base = $this->indexedTotalPence($existing, $thresholdFactor);
+        $with = $this->indexedTotalPence(new TaxableIncome(
+            Money::fromPence($existing->nonSavings->pence + $extra),
+            $existing->savings,
+            $existing->dividends,
+        ), $thresholdFactor);
 
         return $with - $base;
     }

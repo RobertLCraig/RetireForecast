@@ -7,6 +7,31 @@
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
 _Last updated: 2026-09-05. The exceptions a fresh session needs, newest first:_
 
+- **A pension withdrawal is now priced against the whole of the person's income, and a second draw
+  in the same year starts where the first one finished.** Card 0037. `marginalTax` and
+  `grossUpPension` took an int of non-savings income; they now take a `TaxableIncome`, fed by the
+  per-person cash interest and GIA dividends `projectYear` already computes for its own tax pass.
+  Savings and dividends stack ABOVE non-savings income, so a withdrawal pushes them across band
+  boundaries and halves the Personal Savings Allowance, and none of that cost was reaching the bill.
+  The card's second criterion, a to-the-penny reconciliation of the year's total tax against a full
+  recomputation from final taxable income, forced a second fix in the same two functions:
+  `fundShortfall` took `$taxablePerPerson` by value, so every pension pass after the first restarted
+  from the PRE-drawdown figure (PensionAware draws twice, FillBands three times, plus the CGT
+  top-up), pricing and capping later draws in a band the member had already left. A new
+  `$drawnTaxable` running total carries it forward, held apart from `$taxablePerPerson` so the CGT
+  band split and the means test keep reading the pre-drawdown income they were assessed on. The
+  band-filling CAPS stay on non-savings income deliberately: which band the pension fills is the
+  strategy's question, not a tax one. **Every stored plan that both holds unwrapped savings or
+  shares and draws a pension to meet its spending paid too LITTLE tax, so its wealth, depletion year
+  and success odds are too FAVOURABLE**; a plan whose taxable accounts are all ISAs and which never
+  draws is byte-identical. `ENGINE_VERSION` is `finance-engine/drawdown-marginal-tax-on-full-income`
+  and the **stored-scenario re-run is owed** (built in a worktree). No screen changed, so there is
+  nothing new to look at. `DrawdownMarginalTaxTest` is the reconciliation guard and it runs under
+  PensionAware, because under FillBands the reported `pension_drawdown` includes the tax-free quarter
+  (card 0074) and a test cannot recover the taxable split from `incomeBySource`. The adjacent fault
+  is card **0098**: `capitalGainsTax` still bands a realised gain against pre-drawdown,
+  non-savings-only income, so the household that sells holdings to fund a withdrawal has its gain
+  charged at the lowest rate.
 - **The retirement year is now split on both sides, and National Insurance no longer stops early.**
   Card 0036. Salary was already prorated by `workFraction`, but the income replacing it was not: a
   State Pension paid a full year from the claim year, a DB pension a full year from normal retirement
@@ -264,14 +289,8 @@ Documented v1 scope limits remain flagged in code and listed in [DATA-MODEL.md](
 ## What's next (in order)
 **The queue is [docs/board/todo/](board/todo/), one card per file.** Do not restate it here. At the head:
 
-**The head of the queue is a ranking-mover.** It changes which plan wins, so it comes before any
-feature work and before card 0022 is answered. Re-run every stored scenario and `scenarios:audit`
-after it.
-
-1. **0037 pension draws taxed as if there were no savings or dividends**: the marginal rate a
-   withdrawal is priced at ignores the rest of the person's income.
-
-Then the pre-review queue resumes at the head of [docs/board/todo/](board/todo/).
+Re-run every stored scenario and `scenarios:audit` before reading the ranked comparison off, and
+before card 0022 is answered. The queue resumes at the head of [docs/board/todo/](board/todo/).
 
 ## Blockers / open questions
 **The full set is [docs/board/human-review/](board/human-review/), each card carrying its own ask or
