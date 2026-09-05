@@ -65,6 +65,10 @@ final class BuilderStateFixture
             ],
             'hasProperty' => true,
             'property' => ['currentValue' => '525000', 'ownership' => 'mortgaged', 'everLet' => false,
+                // Present-but-blank on purpose, like the death-in-service keys above: the builder
+                // BACKFILLS them on load, so a fixture property without them would differ from the
+                // same property after a round trip and show as a spurious what-if delta.
+                'isLet' => false, 'lettingManagementRate' => '', 'lettingVoidRate' => '', 'lettingMaintenanceRate' => '',
                 'outstandingMortgage' => '48000', 'runningCosts' => '6400', 'growthAssumptionOverride' => '1', 'ownershipShare' => '100',
                 'mortgageRedemptionYear' => '', 'mortgageMaturityAction' => 'refinance', 'mortgageRollUpRate' => '',
                 'mortgageOverpayment' => '',

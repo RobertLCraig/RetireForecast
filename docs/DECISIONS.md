@@ -3,6 +3,51 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-05: Letting a property does not earn its rent
+**Context:** card 0030 (expert panel 2026-08-19, property finding 5). A let-to-let plan took its rent
+GROSS. No agent fee, no void, no repairs, no compliance, no licensing, and the service charge on the
+let flat charged as household shopping while the whole rent was taxed as profit. The caveat existed
+only in a docblock. The reviewer's own arithmetic turned a modelled positive contribution into a real
+cash loss.
+
+**Decision:** three changes, all hanging off the existing `Property::$isLet` discriminator, so a home
+the household lives in is byte-identical.
+
+- **Three letting-cost rates come off gross rent.** `Property::lettingManagementRate()`,
+  `lettingVoidRate()` and `lettingMaintenanceRate()` return the reader's own figure where given
+  (**an explicit zero included**) and otherwise the shipped defaults **12% / 8% / 5%**, a quarter of
+  gross rent between them. Each is a builder input shown once the home is flagged as let, and each is
+  disclosed as an `assumed_figure` note reading its own constant. The void is lost rent rather than a
+  bill, but it never arrives and is never taxed, so it deducts like the other two. The figures are the
+  property reviewer's judgement, not published series; the citations are owed and carded as **0087**.
+  See ASSUMPTIONS.md §14.
+- **A let home's service charge is a letting expense.** The `while_owning_home` spend bucket is
+  deducted from rental profit, apportioned across owners pro rata to their rent. The cash is
+  unchanged (it is still charged as spend, because they really do pay it); what changes is that it
+  stops being taxed as though they had not. Each owner's deduction is capped at their own gross rent:
+  a rental loss is carried forward against future rental profit in law, which this engine does not
+  model, so the year floors at nil profit rather than sheltering a pension it could not shelter.
+- **The Section 24 credit is read off profit, not gross rent.** The statute says the lower of the
+  finance cost and the rental profit, and profit used to be approximated by rent. A mortgaged let was
+  relieved on rent it never kept.
+
+**Why the deduction sits in the income pass, not the spend pass.** Taking it off the owner's taxable
+income in one place makes the cash the household banks and the profit HMRC sees the same arithmetic,
+so the two can never disagree about the same let.
+
+**What is NOT modelled goes on the RESULT, not in a comment.** A new `letting_caveats` input note
+states the three gaps that could decide the plan on their own: the freeholder's consent a lease
+usually needs before you sublet at all, the minimum energy efficiency standard and the five-figure
+EPC C retrofit or exemption the 2030 proposal would put in scope, and the council tax the forecast
+still charges the household although a tenant normally pays it. That last one, and the fact that a
+let home's other running costs are not deducted either, is raised as card **0088**.
+
+**Consequence:** every let-to-let plan banks less rent and is taxed on less profit than before, and
+its stored wealth, depletion year and success odds are too favourable. `ENGINE_VERSION` is
+`finance-engine/letting-costs` and stored runs are not comparable across the bump. Built in a
+worktree, so the stored-scenario re-run is owed.
+**Status:** active
+
 ## 2026-09-05: A growth override sets the home's mean, and one home is not an index
 **Context:** card 0029 (expert panel 2026-08-19, property finding 13, adviser finding 9). Two faults
 in the same line of `PathProjector::growState`. A property growth override REPLACED the sampled

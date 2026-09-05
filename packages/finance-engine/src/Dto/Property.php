@@ -50,6 +50,12 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * separate outflow (a "Mortgage" expense line of the same amount), so the two together model an
  * overpayment honestly: the balance falls, but the household must find the money to pay it.
  *
+ * $lettingManagementRate, $lettingVoidRate and $lettingMaintenanceRate are what letting the
+ * property COSTS, each as a percentage of gross rent, and each applying only when $isLet. Null
+ * means "no figure given" and takes the shipped default below; an explicit rate, INCLUDING an
+ * explicit zero, is the reader's own and wins. Read them through their accessors, never off these
+ * properties, or the default is silently skipped.
+ *
  * $repaymentTerms models the third mortgage shape — an ordinary capital-and-interest
  * ("repayment") mortgage that AMORTISES $outstandingMortgage to zero over a term
  * ({@see RepaymentMortgageTerms}). When set, the engine owns both the balance and the payment:
@@ -61,6 +67,40 @@ use RetireForecast\FinanceEngine\Money\Percent;
  */
 final class Property
 {
+    /**
+     * What a fully managed single let COSTS, as a percentage of gross rent, where the reader gives
+     * no figure of their own: **12% management, 8% void, 5% maintenance, a quarter of the rent
+     * before any tax.**
+     *
+     * Gross rent is the one figure a landlord never receives. A letting agent's fully managed fee
+     * is around 10% plus VAT; the flat stands empty between tenancies, which on a single property
+     * is roughly a month a year; and repairs, an inventory, the annual gas safety certificate and
+     * the five-yearly electrical report are all the landlord's, not the tenant's. Modelling the
+     * rent gross does not merely flatter a let plan, it can invert its sign: the reviewer's
+     * arithmetic turned a modelled positive contribution into a real cash loss.
+     *
+     * The void is lost rent rather than a bill, but the arithmetic is the same (it never arrives,
+     * and it is never taxed), so all three come off gross rent together.
+     *
+     * **Adverse by rule, editable by design** (Rob's standing default rule): where several figures
+     * are defensible the shipped one is the most adverse, and it is exposed as a user input. A
+     * landlord who self-manages sets management to zero; one letting to a long-term tenant sets a
+     * lower void.
+     *
+     * **PUBLIC so a presenter can DISCLOSE each figure without restating it**, the
+     * no-invisible-figures rule.
+     *
+     * **Source of record: the expert property review of 2026-08-19** (board card 0030), which
+     * models roughly 12% management including VAT, 8% void and about 5% for repairs, inventory,
+     * gas safety and electrical checks; verified_on 2026-08-19. That is a reviewer's judgement,
+     * NOT a published series, so a primary citation is still owed. See docs/spec/ASSUMPTIONS.md §14.
+     */
+    public const DEFAULT_LETTING_MANAGEMENT_BPS = 1_200; // 12.00% of gross rent, VAT included
+
+    public const DEFAULT_LETTING_VOID_BPS = 800;         // 8.00% of gross rent
+
+    public const DEFAULT_LETTING_MAINTENANCE_BPS = 500;  // 5.00% of gross rent
+
     public function __construct(
         public readonly Money $currentValue,
         public readonly OwnershipType $ownership,
@@ -77,6 +117,9 @@ final class Property
         public readonly ?Percent $mortgageRollUpRate = null,
         public readonly ?Money $mortgageOverpaymentAnnual = null,
         public readonly ?RepaymentMortgageTerms $repaymentTerms = null,
+        public readonly ?Percent $lettingManagementRate = null,
+        public readonly ?Percent $lettingVoidRate = null,
+        public readonly ?Percent $lettingMaintenanceRate = null,
     ) {
         if ($repaymentTerms !== null && $mortgageRollUpRate !== null) {
             throw new \InvalidArgumentException('A mortgage cannot both amortise (repaymentTerms) and roll up (mortgageRollUpRate) — choose one.');
@@ -107,6 +150,71 @@ final class Property
             mortgageRollUpRate: $this->mortgageRollUpRate,
             mortgageOverpaymentAnnual: $this->mortgageOverpaymentAnnual,
             repaymentTerms: $this->repaymentTerms,
+            lettingManagementRate: $this->lettingManagementRate,
+            lettingVoidRate: $this->lettingVoidRate,
+            lettingMaintenanceRate: $this->lettingMaintenanceRate,
         );
+    }
+
+    /** The letting agent's fully managed fee, VAT included (zero unless the property is let). */
+    public function lettingManagementRate(): Percent
+    {
+        return $this->lettingRate($this->lettingManagementRate, self::DEFAULT_LETTING_MANAGEMENT_BPS);
+    }
+
+    /** The share of the year the property stands empty between tenancies (zero unless let). */
+    public function lettingVoidRate(): Percent
+    {
+        return $this->lettingRate($this->lettingVoidRate, self::DEFAULT_LETTING_VOID_BPS);
+    }
+
+    /** Repairs, inventory, gas safety and electrical checks, as a share of rent (zero unless let). */
+    public function lettingMaintenanceRate(): Percent
+    {
+        return $this->lettingRate($this->lettingMaintenanceRate, self::DEFAULT_LETTING_MAINTENANCE_BPS);
+    }
+
+    /**
+     * The whole cost of letting, as a share of gross rent: management plus void plus maintenance.
+     * Zero for a home the household lives in, so a residence is untouched by any of this.
+     */
+    public function lettingCostRate(): Percent
+    {
+        return Percent::fromBasisPoints(
+            $this->lettingManagementRate()->basisPoints
+            + $this->lettingVoidRate()->basisPoints
+            + $this->lettingMaintenanceRate()->basisPoints,
+        );
+    }
+
+    /**
+     * The letting-cost rates the ENGINE supplied because the reader left them blank, keyed by
+     * which cost they are. Empty when the property is not let, or when every rate is the reader's
+     * own. This is what the no-invisible-figures disclosure enumerates, so it names only the
+     * figures nobody entered.
+     *
+     * @return array<string, Percent> one of `management`, `void`, `maintenance` => the rate applied
+     */
+    public function assumedLettingRates(): array
+    {
+        if (! $this->isLet) {
+            return [];
+        }
+
+        return array_filter([
+            'management' => $this->lettingManagementRate === null ? $this->lettingManagementRate() : null,
+            'void' => $this->lettingVoidRate === null ? $this->lettingVoidRate() : null,
+            'maintenance' => $this->lettingMaintenanceRate === null ? $this->lettingMaintenanceRate() : null,
+        ], static fn (?Percent $rate): bool => $rate !== null);
+    }
+
+    /** A let property's rate: the reader's own where given (zero included), else the default. */
+    private function lettingRate(?Percent $given, int $defaultBps): Percent
+    {
+        if (! $this->isLet) {
+            return Percent::zero();
+        }
+
+        return $given ?? Percent::fromBasisPoints($defaultBps);
     }
 }

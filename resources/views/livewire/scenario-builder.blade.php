@@ -854,7 +854,52 @@
                                 <input type="checkbox" wire:model.live="property.everLet" class="rounded border-gray-300"> Let out / not always my main home (affects CGT)
                             </label>
                         </div>
+                        <div>
+                            <label class="mt-7 flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" wire:model.live="property.isLet" class="rounded border-gray-300"> I let this home out and live somewhere else
+                            </label>
+                        </div>
                     </div>
+
+                    {{-- What letting costs. Gross rent is the one figure a landlord never receives:
+                         an agent takes a fee, the place stands empty between tenants, and the
+                         repairs and safety certificates are the landlord's. Each rate is blank by
+                         default and takes the engine's disclosed figure, which the results page
+                         states; an explicit 0 is the reader's own. See Dto\Property. --}}
+                    @if ($property['isLet'] ?? false)
+                        <div class="mt-4 rounded-md border border-gray-200 bg-gray-50 p-4">
+                            <h3 class="font-medium text-gray-900">What letting it costs</h3>
+                            <p class="mt-1 text-xs text-gray-600">
+                                Each is a share of the rent. Leave one blank and we'll use a typical figure and tell you
+                                on the results page what we used. Enter 0 if it genuinely costs you nothing (for example
+                                you manage the let yourself).
+                            </p>
+                            <div class="mt-3 grid gap-4 sm:grid-cols-3">
+                                <div>
+                                    <label for="property-lettingManagementRate" class="{{ $label }}">Letting agent (% of rent)</label>
+                                    <input id="property-lettingManagementRate" type="text" inputmode="decimal" placeholder="12" wire:model="property.lettingManagementRate" class="{{ $field }}" @error('property.lettingManagementRate') aria-invalid="true" aria-describedby="property-lettingManagementRate-error" @enderror>
+                                    @error('property.lettingManagementRate') <p id="property-lettingManagementRate-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                    <p class="mt-1 text-xs text-gray-500">A fully managed service, VAT included.</p>
+                                </div>
+                                <div>
+                                    <label for="property-lettingVoidRate" class="{{ $label }}">Empty periods (% of rent)</label>
+                                    <input id="property-lettingVoidRate" type="text" inputmode="decimal" placeholder="8" wire:model="property.lettingVoidRate" class="{{ $field }}" @error('property.lettingVoidRate') aria-invalid="true" aria-describedby="property-lettingVoidRate-error" @enderror>
+                                    @error('property.lettingVoidRate') <p id="property-lettingVoidRate-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                    <p class="mt-1 text-xs text-gray-500">Rent you don't get between tenants. 8% is about a month a year.</p>
+                                </div>
+                                <div>
+                                    <label for="property-lettingMaintenanceRate" class="{{ $label }}">Repairs and checks (% of rent)</label>
+                                    <input id="property-lettingMaintenanceRate" type="text" inputmode="decimal" placeholder="5" wire:model="property.lettingMaintenanceRate" class="{{ $field }}" @error('property.lettingMaintenanceRate') aria-invalid="true" aria-describedby="property-lettingMaintenanceRate-error" @enderror>
+                                    @error('property.lettingMaintenanceRate') <p id="property-lettingMaintenanceRate-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                    <p class="mt-1 text-xs text-gray-500">Repairs, inventory, gas safety and electrical checks.</p>
+                                </div>
+                            </div>
+                            <p class="mt-3 text-xs text-gray-600">
+                                Your service charge and ground rent are handled separately: enter them as spending lines,
+                                and we treat them as a letting expense while the home is let, so they aren't taxed as profit.
+                            </p>
+                        </div>
+                    @endif
 
                     {{-- When the mortgage term ends: an interest-only or fixed-term mortgage that can't
                          simply roll on forces a decision. Modelling it — rather than assuming the home is

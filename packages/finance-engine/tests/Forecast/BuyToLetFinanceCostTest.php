@@ -60,6 +60,15 @@ final class BuyToLetFinanceCostTest extends TestCase
                 ownership: OwnershipType::Mortgaged,
                 outstandingMortgage: Money::fromPounds(208_000),
                 isLet: $isLet,
+                // Every letting cost held at an explicit ZERO, so these tests stay about the
+                // finance-cost reducer alone. With the shipped defaults the let twin would also
+                // hold a quarter less taxable rent than the residential one, and at a basic-rate
+                // marginal rate the tax that saves happens to equal the reducer itself, so a
+                // reducer read off the wrong base would still land on the expected number.
+                // {@see LettingCostsTest} is where the deduction itself is proved.
+                lettingManagementRate: Percent::zero(),
+                lettingVoidRate: Percent::zero(),
+                lettingMaintenanceRate: Percent::zero(),
             ),
         );
     }

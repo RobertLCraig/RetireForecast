@@ -806,6 +806,33 @@ final class ResultPresenter
                 .'plan the gap between this and inflation-only is thousands of pounds a year.';
         }
 
+        // What letting the home costs, where the reader gave no rate of their own. Until card 0030
+        // a let property earned its rent GROSS, and a quarter of gross rent is the difference
+        // between a let that pays and one that loses money every month. The rates are READ from the
+        // constants that own them, so re-sourcing one moves this sentence with it.
+        $home = $household->primaryResidence;
+        $assumedLetting = self::keepsCurrentHome($variant) ? ($home?->assumedLettingRates() ?? []) : [];
+        if ($assumedLetting !== []) {
+            $covers = [
+                'management' => 'for letting-agent management, VAT included',
+                'void' => 'for the weeks the property stands empty between tenants',
+                'maintenance' => 'for repairs, the inventory, and the gas and electrical safety certificates',
+            ];
+            $parts = [];
+            foreach ($assumedLetting as $which => $rate) {
+                $parts[] = self::ratePct($rate->asPercent()).' '.$covers[$which];
+            }
+            $last = array_pop($parts);
+            $list = $parts === [] ? (string) $last : implode(', ', $parts).' and '.$last;
+            $total = self::ratePct($home?->lettingCostRate()->asPercent() ?? 0.0);
+            $out[] = "You didn't say what letting this property costs you, so we've taken "
+                .$list.' off the rent, '
+                ."{$total} of it in all. Gross rent is the one figure a landlord never receives, and leaving "
+                .'those costs out does not just flatter a letting plan: on a single flat they are usually about a '
+                .'quarter of the rent, which is enough to turn what looks like money coming in into money going '
+                .'out. If you self-manage, or you have a long-standing tenant, enter your own figures.';
+        }
+
         // How widely the home's value is modelled as swinging. The set's house volatility is an
         // INDEX figure, and an index averages a whole market, so the property-specific half of the
         // risk has already been diversified out of it. One flat can be re-rated by its block, its
@@ -1724,6 +1751,26 @@ final class ResultPresenter
                 .'well be worth it while you live there — but the trade is that far less is left to inherit, so compare '
                 .'this against a plan that keeps bricks-and-mortar before deciding. The 10% sale commission is not '
                 .'included in these figures.'];
+        }
+
+        // (c4b) LETTING CAVEATS. Card 0030: what this tool does and does not model about letting a
+        // home used to live in a docblock, where the person reading the forecast could not see it.
+        // Three of the gaps are large enough to decide the plan on their own, so they are stated on
+        // the result: a minimum-energy-efficiency retrofit is a five-figure bill nobody has costed,
+        // a lease usually forbids subletting without the freeholder's consent (so the plan may not
+        // be available at all), and the council tax on the let flat is still charged to the
+        // household although a tenant normally pays it. Factual, not advice.
+        if ($home !== null && $home->isLet) {
+            $notes[] = ['kind' => 'letting_caveats', 'text' => 'This plan lets your home out, and three things about that '
+                .'are not in the figures. First, your lease: most leases need the freeholder\'s written consent before '
+                .'you sublet and some forbid it outright, and a licence to sublet usually costs a fee, so check the '
+                .'lease before you count on this plan at all. Second, energy efficiency: a let home has to meet a '
+                .'minimum standard, and the proposed rise to EPC C by 2030 would put either a five-figure retrofit or '
+                .'a formal exemption application in front of you, and neither is costed here. Third, council tax: we '
+                .'keep charging you this home\'s running costs in full, council tax included, although a tenant '
+                .'normally pays that, so the running costs here are on the cautious side. Two consequences of letting '
+                .'ARE in the figures: the equity stops counting as your exempt main home for Pension Credit, and time '
+                .'spent let reduces the Private Residence Relief on a later sale.'];
         }
 
         // (c5) ASSUMED FIGURES. Standing rule (Rob, 2026-07-30): the model must never use a figure

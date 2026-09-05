@@ -11,6 +11,7 @@ use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
+use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
@@ -37,7 +38,16 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-05 (single-property-house-risk): a per-property growth override now sets the MEAN
+     * Bumped 2026-09-05 (letting-costs): a LET property no longer earns its rent gross. The agent's
+     * fee, the empty weeks between tenants and the repairs and safety certificates come off it
+     * ({@see Property::DEFAULT_LETTING_MANAGEMENT_BPS} and its
+     * siblings, about a quarter of gross rent between them), and the let home's service charge is
+     * deducted as a letting expense rather than taxed as profit. The Section 24 credit is now read
+     * off that PROFIT instead of gross rent. Any let-to-let plan stored earlier banks rent it would
+     * never receive and is over-relieved on it, so its wealth, depletion year and success odds are
+     * too favourable, and its tax is understated where the letting costs exceed the credit lost.
+     * A plan whose home is not let is byte-identical. See board card 0030.
+     * Previous bump 2026-09-05 (single-property-house-risk): a per-property growth override now sets the MEAN
      * the sampled house path is centred on instead of replacing that path, and the home is moved over
      * a SINGLE-PROPERTY spread rather than an index one
      * ({@see AssumptionSet::SINGLE_PROPERTY_VOLATILITY_MULTIPLE}). The central projection is
@@ -95,7 +105,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/single-property-house-risk';
+    public const ENGINE_VERSION = 'finance-engine/letting-costs';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

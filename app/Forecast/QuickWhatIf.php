@@ -6,6 +6,7 @@ namespace App\Forecast;
 
 use App\Models\Scenario;
 use Illuminate\Support\Str;
+use RetireForecast\FinanceEngine\Dto\Property;
 
 /**
  * One-click what-ifs for the common questions a reader asks of a forecast ("what if I
@@ -115,11 +116,13 @@ final class QuickWhatIf
      * home)" essential cost (the rent-leg figure if set, else ~4% of value). Returns null with no
      * property to let.
      *
-     * The let home is flagged {@see \RetireForecast\FinanceEngine\Dto\Property::$isLet}, so its
-     * equity counts as assessable capital in the pension-age means test — letting it out erodes
-     * Pension Credit and can cross the £16k cliff, as in life. v1 caveats still flagged: BTL
-     * mortgage-interest tax relief and letting voids/costs are not modelled, and the retained
-     * mortgage is not netted off displayed wealth.
+     * The let home is flagged {@see Property::$isLet}, which is
+     * the discriminator for everything about letting: its equity counts as assessable capital in
+     * the pension-age means test (letting it out erodes Pension Credit and can cross the £16k
+     * cliff, as in life), its mortgage interest earns the Section 24 credit, and the agent's fee,
+     * the empty weeks and the repairs come off the gross rent before it is banked or taxed. What
+     * is still NOT modelled is on the RESULT, not in this comment: see the `letting_caveats` note
+     * in {@see ResultPresenter::inputNotes()}.
      *
      * @param  array<string, mixed>  $state
      * @return array<string, mixed>|null

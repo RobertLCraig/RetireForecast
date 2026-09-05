@@ -862,6 +862,17 @@ final class PathProjector
             $src['pension_drawdown'] += $wd['taxable'];
         }
 
+        // Letting a property does not earn its rent (board card 0030). Where the home is LET, the
+        // agent's fee, the empty weeks between tenants, the repairs and safety certificates, and
+        // the service charge on the building all come off the gross rent before it is either
+        // banked or taxed. Applied here, once, to the owner's taxable income, so the cash the
+        // household keeps and the profit HMRC sees can never disagree about the same let.
+        $lettingCosts = $this->lettingCostsPerOwner($household, $state, $alive, $ages, $cumInflation, $yearIndex);
+        foreach ($lettingCosts as $ownerId => $cost) {
+            $taxablePerPerson[$ownerId] -= $cost;
+            $src['other_taxable'] -= $cost;
+        }
+
         // Annuity income from any purchased annuities: a guaranteed lifetime income, taxable
         // like other income, paid to the surviving partner at the joint fraction after the
         // annuitant dies. Assigned before the tax pass so it is taxed and counts as assessable
@@ -959,8 +970,9 @@ final class PathProjector
         // here the household tax falls by 20% × min(interest, rental income). Without this the
         // rent was taxed at the full marginal rate with no relief for the interest — overstating
         // the tax on a let property. v1: household-level (joint-ownership split not separated),
-        // rental profit approximated by rental income (no other let-expenses modelled), capped at
-        // the tax due (a reducer cannot create a refund).
+        // capped at the tax due (a reducer cannot create a refund). The base is the rental PROFIT,
+        // which since card 0030 is the rent NET of the letting costs deducted above; while profit
+        // was approximated by gross rent, a mortgaged let was relieved on rent it never kept.
         // The relievable finance cost is mortgage INTEREST only — capital repaid never attracts
         // relief. An amortising loan knows its own interest for the year (falling as the balance
         // falls); otherwise the whole Mortgage expense line is interest (an interest-only loan).
@@ -972,8 +984,8 @@ final class PathProjector
             ? (int) round($state['repaymentSchedule']->interestIn($calendarYear)->pence * $state['ownershipShare'])
             : $household->expenseProfile->mortgageCosts()->pence;
         if (($household->primaryResidence?->isLet ?? false) && $financeCost > 0) {
-            $rentalIncome = $this->rentalIncomeNominal($household, $alive, $ages, $cumInflation);
-            $reducerBase = min($financeCost, $rentalIncome);
+            $rentalProfit = max(0, array_sum($this->rentalIncomePerOwner($household, $alive, $ages, $cumInflation)) - array_sum($lettingCosts));
+            $reducerBase = min($financeCost, $rentalProfit);
             $credit = min(
                 (int) round($reducerBase * $this->config->incomeTax->basicRate->asFraction()),
                 $totalTaxNominal,
@@ -1594,16 +1606,18 @@ final class PathProjector
     }
 
     /**
-     * The household's rental income this year (nominal), across every living owner — the base for
-     * the buy-to-let finance-cost tax reducer. Only {@see IncomeStreamType::Rental} streams count,
-     * so a generic "other" income is not mistaken for rent.
+     * The household's GROSS rental income this year (nominal), split by the owner who receives it.
+     * Only {@see IncomeStreamType::Rental} streams count, so a generic "other" income is not
+     * mistaken for rent. Split rather than totalled because the letting costs it carries are
+     * deducted from the owner's own taxable income, and the UK taxes people individually.
      *
      * @param  array<string, bool>  $alive
      * @param  array<string, int>  $ages
+     * @return array<string, int> ownerId => gross rent in nominal pence
      */
-    private function rentalIncomeNominal(Household $household, array $alive, array $ages, float $cumInflation): int
+    private function rentalIncomePerOwner(Household $household, array $alive, array $ages, float $cumInflation): array
     {
-        $total = 0;
+        $gross = [];
         foreach ($household->incomeStreams as $stream) {
             if ($stream->type !== IncomeStreamType::Rental || ! ($alive[$stream->ownerId] ?? false)) {
                 continue;
@@ -1612,12 +1626,86 @@ final class PathProjector
             if ($age < $stream->startAge || ($stream->endAge !== null && $age > $stream->endAge)) {
                 continue;
             }
-            $total += $stream->inflationLinked
+            $gross[$stream->ownerId] = ($gross[$stream->ownerId] ?? 0) + ($stream->inflationLinked
                 ? (int) round($stream->grossAnnual->pence * $cumInflation)
-                : $stream->grossAnnual->pence;
+                : $stream->grossAnnual->pence);
         }
 
-        return $total;
+        return $gross;
+    }
+
+    /**
+     * What letting the home COSTS each owner this year (nominal pence), to be taken off their gross
+     * rent. Empty unless the primary residence is let and still owned.
+     *
+     * Until board card 0030 a let property earned its rent GROSS: no agent, no empty weeks between
+     * tenants, no repairs or safety certificates, and a service charge charged as the household's
+     * own shopping while the whole rent was taxed as profit. Two deductions fix that, and both are
+     * ordinary allowable letting expenses, so taking them off here corrects the cash the household
+     * banks AND the profit it is taxed on in one place:
+     *
+     *  - the percentage costs, {@see Property::lettingCostRate()} (management, void, maintenance);
+     *  - the let home's SERVICE CHARGE, its ground rent and its levies, apportioned across the
+     *    owners pro rata to their gross rent. That bill is still charged as spend (they really do
+     *    pay it, so the cash is unchanged); what changes is that it stops being taxed as though
+     *    they had not.
+     *
+     * Each owner's deduction is CAPPED at their own gross rent. Expenses above the rent are a
+     * rental loss, which in law is carried forward against future rental profit rather than set
+     * against other income; the engine does not model the carry-forward, so the year floors at nil
+     * profit rather than sheltering a pension it could not shelter.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     * @param  array<string, int>  $ages
+     * @return array<string, int> ownerId => pence to deduct from that owner's rental income
+     */
+    private function lettingCostsPerOwner(Household $household, array $state, array $alive, array $ages, float $cumInflation, int $yearIndex): array
+    {
+        $home = $household->primaryResidence;
+        if ($home === null || ! $home->isLet || $state['homeSold']) {
+            return [];
+        }
+
+        $gross = $this->rentalIncomePerOwner($household, $alive, $ages, $cumInflation);
+        $total = array_sum($gross);
+        if ($total <= 0) {
+            return [];
+        }
+
+        $rate = $home->lettingCostRate()->asFraction();
+        $expense = $this->propertyCostsNominal($household, $state, $alive, $yearIndex);
+
+        $costs = [];
+        foreach ($gross as $ownerId => $rent) {
+            $costs[$ownerId] = min($rent, (int) round($rent * $rate) + (int) round($expense * $rent / $total));
+        }
+
+        return $costs;
+    }
+
+    /**
+     * The home-ownership cost bucket (service charge, ground rent, levies) in nominal pence this
+     * year: the bucket, compounded at its own real growth for $yearIndex years, then carried up by
+     * the CPI and survivor factors every spend line rides. It mirrors the arithmetic the spend
+     * target applies to the same bucket a few dozen lines below, and reads the same two figures off
+     * {@see ExpenseProfile}, so a re-sourced bucket or rate moves both together.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     */
+    private function propertyCostsNominal(Household $household, array $state, array $alive, int $yearIndex): int
+    {
+        $profile = $household->expenseProfile;
+        $bucket = $profile->propertyCosts()->pence;
+        if ($bucket <= 0) {
+            return 0;
+        }
+
+        $survivor = count(array_filter($alive)) === 1 ? $profile->survivorSpendFactor->asFraction() : 1.0;
+        $escalated = $bucket * ((1.0 + $profile->propertyCostsRealGrowth()->asFraction()) ** $yearIndex);
+
+        return (int) round($escalated * $state['spendFactor'] * $survivor);
     }
 
     /**

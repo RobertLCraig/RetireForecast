@@ -112,6 +112,49 @@ final class InputNotesTest extends TestCase
         $this->assertNotContains('spending_smile', array_column($notes, 'kind'));
     }
 
+    /**
+     * @param  array<string, mixed>  $property
+     * @return list<array{kind: string, text: string}>
+     */
+    private function landlordNotes(array $property): array
+    {
+        return $this->notes([
+            'householdName' => 'Landlord', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Alex', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'incomeStreams' => [['id' => 'i1', 'ownerId' => 'p1', 'type' => 'rental', 'grossAnnual' => '18000',
+                'taxable' => true, 'inflationLinked' => true, 'startAge' => 0]],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => ['currentValue' => '350000', 'ownership' => 'outright'] + $property,
+        ]);
+    }
+
+    public function test_a_let_plan_shows_the_letting_caveats_on_the_result(): void
+    {
+        // Card 0030. The caveats on letting a home used to live in a docblock, where nobody reading
+        // the forecast could see them: the deductions taken, the energy-efficiency retrofit that is
+        // not modelled, and the freeholder's consent a lease usually needs before you sublet at all.
+        $notes = $this->landlordNotes(['isLet' => true]);
+
+        $kinds = array_column($notes, 'kind');
+        $this->assertContains('letting_caveats', $kinds);
+        $text = $notes[array_search('letting_caveats', $kinds, true)]['text'];
+
+        $this->assertStringContainsString('EPC', $text, 'the minimum energy efficiency standard is unmodelled and must be said');
+        $this->assertStringContainsString('freeholder', $text, 'a lease usually needs consent to sublet, and may forbid it');
+        $this->assertStringContainsString('council tax', $text, 'the model still charges it although a tenant normally pays it');
+    }
+
+    public function test_a_home_they_live_in_raises_no_letting_note(): void
+    {
+        // No noise: none of it applies to a household living in their own home.
+        $this->assertNotContains('letting_caveats', array_column($this->landlordNotes([]), 'kind'));
+    }
+
     public function test_a_retirement_age_at_or_below_current_age_flags_no_salary(): void
     {
         // Born 1960 ⇒ age 66 in 2026; employed with a retirement age of 60 ⇒ no salary modelled.

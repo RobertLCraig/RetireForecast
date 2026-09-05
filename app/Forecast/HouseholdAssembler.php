@@ -620,6 +620,11 @@ final class HouseholdAssembler
             mortgageRollUpRate: $this->percent($p['mortgageRollUpRate'] ?? null),
             mortgageOverpaymentAnnual: $this->money($p['mortgageOverpayment'] ?? null),
             repaymentTerms: $this->repaymentTermsFrom($p, $saleYear),
+            // What letting costs, as a share of gross rent. Blank means "no figure given" and takes
+            // the engine's disclosed default; an explicit 0 is the reader's own figure and wins.
+            lettingManagementRate: $this->percent($p['lettingManagementRate'] ?? null),
+            lettingVoidRate: $this->percent($p['lettingVoidRate'] ?? null),
+            lettingMaintenanceRate: $this->percent($p['lettingMaintenanceRate'] ?? null),
         );
     }
 

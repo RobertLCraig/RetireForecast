@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
+use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
@@ -39,7 +40,7 @@ final class AssumedFiguresDisclosureTest extends TestCase
      * @param  list<array<string, mixed>>|null  $expenseLines
      * @return list<string> the assumed-figure disclosures a reader would see
      */
-    private function disclosures(array $housing, string $currentRunningCosts = '', string $accountType = 'isa', ?array $expenseLines = null, ?string $propertyCostsGrowthPct = null, ?AssumptionSet $set = null, ?string $variant = null): array
+    private function disclosures(array $housing, string $currentRunningCosts = '', string $accountType = 'isa', ?array $expenseLines = null, ?string $propertyCostsGrowthPct = null, ?AssumptionSet $set = null, ?string $variant = null, array $property = []): array
     {
         $state = [
             'householdName' => 'Movers', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
@@ -52,7 +53,7 @@ final class AssumedFiguresDisclosureTest extends TestCase
                 'propertyCostsGrowthPct' => $propertyCostsGrowthPct,
             ], static fn (?string $v): bool => $v !== null),
             'hasProperty' => true,
-            'property' => ['currentValue' => '400000', 'ownership' => 'outright', 'runningCosts' => $currentRunningCosts],
+            'property' => ['currentValue' => '400000', 'ownership' => 'outright', 'runningCosts' => $currentRunningCosts] + $property,
             'housing' => $housing,
         ];
 
@@ -228,6 +229,50 @@ final class AssumedFiguresDisclosureTest extends TestCase
             set: AssumptionSetLibrary::default(),
             variant: 'rent',
         ));
+    }
+
+    public function test_the_assumed_letting_costs_are_disclosed_with_their_values(): void
+    {
+        // Card 0030. A let property used to earn its rent GROSS: no agent, no empty weeks, no
+        // repairs. The engine now takes a quarter of the rent off for the reader, which changes
+        // whether letting the home pays at all, so each rate must be on the screen with its value.
+        $disclosures = $this->disclosures(
+            ['salePrice' => '400000'],
+            property: ['isLet' => true],
+        );
+
+        $this->assertCount(1, $disclosures);
+        $this->assertStringContainsString(self::pct(Property::DEFAULT_LETTING_MANAGEMENT_BPS / 100).'% for letting-agent', $disclosures[0]);
+        $this->assertStringContainsString(self::pct(Property::DEFAULT_LETTING_VOID_BPS / 100).'% for the weeks', $disclosures[0]);
+        $this->assertStringContainsString(self::pct(Property::DEFAULT_LETTING_MAINTENANCE_BPS / 100).'% for repairs', $disclosures[0]);
+    }
+
+    public function test_only_the_letting_rates_the_reader_left_blank_are_reported_as_assumed(): void
+    {
+        // No noise, and no overriding: a landlord who manages the let themselves entered 0%, so the
+        // engine must not claim to have assumed a management fee it never charged them.
+        $disclosures = $this->disclosures(
+            ['salePrice' => '400000'],
+            property: ['isLet' => true, 'lettingManagementRate' => '0'],
+        );
+
+        $this->assertCount(1, $disclosures);
+        $this->assertStringNotContainsString('letting-agent', $disclosures[0]);
+        $this->assertStringContainsString(self::pct(Property::DEFAULT_LETTING_VOID_BPS / 100).'% for the weeks', $disclosures[0]);
+    }
+
+    public function test_nothing_is_assumed_about_letting_when_the_reader_gave_every_rate(): void
+    {
+        $this->assertSame([], $this->disclosures(
+            ['salePrice' => '400000'],
+            property: ['isLet' => true, 'lettingManagementRate' => '10', 'lettingVoidRate' => '4', 'lettingMaintenanceRate' => '6'],
+        ));
+    }
+
+    public function test_nothing_is_assumed_about_letting_a_home_they_live_in(): void
+    {
+        // The deduction hangs off the let flag alone, so a residence must be told nothing about it.
+        $this->assertSame([], $this->disclosures(['salePrice' => '400000']));
     }
 
     /** A rate as the disclosures write it: 18.0 -> "18", 2.50 -> "2.5". */

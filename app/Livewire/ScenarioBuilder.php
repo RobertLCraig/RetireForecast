@@ -426,6 +426,13 @@ class ScenarioBuilder extends Component
             $rules['property.runningCosts'] = $money;
             $rules['property.growthAssumptionOverride'] = $rate;
             $rules['property.ownershipShare'] = ['nullable', 'numeric', 'min:0', 'max:100'];
+            // Letting the home out, and what that costs as a share of gross rent. Each rate is
+            // blank by default, which takes the engine's disclosed default; an explicit 0 is the
+            // reader's own figure. Capped at 100%: a cost above the whole rent is a typo.
+            $rules['property.isLet'] = ['boolean'];
+            $rules['property.lettingManagementRate'] = ['nullable', 'numeric', 'min:0', 'max:100'];
+            $rules['property.lettingVoidRate'] = ['nullable', 'numeric', 'min:0', 'max:100'];
+            $rules['property.lettingMaintenanceRate'] = ['nullable', 'numeric', 'min:0', 'max:100'];
             // What happens when the mortgage term ends (only acts when a redemption year is set).
             $rules['property.mortgageRedemptionYear'] = ['nullable', 'integer', 'min:2020', 'max:2100'];
             $rules['property.mortgageMaturityAction'] = ['nullable', Rule::in(['refinance', 'repay_from_capital', 'forced_sale'])];
@@ -726,6 +733,13 @@ class ScenarioBuilder extends Component
             $this->property['mortgageRepaymentRate'] ??= '';
             $this->property['mortgageRepaymentInitialMonths'] ??= '';
             $this->property['mortgageRepaymentRevertRate'] ??= '';
+            // A property saved before the letting inputs existed has none of these keys; default
+            // the flag off and the rates blank, which is exactly the old behaviour (a home they
+            // live in, with no letting costs to charge).
+            $this->property['isLet'] ??= false;
+            $this->property['lettingManagementRate'] ??= '';
+            $this->property['lettingVoidRate'] ??= '';
+            $this->property['lettingMaintenanceRate'] ??= '';
         }
 
         // A scenario saved before the bought-home cost/growth inputs existed has neither key;
@@ -1661,6 +1675,10 @@ class ScenarioBuilder extends Component
     {
         return [
             'currentValue' => '', 'ownership' => 'outright', 'everLet' => false,
+            // Letting the home out and living elsewhere. Off by default, and the three cost rates
+            // are blank, so a scenario predating them (and a what-if that changes nothing) records
+            // no delta. Blank is not zero: it takes the engine's disclosed default.
+            'isLet' => false, 'lettingManagementRate' => '', 'lettingVoidRate' => '', 'lettingMaintenanceRate' => '',
             'outstandingMortgage' => '', 'runningCosts' => '', 'growthAssumptionOverride' => '', 'ownershipShare' => '',
             'mortgageRedemptionYear' => '', 'mortgageMaturityAction' => 'refinance', 'mortgageRollUpRate' => '',
             'mortgageOverpayment' => '',

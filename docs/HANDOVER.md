@@ -7,6 +7,22 @@
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
 _Last updated: 2026-09-05. The exceptions a fresh session needs, newest first:_
 
+- **A let property no longer earns its rent gross.** Card 0030: three rates on `Property`
+  (`lettingManagementRate()` / `lettingVoidRate()` / `lettingMaintenanceRate()`, defaults 12% / 8% /
+  5%, a quarter of gross rent) come off every `IncomeStreamType::Rental` stream when the home is
+  `isLet`, and the let home's service charge is deducted from rental profit instead of being taxed as
+  though it were not paid. The Section 24 credit is read off that profit, not gross rent. All three
+  rates are builder inputs (step 3, shown once the home is flagged as let, alongside a new `isLet`
+  checkbox that had no control before) and are disclosed as `assumed_figure` notes reading their own
+  constants; a new `letting_caveats` note states the freeholder-consent, EPC C and council-tax gaps
+  that were previously only in a docblock. **Every let-to-let plan banks less rent and is taxed on
+  less profit, so its stored wealth, depletion year and success odds are too favourable**; a home the
+  household lives in is byte-identical. `ENGINE_VERSION` is `finance-engine/letting-costs` and the
+  **stored-scenario re-run is owed** (built in a worktree). The 12/8/5 is the 2026-08-19 property
+  reviewer's judgement, not a published series; that is the third sourcing gap in
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§14) and is raised as card 0087. The adjacent
+  fault, that a let home's own running costs are still charged as household spend (council tax and
+  all) and are not deducted from profit either, is raised as card 0088.
 - **An overridden home is no longer a certainty, and one home is now modelled over double the index
   volatility.** Card 0029: `PathDraws::propertyGrowthReal($yearIndex, $meanReal)` replaces
   `houseGrowthReal()`. A property growth override used to REPLACE the sampled house path, so a park

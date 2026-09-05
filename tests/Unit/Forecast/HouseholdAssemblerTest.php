@@ -12,6 +12,7 @@ use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
+use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
@@ -436,6 +437,27 @@ class HouseholdAssemblerTest extends TestCase
 
         $this->assertNull($action->buyRunningCosts);
         $this->assertNull($action->buyGrowthOverride);
+    }
+
+    public function test_the_letting_cost_rates_a_reader_enters_reach_the_property(): void
+    {
+        // Card 0030 requires each letting cost to be EDITABLE, which means the form key has to
+        // reach the DTO the engine reads. An explicit 0 must survive as a real zero (the reader
+        // manages the let themselves), not be lost and quietly replaced by the 12% default.
+        $state = BuilderStateFixture::full();
+        $state['property']['isLet'] = true;
+        $state['property']['lettingManagementRate'] = '0';
+        $state['property']['lettingVoidRate'] = '4.5';
+
+        $property = (new HouseholdAssembler)->household($state)->primaryResidence;
+
+        $this->assertSame(0, $property?->lettingManagementRate()->basisPoints);
+        $this->assertSame(450, $property?->lettingVoidRate()->basisPoints);
+        $this->assertSame(
+            Property::DEFAULT_LETTING_MAINTENANCE_BPS,
+            $property?->lettingMaintenanceRate()->basisPoints,
+            'the rate left blank still takes the disclosed default',
+        );
     }
 
     public function test_cgt_history_reduces_the_occupation_timeline_to_months(): void

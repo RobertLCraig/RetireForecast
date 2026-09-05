@@ -206,6 +206,31 @@ cash **−0.5%**.
    source was fetched for the multiple itself**, because the unattended build loop has no web access.
    Board card **0086** carries pinning it to a published estimate of UK single-property dispersion.
    **Confirm you are happy with 2.0x until that lands.**
+14. **Letting a property costs 25% of gross rent when no rates are entered (added 2026-09-05;
+   verified_on 2026-08-19; lives in `Property::DEFAULT_LETTING_MANAGEMENT_BPS` and its two siblings).**
+   Three rates, applied only to a home flagged as let: **12% management** (a fully managed agent
+   service, VAT included), **8% void** (the weeks it stands empty between tenancies, about a month a
+   year on a single property), and **5% maintenance** (repairs, the inventory, the annual gas safety
+   certificate and the five-yearly electrical report). Gross rent is the one figure a landlord never
+   receives, and until now the model took it gross. The void is lost rent rather than a bill, but the
+   arithmetic is the same, so all three come off together.
+   **Why it matters more than its size suggests.** Leaving these out does not merely flatter a
+   let-to-let plan, it can invert its sign: on the reviewed real case, a quarter of gross rent plus the
+   service charge turned a modelled positive contribution into a real cash loss. The same change makes
+   the Section 24 finance-cost credit read off rental PROFIT rather than gross rent, which is what the
+   statute says, so a mortgaged let is no longer relieved on rent it never kept.
+   **Why these three values.** Per the adverse-default rule the shipped figures are the cautious end of
+   the reviewed range. Each is user-editable per scenario (builder step 3, shown once the home is
+   flagged as let) and disclosed as an assumed figure on the results page reading the constant. An
+   explicit rate, **including an explicit zero**, always wins, so a landlord who self-manages sets
+   management to nil.
+   **⚠️ SOURCING GAP, the third in this document.** The three figures are the judgement of the property
+   reviewer in the five-discipline expert review of **2026-08-19** (gitignored
+   `docs/REVIEW-PANEL-2026-08-19.local.md`; board card 0030). They sit squarely inside the ranges the
+   letting industry quotes, but **no primary source was fetched**, because the unattended build loop has
+   no web access. Board card **0087** carries pinning them to published data (a letting-agent fee survey,
+   an ARLA/Propertymark void statistic, and a landlord repairs-cost series).
+   **Confirm you are happy with 12% / 8% / 5% until that lands.**
 
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees
