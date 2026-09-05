@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
+use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
@@ -125,6 +126,25 @@ final class AssumptionsPanelTest extends TestCase
         // 1.5% of £300,000 = £4,500, shown with its basis.
         $this->assertStringContainsString('1.5% of sale', $this->value($full['housing'], 'Selling cost — Estate agent'));
         $this->assertStringContainsString(Money::fromPounds(4_500)->format(), $this->value($full['housing'], 'Selling cost — Estate agent'));
+    }
+
+    public function test_the_assumed_selling_cost_rate_is_read_from_the_engine_constant(): void
+    {
+        // Card 0032. This row is the only place a reader is ever told what the engine charges to
+        // sell when they itemised nothing, and it used to RESTATE "2%" in the presenter. A
+        // restated figure is exactly the drift the no-invisible-figures rule exists to stop: the
+        // engine's rate moved to the all-in leasehold figure and the screen would have kept
+        // claiming 2%, which is worse than saying nothing. It reads the constant now.
+        $panel = $this->panel(new HousingAction(salePrice: Money::fromPounds(300_000)));
+        $value = $this->value($panel['housing'], 'Selling costs');
+
+        $rate = Percent::fromBasisPoints(HousingProceeds::DEFAULT_SELLING_COST_RATE_BP);
+        $pct = rtrim(rtrim(number_format($rate->asPercent(), 2, '.', ''), '0'), '.');
+
+        $this->assertStringContainsString("{$pct}% of the sale price", $value);
+        $this->assertStringContainsString('assumed', $value);
+        // And the pounds it actually comes to, so the rate is not the only thing on the screen.
+        $this->assertStringContainsString(Money::fromPounds(300_000)->applyRate($rate)->format(), $value);
     }
 
     public function test_with_no_overrides_the_panel_is_not_customised_and_no_row_is_edited(): void

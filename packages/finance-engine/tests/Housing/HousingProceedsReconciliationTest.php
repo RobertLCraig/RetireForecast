@@ -22,6 +22,7 @@ use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
+use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\HousingPurchase;
 use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -101,13 +102,70 @@ final class HousingProceedsReconciliationTest extends TestCase
         $this->assertSame(0, $proceeds->capitalGainsTax->pence);
     }
 
-    public function test_selling_costs_apply_the_default_two_percent(): void
+    public function test_selling_costs_apply_the_engine_default_all_in_rate(): void
     {
         $proceeds = $this->comparison()->saleProceeds($this->household(), new HousingAction(salePrice: Money::fromPounds(400_000)));
 
-        // 2% of £400,000 = £8,000; net = 400,000 − 0 − 8,000 − 0.
-        $this->assertSame(Money::fromPounds(8_000)->pence, $proceeds->sellingCosts->pence);
-        $this->assertSame(Money::fromPounds(392_000)->pence, $proceeds->netProceeds->pence);
+        // The rate is READ from the constant that owns it, so re-sourcing it moves this test with
+        // it rather than leaving a stale figure pinned here (card 0032 raised it from 2% to 4%,
+        // the all-in cost of a leasehold sale plus the move).
+        $expected = Money::fromPounds(400_000)->applyRate(Percent::fromBasisPoints(HousingProceeds::DEFAULT_SELLING_COST_RATE_BP));
+        $this->assertSame($expected->pence, $proceeds->sellingCosts->pence);
+        $this->assertSame(Money::fromPounds(400_000)->minus($expected)->pence, $proceeds->netProceeds->pence);
+    }
+
+    public function test_the_engine_default_selling_cost_rate_is_priced_for_a_leasehold_sale(): void
+    {
+        // Card 0032. 2% was a freehold-house figure: it paid the agent and little else, and the
+        // whole buy-vs-rent comparison is built on the net proceeds it comes off. A leasehold sale
+        // also pays leasehold conveyancing, the managing agent's management pack, the licence to
+        // assign and the notice fees, and the household still has to move.
+        $this->assertSame(400, HousingProceeds::DEFAULT_SELLING_COST_RATE_BP);
+    }
+
+    public function test_a_disposal_that_charges_cgt_is_charged_for_preparing_the_sixty_day_return(): void
+    {
+        // Card 0032. A UK residential disposal on which CGT is due must be reported and paid
+        // within 60 days, and that return is prepared by an accountant. It is not optional, so it
+        // is a real cost of the sale — but it is NOT an allowable deduction from the gain, so it
+        // must not move the tax. Same partial-PRR household as the CGT test below.
+        $proceeds = $this->comparison()->saleProceeds($this->partiallyRelievedHousehold(), new HousingAction(salePrice: Money::fromPounds(400_000)));
+
+        $fee = Money::fromPence(HousingProceeds::CGT_RETURN_FEE_PENCE);
+        $labels = array_column($proceeds->sellingCostBreakdown, 'label');
+        $this->assertContains(HousingProceeds::CGT_RETURN_LABEL, $labels, 'the return has to be itemised, not folded into conveyancing');
+
+        $line = $proceeds->sellingCostBreakdown[array_search(HousingProceeds::CGT_RETURN_LABEL, $labels, true)];
+        $this->assertSame($fee->pence, $line['amount']->pence);
+
+        // It reaches the money: the total selling cost carries it, the breakdown still sums to
+        // that total, and the sale-price identity still holds with the fee inside it.
+        $summed = array_sum(array_map(static fn (array $l): int => $l['amount']->pence, $proceeds->sellingCostBreakdown));
+        $this->assertSame($proceeds->sellingCosts->pence, $summed);
+        $this->assertSame(
+            $proceeds->salePrice->pence,
+            $proceeds->netProceeds->pence + $proceeds->outstandingMortgage->pence + $proceeds->sellingCosts->pence + $proceeds->capitalGainsTax->pence,
+        );
+    }
+
+    public function test_the_capital_gains_return_fee_does_not_reduce_the_taxable_gain(): void
+    {
+        // The cost of computing a tax is not an incidental cost of disposal (TCGA 1992 s.38), so
+        // charging it must leave the gain, and therefore the tax, exactly where it was. This is
+        // also what keeps the charge from being circular: the fee is decided by the tax.
+        $proceeds = $this->comparison()->saleProceeds($this->partiallyRelievedHousehold(), new HousingAction(salePrice: Money::fromPounds(400_000)));
+
+        $this->assertNotNull($proceeds->capitalGainsDetail);
+        $this->assertSame(Money::fromPounds(108_225)->pence, $proceeds->capitalGainsDetail->chargeableGain->pence);
+    }
+
+    public function test_a_fully_relieved_sale_is_not_charged_for_a_capital_gains_return(): void
+    {
+        // No noise, and no invented cost: a main home relieved in full owes no CGT, so there is no
+        // 60-day return to prepare and nothing to charge for it.
+        $proceeds = $this->comparison()->saleProceeds($this->household(), new HousingAction(salePrice: Money::fromPounds(400_000)));
+
+        $this->assertNotContains(HousingProceeds::CGT_RETURN_LABEL, array_column($proceeds->sellingCostBreakdown, 'label'));
     }
 
     public function test_a_single_percent_selling_cost_component_is_honoured(): void
@@ -148,12 +206,13 @@ final class HousingProceedsReconciliationTest extends TestCase
         $this->assertSame($proceeds->sellingCosts->pence, $summed);
     }
 
-    public function test_a_let_property_is_charged_partial_prr_cgt_and_still_reconciles(): void
+    /**
+     * Bought £150k, sold £400k, lived in 120 of 240 months then let — so Private Residence Relief
+     * is only partial and the sale carries a real CGT charge.
+     */
+    private function partiallyRelievedHousehold(): Household
     {
-        // Bought £150k, sold £400k, lived in 120 of 240 months then let. Default 2% selling cost
-        // = £8,000, so gain = 400,000 − 150,000 − 8,000 = £242,000. Relief = (120+9)/240 × gain =
-        // £130,075; chargeable £111,925; less £3,000 = £108,925 @ 24% = £26,142.
-        $household = new Household(
+        return new Household(
             'Let',
             RegionProfile::EnglandWalesNi,
             [new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired)],
@@ -171,12 +230,18 @@ final class HousingProceedsReconciliationTest extends TestCase
                 ),
             ),
         );
+    }
 
-        $proceeds = $this->comparison()->saleProceeds($household, new HousingAction(salePrice: Money::fromPounds(400_000)));
+    public function test_a_let_property_is_charged_partial_prr_cgt_and_still_reconciles(): void
+    {
+        // Default 4% selling cost = £16,000, so gain = 400,000 − 150,000 − 16,000 = £234,000.
+        // Relief = (120+9)/240 × gain = £125,775; chargeable £108,225; less £3,000 = £105,225
+        // @ 24% = £25,254.
+        $proceeds = $this->comparison()->saleProceeds($this->partiallyRelievedHousehold(), new HousingAction(salePrice: Money::fromPounds(400_000)));
 
-        $this->assertSame(Money::fromPounds(26_142)->pence, $proceeds->capitalGainsTax->pence);
+        $this->assertSame(Money::fromPounds(25_254)->pence, $proceeds->capitalGainsTax->pence);
         $this->assertNotNull($proceeds->capitalGainsDetail);
-        $this->assertSame(Money::fromPounds(111_925)->pence, $proceeds->capitalGainsDetail->chargeableGain->pence);
+        $this->assertSame(Money::fromPounds(108_225)->pence, $proceeds->capitalGainsDetail->chargeableGain->pence);
         // The boundary identity still holds with a real CGT charge: sale = net + mortgage + costs + CGT.
         $this->assertSame(
             $proceeds->salePrice->pence,
@@ -196,7 +261,7 @@ final class HousingProceedsReconciliationTest extends TestCase
 
     public function test_buy_outcome_reconciles_net_proceeds_to_purchase_plus_surplus(): void
     {
-        // Sell £400k (no mortgage) → net £392k after 2% costs; buy a £200k home.
+        // Sell £400k (no mortgage) → net £384k after 4% costs; buy a £200k home.
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(200_000));
         $outcome = $this->comparison()->buyOutcome($this->household(), $action);
 
@@ -227,8 +292,8 @@ final class HousingProceedsReconciliationTest extends TestCase
         $this->assertSame(0, $outcome->surplus->pence);
         $this->assertSame(0, $outcome->mortgage->pence, 'a cash-only buy borrows nothing');
         $this->assertSame(0, $outcome->fundedFromSavings->pence, 'no savings to draw');
-        // Net £392k vs £500k + £15k SDLT + £2k moving = £517k total cost → £125k unfunded.
-        $this->assertSame(Money::fromPounds(125_000)->pence, $outcome->unfundedGap->pence);
+        // Net £384k vs £500k + £15k SDLT + £2k moving = £517k total cost → £133k unfunded.
+        $this->assertSame(Money::fromPounds(133_000)->pence, $outcome->unfundedGap->pence);
         $this->assertFalse($outcome->coversPurchase());
         $this->assertFalse($outcome->isFullyFunded());
         $this->assertFundingReconciles($outcome);
@@ -254,8 +319,8 @@ final class HousingProceedsReconciliationTest extends TestCase
 
     public function test_savings_fund_the_gap_before_the_mortgage(): void
     {
-        // Net £392k vs a £517k total cost → a £125k gap. £60k of cash savings is drawn first;
-        // the 6% RIO borrows only the £65k remainder — own money before interest-bearing debt.
+        // Net £384k vs a £517k total cost → a £133k gap. £60k of cash savings is drawn first;
+        // the 6% RIO borrows only the £73k remainder — own money before interest-bearing debt.
         $action = new HousingAction(
             salePrice: Money::fromPounds(400_000),
             buyPrice: Money::fromPounds(500_000),
@@ -265,7 +330,7 @@ final class HousingProceedsReconciliationTest extends TestCase
         $outcome = $this->comparison()->buyOutcome($household, $action);
 
         $this->assertSame(Money::fromPounds(60_000)->pence, $outcome->fundedFromSavings->pence);
-        $this->assertSame(Money::fromPounds(65_000)->pence, $outcome->mortgage->pence);
+        $this->assertSame(Money::fromPounds(73_000)->pence, $outcome->mortgage->pence);
         $this->assertSame(0, $outcome->unfundedGap->pence);
         $this->assertTrue($outcome->isFullyFunded());
         $this->assertFundingReconciles($outcome);
@@ -281,7 +346,7 @@ final class HousingProceedsReconciliationTest extends TestCase
         $buy = $variants['buy_outright']['household'];
         $this->assertSame(0, $buy->accounts[0]->balance->pence, 'the cash was spent on the home');
         $this->assertSame(
-            Money::fromPounds(65_000)->applyRate(Percent::fromPercent(6))->pence,
+            Money::fromPounds(73_000)->applyRate(Percent::fromPercent(6))->pence,
             $buy->expenseProfile->mortgageCosts()->pence,
         );
     }
@@ -307,7 +372,7 @@ final class HousingProceedsReconciliationTest extends TestCase
             ],
             primaryResidence: new Property(currentValue: Money::fromPounds(400_000), ownership: OwnershipType::Outright),
         );
-        // Net £392k; buy £510k + £15.5k SDLT + £2k moving = £527.5k → gap £135.5k, far above the
+        // Net £384k; buy £510k + £15.5k SDLT + £2k moving = £527.5k → gap £143.5k, far above the
         // £43k of liquid savings: everything liquid is drawn (in order), the rest is unfunded.
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(510_000));
         $outcome = $this->comparison()->buyOutcome($household, $action);
@@ -331,8 +396,8 @@ final class HousingProceedsReconciliationTest extends TestCase
     public function test_a_partial_savings_draw_stops_at_the_gap_in_tier_order(): void
     {
         // Gap smaller than the savings: cash (both persons) drains before the GIA is touched,
-        // and the ISA is untouched. Net £392k; buy £430k + £11.5k SDLT + £2k moving = £443.5k
-        // → gap £51,500.
+        // and the ISA is untouched. Net £384k; buy £430k + £11.5k SDLT + £2k moving = £443.5k
+        // → gap £59,500.
         $household = new Household(
             'PartialDraw',
             RegionProfile::EnglandWalesNi,
@@ -352,7 +417,7 @@ final class HousingProceedsReconciliationTest extends TestCase
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(430_000));
         $outcome = $this->comparison()->buyOutcome($household, $action);
 
-        $this->assertSame(Money::fromPounds(51_500)->pence, $outcome->fundedFromSavings->pence);
+        $this->assertSame(Money::fromPounds(59_500)->pence, $outcome->fundedFromSavings->pence);
         $this->assertSame(0, $outcome->unfundedGap->pence);
         $this->assertFundingReconciles($outcome);
 
@@ -366,7 +431,7 @@ final class HousingProceedsReconciliationTest extends TestCase
         $this->assertSame(Money::fromPounds(20_000)->pence, $accounts[0]->balance->pence, 'the ISA is the last tier, untouched');
         $this->assertSame(0, $accounts[1]->balance->pence, 'p2 cash drained');
         $this->assertSame(0, $accounts[2]->balance->pence, 'p1 cash drained');
-        $this->assertSame(Money::fromPounds(50_000 - 36_500)->pence, $accounts[3]->balance->pence, 'GIA drawn for the £36.5k remainder only');
+        $this->assertSame(Money::fromPounds(50_000 - 44_500)->pence, $accounts[3]->balance->pence, 'GIA drawn for the £44.5k remainder only');
     }
 
     public function test_premium_bonds_are_drawn_in_the_cash_tier_before_the_gia(): void
@@ -374,14 +439,16 @@ final class HousingProceedsReconciliationTest extends TestCase
         // Premium Bonds pair with cash in the projection's own bucket mapping, so the year-0
         // draw must treat them the same or the pre- and in-projection orders diverge.
         $household = $this->household(accounts: [
-            new Account('p1', AccountType::Gia, Money::fromPounds(10_000)),
-            new Account('p1', AccountType::PremiumBonds, Money::fromPounds(10_000)),
+            new Account('p1', AccountType::Gia, Money::fromPounds(15_000)),
+            new Account('p1', AccountType::PremiumBonds, Money::fromPounds(15_000)),
         ]);
-        // Net £392k; buy £395k + £9.75k SDLT + £2k moving = £406.75k → gap £14,750.
+        // Net £384k; buy £395k + £9.75k SDLT + £2k moving = £406.75k → gap £22,750, which the
+        // £30k of savings covers with room to spare, so the draw ORDER is what the test can see.
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(395_000));
         $outcome = $this->comparison()->buyOutcome($household, $action);
 
-        $this->assertSame(Money::fromPounds(14_750)->pence, $outcome->fundedFromSavings->pence);
+        $this->assertSame(Money::fromPounds(22_750)->pence, $outcome->fundedFromSavings->pence);
+        $this->assertSame(0, $outcome->unfundedGap->pence);
 
         $variants = $this->comparison()->variantInputs(
             $household,
@@ -391,7 +458,7 @@ final class HousingProceedsReconciliationTest extends TestCase
         );
         $accounts = $variants['buy_outright']['household']->accounts;
         $this->assertSame(0, $accounts[1]->balance->pence, 'Premium Bonds drained first (cash tier)');
-        $this->assertSame(Money::fromPounds(10_000 - 4_750)->pence, $accounts[0]->balance->pence, 'GIA drawn only for the remainder');
+        $this->assertSame(Money::fromPounds(15_000 - 7_750)->pence, $accounts[0]->balance->pence, 'GIA drawn only for the remainder');
     }
 
     public function test_a_gia_draw_realises_the_pro_rata_gain_and_reduces_the_carried_unrealised_gain(): void

@@ -253,6 +253,37 @@ cash **−0.5%**.
    common UK referencing practice, but **no primary source was fetched**, because the unattended build
    loop has no web access. Board card **0091** carries pinning them to the referencing providers' own
    published criteria. **Confirm you are happy with 30x / 36x / 6-12 months until that lands.**
+16. **Selling a home costs 4% of the sale price all in, and a taxable disposal costs £750 more
+   (added 2026-09-05; verified_on 2026-08-19; lives in
+   `HousingProceeds::DEFAULT_SELLING_COST_RATE_BP` and `HousingProceeds::CGT_RETURN_FEE_PENCE`).**
+   The 4% is the catch-all the engine charges when the reader itemises nothing. It was **2%**,
+   which pays an estate agent and very little else: a freehold-house figure. A leasehold flat also
+   pays for a **management pack** (the LPE1 and the landlord's questionnaire, which the buyer's
+   solicitor cannot exchange without), a **licence to assign** where the lease needs the landlord's
+   consent, and **notice of transfer / notice of charge / deed of covenant** fees the lease charges
+   on a sale. Its conveyancing is dearer for the same reason, and the household still has to move.
+   The builder ships the itemised version of the same thing (agent 1.5%, leasehold conveyancing
+   £2,000, management pack £500, licence and notices £700, removals £1,200, EPC £80), every line
+   editable, and an itemised set always wins over the rate.
+   **Why it matters.** Selling costs come straight off the NET PROCEEDS, and the net proceeds are
+   what the whole buy-versus-rent comparison is built on. Understating them by half flatters every
+   plan that sells, by real money, in exactly the comparison the tool exists to make.
+   **The £750 is separate and conditional.** A UK residential disposal on which capital gains tax is
+   actually due must be reported and paid within **60 days** on its own return, and an accountant
+   prepares it. It is charged only when the sale owes CGT, it is itemised on the sale waterfall, and
+   it is deliberately **not** deducted from the gain: the cost of computing a tax is not an
+   incidental cost of disposal (TCGA 1992 s.38), and excluding it is also what stops the charge
+   being circular, since the tax is what decides whether the fee applies at all.
+   **There is no tenure field to switch the leasehold lines on**, so per the adverse-default rule
+   they ship with figures and a freeholder clears the two that do not apply (a blank line costs
+   nothing, and the builder says so). A tenure flag belongs to board card 0026; the gap is card 0093.
+   **⚠️ SOURCING GAP, the fifth in this document.** "Nearer 4%" is the judgement of the property
+   reviewer in the five-discipline expert review of **2026-08-19** (gitignored
+   `docs/REVIEW-PANEL-2026-08-19.local.md`; board card 0032). The itemised figures and the £750
+   accountant's fee are this build's own reading of ordinary UK practice, and **no primary source
+   was fetched for any of them**, because the unattended build loop has no web access. The 60-day
+   deadline itself is statute and is not part of the gap. Board card **0092** carries pinning the
+   money figures to published data. **Confirm you are happy with 4% and £750 until that lands.**
 
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/

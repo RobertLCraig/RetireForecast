@@ -780,9 +780,11 @@ class ScenarioBuilder extends Component
      * (it carried only the old single `sellingCostRate`), so it opens in the new editor with
      * its total preserved: the old rate becomes the estate-agent component (defaulting to the
      * old 2% when none was set), the other components start empty (they cost nothing, so the
-     * total is unchanged). No-op once components exist, and skipped for a what-if child (its
-     * selling costs come from its base's effective state). One home per figure — the stale
-     * `sellingCostRate` is dropped so the two shapes never coexist.
+     * total is unchanged). The full line set is seeded, leasehold lines included, so an old
+     * scenario can be given them without being silently charged for them. No-op once components
+     * exist, and skipped for a what-if child (its selling costs come from its base's effective
+     * state). One home per figure — the stale `sellingCostRate` is dropped so the two shapes never
+     * coexist.
      */
     private function seedSellingCostsFromRate(): void
     {
@@ -791,11 +793,13 @@ class ScenarioBuilder extends Component
         }
 
         $oldRate = trim((string) ($this->housing['sellingCostRate'] ?? ''));
-        $this->housing['sellingCosts'] = [
-            'estate_agent' => ['label' => 'Estate agent', 'basis' => 'percent', 'value' => $oldRate === '' ? '2' : $oldRate],
-            'legal' => ['label' => 'Legal / conveyancing', 'basis' => 'fixed', 'value' => ''],
-            'epc_removals' => ['label' => 'EPC & removals', 'basis' => 'fixed', 'value' => ''],
-        ];
+        $seeded = array_map(
+            static fn (array $line): array => [...$line, 'value' => ''],
+            self::defaultSellingCosts(),
+        );
+        $seeded['estate_agent']['value'] = $oldRate === '' ? '2' : $oldRate;
+
+        $this->housing['sellingCosts'] = $seeded;
         unset($this->housing['sellingCostRate']);
     }
 
@@ -1796,18 +1800,37 @@ class ScenarioBuilder extends Component
 
     /**
      * The default selling-cost breakdown for a new forecast: an estate-agent fee on a % of
-     * the sale (how agents quote) plus flat legal/conveyancing and EPC/removals fees (how
-     * those quote). Sensible UK assumptions, all editable; each is the value the user starts
-     * from and can change, or switch its basis between % and £.
+     * the sale (how agents quote) plus flat fees for everything else (how those quote).
+     * Sensible UK assumptions, all editable; each is the value the user starts from and can
+     * change, or switch its basis between % and £.
+     *
+     * **These are priced for a LEASEHOLD sale** (board card 0032). The old set was an agent, a
+     * £1,500 conveyancing fee and £800 of "EPC & removals", which is a freehold house being sold
+     * by somebody who moves cheaply. Selling a leasehold flat pays for three things a house does
+     * not, and none of them is optional: the managing agent's **management pack** (the LPE1 and
+     * the landlord's questionnaire, without which the buyer's solicitor cannot exchange), the
+     * **licence to assign** where the lease requires the landlord's consent, and the **notice of
+     * transfer / notice of charge / deed of covenant** fees the lease charges on a sale. Its
+     * conveyancing is dearer for the same reason, and removals are a real van rather than a line
+     * item shared with a £70 energy certificate.
+     *
+     * **Adverse by rule, editable by design.** There is no tenure field to switch on — a leasehold
+     * flag belongs to card 0026 — so the leasehold lines ship with figures and a freeholder clears
+     * the two that do not apply to them (a blank line costs nothing). That is the cautious way
+     * round: the tool exists to test whether selling is worth it, and the sell plans are the ones
+     * flattered by understating what selling costs.
      *
      * @return array<string, array{label: string, basis: string, value: string}>
      */
     private static function defaultSellingCosts(): array
     {
         return [
-            'estate_agent' => ['label' => 'Estate agent', 'basis' => 'percent', 'value' => '1.25'],
-            'legal' => ['label' => 'Legal / conveyancing', 'basis' => 'fixed', 'value' => '1500'],
-            'epc_removals' => ['label' => 'EPC & removals', 'basis' => 'fixed', 'value' => '800'],
+            'estate_agent' => ['label' => 'Estate agent', 'basis' => 'percent', 'value' => '1.5'],
+            'legal' => ['label' => 'Legal / conveyancing', 'basis' => 'fixed', 'value' => '2000'],
+            'management_pack' => ['label' => 'Management pack (leasehold)', 'basis' => 'fixed', 'value' => '500'],
+            'licence_to_assign' => ['label' => 'Licence to assign, notices & deed of covenant (leasehold)', 'basis' => 'fixed', 'value' => '700'],
+            'removals' => ['label' => 'Removals', 'basis' => 'fixed', 'value' => '1200'],
+            'epc' => ['label' => 'Energy certificate (EPC)', 'basis' => 'fixed', 'value' => '80'],
         ];
     }
 }

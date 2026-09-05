@@ -90,8 +90,8 @@ final class UnfundedPurchaseTest extends TestCase
 
     public function test_an_unfunded_buy_charges_the_gap_as_a_year_zero_one_off_and_visibly_fails(): void
     {
-        // Sell £400k → net £392k; buy £500k + £15k SDLT + £2k moving = £517k. No savings, no
-        // mortgage → £125k unfunded. The gap must land as a year-0 one-off charge. Ordinary
+        // Sell £400k → net £384k; buy £500k + £15k SDLT + £2k moving = £517k. No savings, no
+        // mortgage → £133k unfunded. The gap must land as a year-0 one-off charge. Ordinary
         // spend = £17,114 essential + £2,000 discretionary + £5,000 running costs (1% of £500k)
         // = the £24,114 net income exactly, so every ordinary year is exactly met.
         [$buy, $settings] = $this->buyHousehold(
@@ -103,7 +103,7 @@ final class UnfundedPurchaseTest extends TestCase
         $this->assertCount(1, $oneOffs);
         $this->assertSame('Unfunded purchase shortfall', $oneOffs[0]['label']);
         $this->assertSame(68, $oneOffs[0]['atAge'], 'keyed to the first person\'s base-year age (born 1958, base 2026)');
-        $this->assertSame(Money::fromPounds(125_000)->pence, $oneOffs[0]['amount']->pence);
+        $this->assertSame(Money::fromPounds(133_000)->pence, $oneOffs[0]['amount']->pence);
 
         // Projected, the gap is unmet spend in year 0 — a visible failure, not free equity.
         $forecast = (new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
@@ -111,14 +111,14 @@ final class UnfundedPurchaseTest extends TestCase
 
         $year0 = $forecast->years[0];
         $this->assertSame(2026, $year0->calendarYear);
-        $this->assertSame(Money::fromPounds(125_000)->pence, $year0->unmetSpend->pence, 'the whole gap is unmet — nothing funds it');
+        $this->assertSame(Money::fromPounds(133_000)->pence, $year0->unmetSpend->pence, 'the whole gap is unmet — nothing funds it');
         foreach (array_slice($forecast->years, 1) as $year) {
             $this->assertSame(0, $year->unmetSpend->pence, "year {$year->calendarYear} is an ordinary, exactly-met year");
         }
 
         // The whole of that unmet spend is the ONE-OFF lump, not the recurring budget: the
         // household's year-to-year spending was met in full, in year 0 and in every year after.
-        $this->assertSame(Money::fromPounds(125_000)->pence, $year0->unmetOneOffSpend()->pence);
+        $this->assertSame(Money::fromPounds(133_000)->pence, $year0->unmetOneOffSpend()->pence);
         $this->assertTrue($year0->fullSpendMet(), 'the recurring budget was met — only the purchase lump was not');
     }
 
@@ -168,7 +168,7 @@ final class UnfundedPurchaseTest extends TestCase
 
         $this->assertCount(1, $unfunded);
         $this->assertStringContainsString('Unfunded purchase shortfall', $unfunded[0]->message);
-        $this->assertStringContainsString(Money::fromPounds(125_000)->format(), $unfunded[0]->message);
+        $this->assertStringContainsString(Money::fromPounds(133_000)->format(), $unfunded[0]->message);
 
         // No later year repeats it: the cost falls once, so the warning does too.
         foreach (array_slice($forecast->years, 1) as $year) {
@@ -203,7 +203,7 @@ final class UnfundedPurchaseTest extends TestCase
         // the one-off — the rest is the recurring budget, which is what fails the measure.
         $year0 = $forecast->years[0];
         $this->assertGreaterThan($year0->unmetOneOffSpend()->pence, $year0->unmetSpend->pence);
-        $this->assertSame(Money::fromPounds(125_000)->pence, $year0->unmetOneOffSpend()->pence);
+        $this->assertSame(Money::fromPounds(133_000)->pence, $year0->unmetOneOffSpend()->pence);
     }
 
     /**

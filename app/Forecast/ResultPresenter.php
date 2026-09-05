@@ -2726,9 +2726,16 @@ final class ResultPresenter
         // Selling costs: each component resolved to £ on its own basis (% of sale or flat fee),
         // or the engine's assumed default when none was entered. One row per component so the
         // total on the sale waterfall traces to a stated basis here.
+        // Where nothing was itemised the engine charges its own all-in rate, and this row is the
+        // only place a reader is told so. The rate and the pounds it comes to are both READ from
+        // the constant that owns them (board card 0032 raised it, and a restated "2%" here would
+        // have gone on claiming the old figure while the engine charged the new one).
         $housing = [];
         if ($action->sellingCosts === null) {
-            $housing[] = ['label' => 'Selling costs', 'value' => self::ratePct(2.0).' of the sale price (assumed)'];
+            $rate = Percent::fromBasisPoints(HousingProceeds::DEFAULT_SELLING_COST_RATE_BP);
+            $housing[] = ['label' => 'Selling costs', 'value' => $action->salePrice->applyRate($rate)->format()
+                .' ('.self::ratePct($rate->asPercent()).' of the sale price, assumed: agent, conveyancing, the '
+                .'leasehold fees, the energy certificate and removals)'];
         } else {
             foreach ($action->sellingCosts as $component) {
                 $basis = $component->value instanceof Percent

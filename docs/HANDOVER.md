@@ -7,6 +7,22 @@
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
 _Last updated: 2026-09-05. The exceptions a fresh session needs, newest first:_
 
+- **Selling a home is now priced as a leasehold sale, and a taxable disposal pays for its tax
+  return.** Card 0032: `HousingProceeds::DEFAULT_SELLING_COST_RATE_BP` is **400** (4% all in, was 2%,
+  an agent's fee and little else), and a disposal that actually owes CGT is charged
+  `CGT_RETURN_FEE_PENCE` (£750) for the 60-day return, itemised on the sale waterfall, appended AFTER
+  the gain so it neither reduces the tax nor becomes circular. `ScenarioBuilder::defaultSellingCosts()`
+  ships the itemised version: agent 1.5%, leasehold conveyancing £2,000, management pack £500, licence
+  to assign plus notices £700, removals £1,200, EPC £80. The assumptions panel now READS the rate
+  constant instead of restating "2%", and it shows on every variant. **Every stored sell plan keeps
+  money it would never see, so its wealth, depletion year and success odds are too favourable; a
+  stay-put plan is byte-identical.** `ENGINE_VERSION` is `finance-engine/leasehold-selling-costs` and
+  the **stored-scenario re-run is owed** (built in a worktree, so **the results page and the builder
+  step have not been seen in a browser**). There is no tenure field to gate the leasehold lines on, so
+  they ship charged with a note telling a freeholder to clear them; that residual fault is card 0093,
+  behind 0026. The money figures are the 2026-08-19 property reviewer's judgement plus this build's
+  reading of ordinary practice, not a published series: the fifth sourcing gap in
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§16), raised as card 0092.
 - **A rent plan is now tested against the landlord, not only against the money.** Card 0031: a new
   `Housing\Tenancy` owns four figures, and `PathProjector` raises
   `WarningCode::RENT_REFERENCING_FAILED` on any year whose gross income falls below 30 times the

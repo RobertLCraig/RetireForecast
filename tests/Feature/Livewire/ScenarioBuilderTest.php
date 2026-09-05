@@ -443,11 +443,34 @@ class ScenarioBuilderTest extends TestCase
             ->assertSee('Selling costs')
             ->assertSee('Estate agent')
             ->assertSee('Legal / conveyancing')
-            ->assertSee('EPC & removals')
+            ->assertSee('Removals')
             // The default estate-agent line is a % of the sale; the flat fees are £.
-            ->assertSet('housing.sellingCosts.estate_agent.value', '1.25')
+            ->assertSet('housing.sellingCosts.estate_agent.value', '1.5')
             ->assertSet('housing.sellingCosts.estate_agent.basis', 'percent')
             ->assertSet('housing.sellingCosts.legal.basis', 'fixed');
+    }
+
+    public function test_the_housing_step_itemises_the_leasehold_sale_fees_separately_from_conveyancing(): void
+    {
+        // Card 0032. Selling a leasehold flat costs three things a freehold house sale does not:
+        // the managing agent's management pack (mandatory — the buyer's solicitor cannot exchange
+        // without it), the licence to assign, and the notice-of-transfer / deed-of-covenant fees.
+        // None of them existed, and the conveyancing line beside them was priced for a freehold
+        // sale, so every sell plan kept money it would never actually see.
+        Livewire::test(ScenarioBuilder::class)
+            ->set('step', 5)
+            ->assertSee('Management pack')
+            ->assertSee('Licence to assign, notices &amp; deed of covenant', escape: false)
+            // Each leasehold fee is its own editable line, quoted as a flat fee like the real bill.
+            ->assertSet('housing.sellingCosts.management_pack.basis', 'fixed')
+            ->assertSet('housing.sellingCosts.management_pack.value', '500')
+            ->assertSet('housing.sellingCosts.licence_to_assign.basis', 'fixed')
+            ->assertSet('housing.sellingCosts.licence_to_assign.value', '700')
+            // Conveyancing keeps its own separate line, priced for a leasehold sale, and removals
+            // are no longer bundled with an £80 energy certificate.
+            ->assertSet('housing.sellingCosts.legal.value', '2000')
+            ->assertSet('housing.sellingCosts.removals.value', '1200')
+            ->assertSet('housing.sellingCosts.epc.value', '80');
     }
 
     public function test_an_old_scenario_seeds_editable_selling_cost_components_from_its_rate(): void

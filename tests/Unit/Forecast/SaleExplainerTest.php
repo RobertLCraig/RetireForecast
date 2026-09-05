@@ -9,6 +9,7 @@ use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
+use RetireForecast\FinanceEngine\Dto\CgtHistory;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
@@ -18,6 +19,7 @@ use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
+use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
@@ -100,8 +102,58 @@ final class SaleExplainerTest extends TestCase
         $se = $this->explainer(new HousingAction(salePrice: Money::fromPounds(400_000)));
 
         $this->assertTrue($se['sellingCostsAssumed']);
-        // The default applies the engine's 2% → £8,000 on £400k.
-        $this->assertSame(Money::fromPounds(8_000)->format(), $se['proceeds']['sellingCosts']);
+        // The default applies the engine's all-in rate, READ from the constant so re-sourcing it
+        // moves this expectation with it (4% = £16,000 on £400k).
+        $this->assertSame(
+            Money::fromPounds(400_000)->applyRate(Percent::fromBasisPoints(HousingProceeds::DEFAULT_SELLING_COST_RATE_BP))->format(),
+            $se['proceeds']['sellingCosts'],
+        );
+    }
+
+    public function test_a_sale_that_triggers_a_sixty_day_return_shows_the_cost_of_preparing_it(): void
+    {
+        // Card 0032. A UK residential disposal on which CGT is due must be reported and paid inside
+        // 60 days, and an accountant prepares that return. It is not optional and it is real money
+        // off the proceeds, so it must appear as its own named line the reader can see and argue
+        // with — not be folded into conveyancing, and not be left out as it was.
+        $comparison = $this->comparison();
+        $household = new Household(
+            'Sale',
+            RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(20_000), Money::fromPounds(2_000), Percent::fromPercent(70)),
+            primaryResidence: new Property(
+                currentValue: Money::fromPounds(400_000),
+                ownership: OwnershipType::Outright,
+                cgtHistory: new CgtHistory(
+                    purchasePrice: Money::fromPounds(150_000),
+                    improvementCosts: Money::zero(),
+                    ownershipMonths: 240,
+                    mainResidenceMonths: 120,
+                    higherRateOnSale: true,
+                    owners: 1,
+                ),
+            ),
+        );
+        $action = new HousingAction(salePrice: Money::fromPounds(400_000), sellingCosts: [
+            new SellingCostComponent('Estate agent', Percent::fromPercent(1.5)),
+        ]);
+        $se = ResultPresenter::saleExplainer(
+            $comparison->saleProceeds($household, $action),
+            $comparison->buyOutcome($household, $action),
+            $action,
+            blendedRealReturn: 0.0176,
+            investmentIncomeYield: 0.02,
+        );
+
+        $labels = array_column($se['sellingCostBreakdown'], 'label');
+        $this->assertContains(HousingProceeds::CGT_RETURN_LABEL, $labels);
+
+        $line = $se['sellingCostBreakdown'][array_search(HousingProceeds::CGT_RETURN_LABEL, $labels, true)];
+        // The pounds shown are READ from the constant the engine charges, never restated here.
+        $this->assertSame(Money::fromPence(HousingProceeds::CGT_RETURN_FEE_PENCE)->format(), $line['value']);
+        $this->assertNull($line['detail'], 'a flat accountant fee is not a percentage of the sale');
+        $this->assertTrue($se['proceeds']['cgtCharged']);
     }
 
     public function test_a_flat_fee_component_shows_no_percentage_detail(): void
@@ -126,8 +178,8 @@ final class SaleExplainerTest extends TestCase
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), annualRent: Money::fromPounds(14_000));
         $se = $this->explainer($action);
 
-        // No mortgage, 2% costs: net = 400,000 − 8,000 = £392,000 — all of it invested.
-        $this->assertSame(Money::fromPounds(392_000)->format(), $se['rent']['invested']);
+        // No mortgage, 4% costs: net = 400,000 − 16,000 = £384,000, all of it invested.
+        $this->assertSame(Money::fromPounds(384_000)->format(), $se['rent']['invested']);
         $this->assertSame($se['proceeds']['netProceeds'], $se['rent']['invested']);
         $this->assertSame(Money::fromPounds(14_000)->format(), $se['rent']['annualRent']);
     }
@@ -141,8 +193,8 @@ final class SaleExplainerTest extends TestCase
         $se = $this->explainer($action);
 
         $this->assertNotNull($se['buy']);
-        // Net £392,000 − buy £200,000 − SDLT £1,500 − moving £2,000 = surplus £188,500.
-        $this->assertSame(Money::fromPounds(188_500)->format(), $se['buy']['surplus']);
+        // Net £384,000 − buy £200,000 − SDLT £1,500 − moving £2,000 = surplus £180,500.
+        $this->assertSame(Money::fromPounds(180_500)->format(), $se['buy']['surplus']);
         $this->assertTrue($se['buy']['coversPurchase']);
         $this->assertTrue($se['buy']['isFullyFunded']);
         $this->assertNull($se['buy']['fundedFromSavings']); // proceeds alone cover it
@@ -153,9 +205,9 @@ final class SaleExplainerTest extends TestCase
     public function test_a_buy_price_above_the_net_proceeds_reports_the_unfunded_gap(): void
     {
         // A big mortgage leaves little net; the home bought still costs more than that frees.
-        // Net = 400,000 − 350,000 (mortgage) − 8,000 (2%) = £42,000. Buy £200k + £1,500 SDLT +
-        // £2,000 moving = £203,500 → £161,500 short. With no savings and no buy mortgage, the
-        // whole gap is UNFUNDED — surfaced so the plan visibly fails rather than silently
+        // Net = 400,000 − 350,000 (mortgage) − 16,000 (4%) = £34,000. Buy £200k + £1,500 SDLT +
+        // £2,000 moving = £203,500 → £169,500 short. With no savings and no buy mortgage, the
+        // whole gap is UNFUNDED, surfaced so the plan visibly fails rather than silently
         // "buying" a home it cannot pay for.
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(200_000));
         $se = $this->explainer($action, Money::fromPounds(350_000));
@@ -163,13 +215,13 @@ final class SaleExplainerTest extends TestCase
         $this->assertFalse($se['buy']['coversPurchase']);
         $this->assertFalse($se['buy']['isFullyFunded']);
         $this->assertSame(Money::fromPounds(0)->format(), $se['buy']['surplus']);
-        $this->assertSame(Money::fromPounds(161_500)->format(), $se['buy']['unfundedGap']);
+        $this->assertSame(Money::fromPounds(169_500)->format(), $se['buy']['unfundedGap']);
     }
 
     public function test_a_buy_funded_from_savings_and_a_mortgage_shows_both_sources(): void
     {
-        // £60k of cash savings + a 6% RIO: the £161,500 gap is funded £60k from savings first,
-        // the £101,500 remainder borrowed — both shown, nothing unfunded.
+        // £60k of cash savings + a 6% RIO: the £169,500 gap is funded £60k from savings first,
+        // the £109,500 remainder borrowed. Both shown, nothing unfunded.
         $comparison = $this->comparison();
         $household = new Household(
             'Sale',
@@ -198,8 +250,8 @@ final class SaleExplainerTest extends TestCase
 
         $this->assertTrue($se['buy']['isFullyFunded']);
         $this->assertSame(Money::fromPounds(60_000)->format(), $se['buy']['fundedFromSavings']);
-        $this->assertSame(Money::fromPounds(101_500)->format(), $se['buy']['mortgage']);
-        $this->assertSame(Money::fromPounds(101_500)->applyRate(Percent::fromPercent(6))->format(), $se['buy']['mortgageInterest']);
+        $this->assertSame(Money::fromPounds(109_500)->format(), $se['buy']['mortgage']);
+        $this->assertSame(Money::fromPounds(109_500)->applyRate(Percent::fromPercent(6))->format(), $se['buy']['mortgageInterest']);
         $this->assertNull($se['buy']['unfundedGap']);
     }
 

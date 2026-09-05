@@ -1315,6 +1315,7 @@
                 <div class="mt-6">
                     <p class="{{ $label }}">Selling costs</p>
                     <p class="mt-1 text-xs text-gray-500">Enter each on the basis it is quoted — a % of the sale price, or a flat fee in £. The total is taken off your sale proceeds.</p>
+                    <p class="mt-1 text-xs text-gray-500">The starting figures are for selling a <strong>leasehold</strong> flat. <strong>If your home is freehold, clear the two leasehold lines</strong> (management pack, and licence to assign / notices), because a blank line costs nothing; a freehold conveyancing quote is usually a few hundred pounds less too. If a sale owes capital gains tax, we add the cost of the 60-day return to this total for you and show it on the results page.</p>
                     <div class="mt-2 space-y-3">
                         @foreach ($housing['sellingCosts'] ?? [] as $key => $cost)
                             <div wire:key="sellcost-{{ $key }}" class="grid items-end gap-2 sm:grid-cols-12">

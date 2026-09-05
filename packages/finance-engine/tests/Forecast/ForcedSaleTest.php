@@ -125,13 +125,13 @@ final class ForcedSaleTest extends TestCase
         $this->assertSame(0, $years[2030]->propertyWealth->pence, 'the home is sold in the redemption year');
         $this->assertSame(0, $years[2031]->propertyWealth->pence);
 
-        // Net proceeds = £400k − £100k mortgage − £8k (2% selling costs) − £0 CGT = £292k, the single
+        // Net proceeds = £400k − £100k mortgage − £16k (4% selling costs) − £0 CGT = £284k, the single
         // reconciled definition. Wealth is conserved: the sale-year liquid step exceeds an ordinary
         // (post-sale, still renting) step by exactly the net proceeds — no pence created or lost.
         $expectedNet = HousingProceeds::compute(
             Money::fromPounds(400_000), Money::fromPounds(100_000), null, null, null, $this->config(),
         )->netProceeds->pence;
-        $this->assertSame(Money::fromPounds(292_000)->pence, $expectedNet);
+        $this->assertSame(Money::fromPounds(284_000)->pence, $expectedNet);
 
         $saleStep = $years[2030]->liquidWealth->pence - $years[2029]->liquidWealth->pence;
         $ordinaryStep = $years[2032]->liquidWealth->pence - $years[2031]->liquidWealth->pence;

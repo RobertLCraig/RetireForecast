@@ -28,12 +28,70 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  *
  * $sellingCostBreakdown decomposes $sellingCosts into its named components (estate agent,
  * legal/conveyancing, ...), each already resolved to £; their amounts sum to $sellingCosts
- * exactly, so a UI can show the breakdown and it reconciles to the total by construction.
+ * exactly, so a UI can show the breakdown and it reconciles to the total by construction. Most
+ * lines are the reader's own; the engine appends one of its own — the 60-day capital-gains return
+ * — on a disposal that owes CGT, because that cost is decided by the tax rather than entered.
  */
 final class HousingProceeds
 {
-    /** The engine default cost of selling a home when the user enters none: 2% of the sale price. */
-    public const DEFAULT_SELLING_COST_RATE_BP = 200;
+    /**
+     * The engine's ALL-IN cost of selling when the reader itemises nothing: **4% of the sale
+     * price**, covering the agent, leasehold conveyancing, the managing agent's pack, the licence
+     * to assign and the notice fees, the energy certificate and the removal van.
+     *
+     * It was 2%, which is an estate agent's fee and very little else — a freehold-house figure. A
+     * leasehold flat pays for three things a house does not (a management pack the buyer's
+     * solicitor cannot exchange without, a licence to assign, and notice of transfer / deed of
+     * covenant fees), its conveyancing is materially dearer for the same reason, and the household
+     * still has to physically move. Selling costs come straight off the net proceeds, and the net
+     * proceeds are what the whole buy-versus-rent comparison is built on, so understating them by
+     * half flatters every sell plan by real money.
+     *
+     * **Adverse by rule, editable by design** (Rob's standing default rule): this is the catch-all
+     * for a sale nobody itemised. A reader who has real quotes enters them as
+     * {@see SellingCostComponent} lines instead, and those always win — the builder ships an
+     * itemised set, so this rate is what a scenario built any other way falls back to.
+     *
+     * **PUBLIC so a presenter can DISCLOSE the figure without restating it**, the
+     * no-invisible-figures rule.
+     *
+     * **Source of record: the expert property review of 2026-08-19** (board card 0032), which puts
+     * a realistic all-in figure for a leasehold sale plus a move "nearer 4%"; verified_on
+     * 2026-08-19. That is a reviewer's judgement, NOT a published series, so a primary citation is
+     * still owed. See docs/spec/ASSUMPTIONS.md §16.
+     */
+    public const DEFAULT_SELLING_COST_RATE_BP = 400;
+
+    /** The label the 60-day capital-gains return is itemised under, so no caller restates it. */
+    public const CGT_RETURN_LABEL = 'Capital gains return (60-day)';
+
+    /**
+     * What preparing the 60-day UK property capital-gains return costs: **£750**, charged only on
+     * a disposal that actually owes CGT.
+     *
+     * A UK residential disposal on which tax is due must be reported and PAID within 60 days of
+     * completion, on a separate return outside the normal self-assessment cycle. It is a statutory
+     * obligation with a penalty regime behind it, and the computation (part-year Private Residence
+     * Relief, the annual exempt amount, the rate that depends on other income) is not something a
+     * household does for itself. So it is a real, unavoidable cost of that sale, and the model
+     * charged nothing for it.
+     *
+     * It is deliberately NOT deducted from the gain. The incidental costs of disposal allowed
+     * against a gain (TCGA 1992 s.38) are the costs of making the sale — the agent, the solicitor,
+     * advertising — and the cost of COMPUTING the resulting tax is not one of them. Excluding it is
+     * also what keeps the charge from being circular, since whether the fee applies is decided by
+     * the tax.
+     *
+     * **Adverse by rule, editable by design**: an accountant's fee for a single 60-day return runs
+     * roughly £300 to £1,000 depending on how tangled the ownership history is, and a partial-PRR
+     * computation is the tangled end. A reader with a real quote enters it as an ordinary
+     * {@see SellingCostComponent} line.
+     *
+     * **SOURCING GAP:** unlike the 60-day deadline itself, this figure is not cited to a published
+     * fee survey — the unattended build loop has no web access. Board card 0092 carries pinning it.
+     * See docs/spec/ASSUMPTIONS.md §16.
+     */
+    public const CGT_RETURN_FEE_PENCE = 750_00;
 
     /**
      * @param  list<array{label: string, amount: Money}>  $sellingCostBreakdown
@@ -117,6 +175,18 @@ final class HousingProceeds
         $mortgage = $scale($mortgageWhole);
         $sellingCosts = $scale($sellingCostsWhole);
         $breakdown = array_map(fn (array $b): array => ['label' => $b['label'], 'amount' => $scale($b['amount'])], $breakdownWhole);
+
+        // A disposal that actually owes CGT has to be reported and paid inside 60 days, on its own
+        // return, and somebody has to prepare it. Charged AFTER the gain is computed and outside
+        // the whole-property scaling: it is a household's accountancy bill, not a share of a cost
+        // the co-owners split, and it is not an allowable deduction from the gain (see the
+        // constant). Appending it here rather than to $components is what keeps it out of the
+        // gain — and therefore out of its own trigger.
+        if ($cgt->isPositive()) {
+            $fee = Money::fromPence(self::CGT_RETURN_FEE_PENCE);
+            $sellingCosts = $sellingCosts->plus($fee);
+            $breakdown[] = ['label' => self::CGT_RETURN_LABEL, 'amount' => $fee];
+        }
 
         $netProceeds = $salePrice->minus($mortgage)->minus($sellingCosts)->minus($cgt)->minZero();
 

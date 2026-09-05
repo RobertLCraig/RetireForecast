@@ -3,6 +3,54 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-05: Selling costs are priced for a leasehold flat, and a taxable disposal pays for its return
+**Context:** card 0032 (expert panel 2026-08-19, property finding 9 and adviser finding 14). The
+engine's default cost of selling was **2% of the sale price**, and the builder shipped an agent fee,
+£1,500 of conveyancing and £800 of "EPC & removals". That is a freehold house being sold by somebody
+who moves cheaply. It omitted every fee a leasehold sale actually pays, and it charged nothing at all
+for the 60-day capital-gains return a taxable disposal is legally required to file. Selling costs
+come off the net proceeds, and the net proceeds are what the whole buy-versus-rent comparison rests
+on, so understating them flatters every plan that sells.
+
+**Decision:** three changes.
+
+- **The engine's all-in default rate doubles to 4%** (`HousingProceeds::DEFAULT_SELLING_COST_RATE_BP`).
+  It is the catch-all for a sale nobody itemised, covering the agent, leasehold conveyancing, the
+  leasehold fees, the energy certificate and the move.
+- **The builder ships the itemised version of the same thing**, with the leasehold lines that were
+  missing given their own rows: management pack £500, and licence to assign plus notice of transfer
+  and deed of covenant £700, beside a conveyancing figure raised to £2,000 for a leasehold sale, and
+  removals unbundled from the £80 energy certificate. Every line is editable, and an itemised set
+  always beats the rate.
+- **A disposal that owes capital gains tax is charged £750** for preparing the 60-day return
+  (`HousingProceeds::CGT_RETURN_FEE_PENCE`), itemised as its own line on the sale waterfall.
+
+**The return fee is deliberately not deducted from the gain.** The cost of computing a tax is not an
+incidental cost of disposal (TCGA 1992 s.38), so it must not move the tax. That is also what keeps
+the charge from being circular, since the tax is what decides whether the fee applies at all. It is
+appended after the gain is computed and outside the ownership-share scaling: it is a household's
+accountancy bill, not a share of a cost co-owners split.
+
+**The leasehold lines ship charged, with no tenure switch.** `Property` has no tenure field, and
+adding one belongs to card 0026 (blocked on the lease valuation, card 0067). Per the adverse-default
+rule the cautious figures ship and a freeholder clears the two lines that do not apply to them, with
+a note on the builder saying so. Card 0028 hit the same wall and made the same call. The residual
+fault, that a freeholder who does not read the note is charged £1,200 they never owe, is carded as
+**0093** behind 0026 rather than fixed with a second, competing tenure flag.
+
+**Disclosure reads the constant.** The assumptions panel used to restate "2%" in the presenter, which
+would have gone on claiming the old figure while the engine charged the new one. It now reads
+`DEFAULT_SELLING_COST_RATE_BP` and shows the pounds beside the rate, on every variant.
+
+**Why:** the tool exists to say whether selling is worth it, and every omitted cost of selling is a
+thumb on that scale. **Consequences:** `ENGINE_VERSION` is `finance-engine/leasehold-selling-costs`;
+every stored sell plan is too favourable and must be re-run, and a stay-put plan is byte-identical.
+**Sourcing:** "nearer 4%" is the reviewer's judgement and the rest is this build's reading of ordinary
+UK practice, with no primary citation, because the unattended loop has no web access. That is the
+fifth gap in docs/spec/ASSUMPTIONS.md (§16) and is carded as **0092**. The 60-day deadline itself is
+statute and is not part of the gap.
+**Status:** active
+
 ## 2026-09-05: A rent plan is tested against the landlord, not only against the money
 **Context:** card 0031 (expert panel 2026-08-19, property finding 6). The engine asked only whether a
 sell-and-rent plan's money lasts. It never asked whether the tenancy would be granted. Standard

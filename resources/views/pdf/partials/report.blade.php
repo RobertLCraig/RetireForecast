@@ -977,11 +977,13 @@
                     <tr><td>less outstanding mortgage</td><td class="num">−{{ $se['proceeds']['mortgage'] }}</td></tr>
                 @endif
                 <tr><td>less selling costs{{ $se['sellingCostsAssumed'] ? ' (assumed)' : '' }}</td><td class="num">−{{ $se['proceeds']['sellingCosts'] }}</td></tr>
-                @unless ($se['sellingCostsAssumed'])
+                {{-- Shown whenever there is more than one line, so the 60-day capital-gains return
+                     the engine adds to an assumed total is on the page too (print matches screen). --}}
+                @if (! $se['sellingCostsAssumed'] || count($se['sellingCostBreakdown']) > 1)
                     @foreach ($se['sellingCostBreakdown'] as $line)
                         <tr><td class="muted">&nbsp;&nbsp;{{ $line['label'] }}@if ($line['detail']) ({{ $line['detail'] }})@endif</td><td class="num muted">−{{ $line['value'] }}</td></tr>
                     @endforeach
-                @endunless
+                @endif
                 <tr><td>less capital gains tax{{ $se['proceeds']['cgtCharged'] ? '' : ' (main home, fully relieved)' }}</td><td class="num">−{{ $se['proceeds']['cgt'] }}</td></tr>
                 @if ($se['cgtDetail'])
                     <tr><td class="muted" colspan="2">Gain {{ $se['cgtDetail']['gain'] }}, less {{ $se['cgtDetail']['relievedGain'] }} private-residence relief = {{ $se['cgtDetail']['chargeableGain'] }} chargeable; less {{ $se['cgtDetail']['allowanceUsed'] }} allowance = {{ $se['cgtDetail']['taxableGain'] }} taxed at {{ $se['cgtDetail']['ratePct'] }}.</td></tr>

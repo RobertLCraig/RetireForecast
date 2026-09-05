@@ -39,7 +39,16 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-05 (tenancy-deposit): a sell-and-rent plan is charged the tenancy DEPOSIT as a
+     * Bumped 2026-09-05 (leasehold-selling-costs): selling a home now costs what selling a LEASEHOLD
+     * flat costs. The engine's all-in default rate, applied when nothing is itemised, doubles to
+     * {@see HousingProceeds::DEFAULT_SELLING_COST_RATE_BP} (it was an agent's fee and little else),
+     * and a disposal that actually owes capital gains tax is charged
+     * {@see HousingProceeds::CGT_RETURN_FEE_PENCE} for preparing the 60-day return, which is not
+     * optional and was charged as nothing. Both come off the NET PROCEEDS the whole buy-versus-rent
+     * comparison is built on, so every sell plan stored under an earlier stamp keeps money it would
+     * never see: its wealth, depletion year and success odds are too favourable, and a stay-put plan
+     * is byte-identical. See board card 0032.
+     * Previous bump 2026-09-05 (tenancy-deposit): a sell-and-rent plan is charged the tenancy DEPOSIT as a
      * year-0 one-off ({@see Tenancy::deposit}, the Tenant Fees Act cap on the rent), where before it
      * was handed the tenancy for nothing. Every rent variant spends more in its first year under
      * this stamp, so its wealth and terminal figures stored earlier are very slightly too
@@ -112,7 +121,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/tenancy-deposit';
+    public const ENGINE_VERSION = 'finance-engine/leasehold-selling-costs';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

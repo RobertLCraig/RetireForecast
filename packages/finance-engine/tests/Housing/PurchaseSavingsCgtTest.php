@@ -108,10 +108,12 @@ final class PurchaseSavingsCgtTest extends TestCase
         // Income £31,000 → £3,686 income tax, £27,314 net. Ordinary spend = £17,114 + £2,000 +
         // £4,300 running costs (1% of £430k) = £23,414, so the year-0 surplus (£3,900) covers
         // the CGT bill in cash — no in-year disposal muddies the figure.
-        $seedGain = PathProjector::disposeGiaSlice(100_000_00, 60_000_00, 51_500_00)[0];
-        $this->assertSame(20_600_00, $seedGain, 'the £51,500 draw realises the pro-rata slice of the £40k gain');
+        $seedGain = PathProjector::disposeGiaSlice(100_000_00, 60_000_00, 59_500_00)[0];
+        $this->assertSame(23_800_00, $seedGain, 'the £59,500 draw realises the pro-rata slice of the £40k gain');
         $seedCgt = $this->cgt($seedGain, 31_000_00);
-        $this->assertSame(3_168_00, $seedCgt, '£20,600 gain − £3,000 AEA = £17,600, all within the basic band at 18%');
+        // £23,800 gain − £3,000 AEA = £20,800 taxable. £19,270 of basic band is left at this
+        // income (£50,270 − £31,000), taxed at 18%; the £1,530 over the threshold is at 24%.
+        $this->assertSame(3_835_80, $seedCgt);
 
         $forecast = $this->buyForecast(31_000);
 
@@ -128,13 +130,13 @@ final class PurchaseSavingsCgtTest extends TestCase
         // realising more gain on top of the seed. The combined CGT must equal cgtOnGain(seed +
         // in-year gain): ONE annual exempt amount across both, the seed never taxed twice.
         $incomeTax = 1_486_00; // (20,000 − 12,570) × 20%
-        $seedGain = PathProjector::disposeGiaSlice(100_000_00, 60_000_00, 51_500_00)[0];
+        $seedGain = PathProjector::disposeGiaSlice(100_000_00, 60_000_00, 59_500_00)[0];
         $seedCgt = $this->cgt($seedGain, 20_000_00);
 
         // The in-year draw = spend − (net income − seed CGT), taken from the post-draw GIA
-        // (£48,500 balance, £19,400 gain remaining).
+        // (£40,500 balance, £16,200 gain remaining, so a £24,300 cost basis).
         $take = 23_414_00 - (18_514_00 - $seedCgt);
-        $inYearGain = PathProjector::disposeGiaSlice(48_500_00, 29_100_00, $take)[0];
+        $inYearGain = PathProjector::disposeGiaSlice(40_500_00, 24_300_00, $take)[0];
 
         $forecast = $this->buyForecast(20_000);
 

@@ -66,12 +66,12 @@ final class OwnershipShareTest extends TestCase
         $half = $this->comparison()->saleProceeds($this->household(Percent::fromPercent(50), Money::fromPounds(100_000)), $action);
         $whole = $this->comparison()->saleProceeds($this->household(null, Money::fromPounds(100_000)), $action);
 
-        // Whole: £400k − £100k mortgage − £8k (2% selling costs) = £292k. Owning half → each figure halved.
+        // Whole: £400k − £100k mortgage − £16k (4% selling costs) = £284k. Owning half → each figure halved.
         $this->assertSame(Money::fromPounds(200_000)->pence, $half->salePrice->pence);
         $this->assertSame(Money::fromPounds(50_000)->pence, $half->outstandingMortgage->pence);
-        $this->assertSame(Money::fromPounds(4_000)->pence, $half->sellingCosts->pence);
-        $this->assertSame(Money::fromPounds(146_000)->pence, $half->netProceeds->pence, 'the household keeps its share of the proceeds');
-        $this->assertSame(Money::fromPounds(292_000)->pence, $whole->netProceeds->pence);
+        $this->assertSame(Money::fromPounds(8_000)->pence, $half->sellingCosts->pence);
+        $this->assertSame(Money::fromPounds(142_000)->pence, $half->netProceeds->pence, 'the household keeps its share of the proceeds');
+        $this->assertSame(Money::fromPounds(284_000)->pence, $whole->netProceeds->pence);
 
         // The reconciliation invariant still holds on the household's share (no pence created or lost).
         $this->assertSame(

@@ -1319,7 +1319,11 @@
                             <tr><th scope="row" class="{{ $td }} text-left">less outstanding mortgage</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['mortgage'] }}</td></tr>
                         @endif
                         <tr><th scope="row" class="{{ $td }} text-left">less selling costs{{ $se['sellingCostsAssumed'] ? ' (assumed)' : '' }}</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['sellingCosts'] }}</td></tr>
-                        @unless ($se['sellingCostsAssumed'])
+                        {{-- The breakdown is hidden when the whole figure is the engine's own single
+                             assumed line (the total row already says "assumed"), but shown the moment
+                             there is more than one line to see: a sale owing capital gains tax has the
+                             60-day return charged on top, and that cost must be visible. --}}
+                        @if (! $se['sellingCostsAssumed'] || count($se['sellingCostBreakdown']) > 1)
                             @foreach ($se['sellingCostBreakdown'] as $line)
                                 <tr class="text-gray-500">
                                     <th scope="row" class="{{ $td }} pl-6 text-left font-normal">
@@ -1329,7 +1333,7 @@
                                     <td class="{{ $td }} text-right text-xs tabular-nums">−{{ $line['value'] }}</td>
                                 </tr>
                             @endforeach
-                        @endunless
+                        @endif
                         <tr><th scope="row" class="{{ $td }} text-left">less capital gains tax{{ $se['proceeds']['cgtCharged'] ? '' : ' (main home, fully relieved)' }}</th><td class="{{ $td }} text-right tabular-nums">−{{ $se['proceeds']['cgt'] }}</td></tr>
                         @if ($se['cgtDetail'])
                             <tr class="text-gray-500">
