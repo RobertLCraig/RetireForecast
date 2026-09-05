@@ -90,3 +90,52 @@ session. The new `SaleExplainerTest` case is coverage over it, not a watched fai
 which a worktree session must not write to. The re-run is owed, as it is for cards 0028 to 0033.
 The results page and the PDF have not been seen in a browser for the same reason: Herd serves the
 main checkout, not this directory.
+
+### 2026-09-05 review (v20260905162442-9776)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 274s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+**AC #1 ÔÇö receipt used before borrowing.**
+`HousingComparison::fundingFor` computes the gap, then calls `HousingComparison::spendReceipts` and subtracts what it spent *before* `SavingsFunding::draw` and before the mortgage line. `spendReceipts` only takes receipts whose `calendarYear` matches the passed base year. `HousingComparison::buyVariant` passes `$settings->baseYear`, so the projected household uses the same waterfall as the reported figures. Every app caller (`ScenarioResults`, `ScenarioCompare`, `AuditScenarios`, `ScenarioReport`, `AssistantTurnRunner`) passes `settings(...)->baseYear` to `HousingComparison::buyOutcome`. Traced.
+
+**AC #2 ÔÇö only the shortfall is borrowed.**
+In `HousingComparison::fundingFor`, `$gap` is reduced by the receipt, then by `$funding->drawn`; the mortgage takes only the remainder, and `unfundedGap` is that remainder less the mortgage. `HousingPurchase::__construct` throws unless the parts reconcile, so an over-borrow cannot exist silently. Traced.
+
+I tried to break it three ways and could not: double-count (the spent part is dropped or reduced in the returned receipt list, checked at projection level in `PurchaseReceiptFundingTest`), wrong-year receipt (dated-year filter), and a second funding path (there is none; `SavingsFunding::draw` has one caller).
+
+Task 3 is still open, but it is a task, not a criterion.
+
+VERDICT: sound
+
+**scope: sound**
+
+Scope check, against the card only.
+
+**Nothing crossed the "## Not this card" fence.** No code judges whether a receipt is realistic. `HousingComparison::spendReceipts` filters on `calendarYear === $baseYear` and on the gap, nothing else.
+
+**Nothing grew quietly.** Every one of the 19 files in commit `930424c` appears in the card's TOUCHED list. The changes outside the engine (`ResultPresenter::saleExplainer`, `ScenarioCompare::buyMortgage`, `ScenarioContext::saleFacts`, the two Blade waterfalls) are the project's "no invisible figures" duty for a new funding term, not extra features. The `buyOutcome` third argument is mechanical in `AuditScenarios::auditOne`, `ScenarioReport::data`, `ScenarioResults::render`, `AssistantTurnRunner::saleExplainer`.
+
+**Beyond the criteria, but declared:** receipt ahead of savings also moves plans that were never borrowing (`HousingComparison::fundingFor`). Stated in the card comment, the commit message and DECISIONS.md. Loud, not quiet.
+
+**Left half done, and it is on the card:** task 3, unticked. This commit bumped `ScenarioForecaster::ENGINE_VERSION`, so `AuditScenarios::auditOne`'s integrity-stamp check flags every stored run until Rob re-runs them. Owner-side; cards 0028 to 0033 carry the same debt.
+
+VERDICT: sound
+
+**breakage: defect**
+
+Two things break quietly.
+
+**1. A new `Household` field will be dropped from every sell plan, and the guard will not see it.**
+`Household::copy()` says in its docblock that it is "the ONE place a household is rebuilt from an existing one", so "a field added to this DTO cannot be silently dropped", and `HouseholdWitherTest` is reflection-driven to enforce that. But `HousingComparison::withHousing()` builds `new Household(...)` by hand, outside that guard. This change is the proof: `capitalReceipts` had to be threaded in by hand, or the buy variant would have kept the whole receipt. Add a field to `Household` tomorrow and the wither test stays green while every buy and rent variant silently takes the default.
+
+**2. The `CapitalReceipt` docblock is now false.**
+It still says the forecast "credits it to spendable cash in its calendar year ... and reports it as the `capital_receipt` income source". For a buy plan the spent part is now credited nowhere. Every other doc in this change was updated; the DTO that owns the rule was not. The next session reads it and re-adds the double count.
+
+Also untested: two receipts dated the base year.
+
+VERDICT: defect
+
