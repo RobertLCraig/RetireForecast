@@ -107,7 +107,8 @@ RESULT: blocked
 TESTS: +0 new, all green
 TOUCHED: docs/board/in-progress/0027-a-sale-is-instant-and-costless.md
 TOUCHED: docs/board/todo/0083-three-tracked-files-are-not-pint-clean.md
-OUT-OF-SCOPE: 0083
+TOUCHED: docs/board/todo/0084-a-card-needing-a-researched-figure-burns-an-unattended-session.md
+OUT-OF-SCOPE: 0083, 0084
 
 Second unattended run, same wall. I re-checked `WebSearch` and `WebFetch` before anything else and
 both are refused here, so the two figures the acceptance asks to be *sourced* still cannot be
@@ -129,11 +130,12 @@ Three things this run adds, so a third attempt is not a third copy of this entry
   (there is no `pest.bat` in `vendor/bin`; the runner is `phpunit`, and `ForcedSaleTest` is the
   naming precedent). The criteria themselves are untouched. Writing them was the prerequisite the
   entry above flagged, and it is now off the next session's plate.
-- **#1 and #2 are blocked on a different thing from #3, and no card carries it.** They need the
-  months from instruction to completion in England and Wales, leasehold split out if the source
-  gives it. That is ordinary published market data, not a judgement of Rob's, so it is not a
-  `human-review` question — it needs one session with the web reachable. An attended session can
-  clear it in minutes.
+- **#1 and #2 are blocked on a different thing from #3.** They need the months from instruction to
+  completion in England and Wales, leasehold split out if the source gives it. That is ordinary
+  published market data, not a judgement of Rob's, so it is not a `human-review` question — it needs
+  one session with the web reachable, and an attended session clears it in minutes. That nothing
+  written down warns a card writer about this is raised as card 0084: this card is the second run to
+  find the wall, and card 0032 is standing behind the same one.
 
 I checked whether the unsourced `HousingProceeds::DEFAULT_SELLING_COST_RATE_BP` (2%, no source, no
 `verified_on`, and not disclosed through `assumedFigures()` the way `HOME_MAINTENANCE_RATE_BPS` and
