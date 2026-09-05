@@ -125,3 +125,49 @@ in `HouseholdAssemblerTest` is the completeness guard for the builder path, sinc
 was a field that was stored, validated, rendered and mapped and then read by nothing; it was proved
 red by temporarily dropping the assembler line. The two new disclosure cases in
 `AssumedFiguresDisclosureTest` were watched failing before the presenter was touched.
+
+### 2026-09-05 review (v20260905173019-6c9b)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 213s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I tried to break each criterion. I could not.
+
+**AC#1 ÔÇö no escalation stays flat (nominal).**
+`PensionEscalationBasis::increase()` returns `0.0` for `None`. `PathProjector::escalateDbPensions()` multiplies that scheme's factor by `1.0 + 0.0`, so it stays `1.0` for every year. `PathProjector::dbIncome()` reads that factor. Pinned by `DbEscalationTest::test_no_escalation_in_payment_holds_a_db_pension_flat_in_nominal_terms`.
+
+**AC#2 ÔÇö a cap stops at the cap.**
+`PensionEscalationBasis::increase()` uses `min(inflation, cap)`, with the cap from `capBasisPoints()` (500 / 250 basis points). The `max(0.0, ...)` floor is statutory LPI, not a leak. Pinned by `test_a_capped_escalation_applies_inflation_up_to_the_cap_and_no_more`.
+
+**AC#3 ÔÇö deferred, then in payment.**
+`PathProjector::escalateDbPensions()` picks `revaluationBasis` while `ageNextYear <= normalRetirementAge`, else `escalationInPayment`. That boundary matches the payment start in `PathProjector::dbIncome()` (`age >= normalRetirementAge`). Pinned both ways by `test_a_deferred_pension_revalues_on_one_basis_then_escalates_on_the_other` and `test_a_deferred_pension_frozen_in_payment_arrives_revalued_and_then_stands_still`.
+
+The user path is real too: `ScenarioBuilder::escalationBases()` fills both selects, and `HouseholdAssembler::pension()` maps both bases plus `fixedEscalationRate` onto the DTO.
+
+VERDICT: sound
+
+**scope: defect**
+
+Reviewed commit `6768e10` (the card's work) against the card.
+
+**Inside the fence.** Annuity escalation is untouched: `PathProjector::annuityIncomeNominal()` is unchanged, and the annuity select and its `Rule::in(['none','rpi','cpi'])` in `ScenarioBuilder::rules()` still list options by hand, so the new `CpiCappedAt2_5` case cannot reach it.
+
+**Half done, and not declared.** `DbPension` carries ONE `fixedEscalationRate`. `PathProjector::initialState()` flattens it to a single `'fixedRate'`, and `escalateDbPensions()` passes that same rate to `increase()` in BOTH phases. So a scheme with fixed revaluation while deferred and a different fixed rate in payment cannot be entered at all ÔÇö the blade `@if` in `scenario-builder.blade.php` shows one box when EITHER dropdown says Fixed. The card's task was to separate the two factors; the bases separated, the rate did not. The build comment does not mention this.
+
+**Grew past the ask.** `ResultPresenter::assumedFigures()` now prints a policy claim to the results screen ("RPI is being brought into line with CPIH from 2030") that the same session says it could not verify. The card asked for a sourced wedge, not unsourced prose in front of the reader.
+
+Declared and carded (0095): RPI still equals CPI; task 6 untestable.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**1. Survivor pension gets the wrong rule.** `PathProjector::escalateDbPensions()` picks the phase from the member's age, alive or dead. But `PathProjector::survivorDbIncomeNominal()` pays the survivor's share from the death, "regardless of whether they had reached normal retirement age". So a member who dies deferred leaves a pension that **is** in payment yet escalates on the *revaluation* basis until their notional NRA. Revaluation CPI + in-payment None overstates the widow's income for those years; swapped, it understates it. `Protection\EarlyDeathStress` drives exactly this path. The docblock on `survivorDbIncomeNominal()` still says "escalated by the same dbFactor as the member's own pension in payment" ÔÇö this change made that false. No test builds it; `SurvivorDbPensionTest` leaves both bases at CPI.
+
+**2. The no-cut floor is applied to two bases only.** `PensionEscalationBasis::increase()` floors the capped cases at zero "because a scheme does not cut a pension in payment when prices fall". `Cpi` and `Rpi` are not floored. Monte Carlo inflation is an unclamped normal draw (`ReturnModel::generatePath()`), so deflation years happen, and a 5%-capped pension then pays **more** than the same scheme on plain CPI ÔÇö inverting the order `DbEscalationTest::test_each_escalation_basis_reaches_a_different_twenty_year_income()` pins.
+
+VERDICT: defect
+
