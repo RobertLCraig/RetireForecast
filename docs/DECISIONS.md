@@ -3,6 +3,36 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-05: The Monte Carlo has a golden master, and re-pinning it is a decision
+**Context:** card 0039 (expert panel 2026-08-19, engineer finding F4). The PRD claims "Monte Carlo is
+reproducible under a fixed seed, golden-master test" as a success criterion, and `ReturnModel`'s
+docblock promises that a given run stays byte-identical. Nothing pinned a number. The three
+reproducibility tests ran the simulator twice in the same process and asserted the two agree, which
+is true of every deterministic function, so any change to draw ordering re-rolled every stored result
+with the suite still green.
+
+**Decision: one frozen household, frozen settings and a frozen seed are pinned to the penny in
+`packages/finance-engine/tests/MonteCarlo/GoldenMasterTest.php`, and moving a pinned value requires
+an entry here.** Monte Carlo golden master pinned 2026-09-05.
+
+Two parts of that are load-bearing:
+
+- **The input is frozen inside the test, not shared.** The card's task named the app's
+  `Tests\Support\HouseholdFixture`, but that fixture is paired with `BuilderStateFixture::full` for
+  the storage round-trip tests and moves whenever a builder field is added. A golden master whose
+  input drifts pins nothing, and it would also be the first dependency from the framework-free engine
+  package's tests on the app's test support.
+- **The decision log is machine-checked, not merely asked for.** The test carries a `PIN_REVISION`
+  date and a companion test that fails unless this file contains "Monte Carlo golden master pinned
+  &lt;that date&gt;". Re-pinning therefore costs a dated entry saying what moved and why, which is the
+  difference between a deliberate re-roll and a quiet one. What it cannot check is that the entry is
+  *honest*: the same edit writes both. It removes the silent path, not the dishonest one.
+
+The pin covers the whole run, so it also reddens when an economic figure in
+`AssumptionSetLibrary::default()` moves or the projector's arithmetic changes. That is intended: all
+three causes re-roll every stored result, and the failure message names all three.
+**Status:** active
+
 ## 2026-09-05: A purchase spends the money arriving that year before it borrows
 **Context:** card 0034 (expert panel 2026-08-19, property finding 8). The year-0 purchase-funding
 waterfall in `HousingComparison::fundingFor` read `$household->accounts` and nothing else. A
