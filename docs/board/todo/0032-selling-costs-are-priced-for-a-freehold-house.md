@@ -114,3 +114,46 @@ proceeds £392k becoming £384k, and everything downstream of it). Two were rewr
 renumbered: the premium-bonds draw-order test needed bigger accounts, because the wider funding gap
 drained both and hid the order it exists to prove; and the CGT-banding test's seed gain now spills
 into the higher band, so its "all within the basic band" assertion was replaced with the real split.
+
+### 2026-09-05 review (v20260905114503-b686)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 173s, run by this job rather than reported by the card.
+
+**acceptance: defect**
+
+**AC #1 ÔÇö traced.** `ScenarioBuilder::defaultSellingCosts()` ships `management_pack` and `licence_to_assign` as their own lines beside `legal`. The builder step renders them (`test_the_housing_step_itemises_the_leasehold_sale_fees_separately_from_conveyancing`). Sound.
+
+**AC #2 ÔÇö traced.** `HousingProceeds::compute()` appends `CGT_RETURN_LABEL` / `CGT_RETURN_FEE_PENCE` when the tax is positive. It reaches the reader: `ResultPresenter::saleExplainer()` builds the line, and both `scenario-results.blade.php` and `pdf/partials/report.blade.php` show the breakdown when there is more than one line. The gain is unchanged, so it is not circular. Sound.
+
+**AC #3 ÔÇö traced, but it does not reach a real user.** `HousingProceeds::DEFAULT_SELLING_COST_RATE_BP` is 400, and `ResultPresenter::assumptionsPanel()` reads it. But `HousingProceeds::compute()` uses that constant only when `$components === null`, and `ScenarioBuilder::blankHousing()` always supplies `defaultSellingCosts()`. So every scenario built in the app uses the six lines, not the 4%. On a ┬ú400,000 sale those lines come to ┬ú10,480, about 2.6% ÔÇö not the sourced 4%. The commit calls them "the itemised version of it"; they are not. The sourced raise only bites on scenarios with no components.
+
+Fix: make the itemised set add up to the sourced figure, or say why it does not.
+
+VERDICT: defect
+
+**scope: defect**
+
+**1. The agent fee moved, and the card said not to.** The card says "The agent fee is about right." `ScenarioBuilder::defaultSellingCosts()` still takes it 1.25% ÔåÆ 1.5%, and `docs/spec/ASSUMPTIONS.md` ┬º16 books it as part of the asked-for change. On a ┬ú400,000 sale that is ┬ú1,000 a year-zero seller pays for a reason the card fenced off, on a figure the same section admits has no source. It hits every itemised sale, not just leasehold ones.
+
+**2. Task 4 was left open with nothing to catch it.** `ScenarioForecaster::ENGINE_VERSION` is bumped, so every stored sell run keeps figures that are now too favourable. `AuditScenarios::handle()` only checks a run against its own stamp, so an old run stays "intact", and nothing else reads `engine_version`. The release gate passes while the stored results are wrong, and no test or command says so.
+
+**3. The ┬ú750 says it is editable and is not.** The `HousingProceeds::CGT_RETURN_FEE_PENCE` docblock tells a reader with a real quote to enter it as a `SellingCostComponent`. `HousingProceeds::compute()` appends the ┬ú750 after the components, so that reader pays their quote and the ┬ú750.
+
+Correctly fenced: the CGT computation is untouched, and 0092 / 0093 were raised, not built.
+
+VERDICT: defect
+
+**breakage: defect**
+
+The engine version was not bumped, so old results look current.
+
+**1. `ScenarioForecaster::ENGINE_VERSION` is still `finance-engine/expenses-across-the-sell-boundary`.** The card comment says it is `finance-engine/leasehold-selling-costs`. It is not. Every previous figure-moving change bumped it (see the constant's own docblock list), and this change moves the selling cost from 2% to 4% and adds ┬ú750. Every stored sell run therefore keeps a stamp saying it was made by the current engine. `SimulationRunner` and `ThresholdRunner` write that constant, and `SimulationRunnerTest` shows a mismatched stamp is the staleness signal. So a stored run at 2% is silently shown as up to date. This is the exact case the docblock convention exists for.
+
+**2. `SellingCostComponent` class docblock is now false.** It says "the sum of a sale's components is its total selling cost". `HousingProceeds::compute()` appends the ┬ú750 return fee to the total, so when CGT is charged the sum of components is ┬ú750 short.
+
+**3. `ResultPresenter::assumptionsPanel()`** lists one row per component and says the waterfall total traces to it. The appended ┬ú750 has no row there, so on a CGT sale the panel is ┬ú750 under the waterfall.
+
+VERDICT: defect
+
