@@ -126,3 +126,53 @@ hygiene rule forbids. What I could check read-only is that `scenarios:audit` sti
 wrong with #51 to #54, which is the expected result: the deterministic path a park home is audited
 on does not move, only the fan around it does. The range itself needs the re-run, and no browser has
 seen the new builder input or the new results row.
+
+### 2026-09-05 review (v20260905081707-6513)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 198s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I traced all three.
+
+**AC#1 ÔÇö override sets the mean, risk stays.** `PathProjector::growState` now calls `$draws->propertyGrowthReal($yearIndex, $state['propertyGrowthReal'])`. `SampledPathDraws::propertyGrowthReal` takes the sampled index draw, removes the set centre, re-centres on the override, and keeps the shock. The shock maths matches how `ReturnModel::path` builds the house series (`houseMean + houseVol * z`), so the split is exact. Test `test_a_growth_override_sets_the_mean_and_keeps_the_year_to_year_variation` exists in `SinglePropertyVolatilityTest`.
+
+**AC#2 ÔÇö uplift applied, disclosed, editable.** Applied: `AssumptionSet::singlePropertyVolatilityMultiple` feeds `SampledPathDraws`. Disclosed: `ResultPresenter::assumedFigures` gates on `singlePropertyVolatilityIsAssumed` and reads both figures and the constant. Editable: `AssumptionOverrides::apply` maps `propertyVolatility`, `ScenarioBuilder::rules` validates it, `ScenarioBuilder::render` lists the field, and the blade binds it. Named test exists.
+
+**AC#3 ÔÇö park home.** Same primary-residence path; the negative override is the mean and the widened shock still applies. Named test exists and also checks the home still falls.
+
+"Sourced" is a reviewer judgement, not a published series. That is the same footing `careCostRealGrowth` shipped on, it is flagged in `docs/spec/ASSUMPTIONS.md`, and card 0086 is raised.
+
+VERDICT: sound
+
+**scope: sound**
+
+I read the commit `04a30fe`, both drivers, the DTO, the app plumbing and the callers.
+
+**Did it cross the fence?** No. The card said "not the value of any growth rate". `AssumptionSet::houseGrowth` is untouched. The new constant is a volatility multiple, which AC#2 asked for by name.
+
+**Did anything grow quietly?** One thing grew, but not quietly. `AuditScenarios::staleAssumptionSets()` now skips every shipped key whose value is null, not only the new one. I checked `AssumptionSetMapper::hydrate()`: every nullable key uses `isset()`, so a missing key and a null key load the same. The check loses nothing real, it has a test, and the card comments declare it.
+
+**What is half done?** Card task 4, the park-home re-run and range. It is unticked and written up as owed in `docs/HANDOVER.md`. It needs Rob's live database, so a worktree session cannot do it.
+
+**Small edge:** `AssumptionSet::singlePropertyVolatilityMultiple()` returns 1.0 when a set has no index volatility, so the new builder field would do nothing on such a set. No shipped set is like that.
+
+VERDICT: sound
+
+**breakage: defect**
+
+**Breakage lens ÔÇö card 0029**
+
+**1. The widened shock has no floor, so a home can be worth less than nothing.**
+`SampledPathDraws::propertyGrowthReal` multiplies the index shock by the multiple. It does not bound the result at -100%. `PathProjector::growState` then does `state['property'] * (1.0 + $propertyNominal)` with no floor.
+
+Shipped set "DMS historical" has an 11% index, so one home is 22%. A draw of z <= -4.6 makes real growth <= -100%. That is about one path-year in a 10,000-path run. Before this change the same event needed z <= -11, which never happens. The new `propertyVolatility` field is validated to 60% (`ScenarioBuilder::rules`), and card AC#3 invites a wide figure for a park home. At 30% it happens in roughly 1 year in 2,600.
+
+A negative value never recovers, it compounds. It reaches `propertyWealth`, and at the no-negative-equity cap `min($rolled, $state['property'])` it clears a lifetime mortgage for free. No test builds a tail draw.
+
+**2. Stale docblock.** The `SampledPathDraws` class docblock still says house growth "follow[s] their sampled per-year path". It no longer does.
+
+VERDICT: defect
+
