@@ -1,3 +1,6 @@
+---
+needs: 0069
+---
 # A house sale happens instantly and costs nothing to bridge
 
 ## Why
@@ -17,14 +20,21 @@ fraction of the modelled net proceeds, and every sell plan carries it.
 A forced sale is also not a willing sale. Repossession and deadline sales clear below open market,
 and the engine sells at full modelled value.
 
+## Links
+
+**Blocked by**
+- `0069` - #3's forced-sale discount has to be anchored to a real number, and 0069 says so in its
+  own words: it is instructing the RICS valuation and getting the lender's written position on the
+  no-sale case, which is what a restricted-marketing price is measured against.
+
 ## Not this card
 Modelling a failed sale as its own branch. That is card 0069.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a home is sold, THE APP SHALL charge a disclosed transition cost covering the months between instruction and completion.
-- [ ] #2 THE APP SHALL expose the assumed months to sell as an editable input with a sourced default.
-- [ ] #3 WHEN a sale is forced by a mortgage maturity, THE APP SHALL apply a sourced, editable forced-sale discount to the price achieved.
+- [ ] #1 WHEN a home is sold, THE APP SHALL charge a disclosed transition cost covering the months between instruction and completion. proves: `test_a_sale_charges_a_transition_cost_for_the_months_between_instruction_and_completion`
+- [ ] #2 THE APP SHALL expose the assumed months to sell as an editable input with a sourced default. proves: `test_months_to_sell_is_editable_in_the_builder_and_its_default_is_disclosed`
+- [ ] #3 WHEN a sale is forced by a mortgage maturity, THE APP SHALL apply a sourced, editable forced-sale discount to the price achieved. proves: `test_a_forced_sale_applies_the_forced_sale_discount_to_the_price_achieved`
 <!-- AC:END -->
 
 ## Tasks
@@ -91,3 +101,45 @@ Two other things the next attempt needs. No criterion here carries a `proves:` n
 `docs/board/README.md` requires and the build loop enforces, so those need writing first. And
 the last task, re-running every stored scenario, cannot be done from a worktree at all: the live
 database is not reachable from here, which is why card 0024's re-run is still owed.
+
+**2026-09-05**
+RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0027-a-sale-is-instant-and-costless.md
+TOUCHED: docs/board/todo/0083-three-tracked-files-are-not-pint-clean.md
+OUT-OF-SCOPE: 0083
+
+Second unattended run, same wall. I re-checked `WebSearch` and `WebFetch` before anything else and
+both are refused here, so the two figures the acceptance asks to be *sourced* still cannot be
+sourced. I did not fill them from memory and I did not build against a placeholder: the criteria
+say "sourced", so a constant I cannot name a source and a `verified_on` for would tick a box
+without meeting it. The entry above holds the code reading and it is still accurate; I have not
+repeated it.
+
+Three things this run adds, so a third attempt is not a third copy of this entry.
+
+- **#3 has a named blocker and it is now in the frontmatter.** Card 0069 already says, in its own
+  "Why it needs you": *"Card 0027 needs the forced-sale discount anchored to something real, and no
+  code change can settle a valuation."* That dependency lived only in 0069's prose, so no board view
+  could show it and the unattended loop kept picking this card up. It is now `needs: 0069` plus a
+  `## Links` "Blocked by" line, which is the shape `docs/board/README.md` requires and which stops
+  the loop restarting a card it cannot finish. 0069 is in `human-review/`, `waiting_on` a RICS
+  valuation and the lender's written position, recheck 2026-09-09.
+- **The three `proves:` names are written**, in this repo's PHPUnit `test_snake_case` dialect
+  (there is no `pest.bat` in `vendor/bin`; the runner is `phpunit`, and `ForcedSaleTest` is the
+  naming precedent). The criteria themselves are untouched. Writing them was the prerequisite the
+  entry above flagged, and it is now off the next session's plate.
+- **#1 and #2 are blocked on a different thing from #3, and no card carries it.** They need the
+  months from instruction to completion in England and Wales, leasehold split out if the source
+  gives it. That is ordinary published market data, not a judgement of Rob's, so it is not a
+  `human-review` question — it needs one session with the web reachable. An attended session can
+  clear it in minutes.
+
+I checked whether the unsourced `HousingProceeds::DEFAULT_SELLING_COST_RATE_BP` (2%, no source, no
+`verified_on`, and not disclosed through `assumedFigures()` the way `HOME_MAINTENANCE_RATE_BPS` and
+`DEFAULT_MOVING_COSTS_PENCE` are) needed a card of its own. It does not: card 0032 already owns
+re-sourcing it and disclosing it, in those words. No new card raised.
+
+Nothing under `packages/` or `app/` changed, so the suite result is the baseline and not evidence
+about this card. `pint --dirty` passes on the diff; a whole-repository `pint --test` exits 1 on
+three files this card never opened, raised as card 0083.
