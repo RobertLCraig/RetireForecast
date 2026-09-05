@@ -99,3 +99,49 @@ at in a browser.
 Raised as 0098: `capitalGainsTax` bands a realised gain against the pre-drawdown, non-savings-only
 income, so the household that sells holdings to fund a withdrawal has its gain charged lowest. Same
 shape as this card, outside its acceptance, left alone.
+
+### 2026-09-05 review (v20260905201139-9434)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 172s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I tried to break both criteria and could not.
+
+**AC #1 ÔÇö traced.** `PathProjector::fundShortfall` builds `$incomeOf`, which makes a full `TaxableIncome` from that person's non-savings, cash interest and GIA dividends. `PathProjector::marginalTax` and `PathProjector::grossUpPension` now take that object and price the draw as the difference of two full-income computations. Both draw closures (`$drawPension`, `$drawPensionUfpls`) call it per pot. `PathProjector::projectYear` fills `$savingsPerPerson` / `$dividendsPerPerson` in the same pass that taxes them, off opening balances, so they cannot move under the drawing. I grepped every tax call in the engine: no `ofNonSavings` remains on any draw path, so there is no second, unfixed pricing site.
+
+**AC #2 ÔÇö traced.** `DrawdownMarginalTaxTest::test_each_years_total_tax_reconciles_to_a_full_recomputation` asserts each year's `totalTax` equals a fresh `IncomeTaxCalculator` run on the final income, to the penny. The telescoping holds under indexation too, because `marginalTax` and the main pass share `PathProjector::indexedTotalPence`.
+
+One boundary, not a defect: `LumpSumTaxShock::otherIncome` still prices a withdrawal on salary only. It feeds a display panel, not a projection, and states its assumption on screen. Worth a card.
+
+VERDICT: sound
+
+**scope: defect**
+
+Scope check on card 0037.
+
+**Left half done ÔÇö the reconciliation misses the strategy every stored plan uses.**
+`DrawdownMarginalTaxTest::settings()` pins `drawdownStrategy: DrawdownStrategy::PensionAware`, but `ScenarioForecaster::DEFAULT_DRAWDOWN_STRATEGY` is `DrawdownStrategy::TaxEfficient`. That is the branch every scenario runs under unless a strategy is named, and `fundShortfall` gives it two pension passes (`drawPension(null)`, then a second `drawPension(null)` to fund CGT). AC#2 says *each* year's tax reconciles; TaxEfficient is neither tested nor hand-checked. The stated excuse does not reach it: card 0074's tax-free-quarter mis-filing only affects the `drawPensionUfpls` path used by FillBands, so `drawPension` reports fully taxable drawdown and the same test would run on TaxEfficient with one line changed.
+
+**Left undone and declared.** Task "Re-run every stored scenario" is unticked, with `ENGINE_VERSION` already bumped in `ScenarioForecaster`. Owner action, correctly flagged.
+
+**Over the fence.** Nothing. `capitalGainsTax` still reads `$taxablePerPerson`, deferred to 0098. The `$drawnTaxable` carry-forward in `fundShortfall` also moves the band CAPS, so amounts drawn change, not only their price ÔÇö but that is needed for AC#2 and is disclosed in the function's own comment.
+
+VERDICT: defect
+
+**breakage: sound**
+
+I tried to break it three ways.
+
+**Callers.** `marginalTax` and `grossUpPension` are private to `PathProjector`. The only other place that prices an extra pension withdrawal, `FlexibleWithdrawalAssessor::marginalTaxOnExtraPensionIncome`, already used a full `TaxableIncome`, so nothing was left behind on the old signature.
+
+**Telescoping.** `PathProjector::projectYear` taxes the full `TaxableIncome` in its base pass, and every draw charges f(existing+extra) ÔêÆ f(existing) read off `$drawnTaxable`. `drawPension` and `drawPensionUfpls` both rebuild `$existing` inside the pot loop and both write `$drawnTaxable` back after it, including on the CGT top-up pass, so no pass restarts and the year sums to one recomputation.
+
+**Coverage.** `capitalGainsTax` and `meansTestedBenefitNominal` still read pre-drawdown `$taxablePerPerson`; that is unchanged behaviour, carded as 0098. FillBands' UFPLS path is not in the reconciliation test, but it carries the running total the same way, and the shipped default `ScenarioForecaster::DEFAULT_DRAWDOWN_STRATEGY` is `TaxEfficient`, whose single `drawPension` pass the test does cover.
+
+Nearest miss: the FillBands comment in `fundShortfall`, "pension within the personal allowance (0% income tax)". The pension pound is still untaxed there, so it is incomplete, not false.
+
+VERDICT: sound
+
