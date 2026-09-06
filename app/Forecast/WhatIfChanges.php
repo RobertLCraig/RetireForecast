@@ -31,7 +31,7 @@ final class WhatIfChanges
         'grossSalary', 'currentValue', 'ongoingContribution', 'employerContribution', 'pclsTakenToDate',
         'accruedAnnualPension', 'commutationLumpSum', 'weeklyForecast', 'balance', 'unrealisedGain',
         'grossAnnual', 'amount', 'salePrice', 'buyPrice', 'annualRent', 'movingCosts',
-        'outstandingMortgage', 'runningCosts',
+        'outstandingMortgage', 'runningCosts', 'councilTax',
     ];
 
     /** Leaf field names whose value is a rate — shown with a % suffix. */
@@ -192,6 +192,7 @@ final class WhatIfChanges
             'property' => [
                 'currentValue' => 'Home value', 'ownership' => 'Home ownership', 'outstandingMortgage' => 'Mortgage owed',
                 'runningCosts' => 'Home running costs', 'growthAssumptionOverride' => 'Home growth', 'ownershipShare' => 'Ownership share',
+                'councilTax' => 'Council tax', 'councilTaxDisabledBand' => 'Disabled band reduction',
             ],
         ];
         if (isset($sectionLabels[$head])) {

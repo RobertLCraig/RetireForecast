@@ -896,6 +896,22 @@
                         <div>
                             <label for="property-runningCosts" class="{{ $label }}">Running costs (£/yr)</label>
                             <input id="property-runningCosts" type="text" inputmode="decimal" wire:model="property.runningCosts" class="{{ $field }}">
+                            <p class="mt-1 text-xs text-gray-500">Maintenance and insurance. Put council tax in the box below instead, not here.</p>
+                        </div>
+                        <div>
+                            <label for="property-councilTax" class="{{ $label }}">Council tax (£/yr)</label>
+                            <input id="property-councilTax" type="text" inputmode="decimal" wire:model="property.councilTax" class="{{ $field }}">
+                            <p class="mt-1 text-xs text-gray-500">Your annual bill, before any discount. Entered here it can fall: 25% off automatically once only one of you is left, and Council Tax Reduction if your income and savings qualify. Left blank, whatever is inside your running costs above is charged in full for the whole forecast.</p>
+                        </div>
+                        <div>
+                            <label for="property-councilTaxDisabledBand" class="{{ $label }}">Disabled band reduction (optional)</label>
+                            <select id="property-councilTaxDisabledBand" wire:model="property.councilTaxDisabledBand" class="{{ $field }}">
+                                <option value="">Not claiming it</option>
+                                @foreach (\RetireForecast\FinanceEngine\Dto\CouncilTaxBand::cases() as $ctBand)
+                                    <option value="{{ $ctBand->value }}">Band {{ $ctBand->label() }}</option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500">Pick your home's band only if a disabled person lives there and the home has a qualifying feature: a second bathroom or kitchen, a room used mainly for their needs, or enough space to use a wheelchair indoors. The bill is then charged at the band below. It is not means-tested, and you can claim it now.</p>
                         </div>
                         <div>
                             <label for="property-growthAssumptionOverride" class="{{ $label }}">Growth override (%/yr)</label>

@@ -584,6 +584,70 @@ final class InputNotesTest extends TestCase
         }
     }
 
+    /**
+     * A retired couple in a home they own, whose council tax is either split out or left inside
+     * the running costs. £300 a week each is above the couple guarantee, so no Council Tax
+     * Reduction confuses the figures being read.
+     *
+     * @return array<string, mixed>
+     */
+    private function councilTaxHousehold(string $councilTax, string $runningCosts, string $band = ''): array
+    {
+        return [
+            'householdName' => 'Council tax', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'dob' => '1953-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'dob' => '1953-01-01', 'sex' => 'male', 'employmentStatus' => 'retired',
+                    'longevityMode' => 'fixed_age', 'longevityValue' => '80'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '300'],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '300'],
+            ],
+            'expenseLines' => [['id' => 'e1', 'amount' => '25000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => [
+                'currentValue' => '300000', 'ownership' => 'outright',
+                'runningCosts' => $runningCosts, 'councilTax' => $councilTax, 'councilTaxDisabledBand' => $band,
+            ],
+        ];
+    }
+
+    public function test_the_council_tax_note_states_what_is_charged_and_what_reduces_it(): void
+    {
+        // Board card 0047, and the no-invisible-figures rule: a bill the model is quietly
+        // discounting has to say so, with the figure, or the reader cannot check it.
+        $notes = $this->notes($this->councilTaxHousehold(councilTax: '2000', runningCosts: '1200', band: 'd'));
+        $kinds = array_column($notes, 'kind');
+        $this->assertContains('council_tax', $kinds);
+        $this->assertNotContains('council_tax_bundled', $kinds);
+
+        $text = $notes[array_search('council_tax', $kinds, true)]['text'];
+        $this->assertStringContainsString('£2,000.00', $text, 'the note names the bill that was entered');
+        $this->assertStringContainsString('band D', $text, 'and the band the disabled reduction is claimed from');
+        // The second member dies at 80 (during 2033), so the first full year of a single-person
+        // household is 2034: the note names that year and what the survivor then pays.
+        $this->assertStringContainsString('2034', $text);
+        $this->assertStringContainsString('£1,333.33', $text, 'the band D reduction and the discount both land');
+        $this->assertStringContainsString('25%', $text);
+    }
+
+    public function test_council_tax_left_inside_the_running_costs_is_flagged_as_charged_in_full(): void
+    {
+        // The state every scenario stored before card 0047 is in. Nothing is wrong with the
+        // arithmetic, but three reductions cannot reach a bundled figure, and a reader comparing
+        // plans off it has no way to know that from the screen.
+        $notes = $this->notes($this->councilTaxHousehold(councilTax: '', runningCosts: '3200'));
+        $kinds = array_column($notes, 'kind');
+        $this->assertContains('council_tax_bundled', $kinds);
+        $this->assertNotContains('council_tax', $kinds);
+
+        $text = $notes[array_search('council_tax_bundled', $kinds, true)]['text'];
+        $this->assertStringContainsString('£3,200.00', $text);
+        $this->assertStringContainsString('in full', $text);
+    }
+
     public function test_a_sensible_household_raises_no_notes(): void
     {
         // Employed retiring in the future, normal longevity ⇒ nothing to flag (no noise).

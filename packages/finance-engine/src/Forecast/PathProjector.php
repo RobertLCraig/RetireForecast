@@ -7,6 +7,7 @@ namespace RetireForecast\FinanceEngine\Forecast;
 use InvalidArgumentException;
 use LogicException;
 use RetireForecast\FinanceEngine\Benefits\CapitalAssessment;
+use RetireForecast\FinanceEngine\Benefits\CouncilTax;
 use RetireForecast\FinanceEngine\Benefits\PensionCreditCalculator;
 use RetireForecast\FinanceEngine\Benefits\PensionCreditResult;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
@@ -1324,14 +1325,20 @@ final class PathProjector
             $essentialNominal += $rentChargedNominal;
         }
 
-        // Property running costs (maintenance, insurance, council tax) for owners are
-        // essential too — the counterpart to a renter's rent. They stop once the home is sold.
+        // Property running costs (maintenance, insurance) for owners are essential too — the
+        // counterpart to a renter's rent. They stop once the home is sold.
         if ($household->primaryResidence?->runningCosts !== null && ! $state['homeSold']) {
             // Only the household's share of the running costs (it owns a share of the home, entered whole).
             $runningNominal = (int) round($household->primaryResidence->runningCosts->pence * $state['spendFactor'] * $state['ownershipShare']);
             $spendNominal += $runningNominal;
             $essentialNominal += $runningNominal;
         }
+
+        // Council tax, held apart from the running costs above because it is the one that
+        // SHRINKS — see councilTaxNominal for the three reliefs and the order they apply in.
+        $councilTaxNominal = $this->councilTaxNominal($household, $state, $pensionCreditAward, $aliveCount);
+        $spendNominal += $councilTaxNominal;
+        $essentialNominal += $councilTaxNominal;
 
         // Late-life care costs (a Monte Carlo risk; the draws return 0 for the deterministic and
         // historical views). Care is an essential outflow, so it lifts both the target and the
@@ -1508,6 +1515,7 @@ final class PathProjector
             nominal: $nominal,
             isaSheltered: $m($isaShelteredNominal),
             smiBalance: $m($state['smiBalance']),
+            councilTax: $m($councilTaxNominal),
         );
 
         return $build($r, $build(Money::fromPence(...), null));
@@ -1606,6 +1614,51 @@ final class PathProjector
         $applicableWeekly = Money::fromPence((int) round($applicableBase->pence * $state['spFactor']));
 
         return $this->pensionCredit->award($applicableWeekly, $assessableIncomeWeekly, $this->meansTestAssessableCapital($household, $state));
+    }
+
+    /**
+     * This year's council tax, as annual nominal pence, after everything that reduces it:
+     * the disabled band reduction, the single-person discount and Council Tax Reduction, in the
+     * order {@see CouncilTax} applies them.
+     *
+     * Zero unless the household entered a council tax figure of its own and still owns the home
+     * (a bill still bundled inside {@see Property::$runningCosts} is charged there, in full, and
+     * the result note says so). It rides CPI like every other spend line, but is NOT scaled by
+     * the ownership share: council tax is charged to whoever lives in the dwelling, not to its
+     * owners in proportion.
+     *
+     * The pension-age Council Tax Reduction is applied only where the Pension Credit means test
+     * itself ran ($award is non-null — every living member has reached State Pension age). A
+     * younger household falls under its council's OWN working-age scheme, which is not prescribed
+     * and differs in every district, so awarding nothing there is the honest and adverse answer.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  ?PensionCreditResult  $award  null when the qualifying-age gate blocked the award,
+     *                                       which is also what blocks the pension-age reduction
+     */
+    private function councilTaxNominal(Household $household, array $state, ?PensionCreditResult $award, int $aliveCount): int
+    {
+        $home = $household->primaryResidence;
+        if ($home?->annualCouncilTax === null || $state['homeSold']) {
+            return 0;
+        }
+
+        $liability = CouncilTax::liabilityAnnual($home->annualCouncilTax, $home->disabledBandReduction, $aliveCount === 1);
+        $nominal = Money::fromPence((int) round($liability->pence * $state['spendFactor']));
+
+        if ($award === null) {
+            return $nominal->pence;
+        }
+
+        // The reduction is computed against the NOMINAL liability, because the income and the
+        // guarantee it is tapered against are this year's nominal figures too.
+        return $nominal->minus(CouncilTax::reductionAnnual(
+            $nominal,
+            $award,
+            $this->meansTestAssessableCapital($household, $state),
+            $this->config->benefits->housingSupportUpperCapitalLimit,
+            $this->config->statePension->weeksPerYear,
+        ))->minZero()->pence;
     }
 
     /**

@@ -5,10 +5,29 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-06 (card 0046). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-06 (card 0047). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0032 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **Council tax is its own cost line and it now shrinks.** Card 0047. It sat inside
+  `Property::runningCosts` beside maintenance and insurance, and was charged at the full couple's
+  rate for the whole projection. `Property::$annualCouncilTax` holds it apart, `Property::$disabledBandReduction`
+  holds the band it is claimed from, and `Benefits\CouncilTax` owns the three reliefs and the order
+  they apply in: the disabled band reduction lowers the liability (charged as the band below,
+  `Dto\CouncilTaxBand` owning the statutory ninths), the 25% single-person discount comes off what
+  is left from the first death, and pension-age Council Tax Reduction meets the rest on a taper of
+  20% of income above the applicable amount, passported in full on Guarantee Credit and nil above
+  the £16,000 capital limit. The applicable amount is the Pension Credit one the engine already
+  computes, which the card directed. `YearResult::councilTax()` reports what was charged and the
+  presenter reads it. Council tax is deliberately NOT scaled by the ownership share: it is charged
+  to whoever LIVES there. **No `ENGINE_VERSION` bump and no stored re-run is owed:** a null bill is
+  byte-identical, and every stored scenario has one, so nothing moves until a reader splits the bill
+  out. The `council_tax_bundled` note is what tells them to. **All four statutory figures are
+  STATED, not verified** (no web in this session) and all four reach a projection: see
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§23), carded as **0111**. Built in a worktree, so
+  the two new builder inputs and the two new notes **have not been seen in a browser**. The gap this
+  did NOT close is card **0112**: a sell-and-rent plan is still charged no council tax at all, which
+  flatters renting in the one comparison the tool exists to run.
 - **Pension Credit is no longer counted as guaranteed, and two disclosures that never fired now
   fire.** Card 0046. `SECURE_SOURCES` had listed `means_tested_benefit` beside the State Pension, so
   the readout answering "are my essentials covered for life" counted money that has to be claimed,

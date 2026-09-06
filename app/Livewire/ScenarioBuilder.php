@@ -25,6 +25,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\CouncilTaxBand;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
@@ -445,6 +446,12 @@ class ScenarioBuilder extends Component
             $rules['property.runningCosts'] = $money;
             $rules['property.growthAssumptionOverride'] = $rate;
             $rules['property.ownershipShare'] = ['nullable', 'numeric', 'min:0', 'max:100'];
+            // Council tax, held apart from the running costs so the single-person discount,
+            // Council Tax Reduction and the disabled band reduction can act on it. Blank leaves it
+            // inside the running costs. The band is entered ONLY to claim the disabled band
+            // reduction, which charges the dwelling as the band below.
+            $rules['property.councilTax'] = $money;
+            $rules['property.councilTaxDisabledBand'] = ['nullable', Rule::in(array_column(CouncilTaxBand::cases(), 'value'))];
             // Letting the home out, and what that costs as a share of gross rent. Each rate is
             // blank by default, which takes the engine's disclosed default; an explicit 0 is the
             // reader's own figure. Capped at 100%: a cost above the whole rent is a typo.
@@ -759,6 +766,11 @@ class ScenarioBuilder extends Component
             $this->property['lettingManagementRate'] ??= '';
             $this->property['lettingVoidRate'] ??= '';
             $this->property['lettingMaintenanceRate'] ??= '';
+            // A property saved before council tax was split out of the running costs has neither
+            // key; default them blank, which is exactly the old behaviour (the bill stays inside
+            // the running costs and is charged in full, with no discount and no reduction).
+            $this->property['councilTax'] ??= '';
+            $this->property['councilTaxDisabledBand'] ??= '';
         }
 
         // A scenario saved before the bought-home cost/growth inputs existed has neither key;
@@ -1781,6 +1793,11 @@ class ScenarioBuilder extends Component
             // no delta. Blank is not zero: it takes the engine's disclosed default.
             'isLet' => false, 'lettingManagementRate' => '', 'lettingVoidRate' => '', 'lettingMaintenanceRate' => '',
             'outstandingMortgage' => '', 'runningCosts' => '', 'growthAssumptionOverride' => '', 'ownershipShare' => '',
+            // Council tax, split out of the running costs so the discounts can reach it. Both
+            // blank by default: blank council tax means it is still inside the running costs
+            // (charged in full, as before), and a blank band means the disabled band reduction
+            // does not apply. Empty defaults, so a what-if child's delta is unaffected.
+            'councilTax' => '', 'councilTaxDisabledBand' => '',
             'mortgageRedemptionYear' => '', 'mortgageMaturityAction' => 'refinance', 'mortgageRollUpRate' => '',
             'mortgageOverpayment' => '',
             // Capital-and-interest ("repayment") mortgage terms. All empty = the pre-existing

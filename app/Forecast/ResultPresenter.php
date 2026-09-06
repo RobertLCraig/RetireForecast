@@ -10,6 +10,7 @@ use App\Models\Result;
 use App\Models\Scenario;
 use Illuminate\Support\Collection;
 use RetireForecast\FinanceEngine\Benchmark\RetirementLivingStandards;
+use RetireForecast\FinanceEngine\Benefits\CouncilTax;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Care\CareAssumptions;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
@@ -1979,6 +1980,48 @@ final class ResultPresenter
                 .'normally pays that, so the running costs here are on the cautious side. Two consequences of letting '
                 .'ARE in the figures: the equity stops counting as your exempt main home for Pension Credit, and time '
                 .'spent let reduces the Private Residence Relief on a later sale.'];
+        }
+
+        // (c4c) COUNCIL TAX. It is the one running cost that shrinks, and bundled in with
+        // maintenance and insurance none of that could happen: a survivor was charged a couple's
+        // council tax for the rest of their life (board card 0047). Both branches below are the
+        // no-invisible-figures rule: a bill that is being reduced has to say by how much, and a
+        // bill still hidden inside the running costs has to say that it is being charged in full.
+        if ($home !== null && $home->annualCouncilTax !== null) {
+            $first = $forecast->years[0];
+            $survivor = null;
+            foreach ($forecast->years as $year) {
+                if ($year->aliveCount === 1 && $first->aliveCount > 1) {
+                    $survivor = $year;
+                    break;
+                }
+            }
+
+            $text = "Council tax is charged as its own cost, starting from the {$home->annualCouncilTax->format()} a year you entered. "
+                ."In {$first->calendarYear} the forecast charges {$first->councilTax()->format()}.";
+            if ($home->disabledBandReduction !== null) {
+                $text .= ' Your home is band '.$home->disabledBandReduction->label().' and you have said the disabled band '
+                    .'reduction applies, so it is charged at the band below. That reduction is not means-tested and does not '
+                    .'depend on anything else in this plan, so claim it now if you have not.';
+            }
+            if ($survivor !== null) {
+                $text .= " From {$survivor->calendarYear}, when only one of you is left, it falls to "
+                    ."{$survivor->councilTax()->format()}: a single occupant gets "
+                    .self::ratePct(CouncilTax::singlePersonDiscount()->asPercent()).' off automatically.';
+            }
+            $text .= ' Council Tax Reduction is applied where your income and savings qualify, on the pension-age rules, and it '
+                .'is worked out from the same figures as your Pension Credit. Two things are NOT in it: a deduction for another '
+                .'adult living with you, and whether you actually claim. Nothing is paid automatically except the single-person '
+                .'discount, so a reduction shown here is one you still have to apply to your council for.';
+            $notes[] = ['kind' => 'council_tax', 'text' => $text];
+        } elseif ($home !== null && $home->runningCosts !== null && $home->runningCosts->isPositive()) {
+            $notes[] = ['kind' => 'council_tax_bundled', 'text' => 'Your council tax is inside the '
+                .$home->runningCosts->format().' of home running costs, where the forecast cannot tell it apart from '
+                .'maintenance and insurance. So it is charged in full for the whole plan, and three reductions that would be '
+                .'real money are missed: the '.self::ratePct(CouncilTax::singlePersonDiscount()->asPercent())
+                .' single-person discount once only one of you is left, Council Tax Reduction if '
+                .'your income and savings qualify, and the disabled band reduction, which is not means-tested. Enter the bill in '
+                .'the Council tax box on the home step, and take it out of the running costs, to see what you would actually pay.'];
         }
 
         // (c5) ASSUMED FIGURES. Standing rule (Rob, 2026-07-30): the model must never use a figure

@@ -11,6 +11,7 @@ use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\AnnuityPurchase;
 use RetireForecast\FinanceEngine\Dto\CapitalReceipt;
 use RetireForecast\FinanceEngine\Dto\CgtHistory;
+use RetireForecast\FinanceEngine\Dto\CouncilTaxBand;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\DeathInServiceCover;
@@ -687,6 +688,12 @@ final class HouseholdAssembler
             lettingManagementRate: $this->percent($p['lettingManagementRate'] ?? null),
             lettingVoidRate: $this->percent($p['lettingVoidRate'] ?? null),
             lettingMaintenanceRate: $this->percent($p['lettingMaintenanceRate'] ?? null),
+            // Council tax as its own line. Blank means it is still bundled inside the running
+            // costs above, which is how every scenario stored before card 0047 behaved: charged
+            // in full for life, with no discount and no reduction. The band is set only when the
+            // disabled band reduction applies, so blank is the ordinary case.
+            annualCouncilTax: $this->money($p['councilTax'] ?? null),
+            disabledBandReduction: CouncilTaxBand::tryFrom((string) ($p['councilTaxDisabledBand'] ?? '')),
         );
     }
 

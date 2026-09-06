@@ -300,6 +300,15 @@ final class HousingComparison
             // A bought home can grow at its own real rate, INCLUDING a negative one — a park home
             // depreciates. Null keeps the assumption set's house growth, as before.
             growthAssumptionOverride: $action->buyGrowthOverride,
+            // Council tax follows the household to the new home UNCHANGED, rather than being
+            // scaled by the two prices the way the upkeep above is. A cheaper home is usually in a
+            // lower band, so this charges MORE than the move would really cost, which is the
+            // cautious direction: the model never flatters a purchase with a band nobody has
+            // looked up. Bands are set on 1991 values and are discrete, so there is no honest
+            // arithmetic from a 2026 price to a band. The disabled band reduction moves with the
+            // household because the qualifying feature is the resident's, not the building's.
+            annualCouncilTax: $household->primaryResidence?->annualCouncilTax,
+            disabledBandReduction: $household->primaryResidence?->disabledBandReduction,
         );
 
         // A mortgaged purchase carries an ongoing interest-only (RIO) payment for life; charge it

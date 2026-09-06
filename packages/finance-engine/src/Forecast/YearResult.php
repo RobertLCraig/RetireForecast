@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Forecast;
 
+use RetireForecast\FinanceEngine\Benefits\CouncilTax;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Iht\EstateValuer;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -132,6 +133,7 @@ final class YearResult
         public readonly ?Money $isaSheltered = null,
         public readonly ?Money $unmetOneOffSpend = null,
         public readonly ?Money $smiBalance = null,
+        public readonly ?Money $councilTax = null,
     ) {
         $this->totalWealth = $liquidWealth->plus($pensionWealth)->plus($this->homeEquity());
     }
@@ -171,6 +173,18 @@ final class YearResult
     public function smiBalance(): Money
     {
         return $this->smiBalance ?? Money::zero();
+    }
+
+    /**
+     * The council tax actually charged this year, after the single-person discount, any disabled
+     * band reduction and any Council Tax Reduction — zero when the household entered none, or
+     * still holds it inside its running costs. Reported on its own because it is the one running
+     * cost that shrinks, and a reader cannot check a discount they cannot see.
+     * {@see CouncilTax}.
+     */
+    public function councilTax(): Money
+    {
+        return $this->councilTax ?? Money::zero();
     }
 
     /**
@@ -226,6 +240,7 @@ final class YearResult
             $this->isaSheltered,
             $this->unmetOneOffSpend,
             $this->smiBalance,
+            $this->councilTax,
         );
     }
 }

@@ -136,6 +136,7 @@ final class HouseholdFixture
                 runningCosts: Money::fromPounds(6_400),
                 growthAssumptionOverride: Percent::fromPercent(1),
                 ownershipShare: Percent::fromPercent(100),
+                annualCouncilTax: Money::fromPounds(2_100),
             ),
         );
     }

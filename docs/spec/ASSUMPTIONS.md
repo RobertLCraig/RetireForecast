@@ -399,6 +399,33 @@ cash **−0.5%**.
    reader a paragraph, and narrowing it can cost them a benefit they were entitled to, so the
    cautious direction is to prompt too often. The margin is quoted in the prompt itself, read from
    the constant that owns it.
+23. **The four council tax figures (added 2026-09-06; live on `Benefits\CouncilTax` and
+   `Dto\CouncilTaxBand`).** Board card 0047. All four are STATUTORY rules rather than economic
+   assumptions, and all four are **STATED, not verified**, because the unattended session that
+   added them had no web access. The rules are quoted from the legislation below and the citations
+   were NOT fetched, so none carries a verified_on date. All four DO reach a projection. Board card
+   **0111** carries pinning them to a primary source.
+   - **Single-person discount, 25%** (`SINGLE_PERSON_DISCOUNT_BPS`). Local Government Finance Act
+     1992 s.11: https://www.legislation.gov.uk/ukpga/1992/14/section/11
+   - **Council Tax Reduction taper, 20% of income above the applicable amount**
+     (`REDUCTION_TAPER_BPS`), with maximum reduction for a household on Guarantee Credit and nil
+     above the £16,000 capital limit. Council Tax Reduction Schemes (Prescribed Requirements)
+     (England) Regulations 2012: https://www.legislation.gov.uk/uksi/2012/2885
+   - **Band proportions in ninths, A 6 to H 18** (`CouncilTaxBand::ninths()`). Local Government
+     Finance Act 1992 s.5: https://www.legislation.gov.uk/ukpga/1992/14/section/5
+   - **Disabled band reduction: charged as the band below, and band A reduced by one ninth of band
+     D** (`CouncilTaxBand::reducedNinths()`). Council Tax (Reductions for Disabilities) Regulations
+     1992: https://www.legislation.gov.uk/uksi/1992/554
+
+   One modelling call sits beside them and is NOT statutory: the Council Tax Reduction applicable
+   amount is the Pension Credit one the engine already computes, rather than the CTR scheme's own
+   personal allowances and premiums. The two are built to the same shape from the same uprated
+   figures, and a second hand-entered table would be a second definition of one quantity. The card
+   itself directed this. Two v1 limits follow it, both flagged in code: non-dependant deductions
+   are not modelled, which OVERSTATES the reduction for a household with another adult living
+   there, and the pension-age basis is applied only where every living member has reached State
+   Pension age, since a younger household falls under its council's own working-age scheme, which
+   is not prescribed and differs in every district.
 
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/

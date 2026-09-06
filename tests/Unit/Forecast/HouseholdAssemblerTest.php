@@ -7,6 +7,7 @@ namespace Tests\Unit\Forecast;
 use App\Forecast\HouseholdAssembler;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\CouncilTaxBand;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
@@ -493,6 +494,32 @@ class HouseholdAssemblerTest extends TestCase
             $property?->lettingMaintenanceRate()->basisPoints,
             'the rate left blank still takes the disclosed default',
         );
+    }
+
+    public function test_the_council_tax_bill_and_a_disabled_band_reduction_reach_the_property(): void
+    {
+        // Card 0047. Both halves have to reach the DTO or the engine charges the bill in full for
+        // life: the bill itself, held apart from the running costs so the discounts can act on it,
+        // and the band, which is what says the disabled band reduction applies and from where.
+        $state = BuilderStateFixture::full();
+        $state['property']['councilTax'] = '2100';
+        $state['property']['councilTaxDisabledBand'] = 'e';
+
+        $property = (new HouseholdAssembler)->household($state)->primaryResidence;
+
+        $this->assertSame(2_100_00, $property?->annualCouncilTax?->pence);
+        $this->assertSame(CouncilTaxBand::E, $property?->disabledBandReduction);
+
+        // Neither is entered on the ordinary home: the bill stays inside the running costs, and no
+        // band means no reduction is being claimed. That is what every scenario stored before this
+        // decodes to, so adding the inputs moves no existing figure.
+        $blank = BuilderStateFixture::full();
+        $blank['property']['councilTax'] = '';
+        $blank['property']['councilTaxDisabledBand'] = '';
+
+        $plain = (new HouseholdAssembler)->household($blank)->primaryResidence;
+        $this->assertNull($plain?->annualCouncilTax);
+        $this->assertNull($plain?->disabledBandReduction);
     }
 
     public function test_cgt_history_reduces_the_occupation_timeline_to_months(): void

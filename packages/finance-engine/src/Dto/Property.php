@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Dto;
 
+use RetireForecast\FinanceEngine\Benefits\CouncilTax;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 
@@ -13,8 +14,29 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * it is what converts that exempt value into assessable capital.
  *
  * $everLet flags a past letting period that restricts PRR. $runningCosts is the
- * annual maintenance + insurance + council tax used in the buy-vs-rent comparison.
+ * annual maintenance + insurance used in the buy-vs-rent comparison.
  * $ownershipShare null means wholly owned (100%).
+ *
+ * $annualCouncilTax is the household's council tax bill, held APART from $runningCosts because
+ * it is the one running cost that shrinks: a single occupant gets 25% off automatically, a
+ * household on or near the Pension Credit line gets Council Tax Reduction, and a qualifying
+ * disabled resident is charged a band lower. Bundled in with maintenance and insurance none of
+ * those could apply, so a survivor was charged a couple's council tax for the rest of their life
+ * ({@see CouncilTax}, board card 0047). Null means it is
+ * still inside $runningCosts, which is how every scenario stored before this behaved: the bill is
+ * charged in full, with no discount and no reduction, and the result says so.
+ *
+ * Unlike the other running costs it is NOT scaled by $ownershipShare. Council tax is charged to
+ * the people who LIVE in the dwelling, not to its owners in proportion — someone owning a third
+ * of the home they live in pays the whole bill, and it is exactly that occupancy that the
+ * single-person discount turns on.
+ *
+ * $disabledBandReduction is null for the ordinary case and otherwise the band the dwelling is
+ * actually in, which is what says the disabled band reduction applies: the bill is then charged
+ * as the band below. Holding the band here rather than beside a separate yes/no flag makes the
+ * invalid state — "the reduction applies, but from which band?" — unrepresentable. The reduction
+ * is NOT means-tested: it needs only a qualifying feature (an extra bathroom, a room used for the
+ * disabled person's needs, or space to use a wheelchair indoors).
  *
  * $cgtHistory, when set, drives the Capital Gains Tax on selling a home whose Private
  * Residence Relief is only partial (it was let / not the main home for part of ownership);
@@ -120,6 +142,8 @@ final class Property
         public readonly ?Percent $lettingManagementRate = null,
         public readonly ?Percent $lettingVoidRate = null,
         public readonly ?Percent $lettingMaintenanceRate = null,
+        public readonly ?Money $annualCouncilTax = null,
+        public readonly ?CouncilTaxBand $disabledBandReduction = null,
     ) {
         if ($repaymentTerms !== null && $mortgageRollUpRate !== null) {
             throw new \InvalidArgumentException('A mortgage cannot both amortise (repaymentTerms) and roll up (mortgageRollUpRate) — choose one.');
@@ -153,6 +177,8 @@ final class Property
             lettingManagementRate: $this->lettingManagementRate,
             lettingVoidRate: $this->lettingVoidRate,
             lettingMaintenanceRate: $this->lettingMaintenanceRate,
+            annualCouncilTax: $this->annualCouncilTax,
+            disabledBandReduction: $this->disabledBandReduction,
         );
     }
 

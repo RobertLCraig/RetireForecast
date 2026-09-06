@@ -86,7 +86,8 @@ final class DemoScenario
             'incomeStreams' => [],
             'hasProperty' => true,
             'property' => ['currentValue' => '450000', 'ownership' => 'mortgaged', 'everLet' => false,
-                'outstandingMortgage' => '30000', 'runningCosts' => '5000', 'growthAssumptionOverride' => '', 'ownershipShare' => '100'],
+                'outstandingMortgage' => '30000', 'runningCosts' => '5000', 'growthAssumptionOverride' => '', 'ownershipShare' => '100',
+                'councilTax' => '2200', 'councilTaxDisabledBand' => ''],
             'housing' => ['salePrice' => '450000', 'buyPrice' => '280000', 'annualRent' => '15000',
                 'rentInflationReal' => '0.5', 'movingCosts' => '8000',
                 'sellingCosts' => [
