@@ -120,3 +120,44 @@ pins that to the penny.
 Not seen in a browser: built in a worktree, which Herd does not serve. No screen changed, but the
 memo sits under every screen that reads a scenario, so the results, compare and affordability pages
 each want one look.
+
+**2026-09-06**
+RESULT: partial
+TESTS: +0 new, all green
+TOUCHED:
+- docs/board/in-progress/0042-queue-and-performance-remainder.md (this card)
+- docs/board/todo/0105-two-decision-support-classes-rebuild-what-the-forecaster-already-holds.md (new)
+- docs/HANDOVER.md
+OUT-OF-SCOPE: 0105
+
+A resume run. The queue half was verified as built, the suite is green here, and **#3 is still not
+ticked.** No code changed.
+
+**#3 is confirmed blocked on Rob, from a second reading, and the block is now firmer than the last
+entry put it.** The last entry argued that a Livewire re-render is a new HTTP request, which a
+request-scoped memo cannot span. That is right, and there is a stronger fact beside it: the
+affordability screen has **no in-place re-render at all**. Its only interactive element is the
+`checkHowSure` button, and that action ends in `redirectRoute()`; `livewire.render_on_redirect`
+defaults to false, so Livewire skips the render. Every render of that screen is therefore a fresh
+full-page request with an empty memo and an empty computed cache. Reading "re-renders" as a new
+request makes #3 need a cache that outlives the response, which this card's own "Not this card"
+forbids. Reading it as an in-request re-render makes it describe something the screen never does.
+Neither reading can be ticked honestly, and choosing to lift the exclusion is Rob's call. Left open.
+
+**The card's own "measure before building more" is now measured.** On `ScenarioFixture::rich`, one
+affordability row (both deterministic ladders plus the sustainable-spend bisection) costs about
+**64 ms on a cold forecaster and about 51 ms on a fully warm one**, because the bisection is not
+memoised and re-runs its own search either way. The memo therefore saves roughly 13 ms per plan per
+request. At twenty plans a second render of the screen would cost about 1.3 s, and persistent
+caching would save that. The figures come from a throwaway test on in-memory SQLite, since PHPUnit
+is the only harness this worktree can time in; treat them as indicative, not as the real V2
+scenario. That is the number the decision needs, so it is recorded here rather than left to be
+re-derived.
+
+Raised, not fixed: **0105**. `SustainableSpend` and `AdviceCostComparison` read the housing variant
+off the builder state themselves and rebuild the household, the housing action and the whole
+three-variant decomposition by hand, where `ProtectionGap` and `CapacityForLoss` read the
+forecaster's memoised `variantInputs()`. So two of the four route around the memo this card built,
+and the two hand-rolled copies also drop the shared one's `?? $all['stay_put']` fallback. It is a
+"one definition, one home" fault rather than a speed one, and no Task here names either class, so it
+is a card and not a change.

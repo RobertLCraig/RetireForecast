@@ -19,8 +19,15 @@ inventory and cards 0024, 0025, 0028, 0029 and 0030 were folded out to
   enforce a timeout at all. `ScenarioForecaster` now memoises per request (`scoped` in
   `AppServiceProvider`), keyed on the scenario's stored **ciphertext** plus its parent chain and its
   assumption set WHOLE, because an edit inside a shared `AssumptionSet` moves a scenario whose own
-  row never changes. No figure moves and no `ENGINE_VERSION` bump. Raised alongside: card **0104**,
-  `BuildScenarioExport` still carries no overlap lock.
+  row never changes. No figure moves and no `ENGINE_VERSION` bump. **Its third criterion is blocked
+  on Rob**: the affordability screen has no in-place re-render (its one action redirects, and
+  Livewire skips the render on a redirect), so every render is a fresh request with an empty memo,
+  and closing it needs the cross-request cache the card itself excludes. Measured, so the call has a
+  number: one affordability row costs about 64 ms cold and about 51 ms warm, because the
+  sustainable-spend bisection is not memoised, so a second render of twenty plans costs about 1.3 s.
+  Raised alongside: card **0104**, `BuildScenarioExport` still carries no overlap lock, and card
+  **0105**, `SustainableSpend` and `AdviceCostComparison` rebuild by hand what the memo already
+  holds.
 - **A forced sale now redeems the mortgage it actually owes, and four backstops that invented an
   answer now throw.** Card 0041. `PathProjector` handed `HousingProceeds::compute()` the mortgage
   balance as ORIGINALLY ENTERED, which is right only for an interest-only loan: a lifetime mortgage
