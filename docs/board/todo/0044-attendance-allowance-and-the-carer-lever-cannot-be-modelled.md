@@ -126,3 +126,54 @@ and suppressing the award moves stored plans, so it is carded rather than built.
 **Not seen in a browser.** Built in a worktree, so the two new builder inputs, the new quick what-if
 button, the passports note and the lever warning have not been looked at on a screen. That check is
 still owed.
+
+### 2026-09-06 review (v20260906093010-aadb)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 231s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I checked each box against real code.
+
+**#1** `Person::receivesDisabilityBenefitAt()` gates the flag on age. `PathProjector::meansTestedBenefitNominal()` calls it for both the severe-disability count and the carer test, using the same per-year `$ages` map that `careAnnualCost` and income-stream start ages use. The field is validated in `ScenarioBuilder::rules()`, defaulted in `ScenarioBuilder::blankPerson()`, shown in `resources/views/livewire/scenario-builder.blade.php`, and mapped in `HouseholdAssembler::person()`. Nothing else in `app/` or the engine reads the raw flag as a for-life flag except the disclosure note.
+
+**#2** `QuickWhatIf::claimAttendanceAllowance()` sets flag, start age and a tax-free `disability_benefit` stream; the button renders from `QuickWhatIf::PRESETS` in `resources/views/components/quick-what-ifs.blade.php`. New stream rows are legal adds under `BuilderStateDelta::merge()`. The passports list is in `ResultPresenter::inputNotes()` and renders in `scenario-results.blade.php`.
+
+**#3** `ScenarioBuilder::rules()` + blade checkbox (couples only) + `HouseholdAssembler::person()`.
+
+**#4** `ThresholdPresenter::leverCaveat()` reads `carersAllowanceEarningsLimitWeekly` off the registry; `ThresholdExplorer::render()` passes it and `threshold-explorer.blade.php` prints it.
+
+I tried to find a criterion with no code behind it and could not.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Scope review, card 0044.**
+
+**1. Grew: the builder tells the user a rule the app does not apply.** The new "Cares for their partner" help text in `resources/views/livewire/scenario-builder.blade.php` says "pay above it stops this counting while they are still working." It does not. `PathProjector::meansTestedBenefitNominal()` awards the carer addition whatever the carer earns; card 0108 exists to fix that. The card asked to *expose* the flag (#3) and to *flag* the limit on the lever (#4). `ThresholdPresenter::leverCaveat()` is honest ("this sweep does not subtract it"); this text is not. So the one screen that sets the flag misdescribes a figure that is in the projection. That is the invisible-figures rule, and the next session must fix the wording or the model.
+
+**2. Grew: an unused unverified figure.** `BenefitsParameters::$attendanceAllowanceHigherWeekly` is read only by `TaxYearAudit::describe()`. The task said "using the sourced rate"; the preset uses the lower one. It adds a second unpinned number to card 0106 for a display line.
+
+**3. Half done (minor).** `QuickWhatIf::PRESETS` "Retire 2 years later" also extends working life and carries no carer warning.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Finding 1 ÔÇö the carer warning fires when it cannot bite.**
+`ThresholdPresenter::leverCaveat()` tests only two things: the person cares for a partner, and the person still earns. `PathProjector::meansTestedBenefitNominal()` awards the carer addition only when a *living partner receives a qualifying benefit at that year's age*. The presenter asserts neither half.
+
+Two ways it breaks, both now reachable because this card made both flags settable:
+
+- Tick "cares for partner" and leave the partner's disability flag off. The projector never awards a carer addition. The page still shows the amber warning that working longer "postpones that addition, year for year". A warning about money that is not in the model.
+- Set the partner's `disabilityBenefitFromAge` to 80, which is exactly what the new Attendance Allowance preset writes. No carer addition can exist before 80, so a retirement-age lever in the 60s postpones nothing. The caveat ignores `disabilityBenefitFromAge` entirely ÔÇö the field this card added.
+
+`test_the_carer_earnings_limit_is_not_flagged_where_it_cannot_bite` builds only "nobody caring" and "carer already retired". Neither of the two cases above is built.
+
+**Finding 2 ÔÇö same shape, smaller.** `QuickWhatIf::claimAttendanceAllowance()` filters claimants on the flag alone. A person who has a tax-free `disability_benefit` income stream but an unticked flag gets a second stream stacked on the first.
+
+VERDICT: defect
+
