@@ -11,6 +11,7 @@ use App\Models\Scenario;
 use Illuminate\Support\Collection;
 use RetireForecast\FinanceEngine\Benchmark\RetirementLivingStandards;
 use RetireForecast\FinanceEngine\Benefits\CouncilTax;
+use RetireForecast\FinanceEngine\Benefits\Deprivation;
 use RetireForecast\FinanceEngine\Benefits\HousingBenefit;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Care\CareAssumptions;
@@ -1884,7 +1885,12 @@ final class ResultPresenter
                 ."{$forecast->finalCalendarYear} it grows to about {$finalYear->mortgageBalance()->format()} in today’s money, "
                 ."so of the home’s {$finalYear->propertyWealth->format()} only about {$finalYear->homeEquity()->format()} would "
                 .'be left to inherit. Freeing the monthly payment helps the money last, but the rolled-up interest is what it '
-                .'costs what you leave behind — compare this against servicing the interest to see the trade-off.'];
+                .'costs what you leave behind — compare this against servicing the interest to see the trade-off. '
+                // Board card 0049. The alternative a household reaches for once equity release is on
+                // the table is signing the home over to a child, so the trap belongs beside this note
+                // rather than on a page nobody opens. The copy is the ENGINE's, quoted rather than
+                // restated, so this and every other surface cannot drift.
+                .Deprivation::giftWithReservation()];
         }
 
         // (c2b) Support for Mortgage Interest, beside the equity-release note above because it is
@@ -2126,6 +2132,33 @@ final class ResultPresenter
             if ($cliff !== null) {
                 $notes[] = ['kind' => 'capital_cliff', 'text' => "From {$year->calendarYear}: {$cliff}"];
                 break;
+            }
+        }
+
+        // (c8) DEPRIVATION OF CAPITAL (board card 0049). The tool models the Pension Credit capital
+        // tariff, names the downsizing trap, and projects plans built on selling a home, taking
+        // family money, spending a lump and cashing pension pots, while saying nothing about the
+        // notional capital rule or the care deliberate-deprivation test. Reported ONCE, on the
+        // earliest move: the rules are the same whichever move triggers them, and a note repeated
+        // per year is a note nobody reads.
+        //
+        // A YEAR-0 sale is invisible to the engine (HousingComparison hands the projector a
+        // household that already holds the proceeds), so it is raised here and takes precedence:
+        // it IS year 0, and selling the home is the largest move any of these plans makes.
+        $sellsAtYearZero = $housingAction !== null
+            && $housingAction->salePrice !== null
+            && $housingAction->salePrice->isPositive();
+        if ($sellsAtYearZero) {
+            $notes[] = ['kind' => 'capital_deprivation', 'text' => "From {$baseYear}: ".Deprivation::message(
+                ['selling your home for '.$housingAction->salePrice->format()],
+            )];
+        } else {
+            foreach ($forecast->years as $year) {
+                $moved = self::firstWarning($year, WarningCode::CAPITAL_DEPRIVATION);
+                if ($moved !== null) {
+                    $notes[] = ['kind' => 'capital_deprivation', 'text' => "From {$year->calendarYear}: {$moved}"];
+                    break;
+                }
             }
         }
 

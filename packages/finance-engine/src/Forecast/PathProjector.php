@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use LogicException;
 use RetireForecast\FinanceEngine\Benefits\CapitalAssessment;
 use RetireForecast\FinanceEngine\Benefits\CouncilTax;
+use RetireForecast\FinanceEngine\Benefits\Deprivation;
 use RetireForecast\FinanceEngine\Benefits\HousingBenefit;
 use RetireForecast\FinanceEngine\Benefits\PensionCreditCalculator;
 use RetireForecast\FinanceEngine\Benefits\PensionCreditResult;
@@ -26,6 +27,7 @@ use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
+use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\Tenancy;
 use RetireForecast\FinanceEngine\Iht\EstateValuation;
@@ -1158,6 +1160,11 @@ final class PathProjector
         // property costs — the realistic path, not the impossible "keep the home for ever". The
         // sale is decomposed by the shared HousingProceeds so it reconciles (parts sum to net); CGT
         // is £0 for a home lived in throughout, partial-PRR for an ever-let one.
+        //
+        // Read BEFORE the block so the sale can be told from an already-sold home: a forced sale is
+        // a one-year EVENT (board card 0049 warns on it) while $state['homeSold'] stays true for the
+        // rest of the plan, so the flag alone would repeat the warning for ever.
+        $homeSoldAtYearStart = $state['homeSold'];
         if ($home?->mortgageRedemptionYear !== null
             && $home->mortgageMaturityAction === MortgageMaturityAction::ForcedSale
             && ! $state['homeSold']
@@ -1524,6 +1531,13 @@ final class PathProjector
                 ...$this->unfundedOneOffWarnings($oneOffs, $unmetOneOffNominal, $m),
                 ...$this->tenancyUpFrontWarnings($oneOffs, $rentChargedNominal, $m),
                 ...$this->rentReferencingWarnings($rentChargedNominal, $grossIncomeNominal, $m),
+                ...$this->deprivationWarnings(
+                    $oneOffs,
+                    $src,
+                    ! $homeSoldAtYearStart && $state['homeSold'],
+                    (int) round($this->config->benefits->housingSupportUpperCapitalLimit->pence * $cumInflation),
+                    $m,
+                ),
                 ...$benefitWarnings,
             ],
             mortgageBalance: $m($state['mortgageOutstanding']),
@@ -3164,6 +3178,54 @@ final class PathProjector
         }
 
         return [];
+    }
+
+    /**
+     * Board card 0049: one warning, on any year the plan moves a large sum, that the money can be
+     * treated as if the household still held it — the notional capital rule for means-tested
+     * benefits, the deliberate deprivation test for care charging. Neither is a calculation this
+     * engine can do (both turn on motive and on what was foreseeable), so the rule this applies is
+     * only "a large sum moved here"; the copy itself has one home, {@see Deprivation}.
+     *
+     * The events are the ones the model already knows about: a pension lump sum or withdrawal,
+     * capital received, a one-off capital cost (which is how a gift out is entered — modelling
+     * gifts properly is card 0059), and a forced home sale. A YEAR-0 sell variant sells before the
+     * projection starts ({@see HousingComparison::withHousing}
+     * hands this projector a household that already holds the proceeds), so that sale is invisible
+     * here and is warned about by the presenter instead.
+     *
+     * "Large" is the £16,000 capital limit that already ends Housing Benefit and Council Tax
+     * Support, read from the config that owns it and passed in uprated to this year's prices so the
+     * real year and its nominal twin trip on exactly the same moves. A move smaller than that
+     * cannot end an award on its own, and a warning on every plan is a warning nobody reads.
+     *
+     * @param  list<array{label: string, amount: int}>  $oneOffs
+     * @param  array<string, int>  $src  this year's income by source, nominal pence
+     * @param  int  $thresholdNominal  the capital limit at this year's prices
+     * @param  callable(int): Money  $m  nominal pence -> the reported Money (real, or the nominal twin)
+     * @return list<Warning>
+     */
+    private function deprivationWarnings(array $oneOffs, array $src, bool $soldThisYear, int $thresholdNominal, callable $m): array
+    {
+        $events = [];
+
+        $fromPension = ($src['pension_lump_sum'] ?? 0) + ($src['pension_drawdown'] ?? 0);
+        if ($fromPension >= $thresholdNominal) {
+            $events[] = 'taking '.$m($fromPension)->format().' out of a pension';
+        }
+        if (($src['capital_receipt'] ?? 0) >= $thresholdNominal) {
+            $events[] = 'receiving '.$m($src['capital_receipt'])->format().' of capital';
+        }
+        foreach ($oneOffs as $cost) {
+            if ($cost['amount'] >= $thresholdNominal) {
+                $events[] = $cost['label'].' of '.$m($cost['amount'])->format();
+            }
+        }
+        if ($soldThisYear) {
+            $events[] = 'selling your home';
+        }
+
+        return $events === [] ? [] : [Deprivation::warning($events, $m($thresholdNominal))];
     }
 
     /**

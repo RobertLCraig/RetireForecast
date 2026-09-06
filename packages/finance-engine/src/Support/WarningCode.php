@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Support;
 
+use RetireForecast\FinanceEngine\Benefits\Deprivation;
+
 /**
  * Stable machine-readable codes for {@see Warning}s, so the UI can group, style
  * and link to signposting for each pitfall without string-matching prose.
@@ -55,4 +57,12 @@ final class WarningCode
 
     /** What starting a tenancy costs on day one — the deposit and the first month's rent. */
     public const TENANCY_UP_FRONT_COST = 'tenancy_up_front_cost';
+
+    /**
+     * The plan moves a large sum out of the household's capital (a pension lump sum or
+     * withdrawal, a capital receipt spent, a one-off cost, a gift, a home sale), which both the
+     * benefits notional-capital rule and the care deliberate-deprivation test can treat as still
+     * held. {@see Deprivation}.
+     */
+    public const CAPITAL_DEPRIVATION = 'capital_deprivation';
 }

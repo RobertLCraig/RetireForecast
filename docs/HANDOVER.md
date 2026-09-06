@@ -5,10 +5,25 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-06 (card 0048). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-06 (card 0049). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0032 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **Moving a large sum is now warned about as a deprivation question.** Card 0049.
+  `Benefits\Deprivation` is the one home for the copy (the benefits notional-capital rule, the care
+  deliberate-deprivation test in Annex E, neither with a time limit, plus the benefits-check
+  pointer and the gift-with-reservation-of-benefit trap). `PathProjector` raises
+  `WarningCode::CAPITAL_DEPRIVATION` on any year a move clears the £16,000 capital limit uprated to
+  that year, reading `housingSupportUpperCapitalLimit` rather than a figure of its own: a pension
+  lump sum or withdrawal, capital received, a labelled one-off cost (which is how a gift out is
+  entered), or a forced sale. A **year-0 sale is invisible to the projector** (`HousingComparison`
+  hands it a household that already holds the proceeds), so `ResultPresenter` raises that one
+  itself and it takes precedence; the note is reported once, on the earliest move. The same copy
+  rides the lump-sum panel's existing warnings list and the equity-release roll-up note. **No
+  `ENGINE_VERSION` bump and no stored re-run is owed:** it is a warning, no figure moves. Built in
+  a worktree, so the new note and the two new warning lines **have not been seen in a browser**.
+  Two things it did not do: `docs/spec/METHODOLOGY.md` still does not mention deprivation, and the
+  care panel carries no warning of its own (the rule is stated inside the message instead).
 - **A pension-age renter is finally awarded Housing Benefit, and property capital is valued net of
   the costs of selling it.** Card 0048. The engine paid Guarantee Credit and nothing else, so a
   sell-and-rent plan met its whole rent for life in exactly the tail where a plan is judged to run

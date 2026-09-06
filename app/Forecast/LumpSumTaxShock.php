@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace App\Forecast;
 
 use App\Models\Scenario;
+use RetireForecast\FinanceEngine\Benefits\Deprivation;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
+use RetireForecast\FinanceEngine\Forecast\PathProjector;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Pension\FlexibleWithdrawalAssessor;
 use RetireForecast\FinanceEngine\Pension\FlexibleWithdrawalResult;
 use RetireForecast\FinanceEngine\Pension\WithdrawalKind;
+use RetireForecast\FinanceEngine\Support\Warning;
 use RetireForecast\FinanceEngine\Tax\TaxableIncome;
 
 /**
@@ -71,7 +74,16 @@ final class LumpSumTaxShock
             )
             : $assessor->assessDrawdownIncome($instruction->amount, $otherIncome, $potEmptied);
 
-        return $this->present($scenario, $household, $pension, $instruction, $otherIncome, $result);
+        // Board card 0049: this is the screen where somebody decides to take money out of a pot, so
+        // it is where the deprivation warning has to be. It rides the panel's existing warnings
+        // list, which the results page and the PDF already render. The trigger and the copy are
+        // both the engine's, so the panel cannot say it differently from the forecast's own note.
+        $limit = $config->benefits->housingSupportUpperCapitalLimit;
+        $deprivation = $result->gross->greaterThanOrEqual($limit)
+            ? [Deprivation::warning(['taking '.$result->gross->format().' out of a pension'], $limit)]
+            : [];
+
+        return $this->present($scenario, $household, $pension, $instruction, $otherIncome, $result, $deprivation);
     }
 
     /**
@@ -105,7 +117,7 @@ final class LumpSumTaxShock
      * How much of this pot is already designated to drawdown when the withdrawal happens, because
      * an earlier tax-free lump sum crystallised it. Taking £C of cash crystallises £C / 25% and
      * pays the £C out, so £C / 25% − £C stays behind, and that money has had its quarter: the
-     * forecast draws it first and taxes it in full ({@see \RetireForecast\FinanceEngine\Forecast\PathProjector::ufplsSplit}).
+     * forecast draws it first and taxes it in full ({@see PathProjector::ufplsSplit}).
      * Without this the panel showed a quarter of it tax-free while the forecast charged the lot —
      * two figures for one withdrawal, from the same engine.
      *
@@ -141,6 +153,7 @@ final class LumpSumTaxShock
     }
 
     /**
+     * @param  list<Warning>  $extraWarnings
      * @return array<string, mixed>
      */
     private function present(
@@ -150,6 +163,7 @@ final class LumpSumTaxShock
         WithdrawalInstruction $instruction,
         TaxableIncome $otherIncome,
         FlexibleWithdrawalResult $r,
+        array $extraWarnings = [],
     ): array {
         return [
             'kind' => $instruction->kind === WithdrawalKind::Ufpls ? 'UFPLS (uncrystallised lump sum)' : 'drawdown income',
@@ -169,7 +183,7 @@ final class LumpSumTaxShock
             'reclaimForm' => $r->reclaimForm?->value,
             'netReceived' => $r->netReceived->format(),
             'mpaaTriggered' => $r->mpaaTriggered,
-            'warnings' => array_map(fn ($w) => $w->message, $r->warnings),
+            'warnings' => array_map(fn ($w) => $w->message, [...$r->warnings, ...$extraWarnings]),
             // The accessible table the headline text is also drawn from.
             'rows' => [
                 ['label' => 'Gross withdrawal', 'value' => $r->gross->format()],
