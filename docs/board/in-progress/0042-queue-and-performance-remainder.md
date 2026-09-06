@@ -161,3 +161,51 @@ forecaster's memoised `variantInputs()`. So two of the four route around the mem
 and the two hand-rolled copies also drop the shared one's `?? $all['stay_put']` fallback. It is a
 "one definition, one home" fault rather than a speed one, and no Task here names either class, so it
 is a card and not a change.
+
+**2026-09-06**
+RESULT: partial
+TESTS: +0 new, all green
+TOUCHED:
+- docs/board/in-progress/0042-queue-and-performance-remainder.md (this card)
+OUT-OF-SCOPE: none
+
+A second resume run. No code changed and **#3 is still not ticked.** What this run adds is
+verification of the two entries above rather than a third argument for the same conclusion: each
+load-bearing claim in them was checked against this tree, and each holds.
+
+- `vendor/retireforecast/finance-engine` here is a **live junction** onto `packages/finance-engine`,
+  not the stale copy that has hidden engine edits on this board before. So the sort-once change in
+  `Simulator::moneyPercentiles` is the code the suite actually ran, and `GoldenMasterTest` is
+  really pinning it.
+- `config/queue.php` defaults `retry_after` to 3900 and `.env.example` names
+  `DB_QUEUE_RETRY_AFTER=3900`. Both jobs carry `$timeout = 3600`, `$tries = 1`, `$failOnTimeout`
+  and a `WithoutOverlapping` on their own record id. Checked wider than the card asked, because the
+  config default reaches everything: `RunAssistantTurn` (300s) and `BuildScenarioExport` (3600s)
+  both sit inside the 3900 window too, so **no queued job in this app can now be handed to a second
+  worker while the first is still inside it.** 0104 remains right about the missing overlap lock on
+  the export, which is a different fault from the retry window.
+- `livewire.render_on_redirect` is `false` in the shipped package config and this app publishes no
+  `config/livewire.php`, so the previous entry's reading of `checkHowSure` is correct: that action
+  skips its render.
+- The memo stamp was read for **staleness**, not for speed, since a wrong figure costs more here
+  than a slow one. Every input the derivation reads is in the stamp: both form-state ciphertexts,
+  the tax year, the variant column, the parent chain walked to the same depth
+  `Scenario::effectiveBuilderState()` walks, and the assumption set whole. `MEMO_SCENARIOS` evicts
+  by insertion order, which can only cost a recompute and can never serve a stale answer.
+
+**The ask #3 needs, stated plainly so it can be answered without re-reading this thread.** A
+Livewire re-render is always a separate HTTP request: an action and the render that follows it are
+one request, so there is no second render inside one, and both the container-`scoped` memo and
+`#[Computed]` start empty in the next. #3 therefore needs a cache that outlives the response, and
+this card's own "Not this card" excludes exactly that. Two ways out, and the choice is Rob's:
+
+- **A. Lift the exclusion** and let this card build a persistent forecast cache, keyed on the stamp
+  `ScenarioForecaster::stamp()` already computes. It recovers the measured 64 ms per plan per
+  render (about 1.3 s on twenty plans) and the stamp is already the invalidation rule it needs.
+- **B. Reword #3** to the in-request reading, which is met and proven, and raise the persistent
+  cache as its own card now that the measurement exists to justify it.
+
+**B is the recommendation.** The saving is about a second on a screen that has not had its browser
+sign-off yet (card 0001), and caching decrypted personal forecasts past the response raises where
+they are stored and for how long, which is a bigger question than a performance card should settle
+in passing. The number is not small enough to drop, so it wants a card either way.
