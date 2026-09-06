@@ -222,6 +222,31 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertSame(780_000, $stream->grossAnnual->pence); // £600.00 × 13 — still annualised
     }
 
+    public function test_a_disability_award_is_recorded_as_separate_care_and_mobility_components(): void
+    {
+        // Board card 0050. The two components are treated differently in a care financial
+        // assessment and only one of them stops in a funded placement, so the builder has to be
+        // able to record them apart. Both are still structurally tax-free.
+        $household = (new HouseholdAssembler)->household([
+            'householdName' => 'DLA both parts', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '10000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'incomeStreams' => [
+                ['id' => 'i1', 'ownerId' => 'p1', 'type' => 'disability_benefit', 'grossAnnual' => '110.40', 'frequency' => 'weekly', 'startAge' => '0'],
+                ['id' => 'i2', 'ownerId' => 'p1', 'type' => 'disability_benefit_mobility', 'grossAnnual' => '77.05', 'frequency' => 'weekly', 'taxable' => true, 'startAge' => '0'],
+            ],
+        ]);
+
+        [$care, $mobility] = $household->incomeStreams;
+        $this->assertSame(IncomeStreamType::DisabilityBenefit, $care->type);
+        $this->assertSame(IncomeStreamType::DisabilityBenefitMobility, $mobility->type);
+        $this->assertFalse($mobility->taxable); // the type overrides the taxable=true flag here too
+        $this->assertTrue($mobility->type->isTaxFreeBenefit());
+        $this->assertSame(574_080, $care->grossAnnual->pence);      // £110.40 × 52
+        $this->assertSame(400_660, $mobility->grossAnnual->pence);  // £77.05 × 52
+    }
+
     public function test_the_disability_benefit_flag_is_carried_through_to_the_person(): void
     {
         $household = (new HouseholdAssembler)->household([

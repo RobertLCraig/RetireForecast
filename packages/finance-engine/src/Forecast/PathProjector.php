@@ -9,6 +9,7 @@ use LogicException;
 use RetireForecast\FinanceEngine\Benefits\CapitalAssessment;
 use RetireForecast\FinanceEngine\Benefits\CouncilTax;
 use RetireForecast\FinanceEngine\Benefits\Deprivation;
+use RetireForecast\FinanceEngine\Benefits\DisabilityBenefitInCare;
 use RetireForecast\FinanceEngine\Benefits\HousingBenefit;
 use RetireForecast\FinanceEngine\Benefits\PensionCreditCalculator;
 use RetireForecast\FinanceEngine\Benefits\PensionCreditResult;
@@ -600,6 +601,10 @@ final class PathProjector
             'homeSold' => false,
             'annuities' => $annuities, // planned/active lifetime annuities bought from DC pots
             'careRealTotal' => 0, // accumulated real (today's money) care cost incurred on this path
+            // Years so far in the CURRENT local-authority-funded care spell, per person. Drives the
+            // 28-day stop on the disability care component ({@see disabilityCareComponentFractions});
+            // reset to 0 whenever the person is not in a funded placement.
+            'laFundedCareYears' => [],
             'estateSettled' => [], // person ids whose assets have passed to the survivor (once each)
             // Death-in-service lump sums recorded in a member's final working year and paid to the
             // survivor the following year (personId => the payout's facts). Drained when paid.
@@ -879,6 +884,18 @@ final class PathProjector
         // from its purchase year.
         $this->processAnnuityPurchases($state, $yearIndex, $alive, $cumInflation);
 
+        // Board card 0050. Attendance Allowance and the DLA care component stop 28 days into a
+        // care placement the local authority funds; the mobility component runs on. Settled HERE,
+        // before any income is assembled, because the answer has to reach the income streams
+        // below, the Pension Credit severe-disability addition after them and the care charge
+        // after that — one determination, three readers, no chance of them disagreeing.
+        $disabilityCareFraction = $this->disabilityCareComponentFractions($household, $draws, $state, $alive, $yearIndex);
+
+        // The care component of each person's disability award actually received this year
+        // (nominal pence, after any suspension above). Assessable income for the care financial
+        // assessment, which the mobility component is not — see the care leg below.
+        $careComponentPerPerson = array_fill_keys(array_map(static fn ($person): string => $person->id, $household->persons), 0);
+
         foreach ($household->persons as $person) {
             $age = $state['baseAge'][$person->id] + $yearIndex;
             $ages[$person->id] = $age;
@@ -916,6 +933,17 @@ final class PathProjector
             $sp = $this->statePensionIncome($household, $person->id, $calendarYear, $state['spClaimYear'][$person->id], $state['spaMonth'][$person->id], $state['spFactor']);
             $otherTaxable = $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: true);
             $taxFreeStream = $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: false);
+
+            // The care component is paid only for the statutory period of a funded placement, so
+            // what it does NOT pay comes off the tax-free income the household banks. The mobility
+            // component is untouched: it is inside $taxFreeStream and stays there.
+            $careComponent = $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: false, only: IncomeStreamType::DisabilityBenefit);
+            if (isset($disabilityCareFraction[$person->id])) {
+                $paid = (int) round($careComponent * $disabilityCareFraction[$person->id]);
+                $taxFreeStream -= $careComponent - $paid;
+                $careComponent = $paid;
+            }
+            $careComponentPerPerson[$person->id] = $careComponent;
 
             // Planned DC withdrawals due at this age.
             $wd = $this->plannedWithdrawals($state, $person->id, $age);
@@ -1101,7 +1129,7 @@ final class PathProjector
         // household's appropriate minimum guarantee, credited as income before any shortfall
         // is funded — so a sale that turns the exempt home into assessable capital (raising the
         // tariff income) erodes it in-projection, the downsizing trap made visible.
-        $pensionCreditAward = $this->pensionCreditAward($household, $state, $alive, $calendarYear, $ages, $taxablePerPerson, $aliveCount, $meansTestExcluded);
+        $pensionCreditAward = $this->pensionCreditAward($household, $state, $alive, $calendarYear, $ages, $taxablePerPerson, $aliveCount, $meansTestExcluded, array_keys($disabilityCareFraction));
         $benefitNominal = $pensionCreditAward === null
             ? 0
             : $pensionCreditAward->guaranteeCreditWeekly->pence * $this->config->statePension->weeksPerYear;
@@ -1408,7 +1436,11 @@ final class PathProjector
             $careChargedNominal += $this->careMeans->annualCharge(
                 grossAnnualFee: Money::fromPence((int) round($feeReal * $state['spendFactor'])),
                 capital: Money::fromPence($this->careAssessableCapital($household, $state, $person->id, $aliveCount)),
-                assessableAnnualIncome: Money::fromPence($taxablePerPerson[$person->id] + $pensionCreditPerPerson),
+                // Plus the CARE component of any disability award still in payment (board card
+                // 0050). A financial assessment takes Attendance Allowance and the DLA care
+                // component into account like any other undisregarded income; only the mobility
+                // component is left out, and it is left out by never being added here.
+                assessableAnnualIncome: Money::fromPence($taxablePerPerson[$person->id] + $pensionCreditPerPerson + $careComponentPerPerson[$person->id]),
                 peaUprating: $state['spendFactor'],
             )->pence;
         }
@@ -1579,8 +1611,18 @@ final class PathProjector
      * @param  array<string, int>  $excludedFromAssessable  taxable receipts that are CAPITAL for the
      *                                                      means test, not income (a death-in-service
      *                                                      lump sum): taxed as income, assessed as capital
+     * @param  list<string>  $inFundedCarePlacement  person ids in a local-authority-funded care
+     *                                               placement this year. The severe-disability
+     *                                               addition rides the disability CARE component,
+     *                                               which stops there ({@see DisabilityBenefitInCare}),
+     *                                               so they no longer qualify for it, nor does a
+     *                                               partner qualify as their carer. The whole year is
+     *                                               treated as stopped, although the first one keeps
+     *                                               28 days of the benefit itself: the annual grid
+     *                                               cannot pay a part-year addition, and dropping it
+     *                                               is the adverse of the two roundings.
      */
-    private function pensionCreditAward(Household $household, array $state, array $alive, int $calendarYear, array $ages, array $taxablePerPerson, int $aliveCount, array $excludedFromAssessable = []): ?PensionCreditResult
+    private function pensionCreditAward(Household $household, array $state, array $alive, int $calendarYear, array $ages, array $taxablePerPerson, int $aliveCount, array $excludedFromAssessable = [], array $inFundedCarePlacement = []): ?PensionCreditResult
     {
         $weeksPerYear = $this->config->statePension->weeksPerYear;
 
@@ -1615,7 +1657,7 @@ final class PathProjector
         // year and not before.
         $disabledCount = 0;
         foreach ($living as $personId => $person) {
-            if ($person->receivesDisabilityBenefitAt($ages[$personId] ?? 0)) {
+            if ($person->receivesDisabilityBenefitAt($ages[$personId] ?? 0) && ! in_array($personId, $inFundedCarePlacement, true)) {
                 $disabledCount++;
             }
         }
@@ -1631,7 +1673,7 @@ final class PathProjector
                 continue;
             }
             foreach ($living as $partnerId => $partner) {
-                if ($partnerId !== $carerId && $partner->receivesDisabilityBenefitAt($ages[$partnerId] ?? 0)) {
+                if ($partnerId !== $carerId && $partner->receivesDisabilityBenefitAt($ages[$partnerId] ?? 0) && ! in_array($partnerId, $inFundedCarePlacement, true)) {
                     $carer = true;
                     break 2;
                 }
@@ -1853,6 +1895,54 @@ final class PathProjector
      *
      * @param  array<string, mixed>  $state
      */
+    /**
+     * Who is in a LOCAL-AUTHORITY-FUNDED care placement this year, and what fraction of their
+     * disability award's care component that leaves in payment ({@see DisabilityBenefitInCare}).
+     * A person absent from the returned map is not in a funded placement, so their award runs
+     * whole: this year they are either not in care at all, or they are self-funding it.
+     *
+     * Funding status is settled on the capital the year OPENS with, through the same
+     * {@see CareMeansTest::assess()} self-funder line the charge below is built on: a resident
+     * whose own assessable capital is at or below the upper limit is one the authority funds.
+     * The charge's crossing-year term (capital paid down to the limit) is deliberately not
+     * consulted here — it is an annual-grid approximation of a mid-year switch, and reading it
+     * would make the benefit's fate depend on a figure that is itself an approximation.
+     *
+     * v1 flag: the counter resets whenever a spell ends, so a resident who leaves care and
+     * returns gets a fresh statutory period. That is the real rule for a genuine break in
+     * residence and the wrong one for a short hospital stay, which this engine cannot see.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     * @return array<string, float> personId => fraction of the care component still paid this year
+     */
+    private function disabilityCareComponentFractions(Household $household, PathDraws $draws, array &$state, array $alive, int $yearIndex): array
+    {
+        $aliveCount = count(array_filter($alive));
+        $fractions = [];
+
+        foreach ($household->persons as $person) {
+            $age = $state['baseAge'][$person->id] + $yearIndex;
+            $inFundedPlacement = ($alive[$person->id] ?? false)
+                && $draws->careAnnualCost($person->id, $age) > 0
+                && ! $this->careMeans->assess(
+                    Money::fromPence($this->careAssessableCapital($household, $state, $person->id, $aliveCount)),
+                )->selfFunder;
+
+            if (! $inFundedPlacement) {
+                $state['laFundedCareYears'][$person->id] = 0;
+
+                continue;
+            }
+
+            $prior = $state['laFundedCareYears'][$person->id] ?? 0;
+            $fractions[$person->id] = DisabilityBenefitInCare::payableFraction($prior);
+            $state['laFundedCareYears'][$person->id] = $prior + 1;
+        }
+
+        return $fractions;
+    }
+
     private function careAssessableCapital(Household $household, array $state, string $personId, int $aliveCount): int
     {
         $capital = ($state['cash'][$personId] ?? 0) + ($state['gia'][$personId] ?? 0) + ($state['isa'][$personId] ?? 0);
@@ -2001,11 +2091,16 @@ final class PathProjector
         return 0;
     }
 
-    private function incomeStreamsNominal(Household $household, string $pid, int $age, float $cumInflation, bool $taxable): int
+    /**
+     * This person's income streams this year (nominal pence), on one side of the taxable divide.
+     * $only narrows it to a single kind, which is how the disability CARE component is picked out
+     * of the tax-free total without a second copy of the age-window rule.
+     */
+    private function incomeStreamsNominal(Household $household, string $pid, int $age, float $cumInflation, bool $taxable, ?IncomeStreamType $only = null): int
     {
         $total = 0;
         foreach ($household->incomeStreams as $stream) {
-            if ($stream->ownerId !== $pid || $stream->taxable !== $taxable) {
+            if ($stream->ownerId !== $pid || $stream->taxable !== $taxable || ($only !== null && $stream->type !== $only)) {
                 continue;
             }
             if ($age < $stream->startAge || ($stream->endAge !== null && $age > $stream->endAge)) {

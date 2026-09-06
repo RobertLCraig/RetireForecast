@@ -46,8 +46,13 @@ final class CareMeansTest
      * drawdown, rental) PLUS their share of any Pension Credit Guarantee Credit, which the
      * charging regulations take into account like any other undisregarded income (the caller
      * adds it, because the award is a household figure — see the care leg of PathProjector). Income
-     * derived from capital is treated as capital (the tariff covers it), and disability
-     * benefits are excluded here, mirroring the payment stop once a resident is LA-funded.
+     * derived from capital is treated as capital (the tariff covers it).
+     *
+     * A disability award is taken into account in PART: the CARE component of DLA, and Attendance
+     * Allowance, count as income here (the caller adds whatever is still in payment that year, which
+     * is nothing after the statutory period of a funded placement, {@see DisabilityBenefitInCare});
+     * the MOBILITY component is disregarded and is never added. Before board card 0050 neither was,
+     * so a self-funder was charged too little.
      * v1 flag: the LA-vs-self-funder fee-rate gap is not modelled (the local authority is
      * assumed to buy the same place at the same price the self-funder pays, so no
      * third-party top-up is charged once the resident is funded).

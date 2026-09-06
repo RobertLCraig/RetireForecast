@@ -12,6 +12,7 @@ use Illuminate\Support\Collection;
 use RetireForecast\FinanceEngine\Benchmark\RetirementLivingStandards;
 use RetireForecast\FinanceEngine\Benefits\CouncilTax;
 use RetireForecast\FinanceEngine\Benefits\Deprivation;
+use RetireForecast\FinanceEngine\Benefits\DisabilityBenefitInCare;
 use RetireForecast\FinanceEngine\Benefits\HousingBenefit;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Care\CareAssumptions;
@@ -21,6 +22,7 @@ use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
+use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
@@ -1837,6 +1839,26 @@ final class ResultPresenter
                     .'Payments and help with NHS costs. Together those are usually worth more per year than the benefit, so '
                     .'treat this plan as the cautious version and claim each of them separately.'];
             }
+
+            // (b4) The care component of a disability award behaves differently from every other
+            // income line the moment a care spell is modelled: it is assessed for the care charge
+            // AND it stops in a funded placement. Both are invisible in the figures unless said,
+            // and between them they move the household's largest tax-free income. The stop period
+            // reads the constant that owns it, never a restated number.
+            $careAward = array_filter(
+                $household->incomeStreams,
+                static fn ($s): bool => $s->ownerId === $person->id && $s->type === IncomeStreamType::DisabilityBenefit,
+            );
+            if ($careAward !== []) {
+                $days = DisabilityBenefitInCare::PAYMENT_STOP_DAYS;
+                $notes[] = ['kind' => 'disability_care_component_in_care', 'text' => "{$name}'s disability benefit is entered "
+                    .'as the CARE (daily living) component, and a modelled care home spell treats it differently from the '
+                    .'mobility component. While they pay for their own care it counts as income in the financial assessment, '
+                    ."so it raises what they are charged. Once the local authority funds the placement it STOPS after {$days} "
+                    .'days, and the Pension Credit severe-disability addition stops with it; only the mobility component keeps '
+                    .'being paid. If part of this award is the mobility component, enter that part as a separate '
+                    .'"Disability benefit, mobility" income line or the forecast will stop money that would keep coming.'];
+            }
         }
 
         // (b2) A DC pension being contributed to with no relief method set. Every real UK pension
@@ -2862,7 +2884,8 @@ final class ResultPresenter
     private const INCOME_STREAM_LABELS = [
         'rental' => 'Rental income',
         'annuity' => 'Annuity',
-        'disability_benefit' => 'Disability benefit',
+        'disability_benefit' => 'Disability benefit (care component)',
+        'disability_benefit_mobility' => 'Disability benefit (mobility component)',
         'other' => 'Other income',
     ];
 

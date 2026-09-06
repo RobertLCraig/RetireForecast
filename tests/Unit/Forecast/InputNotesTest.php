@@ -8,6 +8,7 @@ use App\Forecast\HouseholdAssembler;
 use App\Forecast\ResultPresenter;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Benefits\DisabilityBenefitInCare;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
@@ -553,6 +554,42 @@ final class InputNotesTest extends TestCase
         $kinds = array_column($notes, 'kind');
         $this->assertNotContains('cohabiting_db_survivor', $kinds);
         $this->assertNotContains('cohabiting_state_pension', $kinds);
+    }
+
+    public function test_the_care_component_says_what_a_care_placement_does_to_it(): void
+    {
+        // Card 0050. The care component is assessed for the care charge and stops in a funded
+        // placement; the mobility component does neither. Both are invisible in the figures unless
+        // the result says so, and a reader who entered one combined award needs telling to split
+        // it. The stop period reads the constant that owns it, so the two cannot drift.
+        $notes = $this->notes([
+            'householdName' => 'Claimant', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'name' => 'Robin', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'incomeStreams' => [['id' => 'i1', 'ownerId' => 'p1', 'type' => 'disability_benefit', 'grossAnnual' => '5000', 'startAge' => '60']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]);
+
+        $kinds = array_column($notes, 'kind');
+        $this->assertContains('disability_care_component_in_care', $kinds);
+        $text = $notes[array_search('disability_care_component_in_care', $kinds, true)]['text'];
+
+        $this->assertStringContainsString('Robin', $text);
+        $this->assertStringContainsString((string) DisabilityBenefitInCare::PAYMENT_STOP_DAYS.' days', $text);
+        $this->assertStringContainsString('mobility', $text);
+    }
+
+    public function test_a_mobility_only_award_raises_no_care_component_note(): void
+    {
+        $notes = $this->notes([
+            'householdName' => 'Claimant', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'name' => 'Robin', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'incomeStreams' => [['id' => 'i1', 'ownerId' => 'p1', 'type' => 'disability_benefit_mobility', 'grossAnnual' => '4000', 'startAge' => '60']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]);
+
+        $this->assertNotContains('disability_care_component_in_care', array_column($notes, 'kind'));
     }
 
     public function test_a_disability_benefit_note_names_the_start_age_and_everything_it_passports(): void

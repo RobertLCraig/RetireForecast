@@ -405,7 +405,7 @@ class ScenarioBuilder extends Component
             'accounts.*.yield' => $rate,
 
             'incomeStreams.*.ownerId' => ['required', Rule::in($ids)],
-            'incomeStreams.*.type' => ['required', Rule::in(['rental', 'annuity', 'disability_benefit', 'other'])],
+            'incomeStreams.*.type' => ['required', Rule::in(['rental', 'annuity', 'disability_benefit', 'disability_benefit_mobility', 'other'])],
             'incomeStreams.*.grossAnnual' => $moneyReq,
             'incomeStreams.*.frequency' => ['nullable', Rule::in(['weekly', 'four_weekly', 'monthly', 'annual'])],
             'incomeStreams.*.startAge' => ['required', 'integer', 'min:0', 'max:110'],

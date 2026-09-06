@@ -5,10 +5,27 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-06 (card 0049). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-06 (card 0050). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0032 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A disability award is now two components, and a care placement treats them apart.** Card 0050.
+  `IncomeStreamType::DisabilityBenefit` is the CARE (daily living) component and keeps its stored
+  value, so an award entered before the split reads wholly as care, the adverse reading on both
+  sides; `DisabilityBenefitMobility` is the new sibling, forced tax-free by the same assembler line.
+  `Benefits\DisabilityBenefitInCare` owns the 28-day stop. `PathProjector` settles funding status
+  once a year in `disabilityCareComponentFractions()`, before any income is assembled, and three
+  places read that one answer: the tax-free income banked, the Pension Credit severe-disability and
+  carer additions, and the care charge (which now adds the care component to `assessableAnnualIncome`
+  and never the mobility one). Funding status comes from the resident's own capital at the year's
+  OPEN, through the same `CareMeansTest::assess()` self-funder line, because deriving it from the
+  charge is circular. **Every stored plan holding a tax-free disability income AND a modelled care
+  spell moves**, in either direction depending on which side of the assessment it lands; a plan with
+  no disability income, or whose paths never reach care, is byte-identical, which is why
+  `GoldenMasterTest` did not redden. `ENGINE_VERSION` is `finance-engine/disability-award-split-in-care`
+  and the **stored-scenario re-run is owed**. **Both rules are STATED, not verified** (no web in this
+  session): see [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§25), carded as **0118**. Built in a
+  worktree, so the new builder option and the new result note **have not been seen in a browser**.
 - **Moving a large sum is now warned about as a deprivation question.** Card 0049.
   `Benefits\Deprivation` is the one home for the copy (the benefits notional-capital rule, the care
   deliberate-deprivation test in Annex E, neither with a time limit, plus the benefits-check

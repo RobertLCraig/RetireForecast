@@ -3,6 +3,42 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-06: a funded care placement is decided on capital, not on the charge
+**Context:** card 0050 (expert panel 2026-08-19, the estate planner and the Citizens Advice
+caseworker independently). A disability award was one figure and the engine got it wrong in both
+directions: a self-funder's care charge ignored it entirely (only taxable income reached the
+assessment), and a local-authority-funded resident kept being paid it for the whole spell when in
+life Attendance Allowance and the DLA care component stop after 28 days.
+
+**Decision 1: the award is two income-stream types, and the old value means CARE.**
+`IncomeStreamType::DisabilityBenefit` keeps the stored value `disability_benefit` and becomes the
+care component; `DisabilityBenefitMobility` is new. So every award entered before the split reads
+wholly as care, which is the adverse reading on both sides at once: assessed in full for a
+self-funder, stopped in full for a funded resident. The alternative, a second money field on
+`IncomeStream`, would have put two quantities on one row and left the type unable to say which
+rules applied to which half.
+
+**Decision 2: whether the local authority funds the placement is read off the resident's CAPITAL
+at the year's open, not off the charge.** Deriving it from the charge (a charge below the gross
+fee means the authority pays the balance) is circular, because the charge now depends on the
+assessable income, which depends on whether the benefit stopped. `CareMeansTest::assess()` already
+owns the self-funder line, so the projector reuses it and the circle never forms. The consequence,
+flagged in code and in ASSUMPTIONS section 25: the crossing year, where the charge formula pays
+capital down to the upper limit, counts as self-funding for the benefit's purposes.
+
+**Decision 3: one determination, three readers.** `disabilityCareComponentFractions()` runs before
+any income is assembled, and the tax-free income banked, the Pension Credit severe-disability and
+carer additions, and the care charge all read that same map. A second reading later in the year
+would have described a household whose assets had already been drawn down.
+
+**Decision 4: the severe-disability addition is dropped for the WHOLE of a funded care year**,
+although the first such year still pays 28 days of the benefit itself. An annual grid cannot pay a
+part-year addition, and dropping it is the adverse of the two roundings.
+
+**Not settled here:** both rules are STATED, not verified. An unattended card session has no web,
+so the 28 days and the care-versus-mobility disregard are the building session's own knowledge of
+the legislation. Card 0118 carries pinning them.
+
 ## 2026-09-06: Housing Benefit comes off the rent, not into income
 **Context:** card 0048 (expert panel 2026-08-19, Citizens Advice finding 6). The engine awarded
 Guarantee Credit and nothing else, so a sell-and-rent plan paid every penny of its rent for the

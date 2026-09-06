@@ -460,6 +460,32 @@ class ScenarioBuilderTest extends TestCase
         $this->assertSame(0, Scenario::count());
     }
 
+    public function test_a_disability_award_can_be_entered_as_separate_care_and_mobility_components(): void
+    {
+        // Board card 0050. Both rates are normally known separately, and the two are treated
+        // differently in a care financial assessment, so the builder must accept a mobility row
+        // and carry it through to the engine household.
+        $state = BuilderStateFixture::full();
+        $state['name'] = 'Split award';
+        $state['incomeStreams'][] = [
+            'id' => 'dla-care', 'ownerId' => 'p1', 'type' => 'disability_benefit',
+            'grossAnnual' => '110.40', 'frequency' => 'weekly', 'inflationLinked' => true, 'startAge' => '60',
+        ];
+        $state['incomeStreams'][] = [
+            'id' => 'dla-mobility', 'ownerId' => 'p1', 'type' => 'disability_benefit_mobility',
+            'grossAnnual' => '77.05', 'frequency' => 'weekly', 'inflationLinked' => true, 'startAge' => '60',
+        ];
+
+        $this->fill($state)->call('save')->assertHasNoErrors();
+
+        $types = array_map(
+            static fn ($s): string => $s->type->value,
+            Scenario::firstOrFail()->toHousehold()->incomeStreams,
+        );
+        $this->assertContains('disability_benefit', $types);
+        $this->assertContains('disability_benefit_mobility', $types);
+    }
+
     public function test_an_income_note_persists_as_a_visual_aid_without_reaching_the_engine(): void
     {
         // The user can label each income stream with what it is and where it's from. It is a

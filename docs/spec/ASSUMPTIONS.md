@@ -451,6 +451,29 @@ cash **−0.5%**.
    its replacement is the Universal Credit housing element, which card 0048 put out of scope for a
    pension-age tool. That exclusion UNDERSTATES a rent plan with a member below State Pension age,
    and the plan says so on its face.
+25. **The 28-day disability-benefit stop in a funded care placement (added 2026-09-06; lives on
+   `Benefits\DisabilityBenefitInCare`).** Board card 0050. Attendance Allowance and the CARE
+   component of DLA (the daily living component of PIP) stop after 28 days in a care home whose
+   fees the local authority meets; the MOBILITY component keeps being paid. The mirror of the same
+   split is that the care component, while it IS in payment, counts as income in the local-authority
+   financial assessment, and the mobility component is disregarded there. Both are STATUTORY rules
+   rather than economic assumptions, both are **STATED, not verified** (the unattended session that
+   added them had no web access, so no citation was fetched and neither carries a verified_on
+   date), and both DO reach a projection. Board card **0118** carries pinning them to a primary
+   source; the rules are regulation 8 of the Social Security (Attendance Allowance) Regulations
+   1991 and regulation 9 of the Social Security (Disability Living Allowance) Regulations 1991,
+   with the assessment treatment in the Care and Support (Charging and Assessment of Resources)
+   Regulations 2014.
+
+   Two v1 limits follow, both flagged in code. Funding status is settled on the capital the year
+   OPENS with, through the same self-funder line the charge is built on, so the charge's own
+   crossing-year term (capital paid down to the upper limit) is not consulted; and the Pension
+   Credit severe-disability addition is dropped for the WHOLE of a funded care year, although the
+   first such year keeps 28 days of the benefit itself, because an annual grid cannot pay a
+   part-year addition and dropping it is the adverse of the two roundings. The counter also resets
+   whenever a spell ends, so a resident who leaves care and returns gets a fresh statutory period,
+   which is right for a real break in residence and wrong for a short hospital stay this engine
+   cannot see.
 
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/

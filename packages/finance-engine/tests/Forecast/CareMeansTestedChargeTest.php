@@ -6,6 +6,7 @@ namespace RetireForecast\FinanceEngine\Tests\Forecast;
 
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+use RetireForecast\FinanceEngine\Benefits\DisabilityBenefitInCare;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
@@ -272,6 +273,101 @@ final class CareMeansTestedChargeTest extends TestCase
             $years[2046]->spendTarget->pence - $years[2045]->spendTarget->pence,
             'the care charge counts the credit as income',
         );
+    }
+
+    /** A disability award component, tax-free and flat, running for life from age 60. */
+    private function disability(string $ownerId, IncomeStreamType $type, int $pounds): IncomeStream
+    {
+        return new IncomeStream($ownerId, $type, Money::fromPounds($pounds), taxable: false, inflationLinked: false, startAge: 60);
+    }
+
+    /** The Personal Expenses Allowance a year, read from the registry that owns it. */
+    private function peaAnnual(): int
+    {
+        $config = TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi);
+
+        return $config->care->personalExpensesAllowanceWeekly->pence * $config->statePension->weeksPerYear;
+    }
+
+    /**
+     * Board card 0050. A local-authority financial assessment takes the CARE component of
+     * DLA (and Attendance Allowance) into account as income; only the MOBILITY component is
+     * disregarded. The engine assessed neither, so a resident who was funding their own care
+     * was charged too little.
+     *
+     * Both runs are identical bar the component the £5,000 is entered as. Capital is £23,300 —
+     * £50 over the upper limit, so the resident is a self-funder whose charge is the crossing-year
+     * sum (capital down to the limit, then income less the PEA) rather than the capped £80,000
+     * fee, which is what makes the income side visible at all.
+     */
+    public function test_the_care_component_is_assessed_for_a_self_funder_and_the_mobility_component_is_not(): void
+    {
+        $charge = function (IncomeStreamType $type): int {
+            $household = new Household(
+                'SelfFunderOnDla', RegionProfile::EnglandWalesNi,
+                [$this->person('p1')],
+                $this->spend(33_514), // net £26,514 taxed income + £7,000 tax-free: wealth is flat
+                accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(23_300))],
+                incomeStreams: [
+                    $this->income('p1'),
+                    $this->disability('p1', $type, 5_000),
+                    $this->disability('p1', IncomeStreamType::DisabilityBenefitMobility, 2_000),
+                ],
+            );
+
+            return $this->project($household, deathAges: ['p1' => 88], careFromAge: ['p1' => 88])->careCostReal()->pence;
+        };
+
+        // Mobility only: the £5,000 is entered as a second mobility award, so nothing of the
+        // disability money is assessed and the charge is £50 of capital plus £30,000 less the PEA.
+        $this->assertSame(
+            5_000 + 3_000_000 - $this->peaAnnual(),
+            $charge(IncomeStreamType::DisabilityBenefitMobility),
+            'the mobility component is disregarded in full',
+        );
+
+        // The same £5,000 as the care component raises the charge by exactly itself.
+        $this->assertSame(
+            500_000,
+            $charge(IncomeStreamType::DisabilityBenefit) - $charge(IncomeStreamType::DisabilityBenefitMobility),
+            'the care component is assessable income for the charge',
+        );
+    }
+
+    /**
+     * Board card 0050, the other side of the same split. Attendance Allowance and the DLA care
+     * component STOP after 28 days in a care home the local authority funds; the mobility
+     * component keeps running. The engine paid both right through a modelled spell.
+     *
+     * £10,000 of capital is below the lower limit, so the resident is funded from the first care
+     * year: the care component is paid for the statutory 28 days of that year and for none of the
+     * next two, while the £2,000 mobility component is paid in full throughout.
+     */
+    public function test_a_local_authority_funded_placement_stops_the_care_component_after_the_statutory_period(): void
+    {
+        $household = new Household(
+            'FundedResidentOnDla', RegionProfile::EnglandWalesNi,
+            [$this->person('p1')],
+            $this->spend(33_514),
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(10_000))],
+            incomeStreams: [
+                $this->income('p1'),
+                $this->disability('p1', IncomeStreamType::DisabilityBenefit, 5_000),
+                $this->disability('p1', IncomeStreamType::DisabilityBenefitMobility, 2_000),
+            ],
+        );
+
+        $years = [];
+        foreach ($this->project($household, deathAges: ['p1' => 90], careFromAge: ['p1' => 88])->years as $year) {
+            $years[$year->calendarYear] = $year;
+        }
+
+        $paidFor28Days = (int) round(500_000 * DisabilityBenefitInCare::PAYMENT_STOP_DAYS / DisabilityBenefitInCare::DAYS_PER_YEAR);
+
+        $this->assertSame(700_000, $years[2045]->incomeBySource['tax_free_income']->pence, 'both components before care');
+        $this->assertSame(200_000 + $paidFor28Days, $years[2046]->incomeBySource['tax_free_income']->pence, 'the statutory period only');
+        $this->assertSame(200_000, $years[2047]->incomeBySource['tax_free_income']->pence, 'care component stopped, mobility runs on');
+        $this->assertSame(200_000, $years[2048]->incomeBySource['tax_free_income']->pence, 'and stays stopped');
     }
 
     public function test_a_resident_with_nothing_of_their_own_is_fully_funded_even_in_a_wealthy_household(): void

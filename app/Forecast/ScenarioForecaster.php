@@ -59,7 +59,18 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-06 (pension-age-housing-benefit): a pension-age household that RENTS is now
+     * Bumped 2026-09-06 (disability-award-split-in-care): a disability award is now recorded as its
+     * CARE and MOBILITY components and the two are treated apart in a care placement. The care
+     * component counts as income in the local-authority financial assessment, where before neither
+     * component did, so a resident funding their own care was charged too LITTLE; and it stops 28
+     * days into a placement the authority funds ({@see DisabilityBenefitInCare}), where before both
+     * components ran on for the whole spell, so a funded resident banked income they would not have
+     * had, and kept the Pension Credit severe-disability addition that rides it. An award entered
+     * before the split reads wholly as the care component. Any stored plan holding a tax-free
+     * disability income AND a modelled care spell moves under an earlier stamp, in either direction
+     * depending on which side of the assessment it lands; a plan with no disability income, or one
+     * whose paths never reach care, is byte-identical. See board card 0050.
+     * Previous bump 2026-09-06 (pension-age-housing-benefit): a pension-age household that RENTS is now
      * awarded Housing Benefit where its income and capital qualify ({@see HousingBenefit}): the
      * whole eligible rent on Guarantee Credit, otherwise the rent less 65p for every pound of
      * weekly income above its Pension Credit guarantee, and nothing above the capital limit. It
@@ -230,7 +241,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/pension-age-housing-benefit';
+    public const ENGINE_VERSION = 'finance-engine/disability-award-split-in-care';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

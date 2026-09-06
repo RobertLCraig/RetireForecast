@@ -757,7 +757,8 @@
                             <select id="incomeStreams-{{ $i }}-type" wire:model="incomeStreams.{{ $i }}.type" class="{{ $field }}">
                                 <option value="rental">Rental</option>
                                 <option value="annuity">Annuity</option>
-                                <option value="disability_benefit">Disability benefit (tax-free)</option>
+                                <option value="disability_benefit">Disability benefit &mdash; care / daily living (tax-free)</option>
+                                <option value="disability_benefit_mobility">Disability benefit &mdash; mobility (tax-free)</option>
                                 <option value="other">Other</option>
                             </select>
                         </div>
