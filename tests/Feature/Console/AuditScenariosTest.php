@@ -281,9 +281,13 @@ final class AuditScenariosTest extends TestCase
 
         // Doctor a stored figure the way a database edit would; the stamp no longer matches, so
         // the audit refuses to read the result off as the engine's own.
+        // 0.123 is not a value 20 paths can produce (they land on multiples of 0.05), so the
+        // doctored figure always differs from the stored one. It used to be 1.0, which stopped
+        // being a tamper the day board card 0048 gave the rent plan Housing Benefit and every
+        // path started meeting its essentials.
         $result = $run->results()->where('variant', 'rent')->firstOrFail();
         $payload = $result->payload;
-        $payload['successProbabilityEssentials'] = 1.0;
+        $payload['successProbabilityEssentials'] = 0.123;
         $result->payload = $payload;
         $result->save();
 

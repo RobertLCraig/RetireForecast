@@ -426,6 +426,31 @@ cash **−0.5%**.
    there, and the pension-age basis is applied only where every living member has reached State
    Pension age, since a younger household falls under its council's own working-age scheme, which
    is not prescribed and differs in every district.
+24. **The two pension-age Housing Benefit figures (added 2026-09-06; live on
+   `Benefits\HousingBenefit` and `Benefits\CapitalAssessment`).** Board card 0048. Both are
+   STATUTORY rules rather than economic assumptions, both are **STATED, not verified** (the
+   unattended session that added them had no web access, so neither citation was fetched and
+   neither carries a verified_on date), and both DO reach a projection. Board card **0113** carries
+   pinning them to a primary source.
+   - **Housing Benefit taper, 65% of income above the applicable amount** (`TAPER_BPS`), with the
+     maximum award for a household on Guarantee Credit and nil above the £16,000 capital limit.
+     Housing Benefit (Persons who have attained the qualifying age for state pension credit)
+     Regulations 2006: https://www.legislation.gov.uk/uksi/2006/214
+   - **Notional costs of sale, 10% of a property's market value** (`NOTIONAL_SALE_COSTS_BPS`),
+     deducted from the value before anything secured on it, when property is assessed as capital.
+     Same regulations, the capital-valuation rules.
+
+   The applicable amount used is the Pension Credit one the engine already computes, for the same
+   reason and with the same caveat item 23 gives. Four v1 limits follow, all flagged in code and
+   all pushing the award the OPTIMISTIC way, which is against the standing rule of defaulting
+   adverse: the **Local Housing Allowance cap** on eligible rent is not applied at all (there is
+   one rate per broad rental market area, re-set every April, and the engine holds no table), which
+   is board card **0114**; ineligible service charges inside a rent are not stripped out;
+   non-dependant deductions are not modelled; and whether anybody claims is not modelled. Working-
+   age Housing Benefit is deliberately not modelled either, since it is closed to new claims and
+   its replacement is the Universal Credit housing element, which card 0048 put out of scope for a
+   pension-age tool. That exclusion UNDERSTATES a rent plan with a member below State Pension age,
+   and the plan says so on its face.
 
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/

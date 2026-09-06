@@ -6,6 +6,7 @@ namespace RetireForecast\FinanceEngine\Benefits;
 
 use RetireForecast\FinanceEngine\Money\IntMath;
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Money\RoundingMode;
 use RetireForecast\FinanceEngine\Support\Warning;
 use RetireForecast\FinanceEngine\Support\WarningCode;
@@ -26,7 +27,41 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  */
 final class CapitalAssessment
 {
+    /**
+     * The **notional costs of sale**: 10% of a property's market value comes off before it is
+     * assessed as capital, because capital is valued at what the claimant could actually realise
+     * and selling a house is not free. The engine used to assess value less mortgage and nothing
+     * else, overstating the capital of every household holding property it does not live in —
+     * which both inflates its tariff income and pushes it towards the £16,000 cliff sooner than
+     * the rules do (board card 0048).
+     *
+     * **PUBLIC so a presenter can DISCLOSE the figure without restating it**, the
+     * no-invisible-figures rule.
+     */
+    public const NOTIONAL_SALE_COSTS_BPS = 1_000; // 10% of the market value
+
     public function __construct(private readonly TaxYearConfig $config) {}
+
+    /** The notional costs of sale, read from the constant that owns them. */
+    public static function notionalSaleCosts(): Percent
+    {
+        return Percent::fromBasisPoints(self::NOTIONAL_SALE_COSTS_BPS);
+    }
+
+    /**
+     * What a property is worth as CAPITAL for the pension-age means test: its market value, less
+     * the notional costs of sale, less anything secured on it, floored at zero.
+     *
+     * The order is the one the rules set and it is not interchangeable — the 10% is taken off the
+     * VALUE, not off the equity — so a heavily mortgaged property can be worth nothing assessable
+     * while still having equity in it.
+     */
+    public static function propertyCapital(Money $marketValue, Money $secured): Money
+    {
+        $value = $marketValue->minZero();
+
+        return $value->minus($value->applyRate(self::notionalSaleCosts()))->minus($secured->minZero())->minZero();
+    }
 
     public function assess(Money $assessableCapital, bool $onGuaranteeCredit = false): CapitalAssessmentResult
     {

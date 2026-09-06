@@ -1221,7 +1221,15 @@ final class PathProjectorTest extends TestCase
         $settings = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', annualRent: Money::fromPounds(8_000));
         $year0 = $this->forecaster()->forecast($household, AssumptionSetLibrary::default(), $settings)->years[0];
 
-        $this->assertSame(2_600_000, $year0->essentialSpend->pence, 'rent (£8k) lifts the essential floor to £26k');
+        // Since board card 0048 the rent this couple actually pays is NET of the Housing Benefit
+        // their income qualifies for, so the floor is the £18k entered plus what is left of the
+        // rent. Read as a reconciliation rather than as a pinned figure: the point of the test is
+        // that rent reaches the essential floor at all, and a pinned total would only re-pin every
+        // time the award moves.
+        $rentPaid = 800_000 - $year0->housingBenefit()->pence;
+        $this->assertGreaterThan(0, $year0->housingBenefit()->pence, 'this couple qualifies for part of the rent');
+        $this->assertGreaterThan(1_800_000, $year0->essentialSpend->pence, 'rent lifts the essential floor above the £18k entered');
+        $this->assertSame(1_800_000 + $rentPaid, $year0->essentialSpend->pence, 'by exactly the rent left after Housing Benefit');
     }
 
     public function test_forecast_honours_a_fixed_assumed_death_age(): void

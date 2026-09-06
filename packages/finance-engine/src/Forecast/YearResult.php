@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Forecast;
 
 use RetireForecast\FinanceEngine\Benefits\CouncilTax;
+use RetireForecast\FinanceEngine\Benefits\HousingBenefit;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Iht\EstateValuer;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -134,6 +135,7 @@ final class YearResult
         public readonly ?Money $unmetOneOffSpend = null,
         public readonly ?Money $smiBalance = null,
         public readonly ?Money $councilTax = null,
+        public readonly ?Money $housingBenefit = null,
     ) {
         $this->totalWealth = $liquidWealth->plus($pensionWealth)->plus($this->homeEquity());
     }
@@ -185,6 +187,19 @@ final class YearResult
     public function councilTax(): Money
     {
         return $this->councilTax ?? Money::zero();
+    }
+
+    /**
+     * The Housing Benefit that met this year's rent (real money, zero when none was awarded or
+     * the household is not renting). Like Council Tax Reduction it is reported as a REDUCTION in
+     * what the year charges rather than as income: it is paid towards a rent bill and can never
+     * be spent on anything else, so crediting it as income would let the household eat it.
+     * Reported on its own so a reader can see the help the rent line already assumes.
+     * {@see HousingBenefit}.
+     */
+    public function housingBenefit(): Money
+    {
+        return $this->housingBenefit ?? Money::zero();
     }
 
     /**
@@ -241,6 +256,7 @@ final class YearResult
             $this->unmetOneOffSpend,
             $this->smiBalance,
             $this->councilTax,
+            $this->housingBenefit,
         );
     }
 }

@@ -5,10 +5,33 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-06 (card 0047). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-06 (card 0048). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0032 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A pension-age renter is finally awarded Housing Benefit, and property capital is valued net of
+  the costs of selling it.** Card 0048. The engine paid Guarantee Credit and nothing else, so a
+  sell-and-rent plan met its whole rent for life in exactly the tail where a plan is judged to run
+  short, while the buy-outright leg had no equivalent omission. `Benefits\HousingBenefit` owns the
+  pension-age rules and is built to the same shape as `Benefits\CouncilTax`: the whole eligible
+  rent on Guarantee Credit, otherwise the rent less `TAPER_BPS` (65%) of every pound of weekly
+  income above the Pension Credit guarantee, nil above the £16,000 capital limit. The award comes
+  OFF the rent and is never credited as income; `YearResult::housingBenefit()` reports it and the
+  gross rent still drives the deposit and referencing warnings. Alongside it,
+  `CapitalAssessment::propertyCapital` values property capital at market value less
+  `NOTIONAL_SALE_COSTS_BPS` (10%) and then less the secured debt, in that order, which is the one
+  definition the benefits means test now reads. **Every stored sell-and-rent plan that reaches a
+  qualifying year was too pessimistic, and a plan with a let home moves through its Pension Credit
+  award**; a plan that never rents and holds no let property is byte-identical. `ENGINE_VERSION` is
+  `finance-engine/pension-age-housing-benefit` and the **stored-scenario re-run is owed**. Built in
+  a worktree, so the two new result notes **have not been seen in a browser**. **Both statutory
+  figures are STATED, not verified** (no web in this session) and both reach a projection: see
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§24), carded as **0113**. Three things the card
+  did NOT close: **0114**, no Local Housing Allowance cap on eligible rent, which makes every award
+  the optimistic end; **0115**, the care means test still values property without the sale-costs
+  deduction, so one quantity now has two definitions; and the card's own criterion #2, the
+  sale-proceeds disregard, which is left open because no state in this engine holds proceeds with
+  an intention to buy (the year-0 rebuy is instantaneous).
 - **Council tax is its own cost line and it now shrinks.** Card 0047. It sat inside
   `Property::runningCosts` beside maintenance and insurance, and was charged at the full couple's
   rate for the whole projection. `Property::$annualCouncilTax` holds it apart, `Property::$disabledBandReduction`

@@ -186,10 +186,13 @@ class SimulationRunnerTest extends TestCase
         $this->assertNotNull($run->integrity_hash);
         $this->assertTrue($run->isIntact());
 
-        // Doctor a stored figure the way a database edit would.
+        // Doctor a stored figure the way a database edit would. 0.123 is not a value 20 paths can
+        // produce (they land on multiples of 0.05), so it always differs from the stored one. It
+        // used to be 1.0, which stopped being a tamper the day board card 0048 gave the rent plan
+        // Housing Benefit and every path started meeting its essentials.
         $result = $run->results()->where('variant', 'rent')->firstOrFail();
         $payload = $result->payload;
-        $payload['successProbabilityEssentials'] = 1.0;
+        $payload['successProbabilityEssentials'] = 0.123;
         $result->payload = $payload;
         $result->save();
 

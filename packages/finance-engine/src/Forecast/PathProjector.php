@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use LogicException;
 use RetireForecast\FinanceEngine\Benefits\CapitalAssessment;
 use RetireForecast\FinanceEngine\Benefits\CouncilTax;
+use RetireForecast\FinanceEngine\Benefits\HousingBenefit;
 use RetireForecast\FinanceEngine\Benefits\PensionCreditCalculator;
 use RetireForecast\FinanceEngine\Benefits\PensionCreditResult;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
@@ -1319,10 +1320,24 @@ final class PathProjector
         // pays no rent (even where a post-sale rent figure is set for the forced-sale years).
         $ownsHome = $home !== null && ! $state['homeSold'];
         $rentChargedNominal = 0;
+        $housingBenefitNominal = 0;
         if ($settings->annualRent !== null && ! $ownsHome) {
             $rentChargedNominal = (int) round($settings->annualRent->pence * $state['rentFactor']);
-            $spendNominal += $rentChargedNominal;
-            $essentialNominal += $rentChargedNominal;
+
+            // Housing Benefit meets some or all of that rent for a pension-age renter whose income
+            // and capital qualify (board card 0048). It comes off the rent rather than being
+            // credited as income, the way Council Tax Reduction comes off the council tax: it is
+            // paid towards one bill and cannot be spent on anything else, so banking it as income
+            // would let the household eat it.
+            //
+            // $rentChargedNominal stays the GROSS rent the landlord asks for, because that is what
+            // the deposit and the referencing warnings below are sized against: a letting agent's
+            // affordability test is on the rent, not on what the tenant is left paying.
+            $housingBenefitNominal = $this->housingBenefitNominal($household, $state, $pensionCreditAward, $rentChargedNominal);
+            $rentPaidNominal = max(0, $rentChargedNominal - $housingBenefitNominal);
+
+            $spendNominal += $rentPaidNominal;
+            $essentialNominal += $rentPaidNominal;
         }
 
         // Property running costs (maintenance, insurance) for owners are essential too — the
@@ -1516,6 +1531,7 @@ final class PathProjector
             isaSheltered: $m($isaShelteredNominal),
             smiBalance: $m($state['smiBalance']),
             councilTax: $m($councilTaxNominal),
+            housingBenefit: $m($housingBenefitNominal),
         );
 
         return $build($r, $build(Money::fromPence(...), null));
@@ -1662,6 +1678,39 @@ final class PathProjector
     }
 
     /**
+     * What Housing Benefit meets of this year's rent, as annual nominal pence. It comes off the
+     * rent the household pays; nothing is credited as income.
+     *
+     * Awarded only where the Pension Credit means test itself ran ($award is non-null — every
+     * living member has reached State Pension age), for the reason {@see councilTaxNominal} gives
+     * for the council tax reduction and one more: working-age Housing Benefit is closed to new
+     * claims, and the housing element it was replaced by sits inside Universal Credit, which board
+     * card 0048 put out of scope for a pension-age tool. A younger renter is therefore awarded
+     * nothing, which UNDERSTATES that plan, and the result note beside it says so.
+     *
+     * The whole rent is treated as eligible rent: the Local Housing Allowance cap needs a table of
+     * area rates this engine does not hold. {@see HousingBenefit} carries that limit and its card.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  ?PensionCreditResult  $award  null when the qualifying-age gate blocked the award,
+     *                                       which is also what blocks Housing Benefit
+     */
+    private function housingBenefitNominal(Household $household, array $state, ?PensionCreditResult $award, int $rentNominal): int
+    {
+        if ($award === null || $rentNominal <= 0) {
+            return 0;
+        }
+
+        return HousingBenefit::annualAward(
+            Money::fromPence($rentNominal),
+            $award,
+            $this->meansTestAssessableCapital($household, $state),
+            $this->config->benefits->housingSupportUpperCapitalLimit,
+            $this->config->statePension->weeksPerYear,
+        )->pence;
+    }
+
+    /**
      * Assessable capital for the pension-age means test: liquid wealth, plus — when the home is
      * LET (the household lives elsewhere) — its equity, because a let property is not the exempt
      * main residence. So letting it out erodes Pension Credit and can cross the £16k cliff, just
@@ -1676,7 +1725,15 @@ final class PathProjector
     {
         $capitalPence = $this->sum($state['cash']) + $this->sum($state['gia']) + $this->sum($state['isa']);
         if ($household->primaryResidence?->isLet) {
-            $capitalPence += max(0, $state['property'] - $state['mortgageOutstanding']);
+            // Valued the way the rules value property capital: market value LESS the notional
+            // costs of sale, then less what is secured on it. Until board card 0048 the costs of
+            // sale were ignored, which overstated the capital of every household holding property
+            // it does not live in — inflating its tariff income and bringing the £16,000 cliff
+            // closer than the rules do.
+            $capitalPence += CapitalAssessment::propertyCapital(
+                Money::fromPence($state['property']),
+                Money::fromPence($state['mortgageOutstanding']),
+            )->pence;
         }
 
         return Money::fromPence($capitalPence);

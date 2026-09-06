@@ -648,6 +648,76 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('in full', $text);
     }
 
+    /**
+     * The notes a SELL-AND-RENT plan raises. The rent lives on the housing action, not on the
+     * household, and the forecast handed to the presenter is deliberately the stay-put one, so
+     * these notes are driven by the action and the variant rather than by a rent figure in the
+     * years. That is why they are built through their own helper.
+     *
+     * @param  string  $secondDob  the second member's date of birth: 1955 is well past State
+     *                             Pension age in 2026, 1975 is well short of it
+     * @return list<array{kind: string, text: string}>
+     */
+    private function rentPlanNotes(string $secondDob): array
+    {
+        $state = [
+            'householdName' => 'Renter', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Alex', 'dob' => '1953-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'name' => 'Jo', 'dob' => $secondDob, 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '180'],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '180'],
+            ],
+            'expenseLines' => [['id' => 'e1', 'amount' => '20000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => ['currentValue' => '300000', 'ownership' => 'outright'],
+            'housing' => ['salePrice' => '300000', 'annualRent' => '15000'],
+        ];
+
+        $household = (new HouseholdAssembler)->household($state);
+
+        return ResultPresenter::inputNotes(
+            $household,
+            $this->forecastFor($household),
+            (new HouseholdAssembler)->housingAction($state['housing']),
+            'rent',
+        );
+    }
+
+    public function test_a_rent_plan_states_what_housing_benefit_does_for_it(): void
+    {
+        // Board card 0048, and the no-invisible-figures rule: the rent line is now net of an
+        // award the reader was never told about, so the plan has to say the help is in there and
+        // on what terms. Both members are well past State Pension age, so nothing is excluded.
+        $notes = $this->rentPlanNotes('1955-01-01');
+        $kinds = array_column($notes, 'kind');
+        $this->assertContains('housing_benefit', $kinds);
+        $this->assertNotContains('housing_benefit_excluded', $kinds);
+
+        $text = $notes[array_search('housing_benefit', $kinds, true)]['text'];
+        $this->assertStringContainsString('65%', $text, 'the note names the taper the award is withdrawn at');
+        $this->assertStringContainsString('£15,000.00', $text, 'and the rent it is set against');
+        $this->assertStringContainsString('Local Housing Allowance', $text, 'and the cap that is NOT modelled');
+    }
+
+    public function test_a_rent_plan_with_a_member_under_state_pension_age_says_it_is_understated(): void
+    {
+        // The criterion the card wrote for the case it could not model: working-age Housing
+        // Benefit is closed to new claims and its replacement is the Universal Credit housing
+        // element, which the card put out of scope. Those years are therefore charged the whole
+        // rent, and the plan has to say the shortfall is the model's and not the household's.
+        $notes = $this->rentPlanNotes('1975-01-01');
+        $kinds = array_column($notes, 'kind');
+        $this->assertContains('housing_benefit_excluded', $kinds);
+
+        $text = $notes[array_search('housing_benefit_excluded', $kinds, true)]['text'];
+        $this->assertStringContainsString('2042', $text, 'the note names the year the exclusion ends');
+        $this->assertStringContainsString('UNDERSTATED', $text);
+    }
+
     public function test_a_sensible_household_raises_no_notes(): void
     {
         // Employed retiring in the future, normal longevity ⇒ nothing to flag (no noise).

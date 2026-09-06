@@ -11,6 +11,7 @@ use App\Models\Scenario;
 use Illuminate\Support\Collection;
 use RetireForecast\FinanceEngine\Benchmark\RetirementLivingStandards;
 use RetireForecast\FinanceEngine\Benefits\CouncilTax;
+use RetireForecast\FinanceEngine\Benefits\HousingBenefit;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Care\CareAssumptions;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
@@ -2022,6 +2023,48 @@ final class ResultPresenter
                 .' single-person discount once only one of you is left, Council Tax Reduction if '
                 .'your income and savings qualify, and the disabled band reduction, which is not means-tested. Enter the bill in '
                 .'the Council tax box on the home step, and take it out of the running costs, to see what you would actually pay.'];
+        }
+
+        // (c4d) HOUSING BENEFIT, on a sell-and-rent plan. Board card 0048. The engine used to
+        // award Guarantee Credit and nothing else, so this plan paid every penny of its rent out
+        // of its own pocket for ever, in exactly the tail where a plan is judged to run short and
+        // with no equivalent omission on the buy side. Now that an award is netted off the rent
+        // line, two things have to be said or the reader cannot check either: that the help is in
+        // the figures and on what terms, and where the model still leaves them short.
+        //
+        // The rent is read from the housing ACTION, not from the years: the forecast handed to
+        // this method is the stay-put one, which charges no rent at all.
+        $rentPlan = $variant === 'rent' && $housingAction?->annualRent !== null && $housingAction->annualRent->isPositive();
+        if ($rentPlan) {
+            $notes[] = ['kind' => 'housing_benefit', 'text' => 'This plan pays '
+                .$housingAction->annualRent->format().' a year in rent, and the forecast now meets part of it with '
+                .'Housing Benefit on the pension-age rules. On Guarantee Credit the whole rent is met. Above that, '
+                .self::ratePct(HousingBenefit::taper()->asPercent()).' of every pound of weekly income above your '
+                .'Pension Credit guarantee is taken off the award, which is steep: help runs out sooner than most '
+                .'people expect. Savings above the capital limit end it outright, and the plan flags the year you '
+                .'cross that line. Three things are NOT in it, and all three mean the figure here is the '
+                .'optimistic end: the Local Housing Allowance cap on how much rent counts (it varies by area and we '
+                .'hold no table of rates), any part of the rent that pays for fuel, water or meals, and a deduction '
+                .'for another adult living with you. Nothing is paid automatically, so an award shown here is one '
+                .'you still have to claim.'];
+
+            // The exclusion, named with the year it ends. Working-age Housing Benefit is closed to
+            // new claims and its replacement is the Universal Credit housing element, which this
+            // card put out of scope for a pension-age tool, so those years are charged the whole
+            // rent and the plan understates itself until the last member reaches State Pension age.
+            $lastSpaYear = 0;
+            foreach ($household->persons as $person) {
+                $lastSpaYear = max($lastSpaYear, (int) StatePensionAge::for($person->dob)->dateReached->format('Y'));
+            }
+            if ($lastSpaYear > $baseYear) {
+                $notes[] = ['kind' => 'housing_benefit_excluded', 'text' => 'No help with the rent is modelled before '
+                    ."{$lastSpaYear}, the year the last of you reaches State Pension age. Before then the help is the "
+                    .'housing part of Universal Credit, which this tool does not model at all: it is built for '
+                    .'pension-age households, and working-age Housing Benefit is closed to new claims. So every year '
+                    ."up to {$lastSpaYear} is charged the full rent here, and this plan is UNDERSTATED by whatever "
+                    .'you would in fact have received. Get those years checked before you compare this plan against '
+                    .'the others.'];
+            }
         }
 
         // (c5) ASSUMED FIGURES. Standing rule (Rob, 2026-07-30): the model must never use a figure

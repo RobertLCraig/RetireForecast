@@ -3,6 +3,54 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-06: Housing Benefit comes off the rent, not into income
+**Context:** card 0048 (expert panel 2026-08-19, Citizens Advice finding 6). The engine awarded
+Guarantee Credit and nothing else, so a sell-and-rent plan paid every penny of its rent for the
+whole projection. Not a neutral simplification: the proceeds are spent down over ten to fifteen
+years, capital falls back under the limit, and a pension-age renter is then squarely in Housing
+Benefit territory. The omission bit in exactly the tail where a plan is judged to run short, and
+the buy-outright leg had no equivalent, so the comparison this tool exists to run was ranking rent
+against buy with a thumb on the scale.
+
+**Decision 1: an award reduces the rent charged; it is never credited as income.** It is paid
+towards one bill and cannot be spent on anything else, so banking it as income would let the
+household eat it and would put it inside every income total on every screen. This is the treatment
+Council Tax Reduction already had, and Support for Mortgage Interest deliberately does not (that
+one is a loan, so it takes a charge on the home). `YearResult::housingBenefit()` reports what was
+met, because a rent line quietly netted down is a figure the reader cannot interrogate.
+
+**Decision 2: the gross rent still drives the deposit and the referencing warnings.** A letting
+agent's affordability test is on the rent the landlord asks for, not on what the tenant is left
+paying, so `$rentChargedNominal` stays gross and only the spend is netted. Those two warnings are
+byte-identical.
+
+**Decision 3: the applicable amount is the Pension Credit one, again.** The HB pension-age
+applicable amount has its own allowances and premiums in law, but is built to the same shape from
+the same uprated figures. A second hand-entered table would be a second definition of one
+quantity, which is the rule this project keeps. Same call, same reason, as card 0047 made for
+Council Tax Reduction.
+
+**Decision 4: property capital is valued net of the notional costs of sale, in one place.**
+`CapitalAssessment::propertyCapital` takes 10% off the market value and then the secured debt, in
+that order, and `PathProjector::meansTestAssessableCapital` is its only caller today. The care
+financial assessment values property in its own place and was deliberately NOT changed, because
+whether the same deduction applies there is a question for the Care Act guidance rather than for
+this card. Raised as card 0115.
+
+**Decision 5: working-age Housing Benefit is not modelled, and the plan says so.** It is closed to
+new claims and its replacement is the Universal Credit housing element, which the card put out of
+scope for a pension-age tool. A rent plan with a member below State Pension age is therefore
+charged the whole rent in those years, and carries a `housing_benefit_excluded` note naming the
+year the exclusion ends and saying the plan is understated until then.
+
+**Not settled here:** the Local Housing Allowance cap on eligible rent (card 0114), which makes
+every award the optimistic end, and the two statutory figures, which are STATED and not verified
+because the session had no web access (card 0113, ASSUMPTIONS section 24).
+
+**Consequence:** `ENGINE_VERSION` is `finance-engine/pension-age-housing-benefit` and a
+stored-scenario re-run is owed. Every stored rent plan that reaches a qualifying year was too
+pessimistic; a plan that never rents and holds no let property is byte-identical.
+
 ## 2026-09-06: Pension Credit is contingent income, and the claim prompt fires on proximity
 **Context:** card 0046 (expert panel 2026-08-19, Citizens Advice findings 4 and 5, adviser finding
 1). Three faults, one root: the app treated a means-tested benefit as though it were a pension.

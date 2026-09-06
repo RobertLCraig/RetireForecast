@@ -59,7 +59,19 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-06 (support-for-mortgage-interest): a household on Pension Credit Guarantee
+     * Bumped 2026-09-06 (pension-age-housing-benefit): a pension-age household that RENTS is now
+     * awarded Housing Benefit where its income and capital qualify ({@see HousingBenefit}): the
+     * whole eligible rent on Guarantee Credit, otherwise the rent less 65p for every pound of
+     * weekly income above its Pension Credit guarantee, and nothing above the capital limit. It
+     * comes off the rent, not into income. Alongside it, property held as CAPITAL for the same
+     * means test is now valued at market value less the notional costs of sale before the mortgage
+     * comes off ({@see CapitalAssessment::propertyCapital}), so a let home no longer inflates the
+     * tariff or brings the capital cliff forward. Any stored sell-and-rent plan that reaches a
+     * qualifying year spends TOO MUCH under an earlier stamp, so its wealth, depletion year and
+     * success odds are too pessimistic and the whole buy-versus-rent ranking had a thumb on the
+     * scale against renting; a plan with a let home moves through its Pension Credit award. A plan
+     * that never rents and holds no let property is byte-identical. See board card 0048.
+     * Previous bump 2026-09-06 (support-for-mortgage-interest): a household on Pension Credit Guarantee
      * Credit is now given Support for Mortgage Interest, which was in neither the engine nor the
      * config: DWP meets the interest on eligible mortgage capital up to a cap at its standard rate
      * ({@see SupportForMortgageInterest}), and, for a pension-age claimant, the service charge and
@@ -218,7 +230,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/support-for-mortgage-interest';
+    public const ENGINE_VERSION = 'finance-engine/pension-age-housing-benefit';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:
