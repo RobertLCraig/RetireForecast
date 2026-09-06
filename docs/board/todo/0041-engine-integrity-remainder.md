@@ -126,3 +126,59 @@ the liquid wealth beside it is after that year's instalments, so every repayment
 understates net wealth by the capital it repaid and every lifetime-mortgage year overstates it by the
 interest that accrued. It sits on the same state key this card read, but it moves a figure on every
 row of every mortgaged plan rather than at a sale.
+
+### 2026-09-06 review (v20260906020243-ae54)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 241s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+All four criteria trace to real code.
+
+**#1 ÔÇö forced sale redeems the year's balance.** `PathProjector::projectYear()`, in the `MortgageMaturityAction::ForcedSale` branch, now reads `$state['mortgageOutstanding']` and divides by `$state['ownershipShare']` before calling `HousingProceeds::compute()`. That is correct: `HousingProceeds::compute()` takes whole-property figures and applies the share itself, and `PathProjector::growState()` writes the roll-up and the amortisation schedule at year end, so `projectYear` reads that year's balance. No stale read of `$home->outstandingMortgage` is left in the projector; the only two remaining uses build the schedule and seed year zero. Covered by `ForcedSaleTest::assertSaleRedeemsTheYearsBalance()` for both shapes.
+
+**#2** ÔÇö `ExpenseProfile::copy()` is the single rebuild site; all three withers use it. `ExpenseProfileWitherTest` drives off reflection over the public properties (all eleven are `public readonly`) and also scans `copy()`'s source, so a new field fails.
+
+**#3** ÔÇö `BuilderStateDelta::setPath()` appends to an empty node instead of key-writing. A second added row still lands positionally via the existing row-list append.
+
+**#4** ÔÇö `report($e)` in all three runners; throws in `PathProjector::project()`, `disposeGiaSlice()`, `SampledPathDraws::at()`, `Scenario::effectiveBuilderState()`.
+
+I tried to break each and could not.
+
+VERDICT: sound
+
+**scope: sound**
+
+I tried to find work the card did not buy. I could not.
+
+**Nothing crosses the fence.** `## Not this card` fences off performance (card 0042). No touched file changes a loop, a query or a cache.
+
+**The two skipped Tasks hold up.** I checked both claims instead of trusting them:
+
+- `Property::withCurrentValue` is already listed in the `$sites` array of `AssetWitherTest::test_each_rebuild_site_names_every_field_it_does_not_replace`. A second guard would be a copy.
+- `SpendPath` has one public property, `$bands`, and every rebuild site (`flat`, `fromBands`, `plus`, `mapAmounts`) replaces it. That guard shape asserts nothing here, so it would be green from birth.
+
+**Two small growths, both disclosed, both dead ends.** `PathProjector::disposeGiaSlice` now also refuses a negative take and a take above the balance, where the card asked only for a zero guard. Every caller clamps first with `min(..., $balance)` (`SavingsFunding::apply`, and the three sites inside `PathProjector`), so no figure moves.
+
+**The carried field is inert.** `ExpenseProfile::withoutPropertyCosts` now keeps `propertyCostsRealGrowth`. All four readers gate on a positive bucket: `PathProjector::projectYear`, `PathProjector::propertyCostsNominal`, `ResultPresenter::assumedFigures`, and the notes builder beside it.
+
+VERDICT: sound
+
+**breakage: defect**
+
+I read the change, traced its callers, and tried to break it.
+
+**The screen now tells the reader a different number from the one the model uses.**
+
+`app/Forecast/ResultPresenter.php`, `inputNotes()`, the `MortgageMaturityAction::ForcedSale` arm of the `mortgage_redemption` note, still prints `$home->outstandingMortgage` ÔÇö the figure as entered. It says that amount is cleared at the sale and the rest is freed as equity. Before this change that matched the engine exactly. Now `PathProjector::projectYear()` redeems the year's balance instead. On a lifetime mortgage rolled up for fifteen years the note understates the debt by six figures, and the reader has no way to see it. That is the project's own no-invisible-figures rule, broken silently.
+
+`tests/Unit/Forecast/InputNotesTest.php`, `test_a_mortgage_due_for_redemption_is_flagged()`, only builds an interest-only loan redeemed in the base year, so the two live shapes the card is about are untested here.
+
+Smaller: `ForcedSaleTest` builds no part-owned home, so the new `/ $share` division is untested, and the `ENGINE_VERSION` docblock claim that interest-only plans are byte-identical does not hold once that division rounds.
+
+Everything else held.
+
+VERDICT: defect
+
