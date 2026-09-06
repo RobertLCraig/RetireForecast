@@ -247,3 +247,5 @@ recommendation. A build session cannot reword its own criterion, so nothing move
 One housekeeping note for the next runner: `.\vendor\bin\pest.bat` does not exist in this repository,
 which is PHPUnit and not Pest. The suite ran as `php artisan test` and style as
 `.\vendor\bin\pint.bat --dirty`.
+
+**2026-09-06** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
