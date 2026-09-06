@@ -209,3 +209,41 @@ this card's own "Not this card" excludes exactly that. Two ways out, and the cho
 sign-off yet (card 0001), and caching decrypted personal forecasts past the response raises where
 they are stored and for how long, which is a bigger question than a performance card should settle
 in passing. The number is not small enough to drop, so it wants a card either way.
+
+**2026-09-06**
+RESULT: partial
+TESTS: +0 new, all green
+TOUCHED:
+- docs/board/in-progress/0042-queue-and-performance-remainder.md (this card)
+OUT-OF-SCOPE: none
+
+A third resume. No code changed and **#3 is still not ticked.** Rather than argue the block a fourth
+time, this run closes the one link in it that had only ever been checked from the PHP side, and puts
+one repository fact against the objection that parked option A.
+
+- **Checked from the view this time, not from the component.**
+  `resources/views/livewire/affordability.blade.php` carries exactly one Livewire interaction in the
+  whole file, `wire:click="checkHowSure"`. No `wire:poll`, no `wire:model`, no nested component. So
+  the screen really does have no in-place re-render to test, which is what the second entry asserted
+  from `Affordability.php` plus the Livewire config. Both ends of that chain now hold.
+- **The app already keeps decrypted forecasts past the response, so option A's objection is
+  narrower than the last entry put it.** `ScenarioExport::build()` renders every one of a user's
+  scenarios to a full PDF and writes the archive to `storage/app/exports/{user_id}/` on the local
+  private disk, where it sits for `KEEP_FOR_HOURS = 24` and is removed only by `clear()`. The cache
+  store itself (`database`) holds only the progress record, no figures. The precedent for holding a
+  decrypted forecast outside a response, a private local store with a TTL and an erase path,
+  therefore already exists and was accepted. That does not decide A against B. It does mean the
+  storage question is about picking a store, not an unanswered question of principle.
+
+Verified first-hand here rather than taken from the entries above: `vendor/retireforecast/finance-engine`
+is a live junction onto `packages/finance-engine`, and `config/queue.php` defaults the database
+driver's `retry_after` to 3900.
+
+**The ask is unchanged and is still Rob's.** Option A, lift this card's "Not this card" and let it
+build a persistent forecast cache keyed on `ScenarioForecaster::stamp()`. Option B, reword #3 to the
+in-request reading, which is met and proven, and card the persistent cache on its own. B is still the
+recommendation. A build session cannot reword its own criterion, so nothing moves without the call.
+
+One housekeeping note for the next runner: `.\vendor\bin\pest.bat` does not exist in this repository,
+which is PHPUnit and not Pest. The suite ran as `php artisan test` and style as
+`.\vendor\bin\pint.bat --dirty`.
