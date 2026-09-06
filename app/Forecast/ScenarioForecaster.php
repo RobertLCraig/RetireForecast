@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Forecast;
 
 use App\Models\Scenario;
+use Closure;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Care\CareStressScenario;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
@@ -34,9 +35,28 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
  *
  * The base year is taken from the scenario's tax year (e.g. 2026-27 -> 2026) so the
  * run is deterministic and clock-free, matching the engine's no-clock rule.
+ *
+ * **It remembers what it derived, for as long as the scenario has not moved.** Every public
+ * method here re-derives the same chain — decrypt the base form-state, decrypt the parent's,
+ * deep-merge the overrides, assemble the household — and the screens ask several times over: the
+ * affordability screen runs the ladder, the care-stress ladder and a sustainable-spend bisection
+ * for the base plan AND for every what-if child. The memo is on this INSTANCE and the container
+ * hands out one instance per request (the `scoped` binding in AppServiceProvider::register), so it
+ * lives exactly as long as the request that opened it. Nothing is written to a cache store and
+ * nothing survives the response; persistent forecast caching is deliberately not built (card 0042).
  */
 final class ScenarioForecaster
 {
+    /**
+     * How many scenarios' derivations are held at once. A family page shows a base and its
+     * what-if children; `scenarios:audit` walks every stored scenario in one process, and
+     * without a ceiling it would hold a full projection for each of them at the end.
+     */
+    private const MEMO_SCENARIOS = 8;
+
+    /** @var array<string, array<string, mixed>> scenario stamp => what was derived => the value */
+    private array $memo = [];
+
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
      * Bumped 2026-09-06 (forced-sale-redeems-the-years-balance): a forced sale now clears the mortgage
@@ -199,10 +219,85 @@ final class ScenarioForecaster
      */
     public const DEFAULT_DRAWDOWN_STRATEGY = DrawdownStrategy::TaxEfficient;
 
+    /**
+     * Derive $what for $scenario once, and hand back the same answer to everything that asks
+     * again while the scenario stands still.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $derive
+     * @return T
+     */
+    private function remember(Scenario $scenario, string $what, Closure $derive): mixed
+    {
+        $stamp = $this->stamp($scenario);
+
+        if (isset($this->memo[$stamp]) && array_key_exists($what, $this->memo[$stamp])) {
+            return $this->memo[$stamp][$what];
+        }
+
+        // Derive first and index afterwards: deriving one thing derives others (settings needs the
+        // household, the ladder needs both), and those writes have to land before this one.
+        $value = $derive();
+
+        $this->memo[$stamp] ??= [];
+        $this->memo[$stamp][$what] = $value;
+
+        if (count($this->memo) > self::MEMO_SCENARIOS) {
+            array_shift($this->memo);
+        }
+
+        return $value;
+    }
+
+    /**
+     * What the scenario's derivation depends on, as one string. It changes the instant any of it
+     * changes, which is what makes a stale answer impossible rather than unlikely.
+     *
+     * The two form-state columns go in as their **stored ciphertext**, not their decrypted
+     * contents: reading the ciphertext costs nothing (it is the raw attribute already in memory),
+     * where decrypting to compare is the very work this memo exists to avoid. Encryption is
+     * randomised, so a re-save of an identical form-state produces a different string and simply
+     * misses the memo — the safe way round. `updated_at` rides along for the same reason the card
+     * asked for it, but it is not load-bearing: it is stored to the second, so two saves inside
+     * one second would carry the same value, and the ciphertext is what actually separates them.
+     *
+     * A what-if child's effective state is its parent's overlaid with its overrides, so the
+     * parent's stamp is part of the child's. The walk is capped where
+     * {@see Scenario::effectiveBuilderState()} caps it, so a cycle in `parent_scenario_id` stops
+     * here as well instead of looping.
+     *
+     * The assumption set goes in WHOLE, not as its id. It is the one input that lives off the
+     * scenario row: an admin editing the figures inside a shared set moves every scenario pointing
+     * at it while every one of those rows stands still, and keying on the id alone would answer
+     * with figures computed under the assumptions before the edit.
+     */
+    private function stamp(Scenario $scenario): string
+    {
+        $parts = [];
+        $node = $scenario;
+
+        for ($depth = 0; $node !== null && $depth < 10; $depth++) {
+            $raw = $node->getAttributes();
+            $parts[] = json_encode([
+                $node->id,
+                $raw['builder_state'] ?? null,
+                $raw['overrides'] ?? null,
+                $raw['base_tax_year'] ?? null,
+                $raw['variant'] ?? null,
+                $raw['updated_at'] ?? null,
+                $node->assumptionSet?->getAttributes(),
+            ]);
+            $node = $node->parent_scenario_id === null ? null : $node->parent;
+        }
+
+        return md5(implode("\n", $parts));
+    }
+
     /** The central best-estimate forecast: median death ages, expected returns, no sampling. */
     public function deterministic(Scenario $scenario): ForecastResult
     {
-        return $this->deterministicWith($scenario, $this->assumptions($scenario));
+        return $this->remember($scenario, 'deterministic', fn (): ForecastResult => $this->deterministicWith($scenario, $this->assumptions($scenario)));
     }
 
     /**
@@ -229,20 +324,17 @@ final class ScenarioForecaster
      */
     public function deterministicVariants(Scenario $scenario): array
     {
-        $assumptions = $this->assumptions($scenario);
-        $variants = $this->housingComparison($scenario)->variantInputs(
-            $this->household($scenario),
-            $this->settings($scenario),
-            $assumptions,
-            $this->housingAction($scenario),
-        );
+        return $this->remember($scenario, 'deterministicVariants', function () use ($scenario): array {
+            $assumptions = $this->assumptions($scenario);
+            $variants = $this->allVariantInputs($scenario);
 
-        $forecaster = new DeterministicForecaster($this->config($scenario), new CohortLifeTable);
+            $forecaster = new DeterministicForecaster($this->config($scenario), new CohortLifeTable);
 
-        return array_map(
-            fn (array $variant): ForecastResult => $forecaster->forecast($variant['household'], $assumptions, $variant['settings']),
-            $variants,
-        );
+            return array_map(
+                fn (array $variant): ForecastResult => $forecaster->forecast($variant['household'], $assumptions, $variant['settings']),
+                $variants,
+            );
+        });
     }
 
     /**
@@ -256,21 +348,35 @@ final class ScenarioForecaster
      */
     public function deterministicCareStressVariants(Scenario $scenario): array
     {
-        $assumptions = $this->assumptions($scenario);
-        $variants = $this->housingComparison($scenario)->variantInputs(
+        return $this->remember($scenario, 'careStressVariants', function () use ($scenario): array {
+            $assumptions = $this->assumptions($scenario);
+            $variants = $this->allVariantInputs($scenario);
+
+            $forecaster = new DeterministicForecaster($this->config($scenario), new CohortLifeTable);
+            $stress = CareStressScenario::adverseDefault();
+
+            return array_map(
+                fn (array $variant): ForecastResult => $forecaster->forecastWithCareStress($variant['household'], $assumptions, $variant['settings'], $stress),
+                $variants,
+            );
+        });
+    }
+
+    /**
+     * The household + settings for EVERY housing strategy. One home for the sale/purchase
+     * decomposition the care-free ladder, the care-stress ladder and the sustainable-spend search
+     * each used to rebuild for themselves.
+     *
+     * @return array<string, array{household: Household, settings: ForecastSettings}>
+     */
+    private function allVariantInputs(Scenario $scenario): array
+    {
+        return $this->remember($scenario, 'variantInputs', fn (): array => $this->housingComparison($scenario)->variantInputs(
             $this->household($scenario),
             $this->settings($scenario),
-            $assumptions,
+            $this->assumptions($scenario),
             $this->housingAction($scenario),
-        );
-
-        $forecaster = new DeterministicForecaster($this->config($scenario), new CohortLifeTable);
-        $stress = CareStressScenario::adverseDefault();
-
-        return array_map(
-            fn (array $variant): ForecastResult => $forecaster->forecastWithCareStress($variant['household'], $assumptions, $variant['settings'], $stress),
-            $variants,
-        );
+        ));
     }
 
     /**
@@ -281,8 +387,8 @@ final class ScenarioForecaster
      */
     public function historicalBacktest(Scenario $scenario): HistoricalBacktestResult
     {
-        return (new HistoricalBacktester($this->config($scenario), new CohortLifeTable))
-            ->backtest($this->household($scenario), $this->assumptions($scenario), $this->settings($scenario));
+        return $this->remember($scenario, 'historicalBacktest', fn (): HistoricalBacktestResult => (new HistoricalBacktester($this->config($scenario), new CohortLifeTable))
+            ->backtest($this->household($scenario), $this->assumptions($scenario), $this->settings($scenario)));
     }
 
     /** One variant's Monte Carlo run (the scenario's household as it stands). */
@@ -325,7 +431,7 @@ final class ScenarioForecaster
      */
     public function housingComparison(Scenario $scenario): HousingComparison
     {
-        return new HousingComparison($this->config($scenario), new CohortLifeTable);
+        return $this->remember($scenario, 'housingComparison', fn (): HousingComparison => new HousingComparison($this->config($scenario), new CohortLifeTable));
     }
 
     /**
@@ -343,12 +449,7 @@ final class ScenarioForecaster
     public function variantInputs(Scenario $scenario, ?string $strategy = null): array
     {
         $assumptions = $this->assumptions($scenario);
-        $all = $this->housingComparison($scenario)->variantInputs(
-            $this->household($scenario),
-            $this->settings($scenario),
-            $assumptions,
-            $this->housingAction($scenario),
-        );
+        $all = $this->allVariantInputs($scenario);
 
         $inputs = $all[$strategy ?? $scenario->effectiveBuilderState()['variant'] ?? 'stay_put'] ?? $all['stay_put'];
 
@@ -361,7 +462,7 @@ final class ScenarioForecaster
 
     public function config(Scenario $scenario): TaxYearConfig
     {
-        return TaxYearRegistry::for($scenario->base_tax_year, $this->household($scenario)->region);
+        return $this->remember($scenario, 'config', fn (): TaxYearConfig => TaxYearRegistry::for($scenario->base_tax_year, $this->household($scenario)->region));
     }
 
     /**
@@ -373,20 +474,22 @@ final class ScenarioForecaster
      */
     public function assumptions(Scenario $scenario): AssumptionSet
     {
-        $base = $scenario->assumptionSet?->toDto() ?? AssumptionSetLibrary::default();
-        $overrides = $scenario->effectiveBuilderState()['assumptionOverrides'] ?? [];
+        return $this->remember($scenario, 'assumptions', function () use ($scenario): AssumptionSet {
+            $base = $scenario->assumptionSet?->toDto() ?? AssumptionSetLibrary::default();
+            $overrides = $scenario->effectiveBuilderState()['assumptionOverrides'] ?? [];
 
-        return AssumptionOverrides::apply($base, $overrides, $this->settings($scenario)->allocation());
+            return AssumptionOverrides::apply($base, $overrides, $this->settings($scenario)->allocation());
+        });
     }
 
     private function household(Scenario $scenario): Household
     {
-        return $scenario->toHousehold();
+        return $this->remember($scenario, 'household', fn (): Household => $scenario->toHousehold());
     }
 
     private function housingAction(Scenario $scenario): HousingAction
     {
-        return $scenario->toHousingAction();
+        return $this->remember($scenario, 'housingAction', fn (): HousingAction => $scenario->toHousingAction());
     }
 
     /**
@@ -395,6 +498,15 @@ final class ScenarioForecaster
      * (`settings()->allocation()->blendedRealReturn($assumptions)`) for the assumptions panel.
      */
     public function settings(Scenario $scenario, ?DrawdownStrategy $strategy = null): ForecastSettings
+    {
+        return $this->remember(
+            $scenario,
+            'settings:'.($strategy?->name ?? 'default'),
+            fn (): ForecastSettings => $this->buildSettings($scenario, $strategy),
+        );
+    }
+
+    private function buildSettings(Scenario $scenario, ?DrawdownStrategy $strategy): ForecastSettings
     {
         // A forced sale (a home whose mortgage is called for redemption and not refinanceable)
         // is modelled in place by the projector: it needs the entered post-sale rent and the
@@ -443,7 +555,7 @@ final class ScenarioForecaster
      */
     public function deterministicUnderStrategy(Scenario $scenario, DrawdownStrategy $strategy): ForecastResult
     {
-        return (new DeterministicForecaster($this->config($scenario), new CohortLifeTable))
-            ->forecast($this->household($scenario), $this->assumptions($scenario), $this->settings($scenario, $strategy));
+        return $this->remember($scenario, 'underStrategy:'.$strategy->name, fn (): ForecastResult => (new DeterministicForecaster($this->config($scenario), new CohortLifeTable))
+            ->forecast($this->household($scenario), $this->assumptions($scenario), $this->settings($scenario, $strategy)));
     }
 }

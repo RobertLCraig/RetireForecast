@@ -14,6 +14,7 @@ use App\Models\Scenario;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
@@ -52,7 +53,7 @@ class Affordability extends Component
     public function checkHowSure(): void
     {
         $runner = app(SimulationRunner::class);
-        foreach ($this->plans() as $plan) {
+        foreach ($this->plans as $plan) {
             if ($this->storedMonteCarlo($plan, $plan->variant->value) === null) {
                 $runner->dispatch($plan);
             }
@@ -62,22 +63,30 @@ class Affordability extends Component
     }
 
     /** The plans assessed: the base plus its ready what-if children, base first (one shared home). */
+    #[Computed]
     private function plans(): Collection
     {
         return CombinationComparisonData::plans($this->base);
     }
 
-    public function render(): View
+    /**
+     * One row per plan: its central projection, its care-stress companion, its stored "how sure"
+     * figure and the spend it could actually support. This is the expensive half of the screen (a
+     * lifetime projection per strategy per plan, plus a bisection), so it is assembled once for a
+     * request however many times the request asks for it. Nothing is cached past the response;
+     * the forecaster behind it memoises per request in the same way.
+     *
+     * @return list<array<string, mixed>>
+     */
+    #[Computed]
+    private function rows(): array
     {
         $forecaster = app(ScenarioForecaster::class);
         $baseYear = (int) substr($this->base->base_tax_year, 0, 4);
 
         $rows = [];
-        $anyUnchecked = false;
-        foreach ($this->plans() as $plan) {
+        foreach ($this->plans as $plan) {
             $variant = $plan->variant->value;
-            $mc = $this->storedMonteCarlo($plan, $variant);
-            $anyUnchecked = $anyUnchecked || $mc === null;
 
             $rows[] = [
                 'scenario' => $plan,
@@ -89,13 +98,19 @@ class Affordability extends Component
                 'household' => $plan->toHousehold(),
                 'baseYear' => $baseYear,
                 'monthlyRent' => $this->monthlyRent($plan, $variant),
-                'mc' => $mc,
+                'mc' => $this->storedMonteCarlo($plan, $variant),
                 // "How much could we actually spend?" — solved, not read off the plan's own budget.
                 // Synchronous (a deterministic bisection), so it needs no queue worker.
                 'sustainable' => app(SustainableSpend::class)->forScenario($plan),
             ];
         }
 
+        return $rows;
+    }
+
+    public function render(): View
+    {
+        $rows = $this->rows;
         $cards = AffordabilityAssessment::cards($rows);
         $bottomLine = AffordabilityAssessment::bottomLine($cards);
 
@@ -104,7 +119,7 @@ class Affordability extends Component
             'failing' => array_values(array_filter($cards, fn (array $c): bool => ! $c['works'])),
             'bottomLine' => $bottomLine,
             // Whether any plan still lacks a full Monte Carlo result, so the view can offer to run it.
-            'anyUnchecked' => $anyUnchecked,
+            'anyUnchecked' => array_any($rows, fn (array $row): bool => $row['mc'] === null),
             // Directive guidance only behind the walled-off ability (personal-use mode), never public.
             'canInterpret' => Gate::allows('interpret'),
         ])->title('What you can afford');

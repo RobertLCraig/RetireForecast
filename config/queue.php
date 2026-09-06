@@ -40,7 +40,13 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // How long the queue waits before deciding a reserved job is dead and offering it to
+            // another worker. It MUST outlast the longest job on this queue, or a second worker is
+            // handed a run that is still going and the two write results for the same record. The
+            // longest here are the hour-long forecast jobs (RunScenarioSimulation, RunLeverThreshold,
+            // BuildScenarioExport), so this sits an hour and five minutes out. Laravel's stock 90
+            // seconds was far inside every one of them. Guarded by QueuedRunSafetyTest.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 3900),
             'after_commit' => false,
         ],
 

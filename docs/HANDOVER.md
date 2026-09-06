@@ -9,6 +9,18 @@ _Last updated: 2026-09-06. The exceptions a fresh session needs, newest first. T
 inventory and cards 0024, 0025, 0028, 0029 and 0030 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) on 2026-09-05 to keep this loadable in one session:_
 
+- **A queued run can no longer be killed at 60 seconds or run twice at once, and the forecaster
+  remembers what it derived.** Card 0042 (partial: its third criterion is left open and is Rob's,
+  see the card). `RunScenarioSimulation` and `RunLeverThreshold` declare an hour's `$timeout`, one
+  attempt and `WithoutOverlapping` on their record id; `config/queue.php` `retry_after` defaults to
+  **3900** rather than Laravel's 90, which is what stopped the queue offering a still-running job to
+  a second worker (`.env` names no `DB_QUEUE_RETRY_AFTER`, so only the config default reaches this
+  machine). None of it was visible here because **Windows has no `pcntl`** and a worker cannot
+  enforce a timeout at all. `ScenarioForecaster` now memoises per request (`scoped` in
+  `AppServiceProvider`), keyed on the scenario's stored **ciphertext** plus its parent chain and its
+  assumption set WHOLE, because an edit inside a shared `AssumptionSet` moves a scenario whose own
+  row never changes. No figure moves and no `ENGINE_VERSION` bump. Raised alongside: card **0104**,
+  `BuildScenarioExport` still carries no overlap lock.
 - **A forced sale now redeems the mortgage it actually owes, and four backstops that invented an
   answer now throw.** Card 0041. `PathProjector` handed `HousingProceeds::compute()` the mortgage
   balance as ORIGINALLY ENTERED, which is right only for an interest-only loan: a lifetime mortgage

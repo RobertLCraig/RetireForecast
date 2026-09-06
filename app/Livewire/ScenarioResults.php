@@ -25,6 +25,7 @@ use App\Models\SimulationRun;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use RetireForecast\FinanceEngine\Forecast\YearResult;
@@ -312,7 +313,12 @@ class ScenarioResults extends Component
      * which strategies the inputs make worth offering, and the currently selected one (clamped
      * to an offered strategy). One source for the rendered ladder/milestones, the CSV and the
      * printable PDF ({@see LadderContext}), so they can never show different strategies.
+     *
+     * Assembled once per request. Downloading the ladder CSV is an action that ALSO re-renders the
+     * page, so this used to be built twice in the one request, projecting the plan on every offered
+     * strategy each time.
      */
+    #[Computed]
     private function ladderContext(): LadderContext
     {
         return LadderContext::for(app(ScenarioForecaster::class), $this->scenario, $this->ladderVariant);
@@ -320,7 +326,7 @@ class ScenarioResults extends Component
 
     public function downloadLadderCsv(): StreamedResponse
     {
-        $ctx = $this->ladderContext();
+        $ctx = $this->ladderContext;
         $selected = $ctx->selected;
         $ladder = ResultPresenter::ladder($ctx->selectedForecast(), $this->scenario->safetyBufferMonths());
 
@@ -393,7 +399,7 @@ class ScenarioResults extends Component
         // source — the same variant households the Monte Carlo comparison runs). The ladder +
         // its milestones follow the selected strategy; the income-floor / input-sanity notes
         // stay on the raw (stay-put) household, which is the household exactly as entered.
-        $ladderContext = $this->ladderContext();
+        $ladderContext = $this->ladderContext;
         $selectedStrategy = $ladderContext->selected;
         $ladderForecast = $ladderContext->selectedForecast();
         $forecast = $ladderContext->stayPutForecast();

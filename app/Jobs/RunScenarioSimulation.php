@@ -9,6 +9,7 @@ use App\Forecast\SimulationRunner;
 use App\Models\SimulationRun;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Throwable;
 
 /**
@@ -20,7 +21,51 @@ class RunScenarioSimulation implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * How long a full 10,000-path run is allowed to take before the worker kills it.
+     *
+     * A worker allows 60 seconds to a job that names nothing, which a full run passes long
+     * before it finishes. That has never bitten on this machine because **Windows has no
+     * `pcntl`**, so the worker here cannot enforce a timeout at all — it bites the moment the
+     * same code runs anywhere that has one (CI, Docker, WSL, any Linux host), where every
+     * full run is killed part-way and marked failed. An hour is a deliberate ceiling rather
+     * than a measurement: it is far above any run this tool produces, and it still ends a run
+     * that has hung instead of holding a worker for ever.
+     *
+     * `config('queue.connections.database.retry_after')` MUST stay above this, or the queue
+     * offers a still-running job to a second worker. `QueuedRunSafetyTest` holds that.
+     */
+    public int $timeout = 3600;
+
+    /**
+     * One attempt. A killed or crashed run is not quietly started again from the top: it goes
+     * to {@see failed()}, which lands it in a terminal Failed status with the reason on it, so
+     * the reader is told rather than left watching a progress bar restart itself.
+     */
+    public int $tries = 1;
+
+    /** A run that hits the timeout has failed; do not release it back for another go. */
+    public bool $failOnTimeout = true;
+
     public function __construct(public readonly int $simulationRunId) {}
+
+    /**
+     * One worker per run record. A worker restarted mid-run (board card 0009 is literally that)
+     * used to pick the same still-reserved job up and run it BESIDE the first one: two runs
+     * writing results for one record and fighting over its progress counter. The lock is on the
+     * run id, so a different run is never held up, and it outlives {@see $timeout} so it cannot
+     * expire under a run that is still going.
+     *
+     * @return list<object>
+     */
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping((string) $this->simulationRunId))
+                ->dontRelease()
+                ->expireAfter($this->timeout + 60),
+        ];
+    }
 
     public function handle(SimulationRunner $runner): void
     {

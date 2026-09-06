@@ -254,29 +254,46 @@ final class Simulator
      */
     private function moneyPercentiles(array $pence): array
     {
+        // Sort ONCE and read five bands off the one ordering. The fan chart asks for these five
+        // bands per year of the projection, three times over for the three housing strategies, so
+        // sorting inside each band re-sorted the same 10,000 paths five times for nothing.
+        sort($pence);
+
         return [
-            'p10' => Money::fromPence((int) round($this->percentile($pence, 0.10))),
-            'p25' => Money::fromPence((int) round($this->percentile($pence, 0.25))),
-            'p50' => Money::fromPence((int) round($this->percentile($pence, 0.50))),
-            'p75' => Money::fromPence((int) round($this->percentile($pence, 0.75))),
-            'p90' => Money::fromPence((int) round($this->percentile($pence, 0.90))),
+            'p10' => Money::fromPence((int) round($this->percentileOfSorted($pence, 0.10))),
+            'p25' => Money::fromPence((int) round($this->percentileOfSorted($pence, 0.25))),
+            'p50' => Money::fromPence((int) round($this->percentileOfSorted($pence, 0.50))),
+            'p75' => Money::fromPence((int) round($this->percentileOfSorted($pence, 0.75))),
+            'p90' => Money::fromPence((int) round($this->percentileOfSorted($pence, 0.90))),
         ];
     }
 
     /**
-     * Linear-interpolated percentile of a list of numbers.
+     * Linear-interpolated percentile of a list of numbers, in any order.
      *
      * @param  list<int>  $values
      */
     private function percentile(array $values, float $p): float
     {
-        if ($values === []) {
+        sort($values);
+
+        return $this->percentileOfSorted($values, $p);
+    }
+
+    /**
+     * The same figure, for a list already in ascending order, so a caller reading several bands
+     * off one sample sorts it once instead of once per band.
+     *
+     * @param  list<int>  $sorted  ascending
+     */
+    private function percentileOfSorted(array $sorted, float $p): float
+    {
+        if ($sorted === []) {
             return 0.0;
         }
-        sort($values);
-        $n = count($values);
+        $n = count($sorted);
         if ($n === 1) {
-            return (float) $values[0];
+            return (float) $sorted[0];
         }
 
         $rank = $p * ($n - 1);
@@ -284,6 +301,6 @@ final class Simulator
         $high = (int) ceil($rank);
         $frac = $rank - $low;
 
-        return $values[$low] + ($values[$high] - $values[$low]) * $frac;
+        return $sorted[$low] + ($sorted[$high] - $sorted[$low]) * $frac;
     }
 }

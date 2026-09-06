@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Forecast\ScenarioForecaster;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
@@ -14,7 +15,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // ONE forecaster per request, so everything a screen assembles shares what it derived
+        // rather than decrypting, merging and projecting the same scenario over again. `scoped`
+        // rather than `singleton` is the point: the queue worker drops scoped instances between
+        // jobs, so a long-lived worker never carries one scenario's figures into the next job.
+        // The memo lives on the instance ({@see ScenarioForecaster}); nothing is cached beyond
+        // the request.
+        $this->app->scoped(ScenarioForecaster::class);
     }
 
     /**
