@@ -113,3 +113,54 @@ flag.
 the PDF: the "Income the forecast counts, but nobody guarantees" panel, the rewritten claim prompt
 with its two branches (awarded, and near-miss with no award), and the capital-cliff input note.
 Card 0001 already gates the browser pass on the whole built cluster.
+
+### 2026-09-06 review (v20260906121631-67a2)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 169s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I looked for a criterion with no code behind it. I could not find one.
+
+**#1 contingent line.** `app/Forecast/ResultPresenter.php` ÔÇö `CONTINGENT_SOURCES` holds `means_tested_benefit`, and `floorAt()` sums the floor from `SECURE_SOURCES` only. The credit is listed and totalled on its own. Coverage percent uses `$secure`, so the credit is out of it. No other file reads that source into a floor (only `SOURCE_LABELS` and the guidance check).
+
+**#2 near-miss prompt.** `PensionCreditResult::isNearMiss()` owns the rule. `PathProjector::benefitContingencyWarnings()` raises the flag. `ResultPresenter::pensionCreditGuidance()` opens on the flag or an award, and `howToClaim` states the 3-month backdating limit. The view has both branches in `scenario-results.blade.php`.
+
+**#3 capital cliff.** `CapitalAssessment::assess()` builds it, `PathProjector::benefitContingencyWarnings()` collects it into the year's warnings, and `ResultPresenter` shows it once, naming the first year.
+
+**#4 Guarantee Credit carve-out.** `CapitalAssessment::assess()` takes `$onGuaranteeCredit` and returns no cliff. `PathProjector` passes `$benefitNominal > 0`, so it is true only when the credit is really paid.
+
+Engine tests drive #2, #3 and #4 through a real forecast, not a hand-made warning.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Left half done**
+
+1. `ResultPresenter::floorAt()` builds `contingent` / `contingentIncome` for the **survivor** snapshot as well, but the survivor block in `resources/views/livewire/scenario-results.blade.php` and in `resources/views/pdf/partials/report.blade.php` renders only `secureIncome`. So the survivor's Pension Credit ÔÇö the larger award, single guarantee with one State Pension gone ÔÇö is now in no table and no total on either output. It was at least inside the old figure. The survivor-cliff line ("falls from X% to Y%") also overstates the drop, with nothing beside it saying why. The card asked for it reported separately, not dropped.
+
+2. `ScenarioContext::incomeFloorFacts()` still reads `secureIncome` and `gap` only. The assistant now tells the household the gap "must come from savings and investments" in years the forecast in fact fills with Pension Credit.
+
+**Grew**
+
+3. `PathProjector::benefitContingencyWarnings()` runs the cliff at every age, so an ordinary working household with over ┬ú16,000 in cash is told Housing Benefit and Council Tax Support "are not payable". The tell is in the diff: `InputNotesTest::test_a_sensible_household_raises_no_notes` had its spending raised to ┬ú38,000 to silence it.
+
+VERDICT: defect
+
+**breakage: defect**
+
+The gap figure was not updated with the floor it is subtracted from.
+
+`ResultPresenter::floorAt()` still builds `gap = essentialSpend ÔêÆ secureIncome`. Pension Credit left `secureIncome`, so `gap` grew by the whole award. Every label on that number still says savings pay it:
+
+- `resources/views/livewire/scenario-results.blade.php`, income-floor section: the amber tile "Met from savings / pension", and the footnote "The rest of essential spending is met by drawing on your savings and pensions, so it depends on those lasting". Both untouched by this commit; the new contingent panel below sits beside them and corrects neither.
+- `resources/views/pdf/partials/report.blade.php`, income-floor block: the same "Met from savings / pension" tile.
+- `app/Assistant/ScenarioContext::incomeFloorFacts()`: "the remaining {gap} must come from savings and investments". It also drops `contingent` and `contingentIncome`, so Pension Credit vanishes from the floor facts, while its docblock still claims it reuses the one floor definition and its own ladder still lists the award.
+
+Failure: essentials ┬ú20,000, secure ┬ú18,000, Pension Credit ┬ú3,000. The screen, the PDF and the assistant now say ┬ú2,000 comes from savings... it says ┬ú2,000 only because I lowered it; with credit awarded the tile reads the full shortfall the credit actually pays. Savings draw is overstated by the award.
+
+VERDICT: defect
+
