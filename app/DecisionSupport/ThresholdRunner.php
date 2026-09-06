@@ -269,6 +269,9 @@ final class ThresholdRunner
 
             return;
         } catch (Throwable $e) {
+            // The message on the row is a status line for the page, not a diagnosis; the handler
+            // gets the throwable itself. {@see SimulationRunner::execute} for the reasoning.
+            report($e);
             $run->update(['status' => SimulationStatus::Failed, 'error' => $e->getMessage(), 'finished_at' => now()]);
 
             return;

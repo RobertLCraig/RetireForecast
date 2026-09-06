@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\MonteCarlo;
 
+use OutOfRangeException;
 use RetireForecast\FinanceEngine\Care\CareEpisode;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Forecast\PathDraws;
@@ -111,14 +112,25 @@ final class SampledPathDraws implements PathDraws
     }
 
     /**
+     * One year's draw from a sampled series.
+     *
+     * A year past the end of the series is a broken invariant, not a data shortage: the series is
+     * generated for the horizon the projector then walks, so the two disagreeing means one of them
+     * is wrong. It used to repeat the final draw for ever (and return a flat 0.0 for an empty
+     * series), which answered every extra year with a number nobody sampled and left the run
+     * looking complete.
+     *
      * @param  list<float>  $series
      */
     private function at(array $series, int $yearIndex): float
     {
-        if ($yearIndex < count($series)) {
-            return $series[$yearIndex];
+        if ($yearIndex < 0 || $yearIndex >= count($series)) {
+            throw new OutOfRangeException(
+                "Sampled path has no draw for year {$yearIndex}: the series holds ".count($series)
+                .' years, so the projection is running past the path generated for it.'
+            );
         }
 
-        return $series === [] ? 0.0 : $series[count($series) - 1];
+        return $series[$yearIndex];
     }
 }

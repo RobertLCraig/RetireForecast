@@ -39,7 +39,15 @@ final class ScenarioForecaster
 {
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-05 (liquid-wealth-split-between-owners): liquid wealth no longer lands on whoever was
+     * Bumped 2026-09-06 (forced-sale-redeems-the-years-balance): a forced sale now clears the mortgage
+     * balance as it stands in the SALE year rather than the balance originally entered. The two
+     * agree only for an interest-only loan, which is why it survived: a lifetime mortgage has
+     * ROLLED UP by then, so the sale freed equity the household no longer had (its wealth,
+     * depletion year and success odds are too FAVOURABLE under an earlier stamp), and a repayment
+     * mortgage has AMORTISED down, so the sale freed less than the household really keeps (too
+     * PESSIMISTIC). A plan with no forced sale, or one whose loan is interest-only, is
+     * byte-identical. See board card 0041.
+     * Previous bump 2026-09-05 (liquid-wealth-split-between-owners): liquid wealth no longer lands on whoever was
      * DECLARED FIRST. The proceeds of a jointly owned home, sold in year 0 or forced mid-projection,
      * are now credited to each owner in equal shares, and a year's banked surplus goes to whoever's
      * income produced it (evenly where nothing produced it, such as a Pension Credit award). The
@@ -180,7 +188,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/liquid-wealth-split-between-owners';
+    public const ENGINE_VERSION = 'finance-engine/forced-sale-redeems-the-years-balance';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

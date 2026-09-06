@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Forecast;
 
+use InvalidArgumentException;
+use LogicException;
 use RetireForecast\FinanceEngine\Benefits\PensionCreditCalculator;
 use RetireForecast\FinanceEngine\Care\CareMeansTest;
 use RetireForecast\FinanceEngine\Dto\AccountType;
@@ -73,6 +75,13 @@ final class PathProjector
      * (the enacted April-2027 rule, Finance Act 2026). A death before then excludes pensions.
      */
     private const PENSIONS_IN_ESTATE_FROM_YEAR = 2027;
+
+    /**
+     * How many years the projection loop may run before it treats itself as broken. The loop ends
+     * on the last death and mortality caps at 110, so no real path comes close; passing this means
+     * the death ages handed in are wrong, which is a fault to surface rather than a length to cap.
+     */
+    private const MAX_PROJECTION_YEARS = 200;
 
     private readonly IncomeTaxCalculator $incomeTax;
 
@@ -180,8 +189,18 @@ final class PathProjector
 
             $prevAlive = $alive; // carry this year's living into next year's death detection
 
-            if ($yearIndex > 200) {
-                break; // safety backstop; should never trigger (mortality caps at 110)
+            // Safety backstop. Mortality caps at 110, so the death check above always ends the loop
+            // long before this: reaching it means the death ages handed in are not ages, and the
+            // projection is wrong rather than long. It used to `break`, which returned the years it
+            // had managed as though they were the whole projection, so the terminal wealth, the
+            // depletion year and the IHT on the final death were all read off a truncation nobody
+            // was told about.
+            if ($yearIndex > self::MAX_PROJECTION_YEARS) {
+                throw new LogicException(
+                    'Projection passed its '.self::MAX_PROJECTION_YEARS.'-year backstop at '
+                    .$calendarYear.': every person is still alive past age 200, so the death ages '
+                    .'given to this path are not ages.'
+                );
             }
         }
 
@@ -1117,9 +1136,25 @@ final class PathProjector
             && $home->mortgageMaturityAction === MortgageMaturityAction::ForcedSale
             && ! $state['homeSold']
             && $calendarYear >= $home->mortgageRedemptionYear) {
+            // The balance to redeem is the one owed in THIS year, never the one originally
+            // entered. The two agree only for an interest-only loan, which is why passing the
+            // entered figure survived: a lifetime mortgage has rolled up by now (so the sale was
+            // freeing equity the household no longer had) and a repayment mortgage has amortised
+            // down (so it was freeing less than it really keeps). Both shapes are live.
+            //
+            // `mortgageOutstanding` is the household's SHARE of the balance and HousingProceeds
+            // takes whole-property figures and applies the share itself, so scale back up. Derived
+            // rather than tracked as a second state key: the balance has ONE definition, it is read
+            // once here rather than compounded (unlike `propertyWhole`, whose drift would accumulate
+            // over a whole projection), and a mirrored key is a field to forget.
+            $share = $state['ownershipShare'];
+            $owedWhole = $share > 0
+                ? (int) round($state['mortgageOutstanding'] / $share)
+                : $state['mortgageOutstanding'];
+
             $proceeds = HousingProceeds::compute(
                 Money::fromPence($state['propertyWhole']),
-                $home->outstandingMortgage ?? Money::zero(),
+                Money::fromPence($owedWhole),
                 $settings->sellingCosts,
                 $home->cgtHistory,
                 $home->ownershipShare,
@@ -2552,6 +2587,23 @@ final class PathProjector
      */
     public static function disposeGiaSlice(int $balance, int $basis, int $take): array
     {
+        // Selling nothing is a no-op, including from an empty holding: every caller already skips
+        // a zero take, and answering it costs nothing.
+        if ($take === 0) {
+            return [0, 0];
+        }
+
+        // Anything else is arithmetic that cannot be done. Being public and static, this is
+        // reachable with anything, and it divided by the balance with nothing checking it: an
+        // empty holding raised a bare DivisionByZeroError naming neither caller nor holding, and a
+        // take beyond the balance reported a gain on money that was not there. A basis ABOVE the
+        // balance is NOT in here, because that is a holding at a loss, and a real one.
+        if ($take < 0 || $balance <= 0 || $take > $balance) {
+            throw new InvalidArgumentException(
+                "Cannot dispose of {$take} pence from a GIA holding worth {$balance} pence."
+            );
+        }
+
         $gain = (int) round(max(0, $balance - $basis) * $take / $balance);
 
         return [$gain, $take - $gain];

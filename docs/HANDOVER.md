@@ -5,10 +5,28 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-05. The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-06. The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028, 0029 and 0030 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) on 2026-09-05 to keep this loadable in one session:_
 
+- **A forced sale now redeems the mortgage it actually owes, and four backstops that invented an
+  answer now throw.** Card 0041. `PathProjector` handed `HousingProceeds::compute()` the mortgage
+  balance as ORIGINALLY ENTERED, which is right only for an interest-only loan: a lifetime mortgage
+  has rolled up by the sale year (the plan freed equity it no longer had) and a repayment mortgage
+  has amortised down (it freed less than it keeps). The balance is now the one in force that year,
+  derived from `state['mortgageOutstanding']` by scaling back up through the ownership share rather
+  than tracked as a second state key, so the balance keeps one definition. **Every stored plan with
+  a forced sale on a rolled-up or amortising loan moves**; interest-only and no-forced-sale plans
+  are byte-identical. `ENGINE_VERSION` is `finance-engine/forced-sale-redeems-the-years-balance` and
+  the **stored-scenario re-run is owed**. No screen changed. Alongside it: `ExpenseProfile` gets the
+  private `copy()` its three hand-listed withers lacked (`withoutPropertyCosts()` had already lost
+  `propertyCostsRealGrowth`, inert only because a zero bucket cannot escalate);
+  `BuilderStateDelta::setPath()` no longer turns a positional list into an id-keyed map when a
+  what-if adds the FIRST row to a list its base leaves empty; and five silent failures are loud
+  (`report($e)` in all three queued runners, plus throws in the year-200 projection backstop,
+  `SampledPathDraws::at()` past the end of a series, `disposeGiaSlice()` on an empty holding, and
+  `Scenario::effectiveBuilderState()` on a `parent_scenario_id` cycle, which used to exhaust memory
+  and kill the worker).
 - **Liquid wealth no longer lands on whoever was typed first, and the care answer no longer moves
   with typing order in the year care starts.** Card 0040. Three places handed money to `persons[0]`
   or `firstLiving()`: the year-0 sale proceeds in `HousingComparison::withHousing()`, the forced-sale
@@ -223,7 +241,7 @@ Single source of truth: the engine's readonly DTOs under `packages/finance-engin
 - **Money = integer pence**, never a float (held by `Money`, GBP only). Rates = `Percent` (integer basis points). Dates = ISO `Y-m-d`. **Ages derive from DOB + a reference date, never stored.**
 - **All reported wealth is NET of the mortgage** (2026-07-08): `YearResult::totalWealth` = liquid + pension + home equity (NNEG-floored); every surface (Compare / results / PDF / CSV / Monte Carlo / assistant) inherits from that one definition.
 - **Storage inversion (Phase B):** a base scenario stores raw builder **form-state** (`builder_state`, one `encrypted:array`) as the single source of truth; the engine `Household` + `HousingAction` DTOs are **derived** (`Scenario::toHousehold()` / `toHousingAction()` via `HouseholdAssembler`, no reverse-mapper). A what-if **child** holds no `builder_state`, only `parent_scenario_id` + a sparse encrypted `overrides` delta (value overrides, added rows stored whole, removed rows a `REMOVED` sentinel); `effectiveBuilderState()` = base overlaid with overrides.
-- **One rebuild site per DTO.** `Household` is only ever copied through its private `copy()` behind `withPersons()` / `withPensions()` / `withExpenseProfile()` / `withCapitalReceipts()`, because seven sweep levers used to rebuild it positionally and a field added to the DTO but forgotten in a lever was silently dropped from every swept forecast. Guarded by `HouseholdWitherTest`, which enumerates the DTO's own properties by reflection.
+- **One rebuild site per DTO.** `Household` is only ever copied through its private `copy()` behind `withPersons()` / `withPensions()` / `withExpenseProfile()` / `withCapitalReceipts()`, because seven sweep levers used to rebuild it positionally and a field added to the DTO but forgotten in a lever was silently dropped from every swept forecast. Guarded by `HouseholdWitherTest`, which enumerates the DTO's own properties by reflection. `ExpenseProfile` has the same private `copy()` and the same reflection guard (`ExpenseProfileWitherTest`, card 0041); `Property`, `Account` and `DcPension` are guarded by `AssetWitherTest`.
 
 ## Architecture / stack
 - **Laravel 13.17** app at the repo root, on local **Postgres 18** (moved off SQLite 2026-07-09, see Decisions). **Fortify** auth + **Filament 5** admin (which pulled **Livewire 4**). Front end is hand-rolled Livewire 4 full-page components (`app/Livewire/`) + **ApexCharts** (progressive enhancement: every figure is also text, an accessible `<table>` and CSV).

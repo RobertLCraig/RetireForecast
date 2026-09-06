@@ -255,17 +255,18 @@ final class ExpenseProfile
 
         $essentialPath = $this->essentialSpendPath->minusFlat($gross->minus($this->propertyCostsUtilities()));
 
-        return new self(
-            essentialAnnualSpend: $essentialPath->startAmount(),
-            discretionaryAnnualSpend: $this->discretionaryAnnualSpend,
-            survivorSpendFactor: $this->survivorSpendFactor,
-            oneOffCosts: $oneOffs,
-            propertyCosts: null,
-            employmentCosts: $this->employmentCosts,
-            mortgageCosts: null,
-            essentialSpendPath: $essentialPath,
-            discretionarySpendPath: $this->discretionarySpendPath,
-        );
+        return $this->copy([
+            'essentialAnnualSpend' => $essentialPath->startAmount(),
+            'essentialSpendPath' => $essentialPath,
+            'oneOffCosts' => $oneOffs,
+            'propertyCosts' => null,
+            'mortgageCosts' => null,
+            // The utilities part is now ordinary essential spend inside the path above, so its
+            // marker must go: nothing may strip it a second time, and no service-charge escalator
+            // belongs on an energy bill. The escalation RATE is carried through instead: it is inert
+            // with no bucket to grow, and dropping it was the silent drift this wither had made.
+            'propertyCostsUtilities' => null,
+        ]);
     }
 
     /**
@@ -279,45 +280,57 @@ final class ExpenseProfile
     {
         $essentialPath = $this->essentialSpendPath->plusFlat($mortgageCosts);
 
-        return new self(
-            essentialAnnualSpend: $essentialPath->startAmount(),
-            discretionaryAnnualSpend: $this->discretionaryAnnualSpend,
-            survivorSpendFactor: $this->survivorSpendFactor,
-            oneOffCosts: $this->oneOffCosts,
-            propertyCosts: $this->propertyCosts,
-            employmentCosts: $this->employmentCosts,
-            mortgageCosts: $mortgageCosts,
-            essentialSpendPath: $essentialPath,
-            discretionarySpendPath: $this->discretionarySpendPath,
-            propertyCostsRealGrowth: $this->propertyCostsRealGrowth,
-            propertyCostsUtilities: $this->propertyCostsUtilities,
-        );
+        return $this->copy([
+            'essentialAnnualSpend' => $essentialPath->startAmount(),
+            'essentialSpendPath' => $essentialPath,
+            'mortgageCosts' => $mortgageCosts,
+        ]);
     }
 
     /**
      * The same profile with a dated one-off cost appended — e.g. the unfunded part of a home
      * purchase, charged in the year it falls so money the plan does not have is never conjured
-     * (the year shows a visible shortfall instead). Unlike {@see withoutPropertyCosts} (which
-     * deliberately drops a sold home's cost growth) every other field is preserved, including
-     * $propertyCostsRealGrowth.
+     * (the year shows a visible shortfall instead). Every other field is preserved, as it is by
+     * every wither now that they share {@see copy}.
      */
     public function withOneOffCost(int $atAge, Money $amount, string $label): self
     {
         $oneOffs = $this->oneOffCosts;
         $oneOffs[] = ['atAge' => $atAge, 'amount' => $amount, 'label' => $label];
 
+        return $this->copy(['oneOffCosts' => $oneOffs]);
+    }
+
+    /**
+     * The ONE place an ExpenseProfile is rebuilt from an existing one. Every wither goes through
+     * here, so a field added to this DTO cannot be silently dropped by a wither that listed the
+     * constructor arguments by hand and was never updated — which is exactly how a carefully
+     * entered input disappears from a variant's forecast. Three withers used to hand-list nine
+     * arguments each, and one of them had already lost a field. Guarded by
+     * `ExpenseProfileWitherTest`.
+     *
+     * Keyed by field name rather than typed parameters, because two of the withers must SET a
+     * field to null (a sold home has no service charge) and a nullable parameter cannot tell
+     * "leave it alone" from "make it null". A field absent from $changes is carried through.
+     *
+     * @param  array<string, mixed>  $changes  field name => its new value
+     */
+    private function copy(array $changes): self
+    {
+        $take = fn (string $field): mixed => array_key_exists($field, $changes) ? $changes[$field] : $this->{$field};
+
         return new self(
-            essentialAnnualSpend: $this->essentialAnnualSpend,
-            discretionaryAnnualSpend: $this->discretionaryAnnualSpend,
-            survivorSpendFactor: $this->survivorSpendFactor,
-            oneOffCosts: $oneOffs,
-            propertyCosts: $this->propertyCosts,
-            employmentCosts: $this->employmentCosts,
-            mortgageCosts: $this->mortgageCosts,
-            essentialSpendPath: $this->essentialSpendPath,
-            discretionarySpendPath: $this->discretionarySpendPath,
-            propertyCostsRealGrowth: $this->propertyCostsRealGrowth,
-            propertyCostsUtilities: $this->propertyCostsUtilities,
+            essentialAnnualSpend: $take('essentialAnnualSpend'),
+            discretionaryAnnualSpend: $take('discretionaryAnnualSpend'),
+            survivorSpendFactor: $take('survivorSpendFactor'),
+            oneOffCosts: $take('oneOffCosts'),
+            propertyCosts: $take('propertyCosts'),
+            employmentCosts: $take('employmentCosts'),
+            mortgageCosts: $take('mortgageCosts'),
+            essentialSpendPath: $take('essentialSpendPath'),
+            discretionarySpendPath: $take('discretionarySpendPath'),
+            propertyCostsRealGrowth: $take('propertyCostsRealGrowth'),
+            propertyCostsUtilities: $take('propertyCostsUtilities'),
         );
     }
 

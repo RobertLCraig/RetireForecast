@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Tests\Forecast;
 
 use DateTimeImmutable;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\Account;
@@ -141,5 +142,33 @@ final class GiaCapitalGainsTaxTest extends TestCase
 
         $this->assertSame(0, $basis, 'cost basis is fully consumed once the holding is sold');
         $this->assertSame($embeddedGain, $totalGain, 'total realised gain equals the embedded gain — no drift');
+    }
+
+    public function test_an_impossible_gia_disposal_is_refused_rather_than_divided_by_a_zero_balance(): void
+    {
+        // Public and static so the conservation invariant can be tested directly, which also means
+        // it is reachable with anything. It divided by the balance with nothing checking it: a
+        // zero balance raised a bare DivisionByZeroError naming neither the caller nor the holding,
+        // and a take larger than the balance quietly reported a gain on money that was not there.
+        $this->assertSame([0, 0], PathProjector::disposeGiaSlice(0, 0, 0), 'taking nothing from nothing is a no-op');
+
+        $impossible = [
+            'empty holding' => [0, 0, 1_000],
+            'take exceeds the balance' => [5_000, 1_000, 6_000],
+            'negative take' => [5_000, 1_000, -1],
+        ];
+
+        // A basis ABOVE the balance is not impossible, it is a holding at a loss, and it must stay
+        // a plain no-gain disposal rather than joining the refusals above.
+        $this->assertSame([0, 1_000], PathProjector::disposeGiaSlice(5_000, 6_000, 1_000));
+
+        foreach ($impossible as $why => [$balance, $basis, $take]) {
+            try {
+                PathProjector::disposeGiaSlice($balance, $basis, $take);
+                $this->fail("disposeGiaSlice({$balance}, {$basis}, {$take}) should have been refused: {$why}");
+            } catch (InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
     }
 }

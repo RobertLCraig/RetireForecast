@@ -62,6 +62,9 @@ final class AssistantTurnRunner
                 'answer' => ['text' => $answer->text, 'status' => $answer->status],
             ]);
         } catch (Throwable $e) {
+            // The message on the row is a status line for the polling panel, not a diagnosis; the
+            // handler gets the throwable itself. {@see SimulationRunner::execute} for the reasoning.
+            report($e);
             $turn->update([
                 'status' => SimulationStatus::Failed,
                 'error' => $e->getMessage(),

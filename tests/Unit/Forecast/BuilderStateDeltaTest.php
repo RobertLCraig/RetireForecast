@@ -90,6 +90,41 @@ class BuilderStateDeltaTest extends TestCase
         $this->assertEquals($edited['oneOffCosts'], $merged['oneOffCosts']);
     }
 
+    public function test_adding_the_first_row_to_an_empty_list_keeps_it_positional(): void
+    {
+        // The base has no one-off costs at all and the what-if adds the first. An empty list is
+        // shapeless — nothing in it carries an id, so it cannot be recognised as a row list — and
+        // setPath used to fall through to the map branch and write the row under its own id. That
+        // turned a positional list into an id-keyed map, which the next diff() then walks down a
+        // different branch, while orphans() reports the write as a success. Reachable whenever a
+        // what-if adds the first income stream, one-off cost, account or withdrawal.
+        $base = BuilderStateFixture::full();
+        $base['oneOffCosts'] = [];
+
+        $edited = $base;
+        $edited['oneOffCosts'][] = ['id' => 'oneoff9', 'atAge' => '70', 'amount' => '40000', 'label' => 'New roof'];
+
+        $overrides = BuilderStateDelta::diff($base, $edited);
+        $merged = BuilderStateDelta::merge($base, $overrides);
+
+        $this->assertTrue(array_is_list($merged['oneOffCosts']), 'the first added row turned the list into an id-keyed map');
+        $this->assertEquals($edited['oneOffCosts'], $merged['oneOffCosts']);
+        $this->assertSame([], BuilderStateDelta::orphans($base, $overrides));
+    }
+
+    public function test_removing_a_row_from_a_list_the_base_has_emptied_is_a_no_op(): void
+    {
+        // The same shapeless-empty hole from the other side: a stored REMOVED sentinel for a row
+        // the base has since dropped altogether. The map branch wrote the sentinel string itself
+        // into the list under the missing row's id, so the "removal" left behind a fake row.
+        $base = BuilderStateFixture::full();
+        $base['accounts'] = [];
+
+        $merged = BuilderStateDelta::merge($base, ['accounts.acc1' => BuilderStateDelta::REMOVED]);
+
+        $this->assertSame([], $merged['accounts'], 'removing an already-absent row invented one');
+    }
+
     public function test_a_capital_receipt_row_adds_and_removes_through_diff_and_merge(): void
     {
         // The receipts collection is a row list like any other: a what-if adding a documented

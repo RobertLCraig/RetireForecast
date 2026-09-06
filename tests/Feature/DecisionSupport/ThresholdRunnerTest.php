@@ -14,7 +14,9 @@ use App\Models\Scenario;
 use App\Models\ThresholdResult;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
+use InvalidArgumentException;
 use RetireForecast\FinanceEngine\Sweep\CrossingVerdict;
 use RetireForecast\FinanceEngine\Sweep\SweepMetric;
 use RuntimeException;
@@ -191,6 +193,26 @@ final class ThresholdRunnerTest extends TestCase
         $oneD = $this->request($scenario);
         $this->assertNotSame($first->id, $oneD->id);
         $this->assertSame(2, ThresholdResult::count());
+    }
+
+    public function test_a_sweep_that_throws_is_reported_not_only_summarised_on_the_row(): void
+    {
+        // Same rule as {@see SimulationRunnerTest}: the row's error column is a status line, not a
+        // diagnosis. A sweep that dies on the worker must reach the exception handler too.
+        Exceptions::fake();
+
+        $scenario = $this->scenario();
+        $runner = $this->runner();
+        $hash = $runner->inputsHash($scenario, LeverKey::RetirementAge, SweepMetric::Essentials, 0.90, self::GRID, 40);
+        $run = $runner->createRun($scenario, LeverKey::RetirementAge, SweepMetric::Essentials, 0.90, self::GRID, 40, $hash);
+
+        // Break the scenario AFTER the run exists, so the throw lands inside execute().
+        $scenario->update(['base_tax_year' => '1899-00']);
+
+        $runner->execute($run->fresh());
+
+        $this->assertSame(SimulationStatus::Failed, $run->fresh()->status);
+        Exceptions::assertReported(InvalidArgumentException::class);
     }
 
     public function test_a_dead_worker_marks_the_threshold_failed(): void

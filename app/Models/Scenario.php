@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
+use RuntimeException;
 
 /**
  * A saved forecast: a household and a housing decision the user built. The raw builder
@@ -52,6 +53,13 @@ class Scenario extends Model
         'user_id', 'parent_scenario_id', 'assumption_set_id',
         'name', 'variant', 'base_tax_year', 'iht_modelled', 'status', 'builder_state', 'overrides', 'result_snapshots',
     ];
+
+    /**
+     * How many parents deep {@see effectiveBuilderState()} will follow before it calls the chain
+     * broken. What-ifs are two-level (a base and its delta children), so this leaves headroom and
+     * still catches a cycle at once.
+     */
+    private const MAX_DELTA_DEPTH = 10;
 
     protected function casts(): array
     {
@@ -193,14 +201,25 @@ class Scenario extends Model
      *
      * @return array<string, mixed>
      */
-    public function effectiveBuilderState(): array
+    public function effectiveBuilderState(int $depth = 0): array
     {
         if (! $this->isChild()) {
             return $this->builder_state ?? [];
         }
 
+        // What-ifs are two-level by design and nothing here builds a longer chain, so a chain past
+        // the cap is broken data (a bad import, a hand-edited row) rather than a deep family. It
+        // used to recurse with no cap at all, so a cycle in parent_scenario_id exhausted memory and
+        // killed the process without saying why, on a method every page that reads a scenario calls.
+        if ($depth >= self::MAX_DELTA_DEPTH) {
+            throw new RuntimeException(
+                "Scenario {$this->id}: parent_scenario_id runs more than ".self::MAX_DELTA_DEPTH
+                .' scenarios deep, so the what-if chain contains a cycle.'
+            );
+        }
+
         return BuilderStateDelta::merge(
-            $this->parent->effectiveBuilderState(),
+            $this->parent->effectiveBuilderState($depth + 1),
             $this->overrides ?? [],
         );
     }

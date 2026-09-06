@@ -15,7 +15,9 @@ use App\Models\Scenario;
 use App\Models\SimulationRun;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
+use InvalidArgumentException;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
@@ -205,6 +207,27 @@ class SimulationRunnerTest extends TestCase
             ->update(['engine_version' => 'finance-engine/not-the-one-that-ran']));
 
         $this->assertFalse($run->fresh()->isIntact());
+    }
+
+    public function test_a_run_that_throws_is_reported_not_only_summarised_on_the_row(): void
+    {
+        // The row records the exception MESSAGE, which is a status line, not a diagnosis: no
+        // class, no file, no stack trace, nowhere to look. A run that dies on the worker has to
+        // reach the exception handler as well, or the only evidence left is one sentence.
+        Exceptions::fake();
+
+        $scenario = $this->scenario();
+        $runner = $this->runner();
+        $run = $runner->createRun($scenario, SimulationMode::Preview, seed: 1, paths: 5);
+
+        // Break the scenario AFTER the run exists, so the throw lands inside execute().
+        $scenario->update(['base_tax_year' => '1899-00']);
+
+        $runner->execute($run->fresh());
+
+        $this->assertSame(SimulationStatus::Failed, $run->fresh()->status);
+        $this->assertNotEmpty($run->fresh()->error);
+        Exceptions::assertReported(InvalidArgumentException::class);
     }
 
     public function test_a_lifecycle_change_does_not_read_as_tampering(): void

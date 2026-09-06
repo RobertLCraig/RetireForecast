@@ -169,6 +169,11 @@ final class SimulationRunner
 
             return;
         } catch (Throwable $e) {
+            // The row carries the message so the polling page can say WHY it stopped. That is a
+            // status line, not a diagnosis: no class, no file, no stack trace. Hand the throwable
+            // to the exception handler as well, or a run that dies on the worker leaves one
+            // sentence and nowhere to look. Same rule in the other two queued runners.
+            report($e);
             $run->update(['status' => SimulationStatus::Failed, 'error' => $e->getMessage(), 'finished_at' => now()]);
 
             return;

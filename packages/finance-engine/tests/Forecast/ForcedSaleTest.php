@@ -15,9 +15,11 @@ use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
+use RetireForecast\FinanceEngine\Dto\MortgageRatePeriod;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
+use RetireForecast\FinanceEngine\Dto\RepaymentMortgageTerms;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
@@ -275,6 +277,95 @@ final class ForcedSaleTest extends TestCase
                 mortgageRedemptionYear: 2030,
                 mortgageMaturityAction: MortgageMaturityAction::ForcedSale,
                 cgtHistory: $history,
+            ),
+        );
+    }
+
+    /**
+     * A forced sale must redeem the balance as it stands in the sale year, not the balance that
+     * was typed in. The two are the same only for an interest-only loan, which is why this never
+     * showed: a lifetime mortgage has ROLLED UP by then (more is owed, so less cash is freed) and
+     * a repayment mortgage has AMORTISED down (less is owed, so more is freed). Both shapes are
+     * supported and both are live.
+     *
+     * The expected figure is not restated here. A control run that never sells reports the balance
+     * the projector itself holds in the sale year, and the shared {@see HousingProceeds} turns that
+     * into net proceeds — so the test reads the engine's own two definitions rather than replaying
+     * the roll-up or amortisation arithmetic beside them.
+     */
+    public function test_a_rolled_up_mortgage_is_redeemed_at_its_grown_balance(): void
+    {
+        $this->assertSaleRedeemsTheYearsBalance(rollUpRate: Percent::fromPercent(6));
+    }
+
+    public function test_an_amortising_mortgage_is_redeemed_at_its_reduced_balance(): void
+    {
+        $this->assertSaleRedeemsTheYearsBalance(repaymentTerms: new RepaymentMortgageTerms(
+            termMonths: 300,
+            firstPaymentYear: 2026,
+            firstPaymentMonth: 1,
+            ratePeriods: [new MortgageRatePeriod(Percent::fromPercent(5))],
+        ));
+    }
+
+    private function assertSaleRedeemsTheYearsBalance(
+        ?Percent $rollUpRate = null,
+        ?RepaymentMortgageTerms $repaymentTerms = null,
+    ): void {
+        $settings = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27');
+
+        $sold = $this->byYear($this->forecast(
+            $this->movingBalanceHousehold(MortgageMaturityAction::ForcedSale, $rollUpRate, $repaymentTerms),
+            $settings,
+        ));
+        // The same household that never sells: its sale-year row reports the balance in force that
+        // year, which is what the sale has to clear.
+        $kept = $this->byYear($this->forecast(
+            $this->movingBalanceHousehold(MortgageMaturityAction::Refinance, $rollUpRate, $repaymentTerms),
+            $settings,
+        ));
+
+        $owedAtSale = $kept[2030]->mortgageBalance()->pence;
+        $this->assertNotSame(
+            Money::fromPounds(100_000)->pence,
+            $owedAtSale,
+            'the fixture must MOVE the balance, or this test cannot tell the two readings apart',
+        );
+
+        // The cash the sale actually freed: the sale-year liquid step less an ordinary post-sale
+        // step. Spend is identical in 2030, 2031 and 2032 (the home and its payment are gone in all
+        // three) and there is no income, so the difference is the net proceeds and nothing else.
+        $freed = ($sold[2030]->liquidWealth->pence - $sold[2029]->liquidWealth->pence)
+            - ($sold[2032]->liquidWealth->pence - $sold[2031]->liquidWealth->pence);
+
+        $expected = HousingProceeds::compute(
+            Money::fromPounds(400_000), Money::fromPence($owedAtSale), null, null, null, $this->config(),
+        )->netProceeds->pence;
+
+        $this->assertSame($expected, $freed, 'the sale redeemed a balance that is not the one owed that year');
+    }
+
+    private function movingBalanceHousehold(
+        MortgageMaturityAction $action,
+        ?Percent $rollUpRate,
+        ?RepaymentMortgageTerms $repaymentTerms,
+    ): Household {
+        // Deliberately bare: no property costs, no mortgage expense line, no rent and no income, so
+        // every year after the sale spends the same £18k and the only thing that moves the liquid
+        // step is the sale itself.
+        return new Household(
+            'MovingBalance', RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1958-01-01'), Sex::Male, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(18_000), Money::zero(), Percent::fromPercent(70)),
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(400_000))],
+            primaryResidence: new Property(
+                currentValue: Money::fromPounds(400_000),
+                ownership: OwnershipType::Mortgaged,
+                outstandingMortgage: Money::fromPounds(100_000),
+                mortgageRedemptionYear: 2030,
+                mortgageMaturityAction: $action,
+                mortgageRollUpRate: $rollUpRate,
+                repaymentTerms: $repaymentTerms,
             ),
         );
     }

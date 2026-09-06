@@ -168,6 +168,23 @@ final class BuilderStateDelta
         $segment = $segments[0];
         $rest = array_slice($segments, 1);
 
+        // An EMPTY node is shapeless: nothing in it carries an id, so isRowList() cannot tell an
+        // empty row list from an empty map, and the map branch below would write the row under its
+        // id — turning a positional list into an id-keyed map that the next diff() then walks down
+        // a different branch, with orphans() reporting success. The VALUE settles it: a whole row
+        // stored at its own id path is an ADD (that is the only thing diff() writes that way), and
+        // a REMOVED sentinel against a list with no rows is simply nothing to remove.
+        if ($node === [] && $rest === []) {
+            if ($value === self::REMOVED) {
+                return true;
+            }
+            if (is_array($value) && (string) ($value['id'] ?? '') === $segment) {
+                $node[] = $value;
+
+                return true;
+            }
+        }
+
         if (self::isRowList($node)) {
             foreach ($node as $i => $row) {
                 if ((string) ($row['id'] ?? '') === $segment) {

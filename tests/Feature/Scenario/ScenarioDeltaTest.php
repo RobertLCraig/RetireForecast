@@ -7,6 +7,7 @@ namespace Tests\Feature\Scenario;
 use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use RuntimeException;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
@@ -75,6 +76,33 @@ class ScenarioDeltaTest extends TestCase
         $base->delete();
 
         $this->assertDatabaseMissing('scenarios', ['id' => $child->id]);
+    }
+
+    public function test_a_parent_cycle_is_refused_rather_than_recursed_into_for_ever(): void
+    {
+        // What-ifs are two-level by design, and nothing in the app builds a longer chain, so this
+        // is a broken-data case. It resolved by recursing up the parents with no depth check, so a
+        // cycle in parent_scenario_id (a bad import, a hand-edited row, a future feature that
+        // reparents) took the worker down with an exhausted stack rather than saying what was
+        // wrong: every page that reads a scenario goes through here.
+        $user = User::factory()->create();
+        $base = ScenarioFixture::rich($user);
+
+        $child = new Scenario;
+        $child->user_id = $user->id;
+        $child->parent_scenario_id = $base->id;
+        $child->overrides = ['variant' => 'buy_outright'];
+        $child->builder_state = [];
+        $child->projectFrom($child->effectiveBuilderState());
+        $child->save();
+
+        // Close the loop behind the model's back: base -> child -> base.
+        Scenario::withoutEvents(fn () => Scenario::query()->whereKey($base->id)->update(['parent_scenario_id' => $child->id]));
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/cycle/i');
+
+        $child->fresh()->effectiveBuilderState();
     }
 
     public function test_an_override_orphaned_by_a_base_edit_is_surfaced(): void
