@@ -108,3 +108,30 @@ household owns its home throughout and holds no let property.
 **Not seen in a browser.** Built in a worktree, so the two new result notes have been proved by
 test only. The orient hook is still asking for a stale block to be folded out of `docs/HANDOVER.md`
 (43 KB); that is not this card's scope and this entry adds one bullet to it.
+
+**2026-09-06**
+RESULT: partial
+TESTS: +0 new, all green
+TOUCHED:
+docs/board/in-progress/0048-housing-benefit-is-never-awarded.md
+docs/board/todo/0116-the-sale-proceeds-disregard-needs-a-gap-between-selling-and-buying.md (new)
+OUT-OF-SCOPE: 0116
+
+Resumed run. The tree opened clean on `d13f0b4`, so the build above is committed and nothing was
+part-done. The suite is green from this worktree, and `vendor/retireforecast/finance-engine` is a
+real junction here rather than a stale copy, so the engine code under test is the code in this
+branch and not the one the worktree was cut from. No code changed on this run.
+
+**Criterion 2 was re-tested against the code, not taken on trust from the entry above, and it stays
+open.** `Dto\HousingAction` carries a sale price, a buy price and the costs and no year, month or
+date at all, so there is no shape in which a purchase can complete later than its sale;
+`HousingComparison::buyVariant` is the only consumer and it sells, buys and banks the surplus in one
+step before year 0. That confirms the earlier finding from the DTO rather than from the transform:
+the proceeds are not merely disregarded-and-ignored, they never exist as a state the fixture could
+build. A test here would have to hand-construct capital the projection cannot produce, which is the
+blindness the board has been bitten by five times, so none was written.
+
+What is new is that the gap no longer lives only in this card's prose. Card **0116** carries it, and
+opens on the question rather than the build, because whether a plan should be able to sell in one
+year and buy in another is a modelling-scope call that is Rob's and not an unattended session's.
+The three defects card 0048 raised and did not close (0113, 0114, 0115) are unchanged.

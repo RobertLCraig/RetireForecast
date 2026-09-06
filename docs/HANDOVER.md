@@ -31,7 +31,9 @@ inventory and cards 0024, 0025, 0028 to 0032 were folded out to
   the optimistic end; **0115**, the care means test still values property without the sale-costs
   deduction, so one quantity now has two definitions; and the card's own criterion #2, the
   sale-proceeds disregard, which is left open because no state in this engine holds proceeds with
-  an intention to buy (the year-0 rebuy is instantaneous).
+  an intention to buy: `HousingAction` carries no date, so the year-0 rebuy is instantaneous and
+  cannot be otherwise. That gap is now card **0116**, which opens on whether a gap between selling
+  and buying is worth modelling at all, because that call is Rob's.
 - **Council tax is its own cost line and it now shrinks.** Card 0047. It sat inside
   `Property::runningCosts` beside maintenance and insurance, and was charged at the full couple's
   rate for the whole projection. `Property::$annualCouncilTax` holds it apart, `Property::$disabledBandReduction`
