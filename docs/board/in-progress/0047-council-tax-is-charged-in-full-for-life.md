@@ -91,3 +91,29 @@ in a browser. That check is still owed.
 
 The orient hook's standing ask, to fold one stale block out of docs/HANDOVER.md before other work,
 was not done: it is outside this card, and the hook itself says to say so and carry on.
+
+**2026-09-06** RESULT: done
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0047-council-tax-is-charged-in-full-for-life.md
+OUT-OF-SCOPE: none
+
+A resumed session. The card was already built and committed at bc7549d, but the worktree had lost
+every engine file that commit added: `packages/finance-engine/src/Benefits/CouncilTax.php`,
+`Dto/CouncilTaxBand.php` and `tests/Forecast/CouncilTaxTest.php` were deleted on disk and
+`Property`, `PathProjector`, `YearResult` and `HousingComparison` were reverted to their pre-card
+text, all unstaged. That is the working tree only; the commit itself is intact and its diff matches
+this thread's TOUCHED list line for line. `git checkout -- packages/finance-engine` restored it, and
+`vendor/retireforecast/finance-engine` was confirmed to be a real junction into this worktree rather
+than the stale copy that trap usually leaves, so the suite does exercise the restored code. No new
+code was written.
+
+Verified rather than assumed: the whole suite is green, and `CouncilTaxTest` is in the tree and part
+of it. So criterion 1 to 4 stay ticked on evidence from this session, not on the previous one's word.
+
+`pint --test` reports two files needing fixes, `app/Forecast/LumpSumTaxShock.php` and
+`packages/finance-engine/src/Pension/TaxFreeCashCalculator.php`. Neither is touched by this card, and
+the house form is `pint --dirty`, so unformatted untouched files are the expected state of that
+workflow rather than a defect. Left alone, and no card raised.
+
+Still owed and unchanged: the browser check on the two new builder inputs and the two new result
+notes, which a worktree cannot do.
