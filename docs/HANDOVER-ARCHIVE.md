@@ -6,6 +6,50 @@
 > that); this is the "how we got here" detail. Each item also has a dated DECISIONS.md
 > entry and the full record in `git log`. Newest-first within each part.
 
+## Cards 0033 and 0034, moved out of the live handover on 2026-09-06
+
+Folded out to make room for card 0045 while keeping the live brief loadable in one session. Both are
+settled: their rationale is DECISIONS 2026-09-05, their residue is board card 0094, and the figures
+they introduced are in [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) §17.
+
+> **A sold service charge no longer takes the water and the electricity with it, and home insurance
+> is essential wherever it was filed.** Card 0033. A `while_owning_home` spend line can now say how
+> much of it buys utilities (`ExpenseProfile::$propertyCostsUtilities`, builder key
+> `expenseLines.*.utilities`, entered by the reader and never assumed); both routes out of the home,
+> `withoutPropertyCosts()` and the projector's forced sale, remove the bucket LESS that part, so the
+> replacement stays in the essential floor as ordinary spend with no marker and no escalator. And
+> `HouseholdAssembler::tierOf()` is the single rule that a DISCRETIONARY line naming insurance plus
+> the home counts as essential; the forecast, the builder's live totals and
+> `ResultPresenter::expenseBreakdown()` all read it, so no screen can disagree with the projection.
+> A third fix is disclosure only: the bought home's running costs, when SCALED from the current
+> home's rather than assumed at 1% of value, now carry a `computed_figure` note stating the rule and
+> reading `HousingComparison::newHomeRunningCosts()` (public and static for that). **Every stored
+> plan carrying an insurance line filed as discretionary had too low an essential floor, so its
+> "essentials always met" probability and capacity-for-loss reading are too favourable**; the
+> utilities figure is new input, so no stored scenario carries one and no sell plan moves until
+> somebody enters it. `ENGINE_VERSION` is `finance-engine/expenses-across-the-sell-boundary` and the
+> **stored-scenario re-run is owed** (built in a worktree, so **the new step-4 input has not been
+> seen in a browser**). The card's remaining task, whether upkeep should be a percentage of value at
+> all, is card 0094: it needs a published maintenance series and an unattended session has no web.
+> The 1% is now written up in [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§17) instead of living
+> only in a docblock.
+
+> **A purchase now spends the money arriving that year before it borrows.** Card 0034. The year-0
+> funding waterfall in `HousingComparison::fundingFor` read the household's accounts and nothing
+> else, so a `CapitalReceipt` dated the purchase year was invisible to it and the plan took a
+> lifetime mortgage beside money it already had, paying interest on it for the rest of the
+> projection. The order is now receipt, then savings, then mortgage, then unfunded gap. Receipt
+> ahead of savings because spending it realises no gain, where a GIA draw to the same value pays
+> CGT nobody owes. The spent part is CONSUMED (`HousingComparison::spendReceipts`): fully spent is
+> dropped, partly spent keeps its remainder, another year's is untouched, so the projector credits
+> only what reached the bank. `HousingPurchase` carries `fundedFromReceipts` and its constructor
+> identity grows that term; `buyOutcome()` now takes the base year as a REQUIRED argument.
+> **Every stored buy plan carrying a receipt in its base year borrows too much, so its spend,
+> wealth, depletion year and success odds are too PESSIMISTIC**; stay-put, rent and any buy plan
+> with no base-year receipt are byte-identical. `ENGINE_VERSION` is
+> `finance-engine/year-zero-receipt-funding` and the **stored-scenario re-run is owed** (built in a
+> worktree, so the new receipt line on the sale waterfall **has not been seen in a browser**).
+
 ## Card 0032, moved out of the live handover on 2026-09-06
 
 The leasehold-selling-costs bullet, folded out with card 0031's for the same reason. Its rationale is

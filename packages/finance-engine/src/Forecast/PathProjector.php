@@ -7,6 +7,7 @@ namespace RetireForecast\FinanceEngine\Forecast;
 use InvalidArgumentException;
 use LogicException;
 use RetireForecast\FinanceEngine\Benefits\PensionCreditCalculator;
+use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Care\CareMeansTest;
 use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\DbPension;
@@ -267,7 +268,10 @@ final class PathProjector
             $liquid,
             $pension,
             Money::fromPence((int) round($state['property'] / 2)),
-            Money::fromPence((int) round($state['mortgageOutstanding'] / 2)),
+            // Both charges on the home: the mortgage and any Support for Mortgage Interest loan,
+            // which falls due on death exactly as it would on a sale. The deceased carries half of
+            // each, the same v1 50/50 split as the home itself.
+            Money::fromPence((int) round(($state['mortgageOutstanding'] + $state['smiBalance']) / 2)),
         );
 
         $deathYear = (int) $deceased->dob->format('Y') + $draws->deathAge($deceased->id);
@@ -295,7 +299,9 @@ final class PathProjector
             $liquid,
             Money::fromPence($this->totalPots($state)),
             Money::fromPence($state['property']),
-            Money::fromPence($state['mortgageOutstanding']),
+            // Everything secured on the home falls due here: the mortgage and any Support for
+            // Mortgage Interest charge, which is repaid on the final death out of the same equity.
+            Money::fromPence($state['mortgageOutstanding'] + $state['smiBalance']),
         );
 
         // The final death year is the last survivor's (the latest modelled death among those alive
@@ -570,6 +576,11 @@ final class PathProjector
                     ?? 0) * $propertyShare
             ),
             'ownershipShare' => $propertyShare,
+            // The Support for Mortgage Interest charge: a SECOND balance secured on the home,
+            // beside the mortgage and never mixed into it. DWP lends what it meets and takes its
+            // own charge, so this only ever grows while the household is on Guarantee Credit and
+            // is cleared when the home is sold. {@see SupportForMortgageInterest}.
+            'smiBalance' => 0,
             // The whole-property (un-scaled) value, grown in lockstep with the share value. A
             // forced sale needs the whole figure to compute CGT on the household's share of the
             // gain (purchase price is whole too); null-share leaves it equal to `property`.
@@ -1169,7 +1180,18 @@ final class PathProjector
             // £16k cliff. It is split rather than banked to the first living person (board card
             // 0040) because the care means test assesses the individual: crediting one of them
             // with the whole home sent the other into care owning nothing.
-            foreach (PenceSplit::evenly($proceeds->netProceeds->pence, $this->livingIds($household, $alive)) as $ownerId => $share) {
+            // A Support for Mortgage Interest charge is secured on this home, so the sale redeems
+            // it out of the proceeds before anything is banked — that is what "repaid on sale"
+            // means, and it is why the charge does not follow the household into a rented flat.
+            // Any shortfall against the proceeds is written off (DWP recovers only what the
+            // security bears), which is what the floor here does. It is redeemed SEPARATELY from
+            // the mortgage rather than added to the redeemed balance, because HousingProceeds
+            // decomposes the sale and a second, differently-owed debt inside its `mortgage` line
+            // would report a mortgage the household does not have.
+            $netAfterCharge = max(0, $proceeds->netProceeds->pence - $state['smiBalance']);
+            $state['smiBalance'] = 0;
+
+            foreach (PenceSplit::evenly($netAfterCharge, $this->livingIds($household, $alive)) as $ownerId => $share) {
                 $state['gia'][$ownerId] += $share;
                 $state['giaBasis'][$ownerId] += $share;
             }
@@ -1252,12 +1274,29 @@ final class PathProjector
         // steps when the deal rate reverts and returns zero at the end of the term; every other
         // product shape (interest-only, RIO, buy-to-let, a serviced lifetime mortgage) is charged
         // the "Mortgage" expense line taken out of the buckets above.
+        $mortgagePaymentNominal = 0;
         if (! $state['mortgageRepaid'] && ! $state['homeSold']) {
-            $paymentNominal = $state['repaymentSchedule'] !== null
+            $mortgagePaymentNominal = $state['repaymentSchedule'] !== null
                 ? (int) round($state['repaymentSchedule']->paymentIn($calendarYear)->pence * $state['ownershipShare'])
                 : $mortgagePay;
-            $spendNominal += $paymentNominal;
-            $essentialNominal += $paymentNominal;
+            $spendNominal += $mortgagePaymentNominal;
+            $essentialNominal += $mortgagePaymentNominal;
+        }
+
+        // Support for Mortgage Interest: a household on Guarantee Credit qualifies with no waiting
+        // period, and DWP meets the interest on eligible mortgage capital (up to its cap, at its
+        // own standard rate) plus — for a pension-age claimant — the service charge and ground
+        // rent. It is a LOAN, so it is not credited as income: the bill simply stops arriving, and
+        // what was met is added to a charge on the home that is repaid on sale or at death. Both
+        // sides come off ONE figure, so what the household is spared and what it owes cannot
+        // disagree. {@see SupportForMortgageInterest}, board card 0045.
+        $smiMetNominal = $this->supportForMortgageInterestNominal(
+            $household, $state, $benefitNominal, $mortgagePaymentNominal, $propertyGrowth, $survivor, $yearIndex,
+        );
+        if ($smiMetNominal > 0) {
+            $spendNominal = max(0, $spendNominal - $smiMetNominal);
+            $essentialNominal = max(0, $essentialNominal - $smiMetNominal);
+            $state['smiBalance'] += $smiMetNominal;
         }
 
         // Rent (the "sell and rent" leg) is an essential cost with its own inflation. It applies
@@ -1454,6 +1493,7 @@ final class PathProjector
             mortgageBalance: $m($state['mortgageOutstanding']),
             nominal: $nominal,
             isaSheltered: $m($isaShelteredNominal),
+            smiBalance: $m($state['smiBalance']),
         );
 
         return $build($r, $build(Money::fromPence(...), null));
@@ -1556,6 +1596,53 @@ final class PathProjector
 
         return $this->pensionCredit->award($applicableWeekly, $assessableIncomeWeekly, $capital)
             ->guaranteeCreditWeekly->pence * $weeksPerYear;
+    }
+
+    /**
+     * What Support for Mortgage Interest meets for the household this year, as annual nominal
+     * pence — the amount that comes off this year's spending AND is added to the charge on the
+     * home. Zero unless Guarantee Credit is actually in payment (the pension-age gate, with no
+     * waiting period) and the household still owns the home the charge would sit on.
+     *
+     * Two eligible costs, met on different rules. The MORTGAGE INTEREST is met at the DWP standard
+     * rate on capital up to the pension-age cap, and never above the interest actually charged
+     * this year — the payment line for an interest-only or serviced loan, the instalment for an
+     * amortising one, and nothing at all for a lifetime mortgage that rolls up unpaid, which is
+     * correct: there is no interest liability for DWP to meet. The pension-age HOUSING COSTS
+     * (service charge and ground rent) are met in full, less the part of the bucket that buys
+     * utilities, which is a personal cost and not an eligible housing one.
+     *
+     * The housing costs are taken at what the year actually CHARGES for them, on the same rules
+     * the buckets above apply: the same real escalation, the same CPI factor, the same survivor
+     * multiplier. Reading a figure the household is not charged would let SMI meet a bill nobody
+     * pays.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function supportForMortgageInterestNominal(
+        Household $household,
+        array $state,
+        int $benefitNominal,
+        int $mortgagePaymentNominal,
+        float $propertyGrowth,
+        float $survivor,
+        int $yearIndex,
+    ): int {
+        if ($benefitNominal <= 0 || $household->primaryResidence === null || $state['homeSold']) {
+            return 0;
+        }
+
+        $profile = $household->expenseProfile;
+        $eligibleHousingReal = $profile->propertyCosts()->minus($profile->propertyCostsUtilities())->pence;
+        if ($propertyGrowth > 0.0) {
+            $eligibleHousingReal += (int) round($eligibleHousingReal * ((1.0 + $propertyGrowth) ** $yearIndex - 1.0));
+        }
+
+        return SupportForMortgageInterest::annualAmountMet(
+            Money::fromPence($state['mortgageOutstanding']),
+            Money::fromPence($mortgagePaymentNominal),
+            Money::fromPence((int) round($eligibleHousingReal * $state['spendFactor'] * $survivor)),
+        )->pence;
     }
 
     /**
@@ -3504,6 +3591,17 @@ final class PathProjector
             // A voluntary overpayment pays some of the (grown) balance back down each year, slowing
             // the roll-up. Fixed nominal, floored at zero; the cash for it is the Mortgage expense line.
             $state['mortgageOutstanding'] = max(0, min($rolled, $state['property']) - $state['mortgageOverpaymentAnnual']);
+        }
+
+        // The Support for Mortgage Interest charge rolls up too: it is a loan, and what DWP has
+        // already paid out accrues until the home is sold or the last owner dies. It is rolled at
+        // the same standard rate rather than at a second rate of its own — DWP sets the loan's
+        // interest from gilt yields, which is a figure this engine does not hold, and inventing
+        // one to sit beside a sourced one is worse than reusing it. Uncapped, unlike the mortgage
+        // above: the debt is real even where the security cannot bear it, and the write-off is
+        // applied where it belongs, in the zero floor on home equity and on the estate.
+        if ($state['smiBalance'] > 0) {
+            $state['smiBalance'] = (int) round($state['smiBalance'] * (1.0 + SupportForMortgageInterest::standardRate()->asFraction()));
         }
 
         // A capital-and-interest mortgage instead AMORTISES: next year opens on whatever the

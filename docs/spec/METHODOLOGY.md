@@ -173,6 +173,27 @@ and a carer addition where a partner cares for a disabled partner. Not modelled:
 Credit only); Housing Benefit / Council Tax Support are never *awarded*, only their loss above £16,000 is
 flagged; the carer addition is supported by the engine but not yet exposed as a builder input.
 
+### Support for Mortgage Interest
+
+A year of Guarantee Credit also brings **Support for Mortgage Interest**, with no waiting period at
+pension age, and the forecast models it wherever the household still owns its home. It meets the
+interest on the first **£100,000** of your mortgage at the government's own **standard rate of
+2.09%** a year, and for a pensioner it covers your **service charge and ground rent** in full. That
+is often the cheapest secured borrowing anyone in later life can get: it is roughly a third of the
+rate a lifetime mortgage rolls up at, on the same security.
+
+It is a **loan, not a payment**. What is met comes off your spending, and the same amount is added to
+a second charge on your home, which rolls up alongside the mortgage and is repaid when the home is
+sold or when you die. The forecast shows it as its own balance and takes it off the equity, so the
+help you get now and the inheritance it costs are both on the page.
+
+Not modelled: whether you would actually claim it (you have to apply and accept the charge; the
+forecast assumes you do); the separate interest rate the government charges on the loan, which is set
+from gilt yields (the forecast rolls the charge up at the standard rate instead); and the exclusions
+on particular service charges, beyond leaving out the part of yours that buys utilities. Nothing is
+met against a mortgage you pay no cash interest on, such as a rolled-up lifetime mortgage, because
+there is then no interest for it to meet.
+
 ## Inheritance tax
 
 Inheritance tax is offered as a **toggle**, to compare spending your pension down against preserving

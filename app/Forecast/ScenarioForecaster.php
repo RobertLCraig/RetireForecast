@@ -59,7 +59,17 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-06 (forced-sale-redeems-the-years-balance): a forced sale now clears the mortgage
+     * Bumped 2026-09-06 (support-for-mortgage-interest): a household on Pension Credit Guarantee
+     * Credit is now given Support for Mortgage Interest, which was in neither the engine nor the
+     * config: DWP meets the interest on eligible mortgage capital up to a cap at its standard rate
+     * ({@see SupportForMortgageInterest}), and, for a pension-age claimant, the service charge and
+     * ground rent in full. It is a LOAN, so what is met comes off the household's spending and is
+     * added to a second charge on the home, rolled up and repaid on sale or at death. Any stored
+     * plan that reaches a Guarantee Credit year while it still owns a home spends TOO MUCH under an
+     * earlier stamp, so its wealth, depletion year and success odds are too pessimistic, while the
+     * equity it leaves behind is too high. A plan that never qualifies for Guarantee Credit, or
+     * that has sold the home by the time it does, is byte-identical. See board card 0045.
+     * Previous bump 2026-09-06 (forced-sale-redeems-the-years-balance): a forced sale now clears the mortgage
      * balance as it stands in the SALE year rather than the balance originally entered. The two
      * agree only for an interest-only loan, which is why it survived: a lifetime mortgage has
      * ROLLED UP by then, so the sale freed equity the household no longer had (its wealth,
@@ -208,7 +218,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/forced-sale-redeems-the-years-balance';
+    public const ENGINE_VERSION = 'finance-engine/support-for-mortgage-interest';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

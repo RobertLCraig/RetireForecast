@@ -9,6 +9,28 @@ _Last updated: 2026-09-06. The exceptions a fresh session needs, newest first. T
 inventory and cards 0024, 0025, 0028 to 0032 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **The cheapest borrowing a pensioner can get is finally in the engine.** Card 0045. Support for
+  Mortgage Interest appeared nowhere in the code, the config or the board, while the tool's whole
+  subject is an unaffordable secured debt in later life and its comparison already prices lifetime
+  mortgages at roughly three times the rate. A household on Guarantee Credit that still owns its
+  home now has its mortgage interest met at the DWP standard rate on capital up to the pension-age
+  cap (both on `Benefits\SupportForMortgageInterest`), plus its service charge and ground rent in
+  full, less the utilities part. It is a LOAN, so nothing is credited as income: the amount met
+  comes off the year's spending and the SAME figure is added to `state['smiBalance']`, a second
+  charge secured on the home that rolls up and is redeemed from the proceeds of a forced sale or
+  out of the estate at death. `YearResult::smiBalance()` reports it and `homeEquity()` nets it, so
+  the wealth line cannot flatter a household whose home is being spent. The interest met is capped
+  at the interest ACTUALLY charged that year, so a rolled-up lifetime mortgage gets nothing (there
+  is no liability to meet). **Every stored plan that reaches a Guarantee Credit year while it still
+  owns a home spends too much under the old stamp, so its wealth, depletion year and success odds
+  are too pessimistic and its estate too high**; a plan that never qualifies, or has sold by then,
+  is byte-identical. `ENGINE_VERSION` is `finance-engine/support-for-mortgage-interest` and the
+  **stored-scenario re-run is owed**. No new builder input; the new results note has **not been
+  seen in a browser**. **Both figures behind the arithmetic are STATED, not verified** (no web in
+  this session) and unlike card 0044's they DO reach a projection: see
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§21), carded as **0109**. Whether the household
+  would in fact take a charge on its home is not modelled; the card scoped the gate to a Guarantee
+  Credit year and the note says so.
 - **A disability benefit can now start at an age, the carer flag is finally on a screen, and
   claiming Attendance Allowance is a one-click what-if.** Card 0044.
   `Person::$receivesDisabilityBenefit` was on or off for life, so the largest favourable event a
@@ -172,42 +194,6 @@ inventory and cards 0024, 0025, 0028 to 0032 were folded out to
   wedge (zero, on the reading that RPI aligns to CPIH from 2030) and the 3% fixed default; both are
   disclosed as assumed figures reading their own constants, written up in
   [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§18), and raised as card 0095.
-- **A purchase now spends the money arriving that year before it borrows.** Card 0034. The year-0
-  funding waterfall in `HousingComparison::fundingFor` read the household's accounts and nothing
-  else, so a `CapitalReceipt` dated the purchase year was invisible to it and the plan took a
-  lifetime mortgage beside money it already had, paying interest on it for the rest of the
-  projection. The order is now receipt, then savings, then mortgage, then unfunded gap. Receipt
-  ahead of savings because spending it realises no gain, where a GIA draw to the same value pays
-  CGT nobody owes. The spent part is CONSUMED (`HousingComparison::spendReceipts`): fully spent is
-  dropped, partly spent keeps its remainder, another year's is untouched, so the projector credits
-  only what reached the bank. `HousingPurchase` carries `fundedFromReceipts` and its constructor
-  identity grows that term; `buyOutcome()` now takes the base year as a REQUIRED argument.
-  **Every stored buy plan carrying a receipt in its base year borrows too much, so its spend,
-  wealth, depletion year and success odds are too PESSIMISTIC**; stay-put, rent and any buy plan
-  with no base-year receipt are byte-identical. `ENGINE_VERSION` is
-  `finance-engine/year-zero-receipt-funding` and the **stored-scenario re-run is owed** (built in a
-  worktree, so the new receipt line on the sale waterfall **has not been seen in a browser**).
-- **A sold service charge no longer takes the water and the electricity with it, and home insurance
-  is essential wherever it was filed.** Card 0033. A `while_owning_home` spend line can now say how
-  much of it buys utilities (`ExpenseProfile::$propertyCostsUtilities`, builder key
-  `expenseLines.*.utilities`, entered by the reader and never assumed); both routes out of the home,
-  `withoutPropertyCosts()` and the projector's forced sale, remove the bucket LESS that part, so the
-  replacement stays in the essential floor as ordinary spend with no marker and no escalator. And
-  `HouseholdAssembler::tierOf()` is the single rule that a DISCRETIONARY line naming insurance plus
-  the home counts as essential; the forecast, the builder's live totals and
-  `ResultPresenter::expenseBreakdown()` all read it, so no screen can disagree with the projection.
-  A third fix is disclosure only: the bought home's running costs, when SCALED from the current
-  home's rather than assumed at 1% of value, now carry a `computed_figure` note stating the rule and
-  reading `HousingComparison::newHomeRunningCosts()` (public and static for that). **Every stored
-  plan carrying an insurance line filed as discretionary had too low an essential floor, so its
-  "essentials always met" probability and capacity-for-loss reading are too favourable**; the
-  utilities figure is new input, so no stored scenario carries one and no sell plan moves until
-  somebody enters it. `ENGINE_VERSION` is `finance-engine/expenses-across-the-sell-boundary` and the
-  **stored-scenario re-run is owed** (built in a worktree, so **the new step-4 input has not been
-  seen in a browser**). The card's remaining task, whether upkeep should be a percentage of value at
-  all, is card 0094: it needs a published maintenance series and an unattended session has no web.
-  The 1% is now written up in [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§17) instead of living
-  only in a docblock.
 - **`scenarios:audit` cannot be used as a gate until every stored scenario is re-run.** It exits 1
   on 120 lines, all of them "run N carries no integrity stamp (it predates the column)", with no
   other problem class anywhere. Applying the pending `add_hashes_to_simulation_runs_table` migration
@@ -246,7 +232,7 @@ Full plan: [docs/build/PLAN.md](build/PLAN.md); PRD: [PRD.md](PRD.md). Summary:
 ## Canonical data shape
 Single source of truth: the engine's readonly DTOs under `packages/finance-engine/src/Dto/` (Eloquent models and Livewire forms map to and from these). Full field lists: [DATA-MODEL.md](DATA-MODEL.md) + docs/build/PLAN.md. Conventions:
 - **Money = integer pence**, never a float (held by `Money`, GBP only). Rates = `Percent` (integer basis points). Dates = ISO `Y-m-d`. **Ages derive from DOB + a reference date, never stored.**
-- **All reported wealth is NET of the mortgage** (2026-07-08): `YearResult::totalWealth` = liquid + pension + home equity (NNEG-floored); every surface (Compare / results / PDF / CSV / Monte Carlo / assistant) inherits from that one definition.
+- **All reported wealth is NET of everything secured on the home** (2026-07-08, widened 2026-09-06 by card 0045): `YearResult::totalWealth` = liquid + pension + home equity, where equity is the property less the mortgage AND less any Support for Mortgage Interest charge, NNEG-floored; every surface (Compare / results / PDF / CSV / Monte Carlo / assistant) inherits from that one definition.
 - **Storage inversion (Phase B):** a base scenario stores raw builder **form-state** (`builder_state`, one `encrypted:array`) as the single source of truth; the engine `Household` + `HousingAction` DTOs are **derived** (`Scenario::toHousehold()` / `toHousingAction()` via `HouseholdAssembler`, no reverse-mapper). A what-if **child** holds no `builder_state`, only `parent_scenario_id` + a sparse encrypted `overrides` delta (value overrides, added rows stored whole, removed rows a `REMOVED` sentinel); `effectiveBuilderState()` = base overlaid with overrides.
 - **One rebuild site per DTO.** `Household` is only ever copied through its private `copy()` behind `withPersons()` / `withPensions()` / `withExpenseProfile()` / `withCapitalReceipts()`, because seven sweep levers used to rebuild it positionally and a field added to the DTO but forgotten in a lever was silently dropped from every swept forecast. Guarded by `HouseholdWitherTest`, which enumerates the DTO's own properties by reflection. `ExpenseProfile` has the same private `copy()` and the same reflection guard (`ExpenseProfileWitherTest`, card 0041); `Property`, `Account` and `DcPension` are guarded by `AssetWitherTest`.
 
@@ -274,7 +260,7 @@ Full log and rationale: [DECISIONS.md](DECISIONS.md). The load-bearing "do not r
 - **App DB is Postgres 18** (moved off SQLite 2026-07-09 to fix the queued-Monte-Carlo reproducibility bug: SQLite could not handle the `database` queue driver's concurrent access). **Tests still run on in-memory SQLite** (phpunit.xml).
 - **Regulatory posture: education/guidance-only** is the **public** stance, **currently relaxed for personal use.** `config('compliance.personal_use')` (default true) is the flagged "regulatory line", turning the walled-off advice `interpret` capability on for everyone. The suite runs with it **true**; `BannedPhrasingTest` is posture-aware (skips in advice mode, fully enforces when false). **Set `COMPLIANCE_PERSONAL_USE=false` before any public release**; `php artisan compliance:advice-audit` lists advice spots.
 - **Engine is framework-free** in a path package; **money = integer pence**; savings and dividends in one combined income-tax pass; **tax figures versioned per tax year with source and verified-on** (frozen to April 2031).
-- **All wealth reported NET of the mortgage** (2026-07-08).
+- **All wealth reported NET of the mortgage and of any SMI charge** (2026-07-08, widened 2026-09-06).
 - **UI = hand-rolled Livewire 4** (Filament admin-only); form input maps to engine DTOs via the unit-tested `HouseholdAssembler`.
 - **No invisible figures.** Any engine-side default reaching a projection is disclosed with its value and why it applies, reading the constant that owns it rather than restating it. `php artisan scenarios:audit` sweeps every stored scenario for correctness and correct disclosure, and exits non-zero so it can gate a release.
 - **The Monte Carlo has a golden master, and re-pinning it is a decision** (2026-09-05, card 0039). `MonteCarlo\GoldenMasterTest` pins one frozen run to the penny, so any change to draw ordering, projector arithmetic or a default assumption reddens it. Expect it red beside your next `ENGINE_VERSION` bump: re-pin the values, bump the test's `PIN_REVISION`, and add the DECISIONS.md entry its companion test then demands. Never widen or delete it to get green.

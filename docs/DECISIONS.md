@@ -3,6 +3,36 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-06: Support for Mortgage Interest is modelled as a second charge, not as income
+**Context:** card 0045 (expert panel 2026-08-19, Citizens Advice finding 3). SMI appeared nowhere in
+the engine, the config or the board, while the tool's whole subject is an unaffordable secured debt
+in later life and its comparison already prices lifetime mortgages at roughly three times the rate.
+
+**Decision: what SMI meets comes off the household's SPENDING and is added to a second rolled-up
+balance secured on the home, never credited as income.** DWP pays the lender and takes a charge; the
+household's bill simply stops arriving. Crediting it as income would have put it in the cashflow
+ladder, in the secure-income floor and in the care means test, none of which is true of money the
+household never touches. Both sides come off one figure, so what the household is spared and what it
+owes cannot disagree. The balance is kept apart from `mortgageOutstanding` rather than folded into
+it, because a forced sale derives the mortgage it redeems from that key and `HousingProceeds`
+decomposes the sale into parts a reader reads.
+
+**Three calls inside that, each erring the same way.** The interest met is capped at the interest
+ACTUALLY charged that year, so a rolled-up lifetime mortgage that charges no cash interest is met
+nothing: there is no liability for SMI to meet, and the alternative was handing money to a household
+against a bill it does not pay. The charge rolls up at the DWP standard rate rather than at the
+separate gilt-linked rate DWP charges on the loan itself, because that second rate is a figure this
+engine does not hold and inventing one to sit beside a sourced one is worse than reusing it. And the
+rolled-up balance is NOT capped at the home's value the way a lifetime mortgage is: the debt is real
+even where the security cannot bear it, so the write-off is applied where it belongs, in the zero
+floor on home equity and on the estate.
+
+**Not decided here: whether the household would claim.** The card scoped the gate to a Guarantee
+Credit year, so the model takes the loan automatically wherever the credit is in payment. A reader
+who would not put a charge on their home is currently modelled as one who would, which the result
+note states in as many words. Both figures behind the arithmetic are STATED, not verified (no web in
+the build loop): see ASSUMPTIONS §21 and card 0109.
+
 ## 2026-09-06: A disability benefit gets a start age, not a dated award
 **Context:** card 0044 (expert panel 2026-08-19, Citizens Advice finding 2 and adviser finding 10).
 `Person::$receivesDisabilityBenefit` was a static boolean, so the single most likely favourable event

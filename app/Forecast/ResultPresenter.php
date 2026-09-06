@@ -10,6 +10,7 @@ use App\Models\Result;
 use App\Models\Scenario;
 use Illuminate\Support\Collection;
 use RetireForecast\FinanceEngine\Benchmark\RetirementLivingStandards;
+use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Care\CareAssumptions;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DbPension;
@@ -1873,6 +1874,37 @@ final class ResultPresenter
                 ."so of the home’s {$finalYear->propertyWealth->format()} only about {$finalYear->homeEquity()->format()} would "
                 .'be left to inherit. Freeing the monthly payment helps the money last, but the rolled-up interest is what it '
                 .'costs what you leave behind — compare this against servicing the interest to see the trade-off.'];
+        }
+
+        // (c2b) Support for Mortgage Interest, beside the equity-release note above because it is
+        // the same trade on far better terms and the reader is otherwise comparing lifetime
+        // mortgages against nothing. Nobody enters the rate or the cap, and both move the answer,
+        // so they are READ from the constants that own them (the no-invisible-figures rule) rather
+        // than restated here. Raised only where the projection actually met something: a household
+        // that never reaches Guarantee Credit is told nothing, since the help would not be there.
+        $charged = null;
+        $firstCharge = null;
+        foreach ($forecast->years as $year) {
+            if ($year->smiBalance()->isPositive()) {
+                $firstCharge ??= $year;
+                $charged = $year;
+            }
+        }
+        if ($firstCharge !== null && $charged !== null) {
+            $smiRate = self::ratePct(SupportForMortgageInterest::standardRate()->asPercent());
+            $cap = SupportForMortgageInterest::eligibleCapitalLimit()->format();
+            $notes[] = ['kind' => 'support_for_mortgage_interest', 'text' => 'Because this plan reaches Pension Credit '
+                ."Guarantee Credit while you still own the home, it takes Support for Mortgage Interest from {$firstCharge->calendarYear}: "
+                ."the government meets the interest on your mortgage, up to the first {$cap} of it, at its own standard rate of "
+                ."{$smiRate} a year, and for a pensioner it also covers your service charge and ground rent. In the first year that "
+                ."is {$firstCharge->smiBalance()->format()} you no longer have to find. There is no waiting period at pension age. "
+                .'It is a LOAN, not a payment: what is met is secured by a charge on your home and repaid when the home is sold or '
+                ."when you die, and it rolls up in the meantime, reaching about {$charged->smiBalance()->format()} by "
+                ."{$charged->calendarYear} in today's money, which comes out of what you leave behind. That is the same trade a "
+                .'lifetime mortgage makes, at roughly a third of the interest rate, which is why it is worth reading the two side by '
+                .'side. It is modelled here only while Guarantee Credit is actually in payment, and it is not modelled on a '
+                .'rolled-up loan you pay no interest on, because there is then no interest for it to meet. You have to apply for '
+                .'it and agree to the charge; nothing is paid automatically.'];
         }
 
         // (c3) An ordinary capital-and-interest mortgage: unlike the two shapes above, the balance

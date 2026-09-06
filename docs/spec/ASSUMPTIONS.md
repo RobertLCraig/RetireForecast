@@ -366,6 +366,27 @@ cash **−0.5%**.
    The LOWER Attendance Allowance rate is what the what-if uses, which is the cautious of the two
    and still qualifies for the Pension Credit severe-disability addition. Board card **0106**
    carries pinning all of it to a published source.
+21. **The Support for Mortgage Interest standard rate and capital cap (added 2026-09-06; live in
+   `Benefits\SupportForMortgageInterest`).** Board card 0045. Unlike section 20, **both figures
+   reach a projection**: a household on Pension Credit Guarantee Credit has its mortgage interest
+   met at the rate, on capital up to the cap, which lowers its spending and raises a charge on its
+   home. They were added by an unattended session with **no web access**.
+   - **The DWP standard interest rate, 2.09% a year.** The rule is the published one: the rate
+     tracks the Bank of England monthly average interest rate for loans secured on dwellings, and
+     moves only when that average has differed from it by 0.5 percentage points or more. The value
+     is the building session's own recollection of the LOW end of the range the rule has produced
+     since the 2018 loan scheme began, chosen low by the standing adverse-default rule, because
+     understating help never lets a plan bank support that turns out not to be there. The cost of
+     erring low is that SMI is compared against equity release on worse terms than it really has.
+   - **The eligible capital limit, £100,000** for a pension-age claimant, half the working-age
+     figure and unchanged since 2018. Believed correct, never fetched. It is deliberately NOT
+     uprated by the projection, like the £10,000 capital disregard beside it, which is what happens
+     in life.
+   Two modelling calls ride on the rate rather than on a source: the charge rolls up at the standard
+   rate rather than at the separate gilt-linked rate DWP charges on the loan, and the interest met
+   is capped at the interest actually charged that year, so a rolled-up lifetime mortgage that
+   charges no cash interest is met nothing. Board card **0109** carries pinning both figures and
+   revisiting both calls.
 
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/

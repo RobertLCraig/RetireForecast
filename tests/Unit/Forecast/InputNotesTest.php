@@ -8,6 +8,7 @@ use App\Forecast\HouseholdAssembler;
 use App\Forecast\ResultPresenter;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
@@ -274,6 +275,72 @@ final class InputNotesTest extends TestCase
         $this->assertCount(1, $flag);
         $this->assertStringContainsString('rolling up at 6.5% a year', $flag[0]['text']);
         $this->assertStringContainsString('left to inherit', $flag[0]['text']);
+    }
+
+    public function test_support_for_mortgage_interest_is_flagged_with_its_rate_cap_and_charge(): void
+    {
+        // A poor pensioner couple on Guarantee Credit with a mortgaged leasehold flat: the model
+        // hands them Support for Mortgage Interest, which nobody entered and which both lowers
+        // their spending and eats their estate. The rate and the cap are the engine's, so the note
+        // has to state both, and it has to say the help is a loan against the home.
+        $notes = $this->notes([
+            'householdName' => 'SMI', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Pat', 'dob' => '1950-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'name' => 'Lee', 'dob' => '1950-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '90'],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '90'],
+            ],
+            'expenseLines' => [
+                ['id' => 'e1', 'label' => 'Living costs', 'amount' => '18000', 'category' => 'essential'],
+                ['id' => 'e2', 'label' => 'Mortgage', 'amount' => '9000', 'category' => 'essential'],
+                ['id' => 'e3', 'label' => 'Service charge', 'amount' => '2400', 'category' => 'essential'],
+            ],
+            'expense' => ['survivorFactor' => '70', 'propertyCostsGrowthPct' => '0'],
+            'hasProperty' => true,
+            'property' => ['currentValue' => '350000', 'ownership' => 'mortgaged', 'outstandingMortgage' => '150000'],
+        ]);
+
+        $flag = array_values(array_filter($notes, fn (array $n): bool => $n['kind'] === 'support_for_mortgage_interest'));
+        $this->assertCount(1, $flag);
+        $this->assertStringContainsString(
+            SupportForMortgageInterest::eligibleCapitalLimit()->format(),
+            $flag[0]['text'],
+            'the cap the interest is met up to has to be on the screen',
+        );
+        $this->assertStringContainsString('2.09% a year', $flag[0]['text'], 'and the standard rate it is met at');
+        $this->assertStringContainsString('It is a LOAN', $flag[0]['text']);
+        $this->assertStringContainsString('repaid when the home is sold', $flag[0]['text']);
+    }
+
+    public function test_a_household_that_never_reaches_guarantee_credit_is_told_nothing_about_smi(): void
+    {
+        // The same flat and the same mortgage, but two full State Pensions: no Guarantee Credit, so
+        // no Support for Mortgage Interest is modelled and none is claimed on the screen. Telling a
+        // household about help the projection never gave it is the mirror-image invisible figure.
+        $notes = $this->notes([
+            'householdName' => 'No SMI', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Pat', 'dob' => '1950-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'name' => 'Lee', 'dob' => '1950-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '300'],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '300'],
+            ],
+            'expenseLines' => [
+                ['id' => 'e1', 'label' => 'Living costs', 'amount' => '18000', 'category' => 'essential'],
+                ['id' => 'e2', 'label' => 'Mortgage', 'amount' => '9000', 'category' => 'essential'],
+                ['id' => 'e3', 'label' => 'Service charge', 'amount' => '2400', 'category' => 'essential'],
+            ],
+            'expense' => ['survivorFactor' => '70', 'propertyCostsGrowthPct' => '0'],
+            'hasProperty' => true,
+            'property' => ['currentValue' => '350000', 'ownership' => 'mortgaged', 'outstandingMortgage' => '150000'],
+        ]);
+
+        $this->assertNotContains('support_for_mortgage_interest', array_column($notes, 'kind'));
     }
 
     public function test_a_repayment_mortgage_is_flagged_with_its_instalment_and_clearing_year(): void

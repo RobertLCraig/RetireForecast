@@ -526,6 +526,18 @@ from the original plan, flagged inline:
   (single-property model — DECISIONS 2026-07-01).
 
 ## Known divergences (to close)
+- **CLOSED 2026-09-06 — Support for Mortgage Interest is modelled** (card 0045, DECISIONS
+  2026-09-06). The cheapest secured borrowing a pensioner can get was in neither the engine nor the
+  config, while the comparison already priced lifetime mortgages at roughly three times the rate.
+  New engine class `Benefits\SupportForMortgageInterest` owns both figures and the arithmetic; the
+  projector carries `state['smiBalance']` and `YearResult` gains a nullable `$smiBalance` (real
+  money, reported beside `$mortgageBalance` and never folded into it, because a forced sale derives
+  the mortgage it redeems from that key). `homeEquity()` and the estate at death now net BOTH
+  charges. No builder input and no storage change: eligibility is derived from a Guarantee Credit
+  year. **Still open:** whether the household would actually claim is not modelled (the model always
+  takes the loan where the credit is in payment); the loan's own gilt-linked interest rate is not
+  held, so the charge rolls up at the standard rate; particular service-charge exclusions beyond the
+  utilities carve-out are not applied; and both figures are STATED, not verified (card 0109).
 - **CLOSED 2026-08-22 — a resident's Pension Credit is counted into the care contribution**
   (card 0015, DECISIONS 2026-08-22). Guarantee Credit is assessable income for the care financial
   assessment, but it is tax-free, so it never reached the taxable figure the means test read: the

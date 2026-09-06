@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Forecast;
 
+use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Iht\EstateValuer;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Support\Warning;
@@ -91,8 +92,9 @@ final class YearResult
     ];
 
     /**
-     * Total wealth: liquid + pension + home EQUITY (property net of the mortgage,
-     * NNEG-floored) — the figure every "includes the home" surface shows. Derived in the
+     * Total wealth: liquid + pension + home EQUITY (property net of everything secured on it,
+     * the mortgage and any {@see smiBalance()} charge, NNEG-floored) — the figure every
+     * "includes the home" surface shows. Derived in the
      * constructor from the reported legs, so it can never drift from them and never
      * counts bricks a lender already owns: an unpaid lifetime-mortgage roll-up visibly
      * erodes the wealth line. Gross property remains available as {@see $propertyWealth}
@@ -129,6 +131,7 @@ final class YearResult
         public readonly ?self $nominal = null,
         public readonly ?Money $isaSheltered = null,
         public readonly ?Money $unmetOneOffSpend = null,
+        public readonly ?Money $smiBalance = null,
     ) {
         $this->totalWealth = $liquidWealth->plus($pensionWealth)->plus($this->homeEquity());
     }
@@ -159,13 +162,26 @@ final class YearResult
     }
 
     /**
-     * Home equity net of the mortgage, floored at zero (the No-Negative-Equity Guarantee: a
-     * rolled-up balance above the home's value is not a negative estate) — the same definition
-     * {@see EstateValuer} uses at death.
+     * The Support for Mortgage Interest charge standing against the home this year (real money,
+     * zero if none). It is a SECOND secured balance beside {@see mortgageBalance()}, never folded
+     * into it: DWP lends the interest it meets on an eligible mortgage, plus a pension-age
+     * claimant's service charge and ground rent, and takes its own charge for what it has paid.
+     * {@see SupportForMortgageInterest}.
+     */
+    public function smiBalance(): Money
+    {
+        return $this->smiBalance ?? Money::zero();
+    }
+
+    /**
+     * Home equity net of everything secured on it — the mortgage and any Support for Mortgage
+     * Interest charge — floored at zero (the No-Negative-Equity Guarantee: a rolled-up balance
+     * above the home's value is not a negative estate, and DWP writes off an SMI shortfall the
+     * same way). The same definition {@see EstateValuer} uses at death.
      */
     public function homeEquity(): Money
     {
-        return $this->propertyWealth->minus($this->mortgageBalance())->minZero();
+        return $this->propertyWealth->minus($this->mortgageBalance())->minus($this->smiBalance())->minZero();
     }
 
     /** This year's capital growth left in the invested pots (zero if not tracked). */
@@ -209,6 +225,7 @@ final class YearResult
             $nominal ?? $this->nominal,
             $this->isaSheltered,
             $this->unmetOneOffSpend,
+            $this->smiBalance,
         );
     }
 }
