@@ -171,3 +171,5 @@ again. Fixing it in passing would be unreviewed work in a card that changed no c
 
 Still not seen in a browser: the two result notes from the first run are proved by test only, and a
 worktree is not served by Herd.
+
+**2026-09-06** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 4 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
