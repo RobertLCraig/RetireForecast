@@ -65,4 +65,13 @@ final class WarningCode
      * held. {@see Deprivation}.
      */
     public const CAPITAL_DEPRIVATION = 'capital_deprivation';
+
+    /**
+     * One member of the couple is under State Pension age and the other is over it, so the
+     * household cannot claim Pension Credit at all until the younger one reaches State Pension
+     * age. The nil award is correct; saying nothing about it is not, because the working-age
+     * support that replaces it is a different benefit on different rules and can be worth
+     * thousands a year less.
+     */
+    public const MIXED_AGE_COUPLE = 'mixed_age_couple';
 }

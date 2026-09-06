@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use RetireForecast\FinanceEngine\Dto\DcPension;
+use RetireForecast\FinanceEngine\Dto\DisabilityAwardRate;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
@@ -761,6 +762,32 @@ class ScenarioBuilderTest extends TestCase
         $this->assertSame(80, $person->disabilityBenefitFromAge);
         $this->assertFalse($person->receivesDisabilityBenefitAt(79));
         $this->assertTrue($person->receivesDisabilityBenefitAt(80));
+    }
+
+    public function test_the_part_of_a_disability_award_is_a_builder_input_and_reaches_the_household(): void
+    {
+        // Card 0051. Only the care side of an award qualifies for the Pension Credit
+        // severe-disability and carer additions, so a reader has to be able to say that theirs is
+        // mobility-only. Blank keeps the qualifying care rate, which is what the flag alone meant.
+        $this->fill(BuilderStateFixture::minimalValid())
+            ->set('people.0.receivesDisabilityBenefit', true)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $person = Scenario::firstOrFail()->toHousehold()->persons[0];
+        $this->assertSame(DisabilityAwardRate::QualifyingCare, $person->disabilityAwardRate);
+        $this->assertTrue($person->qualifiesForSevereDisabilityAdditionAt(70));
+
+        $this->fill(BuilderStateFixture::minimalValid())
+            ->set('people.0.receivesDisabilityBenefit', true)
+            ->set('people.0.disabilityAwardRate', 'mobility_only')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $person = Scenario::orderByDesc('id')->firstOrFail()->toHousehold()->persons[0];
+        $this->assertSame(DisabilityAwardRate::MobilityOnly, $person->disabilityAwardRate);
+        $this->assertTrue($person->receivesDisabilityBenefitAt(70), 'the benefit is still in payment');
+        $this->assertFalse($person->qualifiesForSevereDisabilityAdditionAt(70), 'but it is not a qualifying one');
     }
 
     public function test_caring_for_a_partner_is_a_builder_input_and_reaches_the_household(): void

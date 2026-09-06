@@ -944,10 +944,15 @@
                     <h3 class="font-semibold text-blue-900">How to claim Pension Credit</h3>
                     @if ($pensionCredit['awarded'])
                         <p class="mt-1 text-blue-800">This forecast spends Pension Credit as contingent income, shown separately above rather than as part of your secure income. It's <strong>means-tested, so it has to be claimed</strong> — it isn't paid automatically, and it's one of the most under-claimed benefits, so it's worth acting on.</p>
-                    @else
+                    @elseif ($pensionCredit['nearMiss'] !== [])
                         <p class="mt-1 text-blue-800">This forecast awards you <strong>no</strong> Pension Credit, but your income comes close to the line, so it is still worth putting a claim in and letting the DWP decide. We model the Guarantee Credit only, and we apply none of the disregards a real assessment does, so the real gap can be smaller than the one here.</p>
+                    @else
+                        <p class="mt-1 text-blue-800">This forecast awards you <strong>no</strong> Pension Credit, and the reason is the <strong>mixed-age couple</strong> rule rather than your income.</p>
                     @endif
                     @foreach ($pensionCredit['nearMiss'] as $why)
+                        <p class="mt-2 text-xs text-blue-700">{{ $why }}</p>
+                    @endforeach
+                    @foreach ($pensionCredit['mixedAge'] as $why)
                         <p class="mt-2 text-xs text-blue-700">{{ $why }}</p>
                     @endforeach
                     <ul class="mt-2 list-disc space-y-1 pl-5 text-blue-800">

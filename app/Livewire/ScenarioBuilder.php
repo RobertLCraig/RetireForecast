@@ -314,6 +314,9 @@ class ScenarioBuilder extends Component
             // is 16 because Attendance Allowance, DLA and PIP are all claimed from an age above it,
             // and the ceiling matches the mortality grid.
             'people.*.disabilityBenefitFromAge' => ['nullable', 'integer', 'min:16', 'max:110'],
+            // Which part of the award. Blank = the qualifying care rate, which is what the flag
+            // above has always meant on its own.
+            'people.*.disabilityAwardRate' => ['nullable', Rule::in(['', 'qualifying_care', 'lowest_rate_care', 'mobility_only'])],
             'people.*.caresForPartner' => ['nullable', 'boolean'],
             // Lifespan what-if (optional): peer = cohort-table average; fixed_age needs an
             // age, offset_years a ± year shift. The range spans both uses; the mortality
@@ -1749,7 +1752,9 @@ class ScenarioBuilder extends Component
             'longevityMode' => 'peer', 'longevityValue' => '', 'receivesDisabilityBenefit' => false,
             // Both blank/false by default so adding these inputs shifts no existing scenario and
             // creates no what-if delta. Blank start age = in payment from the start of the forecast.
-            'disabilityBenefitFromAge' => '', 'caresForPartner' => false,
+            // Blank award rate = the qualifying care rate, so adding this field shifts no existing
+            // scenario and creates no what-if delta.
+            'disabilityBenefitFromAge' => '', 'disabilityAwardRate' => '', 'caresForPartner' => false,
             // Employer death-in-service cover. Both blank by default so adding this field shifts
             // no existing scenario and creates no what-if delta; blank = no cover, the adverse
             // assumption (see DeathInServiceCover).

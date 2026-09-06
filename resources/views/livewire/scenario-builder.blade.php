@@ -454,6 +454,19 @@
                                     @error('people.'.$i.'.disabilityBenefitFromAge') <p id="people-{{ $i }}-disabilityBenefitFromAge-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                                     <p class="mt-1 text-xs text-gray-500">Leave blank if they get it already. Put an age here to model a claim made later, when their health declines. The Pension Credit top-up then starts in that year and not before.</p>
                                 </div>
+                                {{-- Which part of the award, and at what rate. The Pension Credit
+                                     severe-disability and carer top-ups ride the CARE side only, so
+                                     the bare flag above was paying them to people with a
+                                     mobility-only or lowest-rate award who are not entitled. --}}
+                                <div>
+                                    <label for="people-{{ $i }}-disabilityAwardRate" class="{{ $label }}">Which part of the award</label>
+                                    <select id="people-{{ $i }}-disabilityAwardRate" wire:model.live="people.{{ $i }}.disabilityAwardRate" class="{{ $field }}">
+                                        <option value="">Care at the middle or highest rate, Attendance Allowance, or PIP daily living</option>
+                                        <option value="lowest_rate_care">DLA lowest rate care component only</option>
+                                        <option value="mobility_only">Mobility component only</option>
+                                    </select>
+                                    <p class="mt-1 text-xs text-gray-500">The Pension Credit severe-disability and carer top-ups only count the care side of an award. A mobility-only award, or the lowest rate care component, pays money but does not qualify for either.</p>
+                                </div>
                             @endif
                             @if (count($people) > 1)
                                 <div class="col-span-full">

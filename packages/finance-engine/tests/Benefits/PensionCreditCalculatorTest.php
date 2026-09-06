@@ -94,10 +94,21 @@ final class PensionCreditCalculatorTest extends TestCase
             isCouple: true,
             assessableIncomeWeekly: Money::fromPounds(406),
             assessableCapital: Money::zero(),
-            carer: true,
+            carers: 1,
         );
 
         $this->assertSame(540, $result->guaranteeCreditWeekly->pence);
+
+        // Card 0051: the addition is PER CARER, so a couple who each care for the other carry two
+        // of them. Guarantee £363.25 + 2 × £48.15 = £459.55; income £406 → £53.55 a week.
+        $mutual = $this->calculator()->assess(
+            isCouple: true,
+            assessableIncomeWeekly: Money::fromPounds(406),
+            assessableCapital: Money::zero(),
+            carers: 2,
+        );
+
+        $this->assertSame(5_355, $mutual->guaranteeCreditWeekly->pence);
     }
 
     public function test_capital_tariff_income_erodes_the_award_the_downsizing_trap(): void

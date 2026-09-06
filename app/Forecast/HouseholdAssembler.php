@@ -15,6 +15,7 @@ use RetireForecast\FinanceEngine\Dto\CouncilTaxBand;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\DeathInServiceCover;
+use RetireForecast\FinanceEngine\Dto\DisabilityAwardRate;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
@@ -171,6 +172,10 @@ final class HouseholdAssembler
             // Blank or absent = in payment for the whole projection, which is how every scenario
             // saved before the start age existed behaved.
             disabilityBenefitFromAge: $this->intOrNull($p['disabilityBenefitFromAge'] ?? null),
+            // Blank or absent = the qualifying care rate, which is what the disability flag alone
+            // has always meant, so a scenario saved before this field existed keeps its answer.
+            disabilityAwardRate: DisabilityAwardRate::tryFrom((string) ($p['disabilityAwardRate'] ?? ''))
+                ?? DisabilityAwardRate::QualifyingCare,
         );
     }
 

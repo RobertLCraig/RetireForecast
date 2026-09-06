@@ -697,6 +697,20 @@ from the original plan, flagged inline:
   (`DepreciatingHomePurchaseTest`). **Still open:** the up-to-10% resale commission a site owner takes
   is not modelled (it bites only on an actual resale, e.g. a forced sale for care), and above-CPI pitch
   drift via "agreed park improvements" is not modelled.
+- **OPEN: an undrawn money-purchase pot is excluded from the Pension Credit means test (card 0051,
+  2026-09-07).** `PathProjector::meansTestAssessableCapital` assesses liquid wealth and a let
+  property; a pension pot the member has not touched is left out entirely. For a claimant **under**
+  State Pension age that is right. For one **over** it, it is not: an untaken pot is taken into
+  account, and the usual treatment is **notional income** (the income the member could have had
+  from it) rather than nothing. The engine therefore **over-awards Guarantee Credit** for the common
+  case of a pensioner sitting on an undrawn pot, and every other award that passports off it
+  (Council Tax Reduction, Housing Benefit, Support for Mortgage Interest) is over-awarded with it.
+  It is listed rather than fixed because the fix needs the **rate** the notional income is computed
+  at, which is a sourced statutory figure this session could not fetch (no web access), and this
+  project does not put an unsourced figure into a projection. Closing it means: the rate and its
+  source, the pot's own treatment once drawdown has started (already-drawn money is capital and
+  already counted, so the two must not double-count), and a stored-scenario re-run, since every plan
+  holding an undrawn pot in a Pension Credit year moves. Raised as card **0119**.
 - **OPEN — `usableWealth` counts pre-tax pension money as cash (found 2026-07-30).** The ladder's
   `usableWealth`, the burndown chart and the safety-buffer check all use `liquidWealth + pensionWealth`,
   so £100,000 of pension is treated as £100,000 available when drawing it is taxable (worth perhaps

@@ -1829,8 +1829,16 @@ final class ResultPresenter
                 $when = $from === null
                     ? 'from the start of the forecast'
                     : "from age {$from}";
+                // Which part of the award decides the two Pension Credit additions, and blank means
+                // the qualifying care rate, so the assumption is stated by reading the enum's own
+                // label rather than restating it here.
+                $rate = $person->disabilityAwardRate->label();
                 $notes[] = ['kind' => 'disability_benefit_passports', 'text' => "{$name} is modelled as receiving a disability "
-                    ."benefit (Attendance Allowance, DLA or PIP) {$when}. Two things follow, and only the first is in these "
+                    ."benefit (Attendance Allowance, DLA or PIP) {$when}, and the award is taken to be: {$rate}. "
+                    .($person->disabilityAwardRate->qualifiesForSevereDisabilityAddition()
+                        ? 'That is a qualifying benefit for the Pension Credit severe-disability and carer additions. '
+                        : 'That is NOT a qualifying benefit, so no Pension Credit severe-disability or carer addition is paid on it. ')
+                    .'Two things follow, and only the first is in these '
                     .'figures. In the figures: the benefit itself, if you entered it as a tax-free income stream, and the '
                     .'Pension Credit severe-disability addition it opens (a couple both need a qualifying benefit for that; '
                     .'one on its own gets nothing), plus the carer addition if a partner is ticked as caring for them. NOT in '
@@ -2394,12 +2402,19 @@ final class ResultPresenter
      * own sentence about why rather than restating its rule. Null only when no year is awarded
      * anything AND no year comes close (nothing to claim, and no noise).
      *
-     * @return array{awarded: bool, nearMiss: list<string>, howToClaim: list<string>, passports: list<string>, source: string, verifiedOn: string}|null
+     * A THIRD way in (board card 0051): a mixed-age couple, where one partner is under State
+     * Pension age. There the nil is not a means test at all, it is a door that is shut, and the
+     * household falls under working-age support instead. The engine names the years and carries
+     * the explanation; this quotes it rather than restating the rule.
+     *
+     * @return array{awarded: bool, nearMiss: list<string>, mixedAge: list<string>, howToClaim: list<string>, passports: list<string>, source: string, verifiedOn: string}|null
      */
     public static function pensionCreditGuidance(ForecastResult $forecast): ?array
     {
         $received = false;
         $nearMiss = [];
+        $mixedAge = [];
+        $mixedAgeLastYear = null;
         foreach ($forecast->years as $year) {
             if (($year->incomeBySource['means_tested_benefit'] ?? Money::zero())->isPositive()) {
                 $received = true;
@@ -2408,14 +2423,25 @@ final class ResultPresenter
             if ($message !== null && $nearMiss === []) {
                 $nearMiss[] = "In {$year->calendarYear}: {$message}";
             }
+            $trap = self::firstWarning($year, WarningCode::MIXED_AGE_COUPLE);
+            if ($trap !== null) {
+                if ($mixedAge === []) {
+                    $mixedAge[] = "From {$year->calendarYear}: {$trap}";
+                }
+                $mixedAgeLastYear = $year->calendarYear;
+            }
         }
-        if (! $received && $nearMiss === []) {
+        if ($mixedAgeLastYear !== null) {
+            $mixedAge[] = "The forecast treats this household as mixed-age up to and including {$mixedAgeLastYear}, and awards it no Pension Credit in any of those years.";
+        }
+        if (! $received && $nearMiss === [] && $mixedAge === []) {
             return null;
         }
 
         return [
             'awarded' => $received,
             'nearMiss' => $nearMiss,
+            'mixedAge' => $mixedAge,
             'howToClaim' => [
                 'Apply online at gov.uk/pension-credit, or call the Pension Credit claim line on 0800 99 1234 (textphone 0800 169 0133), Monday to Friday, 8am to 6pm.',
                 'You can apply from 4 months before you reach State Pension age, and a claim can be backdated up to 3 months if you were already eligible — so claim as soon as you qualify.',

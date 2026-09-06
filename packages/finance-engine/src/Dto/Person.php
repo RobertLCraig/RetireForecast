@@ -65,6 +65,15 @@ final class Person
          * a Pension Credit addition nobody was yet entitled to.
          */
         public readonly ?int $disabilityBenefitFromAge = null,
+        /**
+         * WHICH part of the award {@see $receivesDisabilityBenefit} refers to, and at what rate.
+         * The flag alone cannot decide the Pension Credit severe-disability and carer additions:
+         * a mobility-only or lowest-rate-care award confers neither, and testing them on the bare
+         * flag paid both to people with no entitlement. Defaults to the qualifying care rate,
+         * which is what the flag's own docblock has always said it meant.
+         * {@see DisabilityAwardRate}.
+         */
+        public readonly DisabilityAwardRate $disabilityAwardRate = DisabilityAwardRate::QualifyingCare,
     ) {}
 
     /**
@@ -74,6 +83,17 @@ final class Person
     public function receivesDisabilityBenefitAt(int $age): bool
     {
         return $this->receivesDisabilityBenefit && $age >= ($this->disabilityBenefitFromAge ?? 0);
+    }
+
+    /**
+     * Whether the award in payment at $age is a QUALIFYING benefit for the Pension Credit
+     * severe-disability addition and for underlying entitlement to Carer's Allowance, which rest
+     * on the same list, so both read this one predicate and cannot drift apart.
+     */
+    public function qualifiesForSevereDisabilityAdditionAt(int $age): bool
+    {
+        return $this->receivesDisabilityBenefitAt($age)
+            && $this->disabilityAwardRate->qualifiesForSevereDisabilityAddition();
     }
 
     /** The same person with a different planned retirement age (immutable; e.g. a sweep lever). */
@@ -94,6 +114,7 @@ final class Person
             $this->caresForPartner,
             $this->deathInServiceCover,
             $this->disabilityBenefitFromAge,
+            $this->disabilityAwardRate,
         );
     }
 
@@ -115,6 +136,7 @@ final class Person
             $this->caresForPartner,
             $this->deathInServiceCover,
             $this->disabilityBenefitFromAge,
+            $this->disabilityAwardRate,
         );
     }
 }

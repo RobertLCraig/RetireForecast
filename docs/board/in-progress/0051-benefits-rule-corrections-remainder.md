@@ -42,17 +42,110 @@ Housing Benefit and Council Tax Reduction, which are cards 0048 and 0047.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a person receives only a mobility component or a lowest-rate care component, THE APP SHALL NOT award the severe disability addition.
-- [ ] #2 WHEN each member of a couple cares for the other, THE APP SHALL award two carer additions.
-- [ ] #3 WHEN a claimant over State Pension age holds an undrawn money-purchase pot, THE APP SHALL treat it as notional income, or list the divergence.
-- [ ] #4 WHEN a couple is mixed-age, THE APP SHALL explain that Pension Credit is unavailable and what replaces it.
+- [x] #1 WHEN a person receives only a mobility component or a lowest-rate care component, THE APP SHALL NOT award the severe disability addition.
+- [x] #2 WHEN each member of a couple cares for the other, THE APP SHALL award two carer additions.
+- [x] #3 WHEN a claimant over State Pension age holds an undrawn money-purchase pot, THE APP SHALL treat it as notional income, or list the divergence.
+- [x] #4 WHEN a couple is mixed-age, THE APP SHALL explain that Pension Credit is unavailable and what replaces it.
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Replace the disability boolean with the qualifying benefit and its rate
-- [ ] Add the non-dependant test and the registered-blind route
-- [ ] Allow two carer additions
-- [ ] Assess earnings net, with the earnings disregard
-- [ ] Notional income on undrawn pots, or a Known divergences entry
-- [ ] Mixed-age warning; correct the Savings Credit docblock; resolve the let double-count
-- [ ] Point the benefits source at the rate tables and align the verified-on dates
+- [x] Replace the disability boolean with the qualifying benefit and its rate
+- [ ] Add the non-dependant test and the registered-blind route (card 0121, needs web)
+- [x] Allow two carer additions
+- [ ] Assess earnings net, with the earnings disregard (card 0120, needs web)
+- [x] Notional income on undrawn pots, or a Known divergences entry (the divergence is listed;
+      the fix is card 0119)
+- [x] Mixed-age warning; correct the Savings Credit docblock; the let double-count is card 0123
+- [ ] Point the benefits source at the rate tables and align the verified-on dates (card 0122,
+      needs web)
+
+## Comments
+
+**2026-09-07**
+RESULT: done
+TESTS: +6 new, all green
+TOUCHED:
+- packages/finance-engine/src/Dto/DisabilityAwardRate.php (new)
+- packages/finance-engine/src/Dto/Person.php
+- packages/finance-engine/src/Benefits/PensionCreditCalculator.php
+- packages/finance-engine/src/Forecast/PathProjector.php
+- packages/finance-engine/src/Support/WarningCode.php
+- packages/finance-engine/tests/Forecast/PathProjectorTest.php
+- packages/finance-engine/tests/Benefits/PensionCreditCalculatorTest.php
+- app/Forecast/HouseholdAssembler.php
+- app/Forecast/ResultPresenter.php
+- app/Forecast/ScenarioForecaster.php
+- app/DecisionSupport/ProtectionGap.php
+- app/Livewire/ScenarioBuilder.php
+- resources/views/livewire/scenario-builder.blade.php
+- resources/views/livewire/scenario-results.blade.php
+- resources/views/pdf/partials/report.blade.php
+- tests/Feature/Livewire/ScenarioBuilderTest.php
+- tests/Unit/Forecast/PensionCreditGuidanceTest.php
+- docs/DATA-MODEL.md
+- docs/DECISIONS.md
+- docs/HANDOVER.md
+- docs/HANDOVER-ARCHIVE.md
+- docs/board/todo/0119-undrawn-pension-pot-is-not-notional-income.md (new)
+- docs/board/todo/0120-pension-credit-assesses-earnings-gross.md (new)
+- docs/board/todo/0121-severe-disability-addition-missing-two-tests.md (new)
+- docs/board/todo/0122-benefits-source-and-verified-on-disagree.md (new)
+- docs/board/todo/0123-a-let-property-may-be-counted-twice-in-the-means-test.md (new)
+OUT-OF-SCOPE: 0119, 0120, 0121, 0122, 0123
+
+**All four acceptance criteria are met, and three of the seven Tasks are not.** The three left open
+each need a statutory figure or rule that only a web fetch can settle, and an unattended card
+session on this machine has no web access. Each is now a card of its own with the fetch named as its
+first task. Guessing a figure that reaches a projection would break the standing rule that every tax
+figure carries a source and a verified-on date, and guessing a URL is inventing a fact.
+
+**What was built.** `Dto\DisabilityAwardRate` holds which part of a disability award a person has
+(`QualifyingCare`, `LowestRateCare`, `MobilityOnly`) and
+`Person::qualifiesForSevereDisabilityAdditionAt()` is the one predicate the severe-disability count
+AND the carer test read, because Carer's Allowance rests on the same qualifying-benefit list. The
+carer addition became a count rather than a flag, so mutual carers get two.
+`WarningCode::MIXED_AGE_COUPLE` is raised in every year one living partner is under State Pension
+age, and `ResultPresenter::pensionCreditGuidance()` opens the Pension Credit panel on it as a third
+route beside an award and a near miss, on the screen and in the PDF. The Savings Credit docblock now
+says why it is out of scope (small award) rather than implying the door is shut, and states the
+either-member rule for a couple.
+
+**How each criterion was watched fail.** #1 red at 672620 pence where the criterion says 0 (the
+severe-disability addition being paid on a mobility-only award), reached by adding the enum and the
+field as an inert value first so the failure was the criterion's and not a missing class. Its carer
+sibling red at 28080 where the criterion says 0. #2 red at 923000, which is exactly one carer
+addition where two were asserted. #4 red on "Failed asserting that an array contains
+'mixed_age_couple'" after the code constant existed but nothing raised it. The two app-layer tests
+(`test_the_part_of_a_disability_award_is_a_builder_input_and_reaches_the_household` and
+`test_a_mixed_age_couple_is_told_pension_credit_is_shut_and_what_replaces_it`) were written after
+the engine was wired and were first seen green; they corroborate the four that were watched red
+rather than standing on their own.
+
+**#3 was met by the divergence route the criterion allows, not by modelling notional income.** The
+entry is in docs/DATA-MODEL.md "Known divergences" and says which direction the error runs (Guarantee
+Credit is over-awarded, and everything passporting off it with it), what closing it needs, and that
+it is card 0119. The rate notional income is computed at is a published figure this session could
+not fetch.
+
+**Assumed, and worth a reviewer's attention.** The award rate DEFAULTS to `QualifyingCare` rather
+than to the more adverse non-qualifying reading, which is a deliberate departure from the standing
+adverse-default rule and is argued in DECISIONS 2026-09-07: the flag's own docblock has said since
+v1 that it means a qualifying benefit, so re-reading a stored tick as something narrower would
+change an answer the reader gave. The consequence is that no stored plan moves on the criterion-#1
+half of this card. `ENGINE_VERSION` IS bumped, to
+`finance-engine/pension-credit-additions-per-entitlement`, because criterion #2 does move a figure
+for a mutual-carer household, upward; the **stored-scenario re-run is owed**.
+
+**Not settled from the repository.** Whether the mixed-age rule's start date (the well-known 2019
+change) should appear in the warning copy: the date is not in the repository and this session could
+not verify it, so the message states the rule without it. The docblock correction to the Savings
+Credit either-member rule is taken from this card's own Why section, which is the direction; it is
+not independently verified here.
+
+**Not seen in a browser.** Built in a worktree, so the new "Which part of the award" select on the
+builder and the mixed-age copy in the Pension Credit panel (results page and PDF) have not been
+looked at.
+
+**Doc hygiene done alongside.** The session-start orient hook reported HANDOVER.md over its loadable
+budget, so card 0035's block was folded out to docs/HANDOVER-ARCHIVE.md as this card's entry went in,
+keeping the live brief from growing.

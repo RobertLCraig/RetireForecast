@@ -6,6 +6,32 @@
 > that); this is the "how we got here" detail. Each item also has a dated DECISIONS.md
 > entry and the full record in `git log`. Newest-first within each part.
 
+## Card 0035, moved out of the live handover on 2026-09-07
+
+Folded out to make room for card 0051 while keeping the live brief loadable in one session. It is
+settled: its rationale is DECISIONS 2026-09-05, its two unsourced figures are board card 0095, and
+they are written up in [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) §18.
+
+> **The pension escalation dropdowns are no longer dead, and revaluation is a separate rule from
+> escalation.** Card 0035. `PathProjector` ran one household-wide factor pinned to full CPI, so a
+> scheme set to no increases, or to a capped basis, rose with prices for thirty years anyway. It now
+> carries one factor PER scheme (`state['dbFactors']` / `dbSchemes`, keyed by the pension's position
+> in the household list) and `escalateDbPensions()` picks the basis by phase: the revaluation basis
+> while the member is deferred, the in-payment basis from normal retirement age. The rule itself
+> lives on `PensionEscalationBasis::increase()`, which also owns the two statutory limited-price
+> ceilings via `capBasisPoints()`; a new `cpi_capped_2_5` case covers post-2005 accrual, and the caps
+> are floored at zero because a scheme does not cut a pension when prices fall. `DbPension` gains
+> `fixedEscalationRate` (a builder input, blank = the disclosed `DEFAULT_FIXED_ESCALATION_BPS` of 3%).
+> **Every stored plan whose scheme is not on plain CPI in BOTH phases moves**, and the direction
+> depends on the choice: a frozen or capped pension was banking income nobody promised it, so its
+> wealth, depletion year and success odds are too FAVOURABLE; a scheme on plain CPI throughout is
+> byte-identical. `ENGINE_VERSION` was `finance-engine/db-escalation-per-scheme` and the
+> **stored-scenario re-run is owed** (built in a worktree, so the two new builder controls **have not
+> been seen in a browser**). Two figures ship as judgement with no fetched source, the RPI-over-CPI
+> wedge (zero, on the reading that RPI aligns to CPIH from 2030) and the 3% fixed default; both are
+> disclosed as assumed figures reading their own constants, written up in
+> [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§18), and raised as card 0095.
+
 ## Cards 0033 and 0034, moved out of the live handover on 2026-09-06
 
 Folded out to make room for card 0045 while keeping the live brief loadable in one session. Both are

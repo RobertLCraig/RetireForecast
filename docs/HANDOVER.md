@@ -5,10 +5,31 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-06 (card 0050). The exceptions a fresh session needs, newest first. The "what is built"
-inventory and cards 0024, 0025, 0028 to 0032 were folded out to
+_Last updated: 2026-09-07 (card 0051). The exceptions a fresh session needs, newest first. The "what is built"
+inventory and cards 0024, 0025, 0028 to 0035 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **The two Pension Credit additions are decided by entitlement, and a mixed-age couple is told
+  why it gets nothing.** Card 0051. `Dto\DisabilityAwardRate` holds WHICH part of an award a person
+  has, and `Person::qualifiesForSevereDisabilityAdditionAt()` is the one predicate both the
+  severe-disability count and the carer test read, so a mobility-only or lowest-rate-care award buys
+  neither where the bare flag bought both. The carer addition is now a COUNT
+  (`PensionCreditCalculator::applicableAmountWeekly(… int $carers)`), so a couple who each care for
+  the other get two; the projector used to stop at the first carer. `WarningCode::MIXED_AGE_COUPLE`
+  is raised in every year one partner is under State Pension age, and
+  `ResultPresenter::pensionCreditGuidance()` opens its panel on that as a third route beside an
+  award and a near miss. **Only a mutual-carer household moves**, upward; the rate defaults to the
+  qualifying care rate because that is what the flag's own docblock has always said it meant, so
+  nothing else is anything but byte-identical (DECISIONS 2026-09-07 gives the reasoning, which
+  deliberately declines the adverse default). `ENGINE_VERSION` is
+  `finance-engine/pension-credit-additions-per-entitlement` and the **stored-scenario re-run is
+  owed**. Built in a worktree, so the new builder select and the mixed-age panel copy **have not
+  been seen in a browser**. Four of the same finding's items are **carded, not built**, all because
+  each needs a statutory figure an unattended session cannot fetch: **0119** notional income on an
+  undrawn pot (listed as a Known divergence in DATA-MODEL.md instead, which the card allowed),
+  **0120** earnings assessed gross with no disregard, **0121** the SDP non-dependant test and the
+  registered-blind route, **0123** a let property assessed as capital and as income at once. The
+  sourcing defects are **0122**.
 - **A disability award is now two components, and a care placement treats them apart.** Card 0050.
   `IncomeStreamType::DisabilityBenefit` is the CARE (daily living) component and keeps its stored
   value, so an award entered before the split reads wholly as care, the adverse reading on both
@@ -272,25 +293,6 @@ inventory and cards 0024, 0025, 0028 to 0032 were folded out to
   `niForPerson`); and **0097**, the Pension Credit qualifying-age gate awards fifty-two weeks in the
   year State Pension age is reached, which this card makes worse in passing because the now-correct
   part-year State Pension lowers the assessable income the award is computed from.
-- **The pension escalation dropdowns are no longer dead, and revaluation is a separate rule from
-  escalation.** Card 0035. `PathProjector` ran one household-wide factor pinned to full CPI, so a
-  scheme set to no increases, or to a capped basis, rose with prices for thirty years anyway. It now
-  carries one factor PER scheme (`state['dbFactors']` / `dbSchemes`, keyed by the pension's position
-  in the household list) and `escalateDbPensions()` picks the basis by phase: the revaluation basis
-  while the member is deferred, the in-payment basis from normal retirement age. The rule itself
-  lives on `PensionEscalationBasis::increase()`, which also owns the two statutory limited-price
-  ceilings via `capBasisPoints()`; a new `cpi_capped_2_5` case covers post-2005 accrual, and the caps
-  are floored at zero because a scheme does not cut a pension when prices fall. `DbPension` gains
-  `fixedEscalationRate` (a builder input, blank = the disclosed `DEFAULT_FIXED_ESCALATION_BPS` of 3%).
-  **Every stored plan whose scheme is not on plain CPI in BOTH phases moves**, and the direction
-  depends on the choice: a frozen or capped pension was banking income nobody promised it, so its
-  wealth, depletion year and success odds are too FAVOURABLE; a scheme on plain CPI throughout is
-  byte-identical. `ENGINE_VERSION` is `finance-engine/db-escalation-per-scheme` and the
-  **stored-scenario re-run is owed** (built in a worktree, so the two new builder controls **have not
-  been seen in a browser**). Two figures ship as judgement with no fetched source, the RPI-over-CPI
-  wedge (zero, on the reading that RPI aligns to CPIH from 2030) and the 3% fixed default; both are
-  disclosed as assumed figures reading their own constants, written up in
-  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§18), and raised as card 0095.
 - **`scenarios:audit` cannot be used as a gate until every stored scenario is re-run.** It exits 1
   on 120 lines, all of them "run N carries no integrity stamp (it predates the column)", with no
   other problem class anywhere. Applying the pending `add_hashes_to_simulation_runs_table` migration

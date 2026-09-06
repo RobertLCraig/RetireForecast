@@ -244,6 +244,7 @@ final class ProtectionGap
                     $p->plannedRetirementAge, $p->niCategory, $p->name, $p->longevity,
                     $p->receivesDisabilityBenefit, $p->caresForPartner, deathInServiceCover: null,
                     disabilityBenefitFromAge: $p->disabilityBenefitFromAge,
+                    disabilityAwardRate: $p->disabilityAwardRate,
                 )
                 : $p,
             $household->persons,

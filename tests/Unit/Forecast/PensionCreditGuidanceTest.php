@@ -80,6 +80,23 @@ final class PensionCreditGuidanceTest extends TestCase
         $this->assertStringContainsString('only just above the line', implode(' ', $guidance['nearMiss']));
     }
 
+    public function test_a_mixed_age_couple_is_told_pension_credit_is_shut_and_what_replaces_it(): void
+    {
+        // Board card 0051. A nil award for a mixed-age couple is not a means test the household
+        // failed, it is a door that is shut until the younger partner reaches State Pension age.
+        // The panel must open on that too, quoting the engine's own explanation.
+        $guidance = ResultPresenter::pensionCreditGuidance($this->forecast($this->year(
+            Money::zero(),
+            [new Warning(WarningCode::MIXED_AGE_COUPLE, 'One partner is under State Pension age, so Universal Credit applies instead.')],
+        )));
+
+        $this->assertNotNull($guidance, 'a silent nil is exactly the failure this card names');
+        $this->assertFalse($guidance['awarded']);
+        $this->assertStringContainsString('Universal Credit', implode(' ', $guidance['mixedAge']));
+        // And it names the last year the trap applies, so the reader can see how long it lasts.
+        $this->assertStringContainsString('2030', implode(' ', $guidance['mixedAge']));
+    }
+
     public function test_no_guidance_when_no_year_receives_pension_credit(): void
     {
         // A household above the means test gets £0 Pension Credit and is nowhere near the line —

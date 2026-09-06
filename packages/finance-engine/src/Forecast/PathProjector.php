@@ -91,6 +91,19 @@ final class PathProjector
      */
     private const MAX_PROJECTION_YEARS = 200;
 
+    /**
+     * What a mixed-age couple is told in a year the qualifying-age gate blocks Pension Credit.
+     * One home for the copy, so the message and the rule that raises it cannot drift apart
+     * ({@see WarningCode::MIXED_AGE_COUPLE}, board card 0051). It states the rule and names the
+     * replacement; it does not tell the reader to claim anything.
+     */
+    private const MIXED_AGE_COUPLE_MESSAGE = 'One partner is under State Pension age, so this household cannot claim Pension Credit '
+        .'at all this year: a mixed-age couple is treated as working age until the younger partner reaches State Pension age. '
+        .'Working-age support applies instead: Universal Credit, whose housing element takes the place of Housing Benefit, '
+        .'assessed on different rules, on the couple\'s joint income and capital, and commonly worth thousands of pounds a year '
+        .'less than Pension Credit would be. This forecast models Pension Credit only, so it shows no means-tested benefit in '
+        .'these years even where Universal Credit would be payable, and the shortfall shown here is the more pessimistic of the two.';
+
     private readonly IncomeTaxCalculator $incomeTax;
 
     private readonly NationalInsuranceCalculator $ni;
@@ -1137,7 +1150,7 @@ final class PathProjector
         // HERE so they read the same capital and the same award the means test above was settled
         // on — the year's assets are drawn down and its surplus banked further below, and a
         // warning computed off that later state would describe a different household.
-        $benefitWarnings = $this->benefitContingencyWarnings($household, $state, $pensionCreditAward, $benefitNominal > 0);
+        $benefitWarnings = $this->benefitContingencyWarnings($household, $state, $pensionCreditAward, $benefitNominal > 0, $alive, $calendarYear);
         $netCashNominal += $benefitNominal;
         $grossIncomeNominal += $benefitNominal;
         $src['means_tested_benefit'] += $benefitNominal;
@@ -1655,34 +1668,44 @@ final class PathProjector
         // A benefit with a start age counts only once the person has reached it, so a claim made
         // later in life (Attendance Allowance as health declines) raises the guarantee from that
         // year and not before.
+        // The award must be a QUALIFYING one: the middle or highest rate DLA care component,
+        // Attendance Allowance at either rate, or the PIP daily living component. A mobility-only
+        // or lowest-rate-care award pays real money and confers neither addition, which the bare
+        // flag could not say ({@see Person::qualifiesForSevereDisabilityAdditionAt}, board card 0051).
+        $qualifies = fn (string $personId, Person $person): bool => $person->qualifiesForSevereDisabilityAdditionAt($ages[$personId] ?? 0)
+            && ! in_array($personId, $inFundedCarePlacement, true);
+
         $disabledCount = 0;
         foreach ($living as $personId => $person) {
-            if ($person->receivesDisabilityBenefitAt($ages[$personId] ?? 0) && ! in_array($personId, $inFundedCarePlacement, true)) {
+            if ($qualifies($personId, $person)) {
                 $disabledCount++;
             }
         }
         $severeDisability = $aliveCount === 1 ? $disabledCount === 1 : $disabledCount >= 2;
 
-        // Carer addition: a living member with (underlying) entitlement to Carer's Allowance —
-        // i.e. caring for a living partner who receives a qualifying disability benefit. This is
-        // the correct addition where a couple has one disabled partner and the other cares for
-        // them; it does not remove the disabled partner's own severe-disability addition.
-        $carer = false;
+        // Carer additions: EACH living member with (underlying) entitlement to Carer's Allowance,
+        // i.e. caring for a living partner who receives a qualifying disability benefit, carries
+        // an addition of their own. A couple where each cares for the other therefore gets two,
+        // which is why this counts rather than stopping at the first carer it finds. Carer's
+        // Allowance rests on the same qualifying-benefit list as the severe-disability addition,
+        // so both read the one predicate above. It does not remove the cared-for partner's own
+        // severe-disability addition (only PAID Carer's Allowance would).
+        $carers = 0;
         foreach ($living as $carerId => $person) {
             if (! $person->caresForPartner) {
                 continue;
             }
             foreach ($living as $partnerId => $partner) {
-                if ($partnerId !== $carerId && $partner->receivesDisabilityBenefitAt($ages[$partnerId] ?? 0) && ! in_array($partnerId, $inFundedCarePlacement, true)) {
-                    $carer = true;
-                    break 2;
+                if ($partnerId !== $carerId && $qualifies($partnerId, $partner)) {
+                    $carers++;
+                    break;
                 }
             }
         }
 
         $assessableIncomeWeekly = Money::fromPence((int) round($assessableAnnual / $weeksPerYear));
 
-        $applicableBase = $this->pensionCredit->applicableAmountWeekly($aliveCount === 2, $severeDisability, $carer);
+        $applicableBase = $this->pensionCredit->applicableAmountWeekly($aliveCount === 2, $severeDisability, $carers);
         $applicableWeekly = Money::fromPence((int) round($applicableBase->pence * $state['spFactor']));
 
         return $this->pensionCredit->award($applicableWeekly, $assessableIncomeWeekly, $this->meansTestAssessableCapital($household, $state));
@@ -1810,16 +1833,35 @@ final class PathProjector
      * working-age Housing Benefit too, and a plan that frees equity before State Pension age would
      * otherwise cross it in silence.
      *
+     * A third, added by board card 0051: the MIXED-AGE COUPLE trap. Where one member is under
+     * State Pension age the qualifying-age gate returns no award at all, which is correct and was
+     * reported as a plain nil, indistinguishable from a means test that ran and found the
+     * household too well off. It is neither, and the loss to a real household is large, so the
+     * year says so and names what applies instead.
+     *
      * @param  array<string, mixed>  $state
      * @param  ?PensionCreditResult  $award  null when the qualifying-age gate blocked the award
      *                                       entirely (so there is no near miss to report)
+     * @param  array<string, bool>  $alive
      * @return list<Warning>
      */
-    private function benefitContingencyWarnings(Household $household, array $state, ?PensionCreditResult $award, bool $onGuaranteeCredit): array
+    private function benefitContingencyWarnings(Household $household, array $state, ?PensionCreditResult $award, bool $onGuaranteeCredit, array $alive, int $calendarYear): array
     {
         $warnings = $this->capitalAssessment
             ->assess($this->meansTestAssessableCapital($household, $state), $onGuaranteeCredit)
             ->warnings;
+
+        $overPensionAge = 0;
+        $underPensionAge = 0;
+        foreach ($household->persons as $person) {
+            if (! ($alive[$person->id] ?? false)) {
+                continue;
+            }
+            $calendarYear < $state['spaYear'][$person->id] ? $underPensionAge++ : $overPensionAge++;
+        }
+        if ($overPensionAge > 0 && $underPensionAge > 0) {
+            $warnings[] = new Warning(WarningCode::MIXED_AGE_COUPLE, self::MIXED_AGE_COUPLE_MESSAGE);
+        }
 
         if ($award !== null && $award->isNearMiss()) {
             $warnings[] = new Warning(

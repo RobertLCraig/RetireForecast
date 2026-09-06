@@ -59,7 +59,18 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-06 (disability-award-split-in-care): a disability award is now recorded as its
+     * Bumped 2026-09-07 (pension-credit-additions-per-entitlement): the two Pension Credit additions
+     * are now decided by ENTITLEMENT rather than by a single flag. The severe-disability and carer
+     * additions ride the CARE side of a disability award, so an award recorded as mobility-only or
+     * as the lowest rate care component ({@see DisabilityAwardRate}) buys neither, where the bare
+     * flag bought both; and the carer addition is counted PER CARER, so a couple where each cares
+     * for the other now carries two of them where the projector used to stop at the first carer it
+     * found. Any stored plan whose members BOTH care for each other is awarded too LITTLE Pension
+     * Credit under an earlier stamp, so its wealth, depletion year and success odds are too
+     * pessimistic. Nothing moves the other way: an award entered before the rate existed reads as
+     * the qualifying care rate, which is what the flag alone has always meant, so a plan with one
+     * carer or none is byte-identical. See board card 0051.
+     * Previous bump 2026-09-06 (disability-award-split-in-care): a disability award is now recorded as its
      * CARE and MOBILITY components and the two are treated apart in a care placement. The care
      * component counts as income in the local-authority financial assessment, where before neither
      * component did, so a resident funding their own care was charged too LITTLE; and it stops 28
@@ -241,7 +252,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/disability-award-split-in-care';
+    public const ENGINE_VERSION = 'finance-engine/pension-credit-additions-per-entitlement';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

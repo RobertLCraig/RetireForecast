@@ -3,6 +3,53 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-07: an unrecorded disability award reads as the QUALIFYING rate, not the adverse one
+**Context:** card 0051 (expert panel 2026-08-19, Citizens Advice). The Pension Credit
+severe-disability and carer additions were both tested on `Person::$receivesDisabilityBenefit`, a
+single boolean. The real condition is narrower: the award has to be the middle or highest rate DLA
+care component, Attendance Allowance at either rate, or the PIP daily living component. A
+mobility-only award, or the lowest rate care component, pays real money and buys neither addition,
+so the boolean was awarding both to people with no entitlement.
+
+**Decision 1: the rate is a new enum on `Person`, and it defaults to the qualifying care rate.**
+`Dto\DisabilityAwardRate` has three cases because three is what the rule distinguishes:
+`QualifyingCare`, `LowestRateCare`, `MobilityOnly`. The standing house rule is to default to the
+MOST ADVERSE reading, and the adverse reading here is "not qualifying", which would award less. It
+was NOT taken, and the reason is that the flag's own docblock has said since v1 that it means "a
+qualifying disability benefit (DLA / Attendance Allowance / PIP)". Every scenario stored under that
+wording was entered by a reader who was told that is what they were ticking. Re-reading their input
+as something else would change an answer they gave, which is worse than an adverse default is good.
+The blank builder option carries the qualifying wording, so the answer is on the screen, and the
+`disability_benefit_passports` result note states which rate was assumed by reading the enum's own
+label. Consequence: no stored plan moves on this half of the change.
+
+**Decision 2: one predicate serves both additions.** Carer's Allowance rests on the same qualifying
+benefit list as the severe-disability addition, so `Person::qualifiesForSevereDisabilityAdditionAt()`
+is read by both the disabled count and the carer test in `PathProjector::pensionCreditAward`. Two
+predicates would drift, and the older bug in that same function was exactly a second reading of one
+rule.
+
+**Decision 3: the carer addition is a COUNT.** `PensionCreditCalculator::applicableAmountWeekly()`
+takes `int $carers` instead of `bool $carer`, because a couple who each care for the other each hold
+their own underlying entitlement and the applicable amount carries two additions. The projector used
+to `break 2` on the first carer it found. This one DOES move a stored figure, upward, for a
+mutual-carer household, so `ENGINE_VERSION` is bumped to
+`finance-engine/pension-credit-additions-per-entitlement`.
+
+**Decision 4: a mixed-age couple is told, not silently nilled.** The qualifying-age gate correctly
+returns no award where one partner is under State Pension age, but a plain zero reads as a means
+test the household failed. `WarningCode::MIXED_AGE_COUPLE` names the rule and the working-age
+support that replaces it, and `ResultPresenter::pensionCreditGuidance()` opens the Pension Credit
+panel on it as a third route beside an award and a near miss. No figure moves.
+
+**What was NOT settled, and why:** four items in the same expert-panel finding all turn on a
+statutory figure or rule this session could not fetch (an unattended card has no web access), and
+this project does not put an unsourced figure into a projection. They are cards 0119 (notional
+income on an undrawn pot, which card 0051's acceptance allowed to be listed as a Known divergence
+instead, and is), 0120 (earnings assessed gross, with no earnings disregard), 0121 (the SDP
+non-dependant test and the registered-blind route) and 0123 (a let property assessed as capital and
+as income at once). The sourcing defects are card 0122.
+
 ## 2026-09-06: a funded care placement is decided on capital, not on the charge
 **Context:** card 0050 (expert panel 2026-08-19, the estate planner and the Citizens Advice
 caseworker independently). A disability award was one figure and the engine got it wrong in both

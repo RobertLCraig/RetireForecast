@@ -14,6 +14,7 @@ use RetireForecast\FinanceEngine\Dto\AssetClassAssumption;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
+use RetireForecast\FinanceEngine\Dto\DisabilityAwardRate;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
@@ -37,6 +38,8 @@ use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\Pension\WithdrawalKind;
+use RetireForecast\FinanceEngine\Support\Warning;
+use RetireForecast\FinanceEngine\Support\WarningCode;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
@@ -1437,5 +1440,130 @@ final class PathProjectorTest extends TestCase
         // the single-life annuity stops entirely.
         $this->assertSame(360_000, $joint[2029]);
         $this->assertSame(0, $single[2029]);
+    }
+
+    public function test_a_mobility_only_award_gives_no_severe_disability_addition(): void
+    {
+        // Card 0051. The severe-disability addition rides the CARE side of the award: the middle
+        // or highest rate DLA care component, Attendance Allowance at either rate, or the PIP
+        // daily living component. A mobility-only award, and a lowest-rate care award, do NOT
+        // qualify, so a household holding only those must be assessed on the plain guarantee.
+        $expense = new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70));
+        $pensions = [
+            new StatePensionEntitlement('p1', weeklyForecast: Money::of(203, 0)),
+            new StatePensionEntitlement('p2', weeklyForecast: Money::of(203, 0)),
+        ];
+        $pc = fn (Household $h): int => $this->forecaster()->forecast($h, $this->flatAssumptions(), $this->settings())
+            ->years[0]->incomeBySource['means_tested_benefit']->pence;
+
+        $awarded = fn (string $id, string $dob, Sex $sex, DisabilityAwardRate $rate): Person => new Person(
+            $id, new DateTimeImmutable($dob), $sex, EmploymentStatus::Retired,
+            receivesDisabilityBenefit: true, disabilityAwardRate: $rate,
+        );
+
+        // Both partners hold a MOBILITY-ONLY award. £406/wk of State Pension exceeds the plain
+        // £363.25 couple guarantee, so with no addition there is no Pension Credit at all.
+        $this->assertSame(0, $pc($this->couple($expense, $pensions,
+            override1: $awarded('p1', '1958-04-01', Sex::Female, DisabilityAwardRate::MobilityOnly),
+            override2: $awarded('p2', '1958-09-01', Sex::Male, DisabilityAwardRate::MobilityOnly),
+        )), 'a mobility component is not a qualifying benefit for the severe-disability addition');
+
+        // Both on the LOWEST rate care component: also outside the qualifying list.
+        $this->assertSame(0, $pc($this->couple($expense, $pensions,
+            override1: $awarded('p1', '1958-04-01', Sex::Female, DisabilityAwardRate::LowestRateCare),
+            override2: $awarded('p2', '1958-09-01', Sex::Male, DisabilityAwardRate::LowestRateCare),
+        )), 'the lowest rate care component is not a qualifying benefit either');
+
+        // The control: the qualifying care rate still pays the couple-rate addition (2 × £86.05
+        // lifts the guarantee to £535.35 → £129.35/wk), so the gate above is the only difference.
+        $this->assertSame(12_935 * 52, $pc($this->couple($expense, $pensions,
+            override1: $awarded('p1', '1958-04-01', Sex::Female, DisabilityAwardRate::QualifyingCare),
+            override2: $awarded('p2', '1958-09-01', Sex::Male, DisabilityAwardRate::QualifyingCare),
+        )));
+    }
+
+    public function test_a_mobility_only_award_gives_no_carer_addition_either(): void
+    {
+        // Carer's Allowance rests on the same qualifying-benefit list as the severe-disability
+        // addition, so caring for a partner whose award is mobility-only carries no underlying
+        // entitlement and no carer addition.
+        $expense = new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70));
+        $pensions = [
+            new StatePensionEntitlement('p1', weeklyForecast: Money::of(203, 0)),
+            new StatePensionEntitlement('p2', weeklyForecast: Money::of(203, 0)),
+        ];
+        $pc = fn (Household $h): int => $this->forecaster()->forecast($h, $this->flatAssumptions(), $this->settings())
+            ->years[0]->incomeBySource['means_tested_benefit']->pence;
+
+        $carerP1 = new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired, caresForPartner: true);
+        $mobilityP2 = new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired,
+            receivesDisabilityBenefit: true, disabilityAwardRate: DisabilityAwardRate::MobilityOnly);
+
+        $this->assertSame(0, $pc($this->couple($expense, $pensions, override1: $carerP1, override2: $mobilityP2)));
+    }
+
+    public function test_each_partner_caring_for_the_other_gets_a_carer_addition(): void
+    {
+        // Card 0051. Where each member of a couple cares for the other, each has their own
+        // underlying entitlement to Carer's Allowance, so the applicable amount carries TWO carer
+        // additions. The projector used to stop at the first carer it found.
+        $expense = new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70));
+        $pensions = [
+            new StatePensionEntitlement('p1', weeklyForecast: Money::of(203, 0)),
+            new StatePensionEntitlement('p2', weeklyForecast: Money::of(203, 0)),
+        ];
+        $pc = fn (Household $h): int => $this->forecaster()->forecast($h, $this->flatAssumptions(), $this->settings())
+            ->years[0]->incomeBySource['means_tested_benefit']->pence;
+
+        $mutual = fn (string $id, string $dob, Sex $sex): Person => new Person(
+            $id, new DateTimeImmutable($dob), $sex, EmploymentStatus::Retired,
+            receivesDisabilityBenefit: true, caresForPartner: true,
+        );
+
+        // Guarantee £363.25 + SDP couple rate £172.10 + TWO carer additions £96.30 = £631.65/wk,
+        // less £406/wk of State Pension = £225.65/wk.
+        $this->assertSame(22_565 * 52, $pc($this->couple($expense, $pensions,
+            override1: $mutual('p1', '1958-04-01', Sex::Female),
+            override2: $mutual('p2', '1958-09-01', Sex::Male),
+        )));
+    }
+
+    public function test_a_mixed_age_couple_is_told_why_it_gets_no_pension_credit(): void
+    {
+        // Card 0051. A couple with one member under State Pension age cannot claim Pension Credit
+        // at all, because the whole couple falls under working-age support instead. The engine returned a
+        // silent nil, which reads as "the means test was run and it awarded nothing".
+        $household = new Household(
+            'MixedAge', RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1964-09-01'), Sex::Male, EmploymentStatus::NotWorking),
+            ],
+            new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70)),
+            [new StatePensionEntitlement('p1', weeklyForecast: Money::of(120, 0))],
+        );
+
+        $byYear = [];
+        foreach ($this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings())->years as $y) {
+            $byYear[$y->calendarYear] = $y;
+        }
+
+        $codes = fn (int $year): array => array_map(
+            static fn (Warning $w): string => $w->code,
+            $byYear[$year]->warnings,
+        );
+
+        $this->assertContains(WarningCode::MIXED_AGE_COUPLE, $codes(2026), 'the mixed-age trap must be named, not left as a silent nil');
+        $message = '';
+        foreach ($byYear[2026]->warnings as $w) {
+            if ($w->code === WarningCode::MIXED_AGE_COUPLE) {
+                $message = $w->message;
+            }
+        }
+        $this->assertStringContainsString('Universal Credit', $message, 'it must say what replaces Pension Credit');
+
+        // Once the younger partner reaches State Pension age the couple is no longer mixed-age,
+        // the means test runs for real and the warning stops.
+        $this->assertNotContains(WarningCode::MIXED_AGE_COUPLE, $codes(2032));
     }
 }
