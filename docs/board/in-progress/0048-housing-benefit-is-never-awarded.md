@@ -135,3 +135,39 @@ What is new is that the gap no longer lives only in this card's prose. Card **01
 opens on the question rather than the build, because whether a plan should be able to sell in one
 year and buy in another is a modelling-scope call that is Rob's and not an unattended session's.
 The three defects card 0048 raised and did not close (0113, 0114, 0115) are unchanged.
+
+**2026-09-06**
+RESULT: partial
+TESTS: +0 new, all green
+TOUCHED:
+docs/board/in-progress/0048-housing-benefit-is-never-awarded.md
+docs/board/todo/0117-two-files-fail-the-house-style-check.md (new)
+OUT-OF-SCOPE: 0117
+
+Second resumed run. The tree opened clean on `4d02c62`, so both earlier runs are committed and
+nothing was part-done. No code changed on this run and no criterion moved.
+
+**Criterion 2 stays open and this run adds no new argument for it.** `Dto\HousingAction` was read
+again and it still carries a sale price, a buy price and the costs with no year, month or date, so
+the earlier finding holds: there is no shape in which a purchase completes later than its sale, and
+so no state in which proceeds are held with an intention to buy. Re-deriving that a third time buys
+nothing. The call it waits on is a modelling-scope one that only Rob can make, and card **0116**
+carries it.
+
+**What this run did settle.** The engine package at `vendor/retireforecast/finance-engine` is a real
+junction to `packages/finance-engine` in this worktree, not the stale copy that has silently passed a
+green suite before, so the code under test is this branch's code. The full suite is green from this
+directory.
+
+**A style failure was found and carded, not fixed.** `vendor/bin/pint --test` over the whole
+repository exits non-zero on `app/Forecast/LumpSumTaxShock.php` and
+`packages/finance-engine/src/Pension/TaxFreeCashCalculator.php`. Neither is a file this card touched
+and neither is new; the `pint --dirty` convention means a file that drifted once is never looked at
+again. Fixing it in passing would be unreviewed work in a card that changed no code, so it is card
+**0117** instead. Every file card 0048 did touch passes.
+
+`.\vendor\bin\pest.bat` does not exist in this repository. The runner is PHPUnit through
+`php artisan test`, which is what CLAUDE.md documents and what was run.
+
+Still not seen in a browser: the two result notes from the first run are proved by test only, and a
+worktree is not served by Herd.
