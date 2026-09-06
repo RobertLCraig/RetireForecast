@@ -107,3 +107,51 @@ added, so there is nothing new to type in; the note is the only new thing to loo
 
 Two blocks were folded out of `docs/HANDOVER.md` into the archive (cards 0033 and 0034) to keep the
 live brief under the size a fresh session can load, as the orient hook asked.
+
+### 2026-09-06 review (v20260906105734-03f6)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 164s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I traced each criterion to code.
+
+**#1 Guarantee Credit + eligible mortgage ÔåÆ interest met at the DWP rate up to the cap.**
+`PathProjector::supportForMortgageInterestNominal` gates on `$benefitNominal`, which is `PathProjector::meansTestedBenefitNominal` ÔÇö that returns Guarantee Credit only, so the gate is the right one. The sum is `SupportForMortgageInterest::interestMetAnnual`, which caps capital in `eligibleCapital`.
+
+**#2 Accrued as a separate charge, repaid on sale or death.**
+`PathProjector::projectYear` adds the same figure to `state['smiBalance']`; `PathProjector::growState` rolls it up; the forced-sale block in `projectYear` redeems it from `netProceeds` (the only path that sets `homeSold`); `recordFirstDeathIht` and `recordFinalDeathIht` pass it to `EstateValuer::value`. `YearResult::homeEquity` and `totalWealth` both net it, so no wealth line escapes it.
+
+**#3 Service charge and ground rent.**
+`supportForMortgageInterestNominal` takes `ExpenseProfile::propertyCosts` minus `propertyCostsUtilities`, escalated and survivor-scaled the same way the main spend line does it, then `SupportForMortgageInterest::annualAmountMet` meets it in full.
+
+Two flags, neither breaking a criterion: `interestMetAnnual` also caps at the payment line, so a below-standard-rate loan gets less than the criterion's rate (deliberate, adverse direction); and the rate value is still unsourced (card 0109).
+
+VERDICT: sound
+
+**scope: defect**
+
+**Over the fence.** `PathProjector::supportForMortgageInterestNominal()` gates on two things only: a Guarantee Credit year, and a home not yet sold. It never asks if the household lives in that home. `Property::isLet` marks a home the household rents out while living elsewhere, and `PathProjector::meansTestedBenefitNominal()` already reads that flag to count the home as capital. So a let property with a mortgage now gets its interest met by DWP, plus a charge on it. SMI is for the home you occupy. The card asked for a pensioner's own unaffordable secured debt, not a rental. That is new behaviour nobody asked for, and it moves wealth, estate and success odds.
+
+**Half done.** Task 3, source the rate and the cap, is open. `SupportForMortgageInterest::STANDARD_RATE_BPS` and `ELIGIBLE_CAPITAL_LIMIT_PENCE` both reach a projection with no `source` and no `verified_on`. The project rule forbids that. The session had no web, the gap is written on both constants and carried to card 0109, so it is disclosed, not hidden. But the card is done only if a stated figure counts as a sourced one.
+
+Everything else stayed inside the card.
+
+VERDICT: defect
+
+**breakage: defect**
+
+Reviewed with the breakage lens.
+
+The new charge is netted off the home in `YearResult::homeEquity()`, in `PathProjector::recordFirstDeathIht()` / `recordFinalDeathIht()`, and in the forced-sale redemption. Two other places value the same home and were not updated.
+
+1. `PathProjector::careAssessableCapital()` counts `property - mortgageOutstanding` and ignores `smiBalance`. Failure: the exact household in `SupportForMortgageInterestTest::claimant()` builds a charge over 15+ years, then draws a care year in Monte Carlo. She lives alone, so the home counts. The model assesses the whole equity, charges her as a self-funder on capital DWP already holds a charge over, and adds those fees to spend. Care and support statutory guidance values property at market value less any encumbrance secured on it, and this charge is one. No test builds a care year with a live SMI balance.
+
+2. `PathProjector::meansTestedBenefitNominal()` has the same gap for a let home's equity.
+
+3. `PathProjector::supportForMortgageInterestNominal()` gates on `primaryResidence !== null && ! homeSold`, not on living there, so the let-it-out variant built by `QuickWhatIf` can take SMI on a property the household does not occupy.
+
+VERDICT: defect
+
