@@ -348,6 +348,25 @@ cash **−0.5%**.
    The reader can now choose the full lock, the lock ending in a year they name (prices alone
    after it), or prices alone throughout.
 
+20. **Attendance Allowance and the Carer's Allowance earnings limit (added 2026-09-06; live in
+   `TaxYear\BenefitsParameters`).** Board card 0044. Three figures were added by an unattended
+   session with **no web access**, so two of them are stated rather than verified. Neither reaches
+   a projection on its own: Attendance Allowance seeds the editable income stream a what-if
+   creates, and the earnings limit is quoted in a warning beside the retirement-age lever.
+   - **Attendance Allowance 2025/26, £73.90 lower and £110.40 higher a week**, is the published
+     pair (gov.uk/attendance-allowance/what-youll-get), written from the building session's own
+     knowledge and not re-fetched.
+   - **Attendance Allowance 2026/27, £76.70 and £114.60**, is DERIVED, not published: it applies
+     the same +3.8% and rounding to the nearest 5p that this file's own 2026/27 Pension Credit
+     additions were derived by. Treat it as an estimate of the April 2026 uprating.
+   - **The Carer's Allowance earnings limit**, £196.00 a week for 2025/26 and £203.36 for
+     2026/27, is likewise stated rather than read off a table. The 2026/27 figure applies the
+     government's stated rule of 16 hours at the National Living Wage (16 x £12.71) and the real
+     published limit may be rounded differently.
+   The LOWER Attendance Allowance rate is what the what-if uses, which is the cautious of the two
+   and still qualifies for the Pension Credit severe-disability addition. Board card **0106**
+   carries pinning all of it to a published source.
+
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees

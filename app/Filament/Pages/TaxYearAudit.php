@@ -76,6 +76,13 @@ class TaxYearAudit extends Page
                     'Tariff step' => $c->benefits->tariffStep->format(),
                     'Housing-support upper limit' => $c->benefits->housingSupportUpperCapitalLimit->format(),
                 ]),
+                $this->group('Attendance Allowance', $c->sources['attendance_allowance'] ?? null, [
+                    'Lower rate (weekly)' => $c->benefits->attendanceAllowanceLowerWeekly->format(),
+                    'Higher rate (weekly)' => $c->benefits->attendanceAllowanceHigherWeekly->format(),
+                ]),
+                $this->group("Carer's Allowance", $c->sources['carers_allowance'] ?? null, [
+                    'Earnings limit (weekly)' => $c->benefits->carersAllowanceEarningsLimitWeekly->format(),
+                ]),
                 $this->group('Inheritance Tax', $c->sources['iht'] ?? null, [
                     'Nil-rate band' => $c->iht->nilRateBand->format(),
                     'Residence nil-rate band' => $c->iht->residenceNilRateBand->format(),

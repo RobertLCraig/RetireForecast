@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\DecisionSupport;
 
 use App\Forecast\ResultPresenter;
+use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Sweep\Crossing;
 use RetireForecast\FinanceEngine\Sweep\CrossingVerdict;
 use RetireForecast\FinanceEngine\Sweep\LeverDirection;
+use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
 /**
  * Turns a decision-support threshold into the "How far can we go?" panel's view models: the
@@ -58,6 +60,47 @@ final class ThresholdPresenter
             'dipsNegative' => $chart['dipsNegative'],
             'runsOutYear' => $forecast->depletionCalendarYear, // null = the money lasts to the end
         ];
+    }
+
+    /**
+     * A consequence of moving this lever that its odds curve cannot show, or null when the lever
+     * carries none for this household. One case so far, and it is the reason the section exists:
+     * working longer looks purely favourable on the meter (more earnings, a shorter drawdown), but
+     * underlying entitlement to Carer's Allowance has a weekly EARNINGS limit, so a carer who keeps
+     * earning above it has no underlying entitlement and the household therefore gets no Pension
+     * Credit carer addition in those years. The lever postpones the addition; the S-curve, which
+     * only reads the household as entered, shows the gain and never the delay.
+     *
+     * Raised only where it can bite: the person caring is one the lever would actually move, which
+     * is a still-earning member. The figure is read off the tax-year config that owns it, never
+     * restated here, so the two cannot drift.
+     */
+    public static function leverCaveat(LeverKey $lever, Household $household, string $baseTaxYear): ?string
+    {
+        if ($lever !== LeverKey::RetirementAge) {
+            return null;
+        }
+
+        $earningCarer = false;
+        foreach ($household->persons as $person) {
+            if ($person->caresForPartner
+                && in_array($person->employmentStatus, [EmploymentStatus::Employed, EmploymentStatus::SelfEmployed], true)) {
+                $earningCarer = true;
+                break;
+            }
+        }
+        if (! $earningCarer) {
+            return null;
+        }
+
+        $limit = TaxYearRegistry::for($baseTaxYear)->benefits->carersAllowanceEarningsLimitWeekly;
+
+        return 'One thing this lever does that the odds above cannot show. '
+            ."Carer's Allowance has a weekly earnings limit of {$limit->format()} after allowable deductions. "
+            .'Earn more than that and there is no underlying entitlement to it, and no underlying entitlement '
+            .'means no Pension Credit carer addition either. So working longer also postpones that addition, '
+            .'year for year, and this sweep does not subtract it. Check the current limit on gov.uk before '
+            .'reading a retirement age off this page.';
     }
 
     /**

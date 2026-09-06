@@ -182,6 +182,43 @@ final class PathProjectorTest extends TestCase
         $this->assertSame(12_935 * 52, $pc($this->couple($expense, $pensions, override1: $disabledP1, override2: $disabledP2)));
     }
 
+    public function test_a_disability_benefit_can_start_at_a_chosen_age(): void
+    {
+        // Card 0044. Both partners are 68 in 2026 and both claim Attendance Allowance at 80, which
+        // is the commonest later-life event this tool has to be able to model. Before that age the
+        // household must get NO severe-disability addition; from it, the addition applies.
+        // Spending is set to just under their State Pension so the household banks almost nothing:
+        // a big surplus would build capital, and the tariff income on it would wipe the award for
+        // its own reason and hide what this test is about.
+        $expense = new ExpenseProfile(Money::fromPounds(21_000), Money::zero(), Percent::fromPercent(70));
+        $pensions = [
+            new StatePensionEntitlement('p1', weeklyForecast: Money::of(203, 0)),
+            new StatePensionEntitlement('p2', weeklyForecast: Money::of(203, 0)),
+        ];
+
+        $claimsAt80 = fn (string $id, string $dob, Sex $sex): Person => new Person(
+            $id, new DateTimeImmutable($dob), $sex, EmploymentStatus::Retired,
+            receivesDisabilityBenefit: true, disabilityBenefitFromAge: 80,
+        );
+
+        $household = $this->couple($expense, $pensions,
+            override1: $claimsAt80('p1', '1958-04-01', Sex::Female),
+            override2: $claimsAt80('p2', '1958-09-01', Sex::Male),
+        );
+
+        $pcByYear = [];
+        foreach ($this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings())->years as $y) {
+            $pcByYear[$y->calendarYear] = $y->incomeBySource['means_tested_benefit']->pence;
+        }
+
+        // Age 68 and age 79: the claim has not started, so £406/wk of State Pension exceeds the
+        // plain couple guarantee and there is no Pension Credit at all.
+        $this->assertSame(0, $pcByYear[2026]);
+        $this->assertSame(0, $pcByYear[2037]);
+        // Age 80: the addition applies and the guarantee rises above their income.
+        $this->assertGreaterThan(0, $pcByYear[2038]);
+    }
+
     public function test_a_partner_who_cares_for_a_disabled_partner_unlocks_the_carer_addition(): void
     {
         $expense = new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70));

@@ -6,6 +6,53 @@
 > that); this is the "how we got here" detail. Each item also has a dated DECISIONS.md
 > entry and the full record in `git log`. Newest-first within each part.
 
+## Card 0032, moved out of the live handover on 2026-09-06
+
+The leasehold-selling-costs bullet, folded out with card 0031's for the same reason. Its rationale is
+DECISIONS 2026-09-05 and the residue is board cards 0092 and 0093.
+
+> **Selling a home is now priced as a leasehold sale, and a taxable disposal pays for its tax
+> return.** Card 0032: `HousingProceeds::DEFAULT_SELLING_COST_RATE_BP` is **400** (4% all in, was 2%,
+> an agent's fee and little else), and a disposal that actually owes CGT is charged
+> `CGT_RETURN_FEE_PENCE` (£750) for the 60-day return, itemised on the sale waterfall, appended AFTER
+> the gain so it neither reduces the tax nor becomes circular. `ScenarioBuilder::defaultSellingCosts()`
+> ships the itemised version: agent 1.5%, leasehold conveyancing £2,000, management pack £500, licence
+> to assign plus notices £700, removals £1,200, EPC £80. The assumptions panel now READS the rate
+> constant instead of restating "2%", and it shows on every variant. **Every stored sell plan keeps
+> money it would never see, so its wealth, depletion year and success odds are too favourable; a
+> stay-put plan is byte-identical.** `ENGINE_VERSION` is `finance-engine/leasehold-selling-costs` and
+> the **stored-scenario re-run is owed** (built in a worktree, so **the results page and the builder
+> step have not been seen in a browser**). There is no tenure field to gate the leasehold lines on, so
+> they ship charged with a note telling a freeholder to clear them; that residual fault is card 0093,
+> behind 0026. The money figures are the 2026-08-19 property reviewer's judgement plus this build's
+> reading of ordinary practice, not a published series: the fifth sourcing gap in
+> [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§16), raised as card 0092.
+
+## Card 0031, moved out of the live handover on 2026-09-06
+
+The tenancy-referencing bullet, folded out to keep the live handover loadable in one session. Its
+rationale is DECISIONS 2026-09-05 and the sourcing gap it left is board card 0091.
+
+> **A rent plan is now tested against the landlord, not only against the money.** Card 0031: a new
+> `Housing\Tenancy` owns four figures, and `PathProjector` raises
+> `WarningCode::RENT_REFERENCING_FAILED` on any year whose gross income falls below 30 times the
+> monthly rent (a standard tenant reference, which is an INCOME test and ignores capital entirely).
+> The message states the two ways round it, a guarantor at 36 times and 6 to 12 months' rent in
+> advance, with the money each costs. `HousingComparison::rentVariant` also charges the tenancy
+> DEPOSIT (the Tenant Fees Act cap: 5 weeks' rent, 6 at £50,000+) as a year-0 one-off; the first
+> month's rent is deliberately NOT charged again, because the year's rent line already carries twelve
+> payments, and the disclosure names the day-one cash instead. Both notices reach screen, PDF and
+> audit through `ResultPresenter::ladder()` (`rentReferencing` / `tenancyUpFront`), because
+> `inputNotes()` is handed the STAY-PUT forecast on the screen, which is a separate defect raised as
+> card 0089. **Every rent variant spends one deposit more in year 0**, so its stored wealth and
+> terminal figures are very slightly too favourable; no other variant moves and the flag changes no
+> number. `ENGINE_VERSION` is `finance-engine/tenancy-deposit` and the **stored-scenario re-run is
+> owed** (built in a worktree, so **the results page has not been seen in a browser**). The 30x, 36x
+> and 6-to-12-months are the 2026-08-19 property reviewer's judgement, not a published series; that
+> is the fourth sourcing gap in [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§15) and is raised as
+> card 0091. The deposit cap is statute and is sourced. The adjacent gap, that a mid-projection
+> forced sale starts a tenancy and is charged no deposit, is raised as card 0090.
+
 ## The "what is built" inventory, moved out of the live handover on 2026-09-05
 
 One 1,591-character line under "Current state" listed every feature the tool has. A fresh session

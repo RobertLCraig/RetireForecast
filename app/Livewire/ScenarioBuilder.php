@@ -309,6 +309,11 @@ class ScenarioBuilder extends Component
             'people.*.plannedRetirementAge' => ['nullable', 'integer', 'min:50', 'max:80'],
             'people.*.niCategory' => ['nullable', 'string', 'max:2'],
             'people.*.receivesDisabilityBenefit' => ['nullable', 'boolean'],
+            // When the benefit starts. Blank = in payment from the start of the forecast. The floor
+            // is 16 because Attendance Allowance, DLA and PIP are all claimed from an age above it,
+            // and the ceiling matches the mortality grid.
+            'people.*.disabilityBenefitFromAge' => ['nullable', 'integer', 'min:16', 'max:110'],
+            'people.*.caresForPartner' => ['nullable', 'boolean'],
             // Lifespan what-if (optional): peer = cohort-table average; fixed_age needs an
             // age, offset_years a ± year shift. The range spans both uses; the mortality
             // grid clamps anything extreme (ages 50–110), so a loose bound is safe.
@@ -1730,6 +1735,9 @@ class ScenarioBuilder extends Component
             'id' => $id, 'name' => '', 'dob' => '', 'sex' => 'female', 'employmentStatus' => 'retired',
             'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => '',
             'longevityMode' => 'peer', 'longevityValue' => '', 'receivesDisabilityBenefit' => false,
+            // Both blank/false by default so adding these inputs shifts no existing scenario and
+            // creates no what-if delta. Blank start age = in payment from the start of the forecast.
+            'disabilityBenefitFromAge' => '', 'caresForPartner' => false,
             // Employer death-in-service cover. Both blank by default so adding this field shifts
             // no existing scenario and creates no what-if delta; blank = no cover, the adverse
             // assumption (see DeathInServiceCover).

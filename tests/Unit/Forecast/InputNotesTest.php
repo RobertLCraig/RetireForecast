@@ -455,6 +455,35 @@ final class InputNotesTest extends TestCase
         $this->assertNotContains('cohabiting_state_pension', $kinds);
     }
 
+    public function test_a_disability_benefit_note_names_the_start_age_and_everything_it_passports(): void
+    {
+        // Card 0044. The forecast models ONE consequence of a disability benefit, the Pension Credit
+        // addition. The benefit also passports a stack of help that is worth more per year than the
+        // survivor shortfall this tool exists to close, and none of that is in the figures, so the
+        // result has to say so rather than let the reader assume it is all counted.
+        $notes = $this->notes([
+            'householdName' => 'Claimant', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Robin', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired',
+                    'receivesDisabilityBenefit' => true, 'disabilityBenefitFromAge' => '80'],
+            ],
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]);
+
+        $kinds = array_column($notes, 'kind');
+        $this->assertContains('disability_benefit_passports', $kinds);
+        $text = $notes[array_search('disability_benefit_passports', $kinds, true)]['text'];
+
+        $this->assertStringContainsString('Robin', $text);
+        $this->assertStringContainsString('age 80', $text);
+        $this->assertStringContainsString('Pension Credit', $text);
+        foreach (['Council Tax', 'Warm Home Discount', 'TV licence', 'Cold Weather', 'NHS', 'Support for Mortgage Interest'] as $passport) {
+            $this->assertStringContainsString($passport, $text);
+        }
+    }
+
     public function test_a_sensible_household_raises_no_notes(): void
     {
         // Employed retiring in the future, normal longevity ⇒ nothing to flag (no noise).

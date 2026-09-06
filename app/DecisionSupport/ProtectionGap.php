@@ -243,6 +243,7 @@ final class ProtectionGap
                     $p->id, $p->dob, $p->sex, $p->employmentStatus, $p->grossSalary, $p->salaryGrowth,
                     $p->plannedRetirementAge, $p->niCategory, $p->name, $p->longevity,
                     $p->receivesDisabilityBenefit, $p->caresForPartner, deathInServiceCover: null,
+                    disabilityBenefitFromAge: $p->disabilityBenefitFromAge,
                 )
                 : $p,
             $household->persons,

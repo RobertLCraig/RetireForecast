@@ -78,6 +78,15 @@
         @endforeach
     </div>
 
+    {{-- A consequence of this lever the odds curve cannot show. Working longer pushes a carer over
+         the Carer's Allowance earnings limit and postpones the Pension Credit carer addition, which
+         the sweep never subtracts. --}}
+    @if ($leverCaveat)
+        <p class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="note">
+            {{ $leverCaveat }}
+        </p>
+    @endif
+
     {{-- Continuous levers only: the slider + instant deterministic line. Care is a binary
          (off vs on) with no ordered range to drag, so it shows none of this — see its two-state
          readout under "the limit" below. --}}

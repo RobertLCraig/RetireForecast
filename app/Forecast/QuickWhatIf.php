@@ -7,6 +7,7 @@ namespace App\Forecast;
 use App\Models\Scenario;
 use Illuminate\Support\Str;
 use RetireForecast\FinanceEngine\Dto\Property;
+use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
 /**
  * One-click what-ifs for the common questions a reader asks of a forecast ("what if I
@@ -21,11 +22,20 @@ use RetireForecast\FinanceEngine\Dto\Property;
  */
 final class QuickWhatIf
 {
+    /**
+     * The age the Attendance Allowance preset starts the claim at. It is claimable from State
+     * Pension age, so 80 is deliberately the cautious end of the range rather than the earliest
+     * one: a later claim is worth less and starts nearer the survivor period this is modelling.
+     * The reader edits it on the person, like any other input.
+     */
+    public const ATTENDANCE_ALLOWANCE_FROM_AGE = 80;
+
     /** Preset key => the button label and the what-if's name. */
     public const PRESETS = [
         'retire_2_years_later' => 'Retire 2 years later',
         'live_10_years_longer' => 'Live 10 years longer',
         'let_out_and_rent' => 'Let out & rent elsewhere',
+        'claim_attendance_allowance' => 'Claim Attendance Allowance from '.self::ATTENDANCE_ALLOWANCE_FROM_AGE,
     ];
 
     /**
@@ -47,6 +57,7 @@ final class QuickWhatIf
             'retire_2_years_later' => ['people' => self::retireLater($people, 2)] + $baseState,
             'live_10_years_longer' => ['people' => self::liveLonger($people, 10)] + $baseState,
             'let_out_and_rent' => self::letOutAndRent($baseState),
+            'claim_attendance_allowance' => self::claimAttendanceAllowance($baseState, $base->base_tax_year),
         };
 
         if ($edited === null) {
@@ -106,6 +117,59 @@ final class QuickWhatIf
 
             return $person;
         }, $people);
+    }
+
+    /**
+     * "Claim Attendance Allowance": every member who does not already receive a disability benefit
+     * claims one from {@see ATTENDANCE_ALLOWANCE_FROM_AGE}, and its money arrives with it as a
+     * tax-free income stream from the same age. Two separate things have to move together, which is
+     * exactly why this is a preset rather than four hand edits: the FLAG is what opens the Pension
+     * Credit severe-disability addition (and the carer addition where a partner cares), and the
+     * STREAM is the benefit's own cash. Entering one without the other models half the event.
+     *
+     * The LOWER rate is used, which is the cautious of the two and still qualifies for the
+     * addition; a household expecting the higher rate raises the stream's amount. Returns null when
+     * every member already receives a benefit, so no empty what-if is ever made.
+     *
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>|null
+     */
+    private static function claimAttendanceAllowance(array $state, string $baseTaxYear): ?array
+    {
+        $people = is_array($state['people'] ?? null) ? $state['people'] : [];
+        $claimants = array_values(array_filter($people, static fn (array $p): bool => ! ($p['receivesDisabilityBenefit'] ?? false)));
+        if ($claimants === []) {
+            return null;
+        }
+
+        $benefits = TaxYearRegistry::for($baseTaxYear)->benefits;
+        $weeks = TaxYearRegistry::for($baseTaxYear)->statePension->weeksPerYear;
+        $annual = (string) round($benefits->attendanceAllowanceLowerWeekly->pence * $weeks / 100);
+        $fromAge = (string) self::ATTENDANCE_ALLOWANCE_FROM_AGE;
+
+        $edited = $state;
+        $streams = $state['incomeStreams'] ?? [];
+        foreach ($people as $i => $person) {
+            if ($person['receivesDisabilityBenefit'] ?? false) {
+                continue;
+            }
+            $edited['people'][$i]['receivesDisabilityBenefit'] = true;
+            $edited['people'][$i]['disabilityBenefitFromAge'] = $fromAge;
+            $streams[] = [
+                'id' => (string) Str::uuid(),
+                'ownerId' => (string) ($person['id'] ?? 'p1'),
+                'type' => 'disability_benefit',
+                'grossAnnual' => $annual,
+                'frequency' => 'annual',
+                'taxable' => false,
+                'inflationLinked' => true,
+                'startAge' => $fromAge,
+                'endAge' => '',
+            ];
+        }
+        $edited['incomeStreams'] = $streams;
+
+        return $edited;
     }
 
     /**

@@ -1081,7 +1081,7 @@ final class PathProjector
         // household's appropriate minimum guarantee, credited as income before any shortfall
         // is funded — so a sale that turns the exempt home into assessable capital (raising the
         // tariff income) erodes it in-projection, the downsizing trap made visible.
-        $benefitNominal = $this->meansTestedBenefitNominal($household, $state, $alive, $calendarYear, $taxablePerPerson, $aliveCount, $meansTestExcluded);
+        $benefitNominal = $this->meansTestedBenefitNominal($household, $state, $alive, $calendarYear, $ages, $taxablePerPerson, $aliveCount, $meansTestExcluded);
         $netCashNominal += $benefitNominal;
         $grossIncomeNominal += $benefitNominal;
         $src['means_tested_benefit'] += $benefitNominal;
@@ -1475,12 +1475,14 @@ final class PathProjector
      *
      * @param  array<string, mixed>  $state
      * @param  array<string, bool>  $alive
+     * @param  array<string, int>  $ages  this year's age per person, which decides whether a
+     *                                    disability benefit with a start age is yet in payment
      * @param  array<string, int>  $taxablePerPerson
      * @param  array<string, int>  $excludedFromAssessable  taxable receipts that are CAPITAL for the
      *                                                      means test, not income (a death-in-service
      *                                                      lump sum): taxed as income, assessed as capital
      */
-    private function meansTestedBenefitNominal(Household $household, array $state, array $alive, int $calendarYear, array $taxablePerPerson, int $aliveCount, array $excludedFromAssessable = []): int
+    private function meansTestedBenefitNominal(Household $household, array $state, array $alive, int $calendarYear, array $ages, array $taxablePerPerson, int $aliveCount, array $excludedFromAssessable = []): int
     {
         $weeksPerYear = $this->config->statePension->weeksPerYear;
 
@@ -1510,9 +1512,12 @@ final class PathProjector
         // qualifying disability benefit (a non-disabled co-resident partner blocks it — the
         // disabled partner is not "living alone"), and then at the couple rate. So one
         // partner on DLA in a couple gives no addition, not the single rate.
+        // A benefit with a start age counts only once the person has reached it, so a claim made
+        // later in life (Attendance Allowance as health declines) raises the guarantee from that
+        // year and not before.
         $disabledCount = 0;
-        foreach ($living as $person) {
-            if ($person->receivesDisabilityBenefit) {
+        foreach ($living as $personId => $person) {
+            if ($person->receivesDisabilityBenefitAt($ages[$personId] ?? 0)) {
                 $disabledCount++;
             }
         }
@@ -1528,7 +1533,7 @@ final class PathProjector
                 continue;
             }
             foreach ($living as $partnerId => $partner) {
-                if ($partnerId !== $carerId && $partner->receivesDisabilityBenefit) {
+                if ($partnerId !== $carerId && $partner->receivesDisabilityBenefitAt($ages[$partnerId] ?? 0)) {
                     $carer = true;
                     break 2;
                 }

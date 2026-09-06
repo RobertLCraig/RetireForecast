@@ -47,6 +47,26 @@ final class ThresholdExplorerTest extends TestCase
             ->assertSee('Find the limit');
     }
 
+    public function test_the_working_longer_lever_shows_the_carer_earnings_limit_on_the_page(): void
+    {
+        // Card 0044. The warning has to be on the screen beside the lever, not merely computable:
+        // a reader picks a retirement age off this page.
+        $state = BuilderStateFixture::full();
+        $state['people'][0]['caresForPartner'] = true;          // p1 is the employed one
+        $state['people'][1]['receivesDisabilityBenefit'] = true;
+        $scenario = ScenarioFixture::fromState($this->user, $state);
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->set('lever', LeverKey::RetirementAge->value)
+            ->assertSee("Carer's Allowance")
+            ->assertSee('earnings limit');
+
+        // A household with nobody caring gets no such line.
+        Livewire::test(ThresholdExplorer::class, ['scenario' => ScenarioFixture::rich($this->user)])
+            ->set('lever', LeverKey::RetirementAge->value)
+            ->assertDontSee("Carer's Allowance");
+    }
+
     public function test_it_offers_the_survivor_db_lever_for_a_couple_with_a_survivor_pension(): void
     {
         // The rich fixture is a couple whose DB scheme provides a 50% survivor pension.

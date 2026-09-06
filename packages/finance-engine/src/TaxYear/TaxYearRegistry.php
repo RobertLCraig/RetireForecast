@@ -96,6 +96,11 @@ final class TaxYearRegistry
                 standardMinimumGuaranteeCoupleWeekly: Money::of(346, 60),
                 severeDisabilityAdditionWeekly: Money::of(82, 90),
                 carerAdditionWeekly: Money::of(46, 40),
+                // Attendance Allowance 2025/26 (gov.uk/attendance-allowance/what-youll-get).
+                attendanceAllowanceLowerWeekly: Money::of(73, 90),
+                attendanceAllowanceHigherWeekly: Money::of(110, 40),
+                // Carer's Allowance earnings limit 2025/26 (gov.uk/carers-allowance/eligibility).
+                carersAllowanceEarningsLimitWeekly: Money::of(196, 0),
             ),
             iht: self::ihtParameters(),
             care: self::careParameters(personalExpensesAllowanceWeekly: Money::of(30, 65)),
@@ -110,6 +115,8 @@ final class TaxYearRegistry
                 'sdlt' => 'https://www.gov.uk/stamp-duty-land-tax/residential-property-rates',
                 'cgt' => 'https://www.gov.uk/capital-gains-tax/rates',
                 'benefits' => 'https://www.gov.uk/pension-credit/eligibility',
+                'attendance_allowance' => 'https://www.gov.uk/attendance-allowance/what-youll-get',
+                'carers_allowance' => 'https://www.gov.uk/carers-allowance/eligibility',
                 'iht' => 'https://www.gov.uk/inheritance-tax',
                 'care' => 'https://www.gov.uk/help-with-care-costs/financial-assessment',
             ],
@@ -177,6 +184,14 @@ final class TaxYearRegistry
                 standardMinimumGuaranteeCoupleWeekly: Money::of(363, 25),
                 severeDisabilityAdditionWeekly: Money::of(86, 5),
                 carerAdditionWeekly: Money::of(48, 15),
+                // Attendance Allowance 2026/27, uprated from 2025/26 by the same +3.8% rounded to
+                // the nearest 5p that the two additions above were uprated by. NOT read off a
+                // published table: see the warning on BenefitsParameters and card 0044.
+                attendanceAllowanceLowerWeekly: Money::of(76, 70),
+                attendanceAllowanceHigherWeekly: Money::of(114, 60),
+                // Carer's Allowance earnings limit 2026/27: the government's stated rule of 16
+                // hours at the National Living Wage (16 x £12.71). Same warning as above.
+                carersAllowanceEarningsLimitWeekly: Money::of(203, 36),
             ),
             iht: self::ihtParameters(),
             care: self::careParameters(personalExpensesAllowanceWeekly: Money::of(31, 80)),
@@ -191,6 +206,8 @@ final class TaxYearRegistry
                 'sdlt' => 'https://www.gov.uk/stamp-duty-land-tax/residential-property-rates',
                 'cgt' => 'https://www.gov.uk/capital-gains-tax/rates',
                 'benefits' => 'https://www.gov.uk/pension-credit/eligibility',
+                'attendance_allowance' => 'https://www.gov.uk/attendance-allowance/what-youll-get',
+                'carers_allowance' => 'https://www.gov.uk/carers-allowance/eligibility',
                 'iht' => 'https://www.gov.uk/inheritance-tax',
                 'care' => 'https://www.gov.uk/help-with-care-costs/financial-assessment',
             ],
@@ -311,6 +328,9 @@ final class TaxYearRegistry
         Money $standardMinimumGuaranteeCoupleWeekly,
         Money $severeDisabilityAdditionWeekly,
         Money $carerAdditionWeekly,
+        Money $attendanceAllowanceLowerWeekly,
+        Money $attendanceAllowanceHigherWeekly,
+        Money $carersAllowanceEarningsLimitWeekly,
     ): BenefitsParameters {
         return new BenefitsParameters(
             capitalDisregard: Money::fromPounds(10_000),
@@ -321,6 +341,9 @@ final class TaxYearRegistry
             standardMinimumGuaranteeCoupleWeekly: $standardMinimumGuaranteeCoupleWeekly,
             severeDisabilityAdditionWeekly: $severeDisabilityAdditionWeekly,
             carerAdditionWeekly: $carerAdditionWeekly,
+            attendanceAllowanceLowerWeekly: $attendanceAllowanceLowerWeekly,
+            attendanceAllowanceHigherWeekly: $attendanceAllowanceHigherWeekly,
+            carersAllowanceEarningsLimitWeekly: $carersAllowanceEarningsLimitWeekly,
         );
     }
 

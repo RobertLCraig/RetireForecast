@@ -165,7 +165,11 @@ final class HouseholdAssembler
             name: $this->stringOrNull($p['name'] ?? null),
             longevity: $this->longevity($p),
             receivesDisabilityBenefit: (bool) ($p['receivesDisabilityBenefit'] ?? false),
+            caresForPartner: (bool) ($p['caresForPartner'] ?? false),
             deathInServiceCover: $this->deathInServiceCover($p),
+            // Blank or absent = in payment for the whole projection, which is how every scenario
+            // saved before the start age existed behaved.
+            disabilityBenefitFromAge: $this->intOrNull($p['disabilityBenefitFromAge'] ?? null),
         );
     }
 

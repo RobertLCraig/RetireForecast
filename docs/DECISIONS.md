@@ -3,6 +3,40 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-06: A disability benefit gets a start age, not a dated award
+**Context:** card 0044 (expert panel 2026-08-19, Citizens Advice finding 2 and adviser finding 10).
+`Person::$receivesDisabilityBenefit` was a static boolean, so the single most likely favourable event
+in a long survivor period, a person claiming Attendance Allowance once their own health declines,
+could not be entered at all. `Person::caresForPartner` had been wired into the Pension Credit carer
+addition since July 2026 and no screen could set it, so that addition was dead code as far as the
+app was concerned.
+
+**Decision: the flag keeps its meaning and gains `disabilityBenefitFromAge: ?int` beside it, read
+together in one accessor.** The alternative considered was replacing the flag with a dated award
+object holding a start, an end and a rate. Rejected as more shape than the question needs: the award
+END is already expressible (the benefit's own money is an `IncomeStream` with a start and end age),
+the RATE is that stream's amount, and the only thing the boolean could not say was WHEN. Null means
+the whole projection, so every stored scenario is byte-identical and no `ENGINE_VERSION` bump or
+re-run is owed. `Person::receivesDisabilityBenefitAt($age)` is the one place the two are read
+together, so no caller can consult the flag without its start age.
+
+**Decision: the Attendance Allowance what-if claims for every member who does not already have one,
+from age 80, at the LOWER rate.** The preset moves two things at once on purpose: the flag, which
+opens the Pension Credit severe-disability addition, and a tax-free income stream, which is the
+benefit's own cash. Entering one without the other models half the event, and a couple needs BOTH
+members on a qualifying benefit before the addition applies at all, which is why it claims for
+everyone rather than for one. Age 80 is the cautious end of a range that opens at State Pension age,
+and the lower rate is the cautious of the two while still qualifying for the addition. Both are
+ordinary inputs on the child scenario afterwards.
+
+**Decision: the carer earnings limit is FLAGGED beside the retirement-age lever, not modelled in the
+projector.** Underlying entitlement to Carer's Allowance has a weekly earnings limit, so working
+longer postpones the carer addition; the sweep shows the gain and never the delay. The warning reads
+the tax-year constant rather than restating the figure. Actually suppressing the addition while a
+carer earns above the limit is a projection change that moves stored plans, and it is board card
+**0108**. Two of the three new figures in `TaxYear\BenefitsParameters` are stated rather than
+verified, because an unattended session has no web: see ASSUMPTIONS §20 and board card **0106**.
+
 ## 2026-09-05: Liquid wealth belongs to its owners, not to whoever was typed first
 **Context:** card 0040 (expert panel 2026-08-19, engineer finding F8). Three places handed money to
 `persons[0]` or to `firstLiving()`: the year-0 sale proceeds in `HousingComparison::withHousing()`,

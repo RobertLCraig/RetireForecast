@@ -439,11 +439,31 @@
                             @endif
                             <div class="col-span-full">
                                 <label class="flex items-center gap-2 text-sm text-gray-700">
-                                    <input type="checkbox" wire:model="people.{{ $i }}.receivesDisabilityBenefit" class="rounded border-gray-300">
+                                    <input type="checkbox" wire:model.live="people.{{ $i }}.receivesDisabilityBenefit" class="rounded border-gray-300">
                                     Receives a disability benefit (DLA / Attendance Allowance / PIP)
                                 </label>
                                 <p class="mt-1 text-xs text-gray-500">Enter the benefit itself as a tax-free income stream below. This flag lets the forecast include the Pension Credit severe-disability top-up while they are alive.</p>
                             </div>
+                            {{-- When the benefit starts. Health declines late, and Attendance Allowance
+                                 is the commonest thing claimed in a long survivor period, so the flag
+                                 on its own (on or off for life) could not model the usual case. --}}
+                            @if ($person['receivesDisabilityBenefit'] ?? false)
+                                <div>
+                                    <label for="people-{{ $i }}-disabilityBenefitFromAge" class="{{ $label }}">Claimed from age</label>
+                                    <input id="people-{{ $i }}-disabilityBenefitFromAge" type="number" wire:model.blur="people.{{ $i }}.disabilityBenefitFromAge" class="{{ $field }}" @error('people.'.$i.'.disabilityBenefitFromAge') aria-invalid="true" aria-describedby="people-{{ $i }}-disabilityBenefitFromAge-error" @enderror>
+                                    @error('people.'.$i.'.disabilityBenefitFromAge') <p id="people-{{ $i }}-disabilityBenefitFromAge-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                    <p class="mt-1 text-xs text-gray-500">Leave blank if they get it already. Put an age here to model a claim made later, when their health declines. The Pension Credit top-up then starts in that year and not before.</p>
+                                </div>
+                            @endif
+                            @if (count($people) > 1)
+                                <div class="col-span-full">
+                                    <label class="flex items-center gap-2 text-sm text-gray-700">
+                                        <input type="checkbox" wire:model="people.{{ $i }}.caresForPartner" class="rounded border-gray-300">
+                                        Cares for their partner (35+ hours a week)
+                                    </label>
+                                    <p class="mt-1 text-xs text-gray-500">Tick this if they give their partner at least 35 hours of care a week and that partner gets a disability benefit. It adds the Pension Credit carer top-up. Carer's Allowance also has a weekly earnings limit, so pay above it stops this counting while they are still working.</p>
+                                </div>
+                            @endif
                             {{-- Employer death-in-service (group life) cover. Most employed people have
                                  it and most forget; it is also the one protection that VANISHES at
                                  retirement, which is what the results page's protection panel surfaces. --}}

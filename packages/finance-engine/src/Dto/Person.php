@@ -56,7 +56,25 @@ final class Person
          * {@see DeathInServiceCover}.
          */
         public readonly ?DeathInServiceCover $deathInServiceCover = null,
+        /**
+         * The age from which {@see $receivesDisabilityBenefit} applies. Null (the default) means
+         * "for the whole projection", which is how every scenario saved before this field existed
+         * behaved. A figure lets the commonest later-life event be modelled: a person claiming
+         * Attendance Allowance once their own health declines, years into the plan. The flag alone
+         * could only say on or off for life, so the years before the claim were being credited with
+         * a Pension Credit addition nobody was yet entitled to.
+         */
+        public readonly ?int $disabilityBenefitFromAge = null,
     ) {}
+
+    /**
+     * Whether the qualifying disability benefit is in payment at $age. It is the ONE place the
+     * flag and its start age are read together, so no caller can consult one without the other.
+     */
+    public function receivesDisabilityBenefitAt(int $age): bool
+    {
+        return $this->receivesDisabilityBenefit && $age >= ($this->disabilityBenefitFromAge ?? 0);
+    }
 
     /** The same person with a different planned retirement age (immutable; e.g. a sweep lever). */
     public function withPlannedRetirementAge(?int $plannedRetirementAge): self
@@ -75,6 +93,7 @@ final class Person
             $this->receivesDisabilityBenefit,
             $this->caresForPartner,
             $this->deathInServiceCover,
+            $this->disabilityBenefitFromAge,
         );
     }
 
@@ -95,6 +114,7 @@ final class Person
             $this->receivesDisabilityBenefit,
             $this->caresForPartner,
             $this->deathInServiceCover,
+            $this->disabilityBenefitFromAge,
         );
     }
 }

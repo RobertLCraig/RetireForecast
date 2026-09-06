@@ -11,6 +11,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Sweep\SweepMetric;
+use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
+use Tests\Support\BuilderStateFixture;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
@@ -27,6 +29,42 @@ final class ThresholdPresenterTest extends TestCase
     private function service(): LeverThresholdService
     {
         return app(LeverThresholdService::class);
+    }
+
+    public function test_the_working_longer_lever_flags_the_carer_earnings_limit(): void
+    {
+        // Card 0044. Underlying entitlement to Carer's Allowance has an earnings limit, so pushing
+        // the retirement age out also postpones the Pension Credit carer addition. The lever looks
+        // purely favourable on the meter and that interaction is invisible in the odds.
+        $state = BuilderStateFixture::full();
+        $state['people'][0]['caresForPartner'] = true;          // p1 is the employed one
+        $state['people'][1]['receivesDisabilityBenefit'] = true;
+        $scenario = ScenarioFixture::fromState(User::factory()->create(), $state);
+        $household = $scenario->toHousehold();
+        $limit = TaxYearRegistry::for($scenario->base_tax_year)->benefits->carersAllowanceEarningsLimitWeekly;
+
+        $caveat = ThresholdPresenter::leverCaveat(LeverKey::RetirementAge, $household, $scenario->base_tax_year);
+
+        $this->assertNotNull($caveat);
+        $this->assertStringContainsString("Carer's Allowance", $caveat);
+        $this->assertStringContainsString($limit->format(), $caveat); // reads the constant, never restates it
+
+        // Not a lever that extends working life, so it says nothing there.
+        $this->assertNull(ThresholdPresenter::leverCaveat(LeverKey::EssentialSpend, $household, $scenario->base_tax_year));
+    }
+
+    public function test_the_carer_earnings_limit_is_not_flagged_where_it_cannot_bite(): void
+    {
+        // Nobody caring, or a carer who has already stopped earning: the retirement-age lever moves
+        // nothing about their entitlement, so the warning would be noise.
+        $plain = ScenarioFixture::rich(User::factory()->create());
+        $this->assertNull(ThresholdPresenter::leverCaveat(LeverKey::RetirementAge, $plain->toHousehold(), $plain->base_tax_year));
+
+        $state = BuilderStateFixture::full();
+        $state['people'][1]['caresForPartner'] = true;          // p2 is retired
+        $state['people'][0]['receivesDisabilityBenefit'] = true;
+        $retiredCarer = ScenarioFixture::fromState(User::factory()->create(), $state);
+        $this->assertNull(ThresholdPresenter::leverCaveat(LeverKey::RetirementAge, $retiredCarer->toHousehold(), $retiredCarer->base_tax_year));
     }
 
     public function test_the_transient_deterministic_forecast_runs_at_a_lever_value(): void

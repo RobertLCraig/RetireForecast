@@ -721,6 +721,55 @@ class ScenarioBuilderTest extends TestCase
             ->assertDontSee('not liable');
     }
 
+    public function test_a_disability_benefit_start_age_is_a_builder_input_and_reaches_the_household(): void
+    {
+        // Card 0044. The flag alone could only say on or off for life, so the commonest later-life
+        // event (claiming Attendance Allowance as health declines) could not be entered at all.
+        $this->fill(BuilderStateFixture::minimalValid())
+            ->set('people.0.receivesDisabilityBenefit', true)
+            ->set('people.0.disabilityBenefitFromAge', '80')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $person = Scenario::firstOrFail()->toHousehold()->persons[0];
+        $this->assertSame(80, $person->disabilityBenefitFromAge);
+        $this->assertFalse($person->receivesDisabilityBenefitAt(79));
+        $this->assertTrue($person->receivesDisabilityBenefitAt(80));
+    }
+
+    public function test_caring_for_a_partner_is_a_builder_input_and_reaches_the_household(): void
+    {
+        // Card 0044. The engine has wired the Pension Credit carer addition since July 2026, but no
+        // screen could ever set the flag, so the addition was dead code as far as the app went.
+        $state = BuilderStateFixture::minimalValid();
+        $state['people'][] = ['id' => 'p2', 'dob' => '1957-03-01', 'sex' => 'male', 'employmentStatus' => 'retired',
+            'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => ''];
+
+        $this->fill($state)
+            ->set('people.0.caresForPartner', true)
+            ->set('people.1.receivesDisabilityBenefit', true)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $persons = Scenario::firstOrFail()->toHousehold()->persons;
+        $this->assertTrue($persons[0]->caresForPartner);
+        $this->assertFalse($persons[1]->caresForPartner);
+    }
+
+    public function test_the_carer_question_is_only_asked_of_a_household_with_a_partner_to_care_for(): void
+    {
+        // Card 0044. There is no partner to care for in a one-person household, so asking would be
+        // a question that cannot have a true answer.
+        $component = Livewire::test(ScenarioBuilder::class)->set('step', 1);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+
+        $component->assertDontSee('Cares for their partner');
+
+        $component->call('addPerson')->assertSee('Cares for their partner');
+    }
+
     /** @param array<string, mixed> $state */
     private function fill(array $state): Testable
     {

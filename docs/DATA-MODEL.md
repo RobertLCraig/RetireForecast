@@ -492,7 +492,11 @@ from the original plan, flagged inline:
   disabled pensioner (single rate) or a couple where **both** partners receive a qualifying disability benefit
   (couple rate = 2× single); one disabled partner in a couple no longer wrongly triggers it. New engine field
   `Person::caresForPartner: bool` wires the **carer addition** (a partner caring for a disabled partner); it
-  defaults false and is **not yet a builder input** (app-UI exposure deferred), so no stored scenario changes.
+  defaults false. **Both flags are builder inputs from 2026-09-06 (card 0044)**, and the disability flag gained
+  `Person::disabilityBenefitFromAge: ?int` beside it, so a benefit can START at a chosen age rather than being on
+  or off for life. Null is the whole projection, which is what every scenario saved before it modelled, so nothing
+  stored moves. The pair is read in ONE place, `Person::receivesDisabilityBenefitAt($age)`; no caller consults the
+  flag without its start age. The carer question is only asked of a two-person household.
 - ✅ **(B) Mortgage redemption.** `Property` gained `mortgageRedemptionYear: int?` and `mortgageMaturityAction:
   enum {refinance | repay_from_capital | forced_sale}`. The projector tracks the mortgage **balance** (new state) and
   applies the action at maturity. Stopping the bundled mortgage *payment* after a repay is **built** (the

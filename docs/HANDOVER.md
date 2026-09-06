@@ -6,9 +6,32 @@
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
 _Last updated: 2026-09-06. The exceptions a fresh session needs, newest first. The "what is built"
-inventory and cards 0024, 0025, 0028, 0029 and 0030 were folded out to
-[docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) on 2026-09-05 to keep this loadable in one session:_
+inventory and cards 0024, 0025, 0028 to 0032 were folded out to
+[docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A disability benefit can now start at an age, the carer flag is finally on a screen, and
+  claiming Attendance Allowance is a one-click what-if.** Card 0044.
+  `Person::$receivesDisabilityBenefit` was on or off for life, so the largest favourable event a
+  long survivor period can carry could not be entered; `caresForPartner` had been wired into the
+  Pension Credit carer addition since July 2026 with no way to set it. `Person` now carries
+  `disabilityBenefitFromAge`, and `receivesDisabilityBenefitAt($age)` is the single place the flag
+  and its start age are read together (the projector uses it for the severe-disability count AND the
+  carer test, so a partner's later claim delays the carer addition too). **No `ENGINE_VERSION` bump
+  and no stored re-run are owed:** null means the whole projection, so every stored scenario is
+  byte-identical. New: a `claim_attendance_allowance` quick what-if that sets the flag AND adds the
+  benefit's own tax-free income stream (both halves, because either alone models half the event); a
+  `disability_benefit_passports` result note naming what the forecast does not model (Support for
+  Mortgage Interest, Council Tax Reduction, the Warm Home Discount, the TV licence, Cold Weather
+  Payments, NHS costs); and a warning beside the retirement-age lever that earnings above the
+  Carer's Allowance limit block the carer addition. **Three benefit figures are STATED, not
+  verified** (this session had no web): the 2026/27 Attendance Allowance pair is derived by the same
+  uprating rule as the file's Pension Credit additions, and the earnings limit applies the 16-hours
+  at National Living Wage rule. See [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§20), carded as
+  **0106**. Two faults carded rather than fixed: **0107**, `Person` is rebuilt by hand in three
+  places with no reflection guard (the `ProtectionGap` one would have dropped the new field, and is
+  fixed here); and **0108**, the projector still awards the carer addition to a carer earning far
+  above the limit, which this card made reachable. Built in a worktree, so the two new builder
+  inputs, the new what-if button, the note and the lever warning **have not been seen in a browser**.
 - **A queued run can no longer be killed at 60 seconds or run twice at once, and the forecaster
   remembers what it derived.** Card 0042 (partial: its third criterion is left open and is Rob's,
   see the card). `RunScenarioSimulation` and `RunLeverThreshold` declare an hour's `$timeout`, one
@@ -185,41 +208,6 @@ inventory and cards 0024, 0025, 0028, 0029 and 0030 were folded out to
   all, is card 0094: it needs a published maintenance series and an unattended session has no web.
   The 1% is now written up in [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§17) instead of living
   only in a docblock.
-- **Selling a home is now priced as a leasehold sale, and a taxable disposal pays for its tax
-  return.** Card 0032: `HousingProceeds::DEFAULT_SELLING_COST_RATE_BP` is **400** (4% all in, was 2%,
-  an agent's fee and little else), and a disposal that actually owes CGT is charged
-  `CGT_RETURN_FEE_PENCE` (£750) for the 60-day return, itemised on the sale waterfall, appended AFTER
-  the gain so it neither reduces the tax nor becomes circular. `ScenarioBuilder::defaultSellingCosts()`
-  ships the itemised version: agent 1.5%, leasehold conveyancing £2,000, management pack £500, licence
-  to assign plus notices £700, removals £1,200, EPC £80. The assumptions panel now READS the rate
-  constant instead of restating "2%", and it shows on every variant. **Every stored sell plan keeps
-  money it would never see, so its wealth, depletion year and success odds are too favourable; a
-  stay-put plan is byte-identical.** `ENGINE_VERSION` is `finance-engine/leasehold-selling-costs` and
-  the **stored-scenario re-run is owed** (built in a worktree, so **the results page and the builder
-  step have not been seen in a browser**). There is no tenure field to gate the leasehold lines on, so
-  they ship charged with a note telling a freeholder to clear them; that residual fault is card 0093,
-  behind 0026. The money figures are the 2026-08-19 property reviewer's judgement plus this build's
-  reading of ordinary practice, not a published series: the fifth sourcing gap in
-  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§16), raised as card 0092.
-- **A rent plan is now tested against the landlord, not only against the money.** Card 0031: a new
-  `Housing\Tenancy` owns four figures, and `PathProjector` raises
-  `WarningCode::RENT_REFERENCING_FAILED` on any year whose gross income falls below 30 times the
-  monthly rent (a standard tenant reference, which is an INCOME test and ignores capital entirely).
-  The message states the two ways round it, a guarantor at 36 times and 6 to 12 months' rent in
-  advance, with the money each costs. `HousingComparison::rentVariant` also charges the tenancy
-  DEPOSIT (the Tenant Fees Act cap: 5 weeks' rent, 6 at £50,000+) as a year-0 one-off; the first
-  month's rent is deliberately NOT charged again, because the year's rent line already carries twelve
-  payments, and the disclosure names the day-one cash instead. Both notices reach screen, PDF and
-  audit through `ResultPresenter::ladder()` (`rentReferencing` / `tenancyUpFront`), because
-  `inputNotes()` is handed the STAY-PUT forecast on the screen, which is a separate defect raised as
-  card 0089. **Every rent variant spends one deposit more in year 0**, so its stored wealth and
-  terminal figures are very slightly too favourable; no other variant moves and the flag changes no
-  number. `ENGINE_VERSION` is `finance-engine/tenancy-deposit` and the **stored-scenario re-run is
-  owed** (built in a worktree, so **the results page has not been seen in a browser**). The 30x, 36x
-  and 6-to-12-months are the 2026-08-19 property reviewer's judgement, not a published series; that
-  is the fourth sourcing gap in [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§15) and is raised as
-  card 0091. The deposit cap is statute and is sourced. The adjacent gap, that a mid-projection
-  forced sale starts a tenancy and is charged no deposit, is raised as card 0090.
 - **`scenarios:audit` cannot be used as a gate until every stored scenario is re-run.** It exits 1
   on 120 lines, all of them "run N carries no integrity stamp (it predates the column)", with no
   other problem class anywhere. Applying the pending `add_hashes_to_simulation_runs_table` migration
@@ -298,7 +286,7 @@ Full log and rationale: [DECISIONS.md](DECISIONS.md). The load-bearing "do not r
   sweep is closed bar A4 salary sacrifice, B3 the estate checklist, B4 the annual review and B5
   capacity for loss, all of which are card 0011.
 - **In progress:** nothing mid-edit.
-- **Known bugs / broken:** a reviewed defect backlog, carded as **0024 to 0065** in [docs/board/todo/](board/todo/); do not restate it here, read the lane. The shape of it: five independent senior reviewers (software engineering, financial planning, welfare benefits, property, estate planning) read the docs, the engine and the stored scenarios on 2026-08-19. Findings four or more reviewers reached separately are the load-bearing ones. **Several change which plan the comparison ranks first**, so the ranked chart and card 0022 should not be read off until the head of the queue is cleared. The full report, with the private figures the cards deliberately omit, is the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
+- **Known bugs / broken:** a reviewed defect backlog in [docs/board/todo/](board/todo/); do not restate it here, read the lane. It came from a five-discipline expert review on 2026-08-19, whose full report, with the private figures the cards omit, is the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`. **Several of those defects change which plan the comparison ranks first**, so the ranked chart and card 0022 should not be read off until the head of the queue is cleared.
 Documented v1 scope limits remain flagged in code and listed in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" (for example Scotland income tax throws rather than guessing; emergency tax models the over-deduction magnitude, not PAYE-table pennies).
 - **Data hygiene is currently breached** (card 0043): private detail about the couple is in eleven tracked files, including this doc's own Blockers section historically. Cards written from 2026-08-19 carry no private figures and point at the gitignored captures instead. Keep it that way.
 - **Live carry-over:** the real couple's data is captured privately in the gitignored `docs/SCENARIO-V2.local.md`, which is the durable source to rebuild from after a DB wipe. **Read it before touching any V2 figure.** What each broker has actually offered, with dates and sources, is in the gitignored `docs/HOUSING-OFFERS.local.md`; the stored mortgage scenarios are priced off it.

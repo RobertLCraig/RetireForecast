@@ -7,6 +7,7 @@ namespace Tests\Feature\Forecast;
 use App\Forecast\QuickWhatIf;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
@@ -70,6 +71,48 @@ class QuickWhatIfTest extends TestCase
         $this->assertTrue((bool) reset($rental)['taxable']);
         $this->assertCount(1, $rent);
         $this->assertSame('essential', reset($rent)['category']);
+    }
+
+    public function test_the_attendance_allowance_preset_claims_it_later_in_life_with_its_own_money(): void
+    {
+        // Card 0044. Claiming Attendance Allowance as health declines is the largest favourable
+        // event a long survivor period can carry, and it could not be modelled at all: the flag was
+        // on or off for life, and nothing offered it as a what-if.
+        $base = ScenarioFixture::rich(User::factory()->create());
+
+        $built = QuickWhatIf::build($base, 'claim_attendance_allowance');
+
+        $this->assertStringContainsString('Attendance Allowance', $built['name']);
+        $overrides = $built['overrides'];
+
+        // Both partners claim, from the same age, and the flag carries its start age with it.
+        foreach (['p1', 'p2'] as $id) {
+            $this->assertTrue($overrides["people.{$id}.receivesDisabilityBenefit"]);
+            $this->assertSame('80', $overrides["people.{$id}.disabilityBenefitFromAge"]);
+        }
+
+        // The benefit's own money arrives too, as a tax-free stream starting at the same age. It is
+        // the lower rate, the cautious one, and it still qualifies for the Pension Credit addition.
+        $rate = TaxYearRegistry::for($base->base_tax_year)->benefits;
+        $expected = (string) round($rate->attendanceAllowanceLowerWeekly->pence * 52 / 100);
+        $streams = array_filter($overrides, fn ($v): bool => is_array($v) && ($v['type'] ?? null) === 'disability_benefit');
+
+        $this->assertCount(2, $streams);
+        foreach ($streams as $stream) {
+            $this->assertFalse($stream['taxable']);
+            $this->assertSame('80', $stream['startAge']);
+            $this->assertSame($expected, $stream['grossAnnual']);
+        }
+    }
+
+    public function test_the_attendance_allowance_preset_leaves_an_existing_claim_alone(): void
+    {
+        // Nothing to model for somebody who already gets it, so no empty what-if is made.
+        $state = BuilderStateFixture::minimalValid();
+        $state['people'][0]['receivesDisabilityBenefit'] = true;
+        $base = ScenarioFixture::fromState(User::factory()->create(), $state);
+
+        $this->assertNull(QuickWhatIf::build($base, 'claim_attendance_allowance'));
     }
 
     public function test_a_preset_that_would_change_nothing_builds_nothing(): void

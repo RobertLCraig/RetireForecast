@@ -1804,6 +1804,26 @@ final class ResultPresenter
             if ($deathYear !== null && $deathYear <= $baseYear) {
                 $notes[] = ['kind' => 'early_death', 'text' => "{$name} is modelled to die in {$deathYear} (age {$currentAge}), the very start of the forecast. If that isn't intended, check their longevity or health setting — a value below the current age is treated as the current age."];
             }
+
+            // (b3) A disability benefit passports far more than it pays, and the forecast models
+            // exactly ONE of those consequences. Everything else it unlocks is real money the plan
+            // is not being credited with, so a reader comparing plans off these figures has to be
+            // told to go and claim it rather than left to assume it is in there (factual, not advice).
+            if ($person->receivesDisabilityBenefit) {
+                $from = $person->disabilityBenefitFromAge;
+                $when = $from === null
+                    ? 'from the start of the forecast'
+                    : "from age {$from}";
+                $notes[] = ['kind' => 'disability_benefit_passports', 'text' => "{$name} is modelled as receiving a disability "
+                    ."benefit (Attendance Allowance, DLA or PIP) {$when}. Two things follow, and only the first is in these "
+                    .'figures. In the figures: the benefit itself, if you entered it as a tax-free income stream, and the '
+                    .'Pension Credit severe-disability addition it opens (a couple both need a qualifying benefit for that; '
+                    .'one on its own gets nothing), plus the carer addition if a partner is ticked as caring for them. NOT in '
+                    .'the figures: everything a disability benefit or Pension Credit then passports. That list is Support for '
+                    .'Mortgage Interest, Council Tax Reduction, the Warm Home Discount, a free TV licence at 75, Cold Weather '
+                    .'Payments and help with NHS costs. Together those are usually worth more per year than the benefit, so '
+                    .'treat this plan as the cautious version and claim each of them separately.'];
+            }
         }
 
         // (b2) A DC pension being contributed to with no relief method set. Every real UK pension
