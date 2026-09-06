@@ -86,13 +86,22 @@ final class ResultPresenter
     /**
      * The income sources that count as a secure floor: income that lasts for life and
      * does not depend on a pot lasting or on investment returns — guaranteed pensions
-     * (DB, State Pension), purchased annuities, any tax-free income (e.g. DLA, which must
-     * NOT be dropped — see the completeness rule), and the means-tested Pension Credit
-     * top-up (a guaranteed floor in its own right). Salary is excluded (it is earned and
-     * stops at retirement); pension lump sums and drawdown, and savings drawn, are
+     * (DB, State Pension), purchased annuities and any tax-free income (e.g. DLA, which
+     * must NOT be dropped — see the completeness rule). Salary is excluded (it is earned
+     * and stops at retirement); pension lump sums and drawdown, and savings drawn, are
      * excluded (they deplete the pot).
      */
-    private const SECURE_SOURCES = ['defined_benefit', 'state_pension', 'other_taxable', 'tax_free_income', 'means_tested_benefit'];
+    private const SECURE_SOURCES = ['defined_benefit', 'state_pension', 'other_taxable', 'tax_free_income'];
+
+    /**
+     * Income the forecast credits but nobody is guaranteed: reported BESIDE the floor, never
+     * inside it (board card 0046). Pension Credit is means-tested, so it has to be claimed, and
+     * around a third of eligible pensioner households never claim it; even once claimed it moves
+     * with income, with capital, with a change of circumstances and with a review. Counting it in
+     * the guaranteed floor told a household that essentials it may never receive a penny towards
+     * were covered for life, which is the one thing that readout exists to answer.
+     */
+    private const CONTINGENT_SOURCES = ['means_tested_benefit'];
 
     /** The 3-tier budget categories, in display order, with their labels. */
     /**
@@ -2020,6 +2029,20 @@ final class ResultPresenter
             }
         }
 
+        // (c7) The CAPITAL CLIFF: savings above the Housing Benefit / Council Tax Support limit
+        // end both. The engine has always built this warning and nothing ever collected it, while
+        // METHODOLOGY.md told the reader it was flagged, so every sell-and-rent plan parked a large
+        // sum and showed nothing (board card 0046). Reported ONCE, on the first year it bites: it
+        // then holds for most of the plan, and a note repeated forty times is a note nobody reads.
+        // The sentence is the ENGINE's, quoted rather than restated, so the two cannot drift.
+        foreach ($forecast->years as $year) {
+            $cliff = self::firstWarning($year, WarningCode::CAPITAL_CLIFF_HB_CTS);
+            if ($cliff !== null) {
+                $notes[] = ['kind' => 'capital_cliff', 'text' => "From {$year->calendarYear}: {$cliff}"];
+                break;
+            }
+        }
+
         // (d) Cohabiting-couple survivor caveats. The married/civil-partner survivor rights the
         // engine implicitly assumes do NOT extend to a cohabiting partner, so flag where the
         // forecast may overstate what the survivor actually receives (no silent overstatement).
@@ -2125,7 +2148,7 @@ final class ResultPresenter
      *
      * Returns null when the projection has no years to read.
      *
-     * @return array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool, survivor: array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool}|null, cliff: ?int}|null
+     * @return array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, contingent: list<array{label: string, amount: string}>, contingentIncome: string, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool, survivor: array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, contingent: list<array{label: string, amount: string}>, contingentIncome: string, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool}|null, cliff: ?int}|null
      */
     public static function incomeFloor(ForecastResult $forecast): ?array
     {
@@ -2153,19 +2176,26 @@ final class ResultPresenter
      * definition both the all-alive floor and the survivor-year twin read, so the two can only
      * differ by their year, never by how the figure is built.
      *
-     * @return array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool}
+     * @return array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, contingent: list<array{label: string, amount: string}>, contingentIncome: string, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool}
      */
     private static function floorAt(YearResult $year): array
     {
-        $sources = [];
-        $secure = Money::zero();
-        foreach (self::SECURE_SOURCES as $source) {
-            $money = $year->incomeBySource[$source] ?? Money::zero();
-            if ($money->isPositive()) {
-                $sources[] = ['label' => self::SOURCE_LABELS[$source], 'amount' => $money->format()];
-                $secure = $secure->plus($money);
+        $collect = static function (array $codes, ?Money &$total) use ($year): array {
+            $lines = [];
+            $total = Money::zero();
+            foreach ($codes as $source) {
+                $money = $year->incomeBySource[$source] ?? Money::zero();
+                if ($money->isPositive()) {
+                    $lines[] = ['label' => self::SOURCE_LABELS[$source], 'amount' => $money->format()];
+                    $total = $total->plus($money);
+                }
             }
-        }
+
+            return $lines;
+        };
+
+        $sources = $collect(self::SECURE_SOURCES, $secure);
+        $contingent = $collect(self::CONTINGENT_SOURCES, $contingentTotal);
 
         $essential = $year->essentialSpend;
         $shortfall = $essential->minus($secure);
@@ -2178,6 +2208,11 @@ final class ResultPresenter
             'essentialSpend' => $essential->format(),
             'secureIncome' => $secure->format(),
             'sources' => $sources,
+            // Reported beside the floor, deliberately outside every total above: contingent income
+            // has to be visible (it is real money the forecast spends) without being counted as a
+            // guarantee. See CONTINGENT_SOURCES.
+            'contingent' => $contingent,
+            'contingentIncome' => $contingentTotal->format(),
             'coveragePct' => $coverage,
             'surplus' => $surplus->isPositive() ? $surplus->format() : null,
             'gap' => $shortfall->isPositive() ? $shortfall->format() : null,
@@ -2205,29 +2240,41 @@ final class ResultPresenter
     }
 
     /**
-     * How to actually claim the Pension Credit the forecast models — surfaced only when the
-     * projection credits it in some year. Pension Credit is means-tested (so it has to be
+     * How to actually claim Pension Credit. Pension Credit is means-tested (so it has to be
      * applied for, never automatic) and one of the most under-claimed benefits, so modelling
      * it as income without saying how to get it would leave money on the table. Factual
      * gov.uk signposting, not advice: the amount is means-tested and only the DWP can confirm
-     * entitlement. Returns null when no year receives Pension Credit (nothing to claim).
+     * entitlement.
      *
-     * @return array{howToClaim: list<string>, passports: list<string>, source: string, verifiedOn: string}|null
+     * TWO ways in, because keying it off a positive award alone was backwards (board card 0046):
+     * the household sitting just above the line is the one a caseworker most wants a nil claim
+     * from, and it was shown nothing at all. So a year the engine flagged as a near miss
+     * ({@see WarningCode::PENSION_CREDIT_NEAR_MISS}) opens the prompt too, carrying the engine's
+     * own sentence about why rather than restating its rule. Null only when no year is awarded
+     * anything AND no year comes close (nothing to claim, and no noise).
+     *
+     * @return array{awarded: bool, nearMiss: list<string>, howToClaim: list<string>, passports: list<string>, source: string, verifiedOn: string}|null
      */
     public static function pensionCreditGuidance(ForecastResult $forecast): ?array
     {
         $received = false;
+        $nearMiss = [];
         foreach ($forecast->years as $year) {
             if (($year->incomeBySource['means_tested_benefit'] ?? Money::zero())->isPositive()) {
                 $received = true;
-                break;
+            }
+            $message = self::firstWarning($year, WarningCode::PENSION_CREDIT_NEAR_MISS);
+            if ($message !== null && $nearMiss === []) {
+                $nearMiss[] = "In {$year->calendarYear}: {$message}";
             }
         }
-        if (! $received) {
+        if (! $received && $nearMiss === []) {
             return null;
         }
 
         return [
+            'awarded' => $received,
+            'nearMiss' => $nearMiss,
             'howToClaim' => [
                 'Apply online at gov.uk/pension-credit, or call the Pension Credit claim line on 0800 99 1234 (textphone 0800 169 0133), Monday to Friday, 8am to 6pm.',
                 'You can apply from 4 months before you reach State Pension age, and a claim can be backdated up to 3 months if you were already eligible — so claim as soon as you qualify.',

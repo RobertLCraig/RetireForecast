@@ -6,7 +6,9 @@ namespace RetireForecast\FinanceEngine\Forecast;
 
 use InvalidArgumentException;
 use LogicException;
+use RetireForecast\FinanceEngine\Benefits\CapitalAssessment;
 use RetireForecast\FinanceEngine\Benefits\PensionCreditCalculator;
+use RetireForecast\FinanceEngine\Benefits\PensionCreditResult;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Care\CareMeansTest;
 use RetireForecast\FinanceEngine\Dto\AccountType;
@@ -92,6 +94,8 @@ final class PathProjector
 
     private readonly PensionCreditCalculator $pensionCredit;
 
+    private readonly CapitalAssessment $capitalAssessment;
+
     private readonly InheritanceTaxCalculator $iht;
 
     private readonly CareMeansTest $careMeans;
@@ -102,6 +106,7 @@ final class PathProjector
         $this->ni = new NationalInsuranceCalculator($config);
         $this->statePension = new StatePensionCalculator($config);
         $this->pensionCredit = new PensionCreditCalculator($config);
+        $this->capitalAssessment = new CapitalAssessment($config);
         $this->iht = new InheritanceTaxCalculator($config);
         $this->careMeans = new CareMeansTest($config);
     }
@@ -1092,7 +1097,15 @@ final class PathProjector
         // household's appropriate minimum guarantee, credited as income before any shortfall
         // is funded — so a sale that turns the exempt home into assessable capital (raising the
         // tariff income) erodes it in-projection, the downsizing trap made visible.
-        $benefitNominal = $this->meansTestedBenefitNominal($household, $state, $alive, $calendarYear, $ages, $taxablePerPerson, $aliveCount, $meansTestExcluded);
+        $pensionCreditAward = $this->pensionCreditAward($household, $state, $alive, $calendarYear, $ages, $taxablePerPerson, $aliveCount, $meansTestExcluded);
+        $benefitNominal = $pensionCreditAward === null
+            ? 0
+            : $pensionCreditAward->guaranteeCreditWeekly->pence * $this->config->statePension->weeksPerYear;
+        // The two contingency disclosures the award itself cannot carry (board card 0046), built
+        // HERE so they read the same capital and the same award the means test above was settled
+        // on — the year's assets are drawn down and its surplus banked further below, and a
+        // warning computed off that later state would describe a different household.
+        $benefitWarnings = $this->benefitContingencyWarnings($household, $state, $pensionCreditAward, $benefitNominal > 0);
         $netCashNominal += $benefitNominal;
         $grossIncomeNominal += $benefitNominal;
         $src['means_tested_benefit'] += $benefitNominal;
@@ -1489,6 +1502,7 @@ final class PathProjector
                 ...$this->unfundedOneOffWarnings($oneOffs, $unmetOneOffNominal, $m),
                 ...$this->tenancyUpFrontWarnings($oneOffs, $rentChargedNominal, $m),
                 ...$this->rentReferencingWarnings($rentChargedNominal, $grossIncomeNominal, $m),
+                ...$benefitWarnings,
             ],
             mortgageBalance: $m($state['mortgageOutstanding']),
             nominal: $nominal,
@@ -1500,7 +1514,13 @@ final class PathProjector
     }
 
     /**
-     * Pension Credit Guarantee Credit for the household this year, as annual nominal pence.
+     * This year's Pension Credit Guarantee Credit assessment, or null when the qualifying-age
+     * gate blocks it outright. The caller annualises the weekly award; the whole result is
+     * returned rather than that one figure because the assessment carries what the year has to
+     * DISCLOSE as well as what it pays ({@see benefitContingencyWarnings} — a near miss reads the
+     * income against the guarantee, and recomputing that beside the award would be a second
+     * definition of the same test).
+     *
      * It tops the household's assessable income up to the appropriate minimum guarantee
      * (single or couple, plus the severe-disability addition when the household qualifies —
      * a single disabled member, or a couple where both are disabled — and the carer addition
@@ -1522,7 +1542,7 @@ final class PathProjector
      *                                                      means test, not income (a death-in-service
      *                                                      lump sum): taxed as income, assessed as capital
      */
-    private function meansTestedBenefitNominal(Household $household, array $state, array $alive, int $calendarYear, array $ages, array $taxablePerPerson, int $aliveCount, array $excludedFromAssessable = []): int
+    private function pensionCreditAward(Household $household, array $state, array $alive, int $calendarYear, array $ages, array $taxablePerPerson, int $aliveCount, array $excludedFromAssessable = []): ?PensionCreditResult
     {
         $weeksPerYear = $this->config->statePension->weeksPerYear;
 
@@ -1534,7 +1554,7 @@ final class PathProjector
                 continue;
             }
             if ($calendarYear < $state['spaYear'][$person->id]) {
-                return 0;
+                return null;
             }
             $assessableAnnual += $taxablePerPerson[$person->id] - ($excludedFromAssessable[$person->id] ?? 0);
             // A paused (deferred) State Pension is still assessable income for Pension Credit — count
@@ -1582,20 +1602,71 @@ final class PathProjector
 
         $assessableIncomeWeekly = Money::fromPence((int) round($assessableAnnual / $weeksPerYear));
 
-        // Assessable capital = liquid wealth, plus — when the home is LET (the household lives
-        // elsewhere) — its equity, because a let property is not the exempt main residence. So
-        // letting it out erodes Pension Credit and can cross the £16k cliff, just as selling does.
+        $applicableBase = $this->pensionCredit->applicableAmountWeekly($aliveCount === 2, $severeDisability, $carer);
+        $applicableWeekly = Money::fromPence((int) round($applicableBase->pence * $state['spFactor']));
+
+        return $this->pensionCredit->award($applicableWeekly, $assessableIncomeWeekly, $this->meansTestAssessableCapital($household, $state));
+    }
+
+    /**
+     * Assessable capital for the pension-age means test: liquid wealth, plus — when the home is
+     * LET (the household lives elsewhere) — its equity, because a let property is not the exempt
+     * main residence. So letting it out erodes Pension Credit and can cross the £16k cliff, just
+     * as selling does.
+     *
+     * One definition, two readers: the Pension Credit tariff and the capital-cliff warning are
+     * assessed on the same figure, so the award and the disclosure beside it cannot disagree.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function meansTestAssessableCapital(Household $household, array $state): Money
+    {
         $capitalPence = $this->sum($state['cash']) + $this->sum($state['gia']) + $this->sum($state['isa']);
         if ($household->primaryResidence?->isLet) {
             $capitalPence += max(0, $state['property'] - $state['mortgageOutstanding']);
         }
-        $capital = Money::fromPence($capitalPence);
 
-        $applicableBase = $this->pensionCredit->applicableAmountWeekly($aliveCount === 2, $severeDisability, $carer);
-        $applicableWeekly = Money::fromPence((int) round($applicableBase->pence * $state['spFactor']));
+        return Money::fromPence($capitalPence);
+    }
 
-        return $this->pensionCredit->award($applicableWeekly, $assessableIncomeWeekly, $capital)
-            ->guaranteeCreditWeekly->pence * $weeksPerYear;
+    /**
+     * What this year's means test has to DISCLOSE beyond the award itself (board card 0046).
+     *
+     * Two things, and each was a promise the app was not keeping. The capital cliff — capital
+     * above the Housing Benefit / Council Tax Support limit ends both — is built by
+     * {@see CapitalAssessment} and, until this collected it, was discarded by its only caller,
+     * although METHODOLOGY.md told the reader it was flagged. And a household sitting just above
+     * the guarantee is shown nothing at all, when it is the one a caseworker most wants a nil
+     * claim from: the engine models Guarantee Credit alone and applies no income disregards, so at
+     * that distance its own simplifications can be the whole of the gap.
+     *
+     * The cliff is assessed in EVERY year, not only from pension age: the £16,000 limit applies to
+     * working-age Housing Benefit too, and a plan that frees equity before State Pension age would
+     * otherwise cross it in silence.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  ?PensionCreditResult  $award  null when the qualifying-age gate blocked the award
+     *                                       entirely (so there is no near miss to report)
+     * @return list<Warning>
+     */
+    private function benefitContingencyWarnings(Household $household, array $state, ?PensionCreditResult $award, bool $onGuaranteeCredit): array
+    {
+        $warnings = $this->capitalAssessment
+            ->assess($this->meansTestAssessableCapital($household, $state), $onGuaranteeCredit)
+            ->warnings;
+
+        if ($award !== null && $award->isNearMiss()) {
+            $warnings[] = new Warning(
+                WarningCode::PENSION_CREDIT_NEAR_MISS,
+                'Assessable income of '.$award->assessableIncomeWeekly->format().' a week is only just above the '
+                .$award->applicableAmountWeekly->format().' a week this household would be topped up to, so the '
+                .'forecast awards no Pension Credit. It is within '.PensionCreditResult::nearMissMarginDescription()
+                .' of the line, and this forecast models Guarantee Credit only, with no income disregards — so the '
+                .'difference can be smaller in reality than it is here.',
+            );
+        }
+
+        return $warnings;
     }
 
     /**
@@ -2618,7 +2689,7 @@ final class PathProjector
             // Remaining pension - last resort. On Guarantee Credit this is the ONLY pension step:
             // capital comes first precisely so the credit is not clawed back pound for pound.
             // NOTE what the model does NOT do: this year's award was already assessed in
-            // {@see meansTestedBenefitNominal}, from the income known BEFORE the shortfall is
+            // {@see pensionCreditAward}, from the income known BEFORE the shortfall is
             // funded, and nothing here writes back. So no ad-hoc draw - taxed or tax-free -
             // reduces the award, in this year or any later one. A v1 simplification, and the
             // un-cautious side: in life a drawdown draw is assessable income and would cut the

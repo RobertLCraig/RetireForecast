@@ -17,6 +17,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use Tests\Support\BuilderStateFixture;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
@@ -49,6 +50,21 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('Sell & rent')
             ->assertDontSee('Stay put')
             ->assertSee('%');
+    }
+
+    public function test_the_contingent_income_panel_and_claim_prompt_render_on_the_results_page(): void
+    {
+        // Board card 0046, the WIRING half: a Blade directive can fail to compile silently, so the
+        // two new panels are proved to reach a rendered page. Which side of the floor the credit
+        // falls on is settled by IncomeFloorTest, not here: this fixture renders both tables, so
+        // seeing the label proves nothing about where it is counted.
+        $scenario = ScenarioFixture::fromState($this->user, BuilderStateFixture::minimalValid());
+
+        Livewire::test(ScenarioResults::class, ['scenario' => $scenario])
+            ->assertSee('Income the forecast counts, but nobody guarantees')
+            ->assertSee('Pension Credit')
+            ->assertSee('How to claim Pension Credit')
+            ->assertSee('backdated up to 3 months');
     }
 
     public function test_the_results_page_shows_the_withdrawal_sequencing_panel(): void

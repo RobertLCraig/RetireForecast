@@ -20,19 +20,27 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
  * reaches the £16,000 limit. This is the downsizing trap: selling the home turns an
  * exempt asset into assessable capital that can both create tariff income and end
  * housing support.
+ *
+ * The one exception is a household actually being paid Guarantee Credit: it is passported to
+ * both, with no upper capital limit, so pass $onGuaranteeCredit and no cliff is reported.
  */
 final class CapitalAssessment
 {
     public function __construct(private readonly TaxYearConfig $config) {}
 
-    public function assess(Money $assessableCapital): CapitalAssessmentResult
+    public function assess(Money $assessableCapital, bool $onGuaranteeCredit = false): CapitalAssessmentResult
     {
         $params = $this->config->benefits;
 
         $tariffWeekly = $this->tariffIncomeWeekly($assessableCapital);
 
-        // Housing support stops once capital exceeds the upper limit.
-        $housingSupportEligible = $assessableCapital->lessThanOrEqual($params->housingSupportUpperCapitalLimit);
+        // Housing support stops once capital exceeds the upper limit — EXCEPT for a household
+        // being paid Guarantee Credit, which is passported to Housing Benefit and Council Tax
+        // Reduction with no upper capital limit at all. Getting that edge wrong is the worse of
+        // the two errors available here: it tells a household on the lowest income in the model
+        // that its savings have ended help it is in fact still entitled to.
+        $housingSupportEligible = $onGuaranteeCredit
+            || $assessableCapital->lessThanOrEqual($params->housingSupportUpperCapitalLimit);
 
         $warnings = [];
         if (! $housingSupportEligible) {

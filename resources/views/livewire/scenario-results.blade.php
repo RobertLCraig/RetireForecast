@@ -850,6 +850,41 @@
                 </div>
                 </details>
             @endif
+
+            {{-- Contingent income, reported beside the floor and deliberately outside every total
+                 above (board card 0046). Pension Credit is means-tested: it has to be claimed, and
+                 it moves with income, capital and a change of circumstances. Counting it in the
+                 guaranteed floor said "covered for life" about money that may never arrive. --}}
+            @if ($incomeFloor['contingent'])
+                <div class="mt-4 rounded-md border border-gray-200 bg-white p-4">
+                    <h3 class="text-base font-semibold text-gray-900">Income the forecast counts, but nobody guarantees</h3>
+                    <p class="mt-1 text-sm text-gray-600">
+                        On top of the secure income above, this year's forecast also spends
+                        <strong>{{ $incomeFloor['contingentIncome'] }}</strong> of means-tested help. It is
+                        <strong>not part of the secure figure</strong>, because it has to be claimed and it can stop
+                        or shrink: it moves with your income, with your savings, with a change of circumstances and
+                        with a review.
+                    </p>
+                    <table class="mt-3 w-full text-sm">
+                        <caption class="sr-only">Contingent income by source in {{ $incomeFloor['year'] }}</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col" class="{{ $th }}">Contingent income source</th>
+                                <th scope="col" class="{{ $th }} text-right">Per year</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($incomeFloor['contingent'] as $c)
+                                <tr>
+                                    <th scope="row" class="{{ $td }} text-left font-medium">{{ $c['label'] }}</th>
+                                    <td class="{{ $td }} text-right">{{ $c['amount'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+
             <p class="mt-3 text-xs text-gray-500">
                 @if ($incomeFloor['fullyCovered'])
                     Essential spending here is fully met by income that does not rely on your savings lasting. Any discretionary spending on top draws on your pots, which the forecast tests.
@@ -906,8 +941,15 @@
 
             @if ($pensionCredit)
                 <div class="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm">
-                    <h3 class="font-semibold text-blue-900">How to claim your Pension Credit</h3>
-                    <p class="mt-1 text-blue-800">This forecast counts Pension Credit in your secure income above. It's <strong>means-tested, so it has to be claimed</strong> — it isn't paid automatically, and it's one of the most under-claimed benefits, so it's worth acting on.</p>
+                    <h3 class="font-semibold text-blue-900">How to claim Pension Credit</h3>
+                    @if ($pensionCredit['awarded'])
+                        <p class="mt-1 text-blue-800">This forecast spends Pension Credit as contingent income, shown separately above rather than as part of your secure income. It's <strong>means-tested, so it has to be claimed</strong> — it isn't paid automatically, and it's one of the most under-claimed benefits, so it's worth acting on.</p>
+                    @else
+                        <p class="mt-1 text-blue-800">This forecast awards you <strong>no</strong> Pension Credit, but your income comes close to the line, so it is still worth putting a claim in and letting the DWP decide. We model the Guarantee Credit only, and we apply none of the disregards a real assessment does, so the real gap can be smaller than the one here.</p>
+                    @endif
+                    @foreach ($pensionCredit['nearMiss'] as $why)
+                        <p class="mt-2 text-xs text-blue-700">{{ $why }}</p>
+                    @endforeach
                     <ul class="mt-2 list-disc space-y-1 pl-5 text-blue-800">
                         @foreach ($pensionCredit['howToClaim'] as $step)
                             <li>{{ $step }}</li>

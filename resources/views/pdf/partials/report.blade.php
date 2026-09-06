@@ -552,6 +552,21 @@
                 </tbody>
             </table>
         @endif
+        @if ($incomeFloor['contingent'])
+            <h3>Income the forecast counts, but nobody guarantees</h3>
+            <p>On top of the secure income above, this year's forecast also spends
+                <strong>{{ $incomeFloor['contingentIncome'] }}</strong> of means-tested help. It is not part of the
+                secure figure, because it has to be claimed and it can stop or shrink: it moves with your income,
+                with your savings, with a change of circumstances and with a review.</p>
+            <table>
+                <thead><tr><th>Contingent income source</th><th class="num">Per year</th></tr></thead>
+                <tbody>
+                    @foreach ($incomeFloor['contingent'] as $source)
+                        <tr><td>{{ $source['label'] }}</td><td class="num">{{ $source['amount'] }}</td></tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
         @if ($incomeFloor['survivor'])
             @php($sv = $incomeFloor['survivor'])
             <h3>What happens to this floor at the first death</h3>
@@ -590,10 +605,21 @@
                 a recommendation.</p>
         @endif
         @if ($pensionCredit)
-            <h3>How to claim your Pension Credit</h3>
-            <p>This forecast counts Pension Credit in your secure income above. It's <strong>means-tested, so it has
-                to be claimed</strong> — it isn't paid automatically, and it's one of the most under-claimed
-                benefits, so it's worth acting on.</p>
+            <h3>How to claim Pension Credit</h3>
+            @if ($pensionCredit['awarded'])
+                <p>This forecast spends Pension Credit as contingent income, shown separately above rather than as
+                    part of your secure income. It's <strong>means-tested, so it has to be claimed</strong> — it
+                    isn't paid automatically, and it's one of the most under-claimed benefits, so it's worth acting
+                    on.</p>
+            @else
+                <p>This forecast awards you <strong>no</strong> Pension Credit, but your income comes close to the
+                    line, so it is still worth putting a claim in and letting the DWP decide. We model the Guarantee
+                    Credit only, and we apply none of the disregards a real assessment does, so the real gap can be
+                    smaller than the one here.</p>
+            @endif
+            @foreach ($pensionCredit['nearMiss'] as $why)
+                <p class="note">{{ $why }}</p>
+            @endforeach
             <ul>
                 @foreach ($pensionCredit['howToClaim'] as $step)
                     <li>{{ $step }}</li>

@@ -50,6 +50,39 @@ final class InputNotesTest extends TestCase
         ))->forecast($household, AssumptionSetLibrary::default(), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'));
     }
 
+    public function test_the_capital_cliff_is_surfaced_as_a_note_naming_the_year_it_starts(): void
+    {
+        // Board card 0046. METHODOLOGY.md told the reader that losing Housing Benefit and Council
+        // Tax Support above the capital limit IS flagged, while nothing in the app collected the
+        // warning the engine built. Every sell-and-rent plan parks a large sum, so this reaches
+        // most of the plans the tool exists to compare.
+        $state = [
+            'householdName' => 'Cliff', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1953-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
+            // £300/wk is above the single guarantee, so no Guarantee Credit is in payment and the
+            // passport carve-out (a household on the credit keeps both) does not apply here.
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '300']],
+            'accounts' => [['id' => 'a1', 'ownerId' => 'p1', 'type' => 'cash', 'balance' => '180000']],
+            'expenseLines' => [['id' => 'e', 'amount' => '20000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ];
+
+        $notes = $this->notes($state);
+        $kinds = array_column($notes, 'kind');
+        $this->assertContains('capital_cliff', $kinds);
+
+        $text = $notes[array_search('capital_cliff', $kinds, true)]['text'];
+        $this->assertStringContainsString('2026', $text, 'the note names the year the cliff starts');
+        $this->assertStringContainsString('Housing Benefit', $text);
+
+        // The same household under the limit gets no note: a disclosure that always fires is noise.
+        // Spending is raised above their income too, so the savings are drawn down rather than
+        // added to: a household that banks a surplus every year crosses the limit on its own.
+        $state['accounts'] = [['id' => 'a1', 'ownerId' => 'p1', 'type' => 'cash', 'balance' => '9000']];
+        $state['expenseLines'] = [['id' => 'e', 'amount' => '30000', 'category' => 'essential']];
+        $this->assertNotContains('capital_cliff', array_column($this->notes($state), 'kind'));
+    }
+
     public function test_a_spending_smile_is_surfaced_as_a_note_naming_the_reference_person(): void
     {
         // Born 1958 ⇒ age 68 in 2026; discretionary spend steps £8k → £3k from age 78 (a "smile").
@@ -554,6 +587,10 @@ final class InputNotesTest extends TestCase
     public function test_a_sensible_household_raises_no_notes(): void
     {
         // Employed retiring in the future, normal longevity ⇒ nothing to flag (no noise).
+        // Spending is set close to the household's income deliberately: this fixture used to bank
+        // most of a £40,000 salary and pass £16,000 of savings by 2027, which the capital-cliff
+        // note added by board card 0046 correctly reports. A household with something to flag is
+        // the wrong fixture for a test about a household with nothing to flag.
         $notes = $this->notes([
             'householdName' => 'Fine', 'region' => 'england_wales_ni',
             'people' => [
@@ -565,7 +602,7 @@ final class InputNotesTest extends TestCase
                 ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230'],
                 ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '230'],
             ],
-            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '38000', 'category' => 'essential']],
             'expense' => ['survivorFactor' => '70'],
         ]);
 

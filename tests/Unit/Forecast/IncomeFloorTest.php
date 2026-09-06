@@ -180,6 +180,55 @@ final class IncomeFloorTest extends TestCase
         $this->assertNull($floor['cliff']);
     }
 
+    public function test_pension_credit_is_reported_as_a_contingent_line_outside_the_secure_floor(): void
+    {
+        // Board card 0046. A low-income couple whose State Pension is topped up by Pension Credit.
+        // The credit is NOT secure: it has to be claimed, it moves with income, capital and a
+        // change of circumstances, and around a third of eligible households never claim it at
+        // all. Counting it inside the guaranteed floor told this household that essentials it may
+        // never receive a penny towards were covered for life.
+        $forecast = $this->forecast([
+            'householdName' => 'Credit', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'dob' => '1953-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'dob' => '1953-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '120'],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '120'],
+            ],
+            'expenseLines' => [['id' => 'e', 'amount' => '20000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]);
+        $floor = ResultPresenter::incomeFloor($forecast);
+
+        $this->assertNotNull($floor);
+        $this->assertNotContains('Pension Credit', array_column($floor['sources'], 'label'));
+        // It is reported, not dropped: a contingent line of its own beside the secure ones.
+        $this->assertContains('Pension Credit', array_column($floor['contingent'], 'label'));
+
+        // The mature year the floor is read at, found the same way the readout finds it: the last
+        // year in which everyone is still alive.
+        $mature = null;
+        foreach ($forecast->years as $year) {
+            if ($year->aliveCount === count($year->ages)) {
+                $mature = $year;
+            }
+        }
+        $this->assertNotNull($mature);
+        $credit = $mature->incomeBySource['means_tested_benefit'];
+        $this->assertTrue($credit->isPositive(), 'this household really is awarded Pension Credit');
+        $this->assertSame($credit->format(), $floor['contingentIncome']);
+
+        // Reconciliation: secure income is the sum of the guaranteed sources in that same year,
+        // and the credit is in neither that total nor the coverage it drives.
+        $secure = Money::zero();
+        foreach (['defined_benefit', 'state_pension', 'other_taxable', 'tax_free_income'] as $source) {
+            $secure = $secure->plus($mature->incomeBySource[$source] ?? Money::zero());
+        }
+        $this->assertSame($secure->format(), $floor['secureIncome']);
+    }
+
     public function test_tax_free_income_is_counted_in_the_secure_floor(): void
     {
         // A tax-free income stream (e.g. DLA) must be counted as secure — the exact class of

@@ -5,10 +5,31 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-06. The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-06 (card 0046). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0032 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **Pension Credit is no longer counted as guaranteed, and two disclosures that never fired now
+  fire.** Card 0046. `SECURE_SOURCES` had listed `means_tested_benefit` beside the State Pension, so
+  the readout answering "are my essentials covered for life" counted money that has to be claimed,
+  that around a third of eligible pensioner households never claim, and that moves with income,
+  capital, circumstances and a review. It moves to a sibling `CONTINGENT_SOURCES` and is reported in
+  full in a panel of its own (results page and PDF), outside every total the floor reports. The
+  claim prompt now opens on PROXIMITY as well as on an award: `PensionCreditResult::isNearMiss()`
+  owns the rule, `NEAR_MISS_MARGIN_BPS` owns the figure (10% of the guarantee, a judgement with no
+  published source, deliberately not a builder control, written up at
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) section 22), and `PathProjector` raises a
+  `PENSION_CREDIT_NEAR_MISS` warning the presenter quotes. The capital-cliff warning
+  `CapitalAssessment` had always built, and whose only caller read the tariff and discarded the
+  object, is collected at last: assessed on the SAME capital the tariff was, surfaced once as an
+  input note naming the first year it bites. `assess()` takes `$onGuaranteeCredit` and reports no
+  cliff for a household on the credit, which is passported with no upper capital limit. **No
+  `ENGINE_VERSION` bump and no stored re-run is owed:** both new flags are warnings and
+  `housingSupportEligible` had no reader but the warning. Built in a worktree, so the contingent
+  panel, the rewritten prompt and the cliff note **have not been seen in a browser**. The gap this
+  did NOT close is card **0110**: the forecast still credits Pension Credit whether or not anybody
+  claimed it, which for an unclaimed award overstates income and, since card 0045, quietly pays
+  Support for Mortgage Interest too.
 - **The cheapest borrowing a pensioner can get is finally in the engine.** Card 0045. Support for
   Mortgage Interest appeared nowhere in the code, the config or the board, while the tool's whole
   subject is an unaffordable secured debt in later life and its comparison already prices lifetime

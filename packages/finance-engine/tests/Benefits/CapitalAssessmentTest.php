@@ -54,6 +54,19 @@ final class CapitalAssessmentTest extends TestCase
         $this->assertSame([], $result->warnings);
     }
 
+    public function test_guarantee_credit_passports_housing_support_past_the_capital_limit(): void
+    {
+        // Board card 0046. Guarantee Credit passports Housing Benefit and Council Tax Reduction
+        // with no upper capital limit, so the same £50,000 that ends them for everybody else ends
+        // nothing here, and the household must not be told otherwise.
+        $result = $this->assessment()->assess(Money::fromPounds(50_000), onGuaranteeCredit: true);
+
+        $this->assertTrue($result->housingSupportEligible);
+        $this->assertSame([], $result->warnings);
+        // The tariff is unaffected: it is what produced the award in the first place.
+        $this->assertSame(8_000, $result->tariffIncomeWeekly->pence);
+    }
+
     public function test_pension_credit_tariff_has_no_upper_limit_even_when_housing_support_is_lost(): void
     {
         // Pension Credit still applies a tariff above £16,000, even though housing

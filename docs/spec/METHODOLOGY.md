@@ -160,18 +160,29 @@ surprise:
 - **Capital tariff:** the first £10,000 of savings is ignored; above that, every £500 (or part) is
   treated as £1 a week of income.
 - **The £16,000 cliff:** Housing Benefit and Council Tax Support stop once savings exceed £16,000.
-  (Pension Credit itself has no upper capital limit.)
+  (Pension Credit itself has no upper capital limit.) The forecast flags the first year your
+  assessable capital is above the limit, as a note on your inputs. **One exception:** a household
+  actually being paid Guarantee Credit is passported to both with no upper capital limit, so it is
+  never told its savings have ended them.
 - **Pension Credit** (Guarantee Credit) is calculated **every year of the projection**: the minimum
   guarantee for a single person or couple, less your assessable income and capital tariff. Both
   members must be over State Pension age (a mixed-age couple gets nothing). Assessable capital
   includes the equity of a **let** former home — so selling or letting your home can erode the credit
   dynamically, year by year.
+- **Pension Credit is contingent, not secure.** The results page reports it beside the guaranteed
+  income floor, never inside it. It has to be claimed, around a third of eligible pensioner
+  households never claim it, and once claimed it moves with income, with capital, with a change of
+  circumstances and with a review. The claim prompt is also shown to a household that receives
+  **nothing**, when its assessable income is within **10%** of the guarantee: this tool models the
+  Guarantee Credit alone and applies no income disregards, so at that distance its own
+  simplifications can be the whole of the gap, and only the DWP can settle entitlement.
 
 The severe-disability addition applies where the household qualifies — a single disabled pensioner, or a
 couple where **both** partners receive a qualifying disability benefit (a non-disabled partner blocks it) —
 and a carer addition where a partner cares for a disabled partner. Not modelled: Savings Credit (Guarantee
 Credit only); Housing Benefit / Council Tax Support are never *awarded*, only their loss above £16,000 is
-flagged; the carer addition is supported by the engine but not yet exposed as a builder input.
+flagged (and not flagged at all for a household on Guarantee Credit, which keeps both); the carer
+addition is supported by the engine but not yet exposed as a builder input.
 
 ### Support for Mortgage Interest
 

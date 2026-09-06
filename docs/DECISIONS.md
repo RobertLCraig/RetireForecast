@@ -3,6 +3,48 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-06: Pension Credit is contingent income, and the claim prompt fires on proximity
+**Context:** card 0046 (expert panel 2026-08-19, Citizens Advice findings 4 and 5, adviser finding
+1). Three faults, one root: the app treated a means-tested benefit as though it were a pension.
+
+**Decision 1: Pension Credit leaves the secure-income floor and is reported beside it as
+contingent.** `ResultPresenter::SECURE_SOURCES` listed it alongside the State Pension, so the
+readout that answers "are my essentials covered for life" counted money that has to be claimed,
+that around a third of eligible pensioner households never claim, and that moves with income, with
+capital, with a change of circumstances and with a review. It is still reported, in full, in a
+`CONTINGENT_SOURCES` line of its own on the results page and in the PDF: dropping it would have
+been the opposite error, since the projection really does spend it. It is outside every total the
+floor reports.
+
+**Decision 2: the claim prompt fires on PROXIMITY to the line, not on a positive award.**
+`pensionCreditGuidance()` returned nothing unless some year carried an award, so the household
+sitting just above the guarantee, the exact one a caseworker most wants a nil claim from, was shown
+nothing at all. The engine now flags such a year (`WarningCode::PENSION_CREDIT_NEAR_MISS`) and the
+prompt reads the flag, quoting the engine's own sentence rather than restating its rule. The margin
+is 10% of the guarantee, a judgement with no published source: see ASSUMPTIONS.md section 22 for
+why 10%, why the cautious direction is to prompt too often, and why it is deliberately not a
+builder control. **No projected figure moves with it.**
+
+**Decision 3: the capital-cliff warning is collected, and it does not fire for a household on
+Guarantee Credit.** `CapitalAssessment::assess()` had always built the warning and its only caller
+read the tariff and threw the object away, while METHODOLOGY.md told the reader the loss of Housing
+Benefit and Council Tax Support above the capital limit was flagged. It is the mirror image of the
+no-invisible-figures rule: a disclosure the docs promised and the app never made, on every
+sell-and-rent plan. `PathProjector` now collects it, assessed on the SAME capital figure the
+Pension Credit tariff was, and surfaces it once as an input note naming the first year it bites.
+The rule as coded was also wrong at the edge: Guarantee Credit passports both with no upper capital
+limit, so `assess()` takes `$onGuaranteeCredit` and reports no cliff for that household. Getting
+that edge wrong is the worse of the two errors available, because it tells the household on the
+lowest income in the model that its savings ended help it is in fact still entitled to.
+
+**No `ENGINE_VERSION` bump and no stored re-run is owed.** Nothing here changes a projected figure:
+the cliff and near-miss flags are warnings, and `housingSupportEligible` had no reader but the
+warning itself. Every stored scenario is byte-identical.
+
+**What this does not do:** it does not model whether the household has actually claimed. The
+forecast still credits Pension Credit to everyone the means test entitles, which for an unclaimed
+award overstates income for as long as it goes unclaimed. Making the claim an input is card 0110.
+
 ## 2026-09-06: Support for Mortgage Interest is modelled as a second charge, not as income
 **Context:** card 0045 (expert panel 2026-08-19, Citizens Advice finding 3). SMI appeared nowhere in
 the engine, the config or the board, while the tool's whole subject is an unaffordable secured debt

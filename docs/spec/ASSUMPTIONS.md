@@ -387,6 +387,18 @@ cash **−0.5%**.
    is capped at the interest actually charged that year, so a rolled-up lifetime mortgage that
    charges no cash interest is met nothing. Board card **0109** carries pinning both figures and
    revisiting both calls.
+22. **The Pension Credit near-miss margin, 10% of the guarantee (added 2026-09-06; live on
+   `Benefits\PensionCreditResult::NEAR_MISS_MARGIN_BPS`).** Board card 0046. It decides when a
+   household awarded nothing is still shown the claim prompt, and it is a JUDGEMENT with no
+   published source behind it, because there is no DWP figure for "close": the real test is
+   entitlement and only the DWP can settle it. **No projected figure moves with it.** It is sized
+   to what this engine knowingly leaves out of the assessment (Savings Credit, every income
+   disregard, the housing elements), any one of which can be the whole of a small gap. On the
+   2026/27 rates it is about £24 a week for a single pensioner and £36 for a couple. It is
+   deliberately NOT a builder control, unlike the modelling defaults above: widening it costs the
+   reader a paragraph, and narrowing it can cost them a benefit they were entitled to, so the
+   cautious direction is to prompt too often. The margin is quoted in the prompt itself, read from
+   the constant that owns it.
 
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
