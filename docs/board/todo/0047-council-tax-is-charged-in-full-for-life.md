@@ -117,3 +117,50 @@ workflow rather than a defect. Left alone, and no card raised.
 
 Still owed and unchanged: the browser check on the two new builder inputs and the two new result
 notes, which a worktree cannot do.
+
+### 2026-09-06 review (v20260906183724-b383)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 266s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I traced each criterion to real code.
+
+**#1 own cost line** ÔÇö `Property::$annualCouncilTax` sits beside `$runningCosts` (`packages/finance-engine/src/Dto/Property.php`), is charged by `PathProjector::councilTaxNominal` and reported by `YearResult::councilTax`. Test `test_council_tax_is_its_own_cost_line_beside_maintenance_and_insurance` exists.
+
+**#2 single-person discount** ÔÇö `CouncilTax::liabilityAnnual` takes a `$singleOccupant` flag; `PathProjector::councilTaxNominal` passes `$aliveCount === 1`. Charged after, not before, the survivor spend factor, so the card's actual bug is fixed. Test exists.
+
+**#3 Council Tax Reduction** ÔÇö `CouncilTax::reductionAnnual` uses the Pension Credit award (passport, capital limit, 20% taper on income above the applicable amount). Gated on `$award !== null`, so pension-age only. Test exists.
+
+**#4 disabled band** ÔÇö record half: `ScenarioBuilder` rules/blank state `property.councilTaxDisabledBand` ÔåÆ `HouseholdAssembler` maps to `CouncilTaxBand`; test `test_the_council_tax_bill_and_a_disabled_band_reduction_reach_the_property`. Apply half: `CouncilTaxBand::reducedNinths` used in `CouncilTax::liabilityAnnual`; test `test_a_disabled_band_reduction_charges_the_band_below`.
+
+I tried to break it and could not. The renting gap (`homeSold` charges nothing) is real but is card 0112, not this card.
+
+VERDICT: sound
+
+**scope: defect**
+
+Findings (scope lens):
+
+**Over the fence / grew:** nothing crossed into Pension Credit. `Benefits\CouncilTax::reductionAnnual` only *reads* `PensionCreditResult`; the calculator is untouched. Fence held.
+
+**Half done ÔÇö the split was never done in the demo.** The card's first task is "split council tax out of `runningCosts`". In `app/Demo/DemoScenario.php`, `baseState()`, `runningCosts` stays `'5000'` and `'councilTax' => '2200'` is added *beside* it. The old `Property` docblock defined `runningCosts` as maintenance + insurance + **council tax**, so the demo household now pays its council tax twice: essential spend rises about ┬ú2,200 a year against the demo everyone opens first. Same shape in `tests/Support/HouseholdFixture.php` `household()` and `tests/Support/BuilderStateFixture.php` `full()` (6,400 + 2,100), which is why no test catches it.
+
+**Declared, not hidden:** the four statutory figures are stated with no `verified_on` (card 0111), a renter is charged no council tax at all (card 0112), and the browser check is still owed. All three are written on the card, so they are deferrals, not creep.
+
+VERDICT: defect
+
+**breakage: defect**
+
+Findings, lens = breakage.
+
+**1. PLSA benchmark loses the bill.** `ResultPresenter::plsaBenchmark()` builds comparable spend from `expenseProfile` plus `primaryResidence->runningCosts` only. Council tax is now a separate field and is never added back, so a user who does what the new `council_tax_bundled` note tells them (move the bill out of running costs into the Council tax box) sees comparable spend drop by the whole bill and can fall a PLSA tier. Silent, and no test builds a split bill against the benchmark.
+
+**2. A bought home is charged council tax twice.** `HousingComparison::newHomeRunningCosts()` falls back to 1% of value, and `ResultPresenter::assumedFigures()` and the computed-figure note both describe that figure as covering "maintenance, insurance and council tax". The new property then also copies `annualCouncilTax` across. Both notes are now false, and on the fallback path the bill is charged inside upkeep and again as its own line.
+
+**3. Care is not occupancy.** `PathProjector::councilTaxNominal()` reads `aliveCount === 1`. A partner in permanent care is a disregarded person, so the survivor at home is charged the couple's rate. No test builds it.
+
+VERDICT: defect
+
