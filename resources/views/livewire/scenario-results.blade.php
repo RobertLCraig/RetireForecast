@@ -1173,7 +1173,7 @@
                 <div class="rounded-md bg-gray-50 p-4">
                     <dt class="text-sm text-gray-500">Sheltered by allowances</dt>
                     <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">£{{ number_format($iht['secondDeath']['nrb'] + $iht['secondDeath']['rnrb']) }}</dd>
-                    <dd class="mt-1 text-xs text-gray-500">nil-rate band £{{ number_format($iht['secondDeath']['nrb']) }}{{ $iht['secondDeath']['rnrb'] > 0 ? ' + residence band £'.number_format($iht['secondDeath']['rnrb']) : '' }}.</dd>
+                    <dd class="mt-1 text-xs text-gray-500">nil-rate band £{{ number_format($iht['secondDeath']['nrb']) }}{{ $iht['secondDeath']['rnrb'] > 0 ? ' + residence band £'.number_format($iht['secondDeath']['rnrb']) : '' }}.{{ $iht['secondDeath']['downsizingAddition'] ? ' £'.number_format($iht['secondDeath']['downsizingAddition']).' of the residence band is added back because this plan sells a home (the downsizing addition), which stops selling up throwing the band away.' : '' }}</dd>
                 </div>
                 <div class="rounded-md bg-gray-50 p-4">
                     <dt class="text-sm text-gray-500">Inheritance Tax due</dt>

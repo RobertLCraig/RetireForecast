@@ -774,6 +774,13 @@ from the original plan, flagged inline:
   default on; unlocks the residence nil-rate band). Computed in nominal pounds at the death year (frozen bands
   bite = real fiscal drag), deflated to real; pensions enter the estate only from April 2027. Completeness-
   tested (`InheritanceTaxForecastTest`: the toggle bites, relationship status changes it). See DECISIONS 2026-07-04.
+  **Extended 2026-09-07 (card 0053):** a home SOLD during the plan is recorded as
+  **`Household::$formerResidenceDisposal`** (a `Dto\ResidenceDisposal`, its net value and its year),
+  set by the year-0 sell transforms in `HousingComparison` and by the in-projection forced sale in
+  `PathProjector` (which keeps it on `state['residenceDisposal']`). The final death then claims the
+  statutory **downsizing addition**, reported apart on `IhtResult::$downsizingAddition` so a
+  residence band shown beside no house can be accounted for. It is DERIVED, never entered: there is
+  no builder field, so a disposal made before the base year is not modelled.
 - **Planned fields never materialised:** `DcPension::crystallisedValue`,
   `StatePensionEntitlement` `spa_override` + `triple_lock_assumption` (SPA computes from DOB;
   the triple-lock factor lives in the projector). Kept here rather than in the entity tables

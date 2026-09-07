@@ -44,6 +44,7 @@ class IhtPanelTest extends TestCase
             Money::fromPounds($tax),
             $pensions,
             $warnings,
+            Money::zero(),
         );
     }
 

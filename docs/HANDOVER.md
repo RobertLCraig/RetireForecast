@@ -5,10 +5,32 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-07 (card 0052). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-07 (card 0053). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0035 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **Selling the home no longer deletes the residence nil-rate band.** Card 0053. The band was
+  capped at the home owned AT DEATH, so a sell-and-rent plan died owning nothing and got a band of
+  nil while a sell-and-buy-cheaper plan was capped at the cheaper home: every downsizing option was
+  penalised by tax the statute is written to prevent, on the one comparison this tool exists to
+  run. A sale is now a recorded fact (`Dto\ResidenceDisposal`, the household's own interest in the
+  home less what was secured on it, plus the year), set by `HousingComparison` for both year-0 sell
+  variants and by `PathProjector` at a forced sale, which keeps it on `state['residenceDisposal']`.
+  `InheritanceTaxCalculator::downsizingAddition()` is the one home of the rule: the lost band is
+  `min(disposal, max band) - min(home at death, max band)`, capped at the non-home assets passing
+  to descendants, and the TAPERED allowance is then the ceiling on the home and the addition
+  together. That last order is what leaves everything else alone: with no disposal the expression
+  collapses to what the calculator already had, so a stay-put plan is byte-identical and
+  `GoldenMasterTest` did not redden. **Every stored sell plan that models Inheritance Tax paid too
+  much**, by up to £70,000 a band, so its estate is understated. `ENGINE_VERSION` is
+  `finance-engine/rnrb-downsizing-addition` and the **stored-scenario re-run is owed**. The rule is
+  **STATED, not verified** (no web in this session): see [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md)
+  (§26), carded as **0125**. Built in a worktree, so the new results copy and the PDF line **have
+  not been seen in a browser**. Two gaps carded rather than fixed: **0124**,
+  `HousingComparison::rentSettings()` rebuilds `ForecastSettings` by hand and drops six fields, so
+  the rent leg models no Inheritance Tax at all whatever the reader chose (this card's test had to
+  supply its own settings to see the criterion); and **0126**, a home sold BEFORE the base year has
+  no builder field, so a household that already downsized gets no addition and is not told why.
 - **A shortfall now says what kind of bill it is, and a failing plan is pointed at free debt help.**
   Card 0052. `ResultPresenter::priorityDebtGuidance()` owns the framing and rides the ladder array
   as `priorityDebt`, so the results page and the PDF carry the same words beside the same

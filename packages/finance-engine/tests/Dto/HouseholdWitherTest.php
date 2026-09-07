@@ -20,6 +20,7 @@ use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
+use RetireForecast\FinanceEngine\Dto\ResidenceDisposal;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
@@ -54,6 +55,7 @@ final class HouseholdWitherTest extends TestCase
             relationshipStatus: RelationshipStatus::Cohabiting,
             capitalReceipts: [new CapitalReceipt('p1', 'Gift', Money::fromPounds(10_000), 2030)],
             realisedGainsAtStart: ['p1' => Money::fromPounds(1_000)],
+            formerResidenceDisposal: new ResidenceDisposal(Money::fromPounds(400_000), 2026),
         );
     }
 

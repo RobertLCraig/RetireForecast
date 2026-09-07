@@ -59,7 +59,17 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-07 (pension-credit-additions-per-entitlement): the two Pension Credit additions
+     * Bumped 2026-09-07 (rnrb-downsizing-addition): selling the home no longer deletes the residence
+     * nil-rate band. A home disposed of during the plan (a year-0 sell variant or an in-projection
+     * forced sale) is recorded, and the part of the band it would have sheltered is restored at the
+     * final death as the statutory downsizing addition
+     * (`InheritanceTaxCalculator::downsizingAddition`), capped at the non-home assets passing
+     * to direct descendants and held under the tapered allowance. Any stored plan that SELLS its
+     * home and models Inheritance Tax pays too MUCH tax under an earlier stamp, by up to £70,000 a
+     * band, so the estate it leaves is understated and the whole comparison had a thumb on the
+     * scale against downsizing. A plan that stays put, or that does not model Inheritance Tax, is
+     * byte-identical. See board card 0053.
+     * Previous bump 2026-09-07 (pension-credit-additions-per-entitlement): the two Pension Credit additions
      * are now decided by ENTITLEMENT rather than by a single flag. The severe-disability and carer
      * additions ride the CARE side of a disability award, so an award recorded as mobility-only or
      * as the lowest rate care component ({@see DisabilityAwardRate}) buys neither, where the bare
@@ -252,7 +262,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/pension-credit-additions-per-entitlement';
+    public const ENGINE_VERSION = 'finance-engine/rnrb-downsizing-addition';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

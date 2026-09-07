@@ -13,6 +13,7 @@ use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Property;
+use RetireForecast\FinanceEngine\Dto\ResidenceDisposal;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\PenceSplit;
@@ -331,7 +332,7 @@ final class HousingComparison
             ]
             : null;
 
-        return $this->withHousing($household, $newProperty, $outcome->surplus, $interest, $accounts, $oneOffCost, $realisedGains, $receipts);
+        return $this->withHousing($household, $newProperty, $outcome->surplus, $interest, $accounts, $oneOffCost, $realisedGains, $receipts, $this->disposalOf($household, $action, $settings));
     }
 
     private function rentVariant(Household $household, Money $netProceeds, HousingAction $action, ForecastSettings $settings): Household
@@ -354,7 +355,28 @@ final class HousingComparison
             : null;
 
         // No property; all proceeds invested.
-        return $this->withHousing($household, null, $netProceeds, oneOffCost: $oneOffCost);
+        return $this->withHousing($household, null, $netProceeds, oneOffCost: $oneOffCost, formerResidenceDisposal: $this->disposalOf($household, $action, $settings));
+    }
+
+    /**
+     * The sale of the CURRENT home, recorded as the disposal the Inheritance Tax downsizing
+     * addition is computed from. Both sell variants dispose of it at the base date, so both record
+     * it; only "stay put" has no disposal at all.
+     *
+     * The value is the household's own interest in the home: its share of the sale price less the
+     * debt secured on it, both already scaled to that share by {@see HousingProceeds}. Selling
+     * costs and CGT are NOT deducted, because this is a valuation of the interest disposed of and
+     * not the cash it produced, and it is measured on the same net-of-secured-debt basis the
+     * estate values a home on at death.
+     */
+    private function disposalOf(Household $household, HousingAction $action, ForecastSettings $settings): ResidenceDisposal
+    {
+        $proceeds = $this->saleProceeds($household, $action);
+
+        return new ResidenceDisposal(
+            Money::fromPence(max(0, $proceeds->salePrice->pence - $proceeds->outstandingMortgage->pence)),
+            $settings->baseYear,
+        );
     }
 
     private function rentSettings(ForecastSettings $settings, AssumptionSet $assumptions, HousingAction $action): ForecastSettings
@@ -415,11 +437,15 @@ final class HousingComparison
      * receipts — a purchase part-funded by a same-year receipt passes the list REDUCED by what it
      * spent, so the projector credits only the money that actually reached the bank.
      *
+     * $formerResidenceDisposal records the sale of the OLD home, so the estate at death can claim
+     * the Inheritance Tax downsizing addition; without it a sell plan is taxed as though the
+     * residence nil-rate band had simply been thrown away.
+     *
      * @param  array{atAge: int, amount: Money, label: string}|null  $oneOffCost
      * @param  array<string, Money>  $realisedGains
      * @param  list<CapitalReceipt>|null  $capitalReceipts
      */
-    private function withHousing(Household $household, ?Property $property, Money $investedCash, ?Money $mortgageInterest = null, ?array $accounts = null, ?array $oneOffCost = null, array $realisedGains = [], ?array $capitalReceipts = null): Household
+    private function withHousing(Household $household, ?Property $property, Money $investedCash, ?Money $mortgageInterest = null, ?array $accounts = null, ?array $oneOffCost = null, array $realisedGains = [], ?array $capitalReceipts = null, ?ResidenceDisposal $formerResidenceDisposal = null): Household
     {
         $accounts ??= $household->accounts;
         if ($investedCash->isPositive()) {
@@ -461,6 +487,7 @@ final class HousingComparison
             relationshipStatus: $household->relationshipStatus,
             capitalReceipts: $capitalReceipts ?? $household->capitalReceipts,
             realisedGainsAtStart: $realisedGains,
+            formerResidenceDisposal: $formerResidenceDisposal,
         );
     }
 }

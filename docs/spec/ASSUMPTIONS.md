@@ -475,6 +475,28 @@ cash **−0.5%**.
    which is right for a real break in residence and wrong for a short hospital stay this engine
    cannot see.
 
+26. **The Inheritance Tax downsizing addition (added 2026-09-07; lives on
+   `Iht\InheritanceTaxCalculator::downsizingAddition`).** Board card 0053. Where a qualifying
+   former residence was disposed of on or after **8 July 2015** and the home left at death is
+   smaller or gone, the part of the residence nil-rate band the former home would have used is
+   restored, capped at the value of the non-home assets passing to direct descendants, and the
+   tapered allowance is the ceiling on the home and the addition together. It is a **STATUTORY
+   rule, not an economic assumption**, it is **STATED, not verified** (the unattended session that
+   added it had no web access, so nothing carries a verified_on date), and it **DOES reach a
+   projection**: every sell plan's Inheritance Tax moves. Board card **0125** carries pinning it to
+   a primary source; the rule is Inheritance Tax Act 1984 ss.8FA to 8FE, inserted by Finance Act
+   2016 s.93 and Schedule 15, with the gov.uk guidance at
+   https://www.gov.uk/guidance/inheritance-tax-residence-nil-rate-band
+
+   Three v1 simplifications follow, all flagged in code. The statute expresses the lost band as
+   PERCENTAGES of the maximum band at the disposal date and at death; the engine subtracts pence
+   instead, which is the same number and exact here because one frozen band is in force for a whole
+   run. Where a plan disposes of more than one home (a year-0 sale followed by a forced sale of the
+   home bought with the proceeds) the MOST RECENT disposal is the one used, where the statute lets
+   personal representatives choose. And the disposal carries a year, not a date, so the 8 July 2015
+   gate is stated rather than resolved; the engine models no disposal before its own base year, so
+   the gate can never be the deciding test.
+
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees

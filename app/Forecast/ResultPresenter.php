@@ -259,6 +259,13 @@ final class ResultPresenter
                 'estate' => self::pounds($second->totalEstate),
                 'nrb' => self::pounds($second->nilRateBandUsed),
                 'rnrb' => self::pounds($second->residenceNilRateBandUsed),
+                // The part of that band restored because the plan SOLD a home (the downsizing
+                // addition). Reported apart, and null when there is none, because a residence
+                // nil-rate band shown beside no house is otherwise a figure the reader cannot
+                // account for. Read off the engine's own field, never recomputed.
+                'downsizingAddition' => $second->downsizingAddition->isPositive()
+                    ? self::pounds($second->downsizingAddition)
+                    : null,
                 'taxable' => self::pounds($second->taxableEstate),
                 'tax' => self::pounds($second->tax),
             ],

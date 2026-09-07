@@ -26,6 +26,7 @@ use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\PensionReliefMethod;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
+use RetireForecast\FinanceEngine\Dto\ResidenceDisposal;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
@@ -336,7 +337,12 @@ final class PathProjector
             }
         }
 
-        $state['ihtSecondDeath'] = $this->computeDeathIht($estate, spousallyExempt: false, multiplier: $married ? 2 : 1, homeToDescendants: $settings->homeToDescendants, deathYear: $deathYear, cumInflation: $cumInflation);
+        // The downsizing addition rides on the SAME condition as the residence band itself: it
+        // restores what the band would have sheltered, and the band is only in play where the
+        // estate passes to direct descendants. A plan leaving nothing to children gets neither.
+        $disposal = $settings->homeToDescendants ? ($state['residenceDisposal'] ?? null) : null;
+
+        $state['ihtSecondDeath'] = $this->computeDeathIht($estate, spousallyExempt: false, multiplier: $married ? 2 : 1, homeToDescendants: $settings->homeToDescendants, deathYear: $deathYear, cumInflation: $cumInflation, formerResidenceDisposal: $disposal);
     }
 
     /**
@@ -346,7 +352,7 @@ final class PathProjector
      * outcome. A spousally-exempt death (a married couple's first death) is £0 with a note. Unused
      * pension pots enter the estate only from April 2027 (the enacted rule).
      */
-    private function computeDeathIht(EstateValuation $estate, bool $spousallyExempt, int $multiplier, bool $homeToDescendants, int $deathYear, float $cumInflation): IhtResult
+    private function computeDeathIht(EstateValuation $estate, bool $spousallyExempt, int $multiplier, bool $homeToDescendants, int $deathYear, float $cumInflation, ?ResidenceDisposal $formerResidenceDisposal = null): IhtResult
     {
         $includePensions = $deathYear >= self::PENSIONS_IN_ESTATE_FROM_YEAR;
 
@@ -365,10 +371,11 @@ final class PathProjector
                     'Everything passes to the surviving spouse or civil partner, so no Inheritance Tax '
                     .'is due on the first death (the spouse exemption); their unused allowances carry over.',
                 )],
+                downsizingAddition: Money::zero(),
             );
         } else {
             $homeToDesc = $homeToDescendants ? $estate->homeEquity : Money::zero();
-            $result = $this->iht->compute($estate->estateExcludingPensions, $estate->pensionValue, $includePensions, $homeToDesc, $multiplier);
+            $result = $this->iht->compute($estate->estateExcludingPensions, $estate->pensionValue, $includePensions, $homeToDesc, $multiplier, $formerResidenceDisposal);
         }
 
         return $this->deflateIht($result, 1.0 / $cumInflation);
@@ -392,6 +399,7 @@ final class PathProjector
             tax: $r($result->tax),
             pensionsIncluded: $result->pensionsIncluded,
             warnings: $result->warnings,
+            downsizingAddition: $r($result->downsizingAddition),
         );
     }
 
@@ -612,6 +620,11 @@ final class PathProjector
             // A forced sale (MortgageMaturityAction::ForcedSale) sells the home in the redemption
             // year, mid-projection, then the household rents. Flips true at that event.
             'homeSold' => false,
+            // The former main home this plan has disposed of, driving the Inheritance Tax
+            // downsizing addition at the final death. Seeded from the household because the
+            // year-0 sell transforms sell BEFORE the projector runs (HousingComparison hands it a
+            // household that already holds the proceeds), and overwritten by a forced sale.
+            'residenceDisposal' => $household->formerResidenceDisposal,
             'annuities' => $annuities, // planned/active lifetime annuities bought from DC pots
             'careRealTotal' => 0, // accumulated real (today's money) care cost incurred on this path
             // Years so far in the CURRENT local-authority-funded care spell, per person. Drives the
@@ -1251,6 +1264,18 @@ final class PathProjector
             // the mortgage rather than added to the redeemed balance, because HousingProceeds
             // decomposes the sale and a second, differently-owed debt inside its `mortgage` line
             // would report a mortgage the household does not have.
+            // Record the disposal for the Inheritance Tax downsizing addition BEFORE the charges
+            // are cleared: the value that counts is the household's own interest in the home at
+            // the moment it was sold — its share of the price less everything secured on it, the
+            // same net basis the estate values a home on at death. A later disposal REPLACES an
+            // earlier one (a year-0 sale followed by a forced sale on the home bought with the
+            // proceeds): the statute allows one addition, computed from a single qualifying
+            // disposal, and the most recent one is the one the estate's own history ends on.
+            $state['residenceDisposal'] = new ResidenceDisposal(
+                Money::fromPence(max(0, $proceeds->salePrice->pence - $proceeds->outstandingMortgage->pence - $state['smiBalance'])),
+                $calendarYear,
+            );
+
             $netAfterCharge = max(0, $proceeds->netProceeds->pence - $state['smiBalance']);
             $state['smiBalance'] = 0;
 

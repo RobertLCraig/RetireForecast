@@ -30,5 +30,12 @@ final class IhtResult
         public readonly Money $tax,
         public readonly bool $pensionsIncluded,
         public readonly array $warnings,
+        /**
+         * The part of $residenceNilRateBandUsed that comes from the downsizing addition rather
+         * than from a home still owned at death. Reported apart because it is the whole reason a
+         * plan with no home, or a cheaper one, still gets a band: a reader shown a residence
+         * nil-rate band beside no house has to be able to see where it came from.
+         */
+        public readonly Money $downsizingAddition,
     ) {}
 }

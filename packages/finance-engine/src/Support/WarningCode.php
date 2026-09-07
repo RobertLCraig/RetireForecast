@@ -42,6 +42,14 @@ final class WarningCode
     public const IHT_SPOUSE_EXEMPTION = 'iht_spouse_exemption';
 
     /**
+     * Part of the residence nil-rate band was restored as a DOWNSIZING ADDITION: the plan sold a
+     * home during its life, so the band that home would have sheltered is added back rather than
+     * lost. Raised so a reader shown a residence band beside a smaller home, or no home at all,
+     * can see where the figure came from.
+     */
+    public const IHT_DOWNSIZING_ADDITION = 'iht_downsizing_addition';
+
+    /**
      * A one-off CAPITAL cost (an unfunded home purchase, a mortgage redeemed from capital) could
      * not be funded in the year it falls. Raised on that year so the lump is named and findable,
      * rather than only depressing a spending probability that reads as a whole-plan failure.

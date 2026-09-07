@@ -50,6 +50,13 @@ final class Household
         // The projector charges the CGT in year 0 and counts the gain against that year's
         // annual exempt amount, so a year-0 disposal is taxed exactly once, never silently.
         public readonly array $realisedGainsAtStart = [],
+        // The former main home this plan has already SOLD at the base date — set only by the
+        // housing sell transforms ({@see \RetireForecast\FinanceEngine\Housing\HousingComparison}),
+        // which hand the projector a household that has no home, or a cheaper one, and no record
+        // of the sale. It is the fact the Inheritance Tax downsizing addition is computed from, so
+        // without it every sell plan is taxed as though the residence nil-rate band were simply
+        // thrown away. See {@see ResidenceDisposal}.
+        public readonly ?ResidenceDisposal $formerResidenceDisposal = null,
     ) {}
 
     /**
@@ -144,6 +151,7 @@ final class Household
             $this->relationshipStatus,
             $capitalReceipts ?? $this->capitalReceipts,
             $this->realisedGainsAtStart,
+            $this->formerResidenceDisposal,
         );
     }
 
