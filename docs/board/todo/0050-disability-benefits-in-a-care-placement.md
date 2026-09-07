@@ -100,3 +100,50 @@ criteria do not depend on it, so they are ticked and the Task is not.
 
 Built in a worktree, so the new builder option, the new type label and the new result note **have
 not been seen in a browser**.
+
+### 2026-09-07 review (v20260907055054-2504)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 241s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+Checked each criterion against the code.
+
+**AC #1 ÔÇö record care and mobility separately.** Real. `IncomeStreamType` has both `DisabilityBenefit` ('disability_benefit', the care part) and `DisabilityBenefitMobility`, and `isTaxFreeBenefit()` covers both. The builder select in `resources/views/livewire/scenario-builder.blade.php` offers both, `ScenarioBuilder::rules()` accepts both, and `HouseholdAssembler::incomeStream()` forces both tax-free. Labels exist in `ResultPresenter::INCOME_STREAM_LABELS` and `WhatIfChanges`.
+
+**AC #2 ÔÇö self-funder: care in, mobility out.** Real. In `PathProjector::projectYear()` the care leg passes `assessableAnnualIncome: ... + $careComponentPerPerson[...]` into `CareMeansTest::annualCharge()`. Mobility is never added, so it is disregarded by construction. A self-funder gets no suspension, so the full care component is assessed.
+
+**AC #3 ÔÇö LA-funded: stop care, keep mobility.** Real. `PathProjector::disabilityCareComponentFractions()` settles funding from `CareMeansTest::assess()->selfFunder`, and `DisabilityBenefitInCare::payableFraction()` pays 28/365 in the first funded year and nothing later. `projectYear()` scales only the `DisabilityBenefit` stream; mobility stays inside the untouched tax-free total.
+
+I tried to break it on home care (care fees are residential only, per `PathDraws::careAnnualCost()`), double counting, and scope ÔÇö none held.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Scope findings**
+
+**Grew past the card.** `PathProjector::pensionCreditAward()` now also drops the Pension Credit **carer** addition for a partner, using the same `$inFundedCarePlacement` list. The card asked for one thing only: "Clear `receivesDisabilityBenefit` for the severe disability addition while suspended." The carer addition is a second benefit rule, changing awards for the partner, and it carries no source either. It is disclosed in the commit body, not hidden, but it is still work the card did not ask for and did not test as its own case.
+
+**Left half done.** `ScenarioForecaster::ENGINE_VERSION` is bumped to `finance-engine/disability-award-split-in-care`, and the same docblock says a stored-scenario re-run "is owed". It was not done in this commit. Stored results now sit under the old stamp, which is one of the defects `scenarios:audit` exits non-zero on.
+
+**Left half done (declared).** Task 5 is unticked: `DisabilityBenefitInCare::PAYMENT_STOP_DAYS` has no `source` or `verified_on`, against the project hard rule. Carded as 0118 with a stated reason, so this is a deferral, not a hidden gap.
+
+**No fence crossing.** `PathProjector::careAssessableCapital()` is untouched, so card 0055 (property disregard, deferred payments) was not entered.
+
+VERDICT: defect
+
+**breakage: defect**
+
+Two callers/paths were not brought along.
+
+**1. The year's funding answer is settled before the home sale, then contradicted by it.**
+`PathProjector` (the year body): `disabilityCareComponentFractions()` reads `careAssessableCapital()` near the top of the year; the forced-sale block later in the same year sets `$state['homeSold']` and banks the net proceeds into each living owner's GIA; the care charge then calls `careAssessableCapital()` again. For a couple, the home is disregarded on the first read and the proceeds are counted on the second. So one resident can have the care component stopped as local-authority-funded AND be charged as a self-funder in the same year. The docblock's claim that funding status is settled once and three readers "cannot disagree" is made false by that block. No test builds a sale year inside a care spell.
+
+**2. Imported disability income never gets a component.**
+`App\Import\Profiles\PayAndExpenditures::incomeBlock()` still maps a "dla"/"disability" row to type `other`, tax-free. Before the split every tax-free stream behaved alike; now type is load-bearing, so an imported award is assessed for nobody and stops for nobody ÔÇö the original bug, intact on the import path.
+
+VERDICT: defect
+
