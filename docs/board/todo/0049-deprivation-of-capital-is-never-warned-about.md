@@ -99,3 +99,47 @@ watched failing for the reason the criterion describes (no warning raised, no no
 equity-release copy silent, the lump-sum panel silent). The two negative cases, that a quiet plan
 and a small move raise nothing, passed from the first run because nothing raised anything yet;
 they are regression guards on the threshold, not tests that were watched catching a defect.
+
+### 2026-09-07 review (v20260907034749-5bfe)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 243s, run by this job rather than reported by the card.
+
+**acceptance: defect**
+
+Traced each criterion.
+
+**AC #1 ÔÇö mostly satisfied, one real hole.** Engine trigger: `PathProjector::deprivationWarnings` (lump sum + drawdown, capital receipt, labelled one-off, in-projection sale), rendered via `ResultPresenter::inputNotes` as a `capital_deprivation` note and by `LumpSumTaxShock::assess` into `$shock['warnings']`, which `resources/views/livewire/scenario-results.blade.php` renders.
+
+The year-0 home sale does not reach a reader on the plan that most needs it. `ResultPresenter::inputNotes` raises it only when `$housingAction` is non-null, but `App\Livewire\ScenarioResults::render` supplies it through `ResultPresenter::housingActionFor`, which returns the action **only for `buy_outright`** and null for `rent` ÔÇö the sell-and-rent variant. That variant sells at year 0 (`HousingComparison::rentVariant` ÔåÆ `withHousing` with the proceeds already held), so the engine cannot warn either. Result: the largest capital move this tool exists to compare produces no deprivation warning. `DeprivationNoticeTest::test_selling_the_home_at_year_zero_is_warned_about` passes only because it calls `inputNotes` with the raw action, bypassing `housingActionFor`.
+
+**AC #2** ÔÇö met: `Deprivation::giftWithReservation` in the `lifetime_mortgage_rollup` note.
+**AC #3** ÔÇö met: `Deprivation::benefitsCheckPointer`, appended by both `message` and `giftWithReservation`.
+
+VERDICT: defect
+
+**scope: defect**
+
+**Findings (scope lens)**
+
+1. **Task 2 is unfinished and the card is in `ai-review` anyway.** `docs/board/ai-review/0049-...` leaves "Surface it beside the lump-sum output and on the capital and care panels" unticked. `ResultPresenter::careImpactPanel` carries no deprivation line. The build comment says so honestly, but a card with an open task in its own scope is not done ÔÇö it is half done. The lump-sum surface (`LumpSumTaxShock::forScenario`) and the `capital_deprivation` note are there; the care panel is not.
+
+2. **The presenter's year-0 branch swallows later engine warnings.** In `ResultPresenter` (the `capital_deprivation` note block), `$sellsAtYearZero` takes the `if` and the `foreach` over `WarningCode::CAPITAL_DEPRIVATION` sits in the `else`. A plan that sells the home at year 0 *and* takes a large pension lump sum later reports only the sale. This is presenter-side logic the card did not ask for, and it suppresses the engine's own trigger.
+
+No fence breach: `Benefits\Deprivation::giftWithReservation` is prose warning only, and nothing models gifts out, PETs or the seven-year taper (card 0059).
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Finding 1 ÔÇö the sell-and-rent plan is silent, and the test hides it.**
+
+`ResultPresenter::inputNotes` raises the year-0 sale note only from `$housingAction->salePrice`. Every live caller passes `ResultPresenter::housingActionFor($action, $variant)` (`App\Livewire\ScenarioResults::forecastView`, `App\Export\ScenarioReport::payload`, `App\Console\Commands\AuditScenarios`), which returns the action **only for `buy_outright`** and null for `rent`. So on the sell-and-rent strategy the presenter's `$sellsAtYearZero` is false, and the engine cannot help: `PathProjector::deprivationWarnings` only sees `$soldThisYear`, and `HousingComparison::withHousing` already banked the proceeds before year 0. The largest capital move this tool exists to compare raises nothing, on screen and in the PDF.
+
+`Tests\Feature\Forecast\DeprivationNoticeTest::notes` calls `inputNotes` with the raw `$assembler->housingAction(...)` and no variant, so `test_selling_the_home_at_year_zero_is_warned_about` passes on a path no caller uses. The `(c8)` comment claiming the presenter covers the year-0 sale is false for `rent`.
+
+**Finding 2 ÔÇö false positives.** `deprivationWarnings` treats any labelled one-off over the threshold as a move, so `PathProjector`'s own `Mortgage redemption` one-off (and a tenancy deposit) warns about depriving yourself by paying a debt.
+
+VERDICT: defect
+
