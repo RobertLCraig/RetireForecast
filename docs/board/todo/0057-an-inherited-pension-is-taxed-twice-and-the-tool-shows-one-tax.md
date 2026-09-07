@@ -117,3 +117,54 @@ because it is what "assumed marginal rate" means.
 
 Built in a worktree, so the **new builder rate select, the per-pension nomination select, the
 results panel and the PDF lines have not been seen in a browser**.
+
+### 2026-09-07 review (v20260907194739-cbb7)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 282s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I traced all three boxes to real code.
+
+**#1 ÔÇö second tax shown, gated on age 75+.**
+`InheritanceTaxCalculator::beneficiaryIncomeTax` returns zero unless `$deceasedDiedAtOrAfter75`. The flag comes from `PathProjector::settleEstates` / `computeIht` comparing `deathAge` to `BENEFICIARY_TAXED_FROM_AGE`. It reaches the screen via `ResultPresenter::ihtPanel` (`beneficiaryIncomeTax`, `pensionTaxedTwiceTotal`) and is printed in `resources/views/livewire/scenario-results.blade.php` and `resources/views/pdf/partials/report.blade.php`.
+
+**#2 ÔÇö editable rate, adverse default, disclosed.**
+Field `beneficiaryTaxRate` on `App\Livewire\ScenarioBuilder` (validated to 0/20/40/45, saved in `builderState`), read by `ScenarioForecaster::settings`, defaulted by `ForecastSettings::beneficiaryMarginalRate` from `DEFAULT_BENEFICIARY_MARGINAL_RATE_BPS`. Disclosed in `ResultPresenter::assumedFigures` under `beneficiaryMarginalRateIsAssumed`, reading the constant, not restating it.
+
+**#3 ÔÇö nomination drives the exemption.**
+`DcPension::$nominatedBeneficiary` + `nominatedToSpouse()`, captured in `HouseholdAssembler` and the builder's per-pension select, carried in the pot array by `PathProjector`, and used by `InheritanceTaxCalculator::computeFirstDeath`, which holds the pot out of the will/intestacy split and exempts only the spouse-nominated part. Marital status alone no longer exempts it.
+
+I tried to break each one and could not.
+
+VERDICT: sound
+
+**scope: defect**
+
+Scope review of commit 184c007 (the card's own commit; the huge diff above is the whole branch, not this card).
+
+**Left half done ÔÇö and it creates a new double count.**
+`InheritanceTaxCalculator::computeFirstDeath` charges beneficiary income tax on the pot "leaving the household", meaning any pot NOT nominated to the spouse. Its own comment says a spouse-nominated pot is excluded because the projector goes on taxing the survivor's withdrawals from it.
+
+But `PathProjector::settleEstates` still hands **every** pot to the surviving partner, whatever the nomination. So a pot nominated to a child is charged beneficiary income tax at the first death **and** stays in the household, where the survivor's withdrawals are taxed again year by year. The same money is taxed twice by two different mechanisms.
+
+The build carded this as 0133 and called it "a projection change, out of scope". It is not out of scope: this card's own change is what made the split real, and AC#3 says the nomination, not marital status, drives the treatment.
+
+**Fence:** nothing crossed into 0060/0063 decumulation territory.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Finding ÔÇö the "part leaving the household" rule is asserted but not held for a cohabiting couple.**
+
+`InheritanceTaxCalculator::computeFirstDeath` says in its own comment that only the pot *leaving the household* is charged beneficiary income tax, "because a pot inherited by somebody the projector goes on modelling is already taxed on every withdrawal". But it computes `$leavingTheHousehold` from `$nominatedToSpouse`, and that is forced to zero whenever `$spouseSurvives` is false. A cohabiting couple always has `$spouseSurvives` false (`PathProjector::recordFirstDeathIht` gates it on `RelationshipStatus::MarriedOrCivilPartnership`), while `PathProjector::settleEstates` still hands every pot to the surviving partner.
+
+So for any cohabiting couple with Inheritance Tax modelled and a first death at or after 75, the whole pot is charged the beneficiary's income tax *and* stays in the model, where the survivor's withdrawals are taxed again. The comment is false in that case, and `DcPension::nominatedToSpouse()` gives them no way to say the pot goes to their partner (`PensionBeneficiary` offers only spouse/civil partner).
+
+Card 0133 does not cover this: it is about a pot nominated *away*. No test builds a cohabiting couple with a post-75 first death (`InheritanceTaxForecastTest` cohabiting case checks tax only).
+
+VERDICT: defect
+
