@@ -115,3 +115,58 @@ own; the test says so where it does it.
 Also raised, not fixed: **0126**. A disposal made BEFORE the base year has no builder field, so a
 household that downsized in 2020 and comes to this tool in 2026 still gets no addition, and nothing
 tells them the rule was not applied.
+
+### 2026-09-07 review (v20260907114339-f623)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 236s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+All three criteria trace to real code.
+
+**#1 restore the band.** `InheritanceTaxCalculator::downsizingAddition()` computes `min(disposal, maxBand) - min(homeAtDeath, maxBand)`. The disposal reaches it: `HousingComparison::disposalOf()` sets it on the household for both sell variants, `PathProjector::seedState()` copies it to `state['residenceDisposal']`, the forced-sale branch overwrites it, and `PathProjector::recordFinalDeathIht()` passes it to `compute()`. Covered by `RnrbDownsizingAdditionTest::test_a_sell_and_rent_estate_keeps_the_band_as_a_downsizing_addition` and `..._forced_sale_mid_projection_is_a_qualifying_disposal`.
+
+**#2 cap.** Same function, last argument: `totalEstate - homePassingToDescendants`, capped by `Money::min`. Test `..._capped_at_the_non_home_assets_passing_to_descendants`.
+
+**#3 taper order.** `compute()` does `min(rnrbAfterTaper, home + addition)`. The taper ceiling sits over home *plus* addition, so it bites after, not before. The wrong order would be `min(tapered, home) + addition`. Tests `..._taper_caps_the_band_after_the_addition` and `..._taper_can_still_wipe_the_band_out_entirely`.
+
+I tried to break the money basis: `HousingProceeds::compute()` scales price and mortgage to `ownershipShare`, so the disposal is the household's own interest, same basis as home equity at death.
+
+One flag, not a defect of this card: `HousingComparison::rentSettings()` drops `modelIht`, so the app's rent leg still shows no tax. Pre-existing, already carded 0124.
+
+VERDICT: sound
+
+**scope: defect**
+
+Findings, scope lens.
+
+**Over the fence:** nothing. No gifting code was touched, and the UI/warning work is forced by the "no invisible figures" rule, not extra.
+
+**Left half done:**
+
+1. The card's own headline case cannot be seen in the app. `HousingComparison::rentSettings()` does not pass `modelIht`, so the rent leg forecasts with the `false` default and runs no Inheritance Tax at all. The disposal that `HousingComparison::rentVariant()` now records is therefore never read on any rent plan. Criterion #1 is proven only by a test that supplies its own settings. Raising card 0124 records the hole, it does not close it, and the hole is inside this card's stated case.
+
+2. `PathProjector::recordFinalDeathIht()` drops the disposal to null when `homeToDescendants` is false. A sell-and-rent household owns no home, so that flag is the natural one to turn off, and the addition then vanishes with no warning. `InheritanceTaxCalculator::downsizingAddition()` already caps on non-home assets, so the gate is doing work the statute does not ask for.
+
+3. `ScenarioForecaster::ENGINE_VERSION` moved and the stored-scenario re-run is stated as owed, not done.
+
+4. The `source` / `verified_on` task is unticked on a card marked done.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Finding ÔÇö the reported addition can exceed, or exist beside, the band it claims to be part of.**
+
+`InheritanceTaxCalculator::compute()` clips the band (`min($rnrbAfterTaper, home + addition)`) but returns `$downsizingAddition` **raw**, unclipped. `IhtResult::$downsizingAddition`'s docblock says it is "the part of `$residenceNilRateBandUsed` that comes from the downsizing addition". After a taper it is not.
+
+The card's own tests prove it: `test_the_estate_taper_caps_the_band_after_the_addition` has addition ┬ú175,000 with band ┬ú75,000; `test_the_taper_can_still_wipe_the_band_out_entirely` leaves band ┬ú0 with the addition still ┬ú175,000.
+
+That figure is user-facing. `ResultPresenter::ihtPanel()` passes it through, and both `resources/views/livewire/scenario-results.blade.php` and `resources/views/pdf/partials/report.blade.php` hide the band when `rnrb == 0` while still printing "┬ú175,000 of the residence band is added back". A ┬ú2.4m sell-and-rent estate reads: no residence band, ┬ú175,000 added back. That is exactly the unaccountable figure the card was written to remove.
+
+Same root, smaller: `PathProjector::deflateIht()` deflates every money field but carries the warning text, so `IHT_DOWNSIZING_ADDITION` names a nominal death-year amount.
+
+VERDICT: defect
+
