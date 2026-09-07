@@ -607,9 +607,11 @@ final class HouseholdAssembler
     }
 
     /**
-     * The optional annuity purchase on a DC pot: null unless the annuitise toggle is on and the
-     * amount + age are set (so an incomplete toggle silently builds nothing). The rate defaults to
-     * a sourced ~7.2% (level joint-life at 65) and the survivor fraction to 50% for a joint annuity.
+     * The optional annuity purchase on a DC pot OR on a non-pension account: null unless the
+     * annuitise toggle is on and the amount + age are set (so an incomplete toggle silently builds
+     * nothing). The rate defaults to a sourced ~7.2% (level joint-life at 65) and the survivor
+     * fraction to 50% for a joint annuity. Which asset the row belongs to is what decides the tax
+     * treatment, and that is settled by the DTO the purchase is attached to, not here.
      *
      * @param  array<string, mixed>  $p
      */
@@ -633,6 +635,9 @@ final class HouseholdAssembler
             survivorFraction: empty($p['annuityJoint'])
                 ? null
                 : ($this->percent($p['annuitySurvivorFraction'] ?? null) ?? Percent::fromPercent(50)),
+            // A deferred start (blank = income from the purchase age) and the enhanced flag.
+            incomeFromAge: $this->intOrNull($p['annuityIncomeFromAge'] ?? null),
+            enhanced: (bool) ($p['annuityEnhanced'] ?? false),
         );
     }
 
@@ -644,6 +649,9 @@ final class HouseholdAssembler
             balance: $this->moneyRequired($a['balance'] ?? null),
             unrealisedGain: $this->money($a['unrealisedGain'] ?? null),
             yield: $this->percent($a['yield'] ?? null),
+            // Board card 0060: an annuity bought with money that is not pension money. The same
+            // sub-form as a DC pot's, read by the same builder, so the two cannot drift.
+            annuityPurchase: $this->annuity($a),
         );
     }
 

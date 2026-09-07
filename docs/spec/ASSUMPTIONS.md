@@ -632,6 +632,30 @@ cash **−0.5%**.
    standard rate; and the RNRB point against IHTM46000 and the definition of a qualifying
    residential interest.
 
+32. **The purchased life annuity: the exempt capital element and the enhanced uplift** (board card
+   0060; lives in `Pension\PurchasedLifeAnnuity` and `Dto\AnnuityPurchase::ENHANCED_UPLIFT_BPS`).
+   **STATED, not verified** (built without web access). Both reach a projection.
+
+   An annuity bought with money that is not pension money is a purchased life annuity, and only the
+   interest element of each payment is taxable: the rest is the buyer's own capital coming back
+   (ITTOIA 2005 Part 6 Chapter 7). The capital element is the price divided by the buyer's expected
+   remaining life at the age the income starts, and stays FIXED in money for the life of the
+   annuity, so an escalating annuity's exempt proportion falls as its payments grow. Two statements
+   sit behind the model. First, that using the engine's own ONS cohort life expectancy in place of
+   HMRC's prescribed tables is close enough to be useful: those tables are not held here, and no
+   figure may be invented, so a real sourced expectancy stands in for a real prescribed one and the
+   results copy says the tax is an estimate. Second, that an ENHANCED (impaired-life) annuity pays
+   10% more than an ordinary one where the reader gives no quote. The market range runs from a few
+   per cent to roughly a third; 10% is its cautious end, chosen because over-stating income secured
+   for life is the error this tool must not make.
+
+   Neither figure moves any stored scenario: an annuity can only be bought from an account once a
+   reader ticks the new toggle, and no stored account has one.
+
+   **To verify:** the Income Tax (Purchased Life Annuities) Regulations and the prescribed
+   expectation-of-life tables behind the capital element, and a current market range for enhanced
+   annuity uplifts.
+
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees

@@ -26,6 +26,12 @@ final class Account
         public readonly ?Money $unrealisedGain = null,
         public readonly ?Percent $yield = null,
         public readonly ?Money $ongoingContributions = null,
+        // A plan to buy a PURCHASED LIFE ANNUITY with part of THIS account (board card 0060).
+        // The account is the named source: the money leaves this wrapper at the purchase age and
+        // becomes a secured income for life, taxed on its interest element only. Null = no annuity,
+        // which is every account entered before the card. The mirror of
+        // {@see DcPension::$annuityPurchase}, so an annuity has one DTO whichever asset buys it.
+        public readonly ?AnnuityPurchase $annuityPurchase = null,
     ) {}
 
     /**
@@ -44,6 +50,7 @@ final class Account
             unrealisedGain: $unrealisedGain,
             yield: $this->yield,
             ongoingContributions: $this->ongoingContributions,
+            annuityPurchase: $this->annuityPurchase,
         );
     }
 }

@@ -667,45 +667,7 @@
                                     </label>
                                     <p class="mt-1 text-xs text-gray-500">Swap part of the pot for a guaranteed income for life, from a chosen age. The pot falls by the amount used; the annuity then pays that amount × the rate each year (and is taxed as income).</p>
                                     @if ($pension['annuitise'] ?? false)
-                                        <div class="mt-3 grid items-end gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                                            <div>
-                                                <label for="pensions-{{ $i }}-annuityAmount" class="text-xs text-gray-600">Amount to annuitise (£)</label>
-                                                <input id="pensions-{{ $i }}-annuityAmount" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.annuityAmount" class="{{ $field }}">
-                                                @error('pensions.'.$i.'.annuityAmount') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
-                                            </div>
-                                            <div>
-                                                <label for="pensions-{{ $i }}-annuityAtAge" class="text-xs text-gray-600">At age</label>
-                                                <input id="pensions-{{ $i }}-annuityAtAge" type="number" wire:model="pensions.{{ $i }}.annuityAtAge" class="{{ $field }}">
-                                                @error('pensions.'.$i.'.annuityAtAge') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
-                                            </div>
-                                            <div>
-                                                <label for="pensions-{{ $i }}-annuityRate" class="text-xs text-gray-600">Annuity rate (%/yr)</label>
-                                                <input id="pensions-{{ $i }}-annuityRate" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.annuityRate" class="{{ $field }}" placeholder="7.2">
-                                                @error('pensions.'.$i.'.annuityRate') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
-                                                <p class="mt-1 text-xs text-gray-500">Use a real quote for your age/health; ~7.2% is a rough level joint-life-at-65 guide.</p>
-                                            </div>
-                                            <div>
-                                                <label for="pensions-{{ $i }}-annuityEscalation" class="text-xs text-gray-600">Increases</label>
-                                                <select id="pensions-{{ $i }}-annuityEscalation" wire:model="pensions.{{ $i }}.annuityEscalation" class="{{ $field }}">
-                                                    <option value="none">Level (flat £, buys less over time)</option>
-                                                    <option value="rpi">Rises with inflation (RPI)</option>
-                                                    <option value="cpi">Rises with inflation (CPI)</option>
-                                                </select>
-                                            </div>
-                                            <div class="lg:col-span-2">
-                                                <label class="flex items-center gap-2 text-xs text-gray-600">
-                                                    <input type="checkbox" wire:model.live="pensions.{{ $i }}.annuityJoint" class="rounded border-gray-300">
-                                                    Joint life (keeps paying your partner after you die)
-                                                </label>
-                                                @if ($pension['annuityJoint'] ?? false)
-                                                    <div class="mt-1 max-w-xs">
-                                                        <label for="pensions-{{ $i }}-annuitySurvivorFraction" class="text-xs text-gray-600">Partner keeps (% of the income)</label>
-                                                        <input id="pensions-{{ $i }}-annuitySurvivorFraction" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.annuitySurvivorFraction" class="{{ $field }}" placeholder="50">
-                                                        @error('pensions.'.$i.'.annuitySurvivorFraction') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
-                                                    </div>
-                                                @endif
-                                            </div>
-                                        </div>
+                                        @include('livewire.partials.annuity-fields', ['list' => 'pensions', 'row' => $pension])
                                     @endif
                                 </div>
                             @elseif ($pension['subtype'] === 'db')
@@ -900,6 +862,16 @@
                             <input id="accounts-{{ $i }}-yield" type="text" inputmode="decimal" wire:model="accounts.{{ $i }}.yield" class="{{ $field }}">
                         </div>
                         <button type="button" wire:click="removeAccount({{ $i }})" class="mb-2 text-sm text-red-700 underline">Remove</button>
+                        <div class="sm:col-span-5 rounded-md border border-gray-200 p-3">
+                            <label class="flex items-center gap-2 text-sm font-medium text-gray-800">
+                                <input type="checkbox" wire:model.live="accounts.{{ $i }}.annuitise" class="rounded border-gray-300">
+                                Buy an annuity with part of this account
+                            </label>
+                            <p class="mt-1 text-xs text-gray-500">Swap part of this money for a guaranteed income for life. Because it is <strong>not</strong> pension money, this is a <strong>purchased life annuity</strong>: part of every payment is your own capital coming back, so only the interest part of it is taxed. The balance falls by the amount used.</p>
+                            @if ($account['annuitise'] ?? false)
+                                @include('livewire.partials.annuity-fields', ['list' => 'accounts', 'row' => $account])
+                            @endif
+                        </div>
                     </div>
                 @endforeach
                 <button type="button" wire:click="addAccount" class="mt-4 rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100">+ Add account</button>

@@ -25,6 +25,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\AnnuityPurchase;
 use RetireForecast\FinanceEngine\Dto\CouncilTaxBand;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\PensionBeneficiary;
@@ -33,6 +34,7 @@ use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Property\CgtPrivateResidenceCalculator;
 use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
@@ -424,6 +426,10 @@ class ScenarioBuilder extends Component
             'pensions.*.annuityEscalation' => ['nullable', Rule::in(['none', 'rpi', 'cpi'])],
             'pensions.*.annuityJoint' => ['boolean'],
             'pensions.*.annuitySurvivorFraction' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            // A DEFERRED start and the ENHANCED (impaired-health) flag, board card 0060. The income
+            // age is free of the 55 floor a pension carries: this money is already the reader's.
+            'pensions.*.annuityIncomeFromAge' => ['nullable', 'integer', 'min:55', 'max:110'],
+            'pensions.*.annuityEnhanced' => ['boolean'],
             'pensions.*.accruedAnnualPension' => [...$money, 'required_if:pensions.*.subtype,db'],
             'pensions.*.normalRetirementAge' => ['nullable', 'integer', 'min:50', 'max:75', 'required_if:pensions.*.subtype,db'],
             'pensions.*.revaluationBasis' => ['nullable', Rule::in(array_column(self::escalationBases(), 'value'))],
@@ -441,6 +447,18 @@ class ScenarioBuilder extends Component
             'accounts.*.balance' => $moneyReq,
             'accounts.*.unrealisedGain' => $money,
             'accounts.*.yield' => $rate,
+            // Buying a PURCHASED LIFE ANNUITY with this account (board card 0060). The same
+            // sub-form as a DC pot's, but the ages have no minimum-pension-age floor: this is the
+            // reader's own money, so they may buy secured income with it at any age.
+            'accounts.*.annuitise' => ['boolean'],
+            'accounts.*.annuityAmount' => [...$money, 'required_if:accounts.*.annuitise,true'],
+            'accounts.*.annuityAtAge' => ['nullable', 'integer', 'min:0', 'max:110', 'required_if:accounts.*.annuitise,true'],
+            'accounts.*.annuityIncomeFromAge' => ['nullable', 'integer', 'min:0', 'max:110'],
+            'accounts.*.annuityRate' => ['nullable', 'numeric', 'min:0', 'max:30'],
+            'accounts.*.annuityEscalation' => ['nullable', Rule::in(['none', 'rpi', 'cpi'])],
+            'accounts.*.annuityJoint' => ['boolean'],
+            'accounts.*.annuitySurvivorFraction' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'accounts.*.annuityEnhanced' => ['boolean'],
 
             'incomeStreams.*.ownerId' => ['required', Rule::in($ids)],
             'incomeStreams.*.type' => ['required', Rule::in(['rental', 'annuity', 'disability_benefit', 'disability_benefit_mobility', 'other'])],
@@ -955,6 +973,21 @@ class ScenarioBuilder extends Component
                 $this->pensions[$pi] += $this->blankAnnuity() + ['nominatedBeneficiary' => ''];
             }
         }
+
+        // An account can buy an annuity too (board card 0060), stored just as sparsely, so it
+        // needs the same backfill or the sub-form opens on missing keys.
+        foreach ($this->accounts as $ai => $account) {
+            $this->accounts[$ai] += $this->blankAnnuity();
+        }
+    }
+
+    /**
+     * The enhanced-annuity uplift, for the sub-form's own help text. READ from the constant that
+     * owns the figure, never restated, so re-sourcing it moves the screen with it (board card 0060).
+     */
+    public function enhancedAnnuityUplift(): string
+    {
+        return Percent::fromBasisPoints(AnnuityPurchase::ENHANCED_UPLIFT_BPS)->asPercent().'%';
     }
 
     /** Default annuity sub-form fields for a DC pot (rate defaulted to a sourced ~7.2% joint level quote). */
@@ -964,6 +997,10 @@ class ScenarioBuilder extends Component
             'annuitise' => false, 'annuityAmount' => '', 'annuityAtAge' => '',
             'annuityRate' => '7.2', 'annuityEscalation' => 'none',
             'annuityJoint' => false, 'annuitySurvivorFraction' => '50',
+            // Board card 0060: a deferred start age (blank = income starts at the purchase age)
+            // and the enhanced (impaired-health) flag. The same sub-form serves a DC pot and a
+            // non-pension account, so both get all of it.
+            'annuityIncomeFromAge' => '', 'annuityEnhanced' => false,
         ];
     }
 
@@ -1049,16 +1086,19 @@ class ScenarioBuilder extends Component
         // Store the annuity sub-form only when a DC pot is actually being annuitised; otherwise
         // drop the (default) fields, so a scenario predating the feature — and a what-if that
         // changes nothing — records no spurious delta (sparse, like the include flag).
-        $pensions = array_map(static function (array $p): array {
-            if (empty($p['annuitise'])) {
-                unset(
-                    $p['annuitise'], $p['annuityAmount'], $p['annuityAtAge'], $p['annuityRate'],
-                    $p['annuityEscalation'], $p['annuityJoint'], $p['annuitySurvivorFraction'],
-                );
+        // One home for the rule, because an ACCOUNT can buy an annuity too (board card 0060) and
+        // two copies of the key list would drift the moment a field is added to one of them.
+        $sparseAnnuity = function (array $row): array {
+            if (empty($row['annuitise'])) {
+                foreach (array_keys($this->blankAnnuity()) as $key) {
+                    unset($row[$key]);
+                }
             }
 
-            return $p;
-        }, $this->pensions);
+            return $row;
+        };
+        $pensions = array_map($sparseAnnuity, $this->pensions);
+        $accounts = array_map($sparseAnnuity, $this->accounts);
 
         $state = [
             'step' => $this->step,
@@ -1075,7 +1115,7 @@ class ScenarioBuilder extends Component
             'expenseLines' => $expenseLines,
             'oneOffCosts' => $oneOffCosts,
             'pensions' => $pensions,
-            'accounts' => $this->accounts,
+            'accounts' => $accounts,
             'incomeStreams' => $this->incomeStreams,
             'capitalReceipts' => $this->capitalReceipts,
             'hasProperty' => $this->hasProperty,
@@ -1374,7 +1414,7 @@ class ScenarioBuilder extends Component
 
     public function addAccount(): void
     {
-        $this->accounts[] = ['id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'type' => 'isa', 'balance' => '', 'unrealisedGain' => '', 'yield' => ''];
+        $this->accounts[] = ['id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'type' => 'isa', 'balance' => '', 'unrealisedGain' => '', 'yield' => '', ...$this->blankAnnuity()];
     }
 
     public function removeAccount(int $i): void

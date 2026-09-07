@@ -5,10 +5,32 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-07 (card 0059). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-07 (card 0060). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0037 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **Secured income can now be bought with money that is not pension money.** Card 0060. An annuity
+  could only be funded from a DC pot, so a household whose savings sat in cash, an ISA or a general
+  investment account could not buy one at all, and the third option in a two-plan decision (partly
+  annuitise for a much younger spouse) could not be put on the table. `Account::$annuityPurchase`
+  mirrors `DcPension::$annuityPurchase` exactly, so **the account IS the named source**: no owner
+  field to keep in step and one DTO for both kinds of annuity. Funding it from a GIA realises a gain
+  that seeds the same year's CGT charge through the `$seedGains` path a year-0 disposal already
+  uses. `Pension\PurchasedLifeAnnuity` is the one home of the tax split (the exempt capital element
+  is the price over expected remaining life at the age the income starts, FIXED in money for life,
+  so an escalating annuity's exempt proportion falls); it comes off the **income-tax pass and
+  nothing else**, because the money is still received and still assessed by both means tests.
+  `AnnuityPurchase` also gained a deferred `incomeFromAge` (nothing is paid if the annuitant dies
+  inside the deferral) and an `enhanced` flag at `ENHANCED_UPLIFT_BPS` (10%, the cautious end,
+  disclosed). The builder's annuity sub-form is now ONE partial shared by a DC pot and an account.
+  **No `ENGINE_VERSION` bump and no stored re-run is owed:** no stored account has an annuity, so
+  every figure is byte-identical and `GoldenMasterTest` did not redden. Both engine-side figures are
+  **STATED, not verified** (no web in this session): see [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md)
+  (§32), carded as **0136**. Built in a worktree, so the new account sub-form and the two new
+  disclosures **have not been seen in a browser**. The card's fourth Task, a one-click
+  partly-annuitised what-if preset, is **not built**: no acceptance criterion covers it and how much
+  to annuitise at what age is the adviser's question, not a default. A reader can build the same
+  comparison by hand today.
 - **A park home claims no residence band, and a nursing fee is net of what the NHS pays.** Card
   0059. `Property::$isChattelDwelling` is the fact (a park home, mobile home or houseboat: a chattel
   on a rented pitch, not an interest in land) and three methods read it, so nothing restates it:

@@ -3,6 +3,43 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-07: secured income can be bought with money that is not pension money
+**Context:** card 0060 (expert panel 2026-08-19, adviser finding 3). `AnnuityPurchase` could only
+be funded from a defined-contribution pot, so a household whose money sat in cash, an ISA or a
+general investment account could not buy an annuity in this model at all, however much of it there
+was. That ruled out the textbook case for annuitising: a large essential floor, almost no flexible
+spend, a much younger spouse facing a long period alone, and a failure mode that is longevity
+rather than sequence risk.
+
+**Decision: the annuity hangs off the ACCOUNT that pays for it, not off a new household-level
+list.** `Account::$annuityPurchase` mirrors `DcPension::$annuityPurchase` exactly, so the account
+IS the named source: no owner field to keep in step, no second repeater in the builder, and one
+DTO for both kinds of annuity. Which asset it hangs off is what decides the tax treatment, and the
+projector reads that rather than being told twice.
+
+**Decision: the exempt capital element is spread over the ENGINE's own life expectancy, and the
+reader is told the tax is an estimate.** The statute uses tables HMRC prescribes; this engine does
+not hold them and nothing here may invent a table. The ONS cohort expectancy already in the engine
+is a real sourced figure of the same shape, so it stands in, and a disclosure says in as many words
+that the tax on this annuity is an estimate rather than the exact amount. Sourcing the prescribed
+tables is card 0136.
+
+**Decision: the exempt element comes off the INCOME TAX pass and nothing else.** It is still money
+the household receives and still income both the Pension Credit and the care means tests assess, so
+removing it wholesale would have bought a tax exemption and a benefits gain from one rule. One
+line, one reader.
+
+**Decision: a deferred annuity pays nothing at all if the annuitant dies inside the deferral, and
+the rate for the wait is the reader's own.** Value protection is not modelled, which is the adverse
+reading; and a deferred quote pays more, so inventing an uplift for the wait would be a second
+invented figure on top of a rate the reader already supplies.
+
+**Consequence:** nothing stored moves. A purchased life annuity only exists once a reader ticks the
+new toggle on an account, and no stored account has one, so every figure is byte-identical, no
+`ENGINE_VERSION` bump is owed and `GoldenMasterTest` did not redden. The two engine-side figures
+(the enhanced uplift, and the expectancy the exemption is spread over) are STATED, not verified:
+docs/spec/ASSUMPTIONS.md section 32, carded as 0136.
+
 ## 2026-09-07: a park home claims no residence band, and a nursing fee is net of the NHS contribution
 **Context:** card 0059 (expert panel 2026-08-19, estate planner findings 10, 13, 14 and 15). The
 engine passed home equity into the residence nil-rate band whatever the home was, charged a gross

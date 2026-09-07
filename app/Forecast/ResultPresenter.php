@@ -17,6 +17,7 @@ use RetireForecast\FinanceEngine\Benefits\HousingBenefit;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Care\CareAssumptions;
 use RetireForecast\FinanceEngine\Care\DeferredPaymentAgreement;
+use RetireForecast\FinanceEngine\Dto\AnnuityPurchase;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
@@ -991,6 +992,38 @@ final class ResultPresenter
                 .'are the same for nearly all of it, and we have no published figure for the gap in the years before '
                 .'that. It means an RPI pension is modelled slightly LOW rather than slightly high, which is the '
                 .'direction we err in. If your scheme is RPI-linked and you want the difference modelled, say so.';
+        }
+
+        // Two figures the engine supplies for itself when an annuity is bought with money that is
+        // not pension money (board card 0060): the uplift an ENHANCED annuity is assumed to pay,
+        // and the life expectancy the exempt capital element is spread over. Both change how much
+        // secured income the plan shows and how much of it is taxed, and a reader shown neither
+        // could not tell them from figures we invented. Both are READ from the classes that own
+        // them, so re-sourcing either moves this sentence with it.
+        $enhanced = false;
+        $purchasedLife = false;
+        foreach ($household->accounts as $account) {
+            if ($account->annuityPurchase === null) {
+                continue;
+            }
+            $purchasedLife = true;
+            $enhanced = $enhanced || $account->annuityPurchase->enhanced;
+        }
+        if ($enhanced) {
+            $uplift = self::ratePct(Percent::fromBasisPoints(AnnuityPurchase::ENHANCED_UPLIFT_BPS)->asPercent());
+            $out[] = "You marked an annuity as enhanced for impaired health but gave no quote of your own, so we've "
+                ."added {$uplift} to the rate you entered. Insurers price a shortened life expectancy, and the real "
+                .'uplift runs from a few per cent for a mild condition to roughly a third for a serious one. We use '
+                .'the cautious end, because over-stating income that is guaranteed for life is the one error this '
+                .'forecast must not make. A real quote, which costs nothing to obtain, replaces this figure.';
+        }
+        if ($purchasedLife) {
+            $out[] = 'You are buying an annuity with money that is not pension money, so only the interest part of '
+                .'each payment is taxed and the rest is your own capital coming back. How much of it is exempt '
+                .'depends on how long you are expected to live at the age the income starts, and the tax rules set '
+                .'that from tables HMRC publishes. This forecast does not hold those tables: it uses its own '
+                .'ONS-based life expectancy instead, which is close to them but not the same figure, so the tax on '
+                .'this annuity is an estimate rather than the exact amount. It does not change the income itself.';
         }
 
         // How widely the home's value is modelled as swinging. The set's house volatility is an

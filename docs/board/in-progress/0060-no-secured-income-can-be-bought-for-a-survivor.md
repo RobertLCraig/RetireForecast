@@ -28,14 +28,75 @@ Annuity rate sourcing and the tax-free lump sum interaction, which are in card 0
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 THE APP SHALL let an annuity be bought from a named non-pension account.
-- [ ] #2 WHEN an annuity is bought with non-pension money, THE APP SHALL tax only the interest element, using the exempt proportion for the buyer's age.
-- [ ] #3 THE APP SHALL let an annuity purchase be deferred to a chosen age, with income starting later.
-- [ ] #4 THE APP SHALL let an annuity be marked as enhanced for impaired health, at a disclosed uplift.
+- [x] #1 THE APP SHALL let an annuity be bought from a named non-pension account.
+- [x] #2 WHEN an annuity is bought with non-pension money, THE APP SHALL tax only the interest element, using the exempt proportion for the buyer's age.
+- [x] #3 THE APP SHALL let an annuity purchase be deferred to a chosen age, with income starting later.
+- [x] #4 THE APP SHALL let an annuity be marked as enhanced for impaired health, at a disclosed uplift.
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Allow a non-pension source account on `AnnuityPurchase`
-- [ ] Implement the purchased life annuity tax split, sourced and dated
-- [ ] Add a deferred start age and an enhanced-rate flag
+- [x] Allow a non-pension source account on `AnnuityPurchase`
+- [x] Implement the purchased life annuity tax split, sourced and dated
+- [x] Add a deferred start age and an enhanced-rate flag
 - [ ] Add a partially-annuitised what-if variant so it can be compared
+
+## Comments
+
+**2026-09-07**
+RESULT: done
+TESTS: +7 new, all green
+TOUCHED:
+- packages/finance-engine/src/Dto/AnnuityPurchase.php
+- packages/finance-engine/src/Dto/Account.php
+- packages/finance-engine/src/Pension/PurchasedLifeAnnuity.php
+- packages/finance-engine/src/Forecast/PathProjector.php
+- packages/finance-engine/tests/Forecast/PurchasedLifeAnnuityTest.php
+- app/Forecast/HouseholdAssembler.php
+- app/Forecast/ResultPresenter.php
+- app/Livewire/ScenarioBuilder.php
+- resources/views/livewire/scenario-builder.blade.php
+- resources/views/livewire/partials/annuity-fields.blade.php
+- tests/Unit/Forecast/HouseholdAssemblerTest.php
+- tests/Feature/Livewire/ScenarioBuilderTest.php
+- docs/spec/ASSUMPTIONS.md
+- docs/DECISIONS.md
+- docs/HANDOVER.md
+- docs/board/todo/0136-source-the-purchased-life-annuity-tax-and-enhanced-uplift-figures.md
+OUT-OF-SCOPE: 0136
+
+All four criteria are met. The annuity hangs off the ACCOUNT that pays for it
+(`Account::$annuityPurchase`, the exact mirror of `DcPension::$annuityPurchase`), which is what
+makes the account the named source without a second household-level list, an owner field to keep in
+step, or a second annuity DTO. `PathProjector::drawAnnuityPriceFromAccount()` takes the price out of
+that one wrapper only, capped at what is in it, and a GIA sale realises its gain into the same
+`$seedGains` path a year-0 disposal already uses, so the CGT is charged once and shares one annual
+exempt amount.
+
+`Pension\PurchasedLifeAnnuity` is the one home of the tax split. The exempt capital element comes
+off the income-tax pass and NOWHERE else: the money is still received, and still assessable income
+for both the Pension Credit and the care means tests, so removing it wholesale would have bought a
+tax exemption and a benefits gain out of one rule.
+
+What I assumed, both written up at docs/spec/ASSUMPTIONS.md §32 and carded as 0136. The statute
+spreads the capital element over an expectation of life from tables HMRC prescribes; this engine
+holds no copy of them and this session had no web, so it uses the engine's own ONS cohort life
+expectancy, which is a real sourced figure of the same shape rather than an invented table, and a
+results disclosure says the tax on such an annuity is therefore an estimate. The enhanced uplift
+defaults to 10%, the cautious end of a market range running to roughly a third, disclosed by
+`ResultPresenter::assumedFigures()` reading the constant.
+
+Nothing stored moves: a purchased life annuity exists only once a reader ticks the new toggle, so
+every figure is byte-identical, no `ENGINE_VERSION` bump is owed and `GoldenMasterTest` did not
+redden. Built in a worktree, so the new account sub-form and the two disclosures have not been seen
+in a browser.
+
+The fourth Task is left open, and it is the one thing here nobody has decided: a one-click
+partly-annuitised what-if has to pick HOW MUCH of the savings to annuitise and at what age, and
+those are exactly the adviser's question rather than a default an engine may supply. No acceptance
+criterion covers it, and a reader can already build the same comparison by hand on a what-if child
+now that the toggle exists. Raise it as a card of its own if the preset is wanted.
+
+Two smaller calls, both recorded in DECISIONS 2026-09-07. A deferred annuity pays nothing at all if
+the annuitant dies inside the deferral (value protection is not modelled, the adverse reading), and
+no uplift is invented for the wait: a real deferred quote pays more, so the reader enters the rate
+they were quoted.

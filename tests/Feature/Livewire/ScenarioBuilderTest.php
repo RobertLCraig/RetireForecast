@@ -76,6 +76,53 @@ class ScenarioBuilderTest extends TestCase
         $this->assertSame(5000, $dc->annuityPurchase->survivorFraction->basisPoints);
     }
 
+    public function test_an_annuity_bought_from_a_non_pension_account_round_trips_through_the_saved_scenario(): void
+    {
+        // Board card 0060. The screen must be able to say "buy secured income with the cash", or a
+        // household with no pension pot cannot express the one thing that removes a survivor's
+        // longevity risk. Stored sparsely like the pot's, so an untouched account records nothing.
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+
+        $component->call('addAccount')
+            ->set('accounts.0.type', 'cash')
+            ->set('accounts.0.balance', '150000')
+            ->set('accounts.0.annuitise', true)
+            ->set('accounts.0.annuityAmount', '100000')
+            ->set('accounts.0.annuityAtAge', '68')
+            ->set('accounts.0.annuityIncomeFromAge', '72')
+            ->set('accounts.0.annuityRate', '7.2')
+            ->set('accounts.0.annuityEnhanced', true)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $account = Scenario::firstOrFail()->toHousehold()->accounts[0];
+        $this->assertNotNull($account->annuityPurchase, 'the saved scenario should carry the account annuity');
+        $this->assertSame(68, $account->annuityPurchase->atAge);
+        $this->assertSame(72, $account->annuityPurchase->incomeStartAge());
+        $this->assertSame(10_000_000, $account->annuityPurchase->amount->pence);
+        $this->assertTrue($account->annuityPurchase->enhanced);
+    }
+
+    public function test_an_account_that_buys_no_annuity_stores_no_annuity_fields(): void
+    {
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component->call('addAccount')
+            ->set('accounts.0.balance', '150000')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $account = Scenario::firstOrFail()->builder_state['accounts'][0];
+        $this->assertArrayNotHasKey('annuitise', $account);
+        $this->assertArrayNotHasKey('annuityAmount', $account);
+        $this->assertArrayNotHasKey('annuityRate', $account);
+    }
+
     public function test_the_care_cost_toggle_flows_through_to_the_forecast_settings(): void
     {
         $component = Livewire::test(ScenarioBuilder::class);

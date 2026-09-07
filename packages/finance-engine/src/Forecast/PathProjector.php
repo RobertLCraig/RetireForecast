@@ -17,6 +17,7 @@ use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Care\CareMeansTest;
 use RetireForecast\FinanceEngine\Care\DeferredPaymentAgreement;
 use RetireForecast\FinanceEngine\Dto\AccountType;
+use RetireForecast\FinanceEngine\Dto\AnnuityPurchase;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
@@ -41,6 +42,8 @@ use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\PenceSplit;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
+use RetireForecast\FinanceEngine\Pension\PurchasedLifeAnnuity;
 use RetireForecast\FinanceEngine\Pension\WithdrawalKind;
 use RetireForecast\FinanceEngine\Property\AmortisationSchedule;
 use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
@@ -119,6 +122,9 @@ final class PathProjector
     private readonly InheritanceTaxCalculator $iht;
 
     private readonly CareMeansTest $careMeans;
+
+    /** Built on first use only: no path that buys no purchased life annuity ever needs it. */
+    private ?CohortLifeTable $lifeTable = null;
 
     public function __construct(private readonly TaxYearConfig $config)
     {
@@ -627,20 +633,18 @@ final class PathProjector
                 // A planned annuity purchase becomes a pending annuity, bought at its age
                 // from this owner's pots (see processAnnuityPurchases).
                 if ($pension->annuityPurchase !== null) {
-                    $a = $pension->annuityPurchase;
-                    $annuities[] = [
-                        'ownerId' => $pension->ownerId,
-                        'atAge' => $a->atAge,
-                        'amount' => $a->amount->pence,
-                        'rate' => $a->rate->asFraction(),
-                        'escalation' => $a->escalation,
-                        'survivorFraction' => $a->survivorFraction?->asFraction(),
-                        'purchased' => false,
-                        'active' => false,
-                        'baseIncomeNominal' => 0,
-                        'purchaseCumInflation' => 1.0,
-                    ];
+                    $annuities[] = self::annuityState($pension->ownerId, $pension->annuityPurchase, null);
                 }
+            }
+        }
+
+        // The same again for a PURCHASED LIFE ANNUITY: one bought with money that is not pension
+        // money, from the named account it hangs off (board card 0060). Its source wrapper is
+        // carried so the purchase draws on THAT account and its income is taxed on the interest
+        // element only ({@see processAnnuityPurchases}).
+        foreach ($household->accounts as $account) {
+            if ($account->annuityPurchase !== null) {
+                $annuities[] = self::annuityState($account->ownerId, $account->annuityPurchase, $account->type);
             }
         }
 
@@ -1008,10 +1012,11 @@ final class PathProjector
         // reader rather than quietly shrinking what their contributions buy ({@see mpaaWarnings}).
         $mpaaAtYearStart = $state['mpaaTriggered'];
 
-        // Any annuity purchases due this year convert part of a DC pot into a lifetime income
-        // before the year's income is assembled, so the pot is reduced and the annuity pays
-        // from its purchase year.
-        $this->processAnnuityPurchases($state, $yearIndex, $alive, $cumInflation);
+        // Any annuity purchases due this year convert part of a DC pot, or of a named non-pension
+        // account, into a lifetime income before the year's income is assembled, so the source is
+        // reduced and the annuity pays from its purchase year (or from the deferred income age).
+        // Selling a GIA holding to buy one realises a gain, carried to the year's CGT charge below.
+        $annuityGains = $this->processAnnuityPurchases($household, $state, $yearIndex, $calendarYear, $alive, $cumInflation);
 
         // Board card 0050. Attendance Allowance and the DLA care component stop 28 days into a
         // care placement the local authority funds; the mobility component runs on. Settled HERE,
@@ -1117,9 +1122,14 @@ final class PathProjector
         // like other income, paid to the surviving partner at the joint fraction after the
         // annuitant dies. Assigned before the tax pass so it is taxed and counts as assessable
         // income for the Pension Credit test.
-        foreach ($this->annuityIncomeNominal($state, $household, $alive, $cumInflation) as $pid => $annuityAmount) {
-            $taxablePerPerson[$pid] += $annuityAmount;
-            $src['other_taxable'] += $annuityAmount;
+        // The exempt capital element of any purchased life annuity, per person: taken OFF the
+        // income the tax pass sees and nowhere else, so the money is still spendable cash and
+        // still assessable income for both means tests.
+        $annuityExempt = [];
+        foreach ($this->annuityIncomeNominal($state, $household, $alive, $ages, $cumInflation) as $pid => $annuityAmount) {
+            $taxablePerPerson[$pid] += $annuityAmount['income'];
+            $src['other_taxable'] += $annuityAmount['income'];
+            $annuityExempt[$pid] = $annuityAmount['exempt'];
         }
 
         // Employer death-in-service cover: a member who died last year still in employment leaves
@@ -1186,7 +1196,11 @@ final class PathProjector
             // GIA dividends (dividend allowance + rates) stacked on top. The hot loop only
             // needs the total, so use the lean integer twin of compute() (same band core).
             $tax = $this->indexedTotalPence(new TaxableIncome(
-                Money::fromPence($taxable),
+                // Board card 0060: the capital element of a purchased life annuity is a return of
+                // the buyer's own money, so only the interest element is taxed. It comes off HERE
+                // and only here, because it is still income the household receives and still
+                // income both means tests assess.
+                Money::fromPence(max(0, $taxable - ($annuityExempt[$person->id] ?? 0))),
                 Money::fromPence($cashInterest),
                 Money::fromPence($giaDividends),
             ), $thresholdFactor);
@@ -1608,11 +1622,15 @@ final class PathProjector
         // (or surfaces as unmet spend) like any other cost. The seed gains are then passed into
         // fundShortfall so the annual exempt amount is shared ONCE between the seed and any
         // in-year disposal — a year-0 disposal is taxed exactly once, never twice, never free.
-        $seedGains = [];
+        // A GIA sold to buy a purchased life annuity earlier this year is the same kind of event,
+        // so it seeds the same way and shares the same annual exempt amount (board card 0060).
+        $seedGains = $annuityGains;
         if ($yearIndex === 0 && $household->realisedGainsAtStart !== []) {
             foreach ($household->realisedGainsAtStart as $pid => $gain) {
-                $seedGains[$pid] = $gain->pence;
+                $seedGains[$pid] = ($seedGains[$pid] ?? 0) + $gain->pence;
             }
+        }
+        if ($seedGains !== []) {
             $seedCgt = $this->capitalGainsTax($seedGains, $taxablePerPerson, $alive);
             if ($seedCgt > 0) {
                 $totalTaxNominal += $seedCgt;
@@ -2698,6 +2716,36 @@ final class PathProjector
     }
 
     /**
+     * One planned annuity, flattened for the hot loop. $source is the wrapper the money comes out
+     * of: NULL for a pension annuity (the owner's DC pots) or the account type for a purchased life
+     * annuity. The rate is the EFFECTIVE one, so the enhanced uplift is applied in the DTO that
+     * owns it and never restated here.
+     *
+     * @return array<string, mixed>
+     */
+    private static function annuityState(string $ownerId, AnnuityPurchase $a, ?AccountType $source): array
+    {
+        return [
+            'ownerId' => $ownerId,
+            'atAge' => $a->atAge,
+            'incomeFromAge' => $a->incomeStartAge(),
+            'amount' => $a->amount->pence,
+            'rate' => $a->effectiveRate()->asFraction(),
+            'escalation' => $a->escalation,
+            'survivorFraction' => $a->survivorFraction?->asFraction(),
+            'source' => $source,
+            'purchased' => false,
+            'active' => false,
+            'baseIncomeNominal' => 0,
+            // The exempt capital element of one year's payment, fixed in nominal pence for the life
+            // of the annuity ({@see PurchasedLifeAnnuity}). Nil for a pension annuity, which is
+            // taxable in full.
+            'exemptNominal' => 0,
+            'purchaseCumInflation' => 1.0,
+        ];
+    }
+
+    /**
      * Buy any annuities due this year: for each planned purchase whose annuitant has reached
      * its age and is alive, convert part of that person's DC pot(s) into a lifetime annuity.
      * The pot is reduced by the purchase amount (capped at what is there, drawn across the
@@ -2708,11 +2756,20 @@ final class PathProjector
      * fires once (the `purchased` flag), even if the pot cannot fund it — a dead annuitant, or
      * an empty pot, simply means no income.
      *
+     * A purchase whose `source` is an account type is a PURCHASED LIFE ANNUITY (board card 0060):
+     * the money comes out of that named wrapper instead of the pots, and the payments it buys are
+     * taxed on their interest element only — the exempt capital element is settled once, here, at
+     * the age the income starts. Selling a general investment account to fund one realises a gain,
+     * which is returned so the year charges CGT on it exactly as any other disposal.
+     *
      * @param  array<string, mixed>  $state
      * @param  array<string, bool>  $alive
+     * @return array<string, int> personId => GIA gain realised by a purchase this year, pence
      */
-    private function processAnnuityPurchases(array &$state, int $yearIndex, array $alive, float $cumInflation): void
+    private function processAnnuityPurchases(Household $household, array &$state, int $yearIndex, int $calendarYear, array $alive, float $cumInflation): array
     {
+        $realisedGains = [];
+
         foreach ($state['annuities'] as &$annuity) {
             if ($annuity['purchased']) {
                 continue;
@@ -2723,27 +2780,90 @@ final class PathProjector
                 continue;
             }
 
-            $needed = $annuity['amount'];
-            $bought = 0;
-            foreach ($state['pots'][$pid] as &$pot) {
-                if ($needed <= 0) {
-                    break;
-                }
-                $take = min($needed, $pot['value']);
-                $this->drawFromPot($pot, $take);
-                $needed -= $take;
-                $bought += $take;
-            }
-            unset($pot);
+            $bought = $annuity['source'] === null
+                ? $this->drawAnnuityPriceFromPots($state, $pid, $annuity['amount'])
+                : $this->drawAnnuityPriceFromAccount($state, $pid, $annuity['source'], $annuity['amount'], $realisedGains);
 
             $annuity['purchased'] = true;
             if ($bought > 0) {
                 $annuity['active'] = true;
                 $annuity['baseIncomeNominal'] = (int) round($bought * $annuity['rate']);
                 $annuity['purchaseCumInflation'] = $cumInflation;
+
+                if ($annuity['source'] !== null) {
+                    // The exempt capital element: the price spread over the buyer's expected
+                    // remaining life at the age the income starts, fixed in money for the life of
+                    // the annuity. Both the rule and the expectancy are read from the classes that
+                    // own them, so neither figure is restated here.
+                    $startAge = $annuity['incomeFromAge'];
+                    $sex = $household->person($pid)?->sex;
+                    $expectancy = $sex === null ? 0.0 : $this->lifeTable()->lifeExpectancy($sex, $startAge, $calendarYear + ($startAge - $age));
+                    $annuity['exemptNominal'] = PurchasedLifeAnnuity::capitalElementPerYear(
+                        Money::fromPence($bought),
+                        $expectancy,
+                        Money::fromPence($annuity['baseIncomeNominal']),
+                    )->pence;
+                }
             }
         }
         unset($annuity);
+
+        return $realisedGains;
+    }
+
+    /** Draw an annuity's purchase price across the owner's DC pots, in order. Returns what it got. */
+    private function drawAnnuityPriceFromPots(array &$state, string $pid, int $needed): int
+    {
+        $bought = 0;
+        foreach ($state['pots'][$pid] as &$pot) {
+            if ($needed <= 0) {
+                break;
+            }
+            $take = min($needed, $pot['value']);
+            $this->drawFromPot($pot, $take);
+            $needed -= $take;
+            $bought += $take;
+        }
+        unset($pot);
+
+        return $bought;
+    }
+
+    /**
+     * Draw an annuity's purchase price out of ONE named non-pension wrapper — the account the
+     * purchase hangs off. Capped at what is in it: an account that cannot fund the whole price
+     * buys a smaller annuity rather than conjuring money. A GIA sale realises its share of the
+     * unrealised gain, accumulated into $realisedGains so the year's CGT charge sees it.
+     *
+     * @param  array<string, int>  $realisedGains
+     */
+    private function drawAnnuityPriceFromAccount(array &$state, string $pid, AccountType $source, int $needed, array &$realisedGains): int
+    {
+        $key = match ($source) {
+            AccountType::Cash, AccountType::PremiumBonds => 'cash',
+            AccountType::Gia => 'gia',
+            AccountType::Isa => 'isa',
+        };
+
+        $take = min($needed, $state[$key][$pid] ?? 0);
+        if ($take <= 0) {
+            return 0;
+        }
+
+        if ($key === 'gia') {
+            [$gainSlice, $basisConsumed] = self::disposeGiaSlice($state['gia'][$pid], $state['giaBasis'][$pid], $take);
+            $realisedGains[$pid] = ($realisedGains[$pid] ?? 0) + $gainSlice;
+            $state['giaBasis'][$pid] -= $basisConsumed;
+        }
+        $state[$key][$pid] -= $take;
+
+        return $take;
+    }
+
+    /** The mortality table behind the purchased-life-annuity capital element, built once per path. */
+    private function lifeTable(): CohortLifeTable
+    {
+        return $this->lifeTable ??= new CohortLifeTable;
     }
 
     /**
@@ -2754,15 +2874,38 @@ final class PathProjector
      * real terms; any other basis escalates the income with inflation since purchase — the same
      * proxy the engine uses for DB escalation in payment.
      *
+     * A DEFERRED annuity (board card 0060) pays nothing until the annuitant reaches the age the
+     * income was bought to start at; the money left the pot or the account at the purchase age.
+     *
+     * Each person's figure is split into the whole payment and the part of it exempt from income
+     * tax — the capital element of a purchased life annuity, which is a return of the buyer's own
+     * money. The exempt part is still INCOME for the Pension Credit and care means tests, so it is
+     * reported apart rather than removed: only the tax pass takes it off.
+     *
      * @param  array<string, mixed>  $state
      * @param  array<string, bool>  $alive
-     * @return array<string, int> personId => nominal taxable annuity income
+     * @param  array<string, int>  $ages
+     * @return array<string, array{income: int, exempt: int}> personId => nominal annuity income
      */
-    private function annuityIncomeNominal(array $state, Household $household, array $alive, float $cumInflation): array
+    private function annuityIncomeNominal(array $state, Household $household, array $alive, array $ages, float $cumInflation): array
     {
         $income = [];
+        $add = static function (string $pid, int $amount, int $exempt) use (&$income): void {
+            $income[$pid] ??= ['income' => 0, 'exempt' => 0];
+            $income[$pid]['income'] += $amount;
+            $income[$pid]['exempt'] += $exempt;
+        };
+
         foreach ($state['annuities'] as $annuity) {
             if (! $annuity['active']) {
+                continue;
+            }
+            // A DEFERRED annuity pays nothing at all — to the annuitant or to a survivor — until
+            // the annuitant would have reached the age the income was bought to start at. $ages
+            // holds every member's age this year, the dead included, so a death inside the
+            // deferral period leaves the survivor with nothing, which is the adverse reading and
+            // the usual contract (value protection is not modelled).
+            if (($ages[$annuity['ownerId']] ?? 0) < $annuity['incomeFromAge']) {
                 continue;
             }
 
@@ -2773,13 +2916,17 @@ final class PathProjector
             if ($amount <= 0) {
                 continue;
             }
+            // The exempt capital element is a fixed sum for the life of the annuity, so an
+            // escalating annuity's exempt PROPORTION falls as its payments grow.
+            $exempt = min($annuity['exemptNominal'], $amount);
 
             if ($alive[$annuity['ownerId']] ?? false) {
-                $income[$annuity['ownerId']] = ($income[$annuity['ownerId']] ?? 0) + $amount;
+                $add($annuity['ownerId'], $amount, $exempt);
             } elseif ($annuity['survivorFraction'] !== null) {
                 $survivor = $this->firstLiving($household, $alive);
                 if ($survivor !== null) {
-                    $income[$survivor] = ($income[$survivor] ?? 0) + (int) round($amount * $annuity['survivorFraction']);
+                    $fraction = $annuity['survivorFraction'];
+                    $add($survivor, (int) round($amount * $fraction), (int) round($exempt * $fraction));
                 }
             }
         }

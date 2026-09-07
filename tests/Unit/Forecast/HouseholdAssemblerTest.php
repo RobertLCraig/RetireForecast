@@ -7,6 +7,7 @@ namespace Tests\Unit\Forecast;
 use App\Forecast\HouseholdAssembler;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\CouncilTaxBand;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
@@ -120,6 +121,47 @@ class HouseholdAssemblerTest extends TestCase
 
         // Toggle on but the amount left blank → nothing built (no half-specified annuity).
         $this->assertNull($dc(['annuitise' => true, 'annuityAtAge' => '65'])->annuityPurchase);
+    }
+
+    /**
+     * Board card 0060: the same sub-form on a NON-PENSION account, which is what lets a household
+     * whose money sits in cash or an ISA buy secured income at all. It must reach the Account DTO
+     * with the deferred start age and the enhanced flag, or the builder fields are dead inputs.
+     */
+    public function test_an_annuity_bought_with_a_non_pension_account_maps_onto_that_account(): void
+    {
+        $account = fn (array $annuity): Account => (new HouseholdAssembler)->household([
+            'householdName' => 'Purchased life', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '10000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'accounts' => [array_merge(
+                ['id' => 'a1', 'ownerId' => 'p1', 'type' => 'cash', 'balance' => '200000'],
+                $annuity,
+            )],
+        ])->accounts[0];
+
+        // An ordinary account, and one whose toggle is off, buy nothing.
+        $this->assertNull($account([])->annuityPurchase);
+        $this->assertNull($account(['annuitise' => false, 'annuityAmount' => '100000', 'annuityAtAge' => '68'])->annuityPurchase);
+
+        // Toggled on: bought at 68, income deferred to 72, enhanced for impaired health.
+        $bought = $account([
+            'annuitise' => true, 'annuityAmount' => '100000', 'annuityAtAge' => '68',
+            'annuityIncomeFromAge' => '72', 'annuityRate' => '7.2', 'annuityEnhanced' => true,
+        ])->annuityPurchase;
+        $this->assertNotNull($bought);
+        $this->assertSame(10_000_000, $bought->amount->pence);
+        $this->assertSame(68, $bought->atAge);
+        $this->assertSame(72, $bought->incomeStartAge());
+        $this->assertTrue($bought->enhanced);
+        $this->assertGreaterThan($bought->rate->basisPoints, $bought->effectiveRate()->basisPoints);
+
+        // Blank deferral: the income starts at the purchase age, and no uplift is applied.
+        $plain = $account(['annuitise' => true, 'annuityAmount' => '100000', 'annuityAtAge' => '68', 'annuityIncomeFromAge' => ''])->annuityPurchase;
+        $this->assertSame(68, $plain->incomeStartAge());
+        $this->assertFalse($plain->enhanced);
+        $this->assertSame($plain->rate->basisPoints, $plain->effectiveRate()->basisPoints);
     }
 
     /**
