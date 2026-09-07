@@ -77,6 +77,7 @@ final class BuilderStateFixture
                 // BACKFILLS them on load, so a fixture property without them would differ from the
                 // same property after a round trip and show as a spurious what-if delta.
                 'isLet' => false, 'lettingManagementRate' => '', 'lettingVoidRate' => '', 'lettingMaintenanceRate' => '',
+                'occupiedByQualifyingRelative' => false,
                 'outstandingMortgage' => '48000', 'runningCosts' => '6400', 'growthAssumptionOverride' => '1', 'ownershipShare' => '100',
                 'councilTax' => '2100', 'councilTaxDisabledBand' => '',
                 'mortgageRedemptionYear' => '', 'mortgageMaturityAction' => 'refinance', 'mortgageRollUpRate' => '',

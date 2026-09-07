@@ -5,10 +5,33 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-07 (card 0054). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-07 (card 0055). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0036 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A care bill the plan cannot pay is now a debt on the home, not a plan failure, and the property
+  disregard follows the statute.** Card 0055. Two faults with one cause: the model treated an
+  assessable home as money it could neither shelter nor spend. The disregard applied only while a
+  partner was alive, so a household with a resident relative aged 60 or over, an incapacitated
+  relative or a child under 18 was assessed on a home no authority could charge against;
+  `Dto\Property::$occupiedByQualifyingRelative` is the reader's own statement that one of them lives
+  there and `PathProjector::careHomeAssessable()` is the one home of the question, defaulting FALSE
+  so nothing stored moves until it is ticked. And `fundShortfall()` never draws on the home, so a
+  self-funding lone homeowner ran an unfundable charge every care year and the plan was penalised
+  for keeping a property that in life would simply have carried the debt: the unfundable part of the
+  CARE charge alone (never the groceries) now becomes `state['deferredCareBalance']`, capped at the
+  equity the security bears, rolling up at the rate on `Care\DeferredPaymentAgreement`, redeemed at
+  a forced sale and deducted at both deaths. Built to the same shape as the SMI charge beside it.
+  **Every plan whose paths reach an unfundable care year moves**: it survives where it used to fail,
+  with a smaller estate. `ENGINE_VERSION` is `finance-engine/deferred-care-payment-on-the-home` and
+  the **stored-scenario re-run is owed**. The **Monte Carlo golden master was re-pinned** (essentials
+  success 0.5000 to 0.5300, terminal wealth down at every percentile), `PIN_REVISION` bumped, and
+  DECISIONS 2026-09-07 records it. The 4.65% interest rate and the four-category disregard list are
+  **STATED, not verified** (no web in this session) and both reach a projection: see
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§28), carded as **0129**. Built in a worktree, so
+  the new builder checkbox and the new results note **have not been seen in a browser**. One gap
+  found and carded rather than fixed: **0130**, the care assessment values home equity without
+  deducting the SMI charge, although every other reader of equity nets it.
 - **Marital status must now be chosen, a will is never assumed, and the first death applies the
   intestacy rules.** Card 0054. Marital status defaulted to married in the form, in the DTO and in
   the assembler, and was disclosed nowhere; a will was assumed too, so the first death always got a

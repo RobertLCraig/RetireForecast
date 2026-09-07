@@ -136,6 +136,7 @@ final class YearResult
         public readonly ?Money $smiBalance = null,
         public readonly ?Money $councilTax = null,
         public readonly ?Money $housingBenefit = null,
+        public readonly ?Money $deferredCareBalance = null,
     ) {
         $this->totalWealth = $liquidWealth->plus($pensionWealth)->plus($this->homeEquity());
     }
@@ -203,14 +204,31 @@ final class YearResult
     }
 
     /**
-     * Home equity net of everything secured on it — the mortgage and any Support for Mortgage
-     * Interest charge — floored at zero (the No-Negative-Equity Guarantee: a rolled-up balance
-     * above the home's value is not a negative estate, and DWP writes off an SMI shortfall the
-     * same way). The same definition {@see EstateValuer} uses at death.
+     * The deferred payment agreement standing against the home this year (real money, zero if
+     * none). A THIRD secured balance beside {@see mortgageBalance()} and {@see smiBalance()}: care
+     * fees the household could not fund out of its liquid assets, which the local authority pays
+     * and secures on the home instead, rolling up at the statutory rate until the home is sold or
+     * the resident dies. {@see DeferredPaymentAgreement}, board card 0055.
+     */
+    public function deferredCareBalance(): Money
+    {
+        return $this->deferredCareBalance ?? Money::zero();
+    }
+
+    /**
+     * Home equity net of everything secured on it — the mortgage, any Support for Mortgage
+     * Interest charge and any deferred care payment — floored at zero (the No-Negative-Equity
+     * Guarantee: a rolled-up balance above the home's value is not a negative estate, and DWP
+     * writes off an SMI shortfall the same way). The same definition {@see EstateValuer} uses at
+     * death.
      */
     public function homeEquity(): Money
     {
-        return $this->propertyWealth->minus($this->mortgageBalance())->minus($this->smiBalance())->minZero();
+        return $this->propertyWealth
+            ->minus($this->mortgageBalance())
+            ->minus($this->smiBalance())
+            ->minus($this->deferredCareBalance())
+            ->minZero();
     }
 
     /** This year's capital growth left in the invested pots (zero if not tracked). */
@@ -257,6 +275,7 @@ final class YearResult
             $this->smiBalance,
             $this->councilTax,
             $this->housingBenefit,
+            $this->deferredCareBalance,
         );
     }
 }

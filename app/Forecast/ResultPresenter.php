@@ -16,6 +16,7 @@ use RetireForecast\FinanceEngine\Benefits\DisabilityBenefitInCare;
 use RetireForecast\FinanceEngine\Benefits\HousingBenefit;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Care\CareAssumptions;
+use RetireForecast\FinanceEngine\Care\DeferredPaymentAgreement;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
@@ -2073,6 +2074,33 @@ final class ResultPresenter
                 .'side. It is modelled here only while Guarantee Credit is actually in payment, and it is not modelled on a '
                 .'rolled-up loan you pay no interest on, because there is then no interest for it to meet. You have to apply for '
                 .'it and agree to the charge; nothing is paid automatically.'];
+        }
+
+        // (c2c) A deferred payment agreement on care fees. Nobody enters the interest rate and it
+        // moves what is left to inherit, so it is READ from the constant that owns it (the
+        // no-invisible-figures rule). Raised only where the projection actually deferred
+        // something: a plan that never runs short on care fees is told nothing.
+        $deferredFirst = null;
+        $deferredLast = null;
+        foreach ($forecast->years as $year) {
+            if ($year->deferredCareBalance()->isPositive()) {
+                $deferredFirst ??= $year;
+                $deferredLast = $year;
+            }
+        }
+        if ($deferredFirst !== null && $deferredLast !== null) {
+            $dpaRate = self::ratePct(DeferredPaymentAgreement::interestRate()->asPercent());
+            $notes[] = ['kind' => 'deferred_care_payment', 'text' => 'This plan cannot pay its care fees out of '
+                ."savings from {$deferredFirst->calendarYear}, so from that year we model a DEFERRED PAYMENT AGREEMENT "
+                .'rather than showing the bill as money you simply do not have. The council pays the fees and secures '
+                .'what it has paid on your home, so you keep the home and nobody has to sell it in a hurry. It is a '
+                ."loan: the balance rolls up at {$dpaRate} a year, which is the maximum a council may charge, and it is "
+                ."repaid when the home is sold or out of your estate when you die. By {$deferredLast->calendarYear} it "
+                ."reaches about {$deferredLast->deferredCareBalance()->format()} in today's money, which comes out of "
+                ."what you leave behind: the home is worth {$deferredLast->propertyWealth->format()} but only about "
+                ."{$deferredLast->homeEquity()->format()} of it would be inherited. Councils may also charge set-up, "
+                .'valuation and administration fees, which are not in these figures, and an agreement has to be applied '
+                .'for and agreed: nothing here happens automatically.'];
         }
 
         // (c3) An ordinary capital-and-interest mortgage: unlike the two shapes above, the balance

@@ -15,6 +15,7 @@ use RetireForecast\FinanceEngine\Benefits\PensionCreditCalculator;
 use RetireForecast\FinanceEngine\Benefits\PensionCreditResult;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Care\CareMeansTest;
+use RetireForecast\FinanceEngine\Care\DeferredPaymentAgreement;
 use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
@@ -300,10 +301,10 @@ final class PathProjector
             $liquid,
             $pension,
             Money::fromPence((int) round($state['property'] / 2)),
-            // Both charges on the home: the mortgage and any Support for Mortgage Interest loan,
-            // which falls due on death exactly as it would on a sale. The deceased carries half of
-            // each, the same v1 50/50 split as the home itself.
-            Money::fromPence((int) round(($state['mortgageOutstanding'] + $state['smiBalance']) / 2)),
+            // Every charge on the home: the mortgage, any Support for Mortgage Interest loan and
+            // any deferred care payment, each of which falls due on death exactly as it would on a
+            // sale. The deceased carries half of each, the same v1 50/50 split as the home itself.
+            Money::fromPence((int) round(($state['mortgageOutstanding'] + $state['smiBalance'] + $state['deferredCareBalance']) / 2)),
         );
 
         $deathYear = (int) $deceased->dob->format('Y') + $draws->deathAge($deceased->id);
@@ -351,9 +352,10 @@ final class PathProjector
             $liquid,
             Money::fromPence($this->totalPots($state)),
             Money::fromPence($state['property']),
-            // Everything secured on the home falls due here: the mortgage and any Support for
-            // Mortgage Interest charge, which is repaid on the final death out of the same equity.
-            Money::fromPence($state['mortgageOutstanding'] + $state['smiBalance']),
+            // Everything secured on the home falls due here: the mortgage, any Support for
+            // Mortgage Interest charge and any deferred care payment, both of the last two repaid
+            // on the final death out of the same equity.
+            Money::fromPence($state['mortgageOutstanding'] + $state['smiBalance'] + $state['deferredCareBalance']),
         );
 
         // The final death year is the last survivor's (the latest modelled death among those alive
@@ -628,6 +630,10 @@ final class PathProjector
             // own charge, so this only ever grows while the household is on Guarantee Credit and
             // is cleared when the home is sold. {@see SupportForMortgageInterest}.
             'smiBalance' => 0,
+            // Care fees the year could not fund, secured on the home under a deferred payment
+            // agreement and rolling up until the home is sold or the estate is settled
+            // ({@see DeferredPaymentAgreement}, board card 0055).
+            'deferredCareBalance' => 0,
             // The whole-property (un-scaled) value, grown in lockstep with the share value. A
             // forced sale needs the whole figure to compute CGT on the household's share of the
             // gain (purchase price is whole too); null-share leaves it equal to `property`.
@@ -1287,13 +1293,17 @@ final class PathProjector
             // earlier one (a year-0 sale followed by a forced sale on the home bought with the
             // proceeds): the statute allows one addition, computed from a single qualifying
             // disposal, and the most recent one is the one the estate's own history ends on.
+            // A deferred care payment is secured on the same home and falls due on the same sale,
+            // so it is redeemed beside the SMI charge and on the same terms (board card 0055).
+            $securedCharges = $state['smiBalance'] + $state['deferredCareBalance'];
             $state['residenceDisposal'] = new ResidenceDisposal(
-                Money::fromPence(max(0, $proceeds->salePrice->pence - $proceeds->outstandingMortgage->pence - $state['smiBalance'])),
+                Money::fromPence(max(0, $proceeds->salePrice->pence - $proceeds->outstandingMortgage->pence - $securedCharges)),
                 $calendarYear,
             );
 
-            $netAfterCharge = max(0, $proceeds->netProceeds->pence - $state['smiBalance']);
+            $netAfterCharge = max(0, $proceeds->netProceeds->pence - $securedCharges);
             $state['smiBalance'] = 0;
+            $state['deferredCareBalance'] = 0;
 
             foreach (PenceSplit::evenly($netAfterCharge, $this->livingIds($household, $alive)) as $ownerId => $share) {
                 $state['gia'][$ownerId] += $share;
@@ -1566,6 +1576,31 @@ final class PathProjector
 
         $metSpend = min($spendNominal, $netCashNominal + $fundedNominal);
         $unmetNominal = max(0, $spendNominal - $metSpend);
+
+        // Board card 0055. The funding waterfall above draws on cash, investments, ISAs and
+        // pensions and NEVER on the home, so a self-funding homeowner in care ran an unfundable
+        // care charge every year: the year failed its essentials and the plan was penalised for
+        // keeping a property that in life would simply have carried the debt. What an authority
+        // actually offers is a DEFERRED PAYMENT — it pays the fees and secures what it has paid
+        // on the home. So the part of the charge the year could not meet becomes a debt rather
+        // than an unmet essential, capped at the equity the security can still bear. Only where
+        // the home is ASSESSABLE: a home the means test disregards is one the authority has no
+        // charge to take, and a resident whose home is disregarded is funded anyway.
+        // Not credited as income and never added to $src — it is a loan, exactly like the
+        // Support for Mortgage Interest charge beside it, and the SAME figure that meets the
+        // spending is what is owed, so the two can never disagree.
+        if ($careChargedNominal > 0 && $unmetNominal > 0 && $this->careHomeAssessable($household, $state, $aliveCount)) {
+            $deferred = DeferredPaymentAgreement::deferrableThisYear(
+                Money::fromPence($unmetNominal),
+                Money::fromPence($careChargedNominal),
+                Money::fromPence($this->careHomeEquity($state)),
+            )->pence;
+
+            $metSpend += $deferred;
+            $unmetNominal -= $deferred;
+            $state['deferredCareBalance'] += $deferred;
+        }
+
         $essentialsMet = $metSpend >= $essentialNominal;
 
         // Recurring spend is funded BEFORE a one-off capital lump — a household eats and heats
@@ -1630,6 +1665,7 @@ final class PathProjector
             nominal: $nominal,
             isaSheltered: $m($isaShelteredNominal),
             smiBalance: $m($state['smiBalance']),
+            deferredCareBalance: $m($state['deferredCareBalance']),
             councilTax: $m($councilTaxNominal),
             housingBenefit: $m($housingBenefitNominal),
         );
@@ -1966,19 +2002,6 @@ final class PathProjector
     }
 
     /**
-     * The capital assessed against a care-home resident this year (nominal pence). England
-     * assesses the individual: the resident's own accounts (cash / GIA / ISA — the engine's
-     * accounts are individually owned; pension pots are disregarded as capital, matching the
-     * Pension Credit treatment, while drawdown income is assessed as income instead). The home
-     * is disregarded while a partner still lives in it; it counts once the resident lives alone
-     * (the 12-week disregard and deferred-payment mechanics are below the annual grid — equity
-     * funding the fees is the same outcome) or when it is LET (not the main residence, the same
-     * rule the Pension Credit test above applies). A couple's jointly held home splits equally
-     * between them, the individual assessment.
-     *
-     * @param  array<string, mixed>  $state
-     */
-    /**
      * Who is in a LOCAL-AUTHORITY-FUNDED care placement this year, and what fraction of their
      * disability award's care component that leaves in payment ({@see DisabilityBenefitInCare}).
      * A person absent from the returned map is not in a funded placement, so their award runs
@@ -2026,17 +2049,71 @@ final class PathProjector
         return $fractions;
     }
 
+    /**
+     * The capital assessed against a care-home resident this year (nominal pence). England
+     * assesses the individual: the resident's own accounts (cash / GIA / ISA — the engine's
+     * accounts are individually owned; pension pots are disregarded as capital, matching the
+     * Pension Credit treatment, while drawdown income is assessed as income instead), plus their
+     * share of the home where it is assessable at all ({@see careHomeAssessable}). A couple's
+     * jointly held home splits equally between them, the individual assessment.
+     *
+     * @param  array<string, mixed>  $state
+     */
     private function careAssessableCapital(Household $household, array $state, string $personId, int $aliveCount): int
     {
         $capital = ($state['cash'][$personId] ?? 0) + ($state['gia'][$personId] ?? 0) + ($state['isa'][$personId] ?? 0);
 
-        $home = $household->primaryResidence;
-        if ($home !== null && ! $state['homeSold'] && ($aliveCount === 1 || $home->isLet)) {
-            $equity = max(0, $state['property'] - $state['mortgageOutstanding']);
-            $capital += intdiv($equity, max(1, $aliveCount));
+        if ($this->careHomeAssessable($household, $state, $aliveCount)) {
+            $capital += intdiv($this->careHomeEquity($state), max(1, $aliveCount));
         }
 
         return $capital;
+    }
+
+    /**
+     * Does the home count as capital in a care financial assessment this year?
+     *
+     * The statutory property disregard is MANDATORY while the home is occupied by the resident's
+     * spouse or civil partner, a relative aged 60 or over, an incapacitated relative, or a child
+     * of theirs under 18. The engine covers the first of those by watching whether a partner is
+     * still alive, and the rest through {@see Property::$occupiedByQualifyingRelative} — the
+     * reader's own statement that somebody on that list lives there (board card 0055, before
+     * which a household with a resident older relative was assessed on a home no authority could
+     * have charged against). A LET property is nobody's home, so no disregard reaches it and its
+     * equity counts, the same rule the Pension Credit test applies.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function careHomeAssessable(Household $household, array $state, int $aliveCount): bool
+    {
+        $home = $household->primaryResidence;
+        if ($home === null || $state['homeSold']) {
+            return false;
+        }
+
+        if ($home->isLet) {
+            return true;
+        }
+
+        return $aliveCount === 1 && ! $home->occupiedByQualifyingRelative;
+    }
+
+    /**
+     * The household's equity in the home for a care assessment: its share of the value less
+     * EVERYTHING secured on it. The deferred payment balance is netted for the same reason the
+     * mortgage is — money the authority has already lent against the bricks is not capital the
+     * resident can spend a second time, and leaving it in would let a deferred year inflate the
+     * next year's charge.
+     *
+     * FLAGGED: the Support for Mortgage Interest charge is NOT netted here, although it is
+     * secured on the same home and the estate and the wealth line both net it. That is a
+     * pre-existing divergence, out of card 0055's scope, and is board card 0130.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function careHomeEquity(array $state): int
+    {
+        return max(0, $state['property'] - $state['mortgageOutstanding'] - $state['deferredCareBalance']);
     }
 
     /**
@@ -4023,6 +4100,14 @@ final class PathProjector
         // applied where it belongs, in the zero floor on home equity and on the estate.
         if ($state['smiBalance'] > 0) {
             $state['smiBalance'] = (int) round($state['smiBalance'] * (1.0 + SupportForMortgageInterest::standardRate()->asFraction()));
+        }
+
+        // A deferred payment agreement rolls up the same way, at the statutory maximum rate the
+        // regulations set ({@see DeferredPaymentAgreement}). Uncapped for the same reason as the
+        // SMI charge above: the debt is real even where the security cannot bear it, and the
+        // write-off belongs in the zero floor on home equity and on the estate.
+        if ($state['deferredCareBalance'] > 0) {
+            $state['deferredCareBalance'] = (int) round($state['deferredCareBalance'] * (1.0 + DeferredPaymentAgreement::interestRate()->asFraction()));
         }
 
         // A capital-and-interest mortgage instead AMORTISES: next year opens on whatever the

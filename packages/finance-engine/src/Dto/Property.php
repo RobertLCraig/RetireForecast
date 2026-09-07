@@ -54,6 +54,20 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * capital, so — like selling — letting it out erodes Pension Credit and can cross the £16,000
  * Housing/Council-Tax-support cliff. Default false = they occupy it (exempt, the common case).
  *
+ * $occupiedByQualifyingRelative says that somebody the CARE means test gives a MANDATORY property
+ * disregard to lives in this home. The disregard is not limited to a surviving spouse: the local
+ * authority must disregard the home while it is occupied by the resident's spouse or civil
+ * partner, by a relative aged 60 or over, by an incapacitated relative of any age, or by a child
+ * of the resident under 18. (A carer who gave up their own home to move in is a DISCRETIONARY
+ * disregard, which this engine does not claim.) The engine already shields the home while a
+ * partner is alive and living there, so this flag is what covers everyone else on that list —
+ * board card 0055, before which a household with a resident older relative was told to fund care
+ * out of a home no authority could have charged against. Default false is the adverse answer:
+ * nobody qualifies, so the home counts.
+ *
+ * It says nothing about Pension Credit or Housing Benefit, whose capital rules are their own, and
+ * it does not apply to a LET property ($isLet) — the disregard is for a home somebody occupies.
+ *
  * $mortgageRollUpRate models a lifetime mortgage (equity release): a FIXED, fixed-for-life
  * NOMINAL interest rate at which the $outstandingMortgage balance ROLLS UP (compounds) each
  * year when no payments are made — the balance is repaid from the estate on death/sale/care,
@@ -144,6 +158,7 @@ final class Property
         public readonly ?Percent $lettingMaintenanceRate = null,
         public readonly ?Money $annualCouncilTax = null,
         public readonly ?CouncilTaxBand $disabledBandReduction = null,
+        public readonly bool $occupiedByQualifyingRelative = false,
     ) {
         if ($repaymentTerms !== null && $mortgageRollUpRate !== null) {
             throw new \InvalidArgumentException('A mortgage cannot both amortise (repaymentTerms) and roll up (mortgageRollUpRate) — choose one.');
@@ -179,6 +194,7 @@ final class Property
             lettingMaintenanceRate: $this->lettingMaintenanceRate,
             annualCouncilTax: $this->annualCouncilTax,
             disabledBandReduction: $this->disabledBandReduction,
+            occupiedByQualifyingRelative: $this->occupiedByQualifyingRelative,
         );
     }
 

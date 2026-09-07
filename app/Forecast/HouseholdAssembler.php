@@ -715,6 +715,9 @@ final class HouseholdAssembler
             // disabled band reduction applies, so blank is the ordinary case.
             annualCouncilTax: $this->money($p['councilTax'] ?? null),
             disabledBandReduction: CouncilTaxBand::tryFrom((string) ($p['councilTaxDisabledBand'] ?? '')),
+            // Somebody the care means test must disregard the home for lives here (card 0055).
+            // Absent means false, the adverse answer: nobody qualifies, so the home counts.
+            occupiedByQualifyingRelative: (bool) ($p['occupiedByQualifyingRelative'] ?? false),
         );
     }
 

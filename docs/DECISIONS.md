@@ -3,6 +3,45 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-07: the care property disregard is widened, and an unfundable care charge becomes a deferred payment instead of a plan failure
+**Context:** card 0055 (expert panel 2026-08-19, estate planner finding 6). Two faults, one cause:
+the model treated an assessable home as money it could neither shelter nor spend.
+
+**Decision 1: the property disregard follows the statutory list, not just a surviving spouse.**
+The engine disregarded the home only while a partner was alive and living in it. The disregard is
+MANDATORY where the home is occupied by the resident's spouse or civil partner, a relative aged 60
+or over, an incapacitated relative, or a child of theirs under 18, so any household with a resident
+older relative got the wrong answer. `Property::$occupiedByQualifyingRelative` is the reader's own
+statement that somebody on that list lives there, and `PathProjector::careHomeAssessable()` is now
+the one home of the question. It defaults FALSE, the adverse answer, so no stored scenario moves
+until somebody ticks it. The DISCRETIONARY disregard for a carer who gave up their own home is
+deliberately not claimed: it is the authority's call, not the model's.
+
+**Decision 2: a care charge the liquid assets cannot meet is DEFERRED against the home, not
+reported as an unmet essential.** `fundShortfall()` draws on cash, investments, ISAs and pensions
+and never on the home, so a self-funding lone homeowner ran a large unfundable charge every care
+year, the year failed its essentials, and the plan was penalised for keeping a property that in
+life would simply have carried the debt. A deferred payment agreement is what an authority actually
+offers, and it is a completely different estate and solvency outcome from a forced sale. The
+unfundable part of the CARE charge (never the groceries) becomes a third balance secured on the
+home, capped at the equity the security can bear, rolling up at the statutory maximum rate on
+`Care\DeferredPaymentAgreement` and redeemed on a sale or out of the estate at death. It is a loan,
+so it is never credited as income; the same figure that meets the spending is the figure owed.
+
+**Consequence:** plans that used to fail on care now survive, with a smaller estate. **Every stored
+plan whose paths reach an unfundable care year moves**, in success odds and in what is left behind;
+a plan that never reaches care, or that funds it out of savings, is byte-identical. `ENGINE_VERSION`
+is `finance-engine/deferred-care-payment-on-the-home` and the stored-scenario re-run is owed.
+**Monte Carlo golden master pinned 2026-09-07:** the frozen run's essentials success rate rises from
+0.5000 to 0.5300 and terminal wealth falls at every percentile, which is exactly this change (paths
+that once ran out on care fees now carry a debt on the home instead). Re-pinned in the same edit.
+
+**Sourcing gap:** the maximum interest rate (4.65%) is STATED, not verified. The RULE is published
+(the OBR forecast for the 15-year gilt rate plus a default component of up to 0.15 points, re-set
+each January and July); the VALUE is not pinned to a publication, because the unattended session
+that built it has no web. Adverse by rule: it is the high end of the range that rule has produced.
+See ASSUMPTIONS.md §28 and card 0129.
+
 ## 2026-09-07: marital status loses its default; a will is never assumed; the marriage date is captured but not read
 **Context:** card 0054 (expert panel 2026-08-19, estate planner findings 2 and 3). Marital status
 defaulted to married in the form, in the DTO and in the assembler fallback, and was disclosed

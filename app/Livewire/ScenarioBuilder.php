@@ -481,6 +481,8 @@ class ScenarioBuilder extends Component
             // blank by default, which takes the engine's disclosed default; an explicit 0 is the
             // reader's own figure. Capped at 100%: a cost above the whole rent is a typo.
             $rules['property.isLet'] = ['boolean'];
+            // Somebody the CARE means test must disregard the home for lives here (card 0055).
+            $rules['property.occupiedByQualifyingRelative'] = ['boolean'];
             $rules['property.lettingManagementRate'] = ['nullable', 'numeric', 'min:0', 'max:100'];
             $rules['property.lettingVoidRate'] = ['nullable', 'numeric', 'min:0', 'max:100'];
             $rules['property.lettingMaintenanceRate'] = ['nullable', 'numeric', 'min:0', 'max:100'];
@@ -790,6 +792,9 @@ class ScenarioBuilder extends Component
             // the flag off and the rates blank, which is exactly the old behaviour (a home they
             // live in, with no letting costs to charge).
             $this->property['isLet'] ??= false;
+            // A property saved before the care-disregard question existed has no key; default it
+            // off, which is exactly the old behaviour (the home counts once nobody else is there).
+            $this->property['occupiedByQualifyingRelative'] ??= false;
             $this->property['lettingManagementRate'] ??= '';
             $this->property['lettingVoidRate'] ??= '';
             $this->property['lettingMaintenanceRate'] ??= '';
@@ -1845,6 +1850,9 @@ class ScenarioBuilder extends Component
             // are blank, so a scenario predating them (and a what-if that changes nothing) records
             // no delta. Blank is not zero: it takes the engine's disclosed default.
             'isLet' => false, 'lettingManagementRate' => '', 'lettingVoidRate' => '', 'lettingMaintenanceRate' => '',
+            // Who else lives here, for the care means test's mandatory property disregard. Off by
+            // default (the adverse answer), so a scenario predating it records no delta.
+            'occupiedByQualifyingRelative' => false,
             'outstandingMortgage' => '', 'runningCosts' => '', 'growthAssumptionOverride' => '', 'ownershipShare' => '',
             // Council tax, split out of the running costs so the discounts can reach it. Both
             // blank by default: blank council tax means it is still inside the running costs

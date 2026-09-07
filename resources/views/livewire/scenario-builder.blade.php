@@ -978,6 +978,24 @@
                         </div>
                     </div>
 
+                    {{-- Who else lives here. The care means test MUST disregard the home while one
+                         of these people occupies it, and that changes whether care fees can be
+                         charged against the bricks at all. See Dto\Property, board card 0055. --}}
+                    <div class="mt-4">
+                        <label class="flex items-start gap-2 text-sm text-gray-700">
+                            <input type="checkbox" wire:model.live="property.occupiedByQualifyingRelative" class="mt-1 rounded border-gray-300">
+                            <span>Someone else lives in this home who would keep it out of a care means test</span>
+                        </label>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Tick this if the home is lived in by a relative aged 60 or over, a relative of any age who is
+                            incapacitated, or a child of yours under 18. A council must ignore the home while one of them
+                            lives there, so care fees cannot be charged against it. Your husband, wife or civil partner is
+                            already covered while they are alive, so you do not need to tick this for them. A carer who
+                            gave up their own home to move in may also qualify, but that one is the council's discretion
+                            and we do not assume it.
+                        </p>
+                    </div>
+
                     {{-- What letting costs. Gross rent is the one figure a landlord never receives:
                          an agent takes a fee, the place stands empty between tenants, and the
                          repairs and safety certificates are the landlord's. Each rate is blank by

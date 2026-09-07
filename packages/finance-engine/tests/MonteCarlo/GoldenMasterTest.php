@@ -64,7 +64,7 @@ final class GoldenMasterTest extends TestCase
      * The date the values below were last pinned. Bump it in the same edit that re-pins any of
      * them, and write the DECISIONS.md entry it then demands.
      */
-    private const PIN_REVISION = '2026-09-05';
+    private const PIN_REVISION = '2026-09-07';
 
     /** The exact phrase docs/DECISIONS.md has to carry, so a re-pin cannot be recorded by accident. */
     private const MARKER = 'Monte Carlo golden master pinned ';
@@ -80,26 +80,26 @@ final class GoldenMasterTest extends TestCase
      * @var array<string, int|string>
      */
     private const PINNED = [
-        'successProbabilityEssentials' => '0.5000',
-        'successProbabilityFullSpend' => '0.0050',
-        'terminalWealth.p10' => 9520220,
-        'terminalWealth.p25' => 21745265,
-        'terminalWealth.p50' => 40649759,
-        'terminalWealth.p75' => 73723746,
-        'terminalWealth.p90' => 114966002,
+        'successProbabilityEssentials' => '0.5300',
+        'successProbabilityFullSpend' => '0.0150',
+        'terminalWealth.p10' => 4768069,
+        'terminalWealth.p25' => 19053846,
+        'terminalWealth.p50' => 37789068,
+        'terminalWealth.p75' => 70798145,
+        'terminalWealth.p90' => 107322889,
         'fan.bands' => 38,
         'fan.first.calendarYear' => 2026,
         'fan.first.p10' => 69036832,
         'fan.first.p50' => 69058171,
         'fan.first.p90' => 69104401,
         'fan.middle.calendarYear' => 2045,
-        'fan.middle.p10' => 17387741,
+        'fan.middle.p10' => 17016594,
         'fan.middle.p50' => 44512696,
         'fan.middle.p90' => 99577272,
         'fan.last.calendarYear' => 2063,
-        'fan.last.p10' => 10599222,
-        'fan.last.p50' => 21455824,
-        'fan.last.p90' => 32312426,
+        'fan.last.p10' => 10598492,
+        'fan.last.p50' => 21452177,
+        'fan.last.p90' => 32305861,
     ];
 
     public function test_the_pinned_run_still_produces_the_pinned_numbers(): void

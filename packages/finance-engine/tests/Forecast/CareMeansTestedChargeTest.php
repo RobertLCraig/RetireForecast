@@ -7,6 +7,7 @@ namespace RetireForecast\FinanceEngine\Tests\Forecast;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Benefits\DisabilityBenefitInCare;
+use RetireForecast\FinanceEngine\Care\DeferredPaymentAgreement;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
@@ -53,13 +54,13 @@ final class CareMeansTestedChargeTest extends TestCase
 
     public const CONTRIBUTION = 2_834_640; // £30,000 − £1,653.60 PEA, pence a year
 
-    private function project(Household $household, array $deathAges, array $careFromAge): ForecastResult
+    private function project(Household $household, array $deathAges, array $careFromAge, bool $modelIht = false): ForecastResult
     {
         $projector = new PathProjector(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi));
 
         return $projector->project(
             $household,
-            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelIht: $modelIht, homeToDescendants: true),
             $this->draws($deathAges, $careFromAge),
         );
     }
@@ -368,6 +369,151 @@ final class CareMeansTestedChargeTest extends TestCase
         $this->assertSame(200_000 + $paidFor28Days, $years[2046]->incomeBySource['tax_free_income']->pence, 'the statutory period only');
         $this->assertSame(200_000, $years[2047]->incomeBySource['tax_free_income']->pence, 'care component stopped, mobility runs on');
         $this->assertSame(200_000, $years[2048]->incomeBySource['tax_free_income']->pence, 'and stays stopped');
+    }
+
+    /**
+     * Board card 0055, criterion 1. The statutory property disregard is MANDATORY where the home
+     * is occupied by the resident's spouse or civil partner, a relative aged 60 or over, an
+     * incapacitated relative, or a child under 18. The engine disregarded it only while a partner
+     * was still alive, so any household with a resident older relative was assessed on a home no
+     * authority could have charged against.
+     *
+     * The fixture is the lone-owner one above — the same £300,000 home, the same £10,000 of cash,
+     * the same £30,000 income, nobody else in the household — with the one flag set. Without the
+     * disregard the equity makes them a self-funder charged the full £80,000 fee; with it, only
+     * their own money is assessed and the charge is the funded resident's contribution.
+     */
+    public function test_a_home_occupied_by_a_qualifying_relative_is_disregarded_from_the_care_means_test(): void
+    {
+        $home = fn (bool $relative): Property => new Property(
+            currentValue: Money::fromPounds(300_000),
+            ownership: OwnershipType::Outright,
+            occupiedByQualifyingRelative: $relative,
+        );
+
+        $charge = fn (bool $relative): int => $this->project(
+            new Household(
+                'RelativeInResidence', RegionProfile::EnglandWalesNi,
+                [$this->person('p1')],
+                $this->spend(26_514),
+                accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(10_000))],
+                incomeStreams: [$this->income('p1')],
+                primaryResidence: $home($relative),
+            ),
+            deathAges: ['p1' => 90],
+            careFromAge: ['p1' => 88],
+        )->careCostReal()->pence;
+
+        // The gate: without the flag this is the lone owner whose bricks make them a self-funder.
+        $this->assertSame(3 * self::FEE_REAL, $charge(false));
+
+        // With a qualifying relative living there the home drops out of the assessment entirely,
+        // so the resident is charged what any funded resident is: income less the PEA.
+        $this->assertSame(3 * self::CONTRIBUTION, $charge(true));
+    }
+
+    /**
+     * Board card 0055, criterion 2. `fundShortfall` draws on cash, investments, ISAs and pensions
+     * and never on the home, so a self-funding lone homeowner ran an £80,000 care charge every
+     * year that nothing could pay: the year failed its essentials and the plan was penalised for
+     * keeping a property that in life would simply have carried the debt. What the authority
+     * actually offers is a deferred payment secured on the home.
+     *
+     * The lone-owner fixture again: £10,000 of cash against a £80,000 fee, so the first care year
+     * is £70,000 short and the two after it are £80,000 short with nothing left to draw on.
+     */
+    public function test_an_unfundable_care_charge_is_deferred_against_the_home_not_reported_as_unmet(): void
+    {
+        $household = new Household(
+            'DeferredPayment', RegionProfile::EnglandWalesNi,
+            [$this->person('p1')],
+            $this->spend(26_514),
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(10_000))],
+            incomeStreams: [$this->income('p1')],
+            primaryResidence: new Property(currentValue: Money::fromPounds(300_000), ownership: OwnershipType::Outright),
+        );
+
+        $years = [];
+        foreach ($this->project($household, deathAges: ['p1' => 90], careFromAge: ['p1' => 88])->years as $year) {
+            $years[$year->calendarYear] = $year;
+        }
+
+        // The gate: the household really is being charged the full self-funder fee, and really
+        // has run out of liquid assets — this is the state the old code called a plan failure.
+        $this->assertSame(self::FEE_REAL, $years[2046]->spendTarget->pence - $years[2045]->spendTarget->pence);
+        $this->assertSame(0, $years[2047]->liquidWealth->pence);
+
+        // Nothing is unmet and no essential fails: the shortfall became a debt on the home.
+        foreach ([2046, 2047, 2048] as $careYear) {
+            $this->assertSame(0, $years[$careYear]->unmetSpend->pence, "{$careYear} unmet spend");
+            $this->assertTrue($years[$careYear]->essentialsMet, "{$careYear} essentials met");
+        }
+
+        // The first year defers only what its £10,000 of cash could not cover.
+        $this->assertSame(self::FEE_REAL - 1_000_000, $years[2046]->deferredCareBalance()->pence);
+
+        // And the home is worth that much less: the debt is secured on it, so the wealth line
+        // cannot flatter a household whose home is being spent.
+        $this->assertSame(
+            $years[2046]->propertyWealth->minus($years[2046]->deferredCareBalance())->pence,
+            $years[2046]->homeEquity()->pence,
+        );
+    }
+
+    /**
+     * Board card 0055, criterion 3. The deferred balance is a loan: it accrues interest at the
+     * statutory maximum rate and is repaid out of the estate when the resident dies.
+     */
+    public function test_the_deferred_balance_accrues_interest_and_comes_off_the_estate_at_death(): void
+    {
+        $household = new Household(
+            'DeferredPayment', RegionProfile::EnglandWalesNi,
+            [$this->person('p1')],
+            $this->spend(26_514),
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(10_000))],
+            incomeStreams: [$this->income('p1')],
+            primaryResidence: new Property(currentValue: Money::fromPounds(300_000), ownership: OwnershipType::Outright),
+        );
+
+        $result = $this->project($household, deathAges: ['p1' => 90], careFromAge: ['p1' => 88], modelIht: true);
+
+        $years = [];
+        foreach ($result->years as $year) {
+            $years[$year->calendarYear] = $year;
+        }
+
+        // Year two: last year's balance rolls up at the statutory rate, read from the constant
+        // that owns it, and this year's whole £80,000 charge is added on top.
+        $rate = DeferredPaymentAgreement::interestRate()->asFraction();
+        $this->assertSame(
+            (int) round($years[2046]->deferredCareBalance()->pence * (1.0 + $rate)) + self::FEE_REAL,
+            $years[2047]->deferredCareBalance()->pence,
+            'the balance rolls up before the year is added',
+        );
+        $this->assertGreaterThan(
+            $years[2046]->deferredCareBalance()->pence + self::FEE_REAL,
+            $years[2047]->deferredCareBalance()->pence,
+            'interest is actually charged, not just the new fees added',
+        );
+
+        // The estate holds nothing but the home by now, so the deduction is readable to the penny.
+        $last = $years[2048];
+        $this->assertSame(0, $last->liquidWealth->pence, 'nothing but the home is left');
+        $this->assertSame(0, $last->pensionWealth->pence);
+        $this->assertNotNull($result->iht);
+
+        // The estate is settled at the start of the year AFTER the last living one, so the balance
+        // has rolled up one final period by then, exactly as the mortgage and the SMI charge do.
+        $this->assertSame(
+            $last->propertyWealth->pence - (int) round($last->deferredCareBalance()->pence * (1.0 + $rate)),
+            $result->iht->secondDeath->totalEstate->pence,
+            'the balance standing at death comes off the estate',
+        );
+        $this->assertLessThan(
+            $last->propertyWealth->pence,
+            $result->iht->secondDeath->totalEstate->pence,
+            'the estate is smaller than the whole home by the debt secured on it',
+        );
     }
 
     public function test_a_resident_with_nothing_of_their_own_is_fully_funded_even_in_a_wealthy_household(): void

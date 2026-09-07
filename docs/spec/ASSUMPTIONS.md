@@ -521,6 +521,33 @@ cash **−0.5%**.
    band is not claimed at the first death even where the children take part of the home under
    intestacy, which is adverse on that death and leaves the whole band to transfer to the second.
 
+28. **The care property disregard and the deferred payment interest rate** (board card 0055; lives
+   on `Dto\Property::$occupiedByQualifyingRelative` and `Care\DeferredPaymentAgreement`). Both are
+   **STATED, not verified** (the unattended session that added them had no web access) and both
+   **DO reach a projection**. Board card **0129** carries pinning them.
+
+   The **mandatory property disregard** in a care financial assessment covers a home occupied by
+   the resident's spouse or civil partner, by a relative aged 60 or over, by an incapacitated
+   relative of any age, or by a child of the resident under 18 (Care Act 2014 and the Care and
+   Support (Charging and Assessment of Resources) Regulations 2014, Schedule 2). The engine already
+   covered the partner case; the flag covers the rest and defaults FALSE, the adverse answer. The
+   DISCRETIONARY disregard for a carer who gave up their own home is not claimed at all.
+
+   The **maximum interest rate on a deferred payment agreement is modelled at 4.65% a year**,
+   compounded. The published RULE is the average of the OBR forecast for the 15-year gilt rate plus
+   a default component of up to 0.15 percentage points, re-set on 1 January and 1 July each year
+   (Care and Support (Deferred Payment) Regulations 2014). The VALUE is not pinned to a
+   publication. **Adverse by rule:** that rule has produced roughly 2% to 5% since 2015 and the
+   shipped figure is the high end, so a larger debt eats the estate and deferral is shown at its
+   least attractive against selling.
+
+   Four v1 simplifications follow, all flagged in code: the authority's set-up, valuation and
+   administration fees are not charged; the disposable income allowance is not modelled, so the
+   engine defers only the genuinely unfundable part and therefore defers LESS than the real scheme
+   allows; the authority's discretion to refuse, and its own equity and security tests, are not
+   modelled; and the twelve-week property disregard that normally runs before an agreement starts
+   is not modelled.
+
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees
