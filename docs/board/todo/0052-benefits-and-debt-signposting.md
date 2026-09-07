@@ -74,3 +74,64 @@ Worth knowing for the next session in a Blade file: a `{{-- comment --}}` contai
 text `@php...@endphp` is NOT invisible to Blade's raw-block regex. One in the PDF partial paired
 with a later `@endphp` and silently swallowed most of the printed report, with no error at all.
 `ScenarioPdfTest::test_the_pdf_carries_every_section_the_results_page_shows` is what caught it.
+
+### 2026-09-07 review (v20260907095255-da1f)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 233s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I traced all three lines to real code and tried to break each.
+
+**#1 secured framing** ÔÇö `ResultPresenter::priorityDebtGuidance()` (`app/Forecast/ResultPresenter.php`) finds the first year with `unmetSpend`, and sets `secured` from that same year's `YearResult::mortgageBalance()`. The secured headline says "secured-debt shortfall", arrears and possession. It is rendered by `resources/views/livewire/scenario-results.blade.php` and `resources/views/pdf/partials/report.blade.php`, both from `$ladder['priorityDebt']`. A no-mortgage plan gets the other wording, so no invented consequence.
+
+**#2 contacts column** ÔÇö `resources/views/components/sources-and-contacts.blade.php` gains a `showBenefitsDebt` prop, default false. It is switched on by `ScenarioResults::render()`, `ScenarioCompare::render()` and `ScenarioReport` (`sourcesShowBenefitsDebt`), each using "panel not null OR mortgage". The PDF has its own gated section. So screen, compare and PDF all covered.
+
+**#3 priority debts named** ÔÇö the first two `points` in `priorityDebtGuidance()` name mortgage and council tax, possession, liability order and deductions. Both secured and unsecured cases get them.
+
+I could not find an AC that fails.
+
+VERDICT: sound
+
+**scope: defect**
+
+## What I checked
+
+I found the commit (`dd8efca`, card 0052) and read the diff, the component, and the tests.
+
+## Finding
+
+**`ResultPresenter::priorityDebtGuidance()` adds a claim the card never asked for, and the claim is wrong.**
+
+The second bullet it always emits says the forecast "counts the benefits you entered plus Pension Credit, and nothing else".
+
+That is not true. The engine also models and pays into the projection:
+
+- `packages/finance-engine/src/Benefits/HousingBenefit.php` (`annualAward`, called from `PathProjector`)
+- `packages/finance-engine/src/Benefits/CouncilTax.php` (`reductionAnnual`, called from `PathProjector`)
+- `packages/finance-engine/src/Benefits/SupportForMortgageInterest.php` (`annualAmountMet`, called from `PathProjector`)
+
+So the tool now tells the user, on screen and in the PDF, that it ignores benefits it actually pays. The card asked for debt-priority framing and a route to help. A statement about which benefits the model covers is over the fence, and it is a wrong figure statement in a project whose rule is "no invisible figures".
+
+Smaller note: the amber framing panel only renders in `resources/views/livewire/scenario-results.blade.php`. `ScenarioCompare::render()` gets the contacts column but no framing, so a failing plan viewed in compare is still a bare number.
+
+Fix: delete or correct that bullet.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Finding: equity release is framed as a repossession risk.**
+
+`ResultPresenter::priorityDebtGuidance()` decides `secured` from `YearResult::mortgageBalance()` alone. `PathProjector` fills that from `$state['mortgageOutstanding']`, and `PathProjector` rolls a **lifetime mortgage** into the same field (`mortgageRollUpRate`, documented in `Dto/Property.php` as "a lifetime mortgage (equity release)" with no payments).
+
+So a household with equity release and a shortfall is told the loan is one where "missed instalments become arrears and the lender can ask a court for possession ÔÇö the home is then sold", plus the MCOB 13 forbearance point. A lifetime mortgage has **no instalments to miss**; it is repaid on death or a move into care and carries a no-negative-equity guarantee. That is an invented consequence, which the same docblock says it avoids ("never told their home is at stake" for a renter or outright owner). The distinction is already available in this class ÔÇö `ResultPresenter` reads `$home?->mortgageRollUpRate` elsewhere.
+
+No test builds an equity-release shortfall; the suite is green and silent.
+
+Secondary, same function: `YearResult::smiBalance()` and the new deferred-care charge are documented there as the second and third secured balances on the home. Neither reaches the framing.
+
+VERDICT: defect
+
