@@ -1241,10 +1241,17 @@ final class PathProjector
         // a one-year EVENT (board card 0049 warns on it) while $state['homeSold'] stays true for the
         // rest of the plan, so the flag alone would repeat the warning for ever.
         $homeSoldAtYearStart = $state['homeSold'];
-        if ($home?->mortgageRedemptionYear !== null
+        $saleForcedByMaturity = $home?->mortgageRedemptionYear !== null
             && $home->mortgageMaturityAction === MortgageMaturityAction::ForcedSale
-            && ! $state['homeSold']
-            && $calendarYear >= $home->mortgageRedemptionYear) {
+            && $calendarYear >= $home->mortgageRedemptionYear;
+        // The SAME sale, on the other trigger every standard equity-release contract carries
+        // (board card 0056): permanent residential care for the last surviving borrower matures a
+        // lifetime mortgage exactly as death does. Run here, before the year's care charge and its
+        // financial assessment below, so the resident is charged on the position the sale leaves
+        // them in — the proceeds in hand and no home — rather than on a home they no longer have.
+        $saleForcedByCare = ! $saleForcedByMaturity
+            && $this->equityReleaseRedeemedByCare($household, $state, $draws, $alive, $yearIndex);
+        if ($home !== null && ! $state['homeSold'] && ($saleForcedByMaturity || $saleForcedByCare)) {
             // The balance to redeem is the one owed in THIS year, never the one originally
             // entered. The two agree only for an interest-only loan, which is why passing the
             // entered figure survived: a lifetime mortgage has rolled up by now (so the sale was
@@ -2096,6 +2103,46 @@ final class PathProjector
         }
 
         return $aliveCount === 1 && ! $home->occupiedByQualifyingRelative;
+    }
+
+    /**
+     * Has a lifetime mortgage on this home fallen due this year because the LAST surviving
+     * borrower has moved permanently into residential care? (Board card 0056.)
+     *
+     * A roll-up balance ({@see Property::$mortgageRollUpRate}) is an equity-release plan, and
+     * every standard one matures on the last borrower's death, sale of the home OR permanent
+     * entry into long-term care: the home is sold and the lender is paid first. Only a roll-up
+     * plan is called in — an ordinary serviced or repayment mortgage carries no such term, and a
+     * balance already redeemed has nothing to call.
+     *
+     * "Last surviving borrower" is every LIVING member being in care this year. While one of them
+     * is still living in the home the contract has not matured, so the home is kept.
+     *
+     * v1 flag: the engine models a care spell, not its permanence, so any modelled year in care
+     * is treated as a permanent placement. That is the adverse reading and the usual one — a
+     * modelled spell runs to death.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     */
+    private function equityReleaseRedeemedByCare(Household $household, array $state, PathDraws $draws, array $alive, int $yearIndex): bool
+    {
+        if ($state['mortgageRollUpRate'] === null || $state['mortgageOutstanding'] <= 0) {
+            return false;
+        }
+
+        $living = 0;
+        foreach ($household->persons as $person) {
+            if (! ($alive[$person->id] ?? false)) {
+                continue;
+            }
+            $living++;
+            if ($draws->careAnnualCost($person->id, $state['baseAge'][$person->id] + $yearIndex) <= 0) {
+                return false;
+            }
+        }
+
+        return $living > 0;
     }
 
     /**

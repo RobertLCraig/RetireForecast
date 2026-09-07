@@ -59,7 +59,19 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-07 (rnrb-downsizing-addition): selling the home no longer deletes the residence
+     * Bumped 2026-09-07 (lifetime-mortgage-redeemed-on-entry-to-care): an equity-release lifetime
+     * mortgage now falls due when the LAST surviving borrower moves permanently into residential
+     * care, which is a redemption event under every standard contract and which the projector used
+     * to ignore, settling the balance only at the end of the path. The home is sold in that year,
+     * the lender is paid first out of the proceeds and the residue is credited to the household's
+     * liquid assets, so the resident's care charge that year is assessed on the new position with
+     * no home ({@see PathProjector::equityReleaseRedeemedByCare}). Any stored plan that carries a
+     * roll-up balance AND reaches a modelled care spell was shown living in the home to the end of
+     * the plan with an estate under an earlier stamp: its home equity, its care assessment and its
+     * estate are all wrong, in either direction, and the roll-up stops compounding at the sale. A
+     * plan with no roll-up rate, or whose paths never reach care, is byte-identical, which is why
+     * the Monte Carlo golden master did not move. See board card 0056.
+     * Previous bump 2026-09-07 (rnrb-downsizing-addition): selling the home no longer deletes the residence
      * nil-rate band. A home disposed of during the plan (a year-0 sell variant or an in-projection
      * forced sale) is recorded, and the part of the band it would have sheltered is restored at the
      * final death as the statutory downsizing addition
@@ -262,7 +274,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/deferred-care-payment-on-the-home';
+    public const ENGINE_VERSION = 'finance-engine/lifetime-mortgage-redeemed-on-entry-to-care';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

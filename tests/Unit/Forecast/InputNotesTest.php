@@ -286,7 +286,32 @@ final class InputNotesTest extends TestCase
         // An equity-release lifetime mortgage with no payments: the note must state the rate and
         // what the compounding balance leaves behind, so the (gross) wealth line can't quietly
         // flatter a plan whose home equity the rolled-up interest has consumed.
-        $notes = $this->notes([
+        $notes = $this->notes($this->rollUpState());
+
+        $flag = array_values(array_filter($notes, fn (array $n): bool => $n['kind'] === 'lifetime_mortgage_rollup'));
+        $this->assertCount(1, $flag);
+        $this->assertStringContainsString('rolling up at 6.5% a year', $flag[0]['text']);
+        $this->assertStringContainsString('left to inherit', $flag[0]['text']);
+    }
+
+    public function test_the_roll_up_note_states_the_care_redemption_trigger(): void
+    {
+        // Board card 0056. Permanent entry into residential care by the last surviving borrower
+        // calls in the plan, and that is the case a reader most needs to see before signing an
+        // equity-release deed: the home is sold, the lender is paid first, and there is no home to
+        // return to and nothing left to top up a chosen care home with.
+        $notes = $this->notes($this->rollUpState());
+
+        $flag = array_values(array_filter($notes, fn (array $n): bool => $n['kind'] === 'lifetime_mortgage_rollup'));
+        $this->assertCount(1, $flag);
+        $this->assertStringContainsString('residential care', $flag[0]['text']);
+        $this->assertStringContainsString('twelve-week', $flag[0]['text']);
+    }
+
+    /** A retired couple whose £350k home carries a £118k lifetime mortgage rolling up at 6.5%. */
+    private function rollUpState(): array
+    {
+        return [
             'householdName' => 'Roll-up', 'region' => 'england_wales_ni',
             'people' => [
                 ['id' => 'p1', 'name' => 'Pat', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
@@ -303,12 +328,7 @@ final class InputNotesTest extends TestCase
                 'currentValue' => '350000', 'ownership' => 'mortgaged', 'outstandingMortgage' => '118000',
                 'mortgageRollUpRate' => '6.5',
             ],
-        ]);
-
-        $flag = array_values(array_filter($notes, fn (array $n): bool => $n['kind'] === 'lifetime_mortgage_rollup'));
-        $this->assertCount(1, $flag);
-        $this->assertStringContainsString('rolling up at 6.5% a year', $flag[0]['text']);
-        $this->assertStringContainsString('left to inherit', $flag[0]['text']);
+        ];
     }
 
     public function test_support_for_mortgage_interest_is_flagged_with_its_rate_cap_and_charge(): void

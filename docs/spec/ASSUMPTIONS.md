@@ -548,6 +548,27 @@ cash **−0.5%**.
    modelled; and the twelve-week property disregard that normally runs before an agreement starts
    is not modelled.
 
+29. **Permanent entry into care as an equity-release redemption event** (board card 0056; lives in
+   `PathProjector::equityReleaseRedeemedByCare()` and the `lifetime_mortgage_rollup` results note).
+   **STATED, not verified** (built without web access), and it reaches a projection.
+
+   Two statements sit behind the model. First, that a standard lifetime mortgage falls due when the
+   last surviving borrower moves permanently into long-term residential care, alongside death and
+   sale. This is the Equity Release Council product standard as it is usually described, and it is
+   what `Property::$mortgageRollUpRate`'s own docblock has always said; no contract or Council
+   publication is cited. Second, that the twelve-week property disregard and a council deferred
+   payment agreement are not normally available on a home already charged to a lender, which is
+   stated in the results copy and drives no arithmetic.
+
+   Two v1 simplifications follow, both flagged in code: the engine models a care spell but not its
+   PERMANENCE, so any modelled care year is treated as a permanent placement (the adverse reading,
+   and the ordinary one since a modelled spell runs to death); and the lender's own notice period
+   and grace period, typically some months after the move, are not modelled, so the sale falls in
+   the first care year.
+
+   **To verify:** the Equity Release Council product standards, and a sample of lender tariffs for
+   the notice period.
+
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees

@@ -2029,15 +2029,34 @@ final class ResultPresenter
         // equity has quietly been consumed by the rolled-up interest (factual, not advice).
         $rollUp = $home?->mortgageRollUpRate;
         if ($home !== null && $rollUp !== null && $mortgage !== null && $mortgage->isPositive()) {
+            // The last year the home is still owned, which is the end of the path only where it is
+            // never sold. A plan redeemed mid-projection (a forced sale at maturity, or the care
+            // trigger stated below) ends holding no home and no balance, so reading the final year
+            // would report a £0 debt against a £0 home and tell the reader nothing.
             $finalYear = $forecast->years[count($forecast->years) - 1];
+            foreach ($forecast->years as $projected) {
+                if ($projected->propertyWealth->isPositive()) {
+                    $finalYear = $projected;
+                }
+            }
             $rate = rtrim(rtrim(number_format($rollUp->asPercent(), 2), '0'), '.');
             $notes[] = ['kind' => 'lifetime_mortgage_rollup', 'text' => "This home is modelled as an equity-release lifetime mortgage rolling up at {$rate}% a year with no "
-                ."payments: the {$mortgage->format()} balance compounds untouched and is repaid from the estate when the "
-                .'home is finally sold (capped at the home’s value — you can never owe more than it). By '
-                ."{$forecast->finalCalendarYear} it grows to about {$finalYear->mortgageBalance()->format()} in today’s money, "
+                ."payments: the {$mortgage->format()} balance compounds untouched and is repaid when the "
+                .'home is finally sold or the plan otherwise falls due (capped at the home’s value — you can never owe more than it). By '
+                ."{$finalYear->calendarYear} it grows to about {$finalYear->mortgageBalance()->format()} in today’s money, "
                 ."so of the home’s {$finalYear->propertyWealth->format()} only about {$finalYear->homeEquity()->format()} would "
                 .'be left to inherit. Freeing the monthly payment helps the money last, but the rolled-up interest is what it '
                 .'costs what you leave behind — compare this against servicing the interest to see the trade-off. '
+                // Board card 0056. Death is not the only maturity event, and care is the one a
+                // reader is least likely to have been shown. The forecast now acts on it, so the
+                // copy has to say so or the sale looks like something the model invented.
+                .'A standard plan also falls due if the last surviving borrower moves permanently into residential care. '
+                .'The home is then sold and the lender is repaid first, so this forecast sells it and clears the balance in '
+                .'that year. What follows is the part that is easy to miss: there is no home to go back to if the placement '
+                .'turns out to be temporary, whatever equity is left is assessed as capital straight away, and there is '
+                .'nothing held back to top up the fees of a home of your choosing. The twelve-week property disregard and a '
+                .'council deferred payment agreement, which are what usually protect a home at that point, are not normally '
+                .'available once the property is already charged to a lender. '
                 // Board card 0049. The alternative a household reaches for once equity release is on
                 // the table is signing the home over to a child, so the trap belongs beside this note
                 // rather than on a page nobody opens. The copy is the ENGINE's, quoted rather than

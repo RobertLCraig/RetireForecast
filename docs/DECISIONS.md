@@ -3,6 +3,41 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-07: permanent entry into care by the last borrower redeems a lifetime mortgage
+**Context:** card 0056 (expert panel 2026-08-19, estate planner finding 5). `Property::$mortgageRollUpRate`'s
+own docblock had always said the balance is repaid from the estate on death, sale **or care**, but
+the projector only ever settled it at the end of the path.
+
+**Decision: a roll-up balance falls due in the first year every LIVING member is in care.** That is
+the maturity term every standard equity-release contract carries, and it is the scenario a reader
+most needs to see before signing the deed: the home is sold, the lender is paid first, and the
+survivor is assessed onto local-authority funding at once with no top-up, no choice of home and no
+home to return to. The trigger is deliberately the LAST borrower, so a home one partner still lives
+in is kept. `PathProjector::equityReleaseRedeemedByCare()` is the one home of the question, and it
+runs the SAME sale block a forced sale at maturity runs, so the proceeds, the selling costs, the
+capital gains treatment, the Support for Mortgage Interest and deferred care charges secured on the
+same bricks, and the residence disposal recorded for the Inheritance Tax downsizing addition all
+keep one definition. It is placed before the year's care charge, so the resident is assessed on the
+position the sale leaves them in.
+
+**What is deliberately not modelled:** permanence. The engine models a care spell, not whether the
+placement is permanent, so any modelled care year is treated as a permanent placement. That is the
+adverse reading and the ordinary one, since a modelled spell runs to death. Flagged in the method's
+docblock.
+
+**Consequence:** **every stored plan carrying a roll-up balance whose paths reach a care spell
+moves**, in home equity, in the care assessment and in the estate; a plan with no roll-up rate, or
+that never reaches care, is byte-identical, which is why the Monte Carlo golden master did not
+redden and needs no re-pin. `ENGINE_VERSION` is
+`finance-engine/lifetime-mortgage-redeemed-on-entry-to-care` and the stored-scenario re-run is owed.
+The results copy states the trigger and what it costs, so the sale cannot read as something the
+model invented.
+
+**Sourcing gap:** that permanent entry into long-term care is a standard redemption event, and that
+the twelve-week property disregard and a council deferred payment agreement are not normally
+available on an already-charged home, are both **STATED, not verified**: this session had no web
+access. Both reach a screen and the first reaches a projection.
+
 ## 2026-09-07: the care property disregard is widened, and an unfundable care charge becomes a deferred payment instead of a plan failure
 **Context:** card 0055 (expert panel 2026-08-19, estate planner finding 6). Two faults, one cause:
 the model treated an assessable home as money it could neither shelter nor spend.

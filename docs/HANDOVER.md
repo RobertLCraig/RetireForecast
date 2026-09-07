@@ -5,10 +5,28 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-07 (card 0055). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-07 (card 0056). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0036 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A lifetime mortgage is now redeemed when the last borrower goes into care.** Card 0056.
+  `Property::$mortgageRollUpRate`'s docblock had always said the balance is repaid on death, sale
+  **or care**; the projector only ever settled it at the end of the path, so the tool showed that
+  household living in the home to the end of the plan with an estate.
+  `PathProjector::equityReleaseRedeemedByCare()` is the one home of the trigger (a roll-up rate, a
+  balance still owed, and every LIVING member in care this year) and it runs the SAME sale block a
+  forced sale at maturity runs, so proceeds, selling costs, CGT, the SMI and deferred care charges
+  on the same bricks and the recorded residence disposal all keep one definition. It sits ABOVE the
+  care fee in the year order, which is what makes the resident assessed on the new position: no
+  home, proceeds in hand. **Every stored plan with a roll-up balance whose paths reach care moves**;
+  a plan with no roll-up rate, or that never reaches care, is byte-identical, which is why
+  `GoldenMasterTest` did not redden and needs no re-pin. `ENGINE_VERSION` is
+  `finance-engine/lifetime-mortgage-redeemed-on-entry-to-care` and the **stored-scenario re-run is
+  owed**. The rule is **STATED, not verified** (no web in this session): see
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§29), carded as **0132**. Built in a worktree, so
+  the rewritten equity-release note **has not been seen in a browser**. One gap carded rather than
+  fixed: **0131**, cards 0054 and 0055 bumped `ENGINE_VERSION` without adding their paragraph to its
+  log, so the log's newest entry names a stamp two behind the constant.
 - **A care bill the plan cannot pay is now a debt on the home, not a plan failure, and the property
   disregard follows the statute.** Card 0055. Two faults with one cause: the model treated an
   assessable home as money it could neither shelter nor spend. The disregard applied only while a

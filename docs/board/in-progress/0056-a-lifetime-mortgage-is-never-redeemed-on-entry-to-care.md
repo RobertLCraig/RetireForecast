@@ -26,13 +26,72 @@ The care means test itself, which is card 0055.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN the last surviving borrower enters permanent residential care and the home carries a roll-up balance, THE APP SHALL sell the home and repay the balance in that year.
-- [ ] #2 WHEN that happens, THE APP SHALL reassess the household on its new capital position with no home.
-- [ ] #3 THE APP SHALL state this redemption trigger wherever an equity-release plan is displayed.
+- [x] #1 WHEN the last surviving borrower enters permanent residential care and the home carries a roll-up balance, THE APP SHALL sell the home and repay the balance in that year.
+- [x] #2 WHEN that happens, THE APP SHALL reassess the household on its new capital position with no home.
+- [x] #3 THE APP SHALL state this redemption trigger wherever an equity-release plan is displayed.
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Add the care redemption branch to the projector's care handling
-- [ ] Repay with the no-negative-equity cap; credit any residue to liquid assets
-- [ ] Re-run the means test on the new position
-- [ ] Add the trigger to the equity-release copy in `ResultPresenter`
+- [x] Add the care redemption branch to the projector's care handling
+- [x] Repay with the no-negative-equity cap; credit any residue to liquid assets
+- [x] Re-run the means test on the new position
+- [x] Add the trigger to the equity-release copy in `ResultPresenter`
+
+## Comments
+**2026-09-07**
+RESULT: done
+TESTS: +5 new, all green
+TOUCHED:
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Forecast/LifetimeMortgageCareRedemptionTest.php
+app/Forecast/ResultPresenter.php
+app/Forecast/ScenarioForecaster.php
+tests/Unit/Forecast/InputNotesTest.php
+docs/DECISIONS.md
+docs/spec/ASSUMPTIONS.md
+docs/board/todo/0131-two-engine-version-bumps-are-missing-from-the-stamp-log.md
+docs/board/todo/0132-verify-the-care-redemption-term-on-an-equity-release-plan.md
+docs/HANDOVER.md
+OUT-OF-SCOPE: 0131, 0132
+
+`PathProjector::equityReleaseRedeemedByCare()` is the one home of the trigger: a roll-up rate is
+set, a balance is still owed, and every LIVING member is in care this year. It runs the SAME sale
+block a forced sale at maturity runs rather than a second one beside it, so the selling costs, the
+capital gains treatment, the redemption of the Support for Mortgage Interest and deferred care
+charges secured on the same bricks, the residence disposal recorded for the Inheritance Tax
+downsizing addition, and the even split of the residue into the living owners' GIAs all keep one
+definition. The no-negative-equity cap needed nothing new: `growState` already caps the roll-up at
+the property value each year, so the balance handed to `HousingProceeds` can never exceed it.
+
+Criterion #2 falls out of WHERE the block sits. It is above the care fee and its financial
+assessment in the year order, so the resident is assessed on the position the sale leaves them in:
+`careHomeAssessable()` reads the sold home as no home and `careAssessableCapital()` reads the
+proceeds. The test proves it on the household the card describes, one person with most of their
+money in the bricks: before the fix the fee they could not pay was deferred onto a home they were
+shown keeping, after it the proceeds pay the fee and nothing is deferred.
+
+The two negative controls are the ones that make it a rule rather than a switch: an ordinary
+serviced mortgage is not called in by care, and a plan is not called in while one borrower is in
+care and the other still lives in the home. Both are real cases in the harness, not stubs. That
+second one is only expressible because the care stress puts its spell on whichever person has the
+higher death age and takes the FIRST declared on a tie, so declaring both partners with the same
+death age puts p1 in care while p2 lives on.
+
+What I could not settle from the repository, and assumed:
+- **Permanence.** The engine models a care spell but not whether the placement is permanent, so any
+  modelled care year is treated as permanent. That is the adverse reading and the ordinary one, a
+  modelled spell running to death. Flagged in the method's docblock.
+- **The lender's notice period.** Real tariffs allow some months before a sale is required; the
+  engine sells in the first care year, again the adverse end. Flagged in ASSUMPTIONS section 29.
+- **Sourcing.** Nothing behind the rule could be verified: this session had no web. Written up as
+  ASSUMPTIONS section 29 and carded as **0132**.
+
+`ENGINE_VERSION` is `finance-engine/lifetime-mortgage-redeemed-on-entry-to-care` and the
+**stored-scenario re-run is owed**. The Monte Carlo golden master did NOT redden and needs no
+re-pin: its frozen household carries no roll-up rate.
+
+Built in a worktree, so the rewritten results note **has not been seen in a browser**.
+
+Raised rather than fixed: **0131**, two earlier `ENGINE_VERSION` bumps (cards 0054 and 0055) never
+got their paragraph in the stamp's own log, so the log's newest entry names a stamp two behind the
+constant.
