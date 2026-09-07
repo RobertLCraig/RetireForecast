@@ -107,3 +107,51 @@ an unattended session cannot fetch: card **0128**.
 
 Built in a worktree, so the new relationship select, the marriage-date input, the will checkbox, the
 residence select and the two new results notes **have not been seen in a browser**.
+
+### 2026-09-07 review (v20260907142032-a2c8)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 234s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I traced each criterion to real code.
+
+**AC1 ÔÇö status must be chosen, disclosed if assumed.** `ScenarioBuilder::rules()` makes `relationshipStatus` `requiredIf` two people, and the blank option is the first in `scenario-builder.blade.php`. `Household::$relationshipStatus` is nullable with no default; `Household::relationshipStatusIsAssumed()` gates the disclosure written in `ResultPresenter::assumedFigures()`, which reads the status back out of the household rather than restating it.
+
+**AC2 ÔÇö a will per person, default no.** `Person::$hasWill` defaults false, a checkbox binds it in the builder view, and `ScenarioBuilder::loadState()` backfills `hasWill`/`ukLongTermResident` for older scenarios.
+
+**AC3 ÔÇö intestacy instead of full exemption.** `InheritanceTaxCalculator::computeFirstDeath()` builds `$passingToSpouse` from `intestacySpouseShare()` when there is no will, caps it at the nil-rate band for a non-resident survivor, and returns `nilRateBandUsed`. `PathProjector::recordFirstDeathIht()` passes `$deceased->hasWill` and stores that used band; `recordFinalDeathIht()` subtracts it, and `compute()` deducts it from the doubled band.
+
+**AC4 ÔÇö marriage date and residence.** Both are builder inputs and round-trip: `HouseholdAssembler` maps `marriageDate` and `ukLongTermResident`, and `loadState()` restores them.
+
+I could not break any of the four.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Scope check on card 0054.**
+
+**Grew past what the card asked.** `PathProjector::recordFirstDeathIht()` passes `issueTakeUnderIntestacy: $settings->homeToDescendants`. That takes an existing user control, "Leave home to descendants", and quietly gives it a second meaning: "there are children". The card asked for a will input, not a new meaning for an old input. It also opens a back door around acceptance #3: a couple with no will who untick that box get the whole estate spouse-exempt again, and `InheritanceTaxCalculator::computeFirstDeath()` then raises no `IHT_INTESTACY` warning, so nothing on the page says a will was still assumed away. The box is not labelled as a children question.
+
+**Left half done.**
+- `InheritanceTaxCalculator::STATUTORY_LEGACY_PENCE` ships with `verified_on: NOT VERIFIED`. It moves real money. Card task 3 is unticked (carded 0127).
+- `Household::$marriageDate` is captured and read by nothing (carded 0128).
+- `ResultPresenter::assumedFigures()` discloses the relationship status and the residence position, but not the no-will default.
+
+The fenced-off relationship-status mechanics were not disturbed.
+
+VERDICT: defect
+
+**breakage: defect**
+
+Two things break.
+
+**1. Contradictory, false intestacy warning on a small estate.** In `InheritanceTaxCalculator::computeFirstDeath`, the `IHT_INTESTACY` warning is gated only on `$intestate`, not on the children actually taking anything. `intestacySpouseShare` gives the spouse the whole estate when it is at or below the statutory legacy, so a ┬ú300,000 intestate estate emits BOTH the spouse-exemption warning ("no Inheritance Tax is due") and the intestacy warning, which tells the reader "the children take the other half ÔÇö ┬ú0.00 hereÔÇª that half is taxed and it uses up part of the allowance". Nothing is taxed and no band is spent. `IntestacyTest::test_an_intestate_estate_below_the_statutory_legacy_still_passes_wholly_to_the_spouse` builds exactly this estate but asserts only tax and band, never the warnings, so the suite cannot see it. The sibling test `test_no_children_means_the_spouse_takes_the_whole_intestate_estate` does assert the warning is absent, so the rule is asserted in one place and not the other.
+
+**2. A caller drops the new input.** `HousingComparison::withHousing` rebuilds `new Household(...)` field by field and does not pass `marriageDate`, so every buy/rent/stay-put variant silently loses it. Harmless today only because nothing reads it (card 0128).
+
+VERDICT: defect
+
