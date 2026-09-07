@@ -825,8 +825,19 @@
                     <tr><td>Inheritance Tax on the first death</td><td class="num">£{{ number_format($iht['firstDeath']['tax']) }}</td></tr>
                 @endif
                 <tr class="total"><td>Inheritance Tax due in total</td><td class="num">£{{ number_format($iht['total']) }}</td></tr>
+                @if ($iht['beneficiaryIncomeTax'] !== null)
+                    <tr><td>Income tax paid by whoever inherits your pension (assumed {{ $iht['beneficiaryRatePct'] }} on the £{{ number_format($iht['inheritedPension']) }} left in it)</td><td class="num">£{{ number_format($iht['beneficiaryIncomeTax']) }}</td></tr>
+                    <tr class="total"><td>Tax in total on what you leave</td><td class="num">£{{ number_format($iht['pensionTaxedTwiceTotal']) }}</td></tr>
+                @endif
             </tbody>
         </table>
+        @if ($iht['beneficiaryIncomeTax'] !== null)
+            <p class="note"><strong>Your pension is taxed twice.</strong> You are modelled as dying at or after 75, so
+                on top of the Inheritance Tax above, whoever inherits what is left in your pension pays their own income
+                tax on every pound they take out of it. The income tax is not part of the Inheritance Tax figure: it
+                falls on the person who inherits, in the years they draw it. You can change the rate we assume for them
+                in the builder.</p>
+        @endif
         @if ($iht['pensionsIncluded'])
             <p class="note">Unused pension pots are counted as part of the estate — the rule due from
                 <strong>April 2027</strong> (Finance Act 2026). Before then they sat outside it, so this raises the

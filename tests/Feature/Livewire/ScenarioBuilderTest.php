@@ -116,6 +116,60 @@ class ScenarioBuilderTest extends TestCase
     }
 
     /**
+     * Board card 0057. An unused pension pot left on a death at or after 75 is taxed twice, and
+     * both halves of the second charge were unreachable from the form: the beneficiary's assumed
+     * tax rate, and who each pot is actually nominated to (which decides the spouse exemption on
+     * it, because a pension is not covered by the will).
+     */
+    public function test_the_beneficiary_tax_rate_and_pension_nomination_reach_the_forecast(): void
+    {
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component
+            ->set('ihtModelled', true)
+            ->set('beneficiaryTaxRate', '20')
+            ->call('addPension', 'dc')
+            ->set('pensions.'.(count($component->get('pensions')) - 1).'.currentValue', '150000')
+            ->set('pensions.'.(count($component->get('pensions')) - 1).'.nominatedBeneficiary', 'spouse_or_civil_partner')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $scenario = Scenario::latest('id')->firstOrFail();
+        $this->assertSame(
+            2000,
+            app(ScenarioForecaster::class)->settings($scenario)->beneficiaryMarginalRate?->basisPoints,
+        );
+
+        $nominated = null;
+        foreach ($scenario->toHousehold()->pensions as $p) {
+            if ($p instanceof DcPension) {
+                $nominated = $p;
+            }
+        }
+        $this->assertNotNull($nominated);
+        $this->assertTrue($nominated->nominatedToSpouse());
+        $this->assertFalse($nominated->nominationIsAssumed());
+    }
+
+    public function test_an_unset_beneficiary_rate_stores_nothing_and_leaves_the_engine_default(): void
+    {
+        // Sparse, like every other default-following field: a scenario that never touched it must
+        // record no key, so a what-if child shows no spurious delta and the engine's own adverse
+        // default stays in force.
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component->set('ihtModelled', true)->call('save')->assertHasNoErrors();
+
+        $scenario = Scenario::latest('id')->firstOrFail();
+        $this->assertArrayNotHasKey('beneficiaryTaxRate', $scenario->effectiveBuilderState());
+        $this->assertNull(app(ScenarioForecaster::class)->settings($scenario)->beneficiaryMarginalRate);
+    }
+
+    /**
      * Board card 0038. The triple lock was assumed to survive the whole plan with no source, no
      * setting and no control, which is the optimistic branch of contested policy chosen silently.
      * The reader now picks one of three futures, and the picked one has to reach the settings the

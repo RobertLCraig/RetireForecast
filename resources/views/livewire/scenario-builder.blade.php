@@ -279,6 +279,18 @@
                             Leaving your home to your children / direct descendants
                         </label>
                         <p class="mt-1 pl-6 text-xs text-gray-500">Unlocks the £175,000 residence nil-rate band per person (only when the home passes to direct descendants). Untick if it will not.</p>
+                        <div class="mt-3 pl-6">
+                            <label for="beneficiaryTaxRate" class="{{ $label }}">Tax rate of whoever inherits your pension</label>
+                            <select id="beneficiaryTaxRate" wire:model="beneficiaryTaxRate" class="{{ $field }}">
+                                <option value="">Assume the higher rate (40%)</option>
+                                <option value="0">No tax (they have no other income)</option>
+                                <option value="20">Basic rate (20%)</option>
+                                <option value="40">Higher rate (40%)</option>
+                                <option value="45">Additional rate (45%)</option>
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500">If you die at or after 75, an unused pension pot is taxed twice: Inheritance Tax on your estate, and then the person who inherits it pays their own income tax on every pound they take out of what is left. Together that can be around two thirds of the pot. We assume the higher rate unless you say otherwise, because a working-age child drawing a pot on top of their salary usually lands there.</p>
+                            @error('beneficiaryTaxRate') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
                         @endif
                     </div>
                     <div class="sm:col-span-2">
@@ -602,6 +614,16 @@
                                         <option value="non_earner">I'm not earning, so I pay in from savings</option>
                                     </select>
                                     <p class="mt-1 text-xs text-gray-500">Most workplace schemes use net pay: the contribution comes out of your gross pay, so you get relief at your own tax rate straight away. If you're not earning you can still pay in up to £2,880 a year and the provider adds £720, making £3,600. Pick the second option and enter what leaves your bank, not what lands in the pot. Relief stops at 75. Leave it unset and we won't model relief at all, and we'll say so on your results.</p>
+                                </div>
+                                <div>
+                                    <label for="pensions-{{ $i }}-nominatedBeneficiary" class="{{ $label }}">Nominated to (expression of wish)</label>
+                                    <select id="pensions-{{ $i }}-nominatedBeneficiary" wire:model="pensions.{{ $i }}.nominatedBeneficiary" class="{{ $field }}">
+                                        <option value="">Not sure yet</option>
+                                        <option value="spouse_or_civil_partner">My husband, wife or civil partner</option>
+                                        <option value="someone_else">Somebody else (a child, for example)</option>
+                                    </select>
+                                    <p class="mt-1 text-xs text-gray-500">A pension is not covered by your will. The scheme pays whoever your expression of wish form names, at its own discretion, so a pot can go to a child even where everything else goes to your partner. From April 2027 that matters for Inheritance Tax: a pot left to your partner is exempt on the first death, one left to anybody else is not. Leave it unset and we assume the more expensive answer, and say so on your results.</p>
+                                    @error('pensions.'.$i.'.nominatedBeneficiary') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label for="pensions-{{ $i }}-growthAssumptionOverride" class="{{ $label }}">Growth override (%/yr, optional)</label>

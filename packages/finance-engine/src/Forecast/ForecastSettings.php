@@ -9,6 +9,7 @@ use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
+use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
@@ -82,7 +83,31 @@ final class ForecastSettings
         public readonly bool $useIsaAllowance = true,
         public readonly StatePensionUprating $statePensionUprating = StatePensionUprating::TripleLock,
         public readonly ?int $tripleLockUntilYear = null,
+        /**
+         * The income-tax rate the person who INHERITS an unused pension pot is assumed to pay on
+         * drawing it, where the member died at or after 75. Null = the engine's own adverse default
+         * ({@see InheritanceTaxCalculator::DEFAULT_BENEFICIARY_MARGINAL_RATE_BPS}), disclosed as an
+         * assumed figure. It is a fact about somebody outside the household, so it can only ever be
+         * an assumption, but it sets half the cost of preserving a pot rather than spending it.
+         */
+        public readonly ?Percent $beneficiaryMarginalRate = null,
     ) {}
+
+    /**
+     * The beneficiary's assumed marginal rate actually in force: the reader's, or the engine's
+     * adverse default read from the constant that owns it.
+     */
+    public function beneficiaryMarginalRate(): Percent
+    {
+        return $this->beneficiaryMarginalRate
+            ?? Percent::fromBasisPoints(InheritanceTaxCalculator::DEFAULT_BENEFICIARY_MARGINAL_RATE_BPS);
+    }
+
+    /** Is that rate the ENGINE's, rather than one the reader chose? */
+    public function beneficiaryMarginalRateIsAssumed(): bool
+    {
+        return $this->beneficiaryMarginalRate === null;
+    }
 
     public function allocation(): PortfolioAllocation
     {
@@ -119,7 +144,7 @@ final class ForecastSettings
             $this->baseYear, $this->baseTaxYear, $this->drawdownStrategy, $this->allocation,
             $this->freezeEndYear, $this->annualRent, $this->rentInflationReal, $on,
             $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
-            $this->statePensionUprating, $this->tripleLockUntilYear,
+            $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
         );
     }
 }

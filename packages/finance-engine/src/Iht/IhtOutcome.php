@@ -23,5 +23,13 @@ final class IhtOutcome
         public readonly ?IhtResult $firstDeath,
         public readonly IhtResult $secondDeath,
         public readonly Money $total,
+        /**
+         * The BENEFICIARY's income tax across both deaths on the unused pension pots they inherit
+         * (board card 0057). Kept apart from $total, which is Inheritance Tax: this charge falls on
+         * somebody else, in later years, and adding the two together would misstate both. Shown
+         * beside it, because a reader comparing spending a pot against preserving it needs the
+         * whole cost of preserving it and not half of it.
+         */
+        public readonly Money $beneficiaryIncomeTax,
     ) {}
 }

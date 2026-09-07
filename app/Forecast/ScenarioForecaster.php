@@ -21,6 +21,7 @@ use RetireForecast\FinanceEngine\Forecast\HistoricalBacktester;
 use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestResult;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Housing\Tenancy;
+use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\MonteCarlo\Simulator;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -59,7 +60,19 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-07 (lifetime-mortgage-redeemed-on-entry-to-care): an equity-release lifetime
+     * Bumped 2026-09-07 (inherited-pension-taxed-twice): an unused pension pot is no longer
+     * spouse-exempt on the first death because the couple happen to be married. A death benefit is
+     * paid on the member's expression of wish rather than under the will, so the exemption follows
+     * `DcPension::$nominatedBeneficiary`, and a pot nobody has answered for takes the adverse
+     * answer: NOT the spouse, which is chargeable. Alongside it, the estate a death leaves is no
+     * longer split under the intestacy rules WITH the pension inside it, because the pension never
+     * passed that way. Any stored plan that models Inheritance Tax and holds a DC pot pays MORE at
+     * the first death under this stamp, and transfers a smaller nil-rate band to the second, until
+     * its nominations are entered; a plan with no DC pot, no surviving spouse, or no Inheritance
+     * Tax modelling is byte-identical, which is why the Monte Carlo golden master did not move. The
+     * beneficiary's own income tax added beside it changes no figure the projection reports. See
+     * board card 0057.
+     * Previous bump 2026-09-07 (lifetime-mortgage-redeemed-on-entry-to-care): an equity-release lifetime
      * mortgage now falls due when the LAST surviving borrower moves permanently into residential
      * care, which is a redemption event under every standard contract and which the projector used
      * to ignore, settling the balance only at the end of the path. The home is sold in that year,
@@ -274,7 +287,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/lifetime-mortgage-redeemed-on-entry-to-care';
+    public const ENGINE_VERSION = 'finance-engine/inherited-pension-taxed-twice';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:
@@ -611,6 +624,12 @@ final class ScenarioForecaster
             // unchanged; the full lock is the optimistic branch, and is disclosed as such.
             statePensionUprating: $upratingBasis,
             tripleLockUntilYear: $upratingUntilYear,
+            // The rate whoever inherits an unused pension pot is assumed to pay on drawing it.
+            // Absent = the engine's own adverse default, which the results page discloses, so
+            // every scenario stored before board card 0057 reproduces unchanged.
+            beneficiaryMarginalRate: trim((string) ($scenario->effectiveBuilderState()['beneficiaryTaxRate'] ?? '')) === ''
+                ? null
+                : Percent::fromPercent((float) $scenario->effectiveBuilderState()['beneficiaryTaxRate']),
         );
     }
 

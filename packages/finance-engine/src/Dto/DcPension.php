@@ -47,6 +47,12 @@ final class DcPension implements Pension
         public readonly ?Percent $growthAssumptionOverride = null,
         public readonly ?AnnuityPurchase $annuityPurchase = null,
         public readonly ?PensionReliefMethod $reliefMethod = null,
+        /**
+         * Who the member has nominated this pot to ({@see PensionBeneficiary}). Null = nobody was
+         * asked, which {@see nominatedToSpouse} reads as NOT the spouse — the adverse answer, and
+         * disclosed as an assumed figure rather than applied silently.
+         */
+        public readonly ?PensionBeneficiary $nominatedBeneficiary = null,
     ) {
         // Relief at source is a real method the DTO can express, but the projector does not yet
         // model it (the provider's basic-rate reclaim, and a higher-rate taxpayer's self-assessment
@@ -63,6 +69,23 @@ final class DcPension implements Pension
     public function ownerId(): string
     {
         return $this->ownerId;
+    }
+
+    /**
+     * Does this pot pass to the surviving spouse or civil partner, and so attract the spouse
+     * exemption on the first death? An unanswered nomination reads as NO, which is the adverse
+     * answer and the honest one: the scheme pays whoever the form names, and the tool has not been
+     * told that it names the spouse.
+     */
+    public function nominatedToSpouse(): bool
+    {
+        return $this->nominatedBeneficiary === PensionBeneficiary::SpouseOrCivilPartner;
+    }
+
+    /** Was the nomination never given, so the engine is supplying the answer for itself? */
+    public function nominationIsAssumed(): bool
+    {
+        return $this->nominatedBeneficiary === null;
     }
 
     public function type(): PensionType
@@ -108,6 +131,7 @@ final class DcPension implements Pension
             $this->growthAssumptionOverride,
             $annuityPurchase,
             $this->reliefMethod,
+            $this->nominatedBeneficiary,
         );
     }
 }

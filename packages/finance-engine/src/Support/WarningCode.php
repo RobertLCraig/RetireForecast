@@ -68,6 +68,14 @@ final class WarningCode
     public const IHT_DOWNSIZING_ADDITION = 'iht_downsizing_addition';
 
     /**
+     * An unused pension pot passing on a death at or after 75 is taxed TWICE: Inheritance Tax on
+     * the estate, then the beneficiary's own income tax on what they draw from what is left.
+     * Raised so the second charge is on the screen beside the first, because showing only one of
+     * them makes preserving a pot look about twice as attractive as it is.
+     */
+    public const IHT_INHERITED_PENSION_INCOME_TAX = 'iht_inherited_pension_income_tax';
+
+    /**
      * A one-off CAPITAL cost (an unfunded home purchase, a mortgage redeemed from capital) could
      * not be funded in the year it falls. Raised on that year so the lump is named and findable,
      * rather than only depressing a spending probability that reads as a whole-plan failure.

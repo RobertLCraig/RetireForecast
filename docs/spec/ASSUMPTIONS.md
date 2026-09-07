@@ -569,6 +569,38 @@ cash **−0.5%**.
    **To verify:** the Equity Release Council product standards, and a sample of lender tariffs for
    the notice period.
 
+30. **The inherited-pension double charge** (board card 0057; lives in
+   `InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE`,
+   `InheritanceTaxCalculator::DEFAULT_BENEFICIARY_MARGINAL_RATE_BPS` and
+   `DcPension::$nominatedBeneficiary`). **STATED, not verified** (built without web access). The
+   age-75 rule and the nomination routing both reach a projection; the assumed beneficiary rate
+   drives a reported figure but no projected balance.
+
+   Three statements sit behind the model. First, that an unused pension fund inherited from a member
+   who died at or after 75 is taxable as the BENEFICIARY's own pension income at their marginal
+   rate, and that the April 2027 change bringing unused pots into the estate for Inheritance Tax
+   does not displace that charge. Second, that a pension death benefit is paid at the scheme's
+   discretion following the member's expression of wish rather than under the will, so the spouse
+   exemption on a pot turns on the nomination and not on marital status. Third, that the Inheritance
+   Tax a pot bears is apportioned rateably over the chargeable estate, so the beneficiary is charged
+   income tax on the pot NET of that share.
+
+   The default beneficiary rate is 40%, the higher rate. It is a judgement, not a published figure:
+   the pot this tool models is large enough that a working-age child drawing it on top of a salary
+   lands in the higher band under almost any drawdown pattern, and the standing direction is to
+   default adverse. The additional rate is more adverse still but applies to a small minority, so it
+   is offered as a choice rather than assumed. The reader can pick 0%, 20%, 40% or 45% in the
+   builder, and the assumption is disclosed on the results page whenever they have not.
+
+   Two v1 simplifications follow. The engine charges one rate on the whole pot rather than banding
+   the beneficiary's drawdown across their own personal allowance and bands over the years they
+   take it, which is the direction of the rate the reader picks. And a pot nominated away from the
+   spouse is still INHERITED by the surviving partner inside the projection, so it is taxed as
+   leaving the household while its money stays in it; that gap is board card 0133.
+
+   **To verify:** PTM073010 and the Finance Act 2004 provisions behind the age-75 dividing line, and
+   the April 2027 legislation's treatment of nominated death benefits.
+
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees

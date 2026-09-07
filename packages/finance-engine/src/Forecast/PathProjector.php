@@ -270,8 +270,10 @@ final class PathProjector
 
         $first = ($state['ihtFirstDeath'] ?? null) instanceof IhtResult ? $state['ihtFirstDeath'] : null;
         $total = $second->tax->plus($first?->tax ?? Money::zero());
+        $beneficiaryIncomeTax = $second->beneficiaryIncomeTax
+            ->plus($first?->beneficiaryIncomeTax ?? Money::zero());
 
-        return new IhtOutcome($first, $second, $total);
+        return new IhtOutcome($first, $second, $total, $beneficiaryIncomeTax);
     }
 
     /**
@@ -323,6 +325,11 @@ final class PathProjector
             deceasedLeftAWill: $deceased->hasWill,
             issueTakeUnderIntestacy: $settings->homeToDescendants,
             survivorIsUkLongTermResident: $survivor?->isUkLongTermResident() ?? true,
+            // A pension death benefit follows the member's expression of wish, not the will, so
+            // the exemption on it is decided pot by pot rather than by marital status.
+            pensionNominatedToSpouse: Money::fromPence($this->personPotsNominatedToSpouse($state, $deceased->id)),
+            deceasedDiedAtOrAfter75: $draws->deathAge($deceased->id) >= InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE,
+            beneficiaryMarginalRate: $settings->beneficiaryMarginalRate(),
         );
 
         // The band this death CONSUMED, kept in NOMINAL pounds because that is the unit the frozen
@@ -361,9 +368,17 @@ final class PathProjector
         // The final death year is the last survivor's (the latest modelled death among those alive
         // in the final living year), used for the April-2027 pensions-in-estate gate.
         $deathYear = $settings->baseYear;
+        // The last survivor's age at death, alongside the year: it is the survivor's own age, not
+        // the household's oldest, that decides whether the pot they leave is taxable on whoever
+        // inherits it.
+        $deathAge = 0;
         foreach ($household->persons as $person) {
             if ($prevAlive[$person->id] ?? false) {
-                $deathYear = max($deathYear, (int) $person->dob->format('Y') + $draws->deathAge($person->id));
+                $thisDeathYear = (int) $person->dob->format('Y') + $draws->deathAge($person->id);
+                if ($thisDeathYear >= $deathYear) {
+                    $deathAge = $draws->deathAge($person->id);
+                }
+                $deathYear = max($deathYear, $thisDeathYear);
             }
         }
 
@@ -377,7 +392,7 @@ final class PathProjector
         // subtracting the first death's use would charge them for the same band twice.
         $spent = $married ? ($state['ihtNrbUsedAtFirstDeath'] ?? null) : null;
 
-        $state['ihtSecondDeath'] = $this->computeDeathIht($estate, multiplier: $married ? 2 : 1, homeToDescendants: $settings->homeToDescendants, deathYear: $deathYear, cumInflation: $cumInflation, formerResidenceDisposal: $disposal, nilRateBandUsedAtFirstDeath: $spent);
+        $state['ihtSecondDeath'] = $this->computeDeathIht($estate, multiplier: $married ? 2 : 1, homeToDescendants: $settings->homeToDescendants, deathYear: $deathYear, cumInflation: $cumInflation, formerResidenceDisposal: $disposal, nilRateBandUsedAtFirstDeath: $spent, deathAge: $deathAge, beneficiaryMarginalRate: $settings->beneficiaryMarginalRate());
     }
 
     /**
@@ -388,13 +403,23 @@ final class PathProjector
      * FIRST death has its own path ({@see recordFirstDeathIht}), because what the survivor takes
      * depends on the will, the intestacy rules and the survivor's residence position.
      */
-    private function computeDeathIht(EstateValuation $estate, int $multiplier, bool $homeToDescendants, int $deathYear, float $cumInflation, ?ResidenceDisposal $formerResidenceDisposal = null, ?Money $nilRateBandUsedAtFirstDeath = null): IhtResult
+    private function computeDeathIht(EstateValuation $estate, int $multiplier, bool $homeToDescendants, int $deathYear, float $cumInflation, ?ResidenceDisposal $formerResidenceDisposal = null, ?Money $nilRateBandUsedAtFirstDeath = null, int $deathAge = 0, ?Percent $beneficiaryMarginalRate = null): IhtResult
     {
         $includePensions = $deathYear >= self::PENSIONS_IN_ESTATE_FROM_YEAR;
         $homeToDesc = $homeToDescendants ? $estate->homeEquity : Money::zero();
 
         return $this->deflateIht(
-            $this->iht->compute($estate->estateExcludingPensions, $estate->pensionValue, $includePensions, $homeToDesc, $multiplier, $formerResidenceDisposal, $nilRateBandUsedAtFirstDeath),
+            $this->iht->compute(
+                $estate->estateExcludingPensions,
+                $estate->pensionValue,
+                $includePensions,
+                $homeToDesc,
+                $multiplier,
+                $formerResidenceDisposal,
+                $nilRateBandUsedAtFirstDeath,
+                $deathAge >= InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE,
+                $beneficiaryMarginalRate,
+            ),
             1.0 / $cumInflation,
         );
     }
@@ -418,6 +443,9 @@ final class PathProjector
             pensionsIncluded: $result->pensionsIncluded,
             warnings: $result->warnings,
             downsizingAddition: $r($result->downsizingAddition),
+            unusedPensionPassing: $r($result->unusedPensionPassing),
+            beneficiaryIncomeTax: $r($result->beneficiaryIncomeTax),
+            beneficiaryMarginalRate: $result->beneficiaryMarginalRate,
         );
     }
 
@@ -431,6 +459,25 @@ final class PathProjector
         $total = 0;
         foreach ($state['pots'][$id] ?? [] as $pot) {
             $total += $pot['value'];
+        }
+
+        return $total;
+    }
+
+    /**
+     * The part of one person's DC pension pots NOMINATED to their spouse or civil partner (nominal
+     * pence): the only part a first death's spouse exemption can reach, because a death benefit is
+     * paid on the member's expression of wish rather than under their will.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function personPotsNominatedToSpouse(array $state, string $id): int
+    {
+        $total = 0;
+        foreach ($state['pots'][$id] ?? [] as $pot) {
+            if ($pot['nominatedToSpouse'] ?? false) {
+                $total += $pot['value'];
+            }
         }
 
         return $total;
@@ -542,6 +589,11 @@ final class PathProjector
                     // The member's OWN pot: drawing it flexibly is a trigger event for their MPAA.
                     // An inherited pot is not ({@see inheritEstate}), so the two must be told apart.
                     'inherited' => false,
+                    // Whether this pot passes to the surviving spouse or civil partner, which is
+                    // what decides the spouse exemption on it at the first death. Held per pot
+                    // because the nomination is per pot: a member can leave one to a spouse and
+                    // another to a child.
+                    'nominatedToSpouse' => $pension->nominatedToSpouse(),
                 ];
                 $lsaUsed[$pension->ownerId] += $pension->pclsTakenToDate?->pence ?? 0;
 
@@ -774,7 +826,9 @@ final class PathProjector
                 // different questions (is there a quarter / whose allowance pays for it) and board
                 // card 0079 will give an under-75 inheritance headroom again — at which point this
                 // field is the only thing left stopping a second quarter on the same money.
-                $state['pots'][$heir][] = ['value' => $inherited, 'plan' => [], 'crystallised' => $inherited, 'contribution' => 0, 'employerContribution' => 0, 'reliefMethod' => null, 'earliestAccessAge' => 0, 'growthOverrideReal' => null, 'inherited' => true];
+                // The heir's own nomination on an inherited pot is unknowable and immaterial: the
+                // only death left is the final one, which has no surviving spouse to exempt it.
+                $state['pots'][$heir][] = ['value' => $inherited, 'plan' => [], 'crystallised' => $inherited, 'contribution' => 0, 'employerContribution' => 0, 'reliefMethod' => null, 'earliestAccessAge' => 0, 'growthOverrideReal' => null, 'inherited' => true, 'nominatedToSpouse' => false];
             }
             $state['pots'][$id] = [];
         }

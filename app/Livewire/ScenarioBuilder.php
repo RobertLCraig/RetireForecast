@@ -27,6 +27,7 @@ use Livewire\WithFileUploads;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\CouncilTaxBand;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
+use RetireForecast\FinanceEngine\Dto\PensionBeneficiary;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
@@ -117,6 +118,14 @@ class ScenarioBuilder extends Component
      * a homeowner); only relevant when IHT is modelled and there is a home.
      */
     public bool $homeToDescendants = true;
+
+    /**
+     * The income-tax rate the person who INHERITS an unused pension pot is assumed to pay on
+     * drawing it, as a whole-number percentage string. Blank = the engine's own adverse default
+     * (40%), which is disclosed as an assumed figure, so a scenario that never touched this
+     * records no key and no what-if delta. Only relevant when Inheritance Tax is modelled.
+     */
+    public string $beneficiaryTaxRate = '';
 
     /**
      * How the two people are related (married/civil-partnership vs cohabiting), which drives the
@@ -283,6 +292,9 @@ class ScenarioBuilder extends Component
             ],
             'marriageDate' => ['nullable', 'date', 'before_or_equal:today'],
             'homeToDescendants' => ['boolean'],
+            // The four UK marginal rates an inheriting beneficiary can be on, plus blank for the
+            // engine's disclosed default. A free box would invite a rate that is not a rate.
+            'beneficiaryTaxRate' => ['nullable', Rule::in(['', '0', '20', '40', '45'])],
             'assumptionSetId' => ['nullable', 'integer', 'exists:assumption_sets,id'],
             // Editable economic assumptions: each is an optional override of the chosen
             // preset's figure (empty = keep the preset). Real growth rates may be negative;
@@ -396,6 +408,7 @@ class ScenarioBuilder extends Component
             // offered: relief at source is a real method the engine does not model yet, and the
             // DTO throws on it rather than quietly giving no relief at all.
             'pensions.*.reliefMethod' => ['nullable', Rule::in(['', 'net_pay', 'non_earner'])],
+            'pensions.*.nominatedBeneficiary' => ['nullable', Rule::in(array_merge([''], array_column(PensionBeneficiary::cases(), 'value')))],
             'pensions.*.earliestAccessAge' => ['nullable', 'integer', 'min:55', 'max:75', 'required_if:pensions.*.subtype,dc'],
             'pensions.*.pclsTakenToDate' => $money,
             'pensions.*.growthAssumptionOverride' => $rate,
@@ -929,7 +942,9 @@ class ScenarioBuilder extends Component
             // the feature loads without them; union in the defaults so the sub-form has sensible
             // values the moment it is switched on. `+=` keeps any stored values untouched.
             if (($pension['subtype'] ?? '') === 'dc') {
-                $this->pensions[$pi] += $this->blankAnnuity();
+                // The nomination joins them for the same reason: a pot saved before board card
+                // 0057 loads without the key, and a missing key would read as a what-if delta.
+                $this->pensions[$pi] += $this->blankAnnuity() + ['nominatedBeneficiary' => ''];
             }
         }
     }
@@ -1095,6 +1110,13 @@ class ScenarioBuilder extends Component
         // spurious delta. Mirrors modelCareCost, inverted for a default-on flag.
         if (! $this->homeToDescendants) {
             $state['homeToDescendants'] = false;
+        }
+
+        // The beneficiary's assumed tax rate, stored only when chosen (sparse). Blank keeps the
+        // engine's own adverse default in force and is disclosed there, so writing a figure back
+        // would freeze one that should follow the constant.
+        if (trim($this->beneficiaryTaxRate) !== '') {
+            $state['beneficiaryTaxRate'] = $this->beneficiaryTaxRate;
         }
 
         return $state;
@@ -1836,6 +1858,10 @@ class ScenarioBuilder extends Component
             // Blank fixed rate = the engine's disclosed default, so adding this input shifts no
             // existing scenario and creates no what-if delta.
             'escalationInPayment' => 'cpi', 'fixedEscalationRate' => '',
+            // Who the scheme would pay on death. Blank = not asked, which the engine reads as NOT
+            // the spouse (the adverse answer) and discloses; an empty default keeps a what-if
+            // child's delta clean.
+            'nominatedBeneficiary' => '',
             'spousePensionFraction' => '', 'commutationLumpSum' => '', 'commutationFactor' => '',
             'weeklyForecast' => '', 'qualifyingYears' => '', 'deferralWeeks' => '0',
             ...$this->blankAnnuity(),

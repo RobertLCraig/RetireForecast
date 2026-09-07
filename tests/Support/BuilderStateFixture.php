@@ -48,7 +48,7 @@ final class BuilderStateFixture
             'pensions' => [
                 ['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '410000', 'ongoingContribution' => '8000',
                     'employerContribution' => '4000', 'reliefMethod' => 'net_pay', 'earliestAccessAge' => '57', 'pclsTakenToDate' => '0',
-                    'growthAssumptionOverride' => '4.5', 'fixedEscalationRate' => '', 'withdrawals' => [
+                    'growthAssumptionOverride' => '4.5', 'fixedEscalationRate' => '', 'nominatedBeneficiary' => '', 'withdrawals' => [
                         ['id' => 'wd1', 'kind' => 'pcls', 'amount' => '100000', 'atAge' => '66'],
                         ['id' => 'wd2', 'kind' => 'ufpls', 'amount' => '20000', 'atAge' => '67'],
                         ['id' => 'wd3', 'kind' => 'drawdown', 'amount' => '15000', 'atAge' => '68'],

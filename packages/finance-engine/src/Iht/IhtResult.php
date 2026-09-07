@@ -37,5 +37,20 @@ final class IhtResult
          * nil-rate band beside no house has to be able to see where it came from.
          */
         public readonly Money $downsizingAddition,
+        /**
+         * The unused pension pot passing on this death, whether or not it is inside the estate for
+         * Inheritance Tax. Reported so the reader can see WHAT the second charge below is charged
+         * on: it is the same money the estate line already contains, not an extra asset.
+         */
+        public readonly Money $unusedPensionPassing,
+        /**
+         * The BENEFICIARY's own income tax on drawing that pot, where the member died at or after
+         * 75 ({@see InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE}). It is not a tax on the
+         * estate and is deliberately NOT added into $tax or the outcome's total Inheritance Tax:
+         * it falls on somebody else, in later years, and merging the two would misstate both.
+         */
+        public readonly Money $beneficiaryIncomeTax,
+        /** The rate that charge was computed at; null where there is no such charge to show. */
+        public readonly ?Percent $beneficiaryMarginalRate = null,
     ) {}
 }

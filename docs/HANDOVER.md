@@ -5,10 +5,32 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-07 (card 0056). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-07 (card 0057). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0036 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **An inherited pension is taxed twice, and the spouse exemption on a pot follows the nomination.**
+  Card 0057. The tool showed the Inheritance Tax on an unused pot and never the beneficiary's own
+  income tax on drawing it, which makes preserving a pot look about twice as attractive as it is on
+  the exact comparison the IHT toggle exists to run. `InheritanceTaxCalculator` now charges the
+  second tax on the pot NET of the Inheritance Tax it bears, apportioned rateably over the
+  CHARGEABLE estate, gated on `BENEFICIARY_TAXED_FROM_AGE`, at an editable rate defaulting to
+  `DEFAULT_BENEFICIARY_MARGINAL_RATE_BPS` (40%, adverse, disclosed). It rides `IhtResult` and
+  `IhtOutcome` beside the tax and is never added into it: the two fall on different people in
+  different years. Alongside it `Dto\PensionBeneficiary` on `DcPension` records the expression of
+  wish, and `computeFirstDeath` holds the pension OUT of the will and intestacy split entirely
+  (a death benefit does not pass that way), exempting it only where nominated to the survivor.
+  **An unanswered nomination reads as NOT the spouse**, the adverse answer, so **every stored plan
+  that models Inheritance Tax and holds a DC pot now pays MORE at the first death** and transfers a
+  smaller band to the second, until its nominations are ticked; DECISIONS 2026-09-07 records that
+  call and Rob can reverse it in one line. `ENGINE_VERSION` is
+  `finance-engine/inherited-pension-taxed-twice` and the **stored-scenario re-run is owed**.
+  `GoldenMasterTest` did not redden (its fixture models no IHT). Every rule is **STATED, not
+  verified** (no web in this session): see [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§30),
+  carded as **0134**. Built in a worktree, so the new builder rate select, the per-pension
+  nomination select, the results panel and the PDF lines **have not been seen in a browser**. One
+  gap carded rather than fixed: **0133**, `settleEstates` still hands a pot nominated to a child to
+  the surviving partner, so it is taxed as leaving the household while its money stays in it.
 - **A lifetime mortgage is now redeemed when the last borrower goes into care.** Card 0056.
   `Property::$mortgageRollUpRate`'s docblock had always said the balance is repaid on death, sale
   **or care**; the projector only ever settled it at the end of the path, so the tool showed that

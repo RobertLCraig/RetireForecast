@@ -3,6 +3,41 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-07: an unanswered pension nomination is read as NOT the spouse
+**Context:** card 0057 (expert panel 2026-08-19, estate planner finding 8). A pension death benefit
+is paid at the scheme's discretion following the member's expression of wish, not under the will,
+and from April 2027 that form is an Inheritance Tax document. There was no nomination input
+anywhere, so every pot was spouse-exempt at the first death purely because the couple were married.
+
+**Decision: the exemption follows `DcPension::$nominatedBeneficiary`, and a pot nobody has answered
+for is treated as NOT nominated to the spouse.** That is the adverse answer, which is this
+project's standing direction where several are plausible, and it is consistent with
+`Person::$hasWill` defaulting false for the same reason (2026-09-07, card 0054): the tool does not
+hand out an exemption on a form it has never seen. It is not the common answer in the world, which
+is the cost of the call, so it is disclosed as an assumed figure in the strongest terms the
+disclosure list carries and is one dropdown per pot to fix.
+
+**Decision: the beneficiary's income tax is reported beside the Inheritance Tax and never added
+into it.** The two charges fall on different people in different years, so a single combined figure
+would misstate both; the panel shows each, and their sum only under a label that says what it is.
+The pot is charged NET of the Inheritance Tax it bears, rateably over the chargeable estate, which
+is what produces the "around two thirds" effective rate the finding names.
+
+**Decision: the assumed beneficiary rate defaults to 40%, the higher rate.** The adverse plausible
+answer for the household this tool models, and editable in the builder (0%, 20%, 40%, 45%). The
+additional rate is more adverse still but applies to a small minority, so it is offered rather than
+assumed. Written up at [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) section 30.
+
+**Consequence:** **every stored plan that models Inheritance Tax and holds a DC pot pays MORE at
+the first death, and transfers a smaller nil-rate band to the second, until its nominations are
+entered.** A plan with no DC pot, no surviving spouse, or no Inheritance Tax modelling is
+byte-identical, which is why the Monte Carlo golden master did not redden and needs no re-pin.
+`ENGINE_VERSION` is `finance-engine/inherited-pension-taxed-twice` and the stored-scenario re-run is
+owed.
+
+**Sourcing gap:** the age-75 rule, that the April 2027 change does not displace it, and the
+nomination routing are all **STATED, not verified** (no web access in this session). Carded as 0134.
+
 ## 2026-09-07: permanent entry into care by the last borrower redeems a lifetime mortgage
 **Context:** card 0056 (expert panel 2026-08-19, estate planner finding 5). `Property::$mortgageRollUpRate`'s
 own docblock had always said the balance is repaid from the estate on death, sale **or care**, but

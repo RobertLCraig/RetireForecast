@@ -6,6 +6,7 @@ namespace RetireForecast\FinanceEngine\Iht;
 
 use RetireForecast\FinanceEngine\Dto\ResidenceDisposal;
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Money\RoundingMode;
 use RetireForecast\FinanceEngine\Support\Warning;
 use RetireForecast\FinanceEngine\Support\WarningCode;
@@ -72,6 +73,41 @@ final class InheritanceTaxCalculator
      */
     public const STATUTORY_LEGACY_PENCE = 322_000_00;
 
+    /**
+     * The member's age at death from which an inherited pension fund is taxable as the
+     * BENEFICIARY's own pension income. Die before it and the death benefits are paid out free of
+     * income tax; die at it or after and every pound the beneficiary draws is taxed at their
+     * marginal rate. The April 2027 Inheritance Tax change does not displace that charge — a pot
+     * passing to a working-age child suffers both.
+     *
+     * source: Finance Act 2004 s.579A and Sch.28, as amended by the Taxation of Pensions Act 2014
+     * (the "age 75" dividing line for beneficiary drawdown and lump-sum death benefits),
+     * https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm073010
+     * verified_on: NOT VERIFIED. This build had no web access, so the rule is STATED from the
+     * legislation, not checked against a live page. See docs/spec/ASSUMPTIONS.md §30 and board
+     * card 0057.
+     */
+    public const BENEFICIARY_TAXED_FROM_AGE = 75;
+
+    /**
+     * The marginal rate the BENEFICIARY is assumed to pay on what they draw, where nobody has said
+     * otherwise: 40%, the higher rate. It is the adverse plausible answer for the household this
+     * tool models, and adverse is the standing direction to default in. A pot of this size drawn on
+     * top of a working-age child's own salary lands in the higher-rate band on almost any drawdown
+     * pattern, and the alternative — assuming they take it slowly enough to stay basic-rate — would
+     * halve the modelled cost of preserving the pot on exactly the comparison the Inheritance Tax
+     * toggle exists to run. The additional rate (45%) is more adverse still but applies only above
+     * £125,140 of income, which is a small minority; it is offered as a choice rather than assumed.
+     *
+     * The reader can edit it (it rides on the run settings as `beneficiaryMarginalRate`), and it is
+     * disclosed as an assumed figure whenever they have not.
+     *
+     * source: Income Tax Act 2007 s.10 (the higher rate for England, Wales and Northern Ireland),
+     * https://www.gov.uk/income-tax-rates
+     * verified_on: NOT VERIFIED. See docs/spec/ASSUMPTIONS.md §30 and board card 0057.
+     */
+    public const DEFAULT_BENEFICIARY_MARGINAL_RATE_BPS = 4000;
+
     public function __construct(private readonly TaxYearConfig $config) {}
 
     /**
@@ -106,17 +142,31 @@ final class InheritanceTaxCalculator
         bool $deceasedLeftAWill,
         bool $issueTakeUnderIntestacy,
         bool $survivorIsUkLongTermResident,
+        ?Money $pensionNominatedToSpouse = null,
+        bool $deceasedDiedAtOrAfter75 = false,
+        ?Percent $beneficiaryMarginalRate = null,
     ): IhtResult {
         $params = $this->config->iht;
 
         $pensionsInEstate = $includePensionsInEstate ? $unusedPensionValue : Money::zero();
         $totalEstate = $estateExcludingPensions->plus($pensionsInEstate);
 
+        // A pension death benefit passes under the SCHEME's discretion, following the member's
+        // expression of wish — not under the will and not under the intestacy rules. So the pot is
+        // held out of the will/intestacy split entirely and exempted only to the extent it is
+        // nominated to the surviving spouse or civil partner. Null (nobody was asked) means none of
+        // it is, which is the adverse answer and the one this engine defaults to.
+        $nominatedToSpouse = $spouseSurvives
+            ? Money::min($pensionNominatedToSpouse ?? Money::zero(), $unusedPensionValue)
+            : Money::zero();
+        $pensionToSpouse = Money::min($nominatedToSpouse, $pensionsInEstate);
+
         $intestate = $spouseSurvives && ! $deceasedLeftAWill && $issueTakeUnderIntestacy;
+        $nonPensionEstate = $estateExcludingPensions;
         $passingToSpouse = match (true) {
             ! $spouseSurvives => Money::zero(),
-            $intestate => $this->intestacySpouseShare($totalEstate),
-            default => $totalEstate,
+            $intestate => $this->intestacySpouseShare($nonPensionEstate)->plus($pensionToSpouse),
+            default => $nonPensionEstate->plus($pensionToSpouse),
         };
 
         $capped = ! $survivorIsUkLongTermResident && $passingToSpouse->greaterThan($params->nilRateBand);
@@ -141,7 +191,8 @@ final class InheritanceTaxCalculator
                 .'will the estate passes under the intestacy rules, and a husband, wife or civil partner '
                 .'does not inherit everything: they take the personal belongings, the first '
                 .Money::fromPence(self::STATUTORY_LEGACY_PENCE)->format().' and half of what is left, and '
-                .'the children take the other half — '.$totalEstate->minus($passingToSpouse)->format().' here. '
+                .'the children take the other half — '
+                .$nonPensionEstate->minus($this->intestacySpouseShare($nonPensionEstate))->format().' here. '
                 .'That half is not covered by the spouse exemption, so it is taxed and it uses up part of '
                 .'the allowance that would otherwise have passed to the survivor. Making a will is the one '
                 .'change that undoes this.',
@@ -166,16 +217,39 @@ final class InheritanceTaxCalculator
             );
         }
 
+        $tax = $taxableEstate->applyRate($params->rate);
+        $beneficiaryRate = $beneficiaryMarginalRate
+            ?? Percent::fromBasisPoints(self::DEFAULT_BENEFICIARY_MARGINAL_RATE_BPS);
+        // Only the part LEAVING the household is charged here. A pot nominated to the surviving
+        // spouse is inherited by somebody the projector goes on modelling, and it taxes every
+        // withdrawal they make from it year by year, so restating that here would count the same
+        // income tax twice.
+        $leavingTheHousehold = $unusedPensionValue->minus($nominatedToSpouse)->minZero();
+        $beneficiaryIncomeTax = $this->beneficiaryIncomeTax(
+            $leavingTheHousehold,
+            $pensionsInEstate->minus($pensionToSpouse)->minZero(),
+            $chargeable,
+            $tax,
+            $deceasedDiedAtOrAfter75,
+            $beneficiaryRate,
+        );
+        if ($beneficiaryIncomeTax->isPositive()) {
+            $warnings[] = $this->beneficiaryIncomeTaxWarning($leavingTheHousehold, $beneficiaryIncomeTax, $beneficiaryRate);
+        }
+
         return new IhtResult(
             totalEstate: $totalEstate,
             nilRateBandUsed: $nilRateBandUsed,
             residenceNilRateBandUsed: Money::zero(),
             taxableEstate: $taxableEstate,
             rate: $params->rate,
-            tax: $taxableEstate->applyRate($params->rate),
+            tax: $tax,
             pensionsIncluded: $includePensionsInEstate,
             warnings: $warnings,
             downsizingAddition: Money::zero(),
+            unusedPensionPassing: $leavingTheHousehold,
+            beneficiaryIncomeTax: $beneficiaryIncomeTax,
+            beneficiaryMarginalRate: $beneficiaryIncomeTax->isPositive() ? $beneficiaryRate : null,
         );
     }
 
@@ -208,6 +282,8 @@ final class InheritanceTaxCalculator
         int $nilRateBandMultiplier = 1,
         ?ResidenceDisposal $formerResidenceDisposal = null,
         ?Money $nilRateBandUsedAtFirstDeath = null,
+        bool $deceasedDiedAtOrAfter75 = false,
+        ?Percent $beneficiaryMarginalRate = null,
     ): IhtResult {
         $params = $this->config->iht;
 
@@ -261,6 +337,22 @@ final class InheritanceTaxCalculator
             );
         }
 
+        // The final death has no surviving spouse, so nothing is exempt and the whole estate bears
+        // the tax rateably: the pot's share of it is its share of the estate.
+        $beneficiaryRate = $beneficiaryMarginalRate
+            ?? Percent::fromBasisPoints(self::DEFAULT_BENEFICIARY_MARGINAL_RATE_BPS);
+        $beneficiaryIncomeTax = $this->beneficiaryIncomeTax(
+            $unusedPensionValue,
+            $pensionsInEstate,
+            $totalEstate,
+            $tax,
+            $deceasedDiedAtOrAfter75,
+            $beneficiaryRate,
+        );
+        if ($beneficiaryIncomeTax->isPositive()) {
+            $warnings[] = $this->beneficiaryIncomeTaxWarning($unusedPensionValue, $beneficiaryIncomeTax, $beneficiaryRate);
+        }
+
         return new IhtResult(
             totalEstate: $totalEstate,
             nilRateBandUsed: $nrb,
@@ -271,6 +363,56 @@ final class InheritanceTaxCalculator
             pensionsIncluded: $includePensionsInEstate,
             warnings: $warnings,
             downsizingAddition: $downsizingAddition,
+            unusedPensionPassing: $unusedPensionValue,
+            beneficiaryIncomeTax: $beneficiaryIncomeTax,
+            beneficiaryMarginalRate: $beneficiaryIncomeTax->isPositive() ? $beneficiaryRate : null,
+        );
+    }
+
+    /**
+     * The BENEFICIARY's income tax on drawing an inherited pension fund, where the member died at
+     * or after {@see BENEFICIARY_TAXED_FROM_AGE}. This is the SECOND of the two charges on the same
+     * money, and until board card 0057 the tool showed only the first.
+     *
+     * It is charged on what the beneficiary can actually draw, so the Inheritance Tax the pot
+     * itself bears comes off first. That share is apportioned rateably: the pot's part of the
+     * CHARGEABLE estate, because an exempt part of an estate bears none of the tax. A pot outside
+     * the estate (a death before April 2027) bears no Inheritance Tax at all and is charged whole.
+     *
+     * The result is the effective rate the estate planner's finding names: 40% Inheritance Tax and
+     * then 40% income tax on what is left is 64% of the pot, not 40%.
+     */
+    private function beneficiaryIncomeTax(
+        Money $potPassing,
+        Money $chargeablePension,
+        Money $chargeableEstate,
+        Money $tax,
+        bool $deceasedDiedAtOrAfter75,
+        Percent $rate,
+    ): Money {
+        if (! $deceasedDiedAtOrAfter75 || ! $potPassing->isPositive()) {
+            return Money::zero();
+        }
+
+        $borneByThePot = $chargeableEstate->isPositive() && $tax->isPositive()
+            ? Money::fromPence((int) round($tax->pence * ($chargeablePension->pence / $chargeableEstate->pence)))
+            : Money::zero();
+
+        return $potPassing->minus($borneByThePot)->minZero()->applyRate($rate);
+    }
+
+    private function beneficiaryIncomeTaxWarning(Money $pot, Money $incomeTax, Percent $rate): Warning
+    {
+        $pct = rtrim(rtrim(number_format($rate->asPercent(), 2), '0'), '.');
+
+        return new Warning(
+            WarningCode::IHT_INHERITED_PENSION_INCOME_TAX,
+            'The unused pension of '.$pot->format().' is taxed a SECOND time. Because the member is '
+            .'modelled as dying at or after '.self::BENEFICIARY_TAXED_FROM_AGE.', whoever inherits it '
+            .'pays their own income tax on every pound they take out of it, on top of any Inheritance '
+            ."Tax the estate paid. At an assumed {$pct} that is ".$incomeTax->format().'. Inheritance '
+            .'Tax and income tax together can take around two thirds of a pot left to a working-age '
+            .'child, which is the figure to weigh against spending it.',
         );
     }
 

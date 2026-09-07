@@ -1202,6 +1202,17 @@
                 <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800" role="note">Unused pension pots are counted as part of the estate — the rule due from <strong>April 2027</strong> (Finance Act 2026). Before then they sat outside it, so this raises the taxable estate.</p>
             @endif
 
+            {{-- The SECOND charge on an unused pot (card 0057). Inheritance Tax is not the whole
+                 cost of preserving a pension: from age 75 whoever inherits it also pays their own
+                 income tax on every pound they draw. Showing only one of the two makes keeping the
+                 pot look about twice as attractive as it is. --}}
+            @if ($iht['beneficiaryIncomeTax'] !== null)
+                <div class="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="note">
+                    <p><strong>Your pension is taxed twice.</strong> You are modelled as dying at or after 75, so on top of the Inheritance Tax above, whoever inherits the £{{ number_format($iht['inheritedPension']) }} left in your pension pays their own income tax on every pound they take out of it: <strong>£{{ number_format($iht['beneficiaryIncomeTax']) }}</strong> at an assumed {{ $iht['beneficiaryRatePct'] }}.</p>
+                    <p class="mt-1">That is <strong>£{{ number_format($iht['pensionTaxedTwiceTotal']) }}</strong> of tax in all on what you leave. The income tax is not part of the Inheritance Tax figure above: it falls on the person who inherits, in the years they draw it. You can change the rate we assume for them in the builder.</p>
+                </div>
+            @endif
+
             {{-- How IHT varies across the simulated futures (once a Monte Carlo run has modelled it):
                  the figures above are a single representative-life estimate; this shows the spread
                  longevity and returns produce. --}}

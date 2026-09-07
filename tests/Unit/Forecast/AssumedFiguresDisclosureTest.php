@@ -17,6 +17,7 @@ use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
+use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -440,11 +441,17 @@ final class AssumedFiguresDisclosureTest extends TestCase
      * @param  list<array<string, mixed>>  $pensions
      * @return list<string>
      */
-    private function disclosuresFor(array $pensions, string $dob = '1966-01-01'): array
+    private function disclosuresFor(array $pensions, string $dob = '1966-01-01', ?ForecastSettings $settings = null, bool $couple = false): array
     {
+        $people = [['id' => 'p1', 'dob' => $dob, 'sex' => 'female', 'employmentStatus' => 'retired']];
+        if ($couple) {
+            $people[] = ['id' => 'p2', 'dob' => '1964-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'];
+        }
+
         $state = [
             'householdName' => 'Savers', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
-            'people' => [['id' => 'p1', 'dob' => $dob, 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'relationshipStatus' => 'married_or_civil_partnership',
+            'people' => $people,
             'pensions' => $pensions,
             'accounts' => [['id' => 'a1', 'ownerId' => 'p1', 'type' => 'isa', 'balance' => '50000']],
             'incomeStreams' => [['id' => 'i1', 'ownerId' => 'p1', 'type' => 'other', 'grossAnnual' => '60000',
@@ -456,18 +463,103 @@ final class AssumedFiguresDisclosureTest extends TestCase
 
         $assembler = new HouseholdAssembler;
         $household = $assembler->household($state);
+        $run = $settings ?? new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27');
         $forecast = (new DeterministicForecaster(
             TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi),
             new CohortLifeTable,
-        ))->forecast($household, AssumptionSetLibrary::default(), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'));
+        ))->forecast($household, AssumptionSetLibrary::default(), $run);
 
         return array_values(array_map(
             static fn (array $n): string => $n['text'],
             array_filter(
-                ResultPresenter::inputNotes($household, $forecast, null),
+                ResultPresenter::inputNotes($household, $forecast, null, null, null, $settings),
                 static fn (array $n): bool => $n['kind'] === 'assumed_figure',
             ),
         ));
+    }
+
+    /**
+     * Board card 0057. The rate the person who INHERITS an unused pot pays on drawing it is a fact
+     * about somebody outside the household, so it can only ever be assumed. It also sets half the
+     * cost of preserving a pot rather than spending it, which is the whole point of the Inheritance
+     * Tax toggle, so it cannot be assumed silently.
+     */
+    public function test_the_assumed_beneficiary_tax_rate_is_disclosed_with_its_value(): void
+    {
+        $disclosures = $this->disclosuresFor(
+            [['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000', 'earliestAccessAge' => '57']],
+            settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelIht: true),
+        );
+
+        $note = $this->only($disclosures, 'inherits');
+        $this->assertStringContainsString(
+            self::pct(InheritanceTaxCalculator::DEFAULT_BENEFICIARY_MARGINAL_RATE_BPS / 100).'%',
+            $note,
+            'the disclosed rate must be the constant the engine actually charges at',
+        );
+        $this->assertStringContainsString((string) InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE, $note);
+    }
+
+    public function test_nothing_is_assumed_about_the_beneficiary_rate_when_the_reader_chose_one(): void
+    {
+        $disclosures = $this->disclosuresFor(
+            [['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000', 'earliestAccessAge' => '57']],
+            settings: new ForecastSettings(
+                baseYear: 2026, baseTaxYear: '2026-27', modelIht: true,
+                beneficiaryMarginalRate: Percent::fromPercent(20),
+            ),
+        );
+
+        $this->assertSame([], array_values(array_filter(
+            $disclosures,
+            static fn (string $d): bool => str_contains($d, 'inherits'),
+        )));
+    }
+
+    public function test_nothing_is_assumed_about_a_beneficiary_when_inheritance_tax_is_not_modelled(): void
+    {
+        // No noise: with the toggle off no estate is valued and no beneficiary charge is computed.
+        $disclosures = $this->disclosuresFor(
+            [['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000', 'earliestAccessAge' => '57']],
+        );
+
+        $this->assertSame([], array_values(array_filter(
+            $disclosures,
+            static fn (string $d): bool => str_contains($d, 'inherits'),
+        )));
+    }
+
+    /**
+     * Board card 0057. A pension death benefit is paid on the member's expression of wish, not
+     * under the will, so an unanswered nomination is treated as NOT going to the spouse. That is
+     * the adverse answer and it costs the first death real tax, so the reader has to be told the
+     * tool made it for them.
+     */
+    public function test_an_unanswered_pension_nomination_is_disclosed(): void
+    {
+        $disclosures = $this->disclosuresFor(
+            [['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000', 'earliestAccessAge' => '57']],
+            settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelIht: true),
+            couple: true,
+        );
+
+        $note = $this->only($disclosures, 'nominated');
+        $this->assertStringContainsString('expression of wish', $note);
+    }
+
+    public function test_nothing_is_assumed_about_a_nomination_the_reader_gave(): void
+    {
+        $disclosures = $this->disclosuresFor(
+            [['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000',
+                'earliestAccessAge' => '57', 'nominatedBeneficiary' => 'spouse_or_civil_partner']],
+            settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelIht: true),
+            couple: true,
+        );
+
+        $this->assertSame([], array_values(array_filter(
+            $disclosures,
+            static fn (string $d): bool => str_contains($d, 'nominated'),
+        )));
     }
 
     public function test_the_money_purchase_annual_allowance_is_disclosed_when_the_plan_triggers_it(): void

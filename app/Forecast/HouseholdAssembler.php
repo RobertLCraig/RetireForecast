@@ -26,6 +26,7 @@ use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\MortgageRatePeriod;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
+use RetireForecast\FinanceEngine\Dto\PensionBeneficiary;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\PensionReliefMethod;
 use RetireForecast\FinanceEngine\Dto\Person;
@@ -563,6 +564,11 @@ final class HouseholdAssembler
                 reliefMethod: ($p['reliefMethod'] ?? '') === ''
                     ? null
                     : PensionReliefMethod::from((string) $p['reliefMethod']),
+                // Who the scheme would pay on death. Blank = nobody was asked, which the DTO reads
+                // as NOT the spouse (the adverse answer) and the results page discloses.
+                nominatedBeneficiary: ($p['nominatedBeneficiary'] ?? '') === ''
+                    ? null
+                    : PensionBeneficiary::from((string) $p['nominatedBeneficiary']),
             ),
             'db' => new DbPension(
                 ownerId: (string) $p['ownerId'],

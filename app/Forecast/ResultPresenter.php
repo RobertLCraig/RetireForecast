@@ -39,6 +39,7 @@ use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\HousingPurchase;
 use RetireForecast\FinanceEngine\Iht\IhtOutcome;
+use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\MonteCarlo\CareImpact;
@@ -271,6 +272,23 @@ final class ResultPresenter
                 'tax' => self::pounds($second->tax),
             ],
             'firstDeath' => null,
+            // The SECOND charge on an unused pension pot (board card 0057): whoever inherits it
+            // pays their own income tax on every pound they draw, where the member died at or
+            // after 75. Null when there is none, so the panel says nothing about a charge the
+            // model never applies. It is reported apart from 'total', which is Inheritance Tax and
+            // falls on the estate, and the two are added only in 'pensionTaxedTwiceTotal', which
+            // is what a reader weighing spending a pot against preserving it actually needs.
+            'beneficiaryIncomeTax' => $iht->beneficiaryIncomeTax->isPositive()
+                ? self::pounds($iht->beneficiaryIncomeTax)
+                : null,
+            'inheritedPension' => self::pounds(
+                $second->unusedPensionPassing->plus($iht->firstDeath?->unusedPensionPassing ?? Money::zero()),
+            ),
+            // Read off the engine's own rate, never restated, so a re-sourced default moves this.
+            'beneficiaryRatePct' => self::ratePct(
+                ($second->beneficiaryMarginalRate ?? $iht->firstDeath?->beneficiaryMarginalRate)?->asPercent() ?? 0.0,
+            ),
+            'pensionTaxedTwiceTotal' => self::pounds($iht->total->plus($iht->beneficiaryIncomeTax)),
         ];
 
         if ($iht->firstDeath !== null) {
@@ -974,6 +992,46 @@ final class ResultPresenter
                 .'the nil-rate band and the rest of the estate is taxed straight away. A couple can elect to be '
                 .'treated as UK long-term resident, which removes the cap but brings their worldwide assets into '
                 .'charge; we do not model that election.';
+        }
+
+        // The rate the person who INHERITS an unused pension pot is assumed to pay on drawing it
+        // (board card 0057). It is a fact about somebody outside the household, so it can only ever
+        // be an assumption, and it decides half the cost of preserving a pot rather than spending
+        // it. Only disclosed where a pot could be left and an estate is being modelled. Both the
+        // rate and the age are READ from the constants that own them.
+        $hasDcPot = false;
+        $nominationUnasked = false;
+        foreach ($household->pensions as $pension) {
+            if (! $pension instanceof DcPension) {
+                continue;
+            }
+            $hasDcPot = true;
+            $nominationUnasked = $nominationUnasked || $pension->nominationIsAssumed();
+        }
+        if ($hasDcPot && $settings?->modelIht === true && $settings->beneficiaryMarginalRateIsAssumed()) {
+            $rate = self::ratePct($settings->beneficiaryMarginalRate()->asPercent());
+            $age = InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE;
+            $out[] = "You didn't say what rate of tax whoever inherits your pension would pay, so we've assumed "
+                ."{$rate}, the higher rate. If you die at or after {$age}, an unused pension pot is taxed twice: "
+                .'Inheritance Tax on your estate first, and then the person who inherits it pays their own income '
+                .'tax on every pound they take out of what is left. Together those can be around two thirds of the '
+                .'pot. We use the higher rate because a working-age child drawing a pot on top of their own salary '
+                .'usually lands there, and assuming a lower one would make keeping the pot look about twice as '
+                .'good a plan as it is. You can change it if you know better.';
+        }
+
+        // WHO EACH PENSION IS NOMINATED TO. A pension death benefit is paid at the scheme's
+        // discretion on the member's expression of wish, NOT under the will, so an unanswered
+        // nomination cannot be read as "it goes to my husband or wife". The engine takes the
+        // adverse answer, which costs the first death real tax, so it has to say so.
+        if ($nominationUnasked && $married && count($household->persons) === 2 && $settings?->modelIht === true) {
+            $out[] = "You didn't tell us who your pensions are nominated to, so we have assumed they are NOT left "
+                .'to your husband, wife or civil partner. A pension is not covered by your will: the scheme pays '
+                .'whoever your expression of wish form names, at its own discretion. That means a pot can go to a '
+                .'child even where everything else passes to your partner, and from April 2027 a pot that does not '
+                .'pass to them is taxed on the first death instead of the second. We have assumed the more '
+                .'expensive answer rather than give you an allowance on a form we have never seen. Check the '
+                .'nomination with each provider and enter it: it is the single easiest thing on this page to fix.';
         }
 
         // How the invested money is split across asset classes. Nobody has ever entered this: the

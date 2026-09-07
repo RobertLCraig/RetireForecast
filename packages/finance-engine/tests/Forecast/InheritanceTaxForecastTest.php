@@ -15,6 +15,7 @@ use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
+use RetireForecast\FinanceEngine\Dto\PensionBeneficiary;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
@@ -43,6 +44,11 @@ final class InheritanceTaxForecastTest extends TestCase
      * $hasWill defaults to FALSE, which is the DTO's own default and the answer nobody was ever
      * asked for; the spouse-exemption tests pass it true, because an unlimited spouse exemption is
      * what a will buys.
+     *
+     * The pots are NOMINATED to the spouse (board card 0057). A pension death benefit passes on the
+     * member's expression of wish rather than under the will, so an unanswered nomination is
+     * chargeable however good the will is; these tests are about the WILL, so they hold the
+     * nomination at the answer that leaves the will as the only thing moving.
      */
     private function couple(RelationshipStatus $status, bool $hasWill = false): Household
     {
@@ -58,8 +64,8 @@ final class InheritanceTaxForecastTest extends TestCase
             pensions: [
                 new StatePensionEntitlement('p1', weeklyForecast: Money::fromPounds(200)),
                 new StatePensionEntitlement('p2', weeklyForecast: Money::fromPounds(200)),
-                new DcPension('p1', Money::fromPounds(400_000), Money::zero(), Money::zero(), earliestAccessAge: 57, withdrawalPlan: []),
-                new DcPension('p2', Money::fromPounds(400_000), Money::zero(), Money::zero(), earliestAccessAge: 57, withdrawalPlan: []),
+                new DcPension('p1', Money::fromPounds(400_000), Money::zero(), Money::zero(), earliestAccessAge: 57, withdrawalPlan: [], nominatedBeneficiary: PensionBeneficiary::SpouseOrCivilPartner),
+                new DcPension('p2', Money::fromPounds(400_000), Money::zero(), Money::zero(), earliestAccessAge: 57, withdrawalPlan: [], nominatedBeneficiary: PensionBeneficiary::SpouseOrCivilPartner),
             ],
             accounts: [
                 new Account('p1', AccountType::Cash, Money::fromPounds(500_000)),
