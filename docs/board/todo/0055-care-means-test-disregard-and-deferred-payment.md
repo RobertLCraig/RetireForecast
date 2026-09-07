@@ -104,3 +104,46 @@ note as absent.
 
 Built in a worktree, so the new builder checkbox and the new results note **have not been seen in a
 browser**.
+
+### 2026-09-07 review (v20260907154156-1dd3)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 234s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I tried to break all three. I could not.
+
+**#1 ÔÇö disregard for a qualifying relative.** `PathProjector::careHomeAssessable()` is the single place the question is answered, and it is the same function `careAssessableCapital()` and the deferral both call. The flag is `Dto\Property::$occupiedByQualifyingRelative`, default false (adverse), carried through `HouseholdAssembler::__invoke` mapping and the builder checkbox. Test: `test_a_home_occupied_by_a_qualifying_relative_is_disregarded_from_the_care_means_test`.
+
+**#2 ÔÇö defer instead of reporting unmet.** In `PathProjector::projectYear` the block guarded by `careChargedNominal > 0 && $unmetNominal > 0 && careHomeAssessable(...)` calls `Care\DeferredPaymentAgreement::deferrableThisYear()`, moves the amount from unmet to met, and adds it to `state['deferredCareBalance']`. Capped to the care part and to `careHomeEquity()`. Test: `test_an_unfundable_care_charge_is_deferred_against_the_home_not_reported_as_unmet`.
+
+**#3 ÔÇö interest and estate.** `PathProjector::growState` rolls the balance at `DeferredPaymentAgreement::interestRate()`. `recordFirstDeathIht` and `recordFinalDeathIht` pass it into `EstateValuer::value` as a charge on the home; `sellHome` redeems it; `YearResult::homeEquity()` nets it. Test: `test_the_deferred_balance_accrues_interest_and_comes_off_the_estate_at_death`.
+
+One gap: `careHomeEquity()` does not net the SMI charge, so the cap can over-defer. It is named in the docblock and carded as 0130, outside this card.
+
+VERDICT: sound
+
+**scope: sound**
+
+I read the card commit (`20cbe7b`) end to end against the card.
+
+**Nothing crossed the fence.** Card 0050's subject, disability benefits in the assessment, is untouched: `PathProjector::careDisabilityFractions()` and `Care\DisabilityBenefitInCare` are not in the diff.
+
+**Nothing grew quietly.** The extras are all forced by the change, not added beside it: `PathProjector::careHomeEquity()` and `YearResult::homeEquity()` net the new balance (else the same money is spendable twice), `PathProjector::applyHomeSale()` redeems it at a forced sale, `ResultPresenter` raises one `deferred_care_payment` note reading the rate from `DeferredPaymentAgreement::MAXIMUM_INTEREST_RATE_BPS` (the no-invisible-figures rule), and the `ENGINE_VERSION` bump plus golden-master re-pin are the project's own invariant. The builder field moved all four places at once (`ScenarioBuilder::blankProperty()`, `rules()`, `loadState()`, `BuilderStateFixture::full()`).
+
+**Half done, but declared.** The twelve-week disregard and the disposable income allowance are left out, stated in `DeferredPaymentAgreement`'s class docblock and in the card comment. Neither is in Acceptance. The equity-cap weakness is carded as 0130, which names the inflated deferral itself. The owed stored-scenario re-run follows the established worktree pattern.
+
+VERDICT: sound
+
+**breakage: defect**
+
+**Finding 1 ÔÇö a comparison variant silently loses the disregard.**
+`Housing\HousingComparison::buyVariant()` builds its `new Property(...)` by name and does not carry `occupiedByQualifyingRelative` from `$household->primaryResidence`, so it falls back to `false`. The comment two lines above it moves `disabledBandReduction` across for exactly the reason that applies here ÔÇö "the qualifying feature is the resident's, not the building's". A household that ticks the box gets the home disregarded in the base plan but assessed in every buy/move variant: the same relative, a different answer. The result is not an error, it is a quieter estate ÔÇö the charge is now deferred, so the buy variant just returns a smaller inheritance and nothing says why. `Dto\Property::withCurrentValue()` does carry the flag, so the omission is inconsistent, not a convention.
+
+**Finding 2 ÔÇö a docblock the change made false.**
+`Forecast\YearResult::$totalWealth` still says home equity is "property net of everything secured on it, the mortgage and any smiBalance() charge". `homeEquity()`, which it is derived from, now also subtracts `deferredCareBalance()`. The neighbouring `homeEquity()` docblock was updated; this one was not.
+
+VERDICT: defect
+
