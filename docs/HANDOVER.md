@@ -5,10 +5,28 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-07 (card 0053). The exceptions a fresh session needs, newest first. The "what is built"
-inventory and cards 0024, 0025, 0028 to 0035 were folded out to
+_Last updated: 2026-09-07 (card 0054). The exceptions a fresh session needs, newest first. The "what is built"
+inventory and cards 0024, 0025, 0028 to 0036 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **Marital status must now be chosen, a will is never assumed, and the first death applies the
+  intestacy rules.** Card 0054. Marital status defaulted to married in the form, in the DTO and in
+  the assembler, and was disclosed nowhere; a will was assumed too, so the first death always got a
+  full spouse exemption. `Household::$relationshipStatus` is nullable with no default, read through
+  `relationshipStatus()`, required of a couple in the builder, and disclosed by `assumedFigures()`
+  where a stored scenario carries no answer. `Person::$hasWill` defaults FALSE, which is the adverse
+  answer and the honest one, and `InheritanceTaxCalculator::computeFirstDeath()` is the one home of
+  what the survivor takes: the whole estate with a will, the statutory legacy plus half the residue
+  under intestacy, either capped at the nil-rate band where the survivor is not a UK long-term
+  resident (`Person::$ukLongTermResident`, null = not asked, disclosed). `compute()` takes
+  `$nilRateBandUsedAtFirstDeath`, so only the UNUSED band transfers; without that the same band
+  would be handed out twice and intestacy would be near enough a no-op. `Household::$marriageDate`
+  is captured, stored sparsely, and read by nothing (card **0128**). **Every stored plan that models
+  Inheritance Tax pays MORE until its will boxes are ticked**, so `ENGINE_VERSION` is
+  `finance-engine/intestacy-on-the-first-death` and the **stored-scenario re-run is owed**. Every
+  figure and rule in it is **STATED, not verified** (no web in this session): see
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§27), carded as **0127**. Built in a worktree, so
+  the four new inputs and the two new notes **have not been seen in a browser**.
 - **Selling the home no longer deletes the residence nil-rate band.** Card 0053. The band was
   capped at the home owned AT DEATH, so a sell-and-rent plan died owning nothing and got a band of
   nil while a sell-and-buy-cheaper plan was capped at the cheaper home: every downsizing option was
@@ -308,26 +326,6 @@ inventory and cards 0024, 0025, 0028 to 0035 were folded out to
   is card **0098**: `capitalGainsTax` still bands a realised gain against pre-drawdown,
   non-savings-only income, so the household that sells holdings to fund a withdrawal has its gain
   charged at the lowest rate.
-- **The retirement year is now split on both sides, and National Insurance no longer stops early.**
-  Card 0036. Salary was already prorated by `workFraction`, but the income replacing it was not: a
-  State Pension paid a full year from the claim year, a DB pension a full year from normal retirement
-  age, and `niForPerson` switched NI off for the whole calendar year State Pension age fell in.
-  `initialState` now keeps `spaMonth` beside `spaYear` (it was computing the date and discarding the
-  month), and `startFraction($month)` sits beside `workFraction` as its exact complement: month n
-  divides the year at the end of that month, salary takes n/12 and what replaces it takes (12 - n)/12.
-  NI is charged on `min(workFraction, spaMonth/12)` of the salary, with the calculator's own State
-  Pension age switch off, because the slice handed to it already excludes everything after that date.
-  `dbIncome` now takes the `Person`, not the id, since it needs the birth month. **Every stored plan
-  with a retirement inside its horizon banked too much income and too little NI in that year, so its
-  wealth, depletion year and success odds are too FAVOURABLE**; a plan whose members are all past
-  State Pension age and normal retirement age in the base year is byte-identical. `ENGINE_VERSION` is
-  `finance-engine/transition-year-proration` and the **stored-scenario re-run is owed** (built in a
-  worktree). No new UI control, so nothing new to look at, but every results page moves. Two adjacent
-  faults were carded rather than fixed: **0096**, NI thresholds are annual where real NI is assessed
-  per pay period, so a part year is charged against a whole year's threshold (noted as a v1 limit in
-  `niForPerson`); and **0097**, the Pension Credit qualifying-age gate awards fifty-two weeks in the
-  year State Pension age is reached, which this card makes worse in passing because the now-correct
-  part-year State Pension lowers the assessable income the award is computed from.
 - **`scenarios:audit` cannot be used as a gate until every stored scenario is re-run.** It exits 1
   on 120 lines, all of them "run N carries no integrity stamp (it predates the column)", with no
   other problem class anywhere. Applying the pending `add_hashes_to_simulation_runs_table` migration

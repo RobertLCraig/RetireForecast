@@ -42,6 +42,24 @@ final class WarningCode
     public const IHT_SPOUSE_EXEMPTION = 'iht_spouse_exemption';
 
     /**
+     * The person who died first left NO will, so their estate passed under the intestacy rules
+     * rather than wholly to the survivor: the spouse takes the chattels, the statutory legacy and
+     * half the residue, and the children take the rest. The children's half is a chargeable
+     * transfer, so it is taxed and it eats the nil-rate band that would otherwise have transferred
+     * to the second death. Raised because "no will" is the DEFAULT answer here, and a reader has to
+     * be able to see that the model took it.
+     */
+    public const IHT_INTESTACY = 'iht_intestacy';
+
+    /**
+     * The spouse exemption was CAPPED because the surviving spouse is not a UK long-term resident.
+     * An unlimited exemption is only available where the recipient is, or where the couple make the
+     * election that treats them as if they were; without it the exemption stops at the nil-rate
+     * band and the rest of the estate is chargeable on the first death.
+     */
+    public const IHT_SPOUSE_EXEMPTION_CAPPED = 'iht_spouse_exemption_capped';
+
+    /**
      * Part of the residence nil-rate band was restored as a DOWNSIZING ADDITION: the plan sold a
      * home during its life, so the band that home would have sheltered is added back rather than
      * lost. Raised so a reader shown a residence band beside a smaller home, or no home at all,

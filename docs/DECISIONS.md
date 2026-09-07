@@ -3,6 +3,42 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-07: marital status loses its default; a will is never assumed; the marriage date is captured but not read
+**Context:** card 0054 (expert panel 2026-08-19, estate planner findings 2 and 3). Marital status
+defaulted to married in the form, in the DTO and in the assembler fallback, and was disclosed
+nowhere. A will was assumed too: the first death got a full spouse exemption with no "is there a
+will?" input and no intestacy path anywhere in the codebase.
+
+**Decision 1: marital status has NO default, and a couple must answer it.** `Household::$relation-
+shipStatus` is nullable, the builder select opens on "Please choose", and validation requires it for
+a two-person household. A single person is never asked, because the answer means nothing without a
+partner. The ENGINE fallback stays married rather than flipping to the adverse answer, because
+flipping it would silently re-tax every scenario stored before the question existed. Instead
+`relationshipStatusIsAssumed()` makes the null visible and `assumedFigures()` says, in the note's own
+words, that the fallback is the flattering way round and asks the reader to go back and answer it.
+Read it through `relationshipStatus()`, never off the property.
+
+**Decision 2: no will is the DEFAULT, and it costs the estate.** `Person::$hasWill` defaults false,
+which IS the adverse answer and is the honest one: nobody was ever asked. Without a will
+`InheritanceTaxCalculator::computeFirstDeath()` applies the intestacy split (statutory legacy plus
+half the residue to the spouse, the rest to the issue) and the issue's half is chargeable. The
+knock-on is the point of it: that half spends part of the nil-rate band, so only the UNUSED part
+transfers, which `compute()` now takes as `$nilRateBandUsedAtFirstDeath` and subtracts from the
+doubled band. Without that the same band would be handed out twice and the intestacy path would be
+close to a no-op on an ordinary estate. **Every stored plan modelling Inheritance Tax moves upward
+until a will is ticked**, so `ENGINE_VERSION` is bumped and the stored-scenario re-run is owed.
+
+**Decision 3: `homeToDescendants` is what says there are issue.** Intestacy only splits an estate
+where there are children to take a share; with none, the spouse takes everything and the exemption
+is again total. The engine holds no list of children, so the reader's own statement that the home is
+left to direct descendants is the only signal available. Stated in `ASSUMPTIONS.md` §27 rather than
+left implicit.
+
+**Decision 4: the marriage date is captured and deliberately not consumed.** The card asked for it
+to be captured; what it drives (which State Pension inheritance scheme a survivor falls under) needs
+two sourced sets of figures an unattended session cannot fetch. It rides `Household::$marriageDate`,
+is stored sparsely so it creates no what-if delta, and card **0128** carries reading it.
+
 ## 2026-09-07: an unrecorded disability award reads as the QUALIFYING rate, not the adverse one
 **Context:** card 0051 (expert panel 2026-08-19, Citizens Advice). The Pension Credit
 severe-disability and carer additions were both tested on `Person::$receivesDisabilityBenefit`, a

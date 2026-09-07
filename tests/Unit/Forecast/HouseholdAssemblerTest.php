@@ -42,16 +42,18 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertEquals(HouseholdFixture::housingAction(), $assembled['housingAction']);
     }
 
-    public function test_relationship_status_defaults_to_married_when_absent_and_maps_when_set(): void
+    public function test_relationship_status_is_null_when_absent_and_maps_when_set(): void
     {
         $state = BuilderStateFixture::full();
 
-        // Absent key → married (so an existing scenario keeps today's spousal treatment).
+        // Absent key stays NULL (card 0054): the status has no default any more, so an unanswered
+        // one has to be visible as unanswered. The DTO still PROJECTS one, so an existing scenario
+        // keeps today's spousal treatment, and the results page discloses that it did.
         unset($state['relationshipStatus']);
-        $this->assertSame(
-            RelationshipStatus::MarriedOrCivilPartnership,
-            (new HouseholdAssembler)->household($state)->relationshipStatus,
-        );
+        $household = (new HouseholdAssembler)->household($state);
+        $this->assertNull($household->relationshipStatus);
+        $this->assertTrue($household->relationshipStatusIsAssumed());
+        $this->assertSame(RelationshipStatus::MarriedOrCivilPartnership, $household->relationshipStatus());
 
         // Explicit cohabiting flows through.
         $state['relationshipStatus'] = 'cohabiting';

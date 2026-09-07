@@ -24,12 +24,16 @@ final class BuilderStateFixture
                 // The death-in-service keys are present-but-blank on purpose: the builder BACKFILLS
                 // them on load, so a fixture person without them would differ from the same person
                 // after a round-trip and show up as a spurious what-if delta. Blank = no cover.
+                // The will and residence keys are here for the same reason: false and blank are
+                // what the builder backfills, so leaving them out would read as a what-if delta.
                 ['id' => 'p1', 'dob' => '1961-04-02', 'sex' => 'male', 'employmentStatus' => 'employed',
                     'grossSalary' => '62000', 'salaryGrowth' => '2.5', 'plannedRetirementAge' => '66', 'niCategory' => 'A',
-                    'deathInServiceMode' => '', 'deathInServiceMultiple' => '', 'deathInServiceSum' => ''],
+                    'deathInServiceMode' => '', 'deathInServiceMultiple' => '', 'deathInServiceSum' => '',
+                    'hasWill' => false, 'ukLongTermResident' => ''],
                 ['id' => 'p2', 'dob' => '1963-11-20', 'sex' => 'female', 'employmentStatus' => 'retired',
                     'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => '',
-                    'deathInServiceMode' => '', 'deathInServiceMultiple' => '', 'deathInServiceSum' => ''],
+                    'deathInServiceMode' => '', 'deathInServiceMultiple' => '', 'deathInServiceSum' => '',
+                    'hasWill' => false, 'ukLongTermResident' => ''],
             ],
             'expense' => ['essential' => '', 'discretionary' => '', 'survivorFactor' => '70'],
             'expenseLines' => [

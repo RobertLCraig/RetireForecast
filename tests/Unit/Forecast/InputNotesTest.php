@@ -763,7 +763,10 @@ final class InputNotesTest extends TestCase
         // note added by board card 0046 correctly reports. A household with something to flag is
         // the wrong fixture for a test about a household with nothing to flag.
         $notes = $this->notes([
+            // The relationship status is answered here for the same reason: an unanswered one is
+            // itself a note now (card 0054), so a household with nothing to flag has to answer it.
             'householdName' => 'Fine', 'region' => 'england_wales_ni',
+            'relationshipStatus' => 'married_or_civil_partnership',
             'people' => [
                 ['id' => 'p1', 'name' => 'Alex', 'dob' => '1965-01-01', 'sex' => 'female', 'employmentStatus' => 'employed',
                     'grossSalary' => '40000', 'plannedRetirementAge' => '67'],
@@ -778,5 +781,34 @@ final class InputNotesTest extends TestCase
         ]);
 
         $this->assertSame([], $notes);
+    }
+
+    public function test_a_relationship_status_nobody_gave_is_disclosed_as_an_assumed_figure(): void
+    {
+        // Card 0054. A scenario stored before the question was compulsory carries no answer, and the
+        // engine still has to read one to project at all. It reads married, which is the FAVOURABLE
+        // branch, so the reader has to be told it was chosen for them.
+        $people = [
+            ['id' => 'p1', 'name' => 'Ari', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+            ['id' => 'p2', 'name' => 'Bo', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+        ];
+        $base = [
+            'householdName' => 'Unsaid', 'region' => 'england_wales_ni', 'people' => $people,
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ];
+
+        $unsaid = array_filter(
+            $this->notes($base),
+            static fn (array $n): bool => $n['kind'] === 'assumed_figure' && str_contains($n['text'], 'married'),
+        );
+        $this->assertNotSame([], $unsaid, 'an unanswered relationship status is disclosed');
+
+        $answered = array_filter(
+            $this->notes($base + ['relationshipStatus' => 'married_or_civil_partnership']),
+            static fn (array $n): bool => $n['kind'] === 'assumed_figure' && str_contains($n['text'], 'married'),
+        );
+        $this->assertSame([], $answered, 'an answered one is not an assumption');
     }
 }

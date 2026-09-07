@@ -36,10 +36,12 @@ final class Household
         public readonly array $incomeStreams = [],
         public readonly ?Property $primaryResidence = null,
         // How the two people are related, which drives the Inheritance Tax treatment on death
-        // (spousal exemption + transferable nil-rate band vs a chargeable transfer). Defaulted to
-        // married/civil-partnership so every existing scenario keeps today's spousal behaviour;
-        // ignored for a single-person household. See {@see RelationshipStatus}.
-        public readonly RelationshipStatus $relationshipStatus = RelationshipStatus::MarriedOrCivilPartnership,
+        // (spousal exemption + transferable nil-rate band vs a chargeable transfer). NULL means
+        // nobody was asked: it is the one input where the wrong value is catastrophic, so it has no
+        // default any more and a null is DISCLOSED rather than quietly read as married. Read it
+        // through {@see relationshipStatus()}, never off the property. Ignored for a single-person
+        // household. See {@see RelationshipStatus}.
+        public readonly ?RelationshipStatus $relationshipStatus = null,
         // Documented one-off capital inflows (a family gift, an inheritance, the sale of
         // something outside the plan), credited to cash in their calendar year. See
         // {@see CapitalReceipt} — the no-magic-money rule's input for money arriving from
@@ -57,7 +59,34 @@ final class Household
         // without it every sell plan is taxed as though the residence nil-rate band were simply
         // thrown away. See {@see ResidenceDisposal}.
         public readonly ?ResidenceDisposal $formerResidenceDisposal = null,
+        // The date of the marriage or civil partnership, ISO Y-m-d. Recorded because it decides
+        // which State Pension inheritance rules a survivor falls under, which turn on whether the
+        // couple were married before 6 April 2016. Null = not given. Captured, not yet consumed:
+        // no rule here reads it, and no figure moves with it.
+        public readonly ?string $marriageDate = null,
     ) {}
+
+    /**
+     * The relationship status in force, with the engine's fallback where the reader gave none.
+     * The fallback stays married/civil-partnership so a scenario stored before the question
+     * existed keeps the figures it was saved with; it is NOT the adverse answer, which is exactly
+     * why {@see relationshipStatusIsAssumed} exists and the result page has to say so.
+     */
+    public function relationshipStatus(): RelationshipStatus
+    {
+        return $this->relationshipStatus ?? RelationshipStatus::MarriedOrCivilPartnership;
+    }
+
+    /**
+     * Was the relationship status supplied by the ENGINE rather than chosen? True whenever nobody
+     * answered. Only meaningful for a two-person household, where the answer decides the spouse
+     * exemption, both transferable bands, State Pension inheritance and whether a survivor's
+     * pension is paid at all.
+     */
+    public function relationshipStatusIsAssumed(): bool
+    {
+        return $this->relationshipStatus === null && count($this->persons) > 1;
+    }
 
     /**
      * The same household with different people (immutable) — a sweep lever varying a retirement
@@ -152,6 +181,7 @@ final class Household
             $capitalReceipts ?? $this->capitalReceipts,
             $this->realisedGainsAtStart,
             $this->formerResidenceDisposal,
+            $this->marriageDate,
         );
     }
 

@@ -245,6 +245,8 @@ final class ProtectionGap
                     $p->receivesDisabilityBenefit, $p->caresForPartner, deathInServiceCover: null,
                     disabilityBenefitFromAge: $p->disabilityBenefitFromAge,
                     disabilityAwardRate: $p->disabilityAwardRate,
+                    hasWill: $p->hasWill,
+                    ukLongTermResident: $p->ukLongTermResident,
                 )
                 : $p,
             $household->persons,

@@ -21,6 +21,7 @@ use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\PensionReliefMethod;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
+use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
@@ -69,6 +70,10 @@ final class HouseholdFixture
                     employmentStatus: EmploymentStatus::Retired,
                 ),
             ],
+            // Explicit, because the DTO no longer defaults it (card 0054) and the round-trip tests
+            // compare this against the household assembled from BuilderStateFixture::full, which
+            // answers the question.
+            relationshipStatus: RelationshipStatus::MarriedOrCivilPartnership,
             expenseProfile: new ExpenseProfile(
                 essentialAnnualSpend: Money::fromPounds(28_000),
                 discretionaryAnnualSpend: Money::fromPounds(12_500),

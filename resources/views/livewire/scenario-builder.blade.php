@@ -251,12 +251,22 @@
                     @if (count($people) > 1)
                     <div>
                         <label for="relationshipStatus" class="{{ $label }}">Relationship</label>
-                        <select id="relationshipStatus" wire:model="relationshipStatus" class="{{ $field }}">
+                        <select id="relationshipStatus" wire:model.live="relationshipStatus" class="{{ $field }}">
+                            <option value="">Please choose</option>
                             <option value="married_or_civil_partnership">Married / civil partnership</option>
                             <option value="cohabiting">Cohabiting (not married)</option>
                         </select>
-                        <p class="mt-1 text-xs text-gray-500">Affects Inheritance Tax on death: a married couple pass their estate to each other tax-free and share both nil-rate bands; a cohabiting couple do not.</p>
+                        <p class="mt-1 text-xs text-gray-500">There is no default for this, because being wrong about it changes almost everything: a married couple pass their estate to each other free of Inheritance Tax, share both nil-rate bands, can inherit State Pension from each other, and are the only people most work pensions pay a survivor's pension to. A cohabiting couple get none of that.</p>
+                        @error('relationshipStatus') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
+                    @if ($relationshipStatus === 'married_or_civil_partnership')
+                    <div>
+                        <label for="marriageDate" class="{{ $label }}">Date of the marriage / civil partnership</label>
+                        <input type="date" id="marriageDate" wire:model="marriageDate" class="{{ $field }}">
+                        <p class="mt-1 text-xs text-gray-500">Optional. Which State Pension a survivor can inherit depends on whether you were married before 6 April 2016, so it is worth recording. Nothing in the forecast moves with it yet.</p>
+                        @error('marriageDate') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    @endif
                     @endif
                     <div class="sm:col-span-2">
                         <label class="flex items-center gap-2 text-sm text-gray-700">
@@ -477,6 +487,26 @@
                                     <p class="mt-1 text-xs text-gray-500">Tick this if they give their partner at least 35 hours of care a week and that partner gets a disability benefit. It adds the Pension Credit carer top-up. Carer's Allowance also has a weekly earnings limit, so pay above it stops this counting while they are still working.</p>
                                 </div>
                             @endif
+                            {{-- Estate paperwork. No will is the DEFAULT here on purpose: nobody was
+                                 ever asked, and without a will an estate passes under the intestacy
+                                 rules, where a husband, wife or civil partner does NOT take
+                                 everything. See board card 0054. --}}
+                            <div class="col-span-full">
+                                <label class="flex items-center gap-2 text-sm text-gray-700">
+                                    <input type="checkbox" wire:model="people.{{ $i }}.hasWill" class="rounded border-gray-300">
+                                    They have a current will
+                                </label>
+                                <p class="mt-1 text-xs text-gray-500">Left unticked, we model them as having no will. Without one the estate passes under the intestacy rules: a husband, wife or civil partner takes the personal belongings, the first {{ $this->statutoryLegacy() }} and half of what is left, and the children take the other half. That half is taxed and it uses up part of the allowance that would otherwise have passed to the survivor.</p>
+                            </div>
+                            <div>
+                                <label for="people-{{ $i }}-ukLongTermResident" class="{{ $label }}">UK long-term resident for Inheritance Tax</label>
+                                <select id="people-{{ $i }}-ukLongTermResident" wire:model="people.{{ $i }}.ukLongTermResident" class="{{ $field }}">
+                                    <option value="">Not said (we assume yes)</option>
+                                    <option value="yes">Yes</option>
+                                    <option value="no">No</option>
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">If the one who survives is not a UK long-term resident, the amount that can pass to them free of Inheritance Tax stops at the nil-rate band instead of being unlimited.</p>
+                            </div>
                             {{-- Employer death-in-service (group life) cover. Most employed people have
                                  it and most forget; it is also the one protection that VANISHES at
                                  retirement, which is what the results page's protection panel surfaces. --}}

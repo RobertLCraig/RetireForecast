@@ -250,7 +250,7 @@ final class ResultPresenter
         $panel = [
             'couple' => $couple,
             'relationship' => $couple
-                ? ($household->relationshipStatus === RelationshipStatus::MarriedOrCivilPartnership ? 'married' : 'cohabiting')
+                ? ($household->relationshipStatus() === RelationshipStatus::MarriedOrCivilPartnership ? 'married' : 'cohabiting')
                 : 'single',
             'total' => self::pounds($iht->total),
             'anyTaxDue' => $iht->total->isPositive(),
@@ -938,6 +938,41 @@ final class ResultPresenter
                 .'have the State Pension rise with prices alone. One thing works the other way: the real lock is the '
                 .'highest of earnings, prices and the floor, and we do not model the earnings part, because we hold '
                 .'no national wage series. So in a year when wages outrun both, this is on the cautious side.';
+        }
+
+        // WHETHER THE TWO PEOPLE ARE MARRIED. Board card 0054: this defaulted to married in the
+        // form, in the DTO and in the assembler, and it was the one input where the wrong answer is
+        // catastrophic. It now has no default, but a scenario stored before that still carries no
+        // answer and the engine has to read one to project at all, so the fallback it reads is
+        // declared here. The status is READ back out of the household, so a changed fallback moves
+        // this sentence with it.
+        if ($household->relationshipStatusIsAssumed()) {
+            $assumedStatus = $household->relationshipStatus() === RelationshipStatus::MarriedOrCivilPartnership
+                ? 'married or in a civil partnership'
+                : 'living together but not married or in a civil partnership';
+            $out[] = "You didn't tell us whether you are married or in a civil partnership, so we have modelled you "
+                ."as {$assumedStatus}. This is the one answer here where being wrong changes almost everything, and "
+                .'it is the flattering way round: a married couple pay no Inheritance Tax when the first of them '
+                .'dies, pass both their unused allowances to the survivor, can inherit State Pension from each '
+                .'other, and are the only people most work pensions will pay a survivor\'s pension to. A couple who '
+                .'live together without being married get none of that. Please go back and answer it.';
+        }
+
+        // Whether the surviving spouse is a UK long-term resident, which caps what can pass to them
+        // free of Inheritance Tax when they are not. Only disclosed where it can bite: a couple
+        // modelling Inheritance Tax, with a spouse exemption to cap in the first place.
+        $married = $household->relationshipStatus() === RelationshipStatus::MarriedOrCivilPartnership;
+        $residenceUnasked = false;
+        foreach ($household->persons as $person) {
+            $residenceUnasked = $residenceUnasked || $person->ukLongTermResidenceIsAssumed();
+        }
+        if ($residenceUnasked && $married && count($household->persons) === 2 && $settings?->modelIht === true) {
+            $out[] = "You didn't tell us whether you are UK long-term residents, so we have assumed you are, and "
+                .'given the survivor an unlimited amount that can pass to them free of Inheritance Tax when the '
+                .'first of you dies. If the one who survives is NOT a UK long-term resident, that amount stops at '
+                .'the nil-rate band and the rest of the estate is taxed straight away. A couple can elect to be '
+                .'treated as UK long-term resident, which removes the cap but brings their worldwide assets into '
+                .'charge; we do not model that election.';
         }
 
         // How the invested money is split across asset classes. Nobody has ever entered this: the
@@ -2281,7 +2316,7 @@ final class ResultPresenter
         // (d) Cohabiting-couple survivor caveats. The married/civil-partner survivor rights the
         // engine implicitly assumes do NOT extend to a cohabiting partner, so flag where the
         // forecast may overstate what the survivor actually receives (no silent overstatement).
-        if (count($household->persons) === 2 && $household->relationshipStatus === RelationshipStatus::Cohabiting) {
+        if (count($household->persons) === 2 && $household->relationshipStatus() === RelationshipStatus::Cohabiting) {
             $hasSurvivorDb = false;
             foreach ($household->pensions as $pension) {
                 if ($pension instanceof DbPension && $pension->spousePensionFraction !== null && $pension->spousePensionFraction->basisPoints > 0) {

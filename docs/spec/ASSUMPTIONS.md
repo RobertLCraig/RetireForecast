@@ -497,6 +497,30 @@ cash **−0.5%**.
    gate is stated rather than resolved; the engine models no disposal before its own base year, so
    the gate can never be the deciding test.
 
+27. **Intestacy on the first death, and the capped spouse exemption** (board card 0054). Until this
+   card the model granted the first death an unlimited spouse exemption, on a will nobody was asked
+   about, to a survivor whose residence position nobody was asked about either. Two rules now bite,
+   and both are **STATUTORY rules, not economic assumptions**, both are **STATED, not verified**
+   (the unattended session that added them had no web access), and both **DO reach a projection**:
+   every stored plan that models Inheritance Tax moves, because no will is the default answer.
+   Board card **0127** carries pinning them.
+
+   The **statutory legacy** is £322,000 for deaths on or after 26 July 2023, from the
+   Administration of Estates Act 1925 s.46(1)(i) as amended by SI 2023/758
+   (https://www.legislation.gov.uk/uksi/2023/758/made). A surviving spouse or civil partner takes
+   the personal chattels, that sum, and half the residue; the issue take the other half, which is a
+   chargeable transfer. The **capped spouse exemption** where the recipient is not a UK long-term
+   resident stops at the nil-rate band, from IHTA 1984 s.18(2); the election that removes the cap
+   is not modelled.
+
+   Five v1 simplifications follow, all flagged in code. Personal chattels are not modelled at all,
+   which leaves the spouse's share LOWER and so is the cautious direction. The legacy is FROZEN
+   rather than uprated, which is cautious in the same direction. Northern Ireland's own figure
+   differs and the engine bundles it with England and Wales. The engine holds no list of children,
+   so `homeToDescendants` is what says there are issue to take a share. And the residence nil-rate
+   band is not claimed at the first death even where the children take part of the home under
+   intestacy, which is adverse on that death and leaves the whole band to transfer to the second.
+
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees

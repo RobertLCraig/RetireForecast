@@ -797,6 +797,8 @@ class ScenarioBuilderTest extends TestCase
         $state = BuilderStateFixture::minimalValid();
         $state['people'][] = ['id' => 'p2', 'dob' => '1957-03-01', 'sex' => 'male', 'employmentStatus' => 'retired',
             'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => ''];
+        // A couple must answer this now (card 0054); it has no default.
+        $state['relationshipStatus'] = 'married_or_civil_partnership';
 
         $this->fill($state)
             ->set('people.0.caresForPartner', true)
@@ -821,6 +823,53 @@ class ScenarioBuilderTest extends TestCase
         $component->assertDontSee('Cares for their partner');
 
         $component->call('addPerson')->assertSee('Cares for their partner');
+    }
+
+    public function test_a_couple_must_choose_a_relationship_status(): void
+    {
+        // Card 0054. Marital status used to DEFAULT to married, in the form, in the DTO and in the
+        // assembler, and it is the one input where the wrong value is catastrophic: no spouse
+        // exemption, neither transferable band, no State Pension inheritance, and most DB schemes
+        // pay a survivor's pension to a spouse or civil partner only. It now has no default.
+        $state = BuilderStateFixture::minimalValid();
+        $state['people'][] = ['id' => 'p2', 'dob' => '1957-03-01', 'sex' => 'male', 'employmentStatus' => 'retired',
+            'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => ''];
+
+        $this->fill($state)
+            ->call('save')
+            ->assertHasErrors(['relationshipStatus']);
+
+        // A one-person household is never asked: the answer means nothing without a partner.
+        $this->fill(BuilderStateFixture::minimalValid())
+            ->call('save')
+            ->assertHasNoErrors();
+    }
+
+    public function test_a_will_the_marriage_date_and_the_residence_position_are_builder_inputs(): void
+    {
+        // Card 0054. A will was assumed, the date of the marriage (which decides which State Pension
+        // inheritance rules apply) was never asked, and neither was whether the surviving spouse is
+        // a UK long-term resident, which caps the spouse exemption when they are not.
+        $state = BuilderStateFixture::minimalValid();
+        $state['people'][0]['hasWill'] = true;
+        $state['people'][0]['ukLongTermResident'] = 'no';
+        $state['marriageDate'] = '1990-06-14';
+
+        $this->fill($state)->call('save')->assertHasNoErrors();
+
+        $household = Scenario::firstOrFail()->toHousehold();
+        $this->assertTrue($household->persons[0]->hasWill);
+        $this->assertFalse($household->persons[0]->isUkLongTermResident());
+        $this->assertSame('1990-06-14', $household->marriageDate);
+    }
+
+    public function test_a_will_is_not_assumed_when_nobody_answered(): void
+    {
+        $this->fill(BuilderStateFixture::minimalValid())->call('save')->assertHasNoErrors();
+
+        $person = Scenario::firstOrFail()->toHousehold()->persons[0];
+        $this->assertFalse($person->hasWill, 'no will unless the reader says there is one');
+        $this->assertTrue($person->ukLongTermResidenceIsAssumed(), 'the residence position was never asked');
     }
 
     /** @param array<string, mixed> $state */

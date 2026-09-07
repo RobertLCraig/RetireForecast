@@ -30,6 +30,7 @@ use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
+use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Property\CgtPrivateResidenceCalculator;
 use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
@@ -119,10 +120,19 @@ class ScenarioBuilder extends Component
 
     /**
      * How the two people are related (married/civil-partnership vs cohabiting), which drives the
-     * Inheritance Tax treatment on death. Defaults to married so an existing scenario keeps today's
-     * spousal treatment; only meaningful for a two-person household.
+     * Inheritance Tax treatment on death, the survivor's DB and State Pension rights, and both
+     * transferable nil-rate bands. NO DEFAULT (card 0054): it is the one input where the wrong
+     * value is catastrophic, and a default that flatters the result is the opposite of the standing
+     * adverse-default rule. Required for a two-person household; meaningless for one person.
      */
-    public string $relationshipStatus = 'married_or_civil_partnership';
+    public string $relationshipStatus = '';
+
+    /**
+     * The date of the marriage or civil partnership, ISO Y-m-d, blank if not given. It decides
+     * which State Pension inheritance rules a survivor falls under (the rules turn on whether the
+     * couple were married before 6 April 2016). Captured, not yet consumed by any rule.
+     */
+    public string $marriageDate = '';
 
     /**
      * Model the risk of late-life residential/nursing care fees in the Monte Carlo (off by
@@ -265,7 +275,13 @@ class ScenarioBuilder extends Component
             'region' => ['required', Rule::in(['england_wales_ni', 'scotland']), $this->regionSupported(...)],
             'baseTaxYear' => ['required', Rule::in(['2025-26', '2026-27'])],
             'variant' => ['required', Rule::in(['buy_outright', 'rent', 'stay_put'])],
-            'relationshipStatus' => ['required', Rule::in(['married_or_civil_partnership', 'cohabiting'])],
+            // No default and no silent fallback: a couple must SAY which they are (card 0054).
+            // A single person is never asked, so a blank stays valid for them.
+            'relationshipStatus' => [
+                Rule::requiredIf(fn (): bool => count($this->people) > 1),
+                Rule::in(['', 'married_or_civil_partnership', 'cohabiting']),
+            ],
+            'marriageDate' => ['nullable', 'date', 'before_or_equal:today'],
             'homeToDescendants' => ['boolean'],
             'assumptionSetId' => ['nullable', 'integer', 'exists:assumption_sets,id'],
             // Editable economic assumptions: each is an optional override of the chosen
@@ -318,6 +334,12 @@ class ScenarioBuilder extends Component
             // above has always meant on its own.
             'people.*.disabilityAwardRate' => ['nullable', Rule::in(['', 'qualifying_care', 'lowest_rate_care', 'mobility_only'])],
             'people.*.caresForPartner' => ['nullable', 'boolean'],
+            // Is there a CURRENT will? Unticked = no will, and no will means the estate passes
+            // under the intestacy rules on the first death (card 0054).
+            'people.*.hasWill' => ['nullable', 'boolean'],
+            // Is this person a UK long-term resident for Inheritance Tax? Blank = not asked, which
+            // the engine reads as yes and the results page discloses.
+            'people.*.ukLongTermResident' => ['nullable', Rule::in(['', 'yes', 'no'])],
             // Lifespan what-if (optional): peer = cohort-table average; fixed_age needs an
             // age, offset_years a ± year shift. The range spans both uses; the mortality
             // grid clamps anything extreme (ages 50–110), so a loose bound is safe.
@@ -498,6 +520,8 @@ class ScenarioBuilder extends Component
         return [
             'householdName' => 'household name',
             'relationshipStatus' => 'relationship status',
+            'marriageDate' => 'date of marriage or civil partnership',
+            'people.*.ukLongTermResident' => 'UK long-term residence',
             'people.*.dob' => 'date of birth',
             'people.*.grossSalary' => 'gross salary',
             'expense.essential' => 'essential annual spend',
@@ -817,6 +841,10 @@ class ScenarioBuilder extends Component
             $this->people[$i]['deathInServiceMode'] ??= '';
             $this->people[$i]['deathInServiceMultiple'] ??= '';
             $this->people[$i]['deathInServiceSum'] ??= '';
+            // A person saved before the estate questions existed has neither key. No will is the
+            // default, and a blank residence position is "not asked" (card 0054).
+            $this->people[$i]['hasWill'] ??= false;
+            $this->people[$i]['ukLongTermResident'] ??= '';
         }
     }
 
@@ -1048,6 +1076,12 @@ class ScenarioBuilder extends Component
         // assumptionOverrides). Absent = off, which ScenarioForecaster::settings() reads as false.
         if ($this->modelCareCost) {
             $state['modelCareCost'] = true;
+        }
+
+        // The marriage date, stored only when given (sparse), for the same reason: a scenario
+        // predating the field, and a what-if that changes nothing, must record no delta.
+        if (trim($this->marriageDate) !== '') {
+            $state['marriageDate'] = $this->marriageDate;
         }
 
         // Store the home-to-descendants toggle only when OFF (sparse). Its default is ON — leaving
@@ -1744,6 +1778,16 @@ class ScenarioBuilder extends Component
         }
     }
 
+    /**
+     * The statutory legacy a surviving spouse takes off the top of an intestate estate, formatted
+     * for the will checkbox's help text. READ from the constant that owns it, never restated, so
+     * re-sourcing the figure moves the screen with it.
+     */
+    public function statutoryLegacy(): string
+    {
+        return Money::fromPence(InheritanceTaxCalculator::STATUTORY_LEGACY_PENCE)->format();
+    }
+
     private function blankPerson(string $id): array
     {
         return [
@@ -1759,6 +1803,10 @@ class ScenarioBuilder extends Component
             // no existing scenario and creates no what-if delta; blank = no cover, the adverse
             // assumption (see DeathInServiceCover).
             'deathInServiceMode' => '', 'deathInServiceMultiple' => '', 'deathInServiceSum' => '',
+            // Estate paperwork. No will is the DEFAULT and the adverse answer: nobody was ever
+            // asked, so the model must not assume one exists. A blank residence position means
+            // "not asked", which the engine reads as UK long-term resident and discloses.
+            'hasWill' => false, 'ukLongTermResident' => '',
         ];
     }
 

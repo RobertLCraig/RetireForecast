@@ -38,16 +38,21 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
  */
 final class InheritanceTaxForecastTest extends TestCase
 {
-    /** A wealthy couple: low spend, large liquid + pensions + a home, so a big estate is left. */
-    private function couple(RelationshipStatus $status): Household
+    /**
+     * A wealthy couple: low spend, large liquid + pensions + a home, so a big estate is left.
+     * $hasWill defaults to FALSE, which is the DTO's own default and the answer nobody was ever
+     * asked for; the spouse-exemption tests pass it true, because an unlimited spouse exemption is
+     * what a will buys.
+     */
+    private function couple(RelationshipStatus $status, bool $hasWill = false): Household
     {
         return new Household(
             'Estate',
             RegionProfile::EnglandWalesNi,
             [
                 // P1 dies first (2035), P2 the final survivor (2045) — both deaths past April 2027.
-                new Person('p1', new DateTimeImmutable('1955-01-01'), Sex::Male, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(80)),
-                new Person('p2', new DateTimeImmutable('1957-01-01'), Sex::Female, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(88)),
+                new Person('p1', new DateTimeImmutable('1955-01-01'), Sex::Male, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(80), hasWill: $hasWill),
+                new Person('p2', new DateTimeImmutable('1957-01-01'), Sex::Female, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(88), hasWill: $hasWill),
             ],
             new ExpenseProfile(Money::fromPounds(20_000), Money::zero(), Percent::fromPercent(70)),
             pensions: [
@@ -92,8 +97,8 @@ final class InheritanceTaxForecastTest extends TestCase
 
     public function test_relationship_status_changes_the_iht(): void
     {
-        $married = $this->forecast($this->couple(RelationshipStatus::MarriedOrCivilPartnership), true)->iht;
-        $cohabiting = $this->forecast($this->couple(RelationshipStatus::Cohabiting), true)->iht;
+        $married = $this->forecast($this->couple(RelationshipStatus::MarriedOrCivilPartnership, hasWill: true), true)->iht;
+        $cohabiting = $this->forecast($this->couple(RelationshipStatus::Cohabiting, hasWill: true), true)->iht;
 
         $this->assertNotNull($married);
         $this->assertNotNull($cohabiting);
@@ -158,6 +163,66 @@ final class InheritanceTaxForecastTest extends TestCase
             $notToDescendants->total->pence,
             $toDescendants->total->pence,
             'leaving the home to descendants unlocks the residence band, so less IHT is due',
+        );
+    }
+
+    public function test_a_married_first_death_with_no_will_is_not_fully_spouse_exempt(): void
+    {
+        // Nobody was ever asked whether there is a will, and the model granted the first death an
+        // unlimited spouse exemption regardless. Under intestacy the surviving spouse does NOT take
+        // everything: they take the chattels, the statutory legacy and half the residue, and the
+        // children take the other half. That other half is a chargeable transfer, so a first death
+        // with no will cannot be nil.
+        $iht = $this->forecast($this->couple(RelationshipStatus::MarriedOrCivilPartnership), true)->iht;
+
+        $this->assertNotNull($iht);
+        $this->assertNotNull($iht->firstDeath);
+        $this->assertTrue(
+            $iht->firstDeath->tax->isPositive(),
+            'with no will, the children\'s half of the residue is chargeable, so the first death is not nil',
+        );
+    }
+
+    public function test_a_will_is_never_assumed_and_costs_the_estate_when_there_is_none(): void
+    {
+        // The default answer to "is there a will?" is NO, so the same couple modelled with one pays
+        // LESS: the will buys an unlimited spouse exemption on the first death, which leaves the
+        // whole nil-rate band to transfer to the second.
+        $this->assertFalse(
+            (new Person('x', new DateTimeImmutable('1955-01-01'), Sex::Male, EmploymentStatus::Retired))->hasWill,
+            'a person nobody asked about a will has none',
+        );
+
+        $noWill = $this->forecast($this->couple(RelationshipStatus::MarriedOrCivilPartnership), true);
+        $withWill = $this->forecast($this->couple(RelationshipStatus::MarriedOrCivilPartnership, hasWill: true), true);
+
+        $this->assertNotNull($noWill->iht);
+        $this->assertNotNull($withWill->iht);
+        $this->assertGreaterThan(
+            $withWill->iht->total->pence,
+            $noWill->iht->total->pence,
+            'an intestate estate is taxed at the first death and transfers a smaller band to the second',
+        );
+        $this->assertContains(
+            WarningCode::IHT_INTESTACY,
+            array_map(static fn ($w) => $w->code, $noWill->iht->firstDeath->warnings),
+        );
+    }
+
+    public function test_intestacy_shrinks_the_band_that_transfers_to_the_second_death(): void
+    {
+        // The children's half of the residue is chargeable at the first death, so it eats part of
+        // that person's nil-rate band. Only the unused part transfers, so the second death cannot
+        // get the full doubled band a will would have left it.
+        $noWill = $this->forecast($this->couple(RelationshipStatus::MarriedOrCivilPartnership), true)->iht;
+        $withWill = $this->forecast($this->couple(RelationshipStatus::MarriedOrCivilPartnership, hasWill: true), true)->iht;
+
+        $this->assertNotNull($noWill);
+        $this->assertNotNull($withWill);
+        $this->assertGreaterThan(
+            $noWill->secondDeath->nilRateBandUsed->pence,
+            $withWill->secondDeath->nilRateBandUsed->pence,
+            'a first death that spent part of its band leaves less of it to transfer',
         );
     }
 

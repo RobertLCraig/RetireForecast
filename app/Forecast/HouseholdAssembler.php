@@ -89,10 +89,15 @@ final class HouseholdAssembler
             primaryResidence: ($state['hasProperty'] ?? false)
                 ? $this->property($state['property'] ?? [], (int) substr((string) ($state['baseTaxYear'] ?? '2026-27'), 0, 4))
                 : null,
-            // Relationship status drives the IHT treatment on death; a scenario predating the
-            // field (absent key) rehydrates as married, so its forecast is unchanged.
-            relationshipStatus: RelationshipStatus::from((string) ($state['relationshipStatus'] ?? 'married_or_civil_partnership')),
+            // Relationship status drives the IHT treatment on death, the survivor's DB and State
+            // Pension rights, and both transferable bands. A blank or absent answer stays NULL here
+            // rather than being read as married: the DTO still projects one so an old scenario keeps
+            // its figures, but the null is what makes the results page disclose it (card 0054).
+            relationshipStatus: RelationshipStatus::tryFrom((string) ($state['relationshipStatus'] ?? '')),
             capitalReceipts: array_map($this->capitalReceipt(...), $state['capitalReceipts'] ?? []),
+            // The date of the marriage or civil partnership, which decides which State Pension
+            // inheritance rules a survivor falls under. Blank or absent = not given.
+            marriageDate: $this->stringOrNull($state['marriageDate'] ?? null),
         );
     }
 
@@ -176,6 +181,17 @@ final class HouseholdAssembler
             // has always meant, so a scenario saved before this field existed keeps its answer.
             disabilityAwardRate: DisabilityAwardRate::tryFrom((string) ($p['disabilityAwardRate'] ?? ''))
                 ?? DisabilityAwardRate::QualifyingCare,
+            // Blank or absent = NO will, the adverse answer. A scenario saved before the question
+            // existed was never asked, and a will that does not exist is what intestacy is for.
+            hasWill: (bool) ($p['hasWill'] ?? false),
+            // Blank or absent = never asked, which the engine treats as a UK long-term resident (an
+            // unlimited spouse exemption, what every forecast did before the question existed) and
+            // the results page discloses as an assumed figure.
+            ukLongTermResident: match ((string) ($p['ukLongTermResident'] ?? '')) {
+                'yes' => true,
+                'no' => false,
+                default => null,
+            },
         );
     }
 

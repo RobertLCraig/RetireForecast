@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Dto;
 
 use DateTimeImmutable;
+use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 
@@ -74,7 +75,39 @@ final class Person
          * {@see DisabilityAwardRate}.
          */
         public readonly DisabilityAwardRate $disabilityAwardRate = DisabilityAwardRate::QualifyingCare,
+        /**
+         * Whether this person has a CURRENT will. Default false, which is the adverse answer and
+         * the honest one: nobody was ever asked, and around half of UK adults have no will, so
+         * assuming one exists flatters every estate. Without a will the estate passes under the
+         * intestacy rules, where a surviving spouse does NOT take everything — see
+         * {@see InheritanceTaxCalculator::computeFirstDeath}.
+         */
+        public readonly bool $hasWill = false,
+        /**
+         * Whether this person is a UK long-term resident for Inheritance Tax. Null means nobody was
+         * asked, and is treated as YES (an unlimited spouse exemption), which is what every forecast
+         * did before the question existed; it is disclosed as an assumed figure rather than left
+         * invisible. False caps what can pass to them free of tax at the nil-rate band
+         * (IHTA 1984 s.18(2)); the election that removes the cap is not modelled.
+         */
+        public readonly ?bool $ukLongTermResident = null,
     ) {}
+
+    /**
+     * Is this person's long-term-residence position one the ENGINE supplied rather than one the
+     * reader gave? True whenever it was never asked, which is the condition the
+     * no-invisible-figures disclosure is gated on.
+     */
+    public function ukLongTermResidenceIsAssumed(): bool
+    {
+        return $this->ukLongTermResident === null;
+    }
+
+    /** Treat "not asked" as YES, which is what the model did before the question existed. */
+    public function isUkLongTermResident(): bool
+    {
+        return $this->ukLongTermResident ?? true;
+    }
 
     /**
      * Whether the qualifying disability benefit is in payment at $age. It is the ONE place the
@@ -115,6 +148,8 @@ final class Person
             $this->deathInServiceCover,
             $this->disabilityBenefitFromAge,
             $this->disabilityAwardRate,
+            $this->hasWill,
+            $this->ukLongTermResident,
         );
     }
 
@@ -137,6 +172,8 @@ final class Person
             $this->deathInServiceCover,
             $this->disabilityBenefitFromAge,
             $this->disabilityAwardRate,
+            $this->hasWill,
+            $this->ukLongTermResident,
         );
     }
 }

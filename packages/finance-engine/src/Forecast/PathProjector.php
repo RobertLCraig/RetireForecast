@@ -167,7 +167,7 @@ final class PathProjector
             if ($settings->modelIht) {
                 foreach ($household->persons as $person) {
                     if (($prevAlive[$person->id] ?? true) && ! $alive[$person->id]) {
-                        $this->recordFirstDeathIht($state, $household, $draws, $person, $cumInflation);
+                        $this->recordFirstDeathIht($state, $household, $settings, $draws, $person, $cumInflation);
                     }
                 }
             }
@@ -277,14 +277,22 @@ final class PathProjector
      * Record the first death's IHT: the deceased's OWN estate — their per-person liquid (cash +
      * ISA + GIA) and pension, plus their share of the home. The couple own the home jointly, so a
      * first death carries half the household's equity (a v1 50/50 split; immaterial for a married
-     * couple, whose first death is spousally exempt). On the first death the estate passes to the
-     * surviving partner, not to descendants, so the residence nil-rate band never applies here.
+     * couple, whose first death is spousally exempt only where there is a will). On the first death
+     * the estate passes to the surviving partner, not to descendants, so the residence nil-rate
+     * band never applies here.
+     *
+     * WHAT the survivor actually takes is the calculator's question, not this one's: it needs the
+     * deceased's will, the survivor's residence position, and whether there are children to take a
+     * share under intestacy. The engine holds no list of children, so `homeToDescendants` — the
+     * reader's own statement that the home is left to direct descendants — is what says there are
+     * issue to inherit. A plan that leaves nothing to descendants has a spouse who takes the whole
+     * intestate estate, which is the statutory answer where there is no issue.
      *
      * @param  array<string, mixed>  $state
      */
-    private function recordFirstDeathIht(array &$state, Household $household, PathDraws $draws, Person $deceased, float $cumInflation): void
+    private function recordFirstDeathIht(array &$state, Household $household, ForecastSettings $settings, PathDraws $draws, Person $deceased, float $cumInflation): void
     {
-        $married = $household->relationshipStatus === RelationshipStatus::MarriedOrCivilPartnership;
+        $married = $household->relationshipStatus() === RelationshipStatus::MarriedOrCivilPartnership;
 
         $liquid = Money::fromPence($state['cash'][$deceased->id] + $state['gia'][$deceased->id] + $state['isa'][$deceased->id]);
         $pension = Money::fromPence($this->personPots($state, $deceased->id));
@@ -299,8 +307,28 @@ final class PathProjector
         );
 
         $deathYear = (int) $deceased->dob->format('Y') + $draws->deathAge($deceased->id);
+        $survivor = null;
+        foreach ($household->persons as $person) {
+            if ($person->id !== $deceased->id) {
+                $survivor = $person;
+            }
+        }
 
-        $state['ihtFirstDeath'] = $this->computeDeathIht($estate, spousallyExempt: $married, multiplier: 1, homeToDescendants: false, deathYear: $deathYear, cumInflation: $cumInflation);
+        $result = $this->iht->computeFirstDeath(
+            $estate->estateExcludingPensions,
+            $estate->pensionValue,
+            $deathYear >= self::PENSIONS_IN_ESTATE_FROM_YEAR,
+            spouseSurvives: $married && $survivor !== null,
+            deceasedLeftAWill: $deceased->hasWill,
+            issueTakeUnderIntestacy: $settings->homeToDescendants,
+            survivorIsUkLongTermResident: $survivor?->isUkLongTermResident() ?? true,
+        );
+
+        // The band this death CONSUMED, kept in NOMINAL pounds because that is the unit the frozen
+        // band is set in and the unit the second death subtracts it in. The stored result below is
+        // deflated to real for reporting, so it cannot serve here.
+        $state['ihtNrbUsedAtFirstDeath'] = $result->nilRateBandUsed;
+        $state['ihtFirstDeath'] = $this->deflateIht($result, 1.0 / $cumInflation);
     }
 
     /**
@@ -316,7 +344,7 @@ final class PathProjector
     private function recordFinalDeathIht(array &$state, Household $household, ForecastSettings $settings, PathDraws $draws, array $prevAlive, float $cumInflation): void
     {
         $twoPeople = count($household->persons) === 2;
-        $married = $twoPeople && $household->relationshipStatus === RelationshipStatus::MarriedOrCivilPartnership;
+        $married = $twoPeople && $household->relationshipStatus() === RelationshipStatus::MarriedOrCivilPartnership;
 
         $liquid = Money::fromPence($this->sum($state['cash']) + $this->sum($state['gia']) + $this->sum($state['isa']));
         $estate = EstateValuer::value(
@@ -342,43 +370,31 @@ final class PathProjector
         // estate passes to direct descendants. A plan leaving nothing to children gets neither.
         $disposal = $settings->homeToDescendants ? ($state['residenceDisposal'] ?? null) : null;
 
-        $state['ihtSecondDeath'] = $this->computeDeathIht($estate, spousallyExempt: false, multiplier: $married ? 2 : 1, homeToDescendants: $settings->homeToDescendants, deathYear: $deathYear, cumInflation: $cumInflation, formerResidenceDisposal: $disposal);
+        // Only a MARRIED couple transfer a band, so only they can have spent part of it at the
+        // first death. A cohabiting couple's second death already has one band of its own, and
+        // subtracting the first death's use would charge them for the same band twice.
+        $spent = $married ? ($state['ihtNrbUsedAtFirstDeath'] ?? null) : null;
+
+        $state['ihtSecondDeath'] = $this->computeDeathIht($estate, multiplier: $married ? 2 : 1, homeToDescendants: $settings->homeToDescendants, deathYear: $deathYear, cumInflation: $cumInflation, formerResidenceDisposal: $disposal, nilRateBandUsedAtFirstDeath: $spent);
     }
 
     /**
      * Compute one death's IHT in NOMINAL pounds at the death year — so the frozen nil-rate bands
      * bite against the grown nominal estate (real fiscal drag, matching how the projector treats
      * frozen income-tax thresholds) — then deflate the whole result to REAL today's money for the
-     * outcome. A spousally-exempt death (a married couple's first death) is £0 with a note. Unused
-     * pension pots enter the estate only from April 2027 (the enacted rule).
+     * outcome. Unused pension pots enter the estate only from April 2027 (the enacted rule). The
+     * FIRST death has its own path ({@see recordFirstDeathIht}), because what the survivor takes
+     * depends on the will, the intestacy rules and the survivor's residence position.
      */
-    private function computeDeathIht(EstateValuation $estate, bool $spousallyExempt, int $multiplier, bool $homeToDescendants, int $deathYear, float $cumInflation, ?ResidenceDisposal $formerResidenceDisposal = null): IhtResult
+    private function computeDeathIht(EstateValuation $estate, int $multiplier, bool $homeToDescendants, int $deathYear, float $cumInflation, ?ResidenceDisposal $formerResidenceDisposal = null, ?Money $nilRateBandUsedAtFirstDeath = null): IhtResult
     {
         $includePensions = $deathYear >= self::PENSIONS_IN_ESTATE_FROM_YEAR;
+        $homeToDesc = $homeToDescendants ? $estate->homeEquity : Money::zero();
 
-        if ($spousallyExempt) {
-            $total = $estate->estateExcludingPensions->plus($includePensions ? $estate->pensionValue : Money::zero());
-            $result = new IhtResult(
-                totalEstate: $total,
-                nilRateBandUsed: Money::zero(),
-                residenceNilRateBandUsed: Money::zero(),
-                taxableEstate: Money::zero(),
-                rate: $this->config->iht->rate,
-                tax: Money::zero(),
-                pensionsIncluded: $includePensions,
-                warnings: [new Warning(
-                    WarningCode::IHT_SPOUSE_EXEMPTION,
-                    'Everything passes to the surviving spouse or civil partner, so no Inheritance Tax '
-                    .'is due on the first death (the spouse exemption); their unused allowances carry over.',
-                )],
-                downsizingAddition: Money::zero(),
-            );
-        } else {
-            $homeToDesc = $homeToDescendants ? $estate->homeEquity : Money::zero();
-            $result = $this->iht->compute($estate->estateExcludingPensions, $estate->pensionValue, $includePensions, $homeToDesc, $multiplier, $formerResidenceDisposal);
-        }
-
-        return $this->deflateIht($result, 1.0 / $cumInflation);
+        return $this->deflateIht(
+            $this->iht->compute($estate->estateExcludingPensions, $estate->pensionValue, $includePensions, $homeToDesc, $multiplier, $formerResidenceDisposal, $nilRateBandUsedAtFirstDeath),
+            1.0 / $cumInflation,
+        );
     }
 
     /**

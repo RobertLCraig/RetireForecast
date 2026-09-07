@@ -165,6 +165,7 @@ final class WhatIfChanges
             'ihtModelled' => 'Model inheritance tax', 'householdName' => 'Household name',
             'relationshipStatus' => 'Relationship status', 'homeToDescendants' => 'Leave home to descendants',
             'assumptionSetId' => 'Assumption set', 'hasProperty' => 'Owns a property',
+            'marriageDate' => 'Date of marriage or civil partnership',
         ];
         if (count($segments) === 1) {
             return $topLevel[$head] ?? Str::headline($head);
