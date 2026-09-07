@@ -812,7 +812,7 @@
         </p>
         <table class="tiles">
             <tr>
-                <td><div class="tile"><p class="tile-label">Estate at the final death</p><p class="tile-value">£{{ number_format($iht['secondDeath']['estate']) }}</p><p class="tile-note">everything you're modelled to leave (savings, investments, pensions and home).</p></div></td>
+                <td><div class="tile"><p class="tile-label">Estate at the final death</p><p class="tile-value">£{{ number_format($iht['secondDeath']['estate']) }}</p><p class="tile-note">savings, investments, pensions and home, on a <strong>single</strong> central projection: one life, one set of returns, no care costs.</p></div></td>
                 <td><div class="tile"><p class="tile-label">Sheltered by allowances</p><p class="tile-value">£{{ number_format($iht['secondDeath']['nrb'] + $iht['secondDeath']['rnrb']) }}</p><p class="tile-note">nil-rate band £{{ number_format($iht['secondDeath']['nrb']) }}{{ $iht['secondDeath']['rnrb'] > 0 ? ' + residence band £'.number_format($iht['secondDeath']['rnrb']) : '' }}.{{ $iht['secondDeath']['downsizingAddition'] ? ' £'.number_format($iht['secondDeath']['downsizingAddition']).' of the residence band is added back because this plan sells a home (the downsizing addition), which stops selling up throwing the band away.' : '' }}</p></div></td>
                 <td><div class="tile {{ $iht['anyTaxDue'] ? '' : 'tile-green' }}"><p class="tile-label">Inheritance Tax due</p><p class="tile-value">£{{ number_format($iht['total']) }}</p><p class="tile-note">@if ($iht['anyTaxDue'])40% on the £{{ number_format($iht['secondDeath']['taxable']) }} above your allowances.@else your estate is within the allowances, so no Inheritance Tax is modelled.@endif</p></div></td>
             </tr>
@@ -842,6 +842,25 @@
             <p class="note">Unused pension pots are counted as part of the estate — the rule due from
                 <strong>April 2027</strong> (Finance Act 2026). Before then they sat outside it, so this raises the
                 taxable estate.</p>
+        @endif
+        {{-- Board card 0058: the estate band across the paths, beside the single-path figure. --}}
+        @if (! empty($presented['estateRange'] ?? null))
+            @php($estateRange = $presented['estateRange'])
+            <p class="note">Across your simulated futures the wealth you leave ranges from
+                <strong>£{{ number_format($estateRange['p10']) }}</strong> (the lowest 1 in 10) to
+                <strong>£{{ number_format($estateRange['p90']) }}</strong> (the highest 1 in 10), with about
+                <strong>£{{ number_format($estateRange['p50']) }}</strong> typical, over
+                {{ number_format($estateRange['paths']) }} paths. Read the single figure above as one of those, not as
+                the answer.</p>
+        @endif
+        {{-- Board card 0058: what the estate figure is stated gross of. --}}
+        @if (! empty($iht['caveats']))
+            <h3>What comes off this before anybody inherits</h3>
+            <ul>
+                @foreach ($iht['caveats'] as $caveat)
+                    <li class="note">{{ $caveat }}</li>
+                @endforeach
+            </ul>
         @endif
         @if (! empty($presented['ihtDistribution'] ?? null))
             @php($ihtDist = $presented['ihtDistribution'])

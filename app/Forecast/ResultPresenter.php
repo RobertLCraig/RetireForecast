@@ -172,7 +172,81 @@ final class ResultPresenter
             'careImpact' => self::careImpactPanel($primarySim->careImpact),
             // The spread of Inheritance Tax across the sampled futures (null unless IHT is modelled).
             'ihtDistribution' => self::ihtDistributionPanel($primarySim->ihtDistribution),
+            // The spread of what is LEFT across the sampled futures (board card 0058), so the
+            // deterministic estate figure is never the only thing on the screen.
+            'estateRange' => self::estateRange($primarySim),
         ];
+    }
+
+    /**
+     * The terminal estate as a BAND across the simulated paths, not one number (board card 0058).
+     * The estate panel's own figure is a single path, at a median lifespan, with no care, and it
+     * was reported to the pound beside a probability with ten thousand paths behind it. This is
+     * the same total wealth the headline cards already band, read from the one series that owns
+     * it ({@see SimulationResult::$terminalWealthPercentiles}), so the two cannot drift.
+     *
+     * @return array{p10: int, p50: int, p90: int, paths: int}|null null for a run without the band
+     */
+    public static function estateRange(?SimulationResult $r): ?array
+    {
+        if ($r === null || ! isset($r->terminalWealthPercentiles['p50'])) {
+            return null;
+        }
+
+        return [
+            'p10' => self::pounds($r->terminalWealthPercentiles['p10']),
+            'p50' => self::pounds($r->terminalWealthPercentiles['p50']),
+            'p90' => self::pounds($r->terminalWealthPercentiles['p90']),
+            'paths' => $r->nPaths,
+        ];
+    }
+
+    /**
+     * What comes off the estate figure before anybody inherits, and what the figure is silent
+     * about (board card 0058). The panel stated the estate exactly and gross of all of this, with
+     * good caveats about gifts and reliefs and none about the precision of the number itself.
+     *
+     * No amount is invented for the probate costs: they are named and declared unmodelled rather
+     * than guessed at, because a figure with no source is the fault this project exists to avoid.
+     * The care line reads what the projection actually did, so a plan carrying a deferred care
+     * debt is told the debt is already deducted and a plan modelling no care at all is told that.
+     *
+     * @return list<string>
+     */
+    public static function estateCaveats(ForecastResult $forecast): array
+    {
+        $deferred = Money::zero();
+        foreach ($forecast->years as $year) {
+            if ($year->deferredCareBalance()->isPositive()) {
+                $deferred = $year->deferredCareBalance();
+            }
+        }
+
+        $caveats = [
+            'Nothing is inherited straight away. An estate has to go through probate, which commonly '
+                .'takes many months, and the cost of winding it up (probate fees, solicitor or executor '
+                .'charges, valuations, and the cost of selling a property) is paid out of the estate '
+                .'first. None of those costs are modelled here, so the figure above is before them.',
+            'Inheritance Tax is not the only tax on what you leave. Where an unused pension pot is '
+                .'inherited and you died at or after 75, whoever gets it pays their own income tax on '
+                .'every pound they draw from it, in the years they draw it. That is a separate bill '
+                .'from the one above and it falls on them, not on your estate.',
+        ];
+
+        if ($deferred->isPositive()) {
+            $caveats[] = "This plan runs up a care debt of about {$deferred->format()} secured on your home. "
+                .'It is repaid before anybody inherits, and it is already taken off the figure above.';
+        } elseif (! $forecast->careCostReal()->isPositive()) {
+            $caveats[] = 'This projection charges no care fees at all, so nothing has been taken off for '
+                .'care. A late-life care placement is the single largest thing that can consume an estate, '
+                .'and unpaid fees or a council deferred payment agreement are settled out of it first.';
+        } else {
+            $caveats[] = "This plan pays about {$forecast->careCostReal()->format()} of care fees out of "
+                .'its own money over the projection, which is already spent before anything is inherited. '
+                .'Any fees still unpaid at death would come out of the estate as well.';
+        }
+
+        return $caveats;
     }
 
     /**
@@ -238,9 +312,13 @@ final class ResultPresenter
      * sees the assumption. Null when IHT is not modelled (the toggle off). Education only: it
      * shows the headline bands, not a full estate computation (gifts, trusts, reliefs excluded).
      *
+     * $forecast, when given, adds the 'caveats' the estate figure is stated gross of
+     * ({@see estateCaveats()}, board card 0058). It rides the panel rather than being a second
+     * view variable so the page and the PDF cannot show one without the other.
+     *
      * @return array<string, mixed>|null
      */
-    public static function ihtPanel(?IhtOutcome $iht, Household $household): ?array
+    public static function ihtPanel(?IhtOutcome $iht, Household $household, ?ForecastResult $forecast = null): ?array
     {
         if ($iht === null) {
             return null;
@@ -289,6 +367,9 @@ final class ResultPresenter
                 ($second->beneficiaryMarginalRate ?? $iht->firstDeath?->beneficiaryMarginalRate)?->asPercent() ?? 0.0,
             ),
             'pensionTaxedTwiceTotal' => self::pounds($iht->total->plus($iht->beneficiaryIncomeTax)),
+            // What the estate figure is stated GROSS of (board card 0058). Empty only where no
+            // forecast was handed in, which no shipped caller does.
+            'caveats' => $forecast === null ? [] : self::estateCaveats($forecast),
         ];
 
         if ($iht->firstDeath !== null) {
@@ -2098,12 +2179,23 @@ final class ResultPresenter
                 }
             }
             $rate = rtrim(rtrim(number_format($rollUp->asPercent(), 2), '0'), '.');
+            // Board card 0058. Once the balance passes the property value the no-negative-equity
+            // floor binds: terminal wealth stops moving and the home is fully consumed. The
+            // figures alone read as "the home minus some cost", so say what has happened in
+            // words. Read off the SAME year the balance sentence above reports, so the two agree.
+            $consumed = $finalYear->homeEquity()->isPositive() ? '' : ' Read that last figure carefully: by '
+                ."{$finalYear->calendarYear} the rolled-up balance has grown past what the home is worth, so "
+                .'the lender takes the property and no part of the home is inherited at all. Your beneficiaries '
+                ."inherit only the money outside it, about {$forecast->terminalUsableWealth->format()} on this "
+                .'projection. You are never asked for the difference (that is what the no-negative-equity '
+                .'guarantee buys), but from this point on borrowing more costs your estate nothing further '
+                .'because there is nothing further of the home left to lose.';
             $notes[] = ['kind' => 'lifetime_mortgage_rollup', 'text' => "This home is modelled as an equity-release lifetime mortgage rolling up at {$rate}% a year with no "
                 ."payments: the {$mortgage->format()} balance compounds untouched and is repaid when the "
                 .'home is finally sold or the plan otherwise falls due (capped at the home’s value — you can never owe more than it). By '
                 ."{$finalYear->calendarYear} it grows to about {$finalYear->mortgageBalance()->format()} in today’s money, "
                 ."so of the home’s {$finalYear->propertyWealth->format()} only about {$finalYear->homeEquity()->format()} would "
-                .'be left to inherit. Freeing the monthly payment helps the money last, but the rolled-up interest is what it '
+                .'be left to inherit.'.$consumed.' Freeing the monthly payment helps the money last, but the rolled-up interest is what it '
                 .'costs what you leave behind — compare this against servicing the interest to see the trade-off. '
                 // Board card 0056. Death is not the only maturity event, and care is the one a
                 // reader is least likely to have been shown. The forecast now acts on it, so the

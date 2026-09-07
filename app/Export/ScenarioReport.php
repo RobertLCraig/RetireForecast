@@ -204,7 +204,7 @@ class ScenarioReport
             'pensionCredit' => ResultPresenter::pensionCreditGuidance($forecast),
             // Inheritance Tax on the estate (only when the toggle is on) — same deterministic
             // source as the screen, so the printed figure matches.
-            'iht' => ResultPresenter::ihtPanel($forecast->iht, $household),
+            'iht' => ResultPresenter::ihtPanel($forecast->iht, $household, $forecast),
             'withdrawal' => $withdrawal,
             // Historical sequence-of-returns stress test: how the plan would have fared starting
             // into each past year. Deterministic, so it prints without a run.

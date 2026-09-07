@@ -1168,7 +1168,14 @@
                 <div class="rounded-md bg-gray-50 p-4">
                     <dt class="text-sm text-gray-500">Estate at the final death</dt>
                     <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">£{{ number_format($iht['secondDeath']['estate']) }}</dd>
-                    <dd class="mt-1 text-xs text-gray-500">everything you're modelled to leave (savings, investments, pensions and home).</dd>
+                    {{-- Board card 0058: this is ONE path, at a median lifespan, with no care, and it
+                         used to be stated to the pound with nothing saying so. The band beside it is
+                         the simulated spread of the same wealth. --}}
+                    <dd class="mt-1 text-xs text-gray-500">savings, investments, pensions and home, on a <strong>single</strong> central projection: one life, one set of returns, no care costs.</dd>
+                    @if (! empty($presented['estateRange'] ?? null))
+                        @php $estateRange = $presented['estateRange']; @endphp
+                        <dd class="mt-2 text-xs text-gray-600">Across your simulated futures the wealth you leave ranges from <strong>£{{ number_format($estateRange['p10']) }}</strong> (the lowest 1 in 10) to <strong>£{{ number_format($estateRange['p90']) }}</strong> (the highest 1 in 10), with about <strong>£{{ number_format($estateRange['p50']) }}</strong> typical, over {{ number_format($estateRange['paths']) }} paths. Read the single figure above as one of those, not as the answer.</dd>
+                    @endif
                 </div>
                 <div class="rounded-md bg-gray-50 p-4">
                     <dt class="text-sm text-gray-500">Sheltered by allowances</dt>
@@ -1235,6 +1242,20 @@
                             <dd class="mt-1 text-xl font-semibold text-gray-900 tabular-nums">£{{ number_format($ihtDist['p90']) }}</dd>
                         </div>
                     </dl>
+                </div>
+            @endif
+
+            {{-- Board card 0058: the estate figure was stated exactly and gross of everything that
+                 comes off it first. The panel carried good caveats about gifts and reliefs and none
+                 about the precision of the estate itself. --}}
+            @if (! empty($iht['caveats']))
+                <div class="mt-4 rounded-md border border-gray-200 bg-gray-50 p-4">
+                    <h3 class="text-sm font-semibold text-gray-900">What comes off this before anybody inherits</h3>
+                    <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                        @foreach ($iht['caveats'] as $caveat)
+                            <li>{{ $caveat }}</li>
+                        @endforeach
+                    </ul>
                 </div>
             @endif
 

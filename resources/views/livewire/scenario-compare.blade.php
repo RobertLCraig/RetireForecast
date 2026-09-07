@@ -100,10 +100,19 @@
         </div>
     @endif
 
-    <div class="mt-6 overflow-x-auto rounded-lg border border-gray-200 bg-white" tabindex="0">
+    {{-- Board card 0058. This page sets a one-path table above a ten-thousand-path one and said
+         nothing about which was which, so a wealth figure with a single life behind it was read
+         beside a probability with the whole simulation behind it. Each surface now says what it is. --}}
+    <p class="mt-6 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700" role="note">
+        <strong>Single path:</strong> every figure in this table comes from one central projection (a median
+        lifespan, one set of returns, no care costs), not from the simulation. Two plans within a few thousand
+        pounds of each other here are not meaningfully apart. The simulated view is further down the page.
+    </p>
+
+    <div class="mt-3 overflow-x-auto rounded-lg border border-gray-200 bg-white" tabindex="0">
         @php $showIht = collect($plans)->contains(fn ($p) => $p['ihtDue'] !== null); @endphp
         <table class="min-w-full divide-y divide-gray-200 text-sm">
-            <caption class="sr-only">Your base plan and its what-ifs compared on their central projection.</caption>
+            <caption class="sr-only">Your base plan and its what-ifs compared on their central projection. Every figure is a single path.</caption>
             <thead class="bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                 <tr>
                     <th scope="col" class="px-4 py-3">Plan</th>
@@ -272,9 +281,10 @@
             <div>
                 <h2 id="combo-heading" class="text-xl font-semibold text-gray-900">Chance the money lasts, across your futures</h2>
                 <p class="mt-1 max-w-3xl text-sm text-gray-600">
-                    Each plan below is scored on its full Monte&nbsp;Carlo simulation — a plain read of how likely the
-                    money is to cover the essentials, over the trend of your spendable position. This is separate from
-                    the central-projection table above, which shows a single best estimate.
+                    <strong>Simulated:</strong> every figure in this section is
+                    measured across all the simulated futures, not from the single central projection in the
+                    table above. It is a plain read of how likely the money is to cover the essentials, over
+                    the trend of your spendable position.
                 </p>
             </div>
             <a href="{{ $combinationCsvUrl }}" class="shrink-0 text-sm text-blue-700 underline">Download CSV</a>

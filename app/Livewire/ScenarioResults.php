@@ -497,7 +497,7 @@ class ScenarioResults extends Component
             // Inheritance Tax on the estate at death (only when the IHT toggle is on): the estate
             // valued, the nil-rate bands applied, and the tax due at each death — relationship-
             // status aware. Deterministic, so it shows immediately like the ladder.
-            'iht' => ResultPresenter::ihtPanel($forecast->iht, $household),
+            'iht' => ResultPresenter::ihtPanel($forecast->iht, $household, $forecast),
             // Deterministic year-by-year cashflow ladder (income by source -> tax -> spend
             // -> wealth) for the selected housing strategy. Shows immediately, before any run.
             'ladder' => $ladder,

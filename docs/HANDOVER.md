@@ -5,10 +5,25 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-07 (card 0057). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-07 (card 0058). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0036 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **The estate is no longer one number stated to the pound.** Card 0058. The estate panel took its
+  figure from the DETERMINISTIC forecast (one path, median lifespan, no care) and sat it beside a
+  probability with ten thousand paths behind it, labelled "everything you're modelled to leave".
+  `ResultPresenter::estateRange()` is the one home of the simulated band and reads the
+  `terminalWealthPercentiles` series the headline cards already read, so the two cannot disagree;
+  the tile keeps its deterministic figure (the tax arithmetic below it is done on that figure) and
+  now says in its own sub-label that it is a single path. `estateCaveats()` rides `ihtPanel()`, so
+  the page and the PDF cannot show the estate without probate cost and delay, the beneficiary's
+  income tax and the care position; **no probate cost is invented**, they are named and declared
+  unmodelled. The Compare page labels its two surfaces "Single path" and "Simulated". Where a
+  rolled-up loan has passed the property value the existing `lifetime_mortgage_rollup` note now says
+  the lender takes the property and names what is left outside it. **No `ENGINE_VERSION` bump and no
+  stored re-run is owed:** it is presentation, no figure moves, and `GoldenMasterTest` did not
+  redden. Built in a worktree, so the estate band, the two Compare labels, the caveat list and the
+  PDF's two new blocks **have not been seen in a browser**.
 - **An inherited pension is taxed twice, and the spouse exemption on a pot follows the nomination.**
   Card 0057. The tool showed the Inheritance Tax on an unused pot and never the beneficiary's own
   income tax on drawing it, which makes preserving a pot look about twice as attractive as it is on
