@@ -149,3 +149,46 @@ looked at.
 **Doc hygiene done alongside.** The session-start orient hook reported HANDOVER.md over its loadable
 budget, so card 0035's block was folded out to docs/HANDOVER-ARCHIVE.md as this card's entry went in,
 keeping the live brief from growing.
+
+### 2026-09-07 review (v20260907080355-668c)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 240s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+Checked each criterion against real code.
+
+**#1 ÔÇö no addition on mobility-only / lowest-rate care.** `DisabilityAwardRate::qualifiesForSevereDisabilityAddition()` returns true only for `QualifyingCare`. `Person::qualifiesForSevereDisabilityAdditionAt()` combines it with the in-payment test. `PathProjector::pensionCreditNominal()` counts only people passing that predicate, and the same predicate gates the carer test, so no second path awards it. No other file awards the addition (`applicableAmountWeekly()` in `PensionCreditCalculator` is the only consumer). The field reaches the engine through `HouseholdAssembler::assemble()` and is preserved in `ProtectionGap`.
+
+**#2 ÔÇö two carer additions.** `PathProjector::pensionCreditNominal()` counts carers in a loop instead of breaking out, and `PensionCreditCalculator::applicableAmountWeekly()` multiplies `carerAdditionWeekly` by that count.
+
+**#3 ÔÇö undrawn pot.** Criterion allows the divergence route. `docs/DATA-MODEL.md` "Known divergences" holds an entry naming direction of error and card 0119.
+
+**#4 ÔÇö mixed-age couple.** `PathProjector::benefitContingencyWarnings()` raises `WarningCode::MIXED_AGE_COUPLE` when a living partner is under State Pension age, with copy naming Universal Credit as the replacement. `ResultPresenter::pensionCreditGuidance()` returns it as `mixedAge`, rendered in `scenario-results.blade.php` and `pdf/partials/report.blade.php`.
+
+I could not break any of them.
+
+VERDICT: sound
+
+**scope: defect**
+
+Read the card commit (185f342) and its neighbour 0050 (9a7d619).
+
+**Two homes for one fact (scope grew).** Card 0050, committed an hour earlier, already recorded the care/mobility split as `IncomeStreamType::DisabilityBenefit` vs `DisabilityBenefitMobility`, and the care means test reads it. This card added a second, independent home for the same fact: `Dto\DisabilityAwardRate` on `Person`, read only by `Person::qualifiesForSevereDisabilityAdditionAt()` and `PathProjector::pensionCreditAward()`. Nothing reconciles them. A person entered with a mobility-only income stream, with the new select left blank, still defaults to `QualifyingCare` and is paid the severe-disability and carer additions ÔÇö the exact defect criterion #1 exists to stop. The builder now asks "which part of the award" twice, in two controls that may disagree. The card asked to replace the boolean, not to add a rival input.
+
+**Criterion #4 half done.** `ResultPresenter::pensionCreditGuidance()` returns the mixed-age case through the same panel, so `howToClaim` still renders "Apply online at gov.uk/pension-credit" to a household the copy has just told cannot claim. The replacement is named, never actioned.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Finding 1 ÔÇö the mobility case the app already knows about still gets the addition.** `IncomeStreamType::DisabilityBenefitMobility` already records "mobility component" (see `IncomeStreamType::isDisabilityBenefit`). The new award rate is a second, separate home for the same fact, and it defaults to `QualifyingCare`. So a household whose only disability money is entered as `disability_benefit_mobility`, with the tick on and the new select untouched, still gets the severe-disability and carer additions in `PathProjector::pensionCreditAward` (the `$qualifies` closure). That is exactly the over-award AC#1 says is removed. No test builds it. Nothing cross-checks the two fields.
+
+**Finding 2 ÔÇö a note the change made false.** `ResultPresenter::inputNotes` (the `disability_care_component_in_care` note) still tells the reader their award "is entered as the CARE (daily living) component" even when they chose `MobilityOnly`.
+
+**Finding 3 ÔÇö the carer caveat was not updated.** `ThresholdPresenter::leverCaveat` still fires on `caresForPartner` alone. Where the cared-for partner's award does not qualify, no carer addition exists, so the caveat tells the reader the lever postpones money the engine never pays.
+
+VERDICT: defect
+
