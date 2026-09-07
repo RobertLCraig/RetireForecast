@@ -444,6 +444,7 @@ class ScenarioResults extends Component
         // for the selected strategy — built from the SAME deterministic forecast the ladder
         // reads, so they can't drift from it. Overlay the same life-event verticals the ladder
         // milestones mark, so a step change (retirement, State Pension, a sale) is legible.
+        $ladder = ResultPresenter::ladder($ladderForecast, $this->scenario->safetyBufferMonths());
         $ladderMilestones = ResultPresenter::milestones($household, $ladderForecast, homeSold: $homeSold);
         $timeSeries = ResultPresenter::timeSeriesCharts($ladderForecast, $this->nominalPounds);
         $milestoneAnnotations = ResultPresenter::milestoneAnnotations($ladderMilestones);
@@ -499,7 +500,7 @@ class ScenarioResults extends Component
             'iht' => ResultPresenter::ihtPanel($forecast->iht, $household),
             // Deterministic year-by-year cashflow ladder (income by source -> tax -> spend
             // -> wealth) for the selected housing strategy. Shows immediately, before any run.
-            'ladder' => ResultPresenter::ladder($ladderForecast, $this->scenario->safetyBufferMonths()),
+            'ladder' => $ladder,
             // The three hero time-series charts for the selected strategy (income / wealth /
             // costs over time), each with a <details> table twin reconciling to the ladder.
             'timeSeries' => $timeSeries,
@@ -591,6 +592,12 @@ class ScenarioResults extends Component
             // CGT only arises on a disposal, so the CGT signposting follows the sale too — a
             // stay-put plan has no gain to report.
             'sourcesShowCgt' => ($household->primaryResidence?->everLet ?? false) && $ladderContext->homeSold(),
+            // Benefits & debt shows where the plan runs short (the priority-debt panel is not null)
+            // or carries a mortgage: a household whose plan fails was previously pointed at the
+            // investment world and nowhere else (board card 0052).
+            'sourcesShowBenefitsDebt' => $ladder['priorityDebt'] !== null
+                || ($household->primaryResidence?->outstandingMortgage?->isPositive() ?? false)
+                || $action->buyMortgageRate !== null,
             // Does the strategy on display sell the home? Gates every sale-specific block, so a
             // stay-put plan is never given sale mechanics, buy prices or a rent figure it doesn't use.
             'salePlanned' => $ladderContext->homeSold(),

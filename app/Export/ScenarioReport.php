@@ -110,6 +110,10 @@ class ScenarioReport
         $milestones = ResultPresenter::milestones($household, $ladderForecast, homeSold: $ladderContext->homeSold());
         $milestoneAnnotations = ResultPresenter::milestoneAnnotations($milestones);
 
+        $ladder = ResultPresenter::ladder($ladderForecast, $scenario->safetyBufferMonths());
+        $hasMortgage = ($household->primaryResidence?->outstandingMortgage?->isPositive() ?? false)
+            || $action->buyMortgageRate !== null;
+
         $timeSeries = ResultPresenter::timeSeriesCharts($ladderForecast);
         foreach (['income', 'wealth', 'costs'] as $chartKey) {
             $timeSeries[$chartKey]['options']['annotations']['xaxis'] = $milestoneAnnotations;
@@ -252,13 +256,15 @@ class ScenarioReport
                 'wealth' => ChartSvg::dataUri($timeSeries['wealth']['options']),
                 'costs' => ChartSvg::dataUri($timeSeries['costs']['options']),
             ],
-            'ladder' => ResultPresenter::ladder($ladderForecast, $scenario->safetyBufferMonths()),
+            'ladder' => $ladder,
             'ladderSelectedLabel' => $ladderContext->selectedLabel(),
             // Contextual "get help" contacts: mortgage line when this plan involves a mortgage, CGT
             // line when it would sell a home that was ever let (partial-PRR CGT).
-            'sourcesShowMortgage' => ($household->primaryResidence?->outstandingMortgage?->isPositive() ?? false) || $action->buyMortgageRate !== null,
+            'sourcesShowMortgage' => $hasMortgage,
             // CGT only arises on a disposal, so the CGT signposting follows the sale too.
             'sourcesShowCgt' => ($household->primaryResidence?->everLet ?? false) && $ladderContext->homeSold(),
+            // Benefits & debt: wherever the plan runs short or carries a mortgage (board card 0052).
+            'sourcesShowBenefitsDebt' => $ladder['priorityDebt'] !== null || $hasMortgage,
         ];
     }
 

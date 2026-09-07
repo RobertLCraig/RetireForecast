@@ -1329,6 +1329,19 @@
             which is why wealth can grow even in a year you're drawing down. A row marked * is a year usable money
             sits below your safety buffer.</p>
     @endif
+    @if ($ladder['priorityDebt'])
+        @php($pd = $ladder['priorityDebt'])
+        <div class="callout">
+            <strong>{{ $pd['secured'] ? 'This shortfall is against a debt secured on your home.' : 'Not every bill behind this shortfall is the same.' }}</strong>
+            {{ $pd['headline'] }}
+            <ul>
+                @foreach ($pd['points'] as $point)
+                    <li>{{ $point }}</li>
+                @endforeach
+            </ul>
+            <p class="note">Sources: {{ implode(' · ', $pd['sources']) }}</p>
+        </div>
+    @endif
     @if ($ladder['showCharges'])
         <p class="note"><strong>Charges:</strong> the investment growth shown is <em>before</em> charges. Platform and
             fund fees take <strong>{{ $ladder['chargesTotal'] }}</strong> out of the pensions, ISAs and investments over
@@ -1359,6 +1372,21 @@
                 a later-life mortgage adviser; a free Decision in Principle shows what is actually obtainable.</li>
             <li>MoneyHelper — retirement interest-only mortgages
                 (moneyhelper.org.uk/en/homes/buying-a-home/retirement-interest-only-mortgages).</li>
+        </ul>
+    @endif
+    @if ($sourcesShowBenefitsDebt)
+        <h3>Benefits &amp; debt</h3>
+        <p class="note">For a plan that runs short, or that carries a mortgage. All of these are free and independent,
+            and a benefits check is the usual first step.</p>
+        <ul>
+            <li><strong>Citizens Advice</strong> — free help with benefits, debt and priority bills. Adviceline
+                0800 144 8848 (England), 0800 702 2020 (Wales) (citizensadvice.org.uk/debt-and-money).</li>
+            <li><strong>National Debtline</strong> 0808 808 4000 (nationaldebtline.org) · <strong>StepChange</strong>
+                0800 138 1111 (stepchange.org) — free debt advice charities.</li>
+            <li>Check what you could claim: gov.uk/check-benefits-financial-support, or the Turn2us calculator
+                (benefits-calculator.turn2us.org.uk) 0808 802 2000.</li>
+            <li>Mortgage arrears or possession: Shelter 0808 800 4444 (england.shelter.org.uk/housing_advice);
+                council tax arrears: gov.uk/council-tax-arrears.</li>
         </ul>
     @endif
     @if ($sourcesShowCgt)

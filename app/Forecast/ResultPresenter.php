@@ -1307,6 +1307,85 @@ final class ResultPresenter
             // What starting the tenancy costs on day one: the deposit charged here plus the first
             // month's rent, which the year's rent line already carries. Null when no rent is paid.
             'tenancyUpFront' => $tenancyUpFront,
+            // What the unmet spend MEANS, rather than a bare number of pounds (board card 0052).
+            // Null on a plan that funds its spending every year.
+            'priorityDebt' => self::priorityDebtGuidance($forecast),
+        ];
+    }
+
+    /**
+     * The framing of a shortfall, which the ladder reported as one flat figure and nothing else.
+     * Board card 0052 (Citizens Advice review finding 15): unmet spend is not one kind of event.
+     * Where the money that goes unpaid is a mortgage instalment the real-world consequence is
+     * arrears and possession, not a smaller weekly shop; council tax carries a liability order and
+     * deductions from benefits or wages. Neither reads any differently here from a missed grocery
+     * bill, and there is nowhere in the tool that says so.
+     *
+     * Read at the FIRST year the plan cannot fund its spending, and secured is decided by whether
+     * that same year still owes a mortgage on the home — so a renter or an outright owner is never
+     * told their home is at stake, which would be a consequence we invented.
+     *
+     * Framing and signposting only: it names what a class of debt can do and where free help is,
+     * never which bill to pay. Arrears themselves are not modelled (the card excludes it).
+     *
+     * @return array{firstYear: int, amount: string, secured: bool, mortgageBalance: ?string, headline: string, points: list<string>, sources: list<string>}|null
+     */
+    public static function priorityDebtGuidance(ForecastResult $forecast): ?array
+    {
+        $first = null;
+        foreach ($forecast->years as $year) {
+            if (! $year->unmetSpend->isZero()) {
+                $first = $year;
+                break;
+            }
+        }
+        if ($first === null) {
+            return null;
+        }
+
+        $secured = $first->mortgageBalance()->isPositive();
+        $amount = $first->unmetSpend->format();
+
+        $headline = $secured
+            ? "In {$first->calendarYear} this plan cannot fund {$amount} of that year's spending, and it still owes "
+                .$first->mortgageBalance()->format().' on a mortgage secured on your home. That gap is a '
+                .'secured-debt shortfall, not belt-tightening: the loan is secured on the property, so missed '
+                .'instalments become arrears and the lender can ask a court for possession — the home is then sold '
+                .'to repay the debt.'
+            : "In {$first->calendarYear} this plan cannot fund {$amount} of that year's spending. The forecast shows "
+                .'that gap as a single number, but the bills behind it are not equal: some can be enforced in ways '
+                .'others cannot.';
+
+        $points = [
+            'Mortgage and council tax are priority debts. Missing them is not the same as missing a credit card, a '
+                .'catalogue or a shop bill: a mortgage can end in the home being repossessed, and unpaid council tax '
+                .'can bring a liability order, deductions straight from benefits, wages or a pension, and enforcement '
+                .'agents.',
+            'A shortfall is not only a spending problem. This forecast counts the benefits you entered plus Pension '
+                .'Credit, and nothing else, so money the household is entitled to can be missing from it. A free '
+                .'benefits check is the first thing a debt adviser does.',
+        ];
+        if ($secured) {
+            $points[] = 'A lender has to consider forbearance before it seeks possession — for example a payment '
+                .'arrangement, a longer term, or a switch to interest-only — under the FCA\'s mortgage arrears rules '
+                .'(MCOB 13).';
+            $points[] = 'A court asked for possession of a home is not obliged to grant it: it can suspend possession '
+                .'where the arrears can be cleared over a reasonable period (Administration of Justice Act 1970, '
+                .'section 36).';
+        }
+        $points[] = 'Free, confidential benefits and debt advice is listed under "Check these figures & get help" on '
+            .'this page. None of this is advice on which bill to pay.';
+
+        return [
+            'firstYear' => $first->calendarYear,
+            'amount' => $amount,
+            'secured' => $secured,
+            'mortgageBalance' => $secured ? $first->mortgageBalance()->format() : null,
+            'headline' => $headline,
+            'points' => $points,
+            'sources' => $secured
+                ? ['https://www.handbook.fca.org.uk/handbook/MCOB/13/', 'https://www.legislation.gov.uk/ukpga/1970/31/section/36', 'https://www.gov.uk/council-tax-arrears']
+                : ['https://www.gov.uk/council-tax-arrears'],
         ];
     }
 

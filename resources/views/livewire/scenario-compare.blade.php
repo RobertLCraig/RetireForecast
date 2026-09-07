@@ -366,7 +366,7 @@
         </p>
     </section>
 
-    <x-sources-and-contacts class="mt-8" :show-mortgage="$sourcesShowMortgage" :show-cgt="$sourcesShowCgt" />
+    <x-sources-and-contacts class="mt-8" :show-mortgage="$sourcesShowMortgage" :show-cgt="$sourcesShowCgt" :show-benefits-debt="$sourcesShowBenefitsDebt" />
 
     <div class="mt-6">
         <x-disclaimer.result />

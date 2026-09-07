@@ -184,6 +184,11 @@ class ScenarioCompare extends Component
         // was ever let (partial-PRR CGT). The pensions & money column always shows.
         $showMortgage = $forecasts->contains(fn (array $pf): bool => ($pf['scenario']->toHousehold()->primaryResidence?->outstandingMortgage?->isPositive() ?? false) || $pf['scenario']->toHousingAction()->buyMortgageRate !== null);
         $showCgt = $forecasts->contains(fn (array $pf): bool => $pf['scenario']->toHousehold()->primaryResidence?->everLet ?? false);
+        // The benefits & debt column shows if any compared plan runs short, or carries a mortgage:
+        // a household comparing plans that all fail was pointed at the investment world and
+        // nowhere else (board card 0052).
+        $showBenefitsDebt = $showMortgage
+            || $forecasts->contains(fn (array $pf): bool => ResultPresenter::priorityDebtGuidance($pf['forecast']) !== null);
 
         return view('livewire.scenario-compare', [
             'base' => $this->base,
@@ -199,6 +204,7 @@ class ScenarioCompare extends Component
             'narrative' => $narrative,
             'sourcesShowMortgage' => $showMortgage,
             'sourcesShowCgt' => $showCgt,
+            'sourcesShowBenefitsDebt' => $showBenefitsDebt,
             // Live progress for the "re-run all" batch, from the same plans the table shows.
             'familyRun' => $this->familyProgress($forecasts->map(fn (array $pf): Scenario => $pf['scenario'])),
             // Phase-3 combination comparison (its own surface, below the deterministic table).

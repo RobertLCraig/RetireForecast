@@ -5,10 +5,23 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-07 (card 0051). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-07 (card 0052). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0035 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A shortfall now says what kind of bill it is, and a failing plan is pointed at free debt help.**
+  Card 0052. `ResultPresenter::priorityDebtGuidance()` owns the framing and rides the ladder array
+  as `priorityDebt`, so the results page and the PDF carry the same words beside the same
+  unmet-spend table. It reads the FIRST year the plan cannot fund its spending; secured is decided
+  by whether that year still owes a mortgage (`YearResult::mortgageBalance()`), so a renter is never
+  told a home is at stake. Both cases name mortgage and council tax as priority debts; a secured one
+  adds the lender's forbearance duty and the court's power to suspend possession.
+  `sources-and-contacts.blade.php` grew a fourth `showBenefitsDebt` column (Citizens Advice,
+  National Debtline, StepChange, Turn2us, Shelter), on wherever a plan runs short or holds a
+  mortgage, mirrored in the PDF. **No `ENGINE_VERSION` bump and no stored re-run is owed:** it is
+  copy, no figure moves. Every phone number, URL and legal citation in it is **STATED, not verified**
+  (no web in this session). Built in a worktree, so the panel and the column **have not been seen in
+  a browser**.
 - **The two Pension Credit additions are decided by entitlement, and a mixed-age couple is told
   why it gets nothing.** Card 0051. `Dto\DisabilityAwardRate` holds WHICH part of an award a person
   has, and `Person::qualifiesForSevereDisabilityAdditionAt()` is the one predicate both the

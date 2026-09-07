@@ -1532,6 +1532,28 @@
                     <strong>Moving in.</strong> {{ $ladder['tenancyUpFront'] }}
                 </p>
             @endif
+            {{-- What the shortfall MEANS. The table above reports unmet spend as a number of
+                 pounds, which reads as belt-tightening whatever bill it is; a missed mortgage
+                 instalment ends in possession and a missed council tax bill in a liability order
+                 (board card 0052). Framing and signposting, never which bill to pay. --}}
+            @if ($ladder['priorityDebt'])
+                @php $pd = $ladder['priorityDebt']; @endphp
+                <div class="mt-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="note">
+                    <h3 class="font-semibold">{{ $pd['secured'] ? 'This shortfall is against a debt secured on your home' : 'Not every bill behind this shortfall is the same' }}</h3>
+                    <p class="mt-1">{{ $pd['headline'] }}</p>
+                    <ul class="mt-2 list-disc space-y-1 pl-5">
+                        @foreach ($pd['points'] as $point)
+                            <li>{{ $point }}</li>
+                        @endforeach
+                    </ul>
+                    <p class="mt-2 text-xs">
+                        Sources:
+                        @foreach ($pd['sources'] as $source)
+                            <a href="{{ $source }}" class="underline" rel="noopener">{{ parse_url($source, PHP_URL_HOST) }}</a>@if (! $loop->last) · @endif
+                        @endforeach
+                    </p>
+                </div>
+            @endif
             {{-- gray-600, not gray-500: the tinted swatch spans below inherit it, and gray-500 on the
                  red-50 tint is 4.42:1 (under AA). --}}
             <p class="mt-1 text-xs text-gray-600">Rows are tinted: <span class="rounded bg-green-50 px-1">surplus</span> (income covers spend), plain (drawing on savings), <span class="rounded bg-amber-50 px-1">shortfall</span> (spend not fully met), <span class="rounded bg-red-50 px-1">below buffer</span>.</p>
@@ -1660,7 +1682,7 @@
     </div>
 
     <div {{ $panel('sec-sources') }}>
-        <x-sources-and-contacts id="sec-sources" class="scroll-mt-6" :show-mortgage="$sourcesShowMortgage" :show-cgt="$sourcesShowCgt" />
+        <x-sources-and-contacts id="sec-sources" class="scroll-mt-6" :show-mortgage="$sourcesShowMortgage" :show-cgt="$sourcesShowCgt" :show-benefits-debt="$sourcesShowBenefitsDebt" />
     </div>
 
     </div>{{-- /content column --}}
