@@ -299,14 +299,19 @@ final class PathProjector
 
         $liquid = Money::fromPence($state['cash'][$deceased->id] + $state['gia'][$deceased->id] + $state['isa'][$deceased->id]);
         $pension = Money::fromPence($this->personPots($state, $deceased->id));
+        // The deceased's OWN beneficial share of the home, not half by assumption (board card
+        // 0059). Null shares are equal shares, which reproduces the old split exactly, and the
+        // equal default is disclosed rather than silent.
+        $share = $household->primaryResidence?->beneficialShare($deceased->id, count($household->persons))
+            ?? Percent::fromBasisPoints(5_000);
         $estate = EstateValuer::value(
             $liquid,
             $pension,
-            Money::fromPence((int) round($state['property'] / 2)),
+            $this->netHomeValue($household, $state)->applyRate($share),
             // Every charge on the home: the mortgage, any Support for Mortgage Interest loan and
             // any deferred care payment, each of which falls due on death exactly as it would on a
-            // sale. The deceased carries half of each, the same v1 50/50 split as the home itself.
-            Money::fromPence((int) round(($state['mortgageOutstanding'] + $state['smiBalance'] + $state['deferredCareBalance']) / 2)),
+            // sale. The deceased carries their own share of each, the same share as the home.
+            Money::fromPence($state['mortgageOutstanding'] + $state['smiBalance'] + $state['deferredCareBalance'])->applyRate($share),
         );
 
         $deathYear = (int) $deceased->dob->format('Y') + $draws->deathAge($deceased->id);
@@ -358,7 +363,7 @@ final class PathProjector
         $estate = EstateValuer::value(
             $liquid,
             Money::fromPence($this->totalPots($state)),
-            Money::fromPence($state['property']),
+            $this->netHomeValue($household, $state),
             // Everything secured on the home falls due here: the mortgage, any Support for
             // Mortgage Interest charge and any deferred care payment, both of the last two repaid
             // on the final death out of the same equity.
@@ -392,7 +397,29 @@ final class PathProjector
         // subtracting the first death's use would charge them for the same band twice.
         $spent = $married ? ($state['ihtNrbUsedAtFirstDeath'] ?? null) : null;
 
-        $state['ihtSecondDeath'] = $this->computeDeathIht($estate, multiplier: $married ? 2 : 1, homeToDescendants: $settings->homeToDescendants, deathYear: $deathYear, cumInflation: $cumInflation, formerResidenceDisposal: $disposal, nilRateBandUsedAtFirstDeath: $spent, deathAge: $deathAge, beneficiaryMarginalRate: $settings->beneficiaryMarginalRate());
+        // A park home is a chattel on somebody else's pitch, not an interest in a dwelling-house,
+        // so no residence nil-rate band is claimed against it (board card 0059). The home is still
+        // in the estate at its value; it simply shelters nothing.
+        $bandable = $settings->homeToDescendants
+            && ($household->primaryResidence?->qualifiesForRnrb() ?? true);
+
+        $state['ihtSecondDeath'] = $this->computeDeathIht($estate, multiplier: $married ? 2 : 1, homeToDescendants: $bandable, deathYear: $deathYear, cumInflation: $cumInflation, formerResidenceDisposal: $disposal, nilRateBandUsedAtFirstDeath: $spent, deathAge: $deathAge, beneficiaryMarginalRate: $settings->beneficiaryMarginalRate());
+    }
+
+    /**
+     * The home's value NET of the site owner's commission on a resale
+     * ({@see Property::netOfSaleCommission}), which is the one home of that arithmetic. An ordinary
+     * house pays no commission and is untouched; a park home's value was overstated by the whole
+     * tenth the site owner takes, and the exit is not optional, so both the estate and the care
+     * means test read it through here (board card 0059).
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function netHomeValue(Household $household, array $state): Money
+    {
+        $gross = Money::fromPence($state['property']);
+
+        return $household->primaryResidence?->netOfSaleCommission($gross) ?? $gross;
     }
 
     /**
@@ -1654,7 +1681,7 @@ final class PathProjector
             $deferred = DeferredPaymentAgreement::deferrableThisYear(
                 Money::fromPence($unmetNominal),
                 Money::fromPence($careChargedNominal),
-                Money::fromPence($this->careHomeEquity($state)),
+                Money::fromPence($this->careHomeEquity($household, $state)),
             )->pence;
 
             $metSpend += $deferred;
@@ -2125,7 +2152,7 @@ final class PathProjector
         $capital = ($state['cash'][$personId] ?? 0) + ($state['gia'][$personId] ?? 0) + ($state['isa'][$personId] ?? 0);
 
         if ($this->careHomeAssessable($household, $state, $aliveCount)) {
-            $capital += intdiv($this->careHomeEquity($state), max(1, $aliveCount));
+            $capital += intdiv($this->careHomeEquity($household, $state), max(1, $aliveCount));
         }
 
         return $capital;
@@ -2212,9 +2239,9 @@ final class PathProjector
      *
      * @param  array<string, mixed>  $state
      */
-    private function careHomeEquity(array $state): int
+    private function careHomeEquity(Household $household, array $state): int
     {
-        return max(0, $state['property'] - $state['mortgageOutstanding'] - $state['deferredCareBalance']);
+        return max(0, $this->netHomeValue($household, $state)->pence - $state['mortgageOutstanding'] - $state['deferredCareBalance']);
     }
 
     /**

@@ -601,6 +601,37 @@ cash **−0.5%**.
    **To verify:** PTM073010 and the Finance Act 2004 provisions behind the age-75 dividing line, and
    the April 2027 legislation's treatment of nominated death benefits.
 
+31. **The park home and the NHS nursing contribution** (board card 0059; lives in
+   `Property::MAX_SITE_COMMISSION_BPS`, `Property::qualifiesForRnrb()` and
+   `CareAssumptions::FUNDED_NURSING_CARE_WEEKLY_PENCE`). **STATED, not verified** (built without web
+   access). All three reach a projection.
+
+   Three statements sit behind the model. First, that the residence nil-rate band needs a qualifying
+   residential interest in a dwelling-house, and that a park-home owner holds a chattel plus a pitch
+   agreement rather than an interest in the land, so the band is at best unsafe and most likely
+   unavailable. The engine refuses it, which is the adverse reading. Second, that the site owner may
+   take a commission of up to 10% of the price on a sale, under the Mobile Homes Act 1983 Sch.1
+   Pt.1 para 25 and the Mobile Homes (Commission) Order 1983, and that the maximum is what is
+   charged in practice. The engine deducts it from the home's value in the estate and in the care
+   means test, on the ground that the exit always happens eventually. Third, that NHS-funded Nursing
+   Care is £254.06 a week (the 2025/26 standard rate), paid direct to the home for any resident
+   assessed as needing a registered nurse including a self-funder, and that it applies to nursing
+   care only.
+
+   The FNC rate is held FROZEN in today's money rather than uprated, which is the cautious
+   direction: a contribution that does not rise leaves more of the fee with the household. NHS
+   Continuing Healthcare is deliberately NOT modelled, because it turns on a health assessment
+   nothing here can predict; the results copy says so and says an award would remove the care
+   charge entirely, which is the larger of the two facts.
+
+   The 10% deduction is a v1 simplification in one direction the reader should know about: it is
+   applied to the home's whole value at the valuation date, not to a sale price a thin market might
+   set, so the illiquidity of a park home is stated in copy rather than priced.
+
+   **To verify:** the Mobile Homes Act 1983 commission provisions and the current NHS England FNC
+   standard rate; and the RNRB point against IHTM46000 and the definition of a qualifying
+   residential interest.
+
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees

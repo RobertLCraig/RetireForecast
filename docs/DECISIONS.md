@@ -3,6 +3,50 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-07: a park home claims no residence band, and a nursing fee is net of the NHS contribution
+**Context:** card 0059 (expert panel 2026-08-19, estate planner findings 10, 13, 14 and 15). The
+engine passed home equity into the residence nil-rate band whatever the home was, charged a gross
+nursing fee for every year of a nursing spell, and split the first-death estate 50/50 with no input
+behind the figure.
+
+**Decision: a park home is a fact the reader states, and an unstated one is DERIVED from the home
+losing value.** There is no other signal in the engine: a park home has always been entered here as
+a home with a negative real growth override. So `Property::$isChattelDwelling` is nullable, an
+explicit yes or no wins, and null reads a depreciating home as a chattel, which is the adverse
+answer and the standing direction. The cost of the call is that a leasehold flat entered with a
+negative rate loses its band until somebody answers "no"; the results page names the derivation in
+its own note, so the reader can see it was ours.
+
+**Decision: the site owner's commission comes off the home's value in the ESTATE and in the CARE
+means test, and nowhere else.** Both are points where the home is realised. The wealth line still
+reports the gross value, because a household living in the home has not paid the commission and a
+figure that pretends they have would understate what they hold while they hold it.
+
+**Decision: the residence band is refused on a chattel dwelling, but the DOWNSIZING ADDITION is
+not.** Selling a house to buy a park home is exactly the disposal the addition exists for, and the
+addition is decided by what was sold rather than by what is owned at death, so it survives. That is
+the one route back the estate planner named.
+
+**Decision: NHS Continuing Healthcare is disclosed, not modelled.** It removes the whole care
+charge where it is awarded, which is the single largest thing that could move a care-modelling
+plan, and it turns on a health assessment nothing in this engine can predict. Modelling it at any
+probability would be inventing one. So the care disclosure states plainly that every care figure in
+the plan is the position if CHC is NOT awarded, which is the adverse reading, and points the reader
+at asking for an assessment.
+
+**Consequence:** every stored plan that models care and draws a nursing spell was charged too much,
+so its wealth, depletion year, success odds and estate are all too pessimistic; a plan on a park
+home leaves less and pays more Inheritance Tax; an unmarried couple who state an uneven split move
+at the first death. `ENGINE_VERSION` is `finance-engine/park-home-and-nhs-nursing-contribution` and
+the stored-scenario re-run is owed. **Monte Carlo golden master pinned 2026-09-07:** terminal wealth
+rises at p10, p25 and p90 and the success probabilities do not move, which is exactly this change
+(the frozen run's nursing paths are cheaper by the NHS contribution). Re-pinned in the same edit;
+`PIN_REVISION` was already today's date from the previous re-pin, so the companion test could not
+demand this entry, and it is written anyway.
+
+**Sourcing gap:** the 10% commission, the FNC rate and the RNRB point are all STATED, not verified.
+See ASSUMPTIONS.md §31 and card 0135.
+
 ## 2026-09-07: an unanswered pension nomination is read as NOT the spouse
 **Context:** card 0057 (expert panel 2026-08-19, estate planner finding 8). A pension death benefit
 is paid at the scheme's discretion following the member's expression of wish, not under the will,

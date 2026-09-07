@@ -92,6 +92,23 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * explicit zero, is the reader's own and wins. Read them through their accessors, never off these
  * properties, or the default is silently skipped.
  *
+ * $isChattelDwelling says this home is a CHATTEL standing on somebody else's land (a park home,
+ * a mobile home, a houseboat) rather than an interest in a dwelling-house. The owner holds the
+ * unit plus a pitch agreement, and that difference changes two things nothing else in this engine
+ * could see (board card 0059): no residence nil-rate band ({@see qualifiesForRnrb}), and a site
+ * owner's commission on every resale ({@see saleCommissionRate}). NULL means nobody was asked, and
+ * is then DERIVED from whether the home is modelled as losing value: a depreciating home is a park
+ * home in all but name, and reading it that way is the adverse answer, which is the standing rule
+ * where a figure is not stated. An explicit answer, including an explicit false on a depreciating
+ * home such as a leasehold flat in a falling market, is the reader's own and wins.
+ *
+ * $beneficialShares is who owns how much of the home, keyed by person id, and it is what the FIRST
+ * death values: an estate carries the deceased's own share, not half by assumption. Null (the
+ * default) means nobody said, and the shares are then EQUAL between the household's members, which
+ * is what the engine did unconditionally before card 0059 and is the presumption for a joint
+ * tenancy. The default is disclosed rather than silent. It is immaterial while a couple is married
+ * (the first death is spouse-exempt) and material the moment they are not.
+ *
  * $repaymentTerms models the third mortgage shape — an ordinary capital-and-interest
  * ("repayment") mortgage that AMORTISES $outstandingMortgage to zero over a term
  * ({@see RepaymentMortgageTerms}). When set, the engine owns both the balance and the payment:
@@ -137,6 +154,28 @@ final class Property
 
     public const DEFAULT_LETTING_MAINTENANCE_BPS = 500;  // 5.00% of gross rent
 
+    /**
+     * What the SITE OWNER takes out of the price when a park home changes hands: **10% of the sale
+     * price**, the statutory maximum, and in practice what is always charged.
+     *
+     * It matters to a forecast because the exit is not optional. A park home is sold or given up
+     * eventually, on a move into care or by the estate, so the commission is a cost the plan
+     * will meet, and a terminal value that ignores it overstates what the household actually has by
+     * a tenth of the home. The home is also far less liquid than the figure reads: the site owner's
+     * approval of the buyer stands between the seller and the price.
+     *
+     * **PUBLIC so a presenter can DISCLOSE the rate without restating it**, the no-invisible-figures
+     * rule.
+     *
+     * source: Mobile Homes Act 1983 Sch.1 Pt.1 para 25 and the Mobile Homes (Commission) Order 1983
+     * (SI 1983/748), which set the maximum commission on a sale at 10 per cent of the price,
+     * https://www.legislation.gov.uk/ukpga/1983/34/schedule/1
+     * verified_on: NOT VERIFIED. This build had no web access, so the rate and the instrument are
+     * STATED from the legislation, not checked against a live page. See docs/spec/ASSUMPTIONS.md
+     * §31 and board card 0135.
+     */
+    public const MAX_SITE_COMMISSION_BPS = 1_000; // 10.00% of the sale price
+
     public function __construct(
         public readonly Money $currentValue,
         public readonly OwnershipType $ownership,
@@ -159,6 +198,9 @@ final class Property
         public readonly ?Money $annualCouncilTax = null,
         public readonly ?CouncilTaxBand $disabledBandReduction = null,
         public readonly bool $occupiedByQualifyingRelative = false,
+        public readonly ?bool $isChattelDwelling = null,
+        /** @var array<string, Percent>|null who owns how much, keyed by person id; null = equal */
+        public readonly ?array $beneficialShares = null,
     ) {
         if ($repaymentTerms !== null && $mortgageRollUpRate !== null) {
             throw new \InvalidArgumentException('A mortgage cannot both amortise (repaymentTerms) and roll up (mortgageRollUpRate) — choose one.');
@@ -195,7 +237,74 @@ final class Property
             annualCouncilTax: $this->annualCouncilTax,
             disabledBandReduction: $this->disabledBandReduction,
             occupiedByQualifyingRelative: $this->occupiedByQualifyingRelative,
+            isChattelDwelling: $this->isChattelDwelling,
+            beneficialShares: $this->beneficialShares,
         );
+    }
+
+    /**
+     * Is this home a chattel on somebody else's pitch rather than an interest in land? The
+     * reader's own answer where they gave one; otherwise DERIVED from the home being modelled as
+     * losing value, which is how a park home is entered here and nothing else is.
+     */
+    public function isChattelDwelling(): bool
+    {
+        return $this->isChattelDwelling ?? $this->depreciates();
+    }
+
+    /**
+     * Can the residence nil-rate band be claimed against this home?
+     *
+     * The band needs a "qualifying residential interest", an interest in a DWELLING-HOUSE that
+     * was the deceased's residence. A park-home owner owns a chattel plus the right to keep it on
+     * a pitch, which is not an interest in the land, so the band is at best unsafe and most likely
+     * unavailable. Claiming it anyway would understate the tax on exactly the estate this tool
+     * reports, so it is refused. The DOWNSIZING ADDITION is the one route back where a real house
+     * was sold to buy the park home, and that is decided by the disposal, not here.
+     */
+    public function qualifiesForRnrb(): bool
+    {
+        return ! $this->isChattelDwelling();
+    }
+
+    /** What the site owner takes on a resale: {@see MAX_SITE_COMMISSION_BPS}, or nothing at all. */
+    public function saleCommissionRate(): Percent
+    {
+        return $this->isChattelDwelling()
+            ? Percent::fromBasisPoints(self::MAX_SITE_COMMISSION_BPS)
+            : Percent::zero();
+    }
+
+    /**
+     * A gross value of this home less the commission the site owner takes when it is sold. The one
+     * home of that arithmetic, so the estate and the care means test cannot value the same bricks
+     * two different ways. An ordinary house is returned untouched.
+     */
+    public function netOfSaleCommission(Money $gross): Money
+    {
+        return $gross->minus($gross->applyRate($this->saleCommissionRate()));
+    }
+
+    /**
+     * One person's beneficial share of this home. The reader's own figure where they gave one;
+     * otherwise an EQUAL share between $ownerCount owners, which is the presumption for a joint
+     * tenancy and is what this engine did unconditionally before board card 0059.
+     */
+    public function beneficialShare(string $personId, int $ownerCount): Percent
+    {
+        $stated = $this->beneficialShares[$personId] ?? null;
+        if ($stated !== null) {
+            return $stated;
+        }
+
+        return Percent::fromBasisPoints((int) round(10_000 / max(1, $ownerCount)));
+    }
+
+    /** Is the home modelled as LOSING value in real terms? */
+    private function depreciates(): bool
+    {
+        return $this->growthAssumptionOverride !== null
+            && $this->growthAssumptionOverride->basisPoints < 0;
     }
 
     /** The letting agent's fully managed fee, VAT included (zero unless the property is let). */

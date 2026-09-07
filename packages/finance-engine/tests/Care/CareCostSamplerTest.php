@@ -68,8 +68,12 @@ final class CareCostSamplerTest extends TestCase
         $episodes = (new CareCostSampler($this->assumptions(1.0, probabilityNursing: 1.0)))
             ->sampleHousehold([['id' => 'p1', 'sex' => Sex::Male, 'currentAge' => 68, 'deathAge' => 88]], new Randomizer(new Mt19937(7)));
 
-        // Nursing at £1,600/wk × 52 = £83,200 a year.
-        $this->assertSame(Money::fromPounds(83_200)->pence, $episodes['p1']->annualCost->pence);
+        // Nursing at £1,600/wk LESS the £254.06 a week the NHS pays the home direct (board card
+        // 0059), so £1,345.94 × 52 = £69,988.88 a year.
+        $this->assertSame(
+            (1_600_00 - CareAssumptions::FUNDED_NURSING_CARE_WEEKLY_PENCE) * CareAssumptions::WEEKS_PER_YEAR,
+            $episodes['p1']->annualCost->pence,
+        );
     }
 
     public function test_annual_cost_only_applies_within_the_spell(): void

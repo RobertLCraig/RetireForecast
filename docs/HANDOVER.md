@@ -5,10 +5,34 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-07 (card 0058). The exceptions a fresh session needs, newest first. The "what is built"
-inventory and cards 0024, 0025, 0028 to 0036 were folded out to
+_Last updated: 2026-09-07 (card 0059). The exceptions a fresh session needs, newest first. The "what is built"
+inventory and cards 0024, 0025, 0028 to 0037 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A park home claims no residence band, and a nursing fee is net of what the NHS pays.** Card
+  0059. `Property::$isChattelDwelling` is the fact (a park home, mobile home or houseboat: a chattel
+  on a rented pitch, not an interest in land) and three methods read it, so nothing restates it:
+  `qualifiesForRnrb()` refuses the residence nil-rate band, `saleCommissionRate()` returns
+  `MAX_SITE_COMMISSION_BPS` (10%, the statutory maximum), and `netOfSaleCommission()` is the one
+  home of the deduction, which `PathProjector::netHomeValue()` applies in the estate at BOTH deaths
+  and in the care means test. The wealth line keeps the gross value on purpose: a household still
+  living there has not paid the commission. The field is NULLABLE, and null DERIVES the answer from
+  the home being modelled as losing value, which is how a park home has always been entered here;
+  that derivation is adverse and the `chattel_dwelling` note says we made it. The **downsizing
+  addition survives**, which is the one route back where a real house was sold to buy the park home.
+  Alongside it `CareAssumptions::FUNDED_NURSING_CARE_WEEKLY_PENCE` (£254.06) comes off
+  `nursingAnnual()`, so **every plan that models care and draws a nursing spell was charged too much
+  and is too pessimistic**; and the FIRST death now values the deceased's own
+  `Property::$beneficialShares` instead of exactly half, equal shares being the disclosed default.
+  Continuing Healthcare is **disclosed, not modelled**: the care note says every care figure is the
+  position if it is NOT awarded. `ENGINE_VERSION` is
+  `finance-engine/park-home-and-nhs-nursing-contribution` and the **stored-scenario re-run is
+  owed**. The **Monte Carlo golden master was re-pinned** (terminal wealth up at p10, p25 and p90,
+  both success probabilities unmoved) and DECISIONS 2026-09-07 records it; `PIN_REVISION` was
+  already today's date, so its companion test could not demand that entry. All three rules are
+  **STATED, not verified** (no web in this session): see [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md)
+  (§31), carded as **0135**. Built in a worktree, so the two new builder inputs, the chattel note
+  and the two new care disclosures **have not been seen in a browser**.
 - **The estate is no longer one number stated to the pound.** Card 0058. The estate panel took its
   figure from the DETERMINISTIC forecast (one path, median lifespan, no care) and sat it beside a
   probability with ten thousand paths behind it, labelled "everything you're modelled to leave".
@@ -379,31 +403,6 @@ inventory and cards 0024, 0025, 0028 to 0036 were folded out to
   adverse, and moving it moves every stored plan, so it is Rob's; and **0100**, only two of the
   lock's three limbs are modelled, because the engine holds no national earnings series and an
   unattended session cannot fetch one. See [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§19).
-- **A pension withdrawal is now priced against the whole of the person's income, and a second draw
-  in the same year starts where the first one finished.** Card 0037. `marginalTax` and
-  `grossUpPension` took an int of non-savings income; they now take a `TaxableIncome`, fed by the
-  per-person cash interest and GIA dividends `projectYear` already computes for its own tax pass.
-  Savings and dividends stack ABOVE non-savings income, so a withdrawal pushes them across band
-  boundaries and halves the Personal Savings Allowance, and none of that cost was reaching the bill.
-  The card's second criterion, a to-the-penny reconciliation of the year's total tax against a full
-  recomputation from final taxable income, forced a second fix in the same two functions:
-  `fundShortfall` took `$taxablePerPerson` by value, so every pension pass after the first restarted
-  from the PRE-drawdown figure (PensionAware draws twice, FillBands three times, plus the CGT
-  top-up), pricing and capping later draws in a band the member had already left. A new
-  `$drawnTaxable` running total carries it forward, held apart from `$taxablePerPerson` so the CGT
-  band split and the means test keep reading the pre-drawdown income they were assessed on. The
-  band-filling CAPS stay on non-savings income deliberately: which band the pension fills is the
-  strategy's question, not a tax one. **Every stored plan that both holds unwrapped savings or
-  shares and draws a pension to meet its spending paid too LITTLE tax, so its wealth, depletion year
-  and success odds are too FAVOURABLE**; a plan whose taxable accounts are all ISAs and which never
-  draws is byte-identical. `ENGINE_VERSION` is `finance-engine/drawdown-marginal-tax-on-full-income`
-  and the **stored-scenario re-run is owed** (built in a worktree). No screen changed, so there is
-  nothing new to look at. `DrawdownMarginalTaxTest` is the reconciliation guard and it runs under
-  PensionAware, because under FillBands the reported `pension_drawdown` includes the tax-free quarter
-  (card 0074) and a test cannot recover the taxable split from `incomeBySource`. The adjacent fault
-  is card **0098**: `capitalGainsTax` still bands a realised gain against pre-drawdown,
-  non-savings-only income, so the household that sells holdings to fund a withdrawal has its gain
-  charged at the lowest rate.
 - **`scenarios:audit` cannot be used as a gate until every stored scenario is re-run.** It exits 1
   on 120 lines, all of them "run N carries no integrity stamp (it predates the column)", with no
   other problem class anywhere. Applying the pending `add_hashes_to_simulation_runs_table` migration

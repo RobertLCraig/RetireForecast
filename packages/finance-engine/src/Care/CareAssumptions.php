@@ -45,6 +45,30 @@ final class CareAssumptions
 {
     public const WEEKS_PER_YEAR = 52;
 
+    /**
+     * **NHS-funded Nursing Care (FNC): £254.06 a week**, paid by the NHS DIRECT to the nursing
+     * home for any resident assessed as needing care from a registered nurse, INCLUDING a
+     * self-funder, and taken off the fee the resident is charged.
+     *
+     * It is not means-tested and it is not a benefit the household claims: it follows the nursing
+     * assessment. The engine charged the whole gross nursing fee for every year of a nursing
+     * spell, which overstates a nursing placement by this figure every week it runs, and a nursing
+     * spell is the fat right tail the care model exists to show.
+     *
+     * It applies to NURSING care only ({@see nursingAnnual}). A residential placement has no
+     * registered nurse to fund, so its fee stands whole.
+     *
+     * The rate is held FROZEN in today's money rather than uprated, which is the cautious
+     * direction: a contribution that does not rise leaves MORE of the fee with the household.
+     *
+     * source: NHS England, "NHS-funded nursing care", standard rate for 2025/26,
+     * https://www.england.nhs.uk/healthcare-funding/nhs-funded-nursing-care/
+     * verified_on: NOT VERIFIED. This build had no web access, so the rate and the year it belongs
+     * to are STATED, not checked against a live page. See docs/spec/ASSUMPTIONS.md §31 and board
+     * card 0135.
+     */
+    public const FUNDED_NURSING_CARE_WEEKLY_PENCE = 254_06;
+
     public function __construct(
         public readonly float $probabilityOfCareMale,
         public readonly float $probabilityOfCareFemale,
@@ -53,7 +77,14 @@ final class CareAssumptions
         public readonly float $probabilityNursing,
         public readonly Money $residentialWeekly,
         public readonly Money $nursingWeekly,
+        public readonly ?Money $fundedNursingCareWeekly = null,
     ) {}
+
+    /** The NHS contribution to a nursing fee: the caller's own figure, else the shipped rate. */
+    public function fundedNursingCareWeekly(): Money
+    {
+        return $this->fundedNursingCareWeekly ?? Money::fromPence(self::FUNDED_NURSING_CARE_WEEKLY_PENCE);
+    }
 
     public static function default(): self
     {
@@ -83,8 +114,16 @@ final class CareAssumptions
         return Money::fromPence($this->residentialWeekly->pence * self::WEEKS_PER_YEAR);
     }
 
+    /**
+     * A year of nursing care, NET of {@see FUNDED_NURSING_CARE_WEEKLY_PENCE}. The NHS pays that
+     * part of the fee direct to the home for anyone assessed as needing nursing, self-funder or
+     * not, so it is never a bill the household meets (board card 0059). Floored at zero: a
+     * contribution larger than the fee is not a refund.
+     */
     public function nursingAnnual(): Money
     {
-        return Money::fromPence($this->nursingWeekly->pence * self::WEEKS_PER_YEAR);
+        return Money::fromPence(
+            max(0, $this->nursingWeekly->pence - $this->fundedNursingCareWeekly()->pence) * self::WEEKS_PER_YEAR,
+        );
     }
 }

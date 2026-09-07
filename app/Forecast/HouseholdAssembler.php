@@ -88,7 +88,7 @@ final class HouseholdAssembler
             accounts: $this->accounts($state),
             incomeStreams: array_map($this->incomeStream(...), $state['incomeStreams'] ?? []),
             primaryResidence: ($state['hasProperty'] ?? false)
-                ? $this->property($state['property'] ?? [], (int) substr((string) ($state['baseTaxYear'] ?? '2026-27'), 0, 4))
+                ? $this->property($state['property'] ?? [], (int) substr((string) ($state['baseTaxYear'] ?? '2026-27'), 0, 4), $state['people'] ?? [])
                 : null,
             // Relationship status drives the IHT treatment on death, the survivor's DB and State
             // Pension rights, and both transferable bands. A blank or absent answer stays NULL here
@@ -692,7 +692,8 @@ final class HouseholdAssembler
         });
     }
 
-    private function property(array $p, int $saleYear): Property
+    /** @param list<array<string, mixed>> $people the household's members, in the order entered */
+    private function property(array $p, int $saleYear, array $people = []): Property
     {
         return new Property(
             currentValue: $this->moneyRequired($p['currentValue'] ?? null),
@@ -724,7 +725,44 @@ final class HouseholdAssembler
             // Somebody the care means test must disregard the home for lives here (card 0055).
             // Absent means false, the adverse answer: nobody qualifies, so the home counts.
             occupiedByQualifyingRelative: (bool) ($p['occupiedByQualifyingRelative'] ?? false),
+            // A park home or similar chattel (card 0059). Absent or blank means nobody was asked,
+            // and the engine then reads a home modelled as losing value as a park home, which is
+            // the adverse answer. An explicit yes or no is theirs and wins.
+            isChattelDwelling: match ((string) ($p['isChattelDwelling'] ?? '')) {
+                'yes' => true,
+                'no' => false,
+                default => null,
+            },
+            beneficialShares: $this->beneficialShares($p, $people),
         );
+    }
+
+    /**
+     * Who owns how much of the home, keyed by person id. The builder asks ONE question, the first
+     * member's share, and the rest of the household takes what is left in equal parts, because a
+     * share and its complement are the same fact and storing both invites them to disagree. Blank
+     * means nobody said, and the engine then splits the home equally and discloses that it did.
+     *
+     * @param  array<string, mixed>  $p
+     * @param  list<array<string, mixed>>  $people
+     * @return array<string, Percent>|null
+     */
+    private function beneficialShares(array $p, array $people): ?array
+    {
+        $yours = $this->percent($p['beneficialShareYours'] ?? null);
+        if ($yours === null || count($people) < 2) {
+            return null;
+        }
+
+        $others = count($people) - 1;
+        $rest = Percent::fromBasisPoints((int) round((10_000 - $yours->basisPoints) / $others));
+
+        $shares = [];
+        foreach ($people as $i => $person) {
+            $shares[(string) $person['id']] = $i === 0 ? $yours : $rest;
+        }
+
+        return $shares;
     }
 
     /**

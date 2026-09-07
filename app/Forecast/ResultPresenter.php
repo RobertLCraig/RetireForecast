@@ -27,6 +27,7 @@ use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
+use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
@@ -1152,10 +1153,41 @@ final class ResultPresenter
                 ."would have cared for them. A spell lasts {$mean} years on average, capped at {$care->maxDurationYears}, "
                 ."and we place it at the end of life. {$nursing} of spells are nursing rather than residential. "
                 ."The bill is {$care->residentialWeekly->format()} a week residential and {$care->nursingWeekly->format()} "
-                .'a week nursing, before the means test takes off what the council would pay. These come from '
+                .'a week nursing, both before the NHS contribution described next and before the means test takes '
+                .'off what the council would pay. These come from '
                 .'national studies, not from anything about you: your own family history, your health today and '
                 .'where you live all move them, and the fees in London and the South East run twenty to thirty-five '
                 .'per cent above these. Read the care numbers as the shape of a risk, not as a prediction.';
+
+            // Two NHS routes that pay for care, neither of them means-tested and neither of them
+            // previously modelled or mentioned (board card 0059). One is a figure we apply for you
+            // and must therefore disclose; the other we do NOT model at all, which is the more
+            // important of the two to say, because where it is awarded it removes the whole bill
+            // above and with it the estate risk the care model exists to show.
+            $out[] = 'Two NHS routes pay for care and neither of them is means-tested. NHS-funded Nursing Care is '
+                .'paid straight to a nursing home for anybody assessed as needing a registered nurse, including '
+                ."somebody paying their own fees, so we take {$care->fundedNursingCareWeekly()->format()} a week off the "
+                .'nursing figure above. That is our figure, not yours, and we hold it level rather than raising it '
+                .'each year, which is the cautious direction. NHS Continuing Healthcare is the bigger one: where it '
+                .'is awarded, the NHS pays the WHOLE cost of care, fees and nursing together, and the care charge in '
+                .'this plan would disappear entirely, along with everything it takes out of what you leave behind. '
+                .'We do not model it, because it turns on a health assessment nothing here can predict and it is '
+                .'refused far more often than it is granted. So read every care figure in this plan as the position '
+                .'if Continuing Healthcare is NOT awarded, and know that an award is the one event that removes it '
+                .'all. It is worth asking for an assessment if a health need is the reason for the placement.';
+        }
+
+        // The split of the home between two people. Nobody is asked in most plans, and the engine
+        // has always halved it, which decides how much of the home sits in the FIRST estate. It is
+        // immaterial while a couple is married and material the moment they are not, so the
+        // assumption is named rather than left to look like something they entered (card 0059).
+        if ($home !== null && count($household->persons) > 1 && $home->beneficialShares === null) {
+            $out[] = 'You have not told us how the home is owned between you, so we have assumed equal shares: '
+                .'half each. That is the usual position for a couple who bought together as joint tenants, and it '
+                .'decides how much of the home sits in the first estate when one of you dies. It changes no tax at '
+                .'all while you are married or in a civil partnership, because everything passing to a husband, wife '
+                .'or civil partner is exempt. It matters if you are not: the share we have assumed is the share we '
+                .'tax. If the deeds say something else, say so and we will use it.';
         }
 
         // Using the ISA allowance ("bed and ISA"). This one is not a blank input filled in, it is
@@ -2313,8 +2345,30 @@ final class ResultPresenter
                 ."resell, and the site owner is entitled to up to 10% of the sale price. By {$forecast->finalCalendarYear} "
                 ."it is worth about {$finalYear->propertyWealth->format()} in today's money. The lower running costs may "
                 .'well be worth it while you live there — but the trade is that far less is left to inherit, so compare '
-                .'this against a plan that keeps bricks-and-mortar before deciding. The 10% sale commission is not '
-                .'included in these figures.'];
+                .'this against a plan that keeps bricks-and-mortar before deciding.'];
+        }
+
+        // (c4c) A home that is a CHATTEL rather than an interest in land: a park home, a mobile
+        // home, a houseboat. Board card 0059. Three things follow that nothing else on the screen
+        // says, and each of them moves the estate: no residence nil-rate band, the site owner's
+        // commission on the resale, and a buyer the site owner has to approve. The rate is READ
+        // from the constant that owns it, never restated.
+        if ($home !== null && $home->isChattelDwelling()) {
+            $pct = rtrim(rtrim(number_format(Property::MAX_SITE_COMMISSION_BPS / 100, 2), '0'), '.');
+            $derived = $home->isChattelDwelling === null
+                ? 'You did not tell us what kind of home this is, so we have read it as a park home because it is modelled as losing value. '
+                : '';
+            $notes[] = ['kind' => 'chattel_dwelling', 'text' => $derived.'This home is treated as a park home or '
+                .'similar unit: you own the unit and the right to keep it on a pitch, not an interest in the land. Two '
+                .'things follow for what you leave behind. There is no residence nil-rate band on it, because that allowance '
+                .'needs an interest in a dwelling-house, so we do not claim it here, and the estate can pay Inheritance '
+                .'Tax where the same money in a brick house would have been sheltered. And the site owner '
+                ."takes up to {$pct}% of the price on any resale, which we have taken off the value in the estate and in "
+                .'the care means test, because the sale happens sooner or later whatever the plan. One more thing the '
+                .'figures cannot show: it cannot simply be left to a non-resident. A park home is sold or assigned '
+                .'under the pitch agreement, the site owner has a say in who takes it on, and most sites are for '
+                .'people over 50 who will live there, so somebody inheriting it who will not live there is selling it '
+                .'and taking what is left after the commission.'];
         }
 
         // (c4b) LETTING CAVEATS. Card 0030: what this tool does and does not model about letting a

@@ -407,7 +407,12 @@ final class AssumedFiguresDisclosureTest extends TestCase
             settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelCareCost: true),
         );
 
-        $note = $this->only($disclosures, 'care');
+        // Card 0059 added a SECOND care disclosure beside the first, for the two NHS routes that
+        // pay for care, so the care figures are read across both rather than out of one note.
+        $matched = array_values(array_filter($disclosures, static fn (string $d): bool => str_contains($d, 'care')));
+        $this->assertCount(2, $matched, 'the care assumptions and the NHS routes are each disclosed once');
+        $note = implode(' ', $matched);
+
         foreach ([
             self::pct($care->probabilityOfCareMale * 100).'%',
             self::pct($care->probabilityOfCareFemale * 100).'%',
@@ -416,6 +421,10 @@ final class AssumedFiguresDisclosureTest extends TestCase
             self::pct($care->probabilityNursing * 100).'%',
             $care->residentialWeekly->format(),
             $care->nursingWeekly->format(),
+            // The NHS contribution we take off the nursing fee, and the award that removes the
+            // whole charge and which this engine does not model (card 0059).
+            $care->fundedNursingCareWeekly()->format(),
+            'Continuing Healthcare',
         ] as $figure) {
             $this->assertStringContainsString($figure, $note, "the disclosure must name {$figure}, which the sampler actually uses");
         }

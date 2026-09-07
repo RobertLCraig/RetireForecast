@@ -496,6 +496,10 @@ class ScenarioBuilder extends Component
             $rules['property.isLet'] = ['boolean'];
             // Somebody the CARE means test must disregard the home for lives here (card 0055).
             $rules['property.occupiedByQualifyingRelative'] = ['boolean'];
+            // A park home or similar chattel, and the reader's own beneficial share of the home
+            // (card 0059). Blank is a real answer in both: "nobody was asked".
+            $rules['property.isChattelDwelling'] = ['nullable', Rule::in(['yes', 'no'])];
+            $rules['property.beneficialShareYours'] = ['nullable', 'numeric', 'min:0', 'max:100'];
             $rules['property.lettingManagementRate'] = ['nullable', 'numeric', 'min:0', 'max:100'];
             $rules['property.lettingVoidRate'] = ['nullable', 'numeric', 'min:0', 'max:100'];
             $rules['property.lettingMaintenanceRate'] = ['nullable', 'numeric', 'min:0', 'max:100'];
@@ -808,6 +812,10 @@ class ScenarioBuilder extends Component
             // A property saved before the care-disregard question existed has no key; default it
             // off, which is exactly the old behaviour (the home counts once nobody else is there).
             $this->property['occupiedByQualifyingRelative'] ??= false;
+            // A property saved before card 0059 has neither key; blank leaves both questions
+            // unanswered, which is exactly the old behaviour (a brick house split in half).
+            $this->property['isChattelDwelling'] ??= '';
+            $this->property['beneficialShareYours'] ??= '';
             $this->property['lettingManagementRate'] ??= '';
             $this->property['lettingVoidRate'] ??= '';
             $this->property['lettingMaintenanceRate'] ??= '';
@@ -1879,6 +1887,11 @@ class ScenarioBuilder extends Component
             // Who else lives here, for the care means test's mandatory property disregard. Off by
             // default (the adverse answer), so a scenario predating it records no delta.
             'occupiedByQualifyingRelative' => false,
+            // Is this a park home or similar chattel, and how is the home split between you?
+            // Both BLANK by default: blank chattel means nobody was asked (the engine reads a
+            // depreciating home as a park home), and a blank share means equal shares. Empty
+            // defaults, so a what-if child's delta is unaffected.
+            'isChattelDwelling' => '', 'beneficialShareYours' => '',
             'outstandingMortgage' => '', 'runningCosts' => '', 'growthAssumptionOverride' => '', 'ownershipShare' => '',
             // Council tax, split out of the running costs so the discounts can reach it. Both
             // blank by default: blank council tax means it is still inside the running costs

@@ -6,6 +6,36 @@
 > that); this is the "how we got here" detail. Each item also has a dated DECISIONS.md
 > entry and the full record in `git log`. Newest-first within each part.
 
+## Card 0037, moved out of the live handover on 2026-09-07
+
+Folded out to make room for card 0059 while keeping the live brief loadable in one session. It is
+settled: its own criteria are met, and its one open adjacent fault is board card 0098.
+
+- **A pension withdrawal is now priced against the whole of the person's income, and a second draw
+  in the same year starts where the first one finished.** Card 0037. `marginalTax` and
+  `grossUpPension` took an int of non-savings income; they now take a `TaxableIncome`, fed by the
+  per-person cash interest and GIA dividends `projectYear` already computes for its own tax pass.
+  Savings and dividends stack ABOVE non-savings income, so a withdrawal pushes them across band
+  boundaries and halves the Personal Savings Allowance, and none of that cost was reaching the bill.
+  The card's second criterion, a to-the-penny reconciliation of the year's total tax against a full
+  recomputation from final taxable income, forced a second fix in the same two functions:
+  `fundShortfall` took `$taxablePerPerson` by value, so every pension pass after the first restarted
+  from the PRE-drawdown figure (PensionAware draws twice, FillBands three times, plus the CGT
+  top-up), pricing and capping later draws in a band the member had already left. A new
+  `$drawnTaxable` running total carries it forward, held apart from `$taxablePerPerson` so the CGT
+  band split and the means test keep reading the pre-drawdown income they were assessed on. The
+  band-filling CAPS stay on non-savings income deliberately: which band the pension fills is the
+  strategy's question, not a tax one. **Every stored plan that both holds unwrapped savings or
+  shares and draws a pension to meet its spending paid too LITTLE tax, so its wealth, depletion year
+  and success odds are too FAVOURABLE**; a plan whose taxable accounts are all ISAs and which never
+  draws is byte-identical. `ENGINE_VERSION` is `finance-engine/drawdown-marginal-tax-on-full-income`
+  and the **stored-scenario re-run is owed**. No screen changed. `DrawdownMarginalTaxTest` is the
+  reconciliation guard and it runs under PensionAware, because under FillBands the reported
+  `pension_drawdown` includes the tax-free quarter (card 0074) and a test cannot recover the taxable
+  split from `incomeBySource`. The adjacent fault is card **0098**: `capitalGainsTax` still bands a
+  realised gain against pre-drawdown, non-savings-only income, so the household that sells holdings
+  to fund a withdrawal has its gain charged at the lowest rate.
+
 ## Card 0036, moved out of the live handover on 2026-09-07
 
 Folded out to make room for card 0054 while keeping the live brief loadable in one session. It is

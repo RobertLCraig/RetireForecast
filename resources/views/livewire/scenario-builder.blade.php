@@ -1018,6 +1018,37 @@
                         </p>
                     </div>
 
+                    {{-- What KIND of home it is, and who owns how much of it. Both change the
+                         estate and nothing else on this screen can say them. See Dto\Property and
+                         board card 0059. --}}
+                    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="property-isChattelDwelling" class="{{ $label }}">Is this a park home or similar?</label>
+                            <select id="property-isChattelDwelling" wire:model.live="property.isChattelDwelling" class="{{ $field }}">
+                                <option value="">Not answered</option>
+                                <option value="no">No, it is a house or flat</option>
+                                <option value="yes">Yes, a park home, mobile home or houseboat</option>
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500">
+                                A park home is a unit you own standing on a pitch you rent, not an interest in the land.
+                                Two things follow: there is no residence nil-rate band on it for Inheritance Tax, and the
+                                site owner takes up to 10% of the price when it is sold, which we take off its value in
+                                the estate. Leave this unanswered and we read a home you have said loses value as a park
+                                home, and tell you we did.
+                            </p>
+                        </div>
+                        <div>
+                            <label for="property-beneficialShareYours" class="{{ $label }}">Your share of the home (%, optional)</label>
+                            <input id="property-beneficialShareYours" type="text" inputmode="decimal" placeholder="50" wire:model="property.beneficialShareYours" class="{{ $field }}">
+                            <p class="mt-1 text-xs text-gray-500">
+                                How the home is split between the two of you on the deeds, if it is not down the middle.
+                                This is the first person listed above; the rest goes to the other. It decides how much of
+                                the home is in the first estate when one of you dies, which changes no tax while you are
+                                married and can change it a lot if you are not. Blank = equal shares.
+                            </p>
+                        </div>
+                    </div>
+
                     {{-- What letting costs. Gross rent is the one figure a landlord never receives:
                          an agent takes a fee, the place stands empty between tenants, and the
                          repairs and safety certificates are the landlord's. Each rate is blank by

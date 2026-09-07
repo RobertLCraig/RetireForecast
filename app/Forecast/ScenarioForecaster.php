@@ -60,7 +60,22 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-07 (inherited-pension-taxed-twice): an unused pension pot is no longer
+     * Bumped 2026-09-07 (park-home-and-nhs-nursing-contribution): three figures in the estate and the
+     * care bill. A NURSING placement is now charged NET of NHS-funded Nursing Care
+     * ({@see CareAssumptions::FUNDED_NURSING_CARE_WEEKLY_PENCE}), which the NHS pays direct to the
+     * home for anybody assessed as needing a registered nurse including a self-funder, so every
+     * stored plan that models care and draws a nursing spell was charged TOO MUCH under an earlier
+     * stamp and its wealth, depletion year, success odds and estate are all too pessimistic. A home
+     * recorded as a park home or similar chattel ({@see Property::$isChattelDwelling}) now claims no
+     * residence nil-rate band and is valued in the estate and the care means test net of the site
+     * owner's commission ({@see Property::MAX_SITE_COMMISSION_BPS}), so such a plan leaves LESS and
+     * pays more Inheritance Tax; a home nobody has answered for is read as a chattel where it is
+     * modelled as losing value, which is the adverse answer. And the FIRST death now values the
+     * deceased's own beneficial share of the home ({@see Property::$beneficialShares}) instead of
+     * exactly half, which moves an unmarried couple who say the split is uneven. A plan that models
+     * no care, holds an ordinary house and states no shares is byte-identical apart from the care
+     * leg. See board card 0059.
+     * Previous bump 2026-09-07 (inherited-pension-taxed-twice): an unused pension pot is no longer
      * spouse-exempt on the first death because the couple happen to be married. A death benefit is
      * paid on the member's expression of wish rather than under the will, so the exemption follows
      * `DcPension::$nominatedBeneficiary`, and a pot nobody has answered for takes the adverse
@@ -287,7 +302,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/inherited-pension-taxed-twice';
+    public const ENGINE_VERSION = 'finance-engine/park-home-and-nhs-nursing-contribution';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:
