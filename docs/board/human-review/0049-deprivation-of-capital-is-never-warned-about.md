@@ -25,6 +25,12 @@ The related warning worth adding at the same time is gift with reservation of be
 home over to a child and continuing to live in it. It is the idea a household in this position
 hears from friends, and it is the one that costs them everything.
 
+## Links
+
+**Relates to**
+- `0059` - modelling gifts out, PETs and the seven-year taper is that card; this one only warns
+  about the move.
+
 ## Not this card
 Modelling gifts out, PETs and the seven-year taper. That is card 0059.
 

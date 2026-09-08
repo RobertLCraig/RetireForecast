@@ -51,3 +51,9 @@ can settle a valuation.
 ## Why
 From the expert panel, 2026-08-19 (property findings 3 and 7, adviser finding 9). Detail in the
 gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
+
+## Links
+
+**Relates to**
+- `0027` - the forced-sale discount there has to be anchored to a real valuation, and no code
+  change can settle one.

@@ -22,6 +22,12 @@ and it drops the bill a whole band. It is claimable now, not at some future poin
 The Council Tax Reduction calculation can reuse the Pension Credit applicable amount the engine
 already computes.
 
+## Links
+
+**Relates to**
+- `0046` - Pension Credit itself is that card, and Council Tax Reduction is computed off the same
+  applicable amount.
+
 ## Not this card
 Pension Credit itself, which is card 0046.
 

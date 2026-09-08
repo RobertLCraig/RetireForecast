@@ -28,6 +28,11 @@ repeats the last draw for ever past the end of a series. `PathProjector::project
 200 and reports a truncated projection as complete. `disposeGiaSlice()` divides by a balance with
 no zero guard despite being public.
 
+## Links
+
+**Relates to**
+- `0042` - performance work is fenced out of this card and is that card's subject.
+
 ## Not this card
 Performance work, which is card 0042.
 

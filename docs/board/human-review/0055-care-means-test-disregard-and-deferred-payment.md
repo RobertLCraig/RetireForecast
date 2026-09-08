@@ -20,6 +20,12 @@ Under a deferred payment agreement the fee becomes a debt secured on the home, a
 and is deductible from the estate at death. That is a completely different estate and solvency
 outcome from a forced sale. Modelling it turns a false failure into a correct estate reduction.
 
+## Links
+
+**Relates to**
+- `0050` - disability benefits in the assessment are that card, and they move the income side of
+  the same charge this one changes the capital side of.
+
 ## Not this card
 Disability benefits in the assessment, which is card 0050.
 

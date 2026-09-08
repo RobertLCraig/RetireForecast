@@ -25,6 +25,8 @@ with an equal one, because equal is the only share the repository knows.
 **Relates to**
 - `0040` - split the sale proceeds equally in both sale paths, which is what this card would make
   configurable.
+- `0055` - the care means-test rules themselves are that card; this one only changes how much of
+  the home each person is assessed on.
 
 ## Not this card
 The outside-owner `ownershipShare` field, which is correct and stays. The care means-test rules

@@ -50,3 +50,9 @@ equity-release deed, which is another reason to settle the wills first.
 ## Why
 From the expert panel, 2026-08-19 (estate planner finding 11). Detail in the gitignored
 `docs/REVIEW-PANEL-2026-08-19.local.md`.
+
+## Links
+
+**Relates to**
+- `0022` - this is worth doing whichever way that ranking goes, so it does not wait on the answer
+  there; it only has to happen before any deed is signed.

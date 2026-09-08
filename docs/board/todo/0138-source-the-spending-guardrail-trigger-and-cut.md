@@ -1,3 +1,7 @@
+---
+no_outward_effect: "published" names a rule somebody else printed, read here; nothing is published by us
+---
+
 # Pin the spending guardrail's trigger and cut to a published rule
 
 ## Why

@@ -21,6 +21,12 @@ cost. It is not the home at all.
 
 `IhtDistribution` already reports the tax as a distribution, so the machinery exists.
 
+## Links
+
+**Relates to**
+- `0010` - leading the results page with the probability is that card; this one only stops the
+  estate figure claiming a precision it does not have.
+
 ## Not this card
 Leading the results page with the probability, which is card 0010.
 

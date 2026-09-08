@@ -23,6 +23,12 @@ blended figure, and it is stale in the cautious direction against recent index-l
 which also suppresses the modelled value of the de-risked, secured-income strategies a cautious
 household most needs.
 
+## Links
+
+**Relates to**
+- `0038` - disclosing the current default mix is that card, and this one makes the mix an input
+  that disclosure then has to describe.
+
 ## Not this card
 Disclosing the current default, which is card 0038.
 

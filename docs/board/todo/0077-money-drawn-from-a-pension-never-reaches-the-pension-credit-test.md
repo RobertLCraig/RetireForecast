@@ -20,6 +20,12 @@ worked out, because the award is part of the income that covers the spending, an
 known before the award can be right. Nobody chose the current order; it is just the one that does not
 need solving twice.
 
+## Links
+
+**Relates to**
+- `0046` - how secure Pension Credit is treated as being, and the claim prompt, are that card; this
+  one only changes what income the test sees.
+
 ## Not this card
 How secure Pension Credit is treated as being, and the missing claim prompt, which are card 0046.
 

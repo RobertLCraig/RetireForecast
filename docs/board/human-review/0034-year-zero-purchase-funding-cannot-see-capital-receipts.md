@@ -15,6 +15,12 @@ The direction of the error is pessimistic, so it does not overstate a plan. It i
 correcting it moves a plan up the ranking rather than down - which matters, because the ranking is
 what card 0022 turns on.
 
+## Links
+
+**Relates to**
+- `0022` - how much a buy-side purchase can be funded from is what that card's choice between the
+  routes turns on.
+
 ## Not this card
 Whether a particular receipt is realistic. That is a scenario input question.
 

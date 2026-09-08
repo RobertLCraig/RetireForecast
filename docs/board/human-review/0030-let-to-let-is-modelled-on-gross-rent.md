@@ -22,6 +22,12 @@ proposed EPC C requirement by 2030 puts a five-figure retrofit or an exemption a
 scope; and the lease itself, which usually requires freeholder consent to sublet and may prohibit
 it outright.
 
+## Links
+
+**Relates to**
+- `0021` - that card is chasing a buy-to-let interest rate, and a better rate does not fix the
+  gross-rent fault this card is about.
+
 ## Not this card
 Section 24 finance-cost relief, which the projector already models correctly.
 

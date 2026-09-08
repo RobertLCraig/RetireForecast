@@ -31,6 +31,7 @@ expense bucket as a leasehold proxy.
 **Relates to**
 - `0032` - added the leasehold lines and the note that currently stands in for the gate.
 - `0028` - the same missing tenure field, worked around with the service-charge proxy.
+- `0092` - re-sourcing the fee figures themselves; this card only decides when they are charged.
 
 ## Not this card
 Re-sourcing the fee figures. That is card 0092. This card only decides **when** they are charged.

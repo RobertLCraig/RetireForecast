@@ -27,6 +27,14 @@ It is a user-facing page.
 and dated. The economic assumptions - which move the answer far more - sit behind a single prose
 note with no machine-checkable freshness, and the freshness command does not cover them.
 
+## Links
+
+**Relates to**
+- `0032` - it already raised the default selling-cost rate, so the figure this card revisits is the
+  one that card left.
+- `0060` - buying an annuity with non-pension money is that card, and it prices its annuities off
+  the rate table this one sources.
+
 ## Not this card
 Buying an annuity with non-pension money, which is card 0060.
 

@@ -5,6 +5,12 @@ A1 fee drag, A2 net-pay relief, B1 cost of advice and B2 protection gap are buil
 with A3's ISA subscription cap. What is left is smaller, and each item is recorded in DATA-MODEL
 "Known divergences".
 
+## Links
+
+**Relates to**
+- `0011` - B5 capacity for loss is that card and comes first in the plan's order, so this one waits
+  behind it.
+
 ## Not this card
 B5 capacity for loss, which is card 0011 and comes first in the plan's order.
 

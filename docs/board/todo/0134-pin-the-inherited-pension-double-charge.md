@@ -1,3 +1,7 @@
+---
+no_outward_effect: "published" names an HMRC source somebody else printed, read here; nothing is published by us
+---
+
 # Pin the inherited-pension double charge to a published source
 
 ## Why

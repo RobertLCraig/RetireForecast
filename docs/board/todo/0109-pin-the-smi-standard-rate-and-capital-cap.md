@@ -1,3 +1,7 @@
+---
+no_outward_effect: "published" names a DWP source somebody else printed, read here; nothing is published by us
+---
+
 # Pin the Support for Mortgage Interest rate and capital cap to a published source
 
 ## Why
@@ -28,8 +32,10 @@ built card 0045 could ship and disclose the figures but could not go and check t
 
 **Relates to**
 - `0045` - introduced both figures, the mechanism, and the disclosure that reads them.
-- `0085`, `0086`, `0087`, `0091`, `0092`, `0095`, `0106` - the same shape of gap, from the same
-  missing web access. Whoever picks one up can settle several in one research pass.
+- `0085`, `0086`, `0087`, `0091`, `0092`, `0095` - the same shape of gap, from the same missing web
+  access. Whoever picks one up can settle several in one research pass.
+- `0106` - the same shape of gap again, and the contrast worth naming: those figures do not move
+  the answer and both of these do.
 
 ## Not this card
 The mechanism. What is met, how it is capped, how it accrues and how it is repaid are card 0045's

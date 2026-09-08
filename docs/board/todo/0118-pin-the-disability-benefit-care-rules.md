@@ -1,3 +1,7 @@
+---
+no_outward_effect: "published" names the legislation somebody else printed, read here; nothing is published by us
+---
+
 # Pin the disability-benefit rules in a care placement to a published source
 
 ## Why

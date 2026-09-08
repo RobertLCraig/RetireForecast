@@ -24,6 +24,8 @@ claim a benefit the forecast has already spent.
 **Relates to**
 - `0046` - moved Pension Credit out of the secure floor and added the claim prompt, which is what
   makes this gap legible; it deliberately did not touch whether the award is claimed.
+- `0045` - made the gap worse: an unclaimed award now quietly pays Support for Mortgage Interest
+  too.
 
 ## Not this card
 Awarding Housing Benefit or Council Tax Reduction. Changing how the entitlement is calculated.

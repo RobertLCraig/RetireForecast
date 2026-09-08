@@ -47,3 +47,10 @@ numbers rather than assumed ones.
 ## Why
 From the expert panel, 2026-08-19 (property findings 2, 10 and 15). Detail in the gitignored
 `docs/REVIEW-PANEL-2026-08-19.local.md`.
+
+## Links
+
+**Relates to**
+- `0028` - the major-works and service-charge model there is running on assumed numbers until these
+  accounts arrive.
+- `0029` - the house-price risk model there is waiting on the same real figures.

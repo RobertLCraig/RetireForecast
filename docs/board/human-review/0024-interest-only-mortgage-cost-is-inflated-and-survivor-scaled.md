@@ -20,6 +20,12 @@ but the fix was never carried to the other three product shapes.
 This is not a neutral error. It removes the inflation hedge on a nominal debt, so every borrowing
 route is penalised against selling. That is the choice card 0022 is waiting on.
 
+## Links
+
+**Relates to**
+- `0022` - this fault penalises the interest-only route against selling, which is the exact choice
+  that card is waiting on.
+
 ## Not this card
 The repayment amortisation schedule, which is already correct and pinned to a lender illustration.
 

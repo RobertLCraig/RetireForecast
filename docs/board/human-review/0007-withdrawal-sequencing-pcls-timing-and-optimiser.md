@@ -12,6 +12,12 @@ planner **may time the PCLS** rather than leaving it user-specified, and item 6 
 **search-optimiser in scope, sequenced last**. Item 4 settles the PA-taper band as in scope too.
 Nothing is waiting on a person, so this is buildable work rather than a decision owed.
 
+## Links
+
+**Relates to**
+- `0019` - multi-property and Section 24 interactions are fenced out of this card and are that
+  card's subject.
+
 ## Not this card
 The optimiser (#6) is the second half and is explicitly sequenced last in the plan; do not start it
 before #5 is green. Multi-property and Section 24 interactions are card 0019.

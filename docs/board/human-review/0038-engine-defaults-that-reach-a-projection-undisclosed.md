@@ -22,6 +22,12 @@ cannot touch it. See card 0062 for the risk half of this.
 **The care assumptions.** `CareAssumptions::default()` supplies care probabilities, a mean duration
 and weekly fees to every projection, none of them disclosed.
 
+## Links
+
+**Relates to**
+- `0062` - exposing the asset allocation as an input is that card, and it is the risk half of the
+  same hardcoded default this one only has to disclose.
+
 ## Not this card
 Exposing allocation as an input, which is card 0062.
 

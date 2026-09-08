@@ -37,6 +37,18 @@ the rules generally treat income derived from capital as capital.
 **Sourcing.** The benefits source URL points at an eligibility page rather than the rate tables, and
 the verified-on dates disagree between the registry and the parameters.
 
+## Links
+
+**Relates to**
+- `0048` - Housing Benefit is fenced out of this card and is that card's subject.
+- `0119` - the notional income on an undrawn pot, split out of this card because it needs a
+  published figure no unattended session can fetch.
+- `0120` - assessing earnings gross with no disregard, split out of this card for the same reason.
+- `0121` - the severe-disability non-dependant test and the registered-blind route, split out of
+  this card for the same reason.
+- `0122` - the benefits source and verified-on dates that disagree, split out of this card.
+- `0123` - a let property assessed as capital and as income at once, split out of this card.
+
 ## Not this card
 Housing Benefit and Council Tax Reduction, which are cards 0048 and 0047.
 

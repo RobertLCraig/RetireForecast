@@ -20,6 +20,11 @@ gate today: it exits 1 on a clean tree.
 Nobody chose this. `--dirty` means a file only gets formatted when it is next edited, so a rule
 added to `pint.json` after these files were last touched simply never reached them.
 
+## Links
+
+**Relates to**
+- `0027` - found while working that card, which changed no PHP, so none of this is its doing.
+
 ## Not this card
 Changing the Pint ruleset, or making Pint a CI gate. This is only bringing three files up to the
 ruleset already in force. Found while working card 0027, which changed no PHP.

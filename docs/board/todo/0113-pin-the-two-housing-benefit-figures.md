@@ -1,3 +1,7 @@
+---
+no_outward_effect: "published" names the legislation somebody else printed, read here; nothing is published by us
+---
+
 # Pin the two pension-age Housing Benefit figures to a published source
 
 ## Why
@@ -29,6 +33,8 @@ built card 0048 could ship and disclose the figures but could not go and check t
 - `0048` - awarded the benefit, and introduced both figures with the disclosure that reads them.
 - `0106`, `0109`, `0111` - the same shape of gap, from the same missing web access. Whoever picks
   one up can settle several in one research pass.
+- `0114` - the Local Housing Allowance cap, which is the rule these figures feed and is a card of
+  its own.
 
 ## Not this card
 The mechanism. Who qualifies, in what order the tests apply, and how the award comes off the rent

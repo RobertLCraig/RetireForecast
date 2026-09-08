@@ -24,6 +24,11 @@ sum and none of them shows the cliff.
 The rule as coded is also wrong at the edge. Capital above the limit does not end that help for
 someone receiving Guarantee Credit, who is fully passported with no upper capital limit.
 
+## Links
+
+**Relates to**
+- `0048` - awarding Housing Benefit is that card, and Pension Credit is what passports it.
+
 ## Not this card
 Awarding Housing Benefit, which is card 0048.
 

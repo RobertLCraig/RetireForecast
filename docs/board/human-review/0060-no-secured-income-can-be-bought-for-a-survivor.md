@@ -23,6 +23,12 @@ survivor, and the engine has no representation of it.
 The adviser's conclusion: a decision between two plans, taken without a partially-annuitised
 variant on the table, is a decision taken without the third option.
 
+## Links
+
+**Relates to**
+- `0065` - annuity rate sourcing and the tax-free lump sum interaction sit there, so the price this
+  card quotes is only as good as that card's table.
+
 ## Not this card
 Annuity rate sourcing and the tax-free lump sum interaction, which are in card 0065.
 

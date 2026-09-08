@@ -19,6 +19,12 @@ Two related gaps in the capital treatment:
 - Capital held in a second property is valued at property less mortgage, with no deduction for the
   costs of sale that the rules allow.
 
+## Links
+
+**Relates to**
+- `0051` - the mixed-age couple warning, which is the case this card has to refuse an award to,
+  is built there.
+
 ## Not this card
 Universal Credit. Out of scope for a pension-age tool; the mixed-age warning is card 0051.
 

@@ -20,6 +20,12 @@ wired in July 2026 is dead code as far as the app is concerned.
 There is also an interaction the sweep should show: underlying entitlement to Carer's Allowance has
 an earnings limit, so a lever that says "work longer" also postpones the carer addition.
 
+## Links
+
+**Relates to**
+- `0045` - Support for Mortgage Interest is that card, and it is one of the things an Attendance
+  Allowance award passports to.
+
 ## Not this card
 Support for Mortgage Interest itself, which is card 0045.
 

@@ -47,3 +47,9 @@ and that affects whether it is better to extend now or wait.
 ## Why
 From the expert panel, 2026-08-19 (property finding 1, adviser finding 8, estate planner finding 9).
 Detail in the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
+
+## Links
+
+**Relates to**
+- `0026` - modelling the lease term needs a real premium to anchor the cost, and this is where that
+  number comes from.

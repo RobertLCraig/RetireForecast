@@ -27,6 +27,14 @@ couple is married and material the moment they are not.
 expenditure out of income. The estate planner's recommendation is to **leave this out** for now: it
 is honestly disclosed, and the other cards come first.
 
+## Links
+
+**Relates to**
+- `0049` - the gift-with-reservation and deprivation warnings are that card, and they are the
+  warning half of the gifting this one would model.
+- `0053` - the residence nil-rate band downsizing addition is that card, and it is the other half
+  of the same estate calculation.
+
 ## Not this card
 Gift with reservation of benefit and deprivation warnings, which are card 0049.
 

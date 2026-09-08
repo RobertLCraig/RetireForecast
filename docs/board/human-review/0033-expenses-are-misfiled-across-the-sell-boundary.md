@@ -21,6 +21,12 @@ the "essentials always met" probability on every scenario.
 a boiler and a rewire cost the same in a cheap area as an expensive one, so a percentage of value
 is a proxy for stock quality, not a cost driver, and it understates at the low end.
 
+## Links
+
+**Relates to**
+- `0028` - major works and the service-charge escalator are that card, and its escalator now fires
+  on whatever this card decides is a property expense.
+
 ## Not this card
 Major works and the service-charge escalator, which is card 0028.
 

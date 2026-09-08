@@ -28,47 +28,7 @@ larger estate, and confirm with YCC that working to 72 is on the table.**
    one replaces it: **why did the £199,000 interest-only survive the survivor-affordability test when
    the smaller £180,000 RIO did not?**
 2. **Choose between keeping the flat and the larger estate**, by picking a numbered option below.
-   Pass: the answer written into `## Direction
-
-**2026-08-19 - the expert panel says do not answer this card yet.** Three reviewers, working
-separately, reached the same conclusion: the two leading options are inside noise of each other,
-and the items nobody has priced are each larger than the gap between them.
-
-Four things have to land before the trade is real.
-
-1. **The Pension Credit argument is probably gone.** On the corrected State Pension attribution the
-   survivor sits just above the Guarantee Credit line, and because the guarantee is uprated by the
-   same factor as the pension, the gap never closes. So the lifetime Pension Credit in the model is
-   close to zero, and the "selling forfeits Pension Credit" line - one of the two pillars of the
-   case for keeping the flat - goes with it. That figure survived a full audit because the audit
-   checks reconciliation, not plausibility. Card 0068 confirms the pension figure first.
-2. **The comparison is not like-for-like.** An interest-only or lifetime-mortgage payment is
-   currently indexed to inflation and cut by the survivor factor, while a repayment mortgage is
-   modelled correctly. Both are wrong, in opposite directions, on exactly the routes this card is
-   choosing between. Card 0024.
-3. **The estate figures are single-path numbers standing beside a ten-thousand-path probability**,
-   and where a rolled-up loan is involved the property is fully consumed - the beneficiaries
-   inherit the liquid assets, not the flat. That should be said in those words before anyone
-   chooses. Card 0058.
-4. **The unpriced property items.** The lease extension, which the equity-release lender may
-   require anyway (card 0067); one major-works cycle (card 0070); the months of dual running that a
-   sale actually takes (card 0027); and a valuation spread that the base currently sits at the
-   optimistic end of (card 0069).
-
-**Two additions to the options themselves.** The board is choosing between two plans without the
-third: no variant has been tested that buys secured income for the survivor, because the engine can
-only fund an annuity from a pension pot (card 0060). And the survivor's largest upside - a
-disability benefit claimed later in life, and the Pension Credit and mortgage-interest support it
-passports - cannot be modelled at all (cards 0044 and 0045).
-
-**One framing point to carry into whatever is decided.** Both surviving options depend on three
-things that are not modelling outputs: the extra working years, the value assumed for the
-possessions, and a family gift already reclassified as unguaranteed. A plan resting on all three
-should not be presented with a single high probability. Show what happens if any one of them does
-not hold.
-
-Full detail in the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
-## Decided`. An agent cannot settle this: the two candidates are
+   Pass: the answer written into `## Decided`. An agent cannot settle this: the two candidates are
    level on security, so the choice is what the flat is worth to them against roughly £243,000, which
    is their call and not a modelling result. Compare the two here:
    <http://retireforecast.test/scenarios/64/results> (keep the flat) ·
@@ -103,6 +63,27 @@ figures, the arithmetic check and what is not modelled are in the private doc.
 **The RIO died on the constraint the model already predicted.** Affordability is assessed jointly and
 on the survivor alone; Chee's Nest pension is now excluded, and Francis's pension and benefits cease
 on his death. That is the same structural wall the forecast has hit from the other side three times.
+
+## Links
+
+**Blocked by**
+- `0024` - an interest-only payment is indexed to inflation and cut by the survivor factor while a
+  repayment one is not, so the two routes this card ranks are wrong in opposite directions.
+- `0027` - the months of dual running a sale actually takes are unpriced, and they come off the
+  sell side of the same comparison.
+- `0058` - the estate figures beside these options are single-path numbers standing next to a
+  ten-thousand-path probability, which is the wrong footing to choose on.
+- `0067` - a lease-extension price is unpriced here and an equity-release lender may require it
+  anyway, so it can move the keep-the-flat cost.
+- `0068` - the State Pension figure decides whether the Pension Credit pillar of the keep-the-flat
+  case exists at all.
+- `0069` - the base sits at the optimistic end of a valuation spread, which is most of the gap
+  between the two leading options.
+- `0070` - one major-works cycle is unpriced and falls only on the keep-the-flat route.
+
+**Relates to**
+- `0004` - the funding gap options 1 and 2 leave open is that card's subject, so its answer decides
+  whether either option is executable.
 
 ## Options
 1. **Keep base 9 as the LiveMore £160k C&I; hold 55–58 as what-ifs.** Cost: the base keeps a

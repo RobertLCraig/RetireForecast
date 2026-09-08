@@ -21,6 +21,12 @@ available on an encumbered home.
 The tool currently shows that household living in the property to the end of the plan with an
 estate.
 
+## Links
+
+**Relates to**
+- `0055` - the care means test itself is that card, and this one only changes what the resident
+  owns by the time it runs.
+
 ## Not this card
 The care means test itself, which is card 0055.
 

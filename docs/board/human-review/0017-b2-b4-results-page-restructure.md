@@ -4,6 +4,12 @@
 Follows B1 in the build order. The results page carries everything at one level, so the reader
 has no way to skim it.
 
+## Links
+
+**Relates to**
+- `0010` - B1, the verdict-first landing, is that card, and this restructure sits on top of the
+  landing it builds.
+
 ## Not this card
 B1 (card 0010), A3 fat tails, A4 State-Pension uprating.
 

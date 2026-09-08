@@ -1,3 +1,7 @@
+---
+no_outward_effect: "published" names a maintenance-cost source somebody else printed, read here; nothing is published by us
+---
+
 # The upkeep of a home you would buy is priced as a percentage of its value
 
 ## Why

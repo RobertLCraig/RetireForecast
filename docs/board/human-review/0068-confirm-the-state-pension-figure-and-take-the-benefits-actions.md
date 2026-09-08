@@ -8,6 +8,11 @@ household has a means-tested safety net at all, and the whole benefits layer of 
 ranked on it. None of the four can be settled from this repository: they are a DWP login, a phone
 call, a council tax bill and an award letter.
 
+**Why it needs you.** Every item is local knowledge nobody has written down, held by you or by a
+body only you can ask: your own DWP record, whether the flat has a feature that qualifies for the
+disabled band reduction, and what the award letter says. How much admin to do in one sitting is
+your cost to carry, not a modelling result.
+
 ## Why
 
 From the expert panel, 2026-08-19 (Citizens Advice findings 1, 2, 9 and the closing list, plus
@@ -46,6 +51,12 @@ dropping below the line re-opens everything else.
 - The advice to claim Carer's Allowance for underlying entitlement is right but **mistimed**.
   There is an earnings limit, so it fails while the working partner is still earning. The claim to
   lodge is the one that starts the day they retire.
+
+## Links
+
+**Relates to**
+- `0050` - item 4, the care and mobility split of the older partner's award, is the input that card
+  models a care placement with.
 
 ## Options
 

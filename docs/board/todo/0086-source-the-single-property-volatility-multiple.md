@@ -20,6 +20,8 @@ built card 0029 could ship the mechanism and disclose the figure but could not g
 **Relates to**
 - `0085` - the same shape of gap, from the same review and the same missing web access, on the
   property-cost escalator. Whoever picks one up can settle both in one research pass.
+- `0029` - built the mechanism and disclosed this figure, but had no web access to check it, which
+  is why the gap is a card of its own.
 
 ## Not this card
 Changing the mechanism. How the uplift is applied, disclosed and edited is card 0029's and is built.

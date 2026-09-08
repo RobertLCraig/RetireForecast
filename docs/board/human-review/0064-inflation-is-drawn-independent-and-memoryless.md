@@ -27,6 +27,14 @@ Related and cheap: `HistoricalBacktester` holds lifespans fixed at the represent
 so the historical stress never combines a bad early sequence with a long life. Those two risks
 multiply.
 
+## Links
+
+**Relates to**
+- `0024` - an interest-only payment is still CPI-indexed there, so persistent inflation compounds
+  that fault instead of only widening the fan.
+- `0039` - the Monte Carlo golden master is that card's, and it has to be re-pinned once this
+  changes every band.
+
 ## Not this card
 The choice of default inflation rate, which is already sourced and signed off.
 

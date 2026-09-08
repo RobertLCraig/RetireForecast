@@ -22,6 +22,12 @@ following the member's expression of wish, not the will - and from April 2027 th
 inheritance tax document. There is no nomination input anywhere in the builder, so a pot nominated
 to a child rather than to a spouse is still modelled as spouse-exempt at the first death.
 
+## Links
+
+**Relates to**
+- `0060` - whether to spend the pot instead is a decumulation question, and buying secured income
+  with it is that card.
+
 ## Not this card
 Whether to spend the pot. That is a decumulation question, cards 0060 and 0063.
 

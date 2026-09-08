@@ -19,6 +19,12 @@ The tool already flags an unaffordable purchase rather than modelling it away. T
 idea on the rent side, and it is the mirror of the survivor-affordability wall the model found on
 the mortgage side - which is the most valuable finding the tool has produced.
 
+## Links
+
+**Relates to**
+- `0048` - Housing Benefit for a pension-age renter is that card, and it is the other half of
+  whether a renting plan is affordable.
+
 ## Not this card
 Housing Benefit for a pension-age renter, which is card 0048.
 

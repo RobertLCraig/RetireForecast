@@ -1,5 +1,6 @@
 ---
 waiting_on: web access, which an unattended session does not have - recheck 2026-10-06
+no_outward_effect: "published source" is a figure somebody else printed, read here; nothing is published by us
 ---
 # The service-charge escalation the model now charges everyone is one reviewer's opinion
 

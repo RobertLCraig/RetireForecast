@@ -24,6 +24,14 @@ exactly this reason, and `collectDeathInServiceBenefit` splits an employer death
 the engine already encodes the under-75 rule for the lump-sum form of the same money, and the
 drawdown form of it does not ask.
 
+## Links
+
+**Relates to**
+- `0057` - the estate panel for deaths at or after 75 is that card, and it is fenced out of this
+  one.
+- `0007` - it settled that an inherited pot triggers no MPAA and carries no tax-free quarter, which
+  is the ruling this card builds on.
+
 ## Not this card
 The estate panel for deaths at or after 75 (card 0057). The April 2027 change bringing unused
 pension funds into the estate for Inheritance Tax, which is a separate charge and already modelled.

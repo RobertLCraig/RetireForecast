@@ -1,3 +1,7 @@
+---
+no_outward_effect: "published" names a source somebody else printed, read here; nothing is published by us
+---
+
 # Pin the park-home and NHS nursing-care figures to a published source
 
 ## Why

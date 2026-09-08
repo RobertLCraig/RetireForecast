@@ -20,6 +20,12 @@ long expected survivor period that leaves roughly even odds of a decade of unfun
 The adviser's sharpest point: printing that a plan "lasts for life" against a median lifespan is
 the single most misleading string the tool can produce.
 
+## Links
+
+**Relates to**
+- `0010` - leading the page with the probability is that card; this one only changes how many years
+  the deterministic figures run for.
+
 ## Not this card
 Leading the page with the probability, which is card 0010.
 

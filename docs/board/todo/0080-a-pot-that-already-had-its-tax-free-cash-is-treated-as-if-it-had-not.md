@@ -23,6 +23,14 @@ missing from the answer — and it is silent, because the pot and the allowance 
 
 The reader knows the answer. The model does not ask.
 
+## Links
+
+**Relates to**
+- `0007` - it taught the forecast the tax-free quarter, the lump sum allowance and crystallisation
+  for a lump sum taken during the projection; this card carries the same distinction backwards, to
+  a pot that was already crystallised before the projection starts.
+- `0079` - how an inherited pot is taxed, which is the neighbouring case and a card of its own.
+
 ## Not this card
 The tax-free quarter itself, the lump sum allowance, and crystallisation of a lump sum taken during
 the projection: all built on card 0007 (DECISIONS 2026-08-19 item 11). How an inherited pot is taxed

@@ -19,6 +19,12 @@ would model CPI plus 3% real, with CPI plus 1.5% as the optimistic sensitivity.
 Over a long projection that difference is thousands a year of real spend, concentrated in the
 survivor years. It can flip a verdict on its own.
 
+## Links
+
+**Relates to**
+- `0033` - utilities and insurance categorisation is that card's ground, and the escalator built
+  here now fires on any while-owning-home expense line it tags.
+
 ## Not this card
 Utilities and insurance categorisation, which is card 0033.
 

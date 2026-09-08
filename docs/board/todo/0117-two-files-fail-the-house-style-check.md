@@ -23,6 +23,11 @@ that hoisted a docblock `{@see \App\...}` into a real `use App\...` on a previou
 the framework-free rule `EngineIsolationTest` guards. Read the diff on
 `TaxFreeCashCalculator.php` rather than trusting the exit code.
 
+## Links
+
+**Relates to**
+- `0048` - found while running the style gate for that card, which never touched either file.
+
 ## Not this card
 Changing the `--dirty` convention, or adding a repo-wide pint step to any gate. Fix the two files
 first; whether the gate should widen is a separate call.

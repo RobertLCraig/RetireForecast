@@ -19,6 +19,13 @@ Nothing warns anybody. `RetireForecast\FinanceEngine\Forecast\ForecastResult` ca
 comparison reads none of them. This is the household this tool is built for: one close enough to
 running out that the question matters.
 
+## Links
+
+**Relates to**
+- `0078` - widening the candidate set of draw orders is that card; this one fixes how a candidate
+  is scored.
+- `0075` - letting the reader choose the order is that card, and is likewise not this one.
+
 ## Not this card
 Widening the candidate set (card 0078) or letting the reader choose the order (card 0075). This is
 about the number the winner is picked by, whatever the candidates are.

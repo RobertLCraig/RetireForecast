@@ -30,6 +30,10 @@ immaterial for a married couple but material for the cohabiting case the codebas
   the second's, so the third criterion's care charge keeps moving with typing order until that is
   settled. Nothing else on this card waits on it.
 
+**Relates to**
+- `0055` - the care means-test rules themselves are that card; this one only changes whose balance
+  sheet the money lands on before they run.
+
 ## Not this card
 The care means-test rules themselves, which are card 0055.
 

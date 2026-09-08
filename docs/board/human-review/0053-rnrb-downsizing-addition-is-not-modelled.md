@@ -18,6 +18,11 @@ This is the tool's own purpose. It exists to compare staying put against downsiz
 every downsizing option is penalised by tax the statute is written to prevent. For an estate near
 the bands that is a six-figure error, pointing the wrong way.
 
+## Links
+
+**Relates to**
+- `0059` - lifetime gifting is fenced out of this card and is that card's subject.
+
 ## Not this card
 Lifetime gifting, which is card 0059.
 

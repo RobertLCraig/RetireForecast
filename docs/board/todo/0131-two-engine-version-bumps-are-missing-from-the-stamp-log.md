@@ -26,6 +26,8 @@ reader of the constant will look. The audit trail is the point of the stamp.
 - `0054` - the intestacy bump.
 - `0055` - the deferred care payment bump.
 - `0056` - added its own entry above them and found the gap.
+- `0053` - the downsizing-addition bump the log's newest entry names, two stamps behind the
+  constant.
 
 ## Not this card
 Any change to the figures. This is the record of changes already shipped.

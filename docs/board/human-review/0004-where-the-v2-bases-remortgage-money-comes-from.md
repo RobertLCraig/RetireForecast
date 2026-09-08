@@ -21,6 +21,12 @@ The base needs **~GBP 49,495** found from outside (GBP 48,000 to close the gap t
 redemption, plus GBP 1,495 broker fees) and still models it as arriving unshown. Until the source
 is named, the base scenario contains money from nowhere.
 
+## Links
+
+**Relates to**
+- `0022` - the 50+ interest-only route in option 4 is one of the plans that card is ranking, so the
+  two answers have to agree.
+
 ## Options
 1. **Enter it as a one-off capital receipt** at builder step 3, year 2026, with the real source
    as the label, plus a matching one-off cost the same year since the money goes straight to the

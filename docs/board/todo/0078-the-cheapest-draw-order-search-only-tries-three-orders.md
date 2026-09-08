@@ -27,6 +27,12 @@ Two things this card must settle before any code, because they are Rob's call an
   reader cannot pick the order their own forecast runs on. Adding orders they can see but not use
   widens that gap rather than closing it, so 0075 may want to land first.
 
+## Links
+
+**Relates to**
+- `0075` - the reader still cannot pick the order their own forecast runs on, so more orders they
+  can see but not use widens that gap; it may want to land first.
+
 ## Not this card
 A full combinatorial search over wrappers and amounts. Even professional tools stop short of it, and
 the plan rules it out by name.

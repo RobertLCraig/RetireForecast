@@ -21,6 +21,12 @@ income wrong on both sides of the assessment.
 The fix needs the award split into its care and mobility parts at input. Both rates are normally
 known separately.
 
+## Links
+
+**Relates to**
+- `0055` - the property disregard and deferred payments are that card, and both change the same
+  care means test this one feeds income into.
+
 ## Not this card
 The property disregard and deferred payments, which are card 0055.
 

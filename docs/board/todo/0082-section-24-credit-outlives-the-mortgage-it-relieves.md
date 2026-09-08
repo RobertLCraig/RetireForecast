@@ -18,6 +18,12 @@ Three reachable ways in, all on a let primary residence:
 The error is optimistic: it understates the tax on a let plan for every remaining year of the
 projection, so it flatters exactly the borrowing routes the ranking in card 0022 turns on.
 
+## Links
+
+**Relates to**
+- `0024` - found while building that card, which touched the same lines but not this fault.
+- `0022` - the credit flatters exactly the borrowing routes that ranking turns on.
+
 ## Not this card
 Whether a `Rental` income stream should stop when the property is sold. A stream carries its own
 `endAge`, so that is a scenario-input question, not an engine fault.

@@ -25,6 +25,12 @@ percentage until it recovers. Published rules exist and are citable.
 Reporting matters as much as the rule: show how often and how deeply it bit, not just the improved
 probability.
 
+## Links
+
+**Relates to**
+- `0007` - withdrawal sequencing across wrappers is that card; this one changes how much is drawn,
+  not which pot it comes from.
+
 ## Not this card
 Withdrawal sequencing across wrappers, which is card 0007.
 

@@ -16,6 +16,12 @@ So full-spend probability reads exactly 0.000 while essentials is untouched, and
 `scenarios:audit` still reports the plan as never running short because it checks the essential
 floor. This is the diagnosis for card 0023, and it will hit any scenario with a funding gap.
 
+## Links
+
+**Relates to**
+- `0023` - this is the diagnosis for the zero full-spend probability that card is stuck on, so the
+  fix here settles it.
+
 ## Not this card
 Whether a particular purchase gap should be funded. That is a scenario input question.
 

@@ -22,6 +22,8 @@ could not go and check them.
 - `0085` - the same shape of gap, from the same review and the same missing web access, on the
   property-cost escalator. Whoever picks one up can settle all three in one research pass.
 - `0086` - likewise, on the single-property volatility multiple.
+- `0030` - built the mechanism, disclosed all three figures and exposed them as inputs, but had no
+  web access to check them.
 
 ## Not this card
 Changing the mechanism. How the deduction is applied, disclosed and edited is card 0030's and is

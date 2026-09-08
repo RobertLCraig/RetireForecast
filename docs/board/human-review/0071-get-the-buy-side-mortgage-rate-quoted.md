@@ -40,3 +40,9 @@ broker that the amount may fall.
 ## Why
 From the expert panel, 2026-08-19 (property finding 8). Detail in the gitignored
 `docs/REVIEW-PANEL-2026-08-19.local.md`.
+
+## Links
+
+**Relates to**
+- `0034` - fixing year-zero purchase funding there may cut how much borrowing the buy side needs at
+  all, so the amount quoted here can fall.

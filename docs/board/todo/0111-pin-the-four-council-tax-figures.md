@@ -1,3 +1,7 @@
+---
+no_outward_effect: "published" names the statutory source somebody else printed, read here; nothing is published by us
+---
+
 # Pin the four council tax figures to a published source
 
 ## Why

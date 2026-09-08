@@ -24,6 +24,8 @@ right, not a tidy-up. It is why 0040's third criterion is still open.
 **Relates to**
 - `0040` - fixed the three places money landed on the first person, and its third criterion cannot
   be met until this one is settled too.
+- `0055` - the care means-test rules themselves are that card; this one only changes whose capital
+  is left by the time they run.
 
 ## Not this card
 The care means-test rules themselves (card 0055), and the ORDER of the buckets (cash before GIA
