@@ -79,3 +79,47 @@ labels, the caveat list and the PDF's two new blocks all still need card 0001's 
 
 One thing the card's Why lists and the acceptance does not, so it was left alone: a park home's
 resale commission is still not deducted anywhere.
+
+### 2026-09-08 review (v20260908093100-bdf8)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 276s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+All four criteria trace to real code.
+
+- **#1** `ResultPresenter::estateRange()` reads `SimulationResult::$terminalWealthPercentiles` and the estate tile in `resources/views/livewire/scenario-results.blade.php` (IHT section) plus `resources/views/pdf/partials/report.blade.php` print the p10/p50/p90 band beside the one-path figure.
+- **#2** `resources/views/livewire/scenario-compare.blade.php` carries a "Single path" note over the deterministic table and a "Simulated" note over the Monte Carlo section.
+- **#3** `ResultPresenter::inputNotes()`, the `lifetime_mortgage_rollup` note, adds the "the lender takes the property ÔÇª inherit only the money outside it" sentence, gated on `homeEquity()` not being positive in the last year the home is owned, and names `terminalUsableWealth`.
+- **#4** `ResultPresenter::estateCaveats()` covers probate cost and delay, the beneficiary's income tax on an inherited pot, and one of three care lines chosen from what the projection did. It rides `ihtPanel()`, so page and PDF cannot show one without the other.
+
+I tried two attacks. The band and caveats only render inside the IHT section, but that is the only place a terminal estate is stated, so nothing escapes. The Compare table's "Total wealth left" column has no band, but that surface is the one #2 governs and it is labelled single-path.
+
+VERDICT: sound
+
+**scope: defect**
+
+Findings, scope lens only.
+
+**Half done ÔÇö `ScenarioCompare` still reports a one-path estate with no band.** The card's second Task says "Use it in `ScenarioCompare` and the estate panel", and it is ticked. Only the estate panel got the band. `App\Livewire\ScenarioCompare::planRow` (the method building `totalWealth`, `usableWealth` and `ihtDue`) was not touched by commit 82ab3c3 at all; those columns are still deterministic figures printed to the pound. The Compare page got a `Single path` heading in `resources/views/livewire/scenario-compare.blade.php` and nothing else. So the exact surface the card's Why names ÔÇö "a comparison table sets a figure with ten thousand paths behind it beside one with a single path behind it" ÔÇö still does that. It is now labelled (AC #2) but AC #1's "show it as a range" is met on the results page and the PDF only.
+
+Nothing crossed the `## Not this card` fence: the results page still leads as it did, no probability was promoted, and the commit touches only the presenter, the two views, the PDF partial and one test. The bigger branch diff is other cards, not this one.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Finding ÔÇö `ResultPresenter::estateCaveats()` (app/Forecast/ResultPresenter.php)**
+
+The care line picks the last year with a *positive* `deferredCareBalance()`, not the final year's balance. But a deferred care debt is cleared during life when the home is sold: `PathProjector` (the forced-sale branch that builds `residenceDisposal`) sets `$state['deferredCareBalance'] = 0` after redeeming it out of the proceeds, alongside the SMI charge.
+
+So for any plan that runs up a care debt and then sells the home, the estate panel and the PDF both print "This plan runs up a care debt of about ┬úX secured on your home. It is repaid before anybody inherits, and it is already taken off the figure above." Every clause is false: the debt was repaid years earlier out of sale proceeds, it is not on the estate, and nothing is deducted from the figure above for it. It also suppresses the true branch ÔÇö the plan *did* pay care fees out of its own money ÔÇö so the reader is told the wrong thing instead of the right one. This is exactly the invisible-figure failure the card exists to close, in the caveat the card added.
+
+`tests/Feature/Forecast/EstatePointEstimateTest.php` (`test_the_estate_figure_is_caveated_for_probate_beneficiary_tax_and_care_debt`) never builds a sale after a deferred debt, so the suite stays green.
+
+Fix: read the last year's balance, not the last positive one.
+
+VERDICT: defect
+
