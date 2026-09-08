@@ -3,6 +3,32 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-08: a starting pot says for itself how much of it is already in drawdown
+
+**Context:** card 0080. Card 0007 taught the projector crystallisation for a lump sum taken WITHIN
+the projection. A pot the reader STARTS with was seeded wholly uncrystallised, so anybody who had
+already taken their tax-free cash was given a second quarter of the same money, silently, because
+the pot and the allowance ledger both looked right.
+
+**Decision: the reader states it per pot, and it is never inferred.** `DcPension::$crystallisedValue`
+is the fact, read through `crystallisedValue()` (clamped to the pot, so the capacity-for-loss stress
+cannot leave a crystallised balance bigger than the pot it sits in) and seeded straight into
+`PathProjector`'s `crystallised` key. It is NOT derived from `pclsTakenToDate`: that is an allowance
+ledger across all of the member's pensions, so it cannot say which pot the cash came out of. Every
+rule downstream (the draw order inside a pot, `ufplsSplit`, `lsaHeadroom`, `pensionTaxIfDrawn`) was
+already written against that key and needed no change.
+
+**Decision: unanswered keeps today's behaviour, and is disclosed rather than applied silently.** Null
+reads as wholly uncrystallised, which is what every projection has always done, so **no
+`ENGINE_VERSION` bump and no stored re-run is owed** and no stored scenario moves until its reader
+answers. `ResultPresenter::assumedFigures()` names the assumption with the tax-free cash it still
+grants, read off the pots and off the tax year's own rate and lump sum allowance.
+
+**Still open, and Rob's:** whether an unanswered pot with tax-free cash already taken should instead
+INFER a crystallised share from `pclsTakenToDate` (the adverse side, and a guess). That would move
+every stored scenario that has ever taken tax-free cash, so it is not a call this build makes; the
+card's fourth Task carries it.
+
 ## 2026-09-08: an inherited pension is tax-free where its owner died under 75
 
 **Context:** card 0079. `PathProjector::settleEstates` folded the deceased's pots into one

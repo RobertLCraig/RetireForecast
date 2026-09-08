@@ -54,6 +54,7 @@ use RetireForecast\FinanceEngine\Property\AmortisationSchedule;
 use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
 use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 use RetireForecast\FinanceEngine\Support\WarningCode;
+use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
 /**
  * Turns a run's three variant {@see SimulationResult}s into everything the results
@@ -1235,12 +1236,23 @@ final class ResultPresenter
         // rate and the age are READ from the constants that own them.
         $hasDcPot = false;
         $nominationUnasked = false;
+        // Board card 0080: pots whose drawdown part the reader was never asked about, and the
+        // allowance each owner has already spent, both per person: the two halves of what the
+        // "wholly uncrystallised" assumption is still granting them in tax-free cash.
+        $unaskedPotsByOwner = [];
+        $lsaUsedByOwner = [];
         foreach ($household->pensions as $pension) {
             if (! $pension instanceof DcPension) {
                 continue;
             }
             $hasDcPot = true;
             $nominationUnasked = $nominationUnasked || $pension->nominationIsAssumed();
+            $lsaUsedByOwner[$pension->ownerId] = ($lsaUsedByOwner[$pension->ownerId] ?? 0)
+                + ($pension->pclsTakenToDate?->pence ?? 0);
+            if ($pension->crystallisationIsAssumed() && $pension->currentValue->isPositive()) {
+                $unaskedPotsByOwner[$pension->ownerId] = ($unaskedPotsByOwner[$pension->ownerId] ?? 0)
+                    + $pension->currentValue->pence;
+            }
         }
         if ($hasDcPot && $settings?->modelIht === true && $settings->beneficiaryMarginalRateIsAssumed()) {
             $rate = self::ratePct($settings->beneficiaryMarginalRate()->asPercent());
@@ -1266,6 +1278,33 @@ final class ResultPresenter
                 .'pass to them is taxed on the first death instead of the second. We have assumed the more '
                 .'expensive answer rather than give you an allowance on a form we have never seen. Check the '
                 .'nomination with each provider and enter it: it is the single easiest thing on this page to fix.';
+        }
+
+        // HOW MUCH OF EACH POT IS ALREADY IN DRAWDOWN (board card 0080). A pot that has had its
+        // tax-free cash is crystallised: every pound out of it is taxed as income. Unasked, the
+        // engine treats a starting pot as wholly UNCRYSTALLISED, which is the generous side, so it
+        // hands a second tax-free quarter to money that may already have had one. Both the rate and
+        // the allowance are READ from the tax year the projection runs on, and the pounds are read
+        // off the pots themselves, so neither can drift from what the model actually did.
+        if ($unaskedPotsByOwner !== [] && $settings !== null) {
+            $pension = TaxYearRegistry::for($settings->baseTaxYear, $household->region)->pension;
+            $granted = 0;
+            $pots = 0;
+            foreach ($unaskedPotsByOwner as $ownerId => $value) {
+                $pots += $value;
+                $headroom = max(0, $pension->lumpSumAllowance->pence - ($lsaUsedByOwner[$ownerId] ?? 0));
+                $granted += min(Money::fromPence($value)->applyRate($pension->pclsRate)->pence, $headroom);
+            }
+            $rate = self::ratePct($pension->pclsRate->asPercent());
+            $out[] = "You didn't tell us how much of each pension pot is already in drawdown, so we have assumed "
+                .'none of it is: every pound of the '.Money::fromPence($pots)->format().' in those pots is '
+                .'treated as still having its tax-free quarter. That is '.Money::fromPence($granted)->format()
+                ." of tax-free cash ({$rate} of the pot, capped by the lump sum allowance you have left) that "
+                .'this plan pays you free of tax. If part of a pot is already in drawdown, that part has had its '
+                .'quarter and every pound you take out of it is taxed as income, so we would be showing you tax '
+                .'you would really pay. This is the generous answer, and on a pot of this size it is worth '
+                .'thousands of pounds of tax over a retirement. Your provider calls it "crystallised" or '
+                .'"in drawdown": enter that figure beside the pot and we will use it.';
         }
 
         // How the invested money is split across asset classes, where the reader has not said. The

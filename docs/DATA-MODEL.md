@@ -57,8 +57,8 @@ Common: id, person_id, subtype (`dc` \| `db` \| `state`).
 beats the assumption set), pcls_taken_to_date (Money, LSA tracking), earliest_access_age
 (int; 55, rising to 57 from Apr 2028 — gates drawdown since 2026-07-02),
 intended_withdrawals (WithdrawalPlan[]: kind PCLS/UFPLS/drawdown, amount, age),
-annuity_purchase (AnnuityPurchase?, 2026-07-01). (A planned `crystallised_value` field was
-never materialised — see Known divergences.)
+annuity_purchase (AnnuityPurchase?, 2026-07-01), crystallised_value (Money?, 2026-09-08: how much
+of THIS pot is already in drawdown; null = not asked, read as none and disclosed, card 0080).
 
 **DB:** accrued_annual_pension (Money/yr), normal_retirement_age (int),
 revaluation_basis (enum, pre-retirement), escalation_in_payment (enum, post-retirement,
@@ -635,10 +635,13 @@ from the original plan, flagged inline:
   trigger for the heir. An **ad-hoc** UFPLS reports its tax-free part on the cashflow ladder's
   `pension_lump_sum` line and only the balance on `pension_drawdown`, which the page labels as taxable
   pension income (`fundShortfall` returns `fromPensionTaxFree` beside the gross; card **0074**).
-  **Still open:** a **starting** pot is assumed wholly uncrystallised, because
-  `DcPension::$pclsTakenToDate` is an allowance ledger across all of the member's pensions rather than a
-  per-pot crystallisation record, so a reader who has already taken tax-free cash is given a second
-  quarter of it (card **0080**); a draw from an inherited pot is taxed in
+  A **starting** pot carries its own drawdown balance too: `DcPension::$crystallisedValue` is the
+  reader's own per-pot statement, seeded straight into `PathProjector`'s `crystallised` key, and it is
+  never inferred from `pclsTakenToDate` (an allowance ledger across all of the member's pensions,
+  which cannot say what THIS pot crystallised). Null means the question was not asked and reads as
+  wholly uncrystallised, exactly as before the field existed, disclosed as an assumed figure with the
+  tax-free cash the assumption still grants (card **0080**).
+  **Still open:** a draw from an inherited pot is taxed in
   full even where the member died **under 75**, when in life it is tax-free income, because
   `PathProjector::settleEstates` stores no age at death (card **0079**); and no ad-hoc draw, taxed or
   tax-free, reaches the Pension Credit means test, which is assessed before the shortfall is funded and
@@ -783,7 +786,7 @@ from the original plan, flagged inline:
   statutory **downsizing addition**, reported apart on `IhtResult::$downsizingAddition` so a
   residence band shown beside no house can be accounted for. It is DERIVED, never entered: there is
   no builder field, so a disposal made before the base year is not modelled.
-- **Planned fields never materialised:** `DcPension::crystallisedValue`,
+- **Planned fields never materialised:**
   `StatePensionEntitlement` `spa_override` + `triple_lock_assumption` (SPA computes from DOB;
   the triple-lock factor lives in the projector). Kept here rather than in the entity tables
   so the tables describe only what exists.

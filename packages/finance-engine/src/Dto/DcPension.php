@@ -53,6 +53,17 @@ final class DcPension implements Pension
          * disclosed as an assumed figure rather than applied silently.
          */
         public readonly ?PensionBeneficiary $nominatedBeneficiary = null,
+        /**
+         * How much of this pot is ALREADY crystallised: designated to drawdown, so it has had its
+         * tax-free quarter and every pound drawn out of it is taxed as income. Null = the reader was
+         * never asked, which {@see crystallisedValue} reads as NONE of it (today's behaviour, so no
+         * stored scenario moves) and which is disclosed as an assumed figure rather than applied
+         * silently. Board card 0080.
+         *
+         * It cannot be inferred from $pclsTakenToDate: that is an allowance ledger across ALL of the
+         * member's pensions, so it does not say which pot the cash came out of.
+         */
+        public readonly ?Money $crystallisedValue = null,
     ) {
         // Relief at source is a real method the DTO can express, but the projector does not yet
         // model it (the provider's basic-rate reclaim, and a higher-rate taxpayer's self-assessment
@@ -80,6 +91,24 @@ final class DcPension implements Pension
     public function nominatedToSpouse(): bool
     {
         return $this->nominatedBeneficiary === PensionBeneficiary::SpouseOrCivilPartner;
+    }
+
+    /**
+     * The part of this pot already in drawdown, never more than the pot itself. Unanswered reads as
+     * nothing, which is what every projection did before the input existed; the capacity-for-loss
+     * stress marks a pot down, so the clamp is what stops a stale crystallised balance exceeding it.
+     */
+    public function crystallisedValue(): Money
+    {
+        $stated = $this->crystallisedValue ?? Money::zero();
+
+        return $stated->greaterThan($this->currentValue) ? $this->currentValue : $stated;
+    }
+
+    /** Was the drawdown part never given, so the engine is supplying the answer for itself? */
+    public function crystallisationIsAssumed(): bool
+    {
+        return $this->crystallisedValue === null;
     }
 
     /** Was the nomination never given, so the engine is supplying the answer for itself? */
@@ -132,6 +161,7 @@ final class DcPension implements Pension
             $annuityPurchase,
             $this->reliefMethod,
             $this->nominatedBeneficiary,
+            $this->crystallisedValue,
         );
     }
 }

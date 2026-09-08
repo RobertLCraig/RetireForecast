@@ -457,6 +457,9 @@ class ScenarioBuilder extends Component
             'pensions.*.nominatedBeneficiary' => ['nullable', Rule::in(array_merge([''], array_column(PensionBeneficiary::cases(), 'value')))],
             'pensions.*.earliestAccessAge' => ['nullable', 'integer', 'min:55', 'max:75', 'required_if:pensions.*.subtype,dc'],
             'pensions.*.pclsTakenToDate' => $money,
+            // How much of THIS pot is already in drawdown (card 0080). Blank = not asked, which the
+            // engine reads as none of it (today's behaviour) and discloses as an assumed figure.
+            'pensions.*.crystallisedValue' => $money,
             'pensions.*.growthAssumptionOverride' => $rate,
             'pensions.*.withdrawals.*.kind' => ['required', Rule::in(['pcls', 'ufpls', 'drawdown'])],
             'pensions.*.withdrawals.*.amount' => $moneyReq,
@@ -931,8 +934,12 @@ class ScenarioBuilder extends Component
         // A defined-benefit pension saved before the fixed-rate input existed has no key; default
         // it blank so the input binds. Blank = the engine's disclosed default, which is exactly
         // how a scheme saved before card 0035 behaved.
+        // A pot saved before the drawdown-part input existed (card 0080) has no key; default it
+        // blank so the input binds. Blank = wholly uncrystallised, which is exactly how every pot
+        // saved before it behaved, and it is disclosed rather than assumed silently.
         foreach ($this->pensions as $i => $pension) {
             $this->pensions[$i]['fixedEscalationRate'] ??= '';
+            $this->pensions[$i]['crystallisedValue'] ??= '';
         }
 
         foreach ($this->people as $i => $person) {
@@ -2121,7 +2128,8 @@ class ScenarioBuilder extends Component
         return [
             'id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'subtype' => $subtype, 'level' => 'amount',
             'currentValue' => '', 'ongoingContribution' => '', 'employerContribution' => '', 'reliefMethod' => '',
-            'earliestAccessAge' => '57', 'pclsTakenToDate' => '', 'growthAssumptionOverride' => '', 'withdrawals' => [],
+            'earliestAccessAge' => '57', 'pclsTakenToDate' => '', 'crystallisedValue' => '',
+            'growthAssumptionOverride' => '', 'withdrawals' => [],
             'accruedAnnualPension' => '', 'normalRetirementAge' => '65', 'revaluationBasis' => 'cpi',
             // Blank fixed rate = the engine's disclosed default, so adding this input shifts no
             // existing scenario and creates no what-if delta.

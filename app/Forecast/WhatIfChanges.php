@@ -28,7 +28,7 @@ final class WhatIfChanges
 
     /** Leaf field names whose value is money (pounds) — shown as £. */
     private const MONEY = [
-        'grossSalary', 'currentValue', 'ongoingContribution', 'employerContribution', 'pclsTakenToDate',
+        'grossSalary', 'currentValue', 'ongoingContribution', 'employerContribution', 'pclsTakenToDate', 'crystallisedValue',
         'accruedAnnualPension', 'commutationLumpSum', 'weeklyForecast', 'balance', 'unrealisedGain',
         'grossAnnual', 'amount', 'salePrice', 'buyPrice', 'annualRent', 'movingCosts',
         'outstandingMortgage', 'runningCosts', 'councilTax',

@@ -207,6 +207,66 @@ class ScenarioBuilderTest extends TestCase
         $this->assertFalse($nominated->nominationIsAssumed());
     }
 
+    /**
+     * Board card 0080. A pot that has already had its tax-free cash is in drawdown: every pound
+     * drawn out of it is taxed as income. The form could not say so, so the projector started
+     * every pot as wholly uncrystallised and handed a second tax-free quarter to money that had
+     * already had one.
+     */
+    public function test_a_pot_can_be_entered_as_partly_crystallised(): void
+    {
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component
+            ->call('addPension', 'dc')
+            ->set('pensions.'.(count($component->get('pensions')) - 1).'.currentValue', '200000')
+            ->set('pensions.'.(count($component->get('pensions')) - 1).'.crystallisedValue', '80000')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $scenario = Scenario::latest('id')->firstOrFail();
+
+        $pot = null;
+        foreach ($scenario->toHousehold()->pensions as $p) {
+            if ($p instanceof DcPension) {
+                $pot = $p;
+            }
+        }
+        $this->assertNotNull($pot);
+        $this->assertSame(8_000_000, $pot->crystallisedValue()->pence, 'the drawdown part the reader entered must reach the engine');
+        $this->assertFalse($pot->crystallisationIsAssumed(), 'a stated share is not one the engine supplied for itself');
+    }
+
+    public function test_an_unstated_crystallised_share_stores_nothing_and_leaves_the_pot_uncrystallised(): void
+    {
+        // Sparse, like every other default-following field: a pot whose drawdown part was never
+        // entered reads as wholly uncrystallised, which is exactly today's behaviour, so no stored
+        // scenario moves and a what-if child shows no spurious delta.
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component
+            ->call('addPension', 'dc')
+            ->set('pensions.'.(count($component->get('pensions')) - 1).'.currentValue', '200000')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $scenario = Scenario::latest('id')->firstOrFail();
+
+        $pot = null;
+        foreach ($scenario->toHousehold()->pensions as $p) {
+            if ($p instanceof DcPension) {
+                $pot = $p;
+            }
+        }
+        $this->assertNotNull($pot);
+        $this->assertSame(0, $pot->crystallisedValue()->pence);
+        $this->assertTrue($pot->crystallisationIsAssumed());
+    }
+
     public function test_an_unset_beneficiary_rate_stores_nothing_and_leaves_the_engine_default(): void
     {
         // Sparse, like every other default-following field: a scenario that never touched it must

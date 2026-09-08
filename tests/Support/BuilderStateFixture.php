@@ -48,16 +48,17 @@ final class BuilderStateFixture
             'pensions' => [
                 ['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '410000', 'ongoingContribution' => '8000',
                     'employerContribution' => '4000', 'reliefMethod' => 'net_pay', 'earliestAccessAge' => '57', 'pclsTakenToDate' => '0',
-                    'growthAssumptionOverride' => '4.5', 'fixedEscalationRate' => '', 'nominatedBeneficiary' => '', 'withdrawals' => [
+                    'crystallisedValue' => '', 'growthAssumptionOverride' => '4.5', 'fixedEscalationRate' => '', 'nominatedBeneficiary' => '', 'withdrawals' => [
                         ['id' => 'wd1', 'kind' => 'pcls', 'amount' => '100000', 'atAge' => '66'],
                         ['id' => 'wd2', 'kind' => 'ufpls', 'amount' => '20000', 'atAge' => '67'],
                         ['id' => 'wd3', 'kind' => 'drawdown', 'amount' => '15000', 'atAge' => '68'],
                     ]],
                 ['id' => 'db1', 'ownerId' => 'p2', 'subtype' => 'db', 'accruedAnnualPension' => '9200', 'normalRetirementAge' => '65',
                     'revaluationBasis' => 'cpi', 'escalationInPayment' => 'cpi_capped_5', 'fixedEscalationRate' => '',
+                    'crystallisedValue' => '',
                     'spousePensionFraction' => '50', 'commutationLumpSum' => '30000', 'commutationFactor' => '12'],
-                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230.25', 'qualifyingYears' => '', 'deferralWeeks' => '0', 'fixedEscalationRate' => ''],
-                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '', 'qualifyingYears' => '34', 'deferralWeeks' => '8', 'fixedEscalationRate' => ''],
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230.25', 'qualifyingYears' => '', 'deferralWeeks' => '0', 'fixedEscalationRate' => '', 'crystallisedValue' => ''],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '', 'qualifyingYears' => '34', 'deferralWeeks' => '8', 'fixedEscalationRate' => '', 'crystallisedValue' => ''],
             ],
             'accounts' => [
                 ['id' => 'acc1', 'ownerId' => 'p1', 'type' => 'isa', 'balance' => '85000', 'unrealisedGain' => '', 'yield' => '3'],

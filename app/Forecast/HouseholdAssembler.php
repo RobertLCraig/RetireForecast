@@ -573,6 +573,7 @@ final class HouseholdAssembler
                 earliestAccessAge: (int) $p['earliestAccessAge'],
                 withdrawalPlan: array_map($this->withdrawal(...), $p['withdrawals'] ?? []),
                 pclsTakenToDate: $this->money($p['pclsTakenToDate'] ?? null),
+                crystallisedValue: $this->money($p['crystallisedValue'] ?? null),
                 growthAssumptionOverride: $this->percent($p['growthAssumptionOverride'] ?? null),
                 annuityPurchase: $this->annuity($p),
                 // Blank = relief not modelled (the pre-2026-07-31 behaviour), so an existing

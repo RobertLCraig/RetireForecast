@@ -724,6 +724,13 @@
                                 <div>
                                     <label for="pensions-{{ $i }}-pclsTakenToDate" class="{{ $label }}">Tax-free cash already taken (£)</label>
                                     <input id="pensions-{{ $i }}-pclsTakenToDate" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.pclsTakenToDate" class="{{ $field }}">
+                                    <p class="mt-1 text-xs text-gray-500">Tax-free cash you have taken from any pension, ever. It counts against one lump sum allowance across all of them.</p>
+                                </div>
+                                <div>
+                                    <label for="pensions-{{ $i }}-crystallisedValue" class="{{ $label }}">Of this pot, how much is already in drawdown (£)</label>
+                                    <input id="pensions-{{ $i }}-crystallisedValue" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.crystallisedValue" class="{{ $field }}">
+                                    <p class="mt-1 text-xs text-gray-500">Money in drawdown has already had its tax-free quarter, so every pound you take out of it is taxed as income. Leave it blank and we assume none of this pot has been touched, which gives the whole pot a tax-free quarter and says so on your results.</p>
+                                    @error('pensions.'.$i.'.crystallisedValue') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                                 </div>
                                 <div class="sm:col-span-2 lg:col-span-3">
                                     <p class="{{ $label }} mb-2">Planned withdrawals</p>

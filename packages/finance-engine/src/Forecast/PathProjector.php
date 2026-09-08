@@ -629,12 +629,11 @@ final class PathProjector
                     'plan' => $pension->withdrawalPlan,
                     // How much of this pot is already CRYSTALLISED — designated to drawdown, so it
                     // has had its tax-free cash and can never have another quarter ({@see ufplsSplit}).
-                    // A starting pot is treated as wholly uncrystallised, which is a v1 limit rather
-                    // than a fact: $pclsTakenToDate is an allowance ledger across ALL of the member's
-                    // pensions, not a record of what THIS pot crystallised, so the split cannot be
-                    // inferred from it without inventing one. Only a PCLS taken WITHIN the projection
-                    // is tracked ({@see plannedWithdrawals}). Board card 0080.
-                    'crystallised' => 0,
+                    // The reader states it per pot ({@see DcPension::$crystallisedValue}); left
+                    // unanswered it reads as none, which is disclosed rather than applied silently.
+                    // It is NOT inferred from $pclsTakenToDate, which is an allowance ledger across
+                    // ALL of the member's pensions and so cannot say what THIS pot crystallised.
+                    'crystallised' => $pension->crystallisedValue()->pence,
                     // Kept apart, not summed: only the member's own contribution is the household's
                     // money (so only it may be funded from surplus) and only it attracts relief.
                     'contribution' => $pension->ongoingContribution->pence,

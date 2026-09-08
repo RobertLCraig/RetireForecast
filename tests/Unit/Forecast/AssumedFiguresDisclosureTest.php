@@ -610,6 +610,46 @@ final class AssumedFiguresDisclosureTest extends TestCase
         )));
     }
 
+    /**
+     * Board card 0080. A pot that is already in drawdown has had its tax-free quarter, and every
+     * pound out of it is taxed. The engine assumes a starting pot is wholly UNCRYSTALLISED, which
+     * is the generous side: it hands a second quarter to money that may already have had one, and
+     * on a mid-sized pot that is thousands of pounds of tax missing from the answer.
+     */
+    public function test_the_assumed_crystallised_share_is_disclosed(): void
+    {
+        $disclosures = $this->disclosuresFor(
+            [['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000', 'earliestAccessAge' => '57']],
+            settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+        );
+
+        $note = $this->only($disclosures, 'already in drawdown');
+        // The answer assumed: none of it is.
+        $this->assertStringContainsString('none of it', $note);
+        // What it costs them, in pounds, READ from the pot and the statutory rate rather than
+        // restated: a quarter of £200,000 is being treated as still available tax-free.
+        $rate = TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi)->pension->pclsRate;
+        $this->assertStringContainsString(
+            Money::fromPounds(200_000)->applyRate($rate)->format(),
+            $note,
+            'the tax-free cash the assumption still grants must be named',
+        );
+    }
+
+    public function test_nothing_is_assumed_about_a_crystallised_share_the_reader_gave(): void
+    {
+        $disclosures = $this->disclosuresFor(
+            [['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000',
+                'earliestAccessAge' => '57', 'crystallisedValue' => '0']],
+            settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+        );
+
+        $this->assertSame([], array_values(array_filter(
+            $disclosures,
+            static fn (string $d): bool => str_contains($d, 'already in drawdown'),
+        )));
+    }
+
     public function test_the_money_purchase_annual_allowance_is_disclosed_when_the_plan_triggers_it(): void
     {
         // Taking money flexibly out of a pension caps what may be paid back into one for the rest

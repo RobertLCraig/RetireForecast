@@ -5,9 +5,23 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0079). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-08 (card 0080). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **A pot can now say how much of it is already in drawdown.** Card 0080. Every starting pot was
+  seeded wholly uncrystallised, so a reader who had already taken their tax-free cash was given a
+  second quarter of the same money. `DcPension::$crystallisedValue` is the reader's own per-pot
+  figure (builder input beside "Tax-free cash already taken"), read through `crystallisedValue()`
+  and seeded into `PathProjector`'s `crystallised` key; it is never inferred from `pclsTakenToDate`,
+  which is an allowance ledger across all of the member's pensions. Null = not asked, which keeps
+  today's wholly-uncrystallised behaviour, so **no `ENGINE_VERSION` bump and no stored re-run is
+  owed** and `GoldenMasterTest` did not redden; the assumption is disclosed by
+  `ResultPresenter::assumedFigures()` with the tax-free cash it still grants. **Whether an
+  unanswered pot should instead infer a crystallised share from `pclsTakenToDate` is left open and
+  is Rob's** (the card's fourth Task; it would move every stored scenario that has taken tax-free
+  cash). See DECISIONS 2026-09-08. Built in a worktree, so the new builder input and the new results
+  note **have not been seen in a browser**.
 
 - **A pension inherited from someone who died under 75 is tax-free to draw.** Card 0079. The
   projector folded the deceased's pots into one for the heir without recording how old they were
