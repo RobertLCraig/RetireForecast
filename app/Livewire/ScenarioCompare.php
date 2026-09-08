@@ -193,6 +193,10 @@ class ScenarioCompare extends Component
         return view('livewire.scenario-compare', [
             'base' => $this->base,
             'plans' => $plans,
+            // The lifespan every figure in the single-path table runs to, and the odds it leaves
+            // (board card 0061). Read off the base plan's own settings, which is what the table
+            // is ranked on; the same sentence the results page and the PDF show.
+            'planningHorizonBasis' => ResultPresenter::planningHorizonBasis($forecaster->settings($this->base)),
             // The "hide non-viable" toggle: whether any plan is non-viable (so the control shows
             // at all), whether it is on, how many rows it is currently hiding, and the full plan
             // count (so the "Re-run all" button still names every plan — the run covers them all).

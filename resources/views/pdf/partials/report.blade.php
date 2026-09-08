@@ -865,7 +865,7 @@
         @if (! empty($presented['ihtDistribution'] ?? null))
             @php($ihtDist = $presented['ihtDistribution'])
             <h3>How this varies across your simulated futures</h3>
-            <p class="note">The figures above assume a single representative lifespan. Across the full simulation,
+            <p class="note">The figures above come from {{ $planningHorizonBasis }} Across the full simulation,
                 how much Inheritance Tax you leave depends on how long you live and how your investments fare.</p>
             <table class="tiles">
                 <tr>

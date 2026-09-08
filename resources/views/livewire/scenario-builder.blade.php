@@ -358,6 +358,25 @@
                     @endif
                 </div>
 
+                {{-- How long the plan has to last (board card 0061). The old answer was each
+                     person's own median age at death, which is a coin flip and is what made
+                     "the money lasts" the most misleading line this tool can print. The last of
+                     them lives materially longer, so the horizon is a household one. --}}
+                <div class="mt-6 border-t border-gray-200 pt-4">
+                    <label for="planningHorizon" class="{{ $label }}">How long the money has to last</label>
+                    <select id="planningHorizon" wire:model.live="assumptionOverrides.planningHorizon"
+                        class="{{ $field }} sm:max-w-md"
+                        @error('assumptionOverrides.planningHorizon') aria-invalid="true" aria-describedby="planningHorizon-error" @enderror>
+                        @foreach ($planningHorizonOptions as $option)
+                            <option value="{{ $option['value'] }}">{{ $option['label'] }} &mdash; {{ $option['note'] }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">
+                        This sets the age the plan runs to for the <strong>last</strong> of you, which is the one that decides whether the money lasts. One person's average age at death is a coin flip: on the 50th, roughly half of households in your position still have somebody alive after the plan has ended. We use the 75th unless you say otherwise, because planning short is the one mistake here that cannot be undone.
+                    </p>
+                    @error('assumptionOverrides.planningHorizon') <p id="planningHorizon-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                </div>
+
                 {{-- The adviser's ongoing fee is NOT an economic assumption: the forecast never
                      charges it. It is the parameter of the results page's "what paying for advice
                      would cost" comparison, so it sits below the assumptions with that said out loud. --}}

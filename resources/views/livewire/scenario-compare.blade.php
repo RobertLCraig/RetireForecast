@@ -104,9 +104,9 @@
          nothing about which was which, so a wealth figure with a single life behind it was read
          beside a probability with the whole simulation behind it. Each surface now says what it is. --}}
     <p class="mt-6 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700" role="note">
-        <strong>Single path:</strong> every figure in this table comes from one central projection (a median
-        lifespan, one set of returns, no care costs), not from the simulation. Two plans within a few thousand
-        pounds of each other here are not meaningfully apart. The simulated view is further down the page.
+        <strong>Single path:</strong> every figure in this table comes from one central projection, not from
+        the simulation: {{ $planningHorizonBasis }} One set of returns, no care costs. Two plans within a few
+        thousand pounds of each other here are not meaningfully apart. The simulated view is further down the page.
     </p>
 
     <div class="mt-3 overflow-x-auto rounded-lg border border-gray-200 bg-white" tabindex="0">

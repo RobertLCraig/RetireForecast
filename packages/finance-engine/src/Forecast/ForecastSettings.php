@@ -12,6 +12,7 @@ use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\Mortality\PlanningHorizon;
 use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 
 /**
@@ -91,7 +92,24 @@ final class ForecastSettings
          * an assumption, but it sets half the cost of preserving a pot rather than spending it.
          */
         public readonly ?Percent $beneficiaryMarginalRate = null,
+        /**
+         * How long the deterministic plan has to last: a named percentile of the age at death of
+         * the LAST surviving member of the household (board card 0061). The default is the
+         * cautious 75th, because the median it replaced is a coin flip, and a plan ranked on a
+         * coin-flip lifespan leaves roughly even odds of a decade of unfunded life.
+         */
+        public readonly PlanningHorizon $planningHorizon = PlanningHorizon::DEFAULT,
     ) {}
+
+    /**
+     * Is the planning horizon the ENGINE's own default rather than one the reader chose? It moves
+     * the depletion year, the estate and every affordability answer, so a reader who did not pick
+     * it has to be told which one is running.
+     */
+    public function planningHorizonIsAssumed(): bool
+    {
+        return $this->planningHorizon === PlanningHorizon::DEFAULT;
+    }
 
     /**
      * The beneficiary's assumed marginal rate actually in force: the reader's, or the engine's
@@ -145,6 +163,7 @@ final class ForecastSettings
             $this->freezeEndYear, $this->annualRent, $this->rentInflationReal, $on,
             $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
             $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
+            $this->planningHorizon,
         );
     }
 }

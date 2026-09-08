@@ -77,20 +77,50 @@ final class CohortLifeTable
     }
 
     /**
-     * The age by which cumulative survival first falls below 50% — the median age at
-     * death, used as the single representative lifespan for a deterministic forecast.
+     * The cumulative probability of still being alive at the END of each age-year, for a
+     * person of $sex aged $currentAge in $baseYear: an array [age => survival], falling
+     * from just under 1 to 0 at the hard cap age. The one home of the survival arithmetic;
+     * {@see percentileDeathAge} and the last-survivor horizon both read it.
+     *
+     * @return array<int, float>
      */
-    public function medianDeathAge(Sex $sex, int $currentAge, int $baseYear, float $qxMultiplier = 1.0): int
+    public function survivalCurve(Sex $sex, int $currentAge, int $baseYear, float $qxMultiplier = 1.0): array
     {
         $survival = 1.0;
+        $curve = [];
         foreach ($this->cohortCurve($sex, $currentAge, $baseYear, $qxMultiplier) as $age => $qx) {
             $survival *= (1.0 - $qx);
-            if ($survival < 0.5) {
+            $curve[$age] = $survival;
+        }
+
+        return $curve;
+    }
+
+    /**
+     * The age by which cumulative survival first falls below (1 - $percentile) — the
+     * $percentile-th percentile of the age at death. 0.5 gives the median; a higher
+     * figure gives the cautious end of the distribution a plan should last to.
+     */
+    public function percentileDeathAge(Sex $sex, int $currentAge, int $baseYear, float $percentile = 0.5, float $qxMultiplier = 1.0): int
+    {
+        $threshold = 1.0 - $percentile;
+        foreach ($this->survivalCurve($sex, $currentAge, $baseYear, $qxMultiplier) as $age => $survival) {
+            if ($survival < $threshold) {
                 return $age;
             }
         }
 
         return self::MAX_AGE;
+    }
+
+    /**
+     * The age by which cumulative survival first falls below 50% — the median age at
+     * death. One person's coin-flip lifespan, NOT a household planning horizon: for a
+     * couple see the Forecast\RepresentativeDeathAge last-survivor horizon.
+     */
+    public function medianDeathAge(Sex $sex, int $currentAge, int $baseYear, float $qxMultiplier = 1.0): int
+    {
+        return $this->percentileDeathAge($sex, $currentAge, $baseYear, 0.5, $qxMultiplier);
     }
 
     /**

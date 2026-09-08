@@ -11,10 +11,10 @@ use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
 
 /**
- * Convenience entry point for the central "best estimate" forecast: each person
- * dies at their median age from the cohort life table, and every year uses the
- * AssumptionSet's expected returns. The Monte Carlo uses {@see PathProjector}
- * directly with sampled draws instead.
+ * Convenience entry point for the central "best estimate" forecast: the plan runs to the
+ * household's last-survivor horizon at the settings' chosen percentile
+ * ({@see RepresentativeDeathAge}), and every year uses the AssumptionSet's expected returns.
+ * The Monte Carlo uses {@see PathProjector} directly with sampled draws instead.
  */
 final class DeterministicForecaster
 {
@@ -25,7 +25,7 @@ final class DeterministicForecaster
 
     public function forecast(Household $household, AssumptionSet $assumptions, ForecastSettings $settings): ForecastResult
     {
-        $deathAges = RepresentativeDeathAge::forHousehold($household, $this->lifeTable, $settings->baseYear);
+        $deathAges = RepresentativeDeathAge::forHousehold($household, $this->lifeTable, $settings->baseYear, $settings->planningHorizon);
 
         $draws = new DeterministicPathDraws($assumptions, $settings->allocation(), $deathAges);
 
@@ -42,7 +42,7 @@ final class DeterministicForecaster
      */
     public function forecastWithCareStress(Household $household, AssumptionSet $assumptions, ForecastSettings $settings, CareStressScenario $stress): ForecastResult
     {
-        $deathAges = RepresentativeDeathAge::forHousehold($household, $this->lifeTable, $settings->baseYear);
+        $deathAges = RepresentativeDeathAge::forHousehold($household, $this->lifeTable, $settings->baseYear, $settings->planningHorizon);
 
         $people = [];
         foreach ($household->persons as $person) {

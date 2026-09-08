@@ -7,6 +7,7 @@ namespace App\Forecast;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\Mortality\PlanningHorizon;
 use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 
 /**
@@ -34,11 +35,12 @@ final class AssumptionOverrides
 
     /**
      * The overrides that are NOT percentages, so they cannot ride {@see KEYS} (which the panel,
-     * the placeholders and the assistant all read as rates). One choice today: how long the State
-     * Pension triple lock is assumed to last, and the year it ends where the reader named one.
+     * the placeholders and the assistant all read as rates). Two choices today: how long the State
+     * Pension triple lock is assumed to last (with the year it ends where the reader named one),
+     * and how long the plan itself has to last ({@see PlanningHorizon}).
      * Blank means the engine's own default, exactly as a blank rate does.
      */
-    public const CHOICE_KEYS = ['statePensionUprating', 'statePensionUpratingUntilYear'];
+    public const CHOICE_KEYS = ['statePensionUprating', 'statePensionUpratingUntilYear', 'planningHorizon'];
 
     /**
      * Derive the effective assumption set: the preset overlaid with the user's filled
@@ -156,6 +158,20 @@ final class AssumptionOverrides
             : null;
 
         return [$basis, $year];
+    }
+
+    /**
+     * How long the plan has to last: a named percentile of the last survivor's age at death.
+     * A blank or unknown choice is the engine's own cautious default, so a scenario stored
+     * before board card 0061 reads as the default rather than as the median it used to run on.
+     *
+     * @param  array<string, mixed>  $overrides  the sparse `assumptionOverrides` map
+     */
+    public static function planningHorizon(array $overrides): PlanningHorizon
+    {
+        return (self::filled($overrides, 'planningHorizon')
+            ? PlanningHorizon::tryFrom((string) $overrides['planningHorizon'])
+            : null) ?? PlanningHorizon::DEFAULT;
     }
 
     private static function filled(array $overrides, string $key): bool

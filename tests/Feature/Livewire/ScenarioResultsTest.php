@@ -17,6 +17,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use RetireForecast\FinanceEngine\Mortality\PlanningHorizon;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
@@ -578,6 +579,17 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('What happens to this floor at the first death')
             ->assertSee('After the first death')
             ->assertDontSee('@endif'); // no leaked Blade directive
+    }
+
+    /**
+     * Board card 0061, criterion 3. The results page took its central figures from a coin-flip
+     * lifespan and said "one life" beside them. Whatever horizon is in force, the odds it leaves
+     * have to reach the screen.
+     */
+    public function test_the_results_page_states_the_odds_behind_its_single_path(): void
+    {
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->assertSee(PlanningHorizon::DEFAULT->oddsPhrase());
     }
 
     private function scenario(): Scenario

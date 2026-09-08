@@ -29,7 +29,7 @@ final class HistoricalBacktester
 
     public function backtest(Household $household, AssumptionSet $assumptions, ForecastSettings $settings, int $minHistoricalYears = 10): HistoricalBacktestResult
     {
-        $deathAges = RepresentativeDeathAge::forHousehold($household, $this->lifeTable, $settings->baseYear);
+        $deathAges = RepresentativeDeathAge::forHousehold($household, $this->lifeTable, $settings->baseYear, $settings->planningHorizon);
         $projector = new PathProjector($this->config);
         $allocation = $settings->allocation();
         $latestEligible = HistoricalReturns::lastYear() - $minHistoricalYears + 1;

@@ -1168,10 +1168,10 @@
                 <div class="rounded-md bg-gray-50 p-4">
                     <dt class="text-sm text-gray-500">Estate at the final death</dt>
                     <dd class="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">£{{ number_format($iht['secondDeath']['estate']) }}</dd>
-                    {{-- Board card 0058: this is ONE path, at a median lifespan, with no care, and it
-                         used to be stated to the pound with nothing saying so. The band beside it is
-                         the simulated spread of the same wealth. --}}
-                    <dd class="mt-1 text-xs text-gray-500">savings, investments, pensions and home, on a <strong>single</strong> central projection: one life, one set of returns, no care costs.</dd>
+                    {{-- Board card 0058: this is ONE path, with no care, and it used to be stated to
+                         the pound with nothing saying so. The band beside it is the simulated spread
+                         of the same wealth. Card 0061 puts the odds behind the lifespan here too. --}}
+                    <dd class="mt-1 text-xs text-gray-500">savings, investments, pensions and home, on {{ $planningHorizonBasis }} One set of returns, no care costs.</dd>
                     @if (! empty($presented['estateRange'] ?? null))
                         @php $estateRange = $presented['estateRange']; @endphp
                         <dd class="mt-2 text-xs text-gray-600">Across your simulated futures the wealth you leave ranges from <strong>£{{ number_format($estateRange['p10']) }}</strong> (the lowest 1 in 10) to <strong>£{{ number_format($estateRange['p90']) }}</strong> (the highest 1 in 10), with about <strong>£{{ number_format($estateRange['p50']) }}</strong> typical, over {{ number_format($estateRange['paths']) }} paths. Read the single figure above as one of those, not as the answer.</dd>
@@ -1536,6 +1536,10 @@
                 <strong>your home is deliberately excluded</strong>: you can't spend it while you live in it.
                 All of these are in <strong>today's money</strong>, so a figure for 2049 is what it would buy at today's prices.
             </p>
+            {{-- Board card 0061: how long this table runs for, and the odds that leaves. The table
+                 ends when the last of them is modelled to die, and a reader who is not told which
+                 lifespan that is reads "it lasts" as "it lasts for life". --}}
+            <p class="mt-1 text-sm text-gray-600">It ends when the last of you is modelled to die: {{ $planningHorizonBasis }}</p>
 
             {{-- Safety-floor headline: does usable money stay above the user's buffer, dip below it,
                  or run out entirely? The buffer (months of essentials) is set in the Spending step. --}}

@@ -6,6 +6,32 @@
 > that); this is the "how we got here" detail. Each item also has a dated DECISIONS.md
 > entry and the full record in `git log`. Newest-first within each part.
 
+## Card 0038, moved out of the live handover on 2026-09-08
+
+Folded out to make room for card 0061 while keeping the live brief loadable in one session. It is
+settled: its own criteria are met, and its two open questions are board cards 0099 and 0100.
+
+**How long the State Pension triple lock lasts is now a choice, and three engine defaults that
+reach every projection are on the screen.** `growState` used to raise the State Pension by
+`max($infl, 0.025)`: no source, no setting, no control, nothing on any screen. Because inflation is
+modelled near 2%, that floor binds in most years, so the State Pension grew in REAL terms for the
+whole plan and the Pension Credit guarantee, uprated by the same running factor, rose with it. The
+rule now lives on `StatePension\StatePensionUprating` (an enum owning `TRIPLE_LOCK_FLOOR_BPS`,
+whose `increase()` mirrors `PensionEscalationBasis::increase()`); the choice rides
+`ForecastSettings` beside the other policy toggles rather than `AssumptionSet` (the card's Task
+said the set, its comment thread says why not), and the reader picks the full lock, the lock ending
+in a year they name, or prices alone. Alongside it `assumedFigures()` discloses the **portfolio
+allocation** (nothing ever passed one, so every projection has run on a cautious 40/60 nobody was
+shown) and **every care assumption**; `inputNotes()` and `assumedFigures()` now take the run
+settings, and the results page, the PDF and `scenarios:audit` all pass them. **No `ENGINE_VERSION`
+bump and no stored re-run owed**: the default reproduces the old rule and every stored figure is
+byte-identical. Built in a worktree, so the new builder control and the three new notes **have not
+been seen in a browser**. Two things were carded, not settled: **0099**, the default (the full
+lock) is the OPTIMISTIC branch where the standing rule is to default adverse, and moving it moves
+every stored plan, so it is Rob's; and **0100**, only two of the lock's three limbs are modelled,
+because the engine holds no national earnings series and an unattended session cannot fetch one.
+See [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§19).
+
 ## Card 0037, moved out of the live handover on 2026-09-07
 
 Folded out to make room for card 0059 while keeping the live brief loadable in one session. It is

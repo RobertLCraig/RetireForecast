@@ -183,6 +183,9 @@ class ScenarioReport
             // Care isn't modelled unless the toggle is on; say so rather than let "the money
             // lasts" read as if care were free.
             'careNotModelled' => ! $forecaster->settings($scenario)->modelCareCost && empty($presented['careImpact'] ?? null),
+            // The lifespan the single deterministic path runs to, and the odds it leaves (card
+            // 0061). The same sentence the screen shows, so print cannot drift from it.
+            'planningHorizonBasis' => ResultPresenter::planningHorizonBasis($forecaster->settings($scenario)),
             // Monte Carlo headline + longevity / care / IHT spread + the run's provenance, only
             // if a completed run exists, so a 1,000-path preview can't masquerade as the 10k report.
             'presented' => $presented,

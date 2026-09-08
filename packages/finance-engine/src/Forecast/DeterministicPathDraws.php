@@ -11,7 +11,8 @@ use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 /**
  * The deterministic path: every year uses the AssumptionSet's expected (mean)
  * real returns and inflation, and each person dies at a single representative age
- * (their median age at death from the cohort life table). This is the central
+ * (from the cohort life table, with the last survivor carried out to the household's
+ * planning horizon). This is the central
  * "best estimate" projection; the Monte Carlo replaces these constants with sampled
  * sequences and sampled death ages.
  *

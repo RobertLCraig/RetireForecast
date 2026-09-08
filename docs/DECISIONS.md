@@ -3,6 +3,35 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-08: the deterministic plan runs to the last survivor, at the 75th percentile
+**Context:** card 0061 (expert panel 2026-08-19, adviser finding 5). Every deterministic surface,
+which is the whole comparison table, the affordability limits and the per-month analysis, ran to
+each person's OWN median age at death. For a couple the question is the LAST survivor, whose age
+at death is materially later and whose tail is far fatter, so every plan was being ranked on a
+coin-flip lifespan.
+
+**Decision: the horizon is a named percentile of the joint age at death, defaulting to the 75th.**
+`Mortality\PlanningHorizon` owns the three settings and their odds wording. The 75th is the
+adverse end of a reasonable range, which is the standing rule for a default that moves a result,
+and it is exposed as an editable control with the 50th and 90th beside it.
+
+**Decision: only the LAST survivor is carried out to the horizon; the first death stays at that
+person's own median.** The finding is about how long the money has to last, not about when the
+first death falls, and moving the first death later is the flattering direction: a household keeps
+two lots of income and two sets of allowances for longer. Reversing this is one condition in
+`RepresentativeDeathAge::forHousehold`.
+
+**Decision: a lifespan the reader STATED is never extended.** A fixed age, or an offset from the
+peer average, is a certainty in this model rather than a distribution. It enters the joint
+survival arithmetic as a step function, and the person carrying it is never carried out past what
+they said. Only a table-derived age (peer, or a mortality multiplier) moves.
+
+**Consequence:** `ENGINE_VERSION` is `finance-engine/last-survivor-planning-horizon` and the
+stored-scenario re-run is owed. Every stored plan funds more years under this stamp, so its
+terminal wealth and estate are too high, its depletion year too late, and any reading of "the
+money lasts" too favourable. The Monte Carlo samples lifespans and is untouched, so its golden
+master did not move and needs no re-pin.
+
 ## 2026-09-07: secured income can be bought with money that is not pension money
 **Context:** card 0060 (expert panel 2026-08-19, adviser finding 3). `AnnuityPurchase` could only
 be funded from a defined-contribution pot, so a household whose money sat in cash, an ISA or a

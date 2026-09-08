@@ -673,8 +673,14 @@ final class PathProjectorTest extends TestCase
      * This couple's cash interest stays inside the Personal Savings Allowance throughout and their
      * draws stay in the basic-rate band, so the other half of that card, stacking savings and
      * dividends under the draw, moves nothing here.
+     *
+     * Re-pinned again for board card 0061, which lengthened the plan itself: the deterministic
+     * horizon is now a percentile of the LAST survivor's age at death rather than each person's own
+     * median, so this couple funds more years and pays more tax over them. Nothing about the UFPLS
+     * rule moved; the figure is longer, not different. It stays what the same run costs with NO
+     * lump sum allowance left, which is what the two comparisons below are measured against.
      */
-    private const FILL_BANDS_LIFETIME_TAX_BEFORE_UFPLS = 10_353_806;
+    private const FILL_BANDS_LIFETIME_TAX_BEFORE_UFPLS = 13_666_556;
 
     public function test_a_fill_bands_pension_draw_is_taken_ufpls_style_and_pays_less_lifetime_tax(): void
     {

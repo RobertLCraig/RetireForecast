@@ -48,6 +48,7 @@ use RetireForecast\FinanceEngine\MonteCarlo\CareImpact;
 use RetireForecast\FinanceEngine\MonteCarlo\IhtDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\LongevityDistribution;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
+use RetireForecast\FinanceEngine\Mortality\PlanningHorizon;
 use RetireForecast\FinanceEngine\Property\AmortisationSchedule;
 use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
 use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
@@ -178,6 +179,26 @@ final class ResultPresenter
             // deterministic estate figure is never the only thing on the screen.
             'estateRange' => self::estateRange($primarySim),
         ];
+    }
+
+    /**
+     * How to describe, in one clause, the lifespan the single deterministic path runs to
+     * (board card 0061). THE one home of that sentence: the results page, the Compare page and
+     * the PDF all read it, so no surface can describe a path the projection did not run.
+     *
+     * It always states the ODDS the horizon leaves. A median lifespan is a coin flip, and telling
+     * a reader a plan built on one "lasts for life" is the most misleading string this tool can
+     * produce; the words are READ from the enum that owns the horizon, so changing a percentile
+     * moves the sentence with it. Null settings (a run stored before the setting existed) read as
+     * the engine's own default, which is what such a run is now re-run on.
+     */
+    public static function planningHorizonBasis(?ForecastSettings $settings): string
+    {
+        $horizon = $settings?->planningHorizon ?? PlanningHorizon::DEFAULT;
+        $percentile = ((int) round($horizon->percentile() * 100)).'th';
+
+        return "a single path, run to the {$percentile}-percentile age at death of the last of you: "
+            .$horizon->oddsPhrase().'.';
     }
 
     /**
@@ -1072,6 +1093,20 @@ final class ResultPresenter
                 .'have the State Pension rise with prices alone. One thing works the other way: the real lock is the '
                 .'highest of earnings, prices and the floor, and we do not model the earnings part, because we hold '
                 .'no national wage series. So in a year when wages outrun both, this is on the cautious side.';
+        }
+
+        // HOW LONG THE PLAN HAS TO LAST (board card 0061). This was each person's own median age at
+        // death, which nobody chose, nobody was shown, and which is a coin flip: it moves the
+        // depletion year, the estate and every affordability answer. The horizon in force and the
+        // odds it leaves are READ from the enum that owns them.
+        if ($settings !== null && $settings->planningHorizonIsAssumed()) {
+            $out[] = "You didn't say how long the money has to last, so we've run this plan to "
+                .self::planningHorizonBasis($settings).' The alternative is a lifespan taken at the '
+                .'median, and a median is a coin flip: on that basis roughly half of households in '
+                .'your position still have somebody alive after the plan has ended, which is what '
+                .'makes "the money lasts" so easy to misread. Planning short is the one mistake here '
+                .'that cannot be undone later, so the cautious end is what we use unless you change '
+                .'it in the builder.';
         }
 
         // WHETHER THE TWO PEOPLE ARE MARRIED. Board card 0054: this defaulted to married in the

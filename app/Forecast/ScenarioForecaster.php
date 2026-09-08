@@ -25,6 +25,7 @@ use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\MonteCarlo\Simulator;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
+use RetireForecast\FinanceEngine\Mortality\PlanningHorizon;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
@@ -60,7 +61,17 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-07 (park-home-and-nhs-nursing-contribution): three figures in the estate and the
+     * Bumped 2026-09-08 (last-survivor-planning-horizon): the deterministic plan now runs to a
+     * HOUSEHOLD horizon rather than to each person's own median age at death. The last survivor is
+     * carried out to a named percentile of the joint age at death ({@see PlanningHorizon}),
+     * defaulting to the cautious 75th; the first death stays at that person's own median, and a
+     * lifespan the reader stated is never extended. Every stored plan therefore has to fund MORE
+     * years than it did under an earlier stamp, so its terminal wealth and estate are too high, its
+     * depletion year too late, and any "the money lasts" reading too favourable. A single-person
+     * plan moves too, from its median to the same percentile of its own age at death. Only the
+     * deterministic and historical paths move: the Monte Carlo samples lifespans and is untouched,
+     * which is why its golden master did not redden. See board card 0061.
+     * Previous bump 2026-09-07 (park-home-and-nhs-nursing-contribution): three figures in the estate and the
      * care bill. A NURSING placement is now charged NET of NHS-funded Nursing Care
      * ({@see CareAssumptions::FUNDED_NURSING_CARE_WEEKLY_PENCE}), which the NHS pays direct to the
      * home for anybody assessed as needing a registered nurse including a self-funder, so every
@@ -302,7 +313,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/park-home-and-nhs-nursing-contribution';
+    public const ENGINE_VERSION = 'finance-engine/last-survivor-planning-horizon';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:
@@ -645,6 +656,11 @@ final class ScenarioForecaster
             beneficiaryMarginalRate: trim((string) ($scenario->effectiveBuilderState()['beneficiaryTaxRate'] ?? '')) === ''
                 ? null
                 : Percent::fromPercent((float) $scenario->effectiveBuilderState()['beneficiaryTaxRate']),
+            // How long the plan has to last: a percentile of the LAST survivor's age at death, not
+            // each person's own median. Absent = the engine's cautious default (board card 0061).
+            planningHorizon: AssumptionOverrides::planningHorizon(
+                $scenario->effectiveBuilderState()['assumptionOverrides'] ?? [],
+            ),
         );
     }
 

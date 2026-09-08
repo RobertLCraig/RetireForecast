@@ -585,6 +585,9 @@ class ScenarioResults extends Component
             // say so — and point at the toggle — rather than let "the money lasts" read as if care
             // were free. Suppressed once a run actually models care (the care panel then shows).
             'careNotModelled' => ! $forecaster->settings($this->scenario)->modelCareCost && empty($presented['careImpact'] ?? null),
+            // The lifespan the single deterministic path runs to, and the odds it leaves (card
+            // 0061). One home for the sentence, so the page, Compare and the PDF cannot disagree.
+            'planningHorizonBasis' => ResultPresenter::planningHorizonBasis($forecaster->settings($this->scenario)),
             // Contextual "get help" panel: the mortgage column shows when this plan involves a
             // mortgage (an owed balance or a buy funded by one); the CGT column when it would sell a
             // home that was ever let (partial-PRR CGT). The pensions & money column always shows.

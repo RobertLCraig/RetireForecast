@@ -17,6 +17,7 @@ use RetireForecast\FinanceEngine\Dto\DisabilityAwardRate;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
+use RetireForecast\FinanceEngine\Mortality\PlanningHorizon;
 use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\HouseholdFixture;
@@ -277,6 +278,49 @@ class ScenarioBuilderTest extends TestCase
             ->assertDontSee('Last year the lock applies')
             ->set('assumptionOverrides.statePensionUprating', 'triple_lock_until')
             ->assertSee('Last year the lock applies');
+    }
+
+    /**
+     * Board card 0061. The plan ran to each person's own median age at death — a coin flip — and
+     * there was no control at all. The three named percentiles have to be offered, and the one
+     * picked has to reach the settings the projection runs on.
+     */
+    public function test_the_planning_horizon_control_offers_the_three_named_percentiles(): void
+    {
+        $component = Livewire::test(ScenarioBuilder::class)->set('step', 1);
+
+        foreach (PlanningHorizon::cases() as $case) {
+            $component->assertSee($case->label());
+        }
+    }
+
+    public function test_the_planning_horizon_choice_reaches_the_forecast_settings(): void
+    {
+        $save = function (array $overrides): Scenario {
+            $component = Livewire::test(ScenarioBuilder::class);
+            foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+                $component->set($key, $value);
+            }
+            foreach ($overrides as $key => $value) {
+                $component->set("assumptionOverrides.{$key}", $value);
+            }
+            $component->call('save')->assertHasNoErrors();
+
+            return Scenario::latest('id')->firstOrFail();
+        };
+
+        // Untouched: stored sparsely, and the engine's own cautious default applies — which is a
+        // figure the reader never chose, so it has to disclose itself.
+        $default = $save([]);
+        $this->assertArrayNotHasKey('assumptionOverrides', $default->effectiveBuilderState());
+        $settings = app(ScenarioForecaster::class)->settings($default);
+        $this->assertSame(PlanningHorizon::DEFAULT, $settings->planningHorizon);
+        $this->assertTrue($settings->planningHorizonIsAssumed());
+
+        // And a chosen percentile carries through.
+        $chosen = app(ScenarioForecaster::class)->settings($save(['planningHorizon' => 'p50']));
+        $this->assertSame(PlanningHorizon::P50, $chosen->planningHorizon);
+        $this->assertFalse($chosen->planningHorizonIsAssumed());
     }
 
     public function test_a_state_pension_uprating_end_year_outside_the_modelled_range_is_rejected(): void

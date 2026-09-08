@@ -5,10 +5,31 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-07 (card 0060). The exceptions a fresh session needs, newest first. The "what is built"
-inventory and cards 0024, 0025, 0028 to 0037 were folded out to
+_Last updated: 2026-09-08 (card 0061). The exceptions a fresh session needs, newest first. The "what is built"
+inventory and cards 0024, 0025, 0028 to 0038 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **The plan no longer runs to a coin-flip lifespan.** Card 0061. Every deterministic surface, so
+  the whole comparison table, the affordability limits and the per-month analysis, ran to each
+  person's OWN median age at death; for a couple the question is the LAST survivor, whose age at
+  death is materially later. `Mortality\PlanningHorizon` names the three settings (50th, 75th, 90th)
+  and owns their odds wording, `CohortLifeTable::survivalCurve()` is the one home of the survival
+  arithmetic that `percentileDeathAge()` and `medianDeathAge()` both read, and
+  `RepresentativeDeathAge::forHousehold()` finds the first year the probability that anybody is
+  still alive falls below the threshold, treating lives as independent (the assumption the Monte
+  Carlo sampler already makes). **Only the last survivor is carried out to it**, and **a lifespan
+  the reader stated is never extended** (see DECISIONS 2026-09-08 for both calls). The setting
+  rides `ForecastSettings` through the sparse `assumptionOverrides` choice-key route, so a scenario
+  stored earlier carries no key and reads as the default. `ResultPresenter::planningHorizonBasis()`
+  is the one home of the sentence that states the odds, read by the results page, Compare and the
+  PDF, so no surface can describe a path the projection did not run. `ENGINE_VERSION` is
+  `finance-engine/last-survivor-planning-horizon` and the **stored-scenario re-run is owed**: every
+  stored plan funds more years now, so its wealth and estate are too high and its depletion year
+  too late. `MonteCarlo\GoldenMasterTest` did not redden (the simulation samples lifespans and is
+  untouched) and needs no re-pin; `PathProjectorTest::FILL_BANDS_LIFETIME_TAX_BEFORE_UFPLS` was
+  re-pinned because that couple funds more years, not because the UFPLS rule moved. Built in a
+  worktree, so the new builder control and the four relabelled copy blocks **have not been seen in
+  a browser**.
 - **Secured income can now be bought with money that is not pension money.** Card 0060. An annuity
   could only be funded from a DC pot, so a household whose savings sat in cash, an ISA or a general
   investment account could not buy one at all, and the third option in a two-plan decision (partly
@@ -405,26 +426,6 @@ inventory and cards 0024, 0025, 0028 to 0037 were folded out to
   SPENDS the first-declared person's accounts first, so a care spell paid for by drawing down still
   moves with typing order after its first year. That is card **0101**. The adjacent gap, that a
   couple owning 70/30 cannot say so, is card **0102**. See DECISIONS 2026-09-05.
-- **How long the State Pension triple lock lasts is now a choice, and three engine defaults that
-  reach every projection are on the screen.** Card 0038. `growState` used to raise the State Pension
-  by `max($infl, 0.025)`: no source, no setting, no control, nothing on any screen. Because
-  inflation is modelled near 2%, that floor binds in most years, so the State Pension grew in REAL
-  terms for the whole plan and the Pension Credit guarantee, uprated by the same running factor,
-  rose with it. The rule now lives on `StatePension\StatePensionUprating` (an enum owning
-  `TRIPLE_LOCK_FLOOR_BPS`, whose `increase()` mirrors `PensionEscalationBasis::increase()`); the
-  choice rides `ForecastSettings` beside the other policy toggles rather than `AssumptionSet` (the
-  card's Task said the set, its comment thread says why not), and the reader picks the full lock,
-  the lock ending in a year they name, or prices alone. Alongside it `assumedFigures()` discloses
-  the **portfolio allocation** (nothing ever passed one, so every projection has run on a cautious
-  40/60 nobody was shown) and **every care assumption**; `inputNotes()` and `assumedFigures()` now
-  take the run settings, and the results page, the PDF and `scenarios:audit` all pass them.
-  **No `ENGINE_VERSION` bump and no stored re-run owed**: the default reproduces the old rule and
-  every stored figure is byte-identical. Built in a worktree, so the new builder control and the
-  three new notes **have not been seen in a browser**. Two things were carded, not settled: **0099**,
-  the default (the full lock) is the OPTIMISTIC branch where the standing rule is to default
-  adverse, and moving it moves every stored plan, so it is Rob's; and **0100**, only two of the
-  lock's three limbs are modelled, because the engine holds no national earnings series and an
-  unattended session cannot fetch one. See [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§19).
 - **`scenarios:audit` cannot be used as a gate until every stored scenario is re-run.** It exits 1
   on 120 lines, all of them "run N carries no integrity stamp (it predates the column)", with no
   other problem class anywhere. Applying the pending `add_hashes_to_simulation_runs_table` migration

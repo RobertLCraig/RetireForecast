@@ -35,6 +35,7 @@ use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\Mortality\PlanningHorizon;
 use RetireForecast\FinanceEngine\Property\CgtPrivateResidenceCalculator;
 use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
@@ -325,6 +326,7 @@ class ScenarioBuilder extends Component
             // any plausible plan, so a two-digit or mistyped year is caught.
             'assumptionOverrides.statePensionUprating' => ['nullable', Rule::in(array_column(StatePensionUprating::cases(), 'value'))],
             'assumptionOverrides.statePensionUpratingUntilYear' => ['nullable', 'integer', 'between:2026,2100'],
+            'assumptionOverrides.planningHorizon' => ['nullable', Rule::in(array_column(PlanningHorizon::cases(), 'value'))],
 
             // The adviser's ongoing fee to PRICE (not to charge the forecast). Blank = the
             // benchmarked average. The upper bound is well above any UK ongoing advice fee, so a
@@ -1765,6 +1767,15 @@ class ScenarioBuilder extends Component
                 ['value' => StatePensionUprating::TripleLockUntil->value, 'label' => 'Lasts until a year I choose, then rises with prices only'],
                 ['value' => StatePensionUprating::Inflation->value, 'label' => 'Not assumed at all: the State Pension rises with prices only'],
             ],
+            // How long the plan itself has to last (board card 0061): a named percentile of the age
+            // at death of the LAST of them, not each person's own median. The blank option is the
+            // engine's own cautious default, exactly as a blank rate above is the preset's; the
+            // labels and the odds are READ from the enum that owns them.
+            'planningHorizonOptions' => array_map(static fn (PlanningHorizon $h): array => [
+                'value' => $h === PlanningHorizon::DEFAULT ? '' : $h->value,
+                'label' => $h->label(),
+                'note' => $h->oddsPhrase(),
+            ], PlanningHorizon::cases()),
             // The chosen preset's current figures, so each editable assumption shows the
             // value it would override as its placeholder (and updates when the set changes).
             'assumptionDefaults' => AssumptionOverrides::presetFigures(
