@@ -5,9 +5,31 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0078). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-08 (card 0079). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **A pension inherited from someone who died under 75 is tax-free to draw.** Card 0079. The
+  projector folded the deceased's pots into one for the heir without recording how old they were
+  when they died, so the fact that decides the whole tax treatment was gone by the time the pot was
+  drawn and the heir's full marginal rate was charged either way.
+  `state['pots'][heir][]['deceasedAgeAtDeath']` is the fact, stashed by `settleEstates` (which now
+  takes the path's `PathDraws`) the way `recordDeathInServiceBenefit` already stashes it for the
+  lump-sum route. `PathProjector::drawIsTaxFree()` is the one home of the rule, reading the age-75
+  line from `InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE`; three places ask it, so the
+  answer cannot turn on the draw order or on which surface is asking: both ad-hoc draw closures in
+  `fundShortfall`, through one shared `$takeTaxFreeInherited`, and `pensionTaxIfDrawn`, which was
+  netting the same phantom tax off spendable wealth. The draw rides the existing
+  `fromPensionTaxFree` channel, so it lands on the ladder's tax-free line, and **the means test
+  therefore sees none of it, which is card 0145**: a tax-free inherited income IS income for
+  Pension Credit. `ENGINE_VERSION` is `finance-engine/inherited-pension-tax-free-under-75` and the
+  **stored-scenario re-run is owed** for any plan whose first death is before 75 and which leaves a
+  pot behind. The **Monte Carlo golden master was re-pinned** (essentials success 0.4850 to 0.5050,
+  terminal wealth up at p50 and p90); `PIN_REVISION` was already today's date, so its companion
+  test could not demand the entry, and DECISIONS 2026-09-08 records it anyway. The rule is
+  **STATED, not verified** (no web in this session): see
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§38), carded as **0146**. Built in a worktree, so
+  the new results note **has not been seen in a browser**.
 
 - **The cheapest-draw-order search generates candidates now, so it is a search.** Card 0078. It
   priced the three orders the tool has names for and called the winner the cheapest of the ones it

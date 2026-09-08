@@ -2755,6 +2755,20 @@ final class ResultPresenter
             }
         }
 
+        // (c6b) WHICH tax treatment a pension the survivor inherits gets, and why (board card
+        // 0079). It turns on how old its owner was when they died, which is a fact of the plan the
+        // reader never entered, and the two answers are "no income tax at all" and "your own rate
+        // on every pound", so a reader shown the second without being told cannot tell it from a
+        // charge we invented. The engine's own sentence, quoted rather than restated, so the copy
+        // cannot describe a treatment the projection did not apply.
+        foreach ($forecast->years as $year) {
+            foreach ($year->warnings as $warning) {
+                if ($warning->code === WarningCode::INHERITED_PENSION_TAX_TREATMENT) {
+                    $notes[] = ['kind' => 'inherited_pension_tax', 'text' => "In {$year->calendarYear}: {$warning->message}"];
+                }
+            }
+        }
+
         // (c7) The CAPITAL CLIFF: savings above the Housing Benefit / Council Tax Support limit
         // end both. The engine has always built this warning and nothing ever collected it, while
         // METHODOLOGY.md told the reader it was flagged, so every sell-and-rent plan parked a large

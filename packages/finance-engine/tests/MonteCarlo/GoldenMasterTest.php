@@ -80,13 +80,13 @@ final class GoldenMasterTest extends TestCase
      * @var array<string, int|string>
      */
     private const PINNED = [
-        'successProbabilityEssentials' => '0.4850',
-        'successProbabilityFullSpend' => '0.0150',
+        'successProbabilityEssentials' => '0.5050',
+        'successProbabilityFullSpend' => '0.0600',
         'terminalWealth.p10' => 3796678,
         'terminalWealth.p25' => 19404532,
-        'terminalWealth.p50' => 36395284,
+        'terminalWealth.p50' => 37288927,
         'terminalWealth.p75' => 71090928,
-        'terminalWealth.p90' => 107280928,
+        'terminalWealth.p90' => 111656875,
         'fan.bands' => 38,
         'fan.first.calendarYear' => 2026,
         'fan.first.p10' => 69036832,
@@ -94,8 +94,8 @@ final class GoldenMasterTest extends TestCase
         'fan.first.p90' => 69091951,
         'fan.middle.calendarYear' => 2045,
         'fan.middle.p10' => 16185116,
-        'fan.middle.p50' => 44072767,
-        'fan.middle.p90' => 101310658,
+        'fan.middle.p50' => 44220549,
+        'fan.middle.p90' => 103268481,
         'fan.last.calendarYear' => 2063,
         'fan.last.p10' => 9578042,
         'fan.last.p50' => 16349924,

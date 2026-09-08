@@ -206,7 +206,7 @@ final class PathProjector
             // a dead owner's money is stranded (counted as wealth but undrawable), which reads
             // falsely as "running out" from the first death. Settle before projecting the year
             // so the survivor can use the inherited money that year.
-            $this->settleEstates($state, $household, $alive);
+            $this->settleEstates($state, $household, $alive, $draws);
 
             // Income-tax thresholds are frozen until freezeEndYear, then index with inflation.
             // $thresholdFactor is how far they have risen by this year: 1.0 during the freeze,
@@ -760,6 +760,11 @@ final class PathProjector
             // reset to 0 whenever the person is not in a funded placement.
             'laFundedCareYears' => [],
             'estateSettled' => [], // person ids whose assets have passed to the survivor (once each)
+            // What the survivor is to be TOLD about a pension pot just inherited: which of the two
+            // tax treatments applies to what they draw from it, and the age at death it turns on
+            // ({@see inheritedPensionTreatment}). Drained onto the year's warnings by projectYear,
+            // so it is reported once, on the year the inheritance happens.
+            'inheritedPensionNotes' => [],
             // Death-in-service lump sums recorded in a member's final working year and paid to the
             // survivor the following year (personId => the payout's facts). Drained when paid.
             'deathBenefit' => [],
@@ -830,7 +835,7 @@ final class PathProjector
      * @param  array<string, mixed>  $state
      * @param  array<string, bool>  $alive
      */
-    private function settleEstates(array &$state, Household $household, array $alive): void
+    private function settleEstates(array &$state, Household $household, array $alive, PathDraws $draws): void
     {
         $heir = null;
         foreach ($household->persons as $person) {
@@ -877,12 +882,20 @@ final class PathProjector
                 // Wholly CRYSTALLISED: a beneficiary drawdown fund has already been through the
                 // deceased's regime, so no draw from it has a tax-free quarter. Today that agrees
                 // with {@see lsaHeadroom} returning nil for an inherited pot, but the two answer
-                // different questions (is there a quarter / whose allowance pays for it) and board
-                // card 0079 will give an under-75 inheritance headroom again — at which point this
-                // field is the only thing left stopping a second quarter on the same money.
+                // different questions (is there a quarter / whose allowance pays for it), and where
+                // the death was under 75 the whole draw is tax-free anyway ({@see drawIsTaxFree}),
+                // by a different route: this field is what stops that becoming a second quarter.
                 // The heir's own nomination on an inherited pot is unknowable and immaterial: the
                 // only death left is the final one, which has no surviving spouse to exempt it.
-                $state['pots'][$heir][] = ['value' => $inherited, 'plan' => [], 'crystallised' => $inherited, 'contribution' => 0, 'employerContribution' => 0, 'reliefMethod' => null, 'earliestAccessAge' => 0, 'growthOverrideReal' => null, 'inherited' => true, 'nominatedToSpouse' => false];
+                //
+                // deceasedAgeAtDeath is the fact the WHOLE tax treatment of a later draw turns on,
+                // and it is the fact that is gone by the time the pot is drawn: the pots are
+                // folded into one and their owner is dead. Stashed here for the same reason
+                // {@see recordDeathInServiceBenefit} stashes it for the lump-sum form of the same
+                // money (board card 0079).
+                $ageAtDeath = $draws->deathAge($id);
+                $state['pots'][$heir][] = ['value' => $inherited, 'plan' => [], 'crystallised' => $inherited, 'contribution' => 0, 'employerContribution' => 0, 'reliefMethod' => null, 'earliestAccessAge' => 0, 'growthOverrideReal' => null, 'inherited' => true, 'nominatedToSpouse' => false, 'deceasedAgeAtDeath' => $ageAtDeath];
+                $state['inheritedPensionNotes'][] = self::inheritedPensionTreatment($ageAtDeath);
             }
             $state['pots'][$id] = [];
         }
@@ -1994,6 +2007,7 @@ final class PathProjector
                     (int) round($this->config->benefits->housingSupportUpperCapitalLimit->pence * $cumInflation),
                     $m,
                 ),
+                ...$this->inheritedPensionWarnings($state),
                 ...$benefitWarnings,
                 ...($guardrailNoFlexibility ? [new Warning(
                     WarningCode::GUARDRAIL_NO_FLEXIBILITY,
@@ -2899,6 +2913,61 @@ final class PathProjector
     }
 
     /**
+     * Is EVERY pound drawn from this pot tax-free? True only of a pot inherited from a member who
+     * died under {@see InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE}: a beneficiary's
+     * income from such a fund carries no income tax at all, at any rate, however much they take.
+     * Died at 75 or over and it is taxed as the beneficiary's own income, which is what the model
+     * charged in both cases before board card 0079.
+     *
+     * THE one home of the rule, read by both ad-hoc draw closures in {@see fundShortfall} and by
+     * {@see pensionTaxIfDrawn}, so the treatment cannot depend on the draw order or on which
+     * surface is asking. A pot with no recorded age at death (nothing inherited, or a pot the heir
+     * owns themselves) is not tax-free, which is the position the model already took.
+     *
+     * This is NOT the tax-free quarter: an inherited pot has none of those ({@see lsaHeadroom}),
+     * and the two rules must not be added together on the same money.
+     *
+     * source: Finance Act 2004 s.579A and Sch.28, as amended by the Taxation of Pensions Act 2014,
+     * https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm073010 , the same age-75
+     * dividing line {@see collectDeathInServiceBenefit} applies to the lump-sum form of this money.
+     * verified_on: NOT VERIFIED. This build had no web access, so the rule is STATED from the
+     * legislation rather than checked against a live page. See docs/spec/ASSUMPTIONS.md §38.
+     *
+     * @param  array<string, mixed>  $pot
+     */
+    public static function drawIsTaxFree(array $pot): bool
+    {
+        $ageAtDeath = $pot['deceasedAgeAtDeath'] ?? null;
+
+        return ($pot['inherited'] ?? false)
+            && $ageAtDeath !== null
+            && $ageAtDeath < InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE;
+    }
+
+    /**
+     * The sentence the projector states about an inheritance it has just settled: which of the two
+     * treatments applies to what the survivor draws from the pot, and the age at death it turns on.
+     * Written here, beside the rule, so a screen quotes the engine's own words and the two cannot
+     * drift ({@see drawIsTaxFree}).
+     */
+    private static function inheritedPensionTreatment(int $ageAtDeath): string
+    {
+        $threshold = InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE;
+
+        return $ageAtDeath < $threshold
+            ? "The pension you inherit this year is TAX-FREE to draw. Its owner died at {$ageAtDeath}, "
+                ."which is under {$threshold}, and a beneficiary pays no income tax at all on what "
+                .'they take out of a pot left by someone who died that young, whatever the amount '
+                .'and whatever else they are earning. Nothing you draw from it is added to your '
+                .'taxable income, so it does not push your other income into a higher band either.'
+            : 'Everything you draw from the pension you inherit this year is TAXED as your own '
+                ."income. Its owner died at {$ageAtDeath}, which is {$threshold} or over, so each "
+                .'pound you take out is added to your income for the year and charged at your own '
+                .'rate. Taking a large amount in one year can push it into a higher band, so what '
+                .'the pot is worth to spend depends on how slowly it is drawn.';
+    }
+
+    /**
      * How much tax-free Lump Sum Allowance a draw from THIS pot may still use. The companion to
      * {@see ufplsSplit}: the split says what share of a draw is tax-free, this says whose allowance
      * pays for it. Both routes into the split — a planned WithdrawalInstruction and the ad-hoc
@@ -2909,8 +2978,9 @@ final class PathProjector
      * regime ({@see collectDeathInServiceBenefit} states it for the lump-sum form), not a pension
      * of the heir's: there is no tax-free quarter in it, and the heir's own allowance (and, through
      * deathBenefit['lsaUsed'], their death-benefit allowance) must not pay for it. Zero headroom
-     * makes the split all-taxable, which is exactly the fully-taxable draw the model has always
-     * charged on an inherited pot.
+     * makes the split all-taxable, which is the right answer for a pot inherited from a death at
+     * 75 or over. A death UNDER 75 makes the whole draw tax-free by a different rule, which is
+     * {@see drawIsTaxFree} and is applied before the split is reached, never through this.
      *
      * Public static so it is unit-tested directly, like the split it feeds.
      *
@@ -3505,10 +3575,32 @@ final class PathProjector
             }
         };
 
+        // Take money out of a pot every pound of which is tax-free: one inherited from a member
+        // who died under 75 ({@see drawIsTaxFree}). There is no gross-up and no band to fill,
+        // because none of it is income for tax: the cash raised IS the amount drawn, so a taxable
+        // limit does not bind it and it consumes no allowance. Reported on the tax-free pension
+        // line beside the tax-free quarter of an ordinary draw (board card 0074), because the
+        // drawdown line beside it is the taxable one and a reader adds that up.
+        //
+        // Written once and called from BOTH ad-hoc draw closures below, so the treatment cannot
+        // depend on which drawdown order is running: the fault this replaces charged full income
+        // tax on every route (board card 0079).
+        $takeTaxFreeInherited = function (array &$pot) use (&$remaining, &$funded, &$fromPension, &$fromPensionTaxFree): void {
+            $gross = min($remaining, $pot['value']);
+            if ($gross <= 0) {
+                return;
+            }
+            $this->drawFromPot($pot, $gross);
+            $remaining -= $gross;
+            $funded += $gross;
+            $fromPension += $gross;
+            $fromPensionTaxFree += $gross;
+        };
+
         // Draw taxable pension income, per person, capped so the person's taxable income does
         // not exceed $taxableLimit (null = uncapped). Grosses up so the after-tax cash meets
         // the remaining need.
-        $drawPension = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, &$drawnTaxable, $alive, $ages, $household, $incomeOf, $thresholdFactor): void {
+        $drawPension = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, &$drawnTaxable, $alive, $ages, $household, $incomeOf, $thresholdFactor, $takeTaxFreeInherited): void {
             foreach ($household->persons as $person) {
                 if ($remaining <= 0) {
                     return;
@@ -3526,6 +3618,12 @@ final class PathProjector
                     // pot carries age 0 (a beneficiary can draw it at any age). Before then a
                     // shortfall cannot legally be met from this pot — it falls to other sources.
                     if (($ages[$person->id] ?? 0) < ($pot['earliestAccessAge'] ?? 0)) {
+                        continue;
+                    }
+                    // A pot inherited from a death under 75 pays out with no income tax at all.
+                    if (self::drawIsTaxFree($pot)) {
+                        $takeTaxFreeInherited($pot);
+
                         continue;
                     }
                     $cap = $pot['value'];
@@ -3574,7 +3672,7 @@ final class PathProjector
         // part consumes, so the draw is ~a third larger for the same taxable income) and the
         // person's remaining Lump Sum Allowance. {@see maxUfplsGross} solves both. With no
         // allowance left the split is all-taxable, so this degrades exactly to $drawPension.
-        $drawPensionUfpls = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, &$fromPensionTaxFree, &$drawnTaxable, $alive, $ages, $household, $incomeOf, $thresholdFactor): void {
+        $drawPensionUfpls = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, &$fromPensionTaxFree, &$drawnTaxable, $alive, $ages, $household, $incomeOf, $thresholdFactor, $takeTaxFreeInherited): void {
             $pclsRate = $this->config->pension->pclsRate->asFraction();
             $lsa = $this->config->pension->lumpSumAllowance->pence;
 
@@ -3594,6 +3692,13 @@ final class PathProjector
                     // touched before its owner reaches its earliest access age, whatever order
                     // the fill planner would prefer. (DECISIONS 2026-07-02.)
                     if (($ages[$person->id] ?? 0) < ($pot['earliestAccessAge'] ?? 0)) {
+                        continue;
+                    }
+                    // The same tax-free-inheritance gate $drawPension applies, through the same
+                    // one home: whether a draw is taxed at all cannot turn on the draw ORDER.
+                    if (self::drawIsTaxFree($pot)) {
+                        $takeTaxFreeInherited($pot);
+
                         continue;
                     }
                     // Whose allowance, if any, this pot's tax-free quarter may spend — the same
@@ -3913,6 +4018,26 @@ final class PathProjector
         }
 
         return $due;
+    }
+
+    /**
+     * The tax treatment of any pension pot inherited THIS year, drained from the state so it is
+     * reported once rather than on every year the pot survives. The sentence is the projector's
+     * own ({@see inheritedPensionTreatment}), which is what lets a screen quote it instead of
+     * restating a rule that could then describe a projection that did not happen.
+     *
+     * @param  array<string, mixed>  $state
+     * @return list<Warning>
+     */
+    private function inheritedPensionWarnings(array &$state): array
+    {
+        $warnings = [];
+        foreach ($state['inheritedPensionNotes'] as $message) {
+            $warnings[] = new Warning(WarningCode::INHERITED_PENSION_TAX_TREATMENT, $message);
+        }
+        $state['inheritedPensionNotes'] = [];
+
+        return $warnings;
     }
 
     /**
@@ -4257,6 +4382,12 @@ final class PathProjector
             $taxable = 0;
             foreach ($pots as $pot) {
                 if ($pot['value'] <= 0) {
+                    continue;
+                }
+                // A pot inherited from a death under 75 costs nothing to draw, so none of it is
+                // netted off spendable wealth: the same rule the draw routes apply, read from the
+                // same home, or this surface would charge tax the projection never takes.
+                if (self::drawIsTaxFree($pot)) {
                     continue;
                 }
                 [$taxFree, $charged] = self::ufplsSplit(

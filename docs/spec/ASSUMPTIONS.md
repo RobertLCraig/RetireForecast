@@ -763,6 +763,21 @@ cash **−0.5%**.
    since 1989, which is why both tax years carry it; confirming that against the current gov.uk
    page is board card **0140**.
 
+38. **A beneficiary pays no income tax on a pension inherited from a member who died under 75**
+   (board card 0079; live in `Forecast\PathProjector::drawIsTaxFree`, which reads the age from
+   `Iht\InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE`). Death under 75: the whole draw is
+   tax-free income, with no cap and whatever else the beneficiary earns. Death at 75 or over: taxed
+   as the beneficiary's own income at their marginal rate, which is what the model charged in both
+   cases before this card. **STATED, not verified** (the build session had no web access): Finance
+   Act 2004 s.579A and Sch.28 as amended by the Taxation of Pensions Act 2014, restated at
+   https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm073010 . This is the same
+   dividing line, from the same citation, that the lump-sum death benefit already applies in
+   `PathProjector::collectDeathInServiceBenefit`, so one page answers both.
+
+   **To verify:** a dated fetch of PTM073010 confirming the age-75 split for BENEFICIARY DRAWDOWN
+   and not only for lump sums, and that the under-75 exemption is not itself capped by the
+   deceased's remaining lump sum and death benefit allowance in drawdown form. Board card **0146**.
+
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees

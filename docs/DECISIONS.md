@@ -3,6 +3,44 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-08: an inherited pension is tax-free where its owner died under 75
+
+**Context:** card 0079. `PathProjector::settleEstates` folded the deceased's pots into one
+inherited pot for the survivor and did not record how old they were when they died, so by the time
+the pot was drawn the fact deciding its tax treatment was gone. Charging the heir's full marginal
+rate was the cautious side of a distinction the model could not make, and it is wrong for every
+household whose first death is early.
+
+**Decision: the age at death lives ON the pot, and the rule has one home.**
+`state['pots'][heir][]['deceasedAgeAtDeath']` is stashed at the moment of inheritance, the way
+`recordDeathInServiceBenefit` already stashes it for the lump-sum form of the same money.
+`PathProjector::drawIsTaxFree()` is the only place the rule is written, read by both ad-hoc draw
+closures in `fundShortfall` and by `pensionTaxIfDrawn`, so whether a draw is taxed at all cannot
+turn on the draw ORDER or on which surface is asking. The threshold is read from
+`InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE`, which already owns the age-75 line and its
+source, rather than restated.
+
+**Decision: the tax-free draw is reported on the tax-free pension line, not the drawdown line.**
+It rides `fundShortfall`'s existing `fromPensionTaxFree` subset (card 0074), so the ladder's
+drawdown line stays the taxable one a reader can add up, and the means test sees none of it. **That
+last part is a known limit and is carded (0145):** a tax-free inherited income is still income for
+Pension Credit, and routing it through the tax-free channel disregards it. The alternative was a
+third channel through the whole funding path, which is more than this card decided.
+
+**Consequence: `ENGINE_VERSION` is `finance-engine/inherited-pension-tax-free-under-75` and the
+stored-scenario re-run is owed.** Any stored plan whose first death is before 75 and which leaves a
+pot behind was charged tax that does not exist, so its wealth, estate, depletion year and success
+odds are too pessimistic. **Monte Carlo golden master pinned 2026-09-08** (third pin of the day;
+this supersedes the pin made for card 0077). The frozen household samples lifespans, so many paths
+have a first death under 75: essentials success rises from 0.4850 to 0.5050, full-spend success
+from 0.0150 to 0.0600, and terminal wealth rises at p50 and p90. `PIN_REVISION` was already today's
+date, so its companion test could not demand this entry; it is written because the figures moved.
+
+**The rule is STATED, not verified.** This session had no web access. It is stated from Finance Act
+2004 s.579A and Sch.28 as amended by the Taxation of Pensions Act 2014, citing PTM073010, which is
+the same citation `collectDeathInServiceBenefit` and `BENEFICIARY_TAXED_FROM_AGE` already carry.
+See docs/spec/ASSUMPTIONS.md §38 and card 0146.
+
 ## 2026-09-08: the draw-order search generates candidates, at two statutory targets
 
 **Context:** card 0078. The search priced the three orders the tool has names for and called the

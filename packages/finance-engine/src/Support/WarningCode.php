@@ -77,6 +77,15 @@ final class WarningCode
     public const IHT_INHERITED_PENSION_INCOME_TAX = 'iht_inherited_pension_income_tax';
 
     /**
+     * A pension pot has passed to the surviving partner, and how they will be taxed on what they
+     * draw from it turns on one fact the reader never entered: how old the member was when they
+     * died. Under 75 the whole draw is tax-free income; at 75 or over it is taxed as the heir's
+     * own income. Raised on the year of the inheritance so the treatment, and the age it turns on,
+     * are on the screen beside the money (board card 0079).
+     */
+    public const INHERITED_PENSION_TAX_TREATMENT = 'inherited_pension_tax_treatment';
+
+    /**
      * A one-off CAPITAL cost (an unfunded home purchase, a mortgage redeemed from capital) could
      * not be funded in the year it falls. Raised on that year so the lump is named and findable,
      * rather than only depressing a spending probability that reads as a whole-plan failure.

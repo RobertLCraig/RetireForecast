@@ -61,7 +61,17 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-08 (pension-draw-assessed-for-pension-credit): money drawn out of a pension to
+     * Bumped 2026-09-08 (inherited-pension-tax-free-under-75): a pension pot the survivor inherits
+     * now carries the age its owner died at ({@see PathProjector::drawIsTaxFree}), and where that
+     * age is under 75 the survivor draws it as TAX-FREE income, which is what the law does. The
+     * projector folded the deceased's pots into one without recording that age, so it charged the
+     * heir's full marginal rate either way. Any stored plan whose FIRST DEATH is before 75 and
+     * which leaves a pot behind is charged tax that does not exist under an earlier stamp, so its
+     * wealth, depletion year, estate and success odds are all too PESSIMISTIC, and its cashflow
+     * ladder files a tax-free draw as taxable pension income. Spendable wealth moves the same way,
+     * because that surface netted the same phantom tax off the pot. A plan whose deaths are all at
+     * 75 or over, or which leaves no pension to a survivor, is byte-identical. See board card 0079.
+     * Previous bump 2026-09-08 (pension-draw-assessed-for-pension-credit): money drawn out of a pension to
      * cover a year's shortfall is now assessable INCOME for that year's Pension Credit, which is
      * what the means test does with it. The award and the draw are settled together, to a fixed
      * point, because each decides the other ({@see PathProjector::projectYear}); only the TAXABLE
@@ -398,7 +408,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/pension-draw-assessed-for-pension-credit';
+    public const ENGINE_VERSION = 'finance-engine/inherited-pension-tax-free-under-75';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
