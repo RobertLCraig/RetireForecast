@@ -90,3 +90,52 @@ picked the pension-first order.
 
 Built in a worktree, so the new builder control, the reworded panel sentence and the new results
 note **have not been seen in a browser**.
+
+### 2026-09-08 review (v20260908165132-5f52)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 292s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I traced all three.
+
+**#1 ÔÇö chosen order is stored and used.** The select is in `resources/views/livewire/scenario-builder.blade.php` (bound to `assumptionOverrides.drawdownStrategy`), validated in `ScenarioBuilder::rules()`, read by `AssumptionOverrides::drawdownStrategy()` and applied in `ScenarioForecaster::buildSettings()`. `ForecastSettings` carries it. Traced.
+
+**#2 ÔÇö default is disclosed.** `ResultPresenter::inputNotes()` adds an `assumed_figure` note when `ForecastSettings::drawdownStrategyIsAssumed()` is true, and the name and the "what it does" text are read from `DrawdownStrategy::label()` / `::description()`, not restated. That matches the "read the constant that owns the figure" rule. Traced.
+
+**#3 ÔÇö the panel names the reader's own order.** `WithdrawalStrategyComparison::build()` reads `current` off `ScenarioForecaster::settings()`, `alternativeTo()` picks a different one, and `viewModel()` emits `baselineLabel` / `alternativeLabel` / `alternativeDescription`. Both templates (`partials/withdrawal-sequencing.blade.php` and `pdf/partials/report.blade.php`) print them. Traced.
+
+I tried to break it two ways. `alternativeTo()` cannot return the current order, so the panel can never compare an order with itself. A reader who picks "spend savings first" gets stored as blank, so it still reads as assumed and still gets the disclosure ÔÇö right per the card, which asks for a note when nothing was chosen.
+
+VERDICT: sound
+
+**scope: sound**
+
+**Scope check on commit `bc5741e` (16 files, all card-shaped).**
+
+Over the fence? No. No new draw order is invented: `DrawdownStrategy` still has the same three cases; the enum only gained `label()`, `description()` and a `DEFAULT` constant, all of which AC#3 forces (the panel must name the reader's own order, and the closing sentence had to travel with whichever order sits in tile two).
+
+Removing `WithdrawalStrategyComparison::CURRENT` / `::ALTERNATIVE` for `alternativeTo()` is inside the fence too: a constant baseline cannot name a reader's choice.
+
+Ticked-but-unchanged task: "add to `BuilderStateFixture::full`". `tests/Support/BuilderStateFixture` holds no `assumptionOverrides` key at all, so no sibling choice key is there either. Consistent, not a gap.
+
+Half done, but by house pattern rather than by this card: `ForecastSettings::drawdownStrategyIsAssumed()` returns true whenever the order equals the default, and `ScenarioBuilder::render()` maps the default to `''`, so a reader who deliberately picks "spending your savings first" is still told they did not choose. `planningHorizonIsAssumed()` and `statePensionUpratingIsAssumed()` behave identically, so this is the established route the card asked for, not new drift.
+
+Nothing grew.
+
+VERDICT: sound
+
+**breakage: defect**
+
+Reviewed the card-0075 change end to end: every `ForecastSettings` build routes through `ScenarioForecaster::buildSettings`, the run `inputs_hash` covers `assumptionOverrides`, `HousingComparison::rentSettings` carries the order through, and both the screen and PDF panels now read `alternativeLabel` / `alternativeDescription` instead of a fixed "fill the bands". No caller was left behind.
+
+Two things the change made false:
+
+1. `app/Forecast/WithdrawalStrategyComparison.php` ÔÇö the **class docblock** still says the panel prices "the current strategy (tax-efficient: spend non-pension assets first) vs the 'fill the bands' strategy". Since `alternativeTo()`, neither half holds: current is the reader's order, and the alternative is tax-efficient when the reader picks fill-the-bands. Same falsehood in the `$savingPence` constructor comment ("positive = fill-the-bands pays less") and in the `fillBandsSaves()` docblock, which now governs a comparison that may not involve fill-the-bands at all.
+
+2. `ForecastSettings::drawdownStrategyIsAssumed()` ÔÇö the builder stores the default order as `''`, so a reader who deliberately picks "spending your savings first" is still told "You didn't say which draw order to useÔÇª Nobody chose that for your household". The disclosure asserts something untrue of that reader.
+
+VERDICT: defect
+
