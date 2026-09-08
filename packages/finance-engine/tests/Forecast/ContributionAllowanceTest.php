@@ -113,12 +113,30 @@ final class ContributionAllowanceTest extends TestCase
         );
     }
 
-    public function test_a_contribution_above_the_annual_allowance_is_capped_at_it(): void
+    public function test_a_contribution_above_the_allowance_is_charged_not_blocked(): void
     {
-        // GBP 80,000 asked for out of a GBP 180,000 salary. Only the annual allowance may go in.
-        $year = $this->project($this->earner(80_000))->years[0];
+        // Board card 0073. GBP 80,000 asked for out of a GBP 180,000 salary, against a GBP 60,000
+        // allowance. The law does not REFUSE the extra GBP 20,000: it is paid in, and an annual
+        // allowance charge falls on it at the member's marginal rate. Modelling the allowance as a
+        // wall instead made the overpayment disappear — no pot, no tax, no trace.
+        $over = $this->project($this->earner(80_000))->years[0];
+        $atCap = $this->project($this->earner(60_000))->years[0];
 
-        $this->assertSame($this->pension()->annualAllowance->pence, $year->pensionWealth->pence);
+        $this->assertSame(
+            Money::fromPounds(80_000)->pence,
+            $over->pensionWealth->pence,
+            'the contribution above the allowance was refused instead of being charged',
+        );
+
+        // The charge is what makes the excess tax-neutral: relief was given on the whole GBP 80,000
+        // (a net-pay contribution comes off gross pay), and the charge takes back exactly the relief
+        // on the GBP 20,000 over the allowance. So this household pays the same tax as one that
+        // stopped at the allowance — the difference between them is the pot, not the tax bill.
+        $this->assertSame(
+            $atCap->totalTax->pence,
+            $over->totalTax->pence,
+            'the excess got relief and no charge, so it was paid in free',
+        );
     }
 
     public function test_a_contribution_within_the_annual_allowance_is_untouched(): void
@@ -132,27 +150,41 @@ final class ContributionAllowanceTest extends TestCase
     public function test_the_employers_contribution_counts_against_the_same_allowance(): void
     {
         // GBP 40,000 each is GBP 80,000 of pension input against one GBP 60,000 allowance.
-        // Measuring the cap on the member's share alone would let the pair through untouched.
-        $year = $this->project($this->earner(40_000, 40_000))->years[0];
+        // Measuring the allowance on the member's share alone would let the pair through with no
+        // charge at all, because neither half is over it on its own.
+        $bothPaying = $this->project($this->earner(40_000, 40_000))->years[0];
+        $insideIt = $this->project($this->earner(40_000, 20_000))->years[0];
 
-        $this->assertSame($this->pension()->annualAllowance->pence, $year->pensionWealth->pence);
+        $this->assertSame(Money::fromPounds(80_000)->pence, $bothPaying->pensionWealth->pence);
+        $this->assertGreaterThan(
+            $insideIt->totalTax->pence,
+            $bothPaying->totalTax->pence,
+            'the employer\'s share escaped the allowance, so nothing was charged',
+        );
     }
 
-    public function test_what_the_allowance_blocks_stays_with_the_household_rather_than_vanishing(): void
+    public function test_the_charge_is_the_whole_cost_of_paying_above_the_allowance(): void
     {
-        // Completeness: money refused by the pot is not destroyed. A net-pay contribution the
-        // allowance blocks is never given up, so it stays in pay, is taxed there like any other
-        // earnings, and what survives is saved. Asking for GBP 80,000 must therefore leave the
-        // household in precisely the position of one that asked for the allowance and no more,
-        // pot AND pocket. A cap that dropped the excess would show here as the same pot beside a
-        // smaller pocket.
-        $capped = $this->project($this->earner(80_000))->years[0];
+        // Completeness, from the other side. Nothing about going over the allowance is destroyed
+        // and nothing is invented: the whole GBP 80,000 reaches the pot, so the household holds
+        // exactly GBP 20,000 more pension than one that stopped at the allowance, and it paid for
+        // it out of the same pay. The old model refused the excess, which showed as the same pot
+        // and the same pocket for two households saving very different amounts.
+        $over = $this->project($this->earner(80_000))->years[0];
         $atCap = $this->project($this->earner(60_000))->years[0];
 
-        $this->assertSame($atCap->pensionWealth->pence, $capped->pensionWealth->pence);
-        $this->assertSame($atCap->liquidWealth->pence, $capped->liquidWealth->pence);
-        $this->assertSame($atCap->totalTax->pence, $capped->totalTax->pence);
-        $this->assertGreaterThan(0, $capped->liquidWealth->pence, 'the blocked money is still the household\'s');
+        $this->assertSame(
+            Money::fromPounds(20_000)->pence,
+            $over->pensionWealth->pence - $atCap->pensionWealth->pence,
+            'the excess did not reach the pot',
+        );
+        // Both gave up the same pay to income tax and the charge between them, so what separates
+        // the two households is only the GBP 20,000 that moved from pocket to pot.
+        $this->assertSame(
+            Money::fromPounds(20_000)->pence,
+            $atCap->liquidWealth->pence - $over->liquidWealth->pence,
+            'the excess cost the household something other than the money it paid in',
+        );
     }
 
     public function test_the_non_earner_route_grosses_a_net_payment_up_by_basic_rate_relief(): void

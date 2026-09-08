@@ -61,7 +61,21 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-08 (annuity-takes-its-tax-free-cash-first): annuitising a DC pot now
+     * Bumped 2026-09-08 (annual-allowance-is-a-bill-not-a-wall): the money-purchase annual allowance
+     * is no longer a hard cap on what may be paid into a pension. Every contribution the plan asks
+     * for is now paid in, and input above the allowance carries an annual allowance CHARGE at the
+     * member's marginal rate ({@see PathProjector::annualAllowanceCharges}), which is what the law
+     * does. And the allowance is settled once, at the END of the year, so a member who flexibly
+     * accesses a pension is measured against the £10,000 Money Purchase Annual Allowance from that
+     * year rather than from the next: the year loop used to pay the employer and net-pay routes
+     * before the withdrawal that sets the trigger, so those two escaped it for twelve months.
+     * Any stored plan whose pension input exceeds the allowance in a year holds a BIGGER pot under
+     * this stamp and pays MORE tax, and a plan that starts drawing while still being paid into is
+     * charged a year earlier than it was; the employer money the old cap refused outright is paid in
+     * at last, so such a plan is no longer poorer for a rule that in life costs a tax charge only.
+     * A plan that pays nothing into a money-purchase pension, or that stays inside its allowance,
+     * is byte-identical, which is why the Monte Carlo golden master did not move. See board card 0073.
+     * Previous bump 2026-09-08 (annuity-takes-its-tax-free-cash-first): annuitising a DC pot now
      * CRYSTALLISES the money it takes, so a quarter of it comes out as a tax-free lump sum (against
      * the same Lump Sum Allowance ledger every other lump sum uses) and only the balance buys the
      * income. The engine used to hand the insurer the whole amount and tax every penny that came
@@ -350,7 +364,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/annuity-takes-its-tax-free-cash-first';
+    public const ENGINE_VERSION = 'finance-engine/annual-allowance-is-a-bill-not-a-wall';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

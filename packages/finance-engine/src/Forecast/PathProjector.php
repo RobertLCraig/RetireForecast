@@ -43,6 +43,7 @@ use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\PenceSplit;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
+use RetireForecast\FinanceEngine\Pension\AnnualAllowanceCalculator;
 use RetireForecast\FinanceEngine\Pension\PurchasedLifeAnnuity;
 use RetireForecast\FinanceEngine\Pension\WithdrawalKind;
 use RetireForecast\FinanceEngine\Property\AmortisationSchedule;
@@ -124,6 +125,8 @@ final class PathProjector
 
     private readonly CareMeansTest $careMeans;
 
+    private readonly AnnualAllowanceCalculator $annualAllowance;
+
     /** Built on first use only: no path that buys no purchased life annuity ever needs it. */
     private ?CohortLifeTable $lifeTable = null;
 
@@ -136,6 +139,7 @@ final class PathProjector
         $this->capitalAssessment = new CapitalAssessment($config);
         $this->iht = new InheritanceTaxCalculator($config);
         $this->careMeans = new CareMeansTest($config);
+        $this->annualAllowance = new AnnualAllowanceCalculator($config);
     }
 
     public function project(Household $household, ForecastSettings $settings, PathDraws $draws): ForecastResult
@@ -1745,6 +1749,23 @@ final class PathProjector
             }
         }
 
+        // Board card 0073. The annual allowance is settled HERE and nowhere else: after every
+        // contribution route (employer, net-pay, surplus) and after every withdrawal that can set
+        // the MPAA trigger, so the allowance measured against is the one the member actually had
+        // and going over it is a BILL rather than a wall. Contributions themselves are no longer
+        // refused ({@see payIntoPot}), so the money is in the pot and only the charge is missing.
+        //
+        // The charge is paid out of the cash the member holds, exactly as any other tax bill would
+        // be; what their cash cannot meet comes off the year's net income instead, so it lands in
+        // unmet spend below rather than being quietly forgiven.
+        $aaCharges = $this->annualAllowanceCharges($state, $alive, $taxablePerPerson, $savingsPerPerson, $dividendsPerPerson, $thresholdFactor);
+        foreach ($aaCharges as $chargedId => $charge) {
+            $totalTaxNominal += $charge;
+            $fromCash = min($charge, max(0, $state['cash'][$chargedId] ?? 0));
+            $state['cash'][$chargedId] -= $fromCash;
+            $netCashNominal -= $charge - $fromCash;
+        }
+
         // Use what is left of the ISA allowance on money the household ALREADY holds in a taxable
         // account. Runs last, so it sees the year's contributions and disposals and cannot claim
         // an allowance either has spent; runs every year, including a drawdown year, because a
@@ -1829,6 +1850,7 @@ final class PathProjector
             incomeBySource: array_map($m, $src),
             warnings: [
                 ...$this->mpaaWarnings($state, $mpaaAtYearStart),
+                ...$this->allowanceChargeWarnings($state, $aaCharges, $m),
                 ...$this->unfundedOneOffWarnings($oneOffs, $unmetOneOffNominal, $m),
                 ...$this->tenancyUpFrontWarnings($oneOffs, $rentChargedNominal, $m),
                 ...$this->rentReferencingWarnings($rentChargedNominal, $grossIncomeNominal, $m),
@@ -3972,77 +3994,152 @@ final class PathProjector
     }
 
     /**
-     * This member's remaining money-purchase contribution allowance for the year: the annual
-     * allowance (£60,000) less what has already gone into their pots this year, or the Money
-     * Purchase Annual Allowance (£10,000) once they have flexibly accessed a pension: a UFPLS
-     * or drawdown income, planned or drawn to fund a shortfall. The MPAA is the rule that stops
-     * a plan drawing a pot down in the free bands and recycling the cash straight back in; the
-     * annual allowance is the ordinary ceiling that binds before any of that happens.
+     * The money-purchase annual allowance that applies to this member for the year, in pence:
+     * the ordinary annual allowance (£60,000), or the Money Purchase Annual Allowance (£10,000)
+     * once they have flexibly accessed a pension — a UFPLS or drawdown income, planned or drawn
+     * to fund a shortfall. The MPAA is the rule that stops a plan drawing a pot down in the free
+     * bands and recycling the cash straight back in; the annual allowance is the ordinary ceiling
+     * that binds before any of that happens.
      *
-     * Both count the EMPLOYER's contribution as well as the member's, because the statutory
+     * Both measure the EMPLOYER's contribution as well as the member's, because the statutory
      * allowance is measured on total pension input, not on what the household paid.
      *
-     * v1 simplifications, all flagged: the allowance is modelled as a hard cap on what may be
-     * paid in rather than as an annual-allowance CHARGE on the excess ({@see AnnualAllowanceCalculator}
-     * prices that separately); carry-forward of unused allowance from the previous three years
-     * is not tracked, so the cap is the cautious side of the rule; the high-income taper is not
-     * applied here (it needs adjusted and threshold income, which this year's contributions
-     * themselves move; {@see AnnualAllowanceCalculator} prices it); and, in the TRIGGER YEAR
-     * itself, whether the cap bites depends on which of the three contribution routes the money
-     * took, which is an artefact of the year order rather than a rule. {@see projectYear} pays
-     * {@see payEmployerContributions} and {@see payNetPayContributions} before the withdrawals
-     * that set the trigger, so those two escape it and are first capped the year AFTER; but
-     * {@see applyContributions} — the surplus-funded route, including the non-earner basic-amount
-     * one — runs after them, so it IS capped in the trigger year. In life the cap applies to every
-     * contribution paid after the trigger DATE, whatever route it took. Both halves are pinned as
-     * behaviour, by
-     * PathProjectorTest::test_flexible_access_caps_later_money_purchase_contributions_at_the_mpaa
-     * and PathProjectorTest::test_the_mpaa_caps_a_surplus_funded_contribution_in_the_trigger_year_itself,
-     * so neither can move unseen; re-timing them onto one rule is carded as 0073, with the missing
-     * annual-allowance charge. Both allowances are the frozen statutory figures, not indexed,
-     * because nothing has indexed them.
+     * The allowance is a BILL, not a wall: input above it is paid in and charged
+     * ({@see annualAllowanceCharges}, board card 0073). It is settled once, at the end of the
+     * year, so which of the two figures applies turns on the trigger DATE rather than on which
+     * of the three contribution routes the money took — the employer, net-pay and surplus routes
+     * used to get three different answers in the trigger year, purely as an artefact of the year
+     * order. Pinned by PathProjectorTest::test_the_mpaa_binds_in_the_year_of_the_trigger.
      *
-     * Where blocked money goes depends on whose it was, and one of the three answers is "nowhere".
-     * A NET-PAY contribution stays in pay and is taxed there ({@see payNetPayContributions} returns
-     * only what reached the pot, and the caller deducts only that). A SURPLUS-funded one stays in
-     * the surplus and is saved as cash ({@see applyContributions} caps before it spends the
-     * surplus). But the EMPLOYER's ({@see payEmployerContributions}) never passes through the
-     * household's cashflow, so there is nowhere to put it: it is simply not paid, and the household
-     * is that much poorer. That is the adverse side of the hard-cap simplification above — in life
-     * the money would be paid in and an annual-allowance charge levied on the excess, which is the
-     * other half of card 0073 — and it is pinned by
-     * PathProjectorTest::test_an_employer_contribution_the_mpaa_blocks_is_not_paid_anywhere_else.
-     * The cap itself is disclosed to the reader in the year it starts rather than left invisible
-     * ({@see mpaaWarnings}), and says which of the three answers applies.
+     * Still absent, both flagged and both outside card 0073: carry-forward of unused allowance
+     * from the previous three years, and the high-income taper (which needs adjusted and threshold
+     * income, figures this year's own contributions move). Leaving both out is the cautious side
+     * of the rule for carry-forward and the generous side for the taper. Both allowances are the
+     * frozen statutory figures, not indexed, because nothing has indexed them.
      *
      * @param  array<string, mixed>  $state
      */
-    private function contributionHeadroom(array $state, string $pid): int
+    private function applicableAllowance(array $state, string $pid): int
     {
         $params = $this->config->pension;
-        $limit = ($state['mpaaTriggered'][$pid] ?? false)
+
+        return ($state['mpaaTriggered'][$pid] ?? false)
             ? $params->moneyPurchaseAnnualAllowance->pence
             : $params->annualAllowance->pence;
+    }
 
-        return max(0, $limit - ($state['mpContributed'][$pid] ?? 0));
+    /**
+     * The annual-allowance charge each living member owes on this year's pension input, in nominal
+     * pence, keyed by person id — empty where nobody went over.
+     *
+     * Board card 0073. The allowance used to be a hard cap: a contribution above it simply never
+     * reached the pot, so an overpayment vanished instead of appearing as tax, and the plan showed
+     * a household that had neither the money nor the pension. In life the contribution IS paid and
+     * the excess is charged at the member's marginal rate, which is what takes back the relief it
+     * received on the way in.
+     *
+     * Settled here, after every contribution route AND after the withdrawals that set the MPAA
+     * trigger, so the allowance measured against is the one in force at the end of the year.
+     * {@see AnnualAllowanceCalculator} owns which allowance applies to what, so the rule has one
+     * home; the charge itself is {@see marginalTax} on the excess, the same income-tax pass every
+     * other figure in this year uses. Carry-forward and the taper are passed as nil — neither is
+     * modelled ({@see applicableAllowance}) — so the calculator is asked only the question this
+     * projector can answer, and it is asked at all only for a member who actually paid something
+     * in, which is rare enough to keep the hot loop cheap.
+     *
+     * $taxablePerPerson is the year's non-savings income BEFORE any ad-hoc draw made to fund a
+     * shortfall, so a member whose shortfall draw pushed them into a higher band is charged at the
+     * band they were in without it. That understates the charge in that one case; the alternative
+     * is to price the charge before the draw exists, which cannot see the MPAA trigger the draw
+     * itself sets.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     * @param  array<string, int>  $taxablePerPerson
+     * @param  array<string, int>  $savingsPerPerson
+     * @param  array<string, int>  $dividendsPerPerson
+     * @return array<string, int>
+     */
+    private function annualAllowanceCharges(array $state, array $alive, array $taxablePerPerson, array $savingsPerPerson, array $dividendsPerPerson, float $thresholdFactor): array
+    {
+        $charges = [];
+        foreach ($state['mpContributed'] as $pid => $paidIn) {
+            if ($paidIn <= 0 || ! ($alive[$pid] ?? false)) {
+                continue;
+            }
+
+            $excess = $this->annualAllowance->assess(
+                Money::fromPence($paidIn),
+                $state['mpaaTriggered'][$pid] ?? false,
+                Money::zero(),
+                Money::zero(),
+                Money::zero(),
+            )->excessContributions->pence;
+
+            if ($excess <= 0) {
+                continue;
+            }
+
+            $charges[$pid] = $this->marginalTax(new TaxableIncome(
+                Money::fromPence($taxablePerPerson[$pid] ?? 0),
+                Money::fromPence($savingsPerPerson[$pid] ?? 0),
+                Money::fromPence($dividendsPerPerson[$pid] ?? 0),
+            ), $excess, $thresholdFactor);
+        }
+
+        return $charges;
+    }
+
+    /**
+     * The allowance the year was measured against and the charge going over it cost, said out
+     * loud — one warning per charged member.
+     *
+     * Neither figure is one the reader entered: the allowance is statutory (and which of the two
+     * applies turns on a trigger they may not know they pulled), and the charge is real tax the
+     * plan pays. The house rule is that the model never uses a figure the reader cannot see, so
+     * both are stated with their values, read from the constants and the arithmetic that produced
+     * them. The app surfaces this among its assumed-figure notes. (Named in prose, not as a doc
+     * link: an engine file must not carry a fully-qualified app class, which Pint has previously
+     * promoted into a real import.)
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, int>  $charges
+     * @return list<Warning>
+     */
+    private function allowanceChargeWarnings(array $state, array $charges, callable $m): array
+    {
+        $out = [];
+        foreach ($charges as $pid => $charge) {
+            $allowance = Money::fromPence($this->applicableAllowance($state, $pid));
+            $out[] = new Warning(
+                WarningCode::ANNUAL_ALLOWANCE_EXCEEDED,
+                'Pension input of '.$m($state['mpContributed'][$pid])->format().' this year — everything paid in, '
+                .'the employer\'s share as well as the member\'s — is above the '.$allowance->format()
+                .' allowance that applies'
+                .(($state['mpaaTriggered'][$pid] ?? false)
+                    ? ' (the Money Purchase Annual Allowance, because money has been taken flexibly out of a pension)'
+                    : '')
+                .'. The contribution is not refused: it is paid in, and an annual allowance charge of '
+                .$m($charge)->format().' falls on the excess at the marginal rate, which takes back the tax '
+                .'relief the excess received.',
+            );
+        }
+
+        return $out;
     }
 
     /**
      * The year the MPAA first applies, said out loud — at most one warning, in that year only.
      *
-     * The cap is a figure the reader never entered and can move their result by tens of thousands
-     * of pounds: from the trigger on, a contribution in their plan above the allowance is not paid
-     * in ({@see contributionHeadroom}). Until this existed the only place the MPAA was ever stated
+     * The cap is a figure the reader never entered and can move their result by thousands of
+     * pounds: from the trigger on, a contribution in their plan above the allowance is charged
+     * ({@see applicableAllowance}). Until this existed the only place the MPAA was ever stated
      * was the app's lump-sum tax-shock panel, which needs a PLANNED withdrawal instruction to say
      * anything at all — yet an ad-hoc draw to meet a shortfall triggers the cap under every draw
-     * order. So on an ordinary plan the cap applied and no screen mentioned it. The house rule is
-     * that the model never uses a figure the reader cannot see, so it is disclosed with its value,
-     * read from the statutory constant that owns it, and the app surfaces it among its
-     * assumed-figure notes. (Named in prose, not as a doc link: an engine file must not carry a
-     * fully-qualified app class, which Pint has previously promoted into a real import.)
+     * order. So on an ordinary plan the cap applied and no screen mentioned it.
      *
-     * Not emitted for a member with no money-purchase contributions in their plan: a cap on what
-     * may be paid in changes nothing for someone paying nothing in, and the disclosure list is
+     * Not emitted for a member with no money-purchase contributions in their plan: an allowance on
+     * what may be paid in changes nothing for someone paying nothing in, and the disclosure list is
      * only useful while everything on it bites.
      *
      * @param  array<string, mixed>  $state
@@ -4061,14 +4158,13 @@ final class PathProjector
                     // triggering together would only say the same thing twice.
                     return [new Warning(
                         WarningCode::MPAA_TRIGGERED,
-                        'Money is taken flexibly out of a pension in this plan, so from then on no more than '
+                        'Money is taken flexibly out of a pension in this plan, so from that year on no more than '
                         .$this->config->pension->moneyPurchaseAnnualAllowance->format()
-                        .' a year can be paid into that person\'s money-purchase pensions — the Money Purchase '
-                        .'Annual Allowance, which replaces the ordinary annual allowance for the rest of the plan. '
-                        .'Any contribution in the plan above it is not paid in. Money the person would have paid '
-                        .'themselves is not lost — it stays in their pay, or in their savings. Money their EMPLOYER '
-                        .'would have paid above the allowance is simply not paid at all: it never passes through '
-                        .'their hands, so there is nowhere for it to go, and the plan is that much poorer.',
+                        .' a year can be paid into that person\'s money-purchase pensions without a tax charge — the '
+                        .'Money Purchase Annual Allowance, which replaces the ordinary annual allowance for the rest '
+                        .'of the plan, and which applies from the day the money is taken, not from the following year. '
+                        .'Contributions above it are still paid in: what they cost is an annual allowance charge on '
+                        .'the excess, at the person\'s marginal rate.',
                     )];
                 }
             }
@@ -4078,17 +4174,21 @@ final class PathProjector
     }
 
     /**
-     * Pay $amount into one of this member's money-purchase pots, capped at their remaining
-     * annual-allowance / MPAA headroom, and return what actually went in. THE one place a DC pot
-     * is credited with a contribution, so the cap cannot be applied at two of the three sites and
-     * missed at the third, and so the year's running total has one home.
+     * Pay $amount into one of this member's money-purchase pots and return what went in. THE one
+     * place a DC pot is credited with a contribution, so the year's running total of pension input
+     * — which the annual allowance is measured on ({@see annualAllowanceCharges}) — has one home.
+     *
+     * Nothing is refused here. The annual allowance is a charge on the excess, settled once at the
+     * end of the year; the limits that DO bind a contribution at source are the member's pay (a
+     * net-pay contribution cannot exceed it), the household's surplus, and the basic amount on the
+     * non-earner relief route, each applied by its own caller.
      *
      * @param  array<string, mixed>  $state
      * @param  array<string, mixed>  $pot
      */
     private function payIntoPot(array &$state, string $pid, array &$pot, int $amount): int
     {
-        $give = min(max(0, $amount), $this->contributionHeadroom($state, $pid));
+        $give = max(0, $amount);
         if ($give <= 0) {
             return 0;
         }
@@ -4181,10 +4281,7 @@ final class PathProjector
                     if (($ages[$person->id] ?? 0) >= $pension->reliefMaximumAge) {
                         continue;
                     }
-                    $grossHeadroom = min(
-                        max(0, $pension->nonEarnerReliefLimit->pence - $nonEarnerPaid),
-                        $this->contributionHeadroom($state, $person->id),
-                    );
+                    $grossHeadroom = max(0, $pension->nonEarnerReliefLimit->pence - $nonEarnerPaid);
                     // Net cap = gross cap less the relief the provider reclaims on it.
                     $netCap = Money::fromPence($grossHeadroom)->minus(Money::fromPence($grossHeadroom)->applyRate($basicRate))->pence;
                     $net = $take($pot['contribution'] ?? 0, $netCap);
@@ -4200,9 +4297,10 @@ final class PathProjector
                     continue;
                 }
 
-                // Capped BEFORE the surplus is consumed, so what the allowance blocks is not
-                // silently dropped: it stays in the surplus and is saved into cash instead.
-                $this->payIntoPot($state, $person->id, $pot, $take($pot['contribution'] ?? 0, $this->contributionHeadroom($state, $person->id)));
+                // Bounded only by the surplus there is to pay it from. The annual allowance does
+                // not stop it: going over is a charge settled at the end of the year, not a refusal
+                // ({@see annualAllowanceCharges}).
+                $this->payIntoPot($state, $person->id, $pot, $take($pot['contribution'] ?? 0));
             }
             unset($pot);
         }

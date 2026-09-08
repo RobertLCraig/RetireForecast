@@ -5,9 +5,30 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0065). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-08 (card 0073). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038, 0044 and 0045 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **The pension annual allowance is a bill now, not a wall, and it binds the year the trigger
+  happens.** Card 0073. Two faults with one cause. The allowance was a hard cap: a contribution
+  above it never reached the pot, so an overpayment vanished instead of appearing as tax, and the
+  employer's share of it was simply never paid. And the year loop paid every contribution before it
+  took any withdrawal, so a member who started flexible access in April was credited a full £60,000
+  for a year in which they had £10,000. `PathProjector::annualAllowanceCharges()` is the one home of
+  both: it runs ONCE, after every contribution route and after every withdrawal, reads which
+  allowance applies through `AnnualAllowanceCalculator` (the rule keeps one home), and charges the
+  excess at the member's marginal rate through the same `marginalTax` pass every other figure uses.
+  `payIntoPot` refuses nothing now; what still binds a contribution at source is pay, surplus and
+  the non-earner basic amount, each applied by its own caller. The charge comes out of the member's
+  cash, and what their cash cannot meet falls into that year's unmet spend rather than being
+  forgiven. `ResultPresenter::assumedFigures()` states the allowance that applied and the charge, on
+  the first year it bites. `ENGINE_VERSION` is `finance-engine/annual-allowance-is-a-bill-not-a-wall`
+  and the **stored-scenario re-run is owed** for any plan paying into a money-purchase pension;
+  `GoldenMasterTest` did not redden (its fixture pays nothing in). Two limits are deliberate and
+  flagged in the docblock: carry-forward and the high-income taper are still absent (the card
+  excluded both), and the charge is priced on the year's income BEFORE any ad-hoc draw made to fund
+  a shortfall, so a member pushed into a higher band by that draw is charged at the band they were
+  in without it. Built in a worktree, so the new results note **has not been seen in a browser**.
 
 - **An annuity is priced now, it takes its tax-free cash first, and every economic assumption
   carries its own source.** Card 0065. `Pension\AnnuityRateTable` is the one home of what an annuity

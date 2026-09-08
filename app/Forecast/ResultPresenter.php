@@ -1341,6 +1341,20 @@ final class ResultPresenter
                 }
             }
 
+            // The annual allowance and what going over it costs (board card 0073). Neither figure
+            // is one the reader entered: the allowance is statutory, which of the two applies turns
+            // on a trigger they may not know they pulled, and the charge is real tax the plan pays
+            // out of their money. Reported on the FIRST year it bites, which is where a reader can
+            // still act on it. The engine writes the sentence, because it owns the allowance, the
+            // pension input it was measured against and the charge itself.
+            foreach ($forecast->years as $year) {
+                $charge = self::firstWarning($year, WarningCode::ANNUAL_ALLOWANCE_EXCEEDED);
+                if ($charge !== null) {
+                    $out[] = "{$charge} In this plan that starts in {$year->calendarYear}.";
+                    break;
+                }
+            }
+
             // The tenancy deposit (board card 0031). Nobody enters it, it is worked out from the
             // rent against the Tenant Fees Act cap, and it is charged as real money in the year the
             // tenancy starts, so it is exactly the kind of figure this rule exists to surface. The

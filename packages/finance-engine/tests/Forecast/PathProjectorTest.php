@@ -34,6 +34,7 @@ use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\PathProjector;
+use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -747,11 +748,30 @@ final class PathProjectorTest extends TestCase
         $this->assertLessThan(Money::fromPounds(200_000)->pence, $result->years[7]->pensionWealth->pence);
     }
 
-    public function test_flexible_access_caps_later_money_purchase_contributions_at_the_mpaa(): void
+    /** The message of the first warning of $code this year carries, or null if it carries none. */
+    private function warningMessage(YearResult $year, string $code): ?string
     {
-        // A worker of 60 with a £20k employer contribution. Taking a UFPLS is flexible access, so
-        // from the following year the pot may only be topped up to the Money Purchase Annual
-        // Allowance: the plan cannot draw the pot down in the free bands and recycle the cash back.
+        foreach ($year->warnings as $warning) {
+            if ($warning->code === $code) {
+                return $warning->message;
+            }
+        }
+
+        return null;
+    }
+
+    public function test_the_mpaa_binds_in_the_year_of_the_trigger(): void
+    {
+        // Board card 0073. A worker of 60 with a £20k employer contribution takes a UFPLS at 62.
+        // That is flexible access, so from that DAY the allowance measuring their money-purchase
+        // input is the £10,000 Money Purchase Annual Allowance, not the £60,000 ordinary one.
+        //
+        // The year loop paid every contribution at the top of the year and took every withdrawal
+        // after it, so the trigger was always recorded too late to bind the year it happened in:
+        // the member was credited a full £60,000 for the twelve months they in life had £10,000
+        // for. The tell is WHICH allowance the year measures against, so read the allowance the
+        // engine states rather than the pot (nothing is refused any more — see
+        // test_a_contribution_above_the_allowance_is_charged_not_blocked).
         $worker = fn (): Person => new Person('p1', new DateTimeImmutable('1966-04-01'), Sex::Female,
             EmploymentStatus::Employed, grossSalary: Money::fromPounds(80_000), plannedRetirementAge: 70);
         $expense = new ExpenseProfile(Money::fromPounds(30_000), Money::zero(), Percent::fromPercent(70));
@@ -759,58 +779,32 @@ final class PathProjectorTest extends TestCase
             Money::zero(), Money::fromPounds(20_000), 55, withdrawalPlan: $plan);
 
         $triggered = $this->couple($expense, pensions: [
-            $pot([new WithdrawalInstruction(WithdrawalKind::Ufpls, Money::fromPounds(4_000), 60)]),
+            $pot([new WithdrawalInstruction(WithdrawalKind::Ufpls, Money::fromPounds(4_000), 62)]),
         ], override1: $worker());
         $untouched = $this->couple($expense, pensions: [$pot([])], override1: $worker());
 
         $a = $this->forecaster()->forecast($triggered, $this->flatAssumptions(), $this->settings());
         $b = $this->forecaster()->forecast($untouched, $this->flatAssumptions(), $this->settings());
 
-        $mpaa = TaxYearRegistry::for('2026-27')->pension->moneyPurchaseAnnualAllowance->pence;
+        $pension = TaxYearRegistry::for('2026-27')->pension;
 
-        // The year AFTER the trigger: only the MPAA goes in, not the £20,000 the employer pays.
-        $this->assertSame($mpaa, $a->years[2]->pensionWealth->pence - $a->years[1]->pensionWealth->pence);
-        // ...where an untriggered member still receives the whole employer contribution.
-        $this->assertSame(Money::fromPounds(20_000)->pence, $b->years[2]->pensionWealth->pence - $b->years[1]->pensionWealth->pence);
-    }
+        // p1 is 60 in the base year, so year index 2 is the year they turn 62 and draw.
+        $this->assertSame(62, $a->years[2]->ages['p1'], 'the trigger year moved; the rest of this test reads it');
 
-    public function test_the_mpaa_caps_a_surplus_funded_contribution_in_the_trigger_year_itself(): void
-    {
-        // The OTHER half of the timing above, and the reason the docblock on contributionHeadroom
-        // cannot say the cap simply "bites the year after". projectYear pays the employer and
-        // net-pay routes before the withdrawals that set the trigger, so those escape the trigger
-        // year — but applyContributions, which funds a contribution out of the year's surplus, runs
-        // AFTER them, so that route is capped in the trigger year itself. Whether the cap bites
-        // therefore depends on which route the money took rather than on the date, which is an
-        // artefact of the year order and is carded as 0073. Pinned here so re-timing it is a
-        // deliberate change to a red test, not a silent one.
-        //
-        // p1 is 60 in 2026 and retired, so nothing but the surplus route can pay in. £60,000 of
-        // income against £12,000 of spend leaves far more surplus than the £20,000 contribution
-        // asks for, so the allowance is the only thing that can hold it back.
-        $expense = new ExpenseProfile(Money::fromPounds(12_000), Money::zero(), Percent::fromPercent(70));
-        $build = fn (array $plan): Household => $this->couple($expense,
-            pensions: [new DcPension('p1', Money::fromPounds(100_000), Money::fromPounds(20_000), Money::zero(), 55, withdrawalPlan: $plan)],
-            override1: new Person('p1', new DateTimeImmutable('1966-04-01'), Sex::Female, EmploymentStatus::Retired),
-            incomeStreams: [new IncomeStream('p1', IncomeStreamType::Other, Money::fromPounds(60_000), true, true, 0)],
-        );
+        // Before the trigger the whole £60,000 allowance is theirs, so £20,000 of input is inside
+        // it and nothing is charged.
+        $this->assertNull($this->warningMessage($a->years[1], WarningCode::ANNUAL_ALLOWANCE_EXCEEDED));
 
-        $triggered = $this->forecaster()->forecast(
-            $build([new WithdrawalInstruction(WithdrawalKind::Ufpls, Money::fromPounds(4_000), 60)]),
-            $this->flatAssumptions(), $this->settings(),
-        );
-        $untouched = $this->forecaster()->forecast($build([]), $this->flatAssumptions(), $this->settings());
+        // In the trigger year itself the MPAA is the allowance that applies, so the same £20,000
+        // is £10,000 over it and the charge falls THIS year, not the next.
+        $note = $this->warningMessage($a->years[2], WarningCode::ANNUAL_ALLOWANCE_EXCEEDED);
+        $this->assertNotNull($note, 'the trigger year was still credited the full annual allowance');
+        $this->assertStringContainsString($pension->moneyPurchaseAnnualAllowance->format(), $note);
+        $this->assertStringNotContainsString($pension->annualAllowance->format(), $note);
 
-        $mpaa = TaxYearRegistry::for('2026-27')->pension->moneyPurchaseAnnualAllowance->pence;
-
-        // Flat assumptions, so the pot at the end of year 0 is arithmetic: £100,000, less the
-        // £4,000 taken, plus only the MPAA of the £20,000 asked for — in the trigger year itself.
-        $this->assertSame(
-            Money::fromPounds(96_000)->pence + $mpaa,
-            $triggered->years[0]->pensionWealth->pence,
-        );
-        // ...where the same contribution goes in whole for a member who has not triggered it.
-        $this->assertSame(Money::fromPounds(120_000)->pence, $untouched->years[0]->pensionWealth->pence);
+        // ...and it is the trigger that does it: the same plan without the withdrawal is charged
+        // nothing in the same year.
+        $this->assertNull($this->warningMessage($b->years[2], WarningCode::ANNUAL_ALLOWANCE_EXCEEDED));
     }
 
     public function test_an_ad_hoc_taxable_pension_draw_triggers_the_mpaa_too_not_only_a_ufpls(): void
@@ -831,15 +825,15 @@ final class PathProjectorTest extends TestCase
         // Tax-efficient: no pot is drawn by instruction, only to meet the £20k-a-year shortfall.
         $result = $this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings());
 
-        $mpaa = TaxYearRegistry::for('2026-27')->pension->moneyPurchaseAnnualAllowance->pence;
-        $pot = fn (int $i): int => $result->years[$i]->pensionWealth->pence;
-        $grew = fn (int $i): int => $pot($i) - ($i === 0 ? Money::fromPounds(300_000)->pence : $pot($i - 1));
+        $mpaa = TaxYearRegistry::for('2026-27')->pension->moneyPurchaseAnnualAllowance;
 
-        // Flat assumptions, flat pay and flat spend, so the draw is the same size every year and the
-        // only thing that changes between year 0 and year 1 is the contribution the MPAA now blocks:
-        // £20,000 goes in the year of the trigger, the MPAA every year after it.
-        $this->assertSame(Money::fromPounds(20_000)->pence - $mpaa, $grew(0) - $grew(1));
-        $this->assertSame($grew(1), $grew(2), 'the cap should hold, not lapse after one year');
+        // The draw happens in year 0, so the MPAA is the allowance from year 0: the £20,000 the
+        // employer pays is £10,000 over it and a charge falls every year, starting with the first.
+        foreach ([0, 1, 2] as $y) {
+            $note = $this->warningMessage($result->years[$y], WarningCode::ANNUAL_ALLOWANCE_EXCEEDED);
+            $this->assertNotNull($note, "an ad-hoc draw did not restrict the allowance in year {$y}");
+            $this->assertStringContainsString($mpaa->format(), $note, 'the allowance applied was not the MPAA');
+        }
     }
 
     public function test_a_fill_bands_draw_from_an_inherited_pot_takes_no_tax_free_quarter(): void
@@ -921,18 +915,31 @@ final class PathProjectorTest extends TestCase
                 "drawing an inherited pot capped the heir's own contributions in {$year}",
             );
         }
+
+        // Since going over the allowance is a charge and not a refusal, the pot alone can no longer
+        // tell the two allowances apart: the £20,000 goes in either way. The charge is what the
+        // MPAA would cost, so no year up to 2035 may carry one. (From 2036 p1 is 60 and reaches
+        // their OWN pot, which does trigger it.)
+        foreach ($result->years as $y) {
+            if ($y->calendarYear > 2035) {
+                break;
+            }
+            $this->assertNull(
+                $this->warningMessage($y, WarningCode::ANNUAL_ALLOWANCE_EXCEEDED),
+                "drawing an inherited pot restricted the heir's own allowance in {$y->calendarYear}",
+            );
+        }
     }
 
-    public function test_an_employer_contribution_the_mpaa_blocks_is_not_paid_anywhere_else(): void
+    public function test_an_employer_contribution_over_the_mpaa_is_paid_in_and_charged(): void
     {
-        // Where money the cap blocks ends up depends on whose money it was, and the employer's
-        // answer is "nowhere". Their contribution never passes through the household's cashflow, so
-        // unlike a net-pay or surplus-funded one it cannot fall back into pay or into savings — it
-        // is simply not paid, and the plan is that much poorer. contributionHeadroom's docblock and
-        // the reader-facing sentence in mpaaWarnings both used to promise it landed somewhere.
+        // The employer's money is the hard case for the allowance, because it never passes through
+        // the household's cashflow: when the allowance was a wall there was nowhere to put what it
+        // refused, so the contribution simply was not paid and the plan was that much poorer for a
+        // rule that in life costs a tax charge and nothing else (board card 0073).
         //
-        // The tell: cap a £20,000 employer contribution at the £10,000 MPAA and the household must
-        // end up no better off than one whose employer only ever offered £10,000.
+        // The tell: against a £10,000 MPAA, a member offered £20,000 must end up with £10,000 more
+        // pension a year than one offered £10,000, and pay for it in tax rather than in pot.
         $worker = fn (): Person => new Person('p1', new DateTimeImmutable('1966-04-01'), Sex::Female,
             EmploymentStatus::Employed, grossSalary: Money::fromPounds(80_000), plannedRetirementAge: 70);
         $expense = new ExpenseProfile(Money::fromPounds(30_000), Money::zero(), Percent::fromPercent(70));
@@ -942,20 +949,31 @@ final class PathProjectorTest extends TestCase
         ], override1: $worker());
 
         $generous = $this->forecaster()->forecast($build(20_000), $this->flatAssumptions(), $this->settings());
-        $capped = $this->forecaster()->forecast($build(10_000), $this->flatAssumptions(), $this->settings());
+        $atMpaa = $this->forecaster()->forecast($build(10_000), $this->flatAssumptions(), $this->settings());
 
-        $mpaa = TaxYearRegistry::for('2026-27')->pension->moneyPurchaseAnnualAllowance->pence;
+        $mpaa = TaxYearRegistry::for('2026-27')->pension->moneyPurchaseAnnualAllowance;
 
-        // Flat assumptions, so each year's pot movement IS the contribution. From the year after the
-        // trigger both receive the same MPAA, so the £10,000 the cap blocked reached no pot...
+        // Flat assumptions, so each year's pot movement IS the contribution. p1 works to 70, so no
+        // pot is drawn to fund a shortfall in this window and nothing else can move the two apart.
         foreach ([2, 3, 4] as $y) {
-            $this->assertSame($mpaa, $generous->years[$y]->pensionWealth->pence - $generous->years[$y - 1]->pensionWealth->pence);
-            $this->assertSame($mpaa, $capped->years[$y]->pensionWealth->pence - $capped->years[$y - 1]->pensionWealth->pence);
-            // ...and it reached no bank account either: both households hold the same cash to the
-            // penny. (p1 works to 70, so no pot is drawn to fund a shortfall in this window and the
-            // larger pot cannot make the two diverge for any other reason.)
-            $this->assertSame($capped->years[$y]->liquidWealth->pence, $generous->years[$y]->liquidWealth->pence,
-                'the employer money the MPAA blocked turned up as cash');
+            $this->assertSame(
+                Money::fromPounds(20_000)->pence,
+                $generous->years[$y]->pensionWealth->pence - $generous->years[$y - 1]->pensionWealth->pence,
+                'the employer money above the MPAA never reached the pot',
+            );
+            $this->assertSame(
+                $mpaa->pence,
+                $atMpaa->years[$y]->pensionWealth->pence - $atMpaa->years[$y - 1]->pensionWealth->pence,
+            );
+            // ...and the extra £10,000 costs a charge the member who stayed inside the MPAA does
+            // not pay.
+            $this->assertNotNull($this->warningMessage($generous->years[$y], WarningCode::ANNUAL_ALLOWANCE_EXCEEDED));
+            $this->assertNull($this->warningMessage($atMpaa->years[$y], WarningCode::ANNUAL_ALLOWANCE_EXCEEDED));
+            $this->assertGreaterThan(
+                $atMpaa->years[$y]->totalTax->pence,
+                $generous->years[$y]->totalTax->pence,
+                'the employer money above the MPAA was paid in free of charge',
+            );
         }
     }
 

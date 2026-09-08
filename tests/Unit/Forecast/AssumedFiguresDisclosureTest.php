@@ -583,14 +583,41 @@ final class AssumedFiguresDisclosureTest extends TestCase
             'withdrawals' => [['kind' => 'ufpls', 'amount' => '10000', 'atAge' => '61']],
         ]]);
 
-        $this->assertCount(1, $disclosures);
+        $note = $this->only($disclosures, 'Money is taken flexibly out of a pension');
         $this->assertStringContainsString(
             TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi)->pension->moneyPurchaseAnnualAllowance->format(),
-            $disclosures[0],
+            $note,
             'the disclosed cap must be the statutory figure the engine actually applies',
         );
         // p1 is 60 in 2026, so the instruction at 61 fires in 2027 — the reader is told when.
-        $this->assertStringContainsString('starts in 2027', $disclosures[0]);
+        $this->assertStringContainsString('starts in 2027', $note);
+    }
+
+    public function test_the_allowance_and_any_charge_are_shown(): void
+    {
+        // Board card 0073. Paying more into a pension than the allowance permits is not refused —
+        // it is charged. Both halves of that are figures the reader never entered and cannot see
+        // anywhere else: WHICH allowance the year was measured against, and what the charge on
+        // going over it cost. Here p1 pays GBP 20,000 a year in and takes a UFPLS at 61, so from
+        // 2027 the allowance is the GBP 10,000 MPAA and GBP 10,000 a year is over it.
+        $disclosures = $this->disclosuresFor([[
+            'id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000',
+            'ongoingContribution' => '20000', 'earliestAccessAge' => '55',
+            'withdrawals' => [['kind' => 'ufpls', 'amount' => '10000', 'atAge' => '61']],
+        ]]);
+
+        $note = $this->only($disclosures, 'annual allowance charge of');
+        $this->assertStringContainsString(
+            TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi)->pension->moneyPurchaseAnnualAllowance->format(),
+            $note,
+            'the allowance that applied must be the statutory figure the engine measured against',
+        );
+        $this->assertStringContainsString('starts in 2027', $note, 'the reader is told which year it begins');
+        $this->assertDoesNotMatchRegularExpression(
+            '/charge of £0\.00/',
+            $note,
+            'a charge disclosed as nil is not a charge',
+        );
     }
 
     public function test_nothing_is_disclosed_about_the_mpaa_when_nothing_is_being_paid_in(): void
