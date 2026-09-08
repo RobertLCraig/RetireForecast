@@ -99,6 +99,16 @@ final class PathProjector
     private const MAX_PROJECTION_YEARS = 200;
 
     /**
+     * The slice of extra pension income the projected MARGINAL rate is measured over, for netting a
+     * pension pot down to what it is worth to spend ({@see pensionTaxIfDrawn}). £1,000 rather than a
+     * penny: the marginal charge is the difference of two whole-income computations, each rounded,
+     * so a probe of a few pence is swamped by that rounding once inflation-indexed thresholds are in
+     * play. Large enough to be exact, small enough that it rarely straddles a band boundary — and
+     * where it does, the blend it returns is the honest answer for the pound after it.
+     */
+    private const MARGINAL_RATE_PROBE_PENCE = 100_000;
+
+    /**
      * What a mixed-age couple is told in a year the qualifying-age gate blocks Pension Credit.
      * One home for the copy, so the message and the rule that raises it cannot drift apart
      * ({@see WarningCode::MIXED_AGE_COUPLE}, board card 0051). It states the rule and names the
@@ -256,7 +266,7 @@ final class PathProjector
             fullSpendAlwaysMet: $this->everyYear($years, fn (YearResult $y) => $y->fullSpendMet()),
             depletionCalendarYear: $depletionYear,
             terminalTotalWealth: $terminal ? $terminal->totalWealth : Money::zero(),
-            terminalUsableWealth: $terminal ? $terminal->liquidWealth->plus($terminal->pensionWealth) : Money::zero(),
+            terminalUsableWealth: $terminal ? $terminal->usableWealth() : Money::zero(),
             finalCalendarYear: $terminal ? $terminal->calendarYear : $settings->baseYear,
             deathCalendarYears: $deathCalendarYears,
             careCostRealValue: $state['careRealTotal'] > 0 ? Money::fromPence($state['careRealTotal']) : null,
@@ -1520,9 +1530,13 @@ final class PathProjector
         // here every year off THIS year's own opening wealth, which is what puts the spend back
         // when the plan recovers — there is no latch to get stuck.
         //
-        // Usable wealth is liquid + pension, the same definition the forecast reports as terminal
-        // usable wealth, so the home the household lives in is never counted as spendable. It is
-        // read at the year's OPEN: the drawdown that funds this year has not run yet, and a ratio
+        // Usable wealth here is liquid + pension GROSS, so the home the household lives in is never
+        // counted as spendable. It is deliberately not the reported spendable figure, which nets the
+        // tax on the pot ({@see YearResult::usableWealth()}, board card 0076): this ratio asks what
+        // assets the plan has to meet its spending with, and a pot meets it in taxed instalments
+        // over decades rather than in one encashment. Netting it here would also make the reader's
+        // cut-back rule move a projection, which the card that netted the report did not decide. It
+        // is read at the year's OPEN: the drawdown that funds this year has not run yet, and a ratio
         // taken after it would describe a household that had already spent the money the rule is
         // deciding about.
         $guardrailCutNominal = 0;
@@ -1821,6 +1835,12 @@ final class PathProjector
         $liquid = $this->sum($state['cash']) + $this->sum($state['gia']) + $this->sum($state['isa']);
         $pension = $this->totalPots($state);
 
+        // What the pots left standing would cost in tax to spend, so the SPENDABLE wealth figure
+        // stops counting a pension pot as if it were cash ({@see YearResult::usableWealth()},
+        // board card 0076). Read off the same pots $pension was summed from, after every draw this
+        // year, so the two cannot describe different money.
+        $pensionDraw = $this->pensionTaxIfDrawn($state, $taxablePerPerson, $savingsPerPerson, $dividendsPerPerson, $thresholdFactor);
+
         // Round each wealth leg once; YearResult derives total wealth from those rounded
         // parts (liquid + pension + home equity net of the mortgage) — never round a raw
         // sum independently, or the total drifts from its legs by a penny
@@ -1879,6 +1899,8 @@ final class PathProjector
             councilTax: $m($councilTaxNominal),
             housingBenefit: $m($housingBenefitNominal),
             guardrailReduction: $m($guardrailCutNominal),
+            pensionTaxableIfDrawn: $m($pensionDraw['taxable']),
+            pensionTaxIfDrawn: $m($pensionDraw['tax']),
         );
 
         return $build($r, $build(Money::fromPence(...), null));
@@ -4069,6 +4091,78 @@ final class PathProjector
      * @param  array<string, int>  $dividendsPerPerson
      * @return array<string, int>
      */
+    /**
+     * What the pension money still in the pots at the end of this year would cost in income tax if
+     * it were drawn — the difference between a pot's face value and what it is worth to spend.
+     * Board card 0076: spendable wealth counted the pot at face value, which is what the
+     * safety-buffer warning was measured against and what the buy / rent / stay-put plans were
+     * ranked on, so the warning fired late and the plan holding most of its wealth inside a pension
+     * won on a figure it had not earned.
+     *
+     * The tax-free part comes off FIRST and is never netted: a quarter of the uncrystallised money,
+     * capped by what is left of that member's Lump Sum Allowance, read through the same
+     * {@see lsaHeadroom} and {@see ufplsSplit} the planned and ad-hoc draw routes use, so the split
+     * has one home and a pot already crystallised (or inherited) gets no second quarter here
+     * either. The running allowance ledger starts from the member's own $state['lsaUsed'], so cash
+     * they have already taken has already spent it.
+     *
+     * The balance is charged at the member's PROJECTED MARGINAL RATE — the rate on the next pound
+     * of pension income at this year's income, measured over {@see MARGINAL_RATE_PROBE_PENCE} and
+     * applied flat. It is deliberately NOT the tax on encashing the whole pot in one year: nobody
+     * draws a pot that way, and pricing it so would understate the pot by tens of thousands. The
+     * ceiling of that choice is the reverse case — a member whose projected income is inside the
+     * personal allowance nets nothing here, though drawing a large pot would certainly be taxed —
+     * and it is why the rate is disclosed beside the figure rather than applied silently.
+     *
+     * Reported, never spent: no funding decision reads it, so nothing about the projection moves.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, int>  $taxablePerPerson
+     * @param  array<string, int>  $savingsPerPerson
+     * @param  array<string, int>  $dividendsPerPerson
+     * @return array{taxable: int, tax: int} both in nominal pence
+     */
+    private function pensionTaxIfDrawn(array $state, array $taxablePerPerson, array $savingsPerPerson, array $dividendsPerPerson, float $thresholdFactor): array
+    {
+        $lsa = $this->config->pension->lumpSumAllowance->pence;
+        $pclsRate = $this->config->pension->pclsRate->asFraction();
+        $taxableTotal = 0;
+        $tax = 0;
+
+        foreach ($state['pots'] as $pid => $pots) {
+            $lsaUsed = $state['lsaUsed'][$pid] ?? 0;
+            $taxable = 0;
+            foreach ($pots as $pot) {
+                if ($pot['value'] <= 0) {
+                    continue;
+                }
+                [$taxFree, $charged] = self::ufplsSplit(
+                    $pot['value'],
+                    self::lsaHeadroom($lsa, $lsaUsed, $pot),
+                    $pclsRate,
+                    $pot['crystallised'] ?? 0,
+                );
+                $lsaUsed += $taxFree;
+                $taxable += $charged;
+            }
+
+            $taxableTotal += $taxable;
+            if ($taxable <= 0) {
+                continue;
+            }
+
+            $rate = $this->marginalTax(new TaxableIncome(
+                Money::fromPence($taxablePerPerson[$pid] ?? 0),
+                Money::fromPence($savingsPerPerson[$pid] ?? 0),
+                Money::fromPence($dividendsPerPerson[$pid] ?? 0),
+            ), self::MARGINAL_RATE_PROBE_PENCE, $thresholdFactor);
+
+            $tax += (int) round($taxable * $rate / self::MARGINAL_RATE_PROBE_PENCE);
+        }
+
+        return ['taxable' => $taxableTotal, 'tax' => $tax];
+    }
+
     private function annualAllowanceCharges(array $state, array $alive, array $taxablePerPerson, array $savingsPerPerson, array $dividendsPerPerson, float $thresholdFactor): array
     {
         $charges = [];

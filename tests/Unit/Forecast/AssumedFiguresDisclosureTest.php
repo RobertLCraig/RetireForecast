@@ -662,12 +662,18 @@ final class AssumedFiguresDisclosureTest extends TestCase
     public function test_nothing_is_disclosed_about_the_mpaa_when_nothing_is_being_paid_in(): void
     {
         // No noise: a cap on what may be paid INTO a pension changes nothing for a member paying
-        // nothing in, so the same withdrawal on a pot with no contributions discloses nothing.
-        $this->assertSame([], $this->disclosuresFor([[
+        // nothing in, so the same withdrawal on a pot with no contributions discloses nothing about
+        // it. The one note this household does carry is the spendable-wealth netting (card 0076),
+        // which every household holding a pot at the end carries and which says nothing about a
+        // contribution cap. Asserted exactly, so a stray third disclosure still fails here.
+        $disclosures = $this->disclosuresFor([[
             'id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000',
             'earliestAccessAge' => '55',
             'withdrawals' => [['kind' => 'ufpls', 'amount' => '10000', 'atAge' => '61']],
-        ]]));
+        ]]);
+
+        $this->assertCount(1, $disclosures);
+        $this->assertStringContainsString('spendable-wealth figure is net of', $disclosures[0]);
     }
 
     public function test_an_assumed_fixed_db_escalation_rate_is_disclosed_with_its_value(): void

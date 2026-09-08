@@ -61,7 +61,20 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-08 (ad-hoc-draw-reports-its-tax-free-part): an unplanned pension draw taken
+     * Bumped 2026-09-08 (spendable-wealth-net-of-pension-tax): SPENDABLE wealth no longer counts a
+     * pension pot as if no tax were due on it. The pot's tax-free part comes off first (a quarter,
+     * capped by what is left of the member's Lump Sum Allowance) and the balance is netted at the
+     * member's projected marginal rate ({@see PathProjector::pensionTaxIfDrawn}), so
+     * `terminalUsableWealth`, every year of the cashflow ladder's usable-wealth column, the
+     * burndown line and the Monte Carlo usable-wealth percentiles are all LOWER under this stamp
+     * for any plan still holding a pot. Total wealth is unchanged and still gross: a pot is worth
+     * its face value until it is drawn. Nothing about the projection itself moves (the figure is
+     * reported, never spent), so tax, spending, depletion and the success odds are identical, but
+     * a stored plan's safety-buffer warning fired LATER than it should have and its ranking against
+     * plans holding less pension money was too favourable. A plan whose pots are empty by the end,
+     * or whose members are inside the personal allowance, is byte-identical, which is why the Monte
+     * Carlo golden master did not move. See board card 0076.
+     * Previous bump 2026-09-08 (ad-hoc-draw-reports-its-tax-free-part): an unplanned pension draw taken
      * UFPLS-style now reports its tax-free quarter on the cashflow ladder's tax-free cash line and
      * only the balance on the drawdown line, which the page labels as taxable pension income
      * ({@see PathProjector::fundShortfall}, which returns that part alongside the gross). NO figure
@@ -374,7 +387,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/ad-hoc-draw-reports-its-tax-free-part';
+    public const ENGINE_VERSION = 'finance-engine/spendable-wealth-net-of-pension-tax';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

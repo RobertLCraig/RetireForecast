@@ -828,8 +828,9 @@ final class ResultPresenter
      * each plotted as one line and overlaid so the trajectories read against each other.
      * Plots USABLE wealth (excl. home) — the spendable money that actually burns down and
      * hits zero if it runs out, the honest "will it last" measure (gotcha P); the home, being
-     * illiquid, is excluded. Usable is `liquidWealth + pensionWealth`, the SAME definition the
-     * cashflow ladder uses, so the two can't drift.
+     * illiquid, is excluded. Usable is {@see YearResult::usableWealth()} (liquid + pension, NET of
+     * the tax due on the pension part), the SAME definition the cashflow ladder reads, so the two
+     * can't drift.
      *
      * Returns the ApexCharts line options plus a year × plan table (the accessible source of
      * truth — every line the chart draws is also a column here). Plans can end in different
@@ -855,7 +856,8 @@ final class ResultPresenter
         $dipsNegative = false;
         foreach ($plans as $plan) {
             // Net position continues the usable-wealth line below £0 once assets are exhausted:
-            // usable (liquid + pension) minus the cumulative shortfall the plan could not fund.
+            // usable (liquid + pension net of the tax due on it) minus the cumulative shortfall
+            // the plan could not fund.
             // Equal to usable wealth while solvent (unmet is zero), so it reconciles to the
             // cashflow ladder's usable-wealth column year-for-year until the money runs out,
             // then shows how deep the funding gap gets instead of flatlining at zero.
@@ -863,7 +865,7 @@ final class ResultPresenter
             $cumulativeUnmet = Money::zero();
             foreach ($plan['forecast']->years as $year) {
                 $cumulativeUnmet = $cumulativeUnmet->plus($year->unmetSpend);
-                $netByYear[$year->calendarYear] = $year->liquidWealth->plus($year->pensionWealth)->minus($cumulativeUnmet);
+                $netByYear[$year->calendarYear] = $year->usableWealth()->minus($cumulativeUnmet);
             }
 
             $data = [];
@@ -997,6 +999,29 @@ final class ResultPresenter
                 .'plan is genuinely short rather than trimming early, and a tenth off discretionary spending is a '
                 .'change a household could really make and keep. A guardrail only ever makes a plan look better, so '
                 .'set your own figures if you know what you would actually cut, and by how much.';
+        }
+
+        // The rate the pension part of SPENDABLE wealth was netted at (board card 0076). A pot is
+        // not spendable at face value, so the figure the safety buffer is measured against and the
+        // plans are ranked on now takes the tax off it — and the rate that came out of is one
+        // nobody entered. Every figure in the sentence is READ off the year the headline is taken
+        // from, so the disclosure cannot describe a netting that was not done.
+        $years = $forecast?->years ?? [];
+        $terminal = $years === [] ? null : $years[array_key_last($years)];
+        if ($terminal !== null && $terminal->pensionTaxIfDrawn()->isPositive()) {
+            $rate = self::ratePct(
+                $terminal->pensionTaxIfDrawn()->pence / $terminal->pensionTaxableIfDrawn()->pence * 100
+            );
+            $out[] = 'A pension pot is not spendable money at face value, so the spendable-wealth figure is net of '
+                ."the tax that would be due on it. Of the {$terminal->pensionWealth->format()} of pension money left "
+                ."in {$terminal->calendarYear}, {$terminal->pensionTaxableIfDrawn()->format()} would be taxable when "
+                .'it is drawn (the tax-free cash comes off first, as far as what is left of your Lump Sum Allowance '
+                ."stretches), and we have taken {$terminal->pensionTaxIfDrawn()->format()} off for the tax on it, "
+                ."which is {$rate} of the taxable part. That is the marginal rate your projected income puts you in, "
+                .'not the rate you would pay for cashing the whole pot in one go: draw it faster than this plan draws '
+                .'it and the tax is higher, and a year in which your other income is small enough to be covered by '
+                .'the personal allowance nets nothing at all here. Your TOTAL wealth still counts the pot at face '
+                .'value, because that is what it is worth until it is drawn.';
         }
 
         // What letting the home costs, where the reader gave no rate of their own. Until card 0030
@@ -1452,9 +1477,10 @@ final class ResultPresenter
      *    with no tax on withdrawal. Home equity is excluded — it is not spendable while they live
      *    there, and that exclusion is the point of the figure.
      *  - **pensionCapital** is carried SEPARATELY and labelled taxable. It is deliberately NOT added
-     *    to available capital: £100,000 of pension is not £100,000 in the hand, and the ladder's
-     *    existing `usableWealth` (liquid + pension) overstates it by exactly the tax due. Never
-     *    reuse `usableWealth` for this.
+     *    to available capital: £100,000 of pension is not £100,000 in the hand. The ladder's
+     *    `usableWealth` does add the two, but only after netting the pension part at the projected
+     *    marginal rate ({@see YearResult::usableWealth()}, card 0076); it is still the wrong figure
+     *    for THIS one, which is money spendable *this year* with no tax on withdrawal.
      *  - **monthlyAllowance** is the spend the plan can actually FUND (`spendTarget − unmetSpend`),
      *    not the target. In a shortfall year the target is money the household does not have.
      *  - **monthlyFree** — funded spend above the essential floor — is the discretionary money: the
@@ -1590,7 +1616,10 @@ final class ResultPresenter
 
             // Safety floor: usable money should stay above the user's buffer (default ~2 months
             // of that year's essentials), not just above zero. Flag the year it first dips below.
-            $usable = $year->liquidWealth->plus($year->pensionWealth);
+            // Spendable money, NET of the tax due on the pension part — the engine's own definition,
+            // read rather than rebuilt here, so the buffer this row is judged against and the
+            // terminal figure the plans are ranked on cannot mean different things (card 0076).
+            $usable = $year->usableWealth();
             $floor = $bufferMonths > 0 ? $year->essentialSpend->times($bufferMonths)->dividedBy(12) : Money::zero();
             $belowFloor = $usable->pence < $floor->pence;
             if ($belowFloor && $floorBreachYear === null) {

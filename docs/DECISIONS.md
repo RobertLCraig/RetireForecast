@@ -3,6 +3,36 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-08: spendable wealth is netted at the projected marginal rate, not at encashment rates
+**Context:** card 0076. "How much you would have left" added the pension pot to the cash and
+investments at face value. Three quarters of a pot is taxable on the way out, and that figure is
+what the safety-buffer warning is measured against and what the buy, rent and stay-put plans are
+ranked on, so the warning fired late and the plan holding most of its wealth inside a pension won on
+money it did not have.
+
+**Decision: the taxable balance is charged at the member's PROJECTED MARGINAL RATE, applied flat.**
+The alternative is to price the whole pot as one year's income, which for a £200,000 pot would push
+most of it through the higher and additional bands. Nobody draws a pot that way, and doing so would
+have understated the pot by tens of thousands, which is the opposite error. The marginal rate is
+measured over a £1,000 probe of extra pension income at that year's income
+(`PathProjector::MARGINAL_RATE_PROBE_PENCE`), because the charge is the difference of two rounded
+whole-income computations and a smaller probe is swamped by that rounding once thresholds index.
+
+**Known ceiling, disclosed rather than hidden:** a member whose projected income sits inside the
+personal allowance nets nothing here, though drawing a large pot in one year certainly would be
+taxed. That is the same simplification read from the other end, and it is why the rate, the taxable
+amount and the tax are all stated in `ResultPresenter::assumedFigures()` beside the figure.
+
+**Decision: total wealth stays GROSS.** It is a stock of assets and the pot is worth its face value
+until it is drawn. Only the SPENDABLE figure nets, and the two now differ by exactly the tax owed,
+which the reconciliation tests assert.
+
+**Decision: nothing about the projection moves.** The netting is reported, never spent: no funding
+decision reads it, so tax, spending, depletion and the success odds are byte-identical. What moves
+is the reported spendable figure, which is why the `ENGINE_VERSION` bump owes a stored re-run and
+the Monte Carlo golden master did not redden.
+**Status:** active
+
 ## 2026-09-08: the draw order is the reader's, and the panel's second tile moves with it
 **Context:** card 0075. Every forecast ran on `DrawdownStrategy::TaxEfficient`, set in code when
 only one order existed. The results page priced all three and named the cheapest, so the tool could

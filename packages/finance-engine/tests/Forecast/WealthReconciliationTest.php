@@ -126,14 +126,16 @@ final class WealthReconciliationTest extends TestCase
         $this->assertSame($terminal->calendarYear, $result->finalCalendarYear);
         $this->assertSame($terminal->totalWealth->pence, $result->terminalTotalWealth->pence);
 
-        // Usable wealth is the spendable part (liquid + pension); total adds the illiquid
-        // home's equity (== full property value here: no mortgage in this fixture).
+        // Usable wealth is the SPENDABLE part: liquid + pension, less the tax that would be due on
+        // drawing the pension (board card 0076). Total wealth is gross of that tax and adds the
+        // illiquid home's equity (== full property value here: no mortgage in this fixture), so the
+        // three legs and the tax reconcile exactly.
         $this->assertSame(
-            $terminal->liquidWealth->pence + $terminal->pensionWealth->pence,
+            $terminal->liquidWealth->pence + $terminal->pensionWealth->pence - $terminal->pensionTaxIfDrawn()->pence,
             $result->terminalUsableWealth->pence,
         );
         $this->assertSame(
-            $result->terminalUsableWealth->pence + $terminal->homeEquity()->pence,
+            $result->terminalUsableWealth->pence + $terminal->pensionTaxIfDrawn()->pence + $terminal->homeEquity()->pence,
             $result->terminalTotalWealth->pence,
         );
     }

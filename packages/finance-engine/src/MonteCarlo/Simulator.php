@@ -132,9 +132,10 @@ final class Simulator
             $cumulativeUnmet = 0; // real pence of target spend this path could not fund, running total
             foreach ($result->years as $year) {
                 $wealthByYearIndex[$year->yearIndex][] = $year->totalWealth->pence;
-                // Usable = liquid + pension (excl. home) — the SAME definition the cashflow
-                // ladder and burndown use, so the spendable series can't drift between views.
-                $usable = $year->liquidWealth->plus($year->pensionWealth)->pence;
+                // Usable = liquid + pension net of the tax due on drawing it (excl. home), the SAME
+                // definition the cashflow ladder and burndown read, so the spendable series can't
+                // drift between views. {@see YearResult::usableWealth()}, board card 0076.
+                $usable = $year->usableWealth()->pence;
                 $usableByYearIndex[$year->yearIndex][] = $usable;
                 // Net position continues the usable series below zero once assets are gone:
                 // it subtracts the shortfall the household could not fund (accumulated), so the

@@ -14,12 +14,13 @@ use RetireForecast\FinanceEngine\Money\Money;
  *
  * $terminalWealthPercentiles is total wealth (incl. the primary residence's equity,
  * net of any outstanding mortgage — NNEG-floored, so a rolled-up lifetime mortgage
- * erodes it); $usableWealthPercentiles is the spendable part (excl. the home), so an
- * asset-rich household whose money runs out does not read as the "wealthiest" outcome.
+ * erodes it); $usableWealthPercentiles is the SPENDABLE part (excl. the home, and net of the tax
+ * that would be due on the pension in it), so an asset-rich household whose money runs out does not
+ * read as the "wealthiest" outcome.
  *
  * $fanChart is the per-year band of TOTAL wealth (incl. home equity); $usableFanChart is the
- * same per-year band of USABLE wealth (excl. home = liquid + pension, the spendable
- * money that actually burns down). The two share calendar years and satisfy usable <=
+ * same per-year band of USABLE wealth (excl. home: liquid + pension less the tax on drawing the
+ * pension, the spendable money that actually burns down). The two share calendar years and satisfy usable <=
  * total in every year. Usable is the honest "will it last" series — the home is an
  * illiquid floor that props total wealth up without paying any bills.
  *

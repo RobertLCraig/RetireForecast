@@ -18,8 +18,9 @@ use RetireForecast\FinanceEngine\Money\Money;
  * of the plan held; both are derived from $years, so the pair cannot disagree.
  *
  * Terminal wealth is reported two ways so the asset-rich / cash-poor case reads
- * honestly: $terminalUsableWealth is the spendable part (cash, investments, ISAs
- * and pension pots) and $terminalTotalWealth adds the illiquid primary residence's
+ * honestly: $terminalUsableWealth is the SPENDABLE part (cash, investments, ISAs, and pension pots
+ * net of the tax that would be due on drawing them, {@see YearResult::usableWealth()}) and
+ * $terminalTotalWealth adds the illiquid primary residence's
  * EQUITY — net of any outstanding mortgage (NNEG-floored), so a rolled-up lifetime
  * mortgage erodes it; a lender's share of the bricks is never reported as wealth.
  *

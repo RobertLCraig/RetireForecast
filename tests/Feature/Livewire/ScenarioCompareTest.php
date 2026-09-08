@@ -132,7 +132,7 @@ class ScenarioCompareTest extends TestCase
         $cumulativeUnmet = Money::zero();
         foreach ($forecast->years as $year) {
             $cumulativeUnmet = $cumulativeUnmet->plus($year->unmetSpend);
-            $expectedNet = $year->liquidWealth->plus($year->pensionWealth)->minus($cumulativeUnmet);
+            $expectedNet = $year->usableWealth()->minus($cumulativeUnmet);
             $cell = $burndown['rows'][0]['cells'][$year->calendarYear];
 
             $this->assertSame($expectedNet->format(), $cell, "net position in {$year->calendarYear}");

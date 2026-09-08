@@ -17,9 +17,9 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * and buys real survival probability — UNLESS there is no discretionary spend left to trim, in
  * which case that is itself the finding, and a model with no guardrail cannot state it.
  *
- * **The rule is a funded ratio**, the cheapest honest version: usable wealth (liquid + pension —
- * the same definition the forecast's terminal usable wealth reports, so the home a household
- * lives in is never counted as spendable) divided by the essential spend still to be funded
+ * **The rule is a funded ratio**, the cheapest honest version: usable wealth (liquid + pension, so
+ * the home a household lives in is never counted as spendable) divided by the essential spend still
+ * to be funded
  * (this year's essential floor times the years the plan has left to run). Below the trigger the
  * discretionary spend is cut by {@see discretionaryCut}; the test is re-run every year off that
  * year's own wealth, so recovery restores the spend by itself.

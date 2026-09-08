@@ -6,6 +6,32 @@
 > that); this is the "how we got here" detail. Each item also has a dated DECISIONS.md
 > entry and the full record in `git log`. Newest-first within each part.
 
+## Card 0047, moved out of the live handover on 2026-09-08
+
+Folded out to make room for card 0076 while keeping the live brief loadable in one session. The
+rule is built and nothing about it changes how a fresh session works; the gap it did not close
+carries a board card of its own (0112), which is where a reader now meets it.
+
+**Council tax is its own cost line and it now shrinks.** It sat inside `Property::runningCosts`
+beside maintenance and insurance, and was charged at the full couple's rate for the whole
+projection. `Property::$annualCouncilTax` holds it apart, `Property::$disabledBandReduction` holds
+the band it is claimed from, and `Benefits\CouncilTax` owns the three reliefs and the order they
+apply in: the disabled band reduction lowers the liability (charged as the band below,
+`Dto\CouncilTaxBand` owning the statutory ninths), the 25% single-person discount comes off what is
+left from the first death, and pension-age Council Tax Reduction meets the rest on a taper of 20% of
+income above the applicable amount, passported in full on Guarantee Credit and nil above the £16,000
+capital limit. The applicable amount is the Pension Credit one the engine already computes, which
+the card directed. `YearResult::councilTax()` reports what was charged and the presenter reads it.
+Council tax is deliberately NOT scaled by the ownership share: it is charged to whoever LIVES there.
+No `ENGINE_VERSION` bump and no stored re-run was owed: a null bill is byte-identical, and every
+stored scenario has one, so nothing moves until a reader splits the bill out. The
+`council_tax_bundled` note is what tells them to. All four statutory figures are STATED, not
+verified (no web in that session) and all four reach a projection: see
+[docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§23), carded as **0111**. Built in a worktree, so
+the two new builder inputs and the two new notes have not been seen in a browser. The gap this did
+NOT close is card **0112**: a sell-and-rent plan is still charged no council tax at all, which
+flatters renting in the one comparison the tool exists to run.
+
 ## Card 0048, moved out of the live handover on 2026-09-08
 
 Folded out to make room for card 0065 while keeping the live brief loadable in one session. It was

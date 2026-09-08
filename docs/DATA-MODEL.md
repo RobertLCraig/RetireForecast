@@ -711,14 +711,16 @@ from the original plan, flagged inline:
   source, the pot's own treatment once drawdown has started (already-drawn money is capital and
   already counted, so the two must not double-count), and a stored-scenario re-run, since every plan
   holding an undrawn pot in a Pension Credit year moves. Raised as card **0119**.
-- **OPEN — `usableWealth` counts pre-tax pension money as cash (found 2026-07-30).** The ladder's
-  `usableWealth`, the burndown chart and the safety-buffer check all use `liquidWealth + pensionWealth`,
-  so £100,000 of pension is treated as £100,000 available when drawing it is taxable (worth perhaps
-  £75–85k in the hand). It **overstates available capital and understates depletion risk** for
-  pension-heavy plans, and because it drives the "below buffer floor" warning, that warning **fires
-  later than it should**. Not fixed by the 2026-07-30 spendable-view work, which deliberately does NOT
-  reuse it (`availableCapital` is `liquidWealth` only, with pension carried separately and labelled
-  taxable). Fixing it moves existing reported figures and needs its own decision on how to net the tax.
+- **`usableWealth` counted pre-tax pension money as cash — CLOSED 2026-09-08 (board card 0076).**
+  The ladder's `usableWealth`, the burndown chart, the safety-buffer check and `terminalUsableWealth`
+  all used `liquidWealth + pensionWealth`, so £100,000 of pension was treated as £100,000 available.
+  `YearResult::usableWealth()` is now the one home of the figure: liquid + pension less
+  `pensionTaxIfDrawn()`, which `PathProjector::pensionTaxIfDrawn()` computes by taking the tax-free
+  part off first (a quarter, capped by the member's remaining Lump Sum Allowance, through the same
+  `ufplsSplit` / `lsaHeadroom` the draw routes use) and charging the balance at the member's projected
+  marginal rate. The rate and both money figures are disclosed as an assumed figure. `totalWealth` is
+  deliberately unchanged and still gross. `availableCapital` still means `liquidWealth` only and does
+  not reuse this: it is money spendable *this year* with no tax on withdrawal.
 - **A repayment mortgage now amortises — CLOSED 2026-07-29 (DECISIONS 2026-07-29).** The balance of a
   capital-and-interest mortgage was modelled **static** (the workaround was `mortgageRedemptionYear` +
   repay-from-capital, which yanks the whole balance out of capital in one year), and its payment was an

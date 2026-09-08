@@ -138,8 +138,46 @@ final class YearResult
         public readonly ?Money $housingBenefit = null,
         public readonly ?Money $deferredCareBalance = null,
         public readonly ?Money $guardrailReduction = null,
+        public readonly ?Money $pensionTaxableIfDrawn = null,
+        public readonly ?Money $pensionTaxIfDrawn = null,
     ) {
         $this->totalWealth = $liquidWealth->plus($pensionWealth)->plus($this->homeEquity());
+    }
+
+    /**
+     * The part of the pension money still held at the end of this year that would be TAXABLE if it
+     * were drawn: the pot less the tax-free cash still available on it (a quarter, capped by what is
+     * left of each member's Lump Sum Allowance). Zero on a hand-built year or one restored from a
+     * result stored before board card 0076.
+     */
+    public function pensionTaxableIfDrawn(): Money
+    {
+        return $this->pensionTaxableIfDrawn ?? Money::zero();
+    }
+
+    /**
+     * The income tax that would fall due on {@see pensionTaxableIfDrawn()}, at each member's
+     * projected marginal rate this year. Carried as its own figure, never folded silently into the
+     * pension wealth line: the pot itself is worth what it is worth, and a reader has to be able to
+     * see what we took off it. {@see usableWealth()}, board card 0076.
+     */
+    public function pensionTaxIfDrawn(): Money
+    {
+        return $this->pensionTaxIfDrawn ?? Money::zero();
+    }
+
+    /**
+     * SPENDABLE wealth: cash, investments and ISAs, plus the pension NET of the tax that would be
+     * due on drawing it, and never the home. A pension pot is not spendable at face value — three
+     * quarters of it is taxable on the way out — and this figure is what the safety-buffer warning
+     * is measured against and what the buy / rent / stay-put plans are ranked on, so counting the
+     * pot gross fired the money-is-thin warning late and favoured whichever plan ended with more of
+     * its wealth inside a pension. {@see $totalWealth} is deliberately GROSS: it is a stock of
+     * assets, and the pot is worth its face value until it is drawn. Board card 0076.
+     */
+    public function usableWealth(): Money
+    {
+        return $this->liquidWealth->plus($this->pensionWealth)->minus($this->pensionTaxIfDrawn())->minZero();
     }
 
     /**
@@ -290,6 +328,8 @@ final class YearResult
             $this->housingBenefit,
             $this->deferredCareBalance,
             $this->guardrailReduction,
+            $this->pensionTaxableIfDrawn,
+            $this->pensionTaxIfDrawn,
         );
     }
 }

@@ -5,9 +5,31 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0075). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-08 (card 0076). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038, 0044 and 0045 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **Spendable wealth is net of the tax on the pension part now.** Card 0076. "How much you would
+  have left" added the pot to the cash at face value, and that figure is what the safety-buffer
+  warning is measured against and what the buy, rent and stay-put plans are ranked on, so the
+  warning fired late and the plan holding most of its wealth inside a pension won on money it did
+  not have. `YearResult::usableWealth()` is the one home of the figure and every surface reads it
+  (the ladder column and its buffer check, the burndown line, the Monte Carlo usable series and
+  percentiles, `terminalUsableWealth`, so the assistant, Compare, the PDF and the ranking too).
+  `PathProjector::pensionTaxIfDrawn()` computes it: the tax-free part comes off FIRST through the
+  same `ufplsSplit` / `lsaHeadroom` the draw routes use, so a crystallised or inherited pot gets no
+  second quarter and the allowance ledger is the member's own, and the balance is charged at the
+  PROJECTED MARGINAL rate rather than at what encashing the whole pot in one year would cost (see
+  DECISIONS 2026-09-08 for that call and for its known ceiling, a member inside the personal
+  allowance netting nothing). **Total wealth stays gross on purpose**, so the two now differ by
+  exactly the tax owed, which `WealthReconciliationTest` asserts. The rate, the taxable amount and
+  the tax are disclosed together as an assumed figure. **Nothing about the projection moves**: the
+  netting is reported, never spent, so tax, spending, depletion and the odds are byte-identical and
+  `GoldenMasterTest` did not redden. `ENGINE_VERSION` is
+  `finance-engine/spendable-wealth-net-of-pension-tax` and the **stored-scenario re-run is owed**,
+  because the stored spendable figure is what is wrong. Built in a worktree, so the new results note
+  **has not been seen in a browser**. One gap carded rather than fixed: **0142**, the usable-wealth
+  column headers and tiles still say only "excl. home" and not that the pension tax is off.
 
 - **The draw order is the reader's now, and the default says so.** Card 0075. Every forecast ran on
   `TaxEfficient`, chosen in code, while the results page priced all three orders and named the
@@ -405,25 +427,11 @@ inventory and cards 0024, 0025, 0028 to 0038, 0044 and 0045 were folded out to
   [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) on 2026-09-08. What still stands: its
   `ENGINE_VERSION` bump owes a stored-scenario re-run, its two result notes have not been seen in a
   browser, and its four open gaps are board cards 0113, 0114, 0115 and 0116.
-- **Council tax is its own cost line and it now shrinks.** Card 0047. It sat inside
-  `Property::runningCosts` beside maintenance and insurance, and was charged at the full couple's
-  rate for the whole projection. `Property::$annualCouncilTax` holds it apart, `Property::$disabledBandReduction`
-  holds the band it is claimed from, and `Benefits\CouncilTax` owns the three reliefs and the order
-  they apply in: the disabled band reduction lowers the liability (charged as the band below,
-  `Dto\CouncilTaxBand` owning the statutory ninths), the 25% single-person discount comes off what
-  is left from the first death, and pension-age Council Tax Reduction meets the rest on a taper of
-  20% of income above the applicable amount, passported in full on Guarantee Credit and nil above
-  the £16,000 capital limit. The applicable amount is the Pension Credit one the engine already
-  computes, which the card directed. `YearResult::councilTax()` reports what was charged and the
-  presenter reads it. Council tax is deliberately NOT scaled by the ownership share: it is charged
-  to whoever LIVES there. **No `ENGINE_VERSION` bump and no stored re-run is owed:** a null bill is
-  byte-identical, and every stored scenario has one, so nothing moves until a reader splits the bill
-  out. The `council_tax_bundled` note is what tells them to. **All four statutory figures are
-  STATED, not verified** (no web in this session) and all four reach a projection: see
-  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§23), carded as **0111**. Built in a worktree, so
-  the two new builder inputs and the two new notes **have not been seen in a browser**. The gap this
-  did NOT close is card **0112**: a sell-and-rent plan is still charged no council tax at all, which
-  flatters renting in the one comparison the tool exists to run.
+- **Council tax is its own cost line and it now shrinks.** Card 0047, folded out to
+  [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) on 2026-09-08. What still stands: its two builder
+  inputs and two result notes have not been seen in a browser, its four statutory figures are stated
+  rather than verified (card 0111), and the gap it did not close is card 0112, a sell-and-rent plan
+  charged no council tax at all.
 - **Pension Credit is no longer counted as guaranteed, and two disclosures that never fired now
   fire.** Card 0046. `SECURE_SOURCES` had listed `means_tested_benefit` beside the State Pension, so
   the readout answering "are my essentials covered for life" counted money that has to be claimed,

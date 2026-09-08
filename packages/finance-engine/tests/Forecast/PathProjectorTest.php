@@ -1208,9 +1208,9 @@ final class PathProjectorTest extends TestCase
             'usable wealth must exclude the illiquid home',
         );
         $this->assertSame(
-            $terminalYear->propertyWealth->pence,
+            $terminalYear->propertyWealth->pence + $terminalYear->pensionTaxIfDrawn()->pence,
             $result->terminalTotalWealth->pence - $result->terminalUsableWealth->pence,
-            'the gap between total and usable wealth is exactly the home value',
+            'the gap between total and usable wealth is the home value plus the tax owed on the pot',
         );
     }
 
