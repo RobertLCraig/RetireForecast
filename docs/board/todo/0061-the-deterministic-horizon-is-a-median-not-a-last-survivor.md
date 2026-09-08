@@ -116,3 +116,59 @@ Criterion #1's red was the real one, and is the card in a line: the horizon came
 
 Built in a worktree, so the new builder control, the relabelled ladder and estate copy, the
 Compare note and the PDF line **have not been seen in a browser**.
+
+### 2026-09-08 review (v20260908100035-fb9b)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 220s, run by this job rather than reported by the card.
+
+**acceptance: defect**
+
+I traced each criterion.
+
+**#1 ÔÇö traced, sound.** `RepresentativeDeathAge::forHousehold()` and `lastSurvivorYear()` (`packages/finance-engine/src/Forecast/RepresentativeDeathAge.php`) derive the horizon from the joint survival curve, and `DeterministicForecaster::forecast()` uses it.
+
+**#2 ÔÇö traced, sound.** `PlanningHorizon` enum with `DEFAULT = P75`, three named cases and `label()`; wired through `AssumptionOverrides::planningHorizon()`, `ScenarioForecaster::settings()`, and the `planningHorizon` select in `ScenarioBuilder::render()` / `scenario-builder.blade.php`.
+
+**#3 ÔÇö DEFECT.** `ResultPresenter::planningHorizonBasis()` exists and is shown on Results, Compare and the PDF. But the **Affordability page is not covered**, and it is one of the surfaces the card's Why names. `App\Livewire\Affordability` never passes `planningHorizonBasis`, and `resources/views/livewire/affordability.blade.php`, in its "On the expected path" block (the deterministic one), still prints "keep the essentials paid **for life**", "it is the safest of your plans that still **lasts for life**", and "These keep your essential bills paid **for the rest of your life**" ÔÇö with no odds phrase anywhere on the page. Set the lever to P50 and the tool prints the exact string the card calls its most misleading.
+
+Same untouched string in `scenario-results.blade.php` advice-cost block and `pdf/partials/report.blade.php`: "The money would still last for life."
+
+VERDICT: defect
+
+**scope: defect**
+
+**What I checked:** every file the card touched, and the fence.
+
+**Over the fence: nothing.** The results page was relabelled, not restructured. No verdict-first landing, so card 0010 is untouched. The new lever, `PlanningHorizon`, `RepresentativeDeathAge::forHousehold` and `ForecastSettings::planningHorizon` all sit inside the card's four lines. No extra features rode along.
+
+**Left half done, and it bites.** The card's own fourth task is unticked: the stored scenarios were never re-run. That is not just paperwork.
+
+- `App\Forecast\ResultPresenter::planningHorizonBasis` reads the **current** settings, and `App\Livewire\ScenarioResults::render` (and `ScenarioCompare::render`, `Export\ScenarioReport::data`) feed it to the page.
+- The stored figures beside it came from a run stamped with the **old** engine version. Nothing compares `SimulationRun::$engine_version` to `ScenarioForecaster::ENGINE_VERSION`, and no view prints it.
+
+So a stored plan now shows median-lifespan numbers wearing a "one household in four still has somebody alive" caption. The card exists to stop exactly that kind of over-favourable reading, and this makes it read as verified.
+
+Fix: re-run stored scenarios, or flag a run whose engine version is stale.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**What I found**
+
+`HousingComparison::rentSettings()` builds a fresh `ForecastSettings` by hand and lists only eight fields. The card added a ninth-of-fourteen, `planningHorizon`, and did not add it there. So on a **sell-and-rent** plan the horizon silently falls back to P75 even when the reader picks 50th or 90th on the new lever.
+
+Why that matters: the comparison table then ranks a stay-put plan run to the chosen horizon against a rent plan run to a different one. Nothing says so. `ForecastSettings::withModelCareCost()` *was* updated, so the class now has one rebuild that carries the field and one that drops it ÔÇö the exact drift the sibling card warns about.
+
+No test builds this case: `LastSurvivorHorizonTest` and `ScenarioBuilderTest` both read the base settings, never a variant leg's settings.
+
+Two docs are now false:
+- `docs/board/todo/0124-rent-variant-settings-silently-drop-six-fields.md` says six fields; it is seven, and its list omits the horizon.
+- `ForecastSettings::$planningHorizon` docblock says it is how long "the deterministic plan" lasts. For the rent leg it is not.
+
+Everything else checked out: `DeterministicForecaster`, `HistoricalBacktester` and `AssumptionOverrides` all pass the horizon through, and `medianDeathAge()` genuinely reads `percentileDeathAge()`.
+
+VERDICT: defect
+
