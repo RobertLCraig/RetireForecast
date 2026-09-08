@@ -79,3 +79,64 @@ reports **no new problem class**: every problem it prints is the pre-existing "c
 stamp (it predates the column)" class, one per stored run, which the owed re-run is what clears.
 
 No screen changed, so nothing here needs a browser check.
+
+### 2026-09-08 review (v20260908224229-aa0f)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 427s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I checked both boxes against real code.
+
+**Criterion 1 ÔÇö no credit after the mortgage or home has gone.**
+`PathProjector::projectYear` (the `$financeCost` computation) now sits *after* both places that set the flags: the redemption block and the forced-sale block (both set `$state['mortgageRepaid']`, the sale also sets `$state['homeSold']`). The value is `0` when either flag is set, for both loan shapes ÔÇö the "Mortgage" expense line and the amortisation schedule's `interestIn()`. So all three routes in the card close with the one guard. Verified by `BuyToLetFinanceCostTest::test_a_let_home_redeemed_from_capital_claims_no_credit_from_that_year_on` and `::test_a_force_sold_let_home_on_an_amortising_loan_claims_no_credit_after_the_sale`, which compare a let twin to a residential twin in the event year and in later years.
+
+**Criterion 2 ÔÇö zero finance cost leaves tax alone.**
+The credit block in the same function is gated on `$financeCost > 0`, so with zero cost nothing touches `$totalTaxNominal` or `$netCashNominal`. The same two tests assert a zero tax difference, which is that criterion.
+
+I tried to break it by looking for another place that ends the loan, and there is none: only those two sites set the flags, both above the guard.
+
+VERDICT: sound
+
+**scope: sound**
+
+**What I checked**
+
+I read only the card's own commit (`5dea1dd`), not the whole branch diff. It touches five files: the engine fix, the stamp, one test file, the card, and the handover.
+
+**Did it grow past the card?**
+
+- `PathProjector::projectYear` ÔÇö the finance-cost block moved and gained one guard. Nothing else in that function changed. I checked every line between the old and the new position: none of them reads `$totalTaxNominal` or `$netCashNominal`, so the move is behaviour-neutral apart from the guard. The agent's claim holds.
+- `ScenarioForecaster::ENGINE_VERSION` ÔÇö a stamp bump. Required by the project rule, not scope creep.
+- Test changes are confined to `BuyToLetFinanceCostTest`.
+- The fence held. Nothing touches whether a `Rental` stream stops on sale; `rentalIncomePerOwner` is called exactly as before.
+
+**What is half done**
+
+Task 4 (re-run stored let scenarios, then `scenarios:audit`) is open. It is left unticked and explained: the re-run writes to the shared database, which an unattended worktree must not do. That is declared, not hidden, so it is owed work rather than a false claim of done.
+
+**What you do now**
+
+Nothing here. The re-run is somebody's next job in the main checkout.
+
+VERDICT: sound
+
+**breakage: sound**
+
+I tried to break the guard and could not.
+
+What I checked:
+
+- `PathProjector::projectYear` ÔÇö the `$financeCost` guard now sits after the redemption block and the forced-sale block, and carries the same `! mortgageRepaid && ! homeSold` test as the mortgage payment further down. Both flags are set by those two blocks, so all three routes in the card close.
+- Nothing between the old and new position writes `$totalTaxNominal` or `$netCashNominal` (the only writers are the income pass above and the benefit pass below), so no other figure moves.
+- `$lettingCosts` (used for the reducer base) is computed before the sale block, so the sale year still deducts real letting costs. Consistent with income, which is unchanged by design.
+- Sibling callers: `AmortisationSchedule::interestIn` returns 0 outside the term, `ExpenseProfile::withoutPropertyCosts` nulls `mortgageCosts`, and the year-0 sell variants build no schedule. So the year-0 sell path was never leaking a credit.
+- No second place computes the Section 24 credit (`QuickWhatIf` and `ScenarioForecaster` only mention it in prose).
+- `ENGINE_VERSION` bump is present in `ScenarioForecaster` and logged at the top of the stamp docblock, not just in the constant.
+
+The unticked fourth task (re-run stored scenarios) is stated in the card with its reason, not hidden.
+
+VERDICT: sound
+
