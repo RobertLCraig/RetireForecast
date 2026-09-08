@@ -92,3 +92,60 @@ shortfall should be printed beside it is not built. See DECISIONS 2026-09-08.
 a new class: stale assumption sets missing the card 0064 figures, and stored runs predating the
 integrity-stamp column. Nothing here moves a stored figure. Built in a worktree, so the new panel
 sentence has not been seen in a browser.
+
+### 2026-09-08 review (v20260908222934-4772)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 397s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I traced each box to real code.
+
+**#1 ÔÇö no cheaper-but-worse-funded winner.**
+`WithdrawalStrategyComparison::for` (app/Forecast/WithdrawalStrategyComparison.php) starts the winner at the reader's own order and skips any candidate that fails `fundsAtLeastAsMuchAs`. `funding()` reads the engine's own report only: `essentialsYearsMetFraction`, `fullSpendYearsMetFraction`, `essentialsAlwaysMet`, `fullSpendAlwaysMet`, `depletionCalendarYear` ÔÇö all real methods/fields on `ForecastResult`. The comparison is component-wise, so a candidate better on one measure and worse on another is dropped too. Pinned by `test_the_optimiser_never_names_an_order_that_funds_less_than_the_one_in_place`, which first proves the fixture holds the trap.
+
+**#2 ÔÇö panel says so.**
+`panel()` exports `fundingDiffers`, computed from the set of funding tuples. Both `resources/views/livewire/partials/withdrawal-sequencing.blade.php` and `resources/views/pdf/partials/report.blade.php` render the warning. Pinned by `test_the_panel_says_when_the_orders_do_not_all_fund_the_same_spending`, including a no-false-alarm case.
+
+**#3 ÔÇö saving still two engine runs.**
+`lifetimeTax()` is untouched; `optimiserSavingPence` is baseline minus winner. `test_the_optimiser_returns_the_cheapest_candidate_and_reconciles_to_two_engine_runs` re-runs both and subtracts.
+
+One note, not a fault: that same test also asserts the winner is the globally cheapest candidate. That is only true while funding ties, as it does in its fixture. If that fixture ever depletes, the test will fight criterion #1.
+
+I tried to break it and could not.
+
+VERDICT: sound
+
+**scope: sound**
+
+**Scope check on commit `a8cf2b8`.**
+
+The change is small and stays inside the fence. Seven files, all named on the card.
+
+What I looked for and did not find:
+- No new draw orders added. `WithdrawalStrategyComparison::candidates()` and `DrawCandidate` are card 0078 work and already existed before this commit ÔÇö the "Not this card" fence on widening the candidate set is intact.
+- No reader-picks-the-order change. `alternativeTo()` and `for()` still read the order off `ScenarioForecaster::settings()`, which is card 0075 work already in place.
+- The tax number is untouched. `lifetimeTax()` has no code change, only a doc paragraph; the new filter sits in `for()` and `fundsAtLeastAsMuchAs()`. So the "difference of two engine runs" rule is not disturbed.
+
+One thing grew a little, and it is declared: `funding()` reads four measures, not the two the Task named (`$fullSpendAlwaysMet`, `$depletionCalendarYear`). It adds `essentialsYearsMetFraction()` and `fullSpendYearsMetFraction()`. Both are the engine's own reported figures on `ForecastResult`, not re-derived in the comparison, so the guard behind the Task still holds.
+
+Left half done, and openly: Task 2, "decide with Rob what a reader should see". That is an owner question, not a build gap.
+
+VERDICT: sound
+
+**breakage: defect**
+
+**Finding ÔÇö the second tile is not filtered.**
+
+`WithdrawalStrategyComparison::for` filters funding only for `$cheapest`. `$savingPence` / `fillBandsSaves()` are still a raw tax difference between the current order and `alternativeTo($current)`, with no funding check. So `panel()` still emits `difference` + `fillBandsSaves`, and the blade `resources/views/livewire/partials/withdrawal-sequencing.blade.php` (and the same block in `resources/views/pdf/partials/report.blade.php`) prints "That is ┬ú23,000 less tax over the plan by *spending your savings first*" ÔÇö for an order that funds less. That is the card's own reproduction case: it names a named, reader-pickable order as paying less, for exactly the reason the card says is invalid.
+
+The amber note does not save it. Its last sentence vouches only for "the cheapest order named above", so it explicitly does not cover the tile sentence above it; a reader is told the pair is not like for like, then told which of the pair is cheaper anyway. Acceptance #2 asks the panel to say so "rather than comparing their tax silently"; the tile comparison is still made, and still directional.
+
+No test builds this: the new coverage in `tests/Feature/Forecast/ScenarioForecasterTest.php` asserts on the cheapest sentence, not on `fillBandsSaves` when the alternative underfunds.
+
+Fix is small: gate or caveat `differs`/`fillBandsSaves` on the same `fundsAtLeastAsMuchAs` the optimiser uses.
+
+VERDICT: defect
+
