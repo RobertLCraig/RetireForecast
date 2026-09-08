@@ -5,9 +5,30 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0062). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-08 (card 0063). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **A household can now be modelled cutting back after a bad run.** Card 0063. Every path was
+  scored against a FIXED real spending target, which overstates the chance of running out (no
+  household spends into insolvency) and hides the cheapest mitigation there is.
+  `Dto\SpendingGuardrail` is the one home of the rule and of both of its figures: below a trigger
+  multiple of the essential spend still to be funded, the DISCRETIONARY spend is cut and the
+  essential floor is never touched. Usable wealth is liquid plus pension, the definition the
+  forecast already reports as terminal usable wealth; the denominator reads
+  `PathProjector::yearsRemaining()`, which takes the same death ages the projection loop ends on.
+  The test runs every year off that year's OPENING wealth, before the drawdown, so **recovery
+  restores the spend by itself and there is no latch**. **Opt-in, so every stored scenario is
+  byte-identical: no `ENGINE_VERSION` bump, no stored re-run owed, `GoldenMasterTest` did not
+  redden.** Opt-in is the adverse choice too, this being the one setting that makes a plan look
+  better. `YearResult::guardrailReduction()` reports what each year trimmed, and two notes ride
+  `ResultPresenter::inputNotes()` (so the page and the PDF cannot drift): how many years it bit,
+  the total and the deepest year, and, on `WarningCode::GUARDRAIL_NO_FLEXIBILITY`, the household
+  that had nothing left to cut. Both defaults (a funded ratio of 1.00, a 10% cut) are **STATED,
+  not verified** (no web in this session): see [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md)
+  (§34), carded as **0138**, which also carries the unsettled question of whether the published
+  rules trigger on a funded ratio at all or on the withdrawal rate. Built in a worktree, so the
+  three new builder controls and the two new notes **have not been seen in a browser**.
 
 - **Growth is bought with risk now, and the asset mix is an input.** Card 0062. The mix was
   hardcoded to a cautious 40/60 nothing could move, and the "investment growth" override raised

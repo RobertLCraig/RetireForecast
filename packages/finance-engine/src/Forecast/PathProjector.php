@@ -1477,6 +1477,42 @@ final class PathProjector
         }
         $oneOffTotalNominal = array_sum(array_column($oneOffs, 'amount'));
 
+        // The spending guardrail (board card 0063). Everything above scores the year against a
+        // FIXED real target, which no real household spends into insolvency: measured against the
+        // essential spend still to be funded, a plan that is short cuts back. The test is re-run
+        // here every year off THIS year's own opening wealth, which is what puts the spend back
+        // when the plan recovers — there is no latch to get stuck.
+        //
+        // Usable wealth is liquid + pension, the same definition the forecast reports as terminal
+        // usable wealth, so the home the household lives in is never counted as spendable. It is
+        // read at the year's OPEN: the drawdown that funds this year has not run yet, and a ratio
+        // taken after it would describe a household that had already spent the money the rule is
+        // deciding about.
+        $guardrailCutNominal = 0;
+        $guardrailNoFlexibility = false;
+        $guardrail = $household->expenseProfile->spendingGuardrail;
+        if ($guardrail !== null) {
+            $essentialThisYearNominal = (int) round($essentialPence * $state['spendFactor'] * $survivor);
+            $usable = $this->sum($state['cash']) + $this->sum($state['gia']) + $this->sum($state['isa']) + $this->totalPots($state);
+            $bites = $guardrail->bites(
+                Money::fromPence($usable),
+                Money::fromPence($essentialThisYearNominal * $this->yearsRemaining($household, $draws, $alive, $ages)),
+            );
+            if ($bites) {
+                $discretionaryPence = max(0, $targetPence - $essentialPence);
+                // A household whose whole spend is its essential floor has nothing to cut, so the
+                // guardrail cannot help it. That is the finding, not a no-op: it is raised as a
+                // warning rather than left as a silent zero.
+                $guardrailNoFlexibility = $discretionaryPence === 0;
+                $targetBeforeCut = $targetPence;
+                $targetPence -= $guardrail->cutFrom(Money::fromPence($discretionaryPence))->pence;
+                // Both sides of the cut are taken through the SAME nominal expression the spend
+                // below is, so what the year reports having trimmed is exactly what it trimmed.
+                $guardrailCutNominal = (int) round($targetBeforeCut * $state['spendFactor'] * $survivor)
+                    - (int) round($targetPence * $state['spendFactor'] * $survivor);
+            }
+        }
+
         $spendNominal = (int) round($targetPence * $state['spendFactor'] * $survivor) + $oneOffTotalNominal;
         $essentialNominal = (int) round($essentialPence * $state['spendFactor'] * $survivor);
 
@@ -1766,6 +1802,13 @@ final class PathProjector
                     $m,
                 ),
                 ...$benefitWarnings,
+                ...($guardrailNoFlexibility ? [new Warning(
+                    WarningCode::GUARDRAIL_NO_FLEXIBILITY,
+                    'Your spending guardrail was triggered this year, but there is no discretionary '
+                    .'spending left to cut: the whole of your spend is the essential floor. A '
+                    .'household with nothing to trim gets no protection from a guardrail, so this '
+                    .'plan carries the full risk of the target it is scored against.',
+                )] : []),
             ],
             mortgageBalance: $m($state['mortgageOutstanding']),
             nominal: $nominal,
@@ -1774,9 +1817,33 @@ final class PathProjector
             deferredCareBalance: $m($state['deferredCareBalance']),
             councilTax: $m($councilTaxNominal),
             housingBenefit: $m($housingBenefitNominal),
+            guardrailReduction: $m($guardrailCutNominal),
         );
 
         return $build($r, $build(Money::fromPence(...), null));
+    }
+
+    /**
+     * How many more years this projection has to fund, counting the current one: the longest
+     * remaining life among the LIVING members, from the death ages this path was handed. It is
+     * the denominator of the spending guardrail's funded ratio — what the plan still owes — and
+     * it reads the same death ages the loop ends on, so the two can never describe different
+     * lifespans. Never below 1: the year being projected always has to be funded.
+     *
+     * @param  array<string, bool>  $alive
+     * @param  array<string, int>  $ages
+     */
+    private function yearsRemaining(Household $household, PathDraws $draws, array $alive, array $ages): int
+    {
+        $remaining = 1;
+        foreach ($household->persons as $person) {
+            if (! ($alive[$person->id] ?? false)) {
+                continue;
+            }
+            $remaining = max($remaining, $draws->deathAge($person->id) - ($ages[$person->id] ?? 0) + 1);
+        }
+
+        return $remaining;
     }
 
     /**

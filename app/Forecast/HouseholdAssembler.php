@@ -34,6 +34,7 @@ use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\RepaymentMortgageTerms;
 use RetireForecast\FinanceEngine\Dto\Sex;
+use RetireForecast\FinanceEngine\Dto\SpendingGuardrail;
 use RetireForecast\FinanceEngine\Dto\SpendPath;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
@@ -314,6 +315,19 @@ final class HouseholdAssembler
             // wherever it lives next — so it is carried across a sale rather than deleted with the
             // charge. Sparse: no figure entered means the charge buys none, as before.
             propertyCostsUtilities: $utilities->isPositive() ? $utilities : null,
+            // The state-dependent spending rule (board card 0063), opt-in: only a reader who
+            // ticked the box has their household modelled cutting back after a bad run. Both
+            // figures inside it are optional, so a blank one takes the engine's own disclosed
+            // default rather than silently reading as zero.
+            spendingGuardrail: ($e['guardrailOn'] ?? false)
+                ? new SpendingGuardrail(
+                    // The trigger is entered as a MULTIPLE of the essential spend still to fund
+                    // ("cut back below 1.25 times"), which is how a funded ratio is read; 1.0
+                    // is 100%, so the multiple is the percent divided by a hundred.
+                    triggerFundedRatio: $this->guardrailTrigger($e['guardrailTriggerRatio'] ?? null),
+                    discretionaryCut: $this->percent($e['guardrailCutPct'] ?? null),
+                )
+                : null,
         );
     }
 
@@ -940,6 +954,16 @@ final class HouseholdAssembler
         }
 
         return Percent::fromPercent((float) $value);
+    }
+
+    /** A funded-ratio MULTIPLE as the reader types it (1.25) turned into the Percent the engine holds. */
+    private function guardrailTrigger(mixed $value): ?Percent
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return Percent::fromBasisPoints((int) round((float) $value * 10_000));
     }
 
     private function intOrNull(mixed $value): ?int

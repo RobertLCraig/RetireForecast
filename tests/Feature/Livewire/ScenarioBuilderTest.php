@@ -534,6 +534,51 @@ class ScenarioBuilderTest extends TestCase
         $this->assertSame(150, $set->toHousehold()->expenseProfile->propertyCostsRealGrowth?->basisPoints);
     }
 
+    public function test_the_spending_guardrail_is_off_by_default_and_its_two_figures_are_editable(): void
+    {
+        // Board card 0063. The guardrail is opt-in (it only ever makes a plan look better), and
+        // when it is on both of its figures are the reader's to set, with the engine's disclosed
+        // default behind a blank one. Storage is sparse, so nothing predating the field moves.
+        $save = function (callable $mutate) {
+            $component = Livewire::test(ScenarioBuilder::class);
+            foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+                $component->set($key, $value);
+            }
+            $mutate($component);
+            $component->call('save')->assertHasNoErrors();
+
+            return Scenario::latest('id')->firstOrFail();
+        };
+
+        // The controls are on the spending step, or there is nothing for a reader to edit.
+        Livewire::test(ScenarioBuilder::class)
+            ->set('step', 4)
+            ->assertSee('Cut back if the plan falls short')
+            ->set('expense.guardrailOn', true)
+            ->assertSeeHtml('wire:model="expense.guardrailTriggerRatio"')
+            ->assertSeeHtml('wire:model="expense.guardrailCutPct"');
+
+        $off = $save(fn ($c) => $c);
+        $this->assertArrayNotHasKey('guardrailOn', $off->effectiveBuilderState()['expense'] ?? []);
+        $this->assertNull($off->toHousehold()->expenseProfile->spendingGuardrail);
+
+        // On, with nothing typed: the guardrail runs on the engine's own two figures.
+        $blank = $save(fn ($c) => $c->set('expense.guardrailOn', true));
+        $guardrail = $blank->toHousehold()->expenseProfile->spendingGuardrail;
+        $this->assertNotNull($guardrail);
+        $this->assertTrue($guardrail->triggerIsAssumed());
+        $this->assertTrue($guardrail->cutIsAssumed());
+
+        // On, with both typed: what the reader entered is what the engine runs.
+        $set = $save(fn ($c) => $c
+            ->set('expense.guardrailOn', true)
+            ->set('expense.guardrailTriggerRatio', '1.25')
+            ->set('expense.guardrailCutPct', '20'));
+        $entered = $set->toHousehold()->expenseProfile->spendingGuardrail;
+        $this->assertSame(12_500, $entered?->triggerFundedRatio()->basisPoints);
+        $this->assertSame(2_000, $entered?->discretionaryCut()->basisPoints);
+    }
+
     public function test_adding_a_state_pension_defaults_to_the_full_rate_and_renders_the_level_picker(): void
     {
         Livewire::test(ScenarioBuilder::class)

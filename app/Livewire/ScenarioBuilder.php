@@ -31,6 +31,7 @@ use RetireForecast\FinanceEngine\Dto\CouncilTaxBand;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\PensionBeneficiary;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
+use RetireForecast\FinanceEngine\Dto\SpendingGuardrail;
 use RetireForecast\FinanceEngine\Forecast\AllocationProfile;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
@@ -181,7 +182,7 @@ class ScenarioBuilder extends Component
     public array $people = [];
 
     /** @var array<string, mixed> Holds the survivor factor; essential/discretionary are derived from the lines now. */
-    public array $expense = ['essential' => '', 'discretionary' => '', 'survivorFactor' => '70', 'safetyBufferMonths' => '2', 'propertyCostsGrowthPct' => ''];
+    public array $expense = ['essential' => '', 'discretionary' => '', 'survivorFactor' => '70', 'safetyBufferMonths' => '2', 'propertyCostsGrowthPct' => '', 'guardrailOn' => false, 'guardrailTriggerRatio' => '', 'guardrailCutPct' => ''];
 
     /**
      * The 3-tier spending lines — the source of truth for spend (Phase C1). Each:
@@ -403,6 +404,12 @@ class ScenarioBuilder extends Component
             'expense.survivorFactor' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'expense.safetyBufferMonths' => ['nullable', 'integer', 'min:0', 'max:60'],
             'expense.propertyCostsGrowthPct' => ['nullable', 'numeric', 'min:0', 'max:10'],
+            // The spending guardrail (board card 0063). The trigger is a MULTIPLE of the essential
+            // spending still to fund, so 0 is "never cut back" and anything above about 3 would cut
+            // back in every year a household with a normal amount of money ever has.
+            'expense.guardrailOn' => ['boolean'],
+            'expense.guardrailTriggerRatio' => ['nullable', 'numeric', 'min:0', 'max:5'],
+            'expense.guardrailCutPct' => ['nullable', 'numeric', 'min:0', 'max:100'],
 
             // Spending is entered as 3-tier line items (the source of truth); the
             // essential/discretionary totals are derived from them, never stored apart.
@@ -897,6 +904,13 @@ class ScenarioBuilder extends Component
         // disclosed default above CPI to the home-ownership costs (card 0028).
         $this->expense['propertyCostsGrowthPct'] ??= '';
 
+        // A scenario saved before the spending guardrail existed carries none of its three keys;
+        // default them off and blank so the checkbox and both inputs bind. Off is exactly the old
+        // behaviour: the household spends the same in real terms whatever happens.
+        $this->expense['guardrailOn'] = (bool) ($this->expense['guardrailOn'] ?? false);
+        $this->expense['guardrailTriggerRatio'] ??= '';
+        $this->expense['guardrailCutPct'] ??= '';
+
         // A one-off saved before the home-ownership marker existed has no key; default it empty
         // so the select binds. Empty = charged always, which is exactly the old behaviour.
         foreach ($this->oneOffCosts as $i => $cost) {
@@ -1059,6 +1073,20 @@ class ScenarioBuilder extends Component
         // record no spurious delta.
         if (($expense['propertyCostsGrowthPct'] ?? '') === '') {
             unset($expense['propertyCostsGrowthPct']);
+        }
+
+        // Same rule for the spending guardrail's three keys: a scenario with the box unticked
+        // stores nothing at all, so one saved before the field existed and a what-if that changes
+        // nothing both record no spurious delta. Its two figures are stored only when typed, so a
+        // blank keeps taking the engine's disclosed default rather than freezing today's.
+        if (! ($expense['guardrailOn'] ?? false)) {
+            unset($expense['guardrailOn'], $expense['guardrailTriggerRatio'], $expense['guardrailCutPct']);
+        } else {
+            foreach (['guardrailTriggerRatio', 'guardrailCutPct'] as $key) {
+                if (($expense[$key] ?? '') === '') {
+                    unset($expense[$key]);
+                }
+            }
         }
 
         // Same rule for a one-off's home-ownership marker: stored only when set, so an ordinary
@@ -1648,6 +1676,24 @@ class ScenarioBuilder extends Component
         $pct = ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS / 100;
 
         return rtrim(rtrim(number_format($pct, 2), '0'), '.');
+    }
+
+    /** The guardrail's default trigger as the placeholder shows it ("1"), read from the engine. */
+    public static function guardrailTriggerDefault(): string
+    {
+        return self::trimmed(Percent::fromBasisPoints(SpendingGuardrail::DEFAULT_TRIGGER_FUNDED_RATIO_BPS)->asFraction());
+    }
+
+    /** The guardrail's default cut as the placeholder shows it ("10"), read from the engine. */
+    public static function guardrailCutDefaultPct(): string
+    {
+        return self::trimmed(Percent::fromBasisPoints(SpendingGuardrail::DEFAULT_DISCRETIONARY_CUT_BPS)->asPercent());
+    }
+
+    /** A figure as a placeholder writes it: 3.00 to "3", 1.50 to "1.5". */
+    private static function trimmed(float $value): string
+    {
+        return rtrim(rtrim(number_format($value, 2), '0'), '.');
     }
 
     public function removeOneOff(int $i): void

@@ -1467,6 +1467,29 @@
                         </p>
                         @error('expense.propertyCostsGrowthPct') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                     </div>
+                    <div class="sm:col-span-2">
+                        <label class="flex items-start gap-2">
+                            <input type="checkbox" wire:model.live="expense.guardrailOn" class="mt-1 rounded border-gray-300">
+                            <span class="{{ $label }}">Cut back if the plan falls short</span>
+                        </label>
+                        <p class="mt-1 text-xs text-gray-500">Off by default, and it is the one setting that makes a plan look better rather than worse. With it on, any year your savings and pensions are worth less than the essential spending still to be funded, we model you trimming your discretionary spending, and putting it back when things recover. Your results say how many years it bit and by how much. Nothing ever comes off the essential floor.</p>
+                        @if ($expense['guardrailOn'] ?? false)
+                            <div class="mt-3 grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label for="expense-guardrailTriggerRatio" class="{{ $label }}">Cut back below (times the essential spending still to fund)</label>
+                                    <input id="expense-guardrailTriggerRatio" type="text" inputmode="decimal" wire:model="expense.guardrailTriggerRatio" class="{{ $field }}" placeholder="{{ \App\Livewire\ScenarioBuilder::guardrailTriggerDefault() }}" @error('expense.guardrailTriggerRatio') aria-invalid="true" @enderror>
+                                    <p class="mt-1 text-xs text-gray-500">Blank uses <strong>{{ \App\Livewire\ScenarioBuilder::guardrailTriggerDefault() }}</strong>, which is money equal to the spending it has to meet. A higher figure cuts back sooner and protects the plan more.</p>
+                                    @error('expense.guardrailTriggerRatio') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label for="expense-guardrailCutPct" class="{{ $label }}">Cut discretionary spending by (%)</label>
+                                    <input id="expense-guardrailCutPct" type="text" inputmode="decimal" wire:model="expense.guardrailCutPct" class="{{ $field }}" placeholder="{{ \App\Livewire\ScenarioBuilder::guardrailCutDefaultPct() }}" @error('expense.guardrailCutPct') aria-invalid="true" @enderror>
+                                    <p class="mt-1 text-xs text-gray-500">Blank uses <strong>{{ \App\Livewire\ScenarioBuilder::guardrailCutDefaultPct() }}%</strong>, the size of the cut in the published capital-preservation rule. Enter what you would really give up.</p>
+                                    @error('expense.guardrailCutPct') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                </div>
+                            </div>
+                        @endif
+                    </div>
                 </div>
 
                 <p class="{{ $label }} mt-5 mb-2">One-off costs</p>

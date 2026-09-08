@@ -680,6 +680,21 @@ cash **−0.5%**.
    return on a 60% bond weight is a large part of the blended figure and is stale in the cautious
    direction), is board card **0137**.
 
+34. **The spending guardrail: where it bites and how hard** (board card 0063; lives in
+   `Dto\SpendingGuardrail`). The guardrail is OPT-IN, so neither figure reaches a projection until
+   a reader turns it on; once on, a blank figure takes the constant beside it and the results page
+   discloses both. **Trigger: a funded ratio of 1.00** (`DEFAULT_TRIGGER_FUNDED_RATIO_BPS`), that
+   is, usable wealth below the essential spend the plan still has to fund. A funded ratio of 1 is
+   the standard actuarial statement of a fully funded plan, and triggering there rather than above
+   it is the adverse of the defensible choices: a guardrail that bites earlier protects the plan
+   sooner and so flatters the answer. **Cut: 10% of discretionary spend**
+   (`DEFAULT_DISCRETIONARY_CUT_BPS`), the size of the cut in the published capital-preservation
+   rule of Guyton and Klinger's decision-rules work, which is the citable ancestor of the
+   guardrails in the retail tools. **Both are STATED, not verified** (the session that built the
+   card had no web access): the Guyton-Klinger paper has not been read here and no primary citation
+   is on file for either figure. Sourcing them, and checking whether a funded-ratio trigger or a
+   withdrawal-rate trigger is the better-evidenced form, is board card **0138**.
+
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees

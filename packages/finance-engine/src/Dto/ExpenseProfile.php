@@ -131,6 +131,15 @@ final class ExpenseProfile
          * through {@see propertyCostsUtilities()}, which clamps it to the bucket it comes out of.
          */
         public readonly ?Money $propertyCostsUtilities = null,
+        /**
+         * The household's state-dependent spending rule: cut discretionary spend while the plan is
+         * underfunded, restore it when it recovers ({@see SpendingGuardrail}, board card 0063).
+         *
+         * Null means no guardrail, which is the pre-card behaviour: the household spends the same
+         * in real terms whatever happens. It is opt-in because a guardrail only ever makes a plan
+         * look better, so the adverse default is the one that does not have it.
+         */
+        public readonly ?SpendingGuardrail $spendingGuardrail = null,
     ) {
         $this->essentialSpendPath = $this->resolvePath($essentialSpendPath, $essentialAnnualSpend, 'essential');
         $this->discretionarySpendPath = $this->resolvePath($discretionarySpendPath, $discretionaryAnnualSpend, 'discretionary');
@@ -331,6 +340,7 @@ final class ExpenseProfile
             discretionarySpendPath: $take('discretionarySpendPath'),
             propertyCostsRealGrowth: $take('propertyCostsRealGrowth'),
             propertyCostsUtilities: $take('propertyCostsUtilities'),
+            spendingGuardrail: $take('spendingGuardrail'),
         );
     }
 

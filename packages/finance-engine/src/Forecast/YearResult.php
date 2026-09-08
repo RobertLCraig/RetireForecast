@@ -137,6 +137,7 @@ final class YearResult
         public readonly ?Money $councilTax = null,
         public readonly ?Money $housingBenefit = null,
         public readonly ?Money $deferredCareBalance = null,
+        public readonly ?Money $guardrailReduction = null,
     ) {
         $this->totalWealth = $liquidWealth->plus($pensionWealth)->plus($this->homeEquity());
     }
@@ -216,6 +217,18 @@ final class YearResult
     }
 
     /**
+     * What the spending guardrail took off this year's discretionary spend (real money, zero when
+     * no guardrail is in use or it did not bite this year). Reported on its own, never folded
+     * silently into {@see $spendTarget}: a plan that survives because the household was modelled
+     * cutting back has to say how often it cut back and by how much, or the improved probability
+     * is a figure the reader cannot interrogate. {@see SpendingGuardrail}, board card 0063.
+     */
+    public function guardrailReduction(): Money
+    {
+        return $this->guardrailReduction ?? Money::zero();
+    }
+
+    /**
      * Home equity net of everything secured on it — the mortgage, any Support for Mortgage
      * Interest charge and any deferred care payment — floored at zero (the No-Negative-Equity
      * Guarantee: a rolled-up balance above the home's value is not a negative estate, and DWP
@@ -276,6 +289,7 @@ final class YearResult
             $this->councilTax,
             $this->housingBenefit,
             $this->deferredCareBalance,
+            $this->guardrailReduction,
         );
     }
 }

@@ -956,6 +956,25 @@ final class ResultPresenter
                 .'plan the gap between this and inflation-only is thousands of pounds a year.';
         }
 
+        // The spending guardrail's own two figures, where the reader ticked the box and typed
+        // neither (board card 0063). Both move the answer: the trigger decides how often the
+        // household is modelled cutting back and the cut decides by how much, so a plan's odds
+        // rest on them. Read from the constants that own them, so re-sourcing one moves this
+        // sentence with it.
+        $guardrail = $profile->spendingGuardrail;
+        if ($guardrail !== null && ($guardrail->triggerIsAssumed() || $guardrail->cutIsAssumed())) {
+            $trigger = self::ratePct($guardrail->triggerFundedRatio()->asFraction());
+            $cut = self::ratePct($guardrail->discretionaryCut()->asPercent());
+            $out[] = "You turned on the spending guardrail without saying where it should bite or how hard, so we've "
+                .'assumed you cut back whenever your savings and pensions are worth less than the essential spending '
+                ."the plan still has to fund (a funded ratio of {$trigger}), and that what you cut is {$cut}% of your "
+                .'discretionary spending. These are the cautious end of the published rules: a '
+                .'funded ratio of 1 is simply assets equal to the spending they have to meet, so this waits until the '
+                .'plan is genuinely short rather than trimming early, and a tenth off discretionary spending is a '
+                .'change a household could really make and keep. A guardrail only ever makes a plan look better, so '
+                .'set your own figures if you know what you would actually cut, and by how much.';
+        }
+
         // What letting the home costs, where the reader gave no rate of their own. Until card 0030
         // a let property earned its rent GROSS, and a quarter of gross rent is the difference
         // between a let that pays and one that loses money every month. The rates are READ from the
@@ -2554,6 +2573,66 @@ final class ResultPresenter
         // reader can challenge it. Each value is READ from the one place that owns it, never restated.
         foreach (self::assumedFigures($household, $housingAction, $forecast, $variant, $set, $settings) as $assumed) {
             $notes[] = ['kind' => 'assumed_figure', 'text' => $assumed];
+        }
+
+        // (c5b) THE SPENDING GUARDRAIL, and what it did (board card 0063). A plan that survives
+        // because the household was modelled cutting back is not the same plan as one that
+        // survives spending its whole target, so the improved probability is only readable beside
+        // how often the rule bit and how deep it went. Both figures are counted off the projection
+        // itself, never re-derived from the rule, so the sentence cannot describe a run that did
+        // not happen. The no-flexibility case is its own note: there the guardrail did nothing,
+        // and saying "it trimmed £0" would read as a rule that was never asked to work.
+        $guardrail = $household->expenseProfile->spendingGuardrail;
+        if ($guardrail !== null && $forecast->years !== []) {
+            $bitten = array_values(array_filter(
+                $forecast->years,
+                static fn (YearResult $y): bool => $y->guardrailReduction()->isPositive(),
+            ));
+            $noFlexibility = false;
+            foreach ($forecast->years as $year) {
+                foreach ($year->warnings as $warning) {
+                    $noFlexibility = $noFlexibility || $warning->code === WarningCode::GUARDRAIL_NO_FLEXIBILITY;
+                }
+            }
+
+            if ($bitten !== []) {
+                $total = array_reduce(
+                    $bitten,
+                    static fn (Money $carry, YearResult $y): Money => $carry->plus($y->guardrailReduction()),
+                    Money::zero(),
+                );
+                $deepest = array_reduce(
+                    $bitten,
+                    static fn (Money $carry, YearResult $y): Money => Money::max($carry, $y->guardrailReduction()),
+                    Money::zero(),
+                );
+                $cut = self::ratePct($guardrail->discretionaryCut()->asPercent());
+                $trigger = self::ratePct($guardrail->triggerFundedRatio()->asFraction());
+                $count = count($bitten);
+                $of = count($forecast->years);
+                $first = $bitten[0]->calendarYear;
+
+                $notes[] = ['kind' => 'spending_guardrail', 'text' => "Your spending guardrail bit in {$count} of the "
+                    ."{$of} years of this plan, first in {$first}. It takes {$cut}% off your discretionary spending in "
+                    ."any year your savings and pensions are worth less than {$trigger} times the essential spending "
+                    ."the plan still has to fund, and puts it back when they are not. In all it trimmed {$total->format()} "
+                    ."of spending, and the deepest single year lost {$deepest->format()}. That is money this plan assumes "
+                    .'you would go without, so read the odds above as the odds of surviving on a smaller life, not on the '
+                    .'spending you entered. The essential floor is never trimmed.'];
+            } elseif (! $noFlexibility) {
+                $notes[] = ['kind' => 'spending_guardrail', 'text' => 'Your spending guardrail never bit: this plan '
+                    .'stayed funded in every year, so the full spending you entered was charged throughout. The odds '
+                    .'above are the odds for that spending, with no cutting back assumed.'];
+            }
+
+            if ($noFlexibility) {
+                $notes[] = ['kind' => 'guardrail_no_flexibility', 'text' => 'Your spending guardrail was triggered, and '
+                    .'it had nothing to work with: this household has no discretionary spending left to cut, because '
+                    .'the whole of the spend you entered is the essential floor. That is worth knowing on its own. '
+                    .'Cutting back after a bad run is the cheapest protection a plan has, it costs nothing while things '
+                    .'go well, and it is not available here: every pound of this budget is already a need. So the odds '
+                    .'above are the odds with no room to manoeuvre at all.'];
+            }
         }
 
         // (c5a) COMPUTED FIGURES. The sibling of the rule above, for a number the model WORKED OUT

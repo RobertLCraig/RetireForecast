@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Support;
 
 use RetireForecast\FinanceEngine\Benefits\Deprivation;
+use RetireForecast\FinanceEngine\Dto\SpendingGuardrail;
 
 /**
  * Stable machine-readable codes for {@see Warning}s, so the UI can group, style
@@ -108,4 +109,13 @@ final class WarningCode
      * thousands a year less.
      */
     public const MIXED_AGE_COUPLE = 'mixed_age_couple';
+
+    /**
+     * The spending guardrail was asked to protect this year and had nothing to work with: the
+     * household's whole spend is its essential floor, so there is no discretionary spend to trim.
+     * That is itself the finding — the cheapest mitigation a plan has is unavailable to this one —
+     * and a guardrail that quietly did nothing would leave the reader believing it was there.
+     * {@see SpendingGuardrail}, board card 0063.
+     */
+    public const GUARDRAIL_NO_FLEXIBILITY = 'guardrail_no_flexibility';
 }
