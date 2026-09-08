@@ -115,3 +115,52 @@ figure, so it owes no re-run of its own.
 
 Built in a worktree, so the new builder input and the new results note **have not been seen in a
 browser**.
+
+### 2026-09-08 review (v20260908221754-e1d3)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 396s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+All three criteria trace to real code.
+
+**#1 ÔÇö reader can say it.** Field `crystallisedValue` on `DcPension` (read via `DcPension::crystallisedValue()`), form input in `resources/views/livewire/scenario-builder.blade.php` ("how much is already in drawdown"), validation rule and blank default in `ScenarioBuilder` (`rules()`, `loadState()`, `blankPension()`), mapped in `HouseholdAssembler::pensions()`. Test `test_a_pot_can_be_entered_as_partly_crystallised` asserts the entered ┬ú80,000 reaches the engine.
+
+**#2 ÔÇö no second tax-free quarter.** `PathProjector` seeds its `crystallised` key from `$pension->crystallisedValue()`; `ufplsSplit` and the tax-free branch both subtract it, and `drawFromPot` spends crystallised money first. `StartingCrystallisedPotTest::test_a_draw_from_an_already_crystallised_pot_takes_no_tax_free_quarter` shows ┬ú40,000 all taxable, with a control test proving the projector still pays a quarter on an untouched pot.
+
+**#3 ÔÇö disclosure.** `ResultPresenter::assumedFigures()` emits the "already in drawdown" note; the pounds are read off the pots and the rate off `TaxYearRegistry`, not restated. Settings are passed by `ScenarioResults::render()`, `ScenarioReport::data()` and `AuditScenarios`, so the note is not gated out on any real screen. `AssumedFiguresDisclosureTest::test_the_assumed_crystallised_share_is_disclosed` checks the value; a sibling test proves the note disappears once the reader answers.
+
+I tried to break it on the unstated path, the clamp, and the disclosure gate; each held.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Scope check on card 0080** (commit `25b5046`, a small 15-file diff ÔÇö the huge diff list above is not this card).
+
+Mostly in bounds. The engine, projector, builder field and disclosure all sit inside what the card asked for. Two things stepped over.
+
+1. **The field leaks onto pensions that cannot have it.** `ScenarioBuilder::loadState()` backfills `crystallisedValue` onto *every* pension row, and `ScenarioBuilder::rules()` validates `pensions.*.crystallisedValue` for every subtype. `BuilderStateFixture::full()` now carries `crystallisedValue` on a DB pension and on two state-pension rows. Only `HouseholdAssembler::pension()` reads it, and only for a DC pot. The card said "add the field to `DcPension` and the builder"; a state pension has no drawdown part. This is a stored field with no meaning and no owner.
+
+2. **Unasked copy change.** The same blade edit adds new help text under the *existing* "Tax-free cash already taken (┬ú)" input in `scenario-builder.blade.php`. That field belongs to card 0007, which "## Not this card" fences off.
+
+Half done is declared honestly: Tasks 4 and 5 are open and the card says so.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Findings ÔÇö lens: breakage**
+
+`App\Forecast\LumpSumTaxShock::alreadyCrystallised()` was not updated. It builds the crystallised slice **only** from earlier `pcls` rows in the withdrawal plan. It never reads `DcPension::crystallisedValue()`.
+
+So a pot the reader enters as already in drawdown, with a `ufpls` withdrawal row, is passed `crystallised: 0` into `FlexibleWithdrawalAssessor`. The "tax shock" panel then shows a tax-free quarter on that money, while `PathProjector` (seeded from the same field in its `crystallised` key) taxes every pound of it. Two different answers for one withdrawal, from the same engine, with no warning.
+
+That is the exact failure the method's own docblock says it exists to prevent: *"Without this the panel showed a quarter of it tax-free while the forecast charged the lot ÔÇö two figures for one withdrawal, from the same engine."* The change has made that docblock false, because the sentence is now true again by a second route.
+
+No test builds it: `tests/Feature/Forecast/LumpSumTaxShockTest.php` has no case with a starting `crystallisedValue`.
+
+VERDICT: defect
+
