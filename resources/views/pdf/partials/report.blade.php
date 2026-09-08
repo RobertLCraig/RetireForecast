@@ -912,6 +912,14 @@
                 plan than your current order.
             @endif
         </p>
+        @if ($withdrawal['fundingDiffers'])
+            <p>
+                These orders do not all fund the same spending. Where an order cannot meet your spending in full it
+                stops drawing money, so it pays less tax for that reason and not because it leaves you better off.
+                The cheapest order named above is only ever one that funds at least as much of your spending as your
+                current order does.
+            </p>
+        @endif
         <p class="note">
             @if ($withdrawal['includesIht'])
                 Every figure here counts the tax paid year by year <em>and</em> the Inheritance Tax your estate pays at

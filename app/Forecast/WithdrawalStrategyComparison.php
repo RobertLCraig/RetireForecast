@@ -123,6 +123,7 @@ final class WithdrawalStrategyComparison
         public readonly int $optimiserSavingPence, // baselineTax - cheapestTax; never negative
         public readonly bool $includesIht, // the totals carry the death tax as well as the yearly tax
         public readonly int $candidateCount, // how many whole forecasts the search actually ran
+        public readonly bool $fundingDiffers, // the candidates do not all fund the same spending
     ) {}
 
     public static function for(ScenarioForecaster $forecaster, Scenario $scenario): self
@@ -130,10 +131,12 @@ final class WithdrawalStrategyComparison
         $candidates = self::candidates($forecaster->config($scenario));
 
         $tax = [];
+        $funding = [];
         $includesIht = false;
         foreach ($candidates as $candidate) {
             $run = $forecaster->deterministicUnderStrategy($scenario, $candidate->strategy, $candidate->taxableIncomeTargetPence);
             $tax[$candidate->key()] = self::lifetimeTax($run);
+            $funding[$candidate->key()] = self::funding($run);
             // Read off the run rather than the scenario's toggle, so what the page SAYS is in the
             // total is read from the same object the total was summed out of.
             $includesIht = $includesIht || $run->iht !== null;
@@ -146,11 +149,18 @@ final class WithdrawalStrategyComparison
 
         // The cheapest candidate, starting from the current order so a TIE keeps it: the
         // optimiser only ever reports an order that pays strictly less than what is in place.
+        // An order that funds LESS of the household's spending than the one in place is not in
+        // the running at all, whatever it costs (board card 0081, criterion 1): least tax is only
+        // the same thing as most left over while the spending being funded is the same.
         $cheapest = DrawCandidate::order($current);
         foreach ($candidates as $candidate) {
-            if ($tax[$candidate->key()] < $tax[$cheapest->key()]) {
-                $cheapest = $candidate;
+            if ($tax[$candidate->key()] >= $tax[$cheapest->key()]) {
+                continue;
             }
+            if (! self::fundsAtLeastAsMuchAs($funding[$candidate->key()], $funding[DrawCandidate::order($current)->key()])) {
+                continue;
+            }
+            $cheapest = $candidate;
         }
 
         $baseline = $tax[DrawCandidate::order($current)->key()];
@@ -167,7 +177,54 @@ final class WithdrawalStrategyComparison
             optimiserSavingPence: $baseline - $tax[$cheapest->key()],
             includesIht: $includesIht,
             candidateCount: count($candidates),
+            fundingDiffers: count(array_unique(array_map(
+                static fn (array $f): string => implode('|', $f),
+                $funding,
+            ))) > 1,
         );
+    }
+
+    /**
+     * How much of the household's spending one candidate's run actually funds — the measure the
+     * ranking is only valid within (board card 0081). Every figure is the engine's OWN report on
+     * {@see ForecastResult}, never a re-derivation from the year list here: the two all-or-nothing
+     * flags, the two shares of years each was met in (their honest companions, because a flag
+     * reports a plan that fell short in one year exactly as it reports one that never worked), and
+     * the year the money ran out, if it ever did.
+     *
+     * @return array{float, float, bool, bool, int} ordered so that MORE is better in every position
+     */
+    private static function funding(ForecastResult $run): array
+    {
+        return [
+            $run->essentialsYearsMetFraction(),
+            $run->fullSpendYearsMetFraction(),
+            $run->essentialsAlwaysMet,
+            $run->fullSpendAlwaysMet,
+            // Never depleting beats depleting, and depleting later beats depleting sooner.
+            $run->depletionCalendarYear ?? PHP_INT_MAX,
+        ];
+    }
+
+    /**
+     * Whether $candidate leaves no more of the household's spending unfunded than $baseline does.
+     * Component-wise: an order that funds more on one measure and less on another is NOT in the
+     * running, because the tool cannot say which of the two the reader would rather have.
+     *
+     * @param  array{float, float, bool, bool, int}  $candidate
+     * @param  array{float, float, bool, bool, int}  $baseline
+     */
+    private static function fundsAtLeastAsMuchAs(array $candidate, array $baseline): bool
+    {
+        foreach ($candidate as $i => $value) {
+            // The two shares are quotients, so compare them at the tolerance floating point
+            // arithmetic can actually hold rather than exactly.
+            if (is_float($value) ? $value < $baseline[$i] - 1e-9 : $value < $baseline[$i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -189,8 +246,11 @@ final class WithdrawalStrategyComparison
      * What makes "least tax" the right thing to rank on at all is that the spend target does NOT
      * change with the draw order: same resources, same spending, so whatever tax does not go to
      * HMRC is left in the plan. Minimising total tax is therefore exactly maximising what is left.
-     * FLAGGED (board card 0081): an order that RUNS OUT breaks that premise — it stops drawing, so
-     * it stops paying, and it can be reported as the cheapest while funding the least.
+     * An order that RUNS OUT breaks that premise — it stops drawing, so it stops paying, and it
+     * leaves a smaller estate to be taxed at death, so both halves of this total fall. That is why
+     * the ranking is confined to the orders that fund at least as much as the one in place
+     * ({@see fundsAtLeastAsMuchAs}) and why the panel says when they do not all fund the same
+     * spending (board card 0081); this total stays exactly what it was.
      */
     private static function lifetimeTax(ForecastResult $forecast): int
     {
@@ -250,6 +310,10 @@ final class WithdrawalStrategyComparison
             // "tax paid across the plan" stops at the last living year or runs to the estate, and
             // the answer moves the totals by tens of thousands (no invisible figures).
             'includesIht' => $this->includesIht,
+            // Whether the totals above are like for like at all. Where an order runs short the tax
+            // it pays is lower BECAUSE it funds less, so the reader has to be told the comparison
+            // is not one of equals (board card 0081).
+            'fundingDiffers' => $this->fundingDiffers,
         ];
     }
 

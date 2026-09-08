@@ -11,6 +11,7 @@ use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
+use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Money\Money;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\ScenarioFixture;
@@ -196,6 +197,99 @@ class ScenarioForecasterTest extends TestCase
                     "\"{$label}\" names the internal setting \"{$internal}\" rather than what the reader would do.");
             }
         }
+    }
+
+    /**
+     * A household that cannot fund its full spending under every draw order: it draws its pension
+     * first, which funds the whole plan, while the orders that leave the pension alone run short in
+     * about half the years. Board card 0081 lives here — a short year stops the draw, so it stops
+     * the tax, and the order that funds LEAST is the one the tax metric calls cheapest.
+     */
+    private function cannotFundEveryOrder(): Scenario
+    {
+        $state = BuilderStateFixture::full();
+        $state['expenseLines'][0]['amount'] = '40000';
+        $state['expenseLines'][1]['amount'] = '5000';
+        $state['assumptionOverrides'] = ['drawdownStrategy' => DrawdownStrategy::PensionAware->value];
+
+        return ScenarioFixture::rich(User::factory()->create(), $state);
+    }
+
+    /**
+     * Board card 0081, criterion 1. The optimiser ranked on lifetime tax alone, which is the right
+     * measure ONLY while every order funds the same spending. An order that runs short stops
+     * drawing, so it stops paying tax, and leaves a smaller estate to be taxed at death: both halves
+     * of the metric fall, and the order that funds LEAST wins on it.
+     */
+    public function test_the_optimiser_never_names_an_order_that_funds_less_than_the_one_in_place(): void
+    {
+        $forecaster = new ScenarioForecaster;
+        $scenario = $this->cannotFundEveryOrder();
+        $comparison = WithdrawalStrategyComparison::for($forecaster, $scenario);
+
+        $run = fn (DrawCandidate $c) => $forecaster->deterministicUnderStrategy($scenario, $c->strategy, $c->taxableIncomeTargetPence);
+        $baseline = $run(DrawCandidate::order($comparison->current));
+
+        // The fixture really does hold the trap: some order pays STRICTLY less tax than the one in
+        // place while funding strictly fewer of the plan's years. Without that this proves nothing.
+        $trap = array_filter($this->candidatesFor($scenario), function (DrawCandidate $c) use ($run, $baseline, $comparison): bool {
+            $other = $run($c);
+
+            return self::lifetimeTaxOf($other) < $comparison->baselineTaxPence
+                && $other->fullSpendYearsMetFraction() < $baseline->fullSpendYearsMetFraction();
+        });
+        $this->assertNotEmpty($trap, 'the fixture no longer holds a cheaper order that funds less, so it cannot pin this');
+
+        // ...and the winner is not one of them: it funds at least as much as the reader's own order.
+        $won = $run($comparison->cheapest);
+        $this->assertGreaterThanOrEqual($baseline->fullSpendYearsMetFraction(), $won->fullSpendYearsMetFraction(),
+            "\"{$comparison->cheapestLabel()}\" is reported as the cheapest order while funding less of the household's spending than the order in place");
+        $this->assertGreaterThanOrEqual($baseline->essentialsYearsMetFraction(), $won->essentialsYearsMetFraction());
+        $this->assertFalse(
+            $baseline->depletionCalendarYear === null && $won->depletionCalendarYear !== null,
+            'the cheapest order runs the household out of money and the order in place does not',
+        );
+    }
+
+    /**
+     * Board card 0081, criterion 2. Where the orders do not all fund the same spending, their tax
+     * totals are not like for like, and a panel that puts them side by side without saying so
+     * invites the reader to read "pays less" as "leaves you better off".
+     */
+    public function test_the_panel_says_when_the_orders_do_not_all_fund_the_same_spending(): void
+    {
+        $forecaster = new ScenarioForecaster;
+
+        $short = WithdrawalStrategyComparison::for($forecaster, $this->cannotFundEveryOrder())->panel();
+        $this->assertNotNull($short);
+        $this->assertTrue($short['fundingDiffers'],
+            'the orders fund different amounts of this plan and the panel compares their tax silently');
+
+        // ...and it does not cry wolf on a household every order funds in full.
+        $state = BuilderStateFixture::full();
+        $state['expenseLines'][0]['amount'] = '18000';
+        $state['expenseLines'][1]['amount'] = '4000';
+        $state['oneOffCosts'] = [];
+        $comfortable = WithdrawalStrategyComparison::for($forecaster, ScenarioFixture::rich(User::factory()->create(), $state))->panel();
+        $this->assertNotNull($comfortable);
+        $this->assertFalse($comfortable['fundingDiffers'],
+            'every order funds this household in full, so there is nothing to warn about');
+    }
+
+    /** The candidate set for a scenario that is not the stock fixture. */
+    private function candidatesFor(Scenario $scenario): array
+    {
+        return WithdrawalStrategyComparison::candidates((new ScenarioForecaster)->config($scenario));
+    }
+
+    private static function lifetimeTaxOf(ForecastResult $run): int
+    {
+        $total = $run->iht?->total->pence ?? 0;
+        foreach ($run->years as $year) {
+            $total += $year->totalTax->pence;
+        }
+
+        return $total;
     }
 
     public function test_the_lifetime_tax_the_optimiser_ranks_on_counts_the_tax_paid_at_death(): void

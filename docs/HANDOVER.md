@@ -5,9 +5,24 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0080). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-08 (card 0081). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **The cheapest draw order can no longer be the one that funds least.** Card 0081. The optimiser
+  ranked candidates on lifetime tax alone, which holds only while every order funds the same
+  spending: an order that runs short stops drawing, so it stops paying, and leaves a smaller estate
+  to be taxed, so the order funding LEAST could win and the steer point at it.
+  `WithdrawalStrategyComparison::funding()` reads the run's own report (both all-or-nothing flags,
+  the depletion year and BOTH `*YearsMetFraction()` shares, which is what makes it bite on a
+  household where every order runs short and the flags tie), and `fundsAtLeastAsMuchAs()` keeps a
+  candidate in the running only when no measure is worse than the order in place. The tax total, and
+  the rule that the saving is the difference of two engine runs, are untouched.
+  `panel()['fundingDiffers']` says on both the screen and the PDF when the orders are not comparable.
+  **No `ENGINE_VERSION` bump and no stored re-run is owed** (nothing about a projection moves; the
+  panel is computed on the page). Built in a worktree, so the new panel sentence **has not been seen
+  in a browser**. Whether the shortfall should be PRINTED beside the winner is left open and is
+  Rob's; see DECISIONS 2026-09-08.
 
 - **A pot can now say how much of it is already in drawdown.** Card 0080. Every starting pot was
   seeded wholly uncrystallised, so a reader who had already taken their tax-free cash was given a

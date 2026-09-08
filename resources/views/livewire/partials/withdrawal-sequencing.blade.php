@@ -40,6 +40,15 @@
         @endif
     </p>
 
+    @if ($withdrawal['fundingDiffers'])
+        <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            These orders do not all fund the same spending. Where an order cannot meet your spending in full it
+            stops drawing money, so it pays less tax for that reason and not because it leaves you better off.
+            The cheapest order named above is only ever one that funds at least as much of your spending as your
+            current order does.
+        </p>
+    @endif
+
     <p class="mt-2 text-xs text-gray-500">
         @if ($withdrawal['includesIht'])
             Every figure here counts the tax paid year by year <em>and</em> the Inheritance Tax your estate pays at the

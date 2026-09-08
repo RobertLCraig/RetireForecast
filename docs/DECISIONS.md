@@ -3,6 +3,40 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-08: a draw order that funds less of the spending is not in the running
+
+**Context:** card 0081. `WithdrawalStrategyComparison` ranked candidate draw orders on lifetime tax
+alone, which is the right measure only while every order funds the same spending. An order that
+cannot meet the spend stops drawing, so it stops paying tax, and it leaves a smaller estate to be
+taxed at death: both halves of the metric fall, so the order that funds LEAST could be reported as
+the cheapest and the `interpret` steer then told the reader to lean towards it.
+
+**Decision: filter, do not re-score.** The lifetime-tax total is unchanged, and so is the rule that
+the reported saving is the difference of two of the engine's own runs (card 0007 acceptance #5). What
+changed is which candidates are eligible: an order is only in the running when it funds at least as
+much as the order in place. There is no weighted "tax per pound funded" score, because the exchange
+rate between a pound of tax and a year of unfunded spending is the reader's, not ours.
+
+**Decision: funding is compared component-wise, and reads the engine's own report.**
+`WithdrawalStrategyComparison::funding()` takes `ForecastResult::$essentialsAlwaysMet`,
+`$fullSpendAlwaysMet`, `$depletionCalendarYear` and BOTH `*YearsMetFraction()` shares, and
+`fundsAtLeastAsMuchAs()` requires no measure to be worse. The two shares are in there because the
+flags are all-or-nothing (the DTO's own docblock says so): on a household where every order runs
+short, the flags tie and the fault survives untouched. Nothing is re-derived from the year list
+inside the comparison. Component-wise means an order that funds more essentials and fewer full-spend
+years is excluded rather than traded off, which is the same refusal to price the reader's preference.
+
+**Decision: the panel says when the orders are not comparable, and still names a winner.** The card
+left the shape of this open between hiding the winner and showing it with the shortfall beside it;
+the acceptance requires only that the panel say so. `panel()['fundingDiffers']` is true when the
+candidates do not all fund the same spending, and both the screen and the PDF carry the same
+sentence. The winner is still named, because it is now guaranteed to fund at least as much as the
+reader's own order. **Whether the shortfall itself should be printed beside it is Rob's**, and is not
+built.
+
+No figure moves, no `ENGINE_VERSION` bump, no stored re-run owed: the comparison is computed on the
+page and nothing is stored from it.
+
 ## 2026-09-08: a starting pot says for itself how much of it is already in drawdown
 
 **Context:** card 0080. Card 0007 taught the projector crystallisation for a lump sum taken WITHIN
