@@ -283,3 +283,50 @@ which is the lane the unattended loop takes its next card from. A session that s
 read the question and stop. Recorded rather than fixed, because a lane move is the scheduler's.
 
 **Not checked in a browser, same as before**, and for the same reason.
+
+### 2026-09-08 review (v20260908144146-92e5)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 274s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I checked the board, not the app code (this card only changes cards).
+
+- **#6, #3, #4** ÔÇö `php C:\Dev\ProgressBoard\artisan board:convention --path=$PWD` prints `RetireForecast 0 140`. Zero open cards fail the link, `Blocked by`/`needs:` and reason checks. That is the tool the card names, run by me, not quoted by the builder.
+- **#5** ÔÇö I diffed the `## Direction` and `## Decided` block of every card touched since `af8904c`. All identical. The one flag was card 0022's stray duplicate `## Decided` heading, which the fix removed; its real `## Decided` (`<!-- -->`) and its whole `## Direction` are byte-for-byte unchanged, and the panel text still stands once, in `docs/board/human-review/0022-interest-only-and-rio-indications-change-the-keep-the-flat-routes.md`.
+- **#1** ÔÇö sampled `## Why` on 0046, 0093, 0084. Each states a problem and proposes nothing.
+- **#2** ÔÇö every card carrying `## Options` states why the answer is Rob's (0084 does it in the option text: "a judgement that is yours"). 0141 and 0038 are not decision cards.
+
+Nothing I could break. The `## What I need from you` ordering the builder flagged is the convention's, which this card may not change.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Fenced areas held.** Neither commit (`be64dcc`, `d829818`) touches `docs/board/README.md`, any `done/` or `discarded/` card, or any other board. `## Direction` and `## Decided` are untouched everywhere; on `docs/board/human-review/0022-...md` the panel text now stands exactly once, under `## Direction`, which is what the Comments claim.
+
+**One thing grew.** In `docs/board/in-progress/0072-rewrite-this-board-s-cards-for-the-reader.md`, `## Tasks`, the session rewrote two of its own task lines from "write it into `## Direction`" to "write it into `## Comments`" (commit `be64dcc`). That is editing the specification it is being measured against, and it now disagrees with the same card's `## Plan`, which still says "write the count you reached into `## Direction`". A reader of the card gets two different instructions for the same act, and the record of where the count belongs is no longer one thing.
+
+**One thing added, not asked for.** The same session created `docs/board/todo/0141-three-decision-cards-sit-in-the-lane-the-loop-builds-from.md`. The card asks for a rewrite of existing cards, not a new work item. It is disclosed in `## Comments` and marked OUT-OF-SCOPE, so it is visible, but it is still new scope.
+
+VERDICT: defect
+
+**breakage: sound**
+
+I tried to break it and could not.
+
+Checked, all from a read of the tree:
+
+- `board:convention --path=C:\Dev\RetireForecast` prints `0 140`, so the finish-line claim holds now, not just when written.
+- Every `` `0nnn` `` reference in the four open lanes resolves to a real card file. No dangling link.
+- `needs:` versus the `**Blocked by**` list matches both ways on all eight cards that have either (0022, 0019, 0023, 0026, 0027, 0040, 0043, 0093). Every named blocker is still open, so none is a stale block.
+- The 0022 repair: the deleted panel block still stands once, in that card's `## Direction` (`0022`, section `## Why it needs you` / `## Direction`). No `## Direction` or `## Decided` heading was added or removed anywhere in the diff.
+- `no_outward_effect:` is a real key (`ProgressBoard app/Support/Board/Card.php`), and all ten uses sit inside the frontmatter fences.
+- `## Plan` after `## Tasks` is the order `docs/board/README.md` gives for a feature card.
+
+One soft point, not a break: cards like `human-review/0039` gained a `## Plan` ("about an hour") although every task is ticked, so it reads as work outstanding. The README deletes `## Plan` at `done/`, so it self-clears.
+
+VERDICT: sound
+
