@@ -5,9 +5,25 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0081). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-08 (card 0082). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **A Section 24 credit no longer outlives the mortgage it relieves.** Card 0082. The relievable
+  finance cost was read off the "Mortgage" expense line, or off the amortisation schedule's
+  interest, with no check that the loan still existed, while the payment side had always stopped at
+  `mortgageRepaid` / `homeSold`: a let household could redeem at maturity, be force-sold, or sell a
+  home carrying an amortising loan, pay no interest from that year, and still collect basic-rate
+  relief on it for the rest of the plan. The fix is a MOVE, not a second condition. The block now
+  runs immediately AFTER the forced-sale block in `PathProjector::projectYear`, where the two flags
+  hold this year's answer, and carries exactly the condition the payment carries, which is what
+  makes one guard close all three routes at once. Nothing between the old and the new position
+  reads the year's tax or net cash, so no other figure moves. `ENGINE_VERSION` is
+  `finance-engine/section-24-credit-dies-with-the-mortgage` and the **stored-scenario re-run is
+  owed** for any let plan that redeems or sells: its tax was too low, so its wealth, depletion year,
+  estate and odds are all too favourable, and the flattery fell on exactly the borrowing routes the
+  draw-order and housing rankings turn on. `GoldenMasterTest` did not redden (its fixture lets
+  nothing). `scenarios:audit` reports no new problem class. No screen changed.
 
 - **The cheapest draw order can no longer be the one that funds least.** Card 0081. The optimiser
   ranked candidates on lifetime tax alone, which holds only while every order funds the same

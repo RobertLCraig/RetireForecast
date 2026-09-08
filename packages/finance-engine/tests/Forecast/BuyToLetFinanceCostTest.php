@@ -7,15 +7,20 @@ namespace RetireForecast\FinanceEngine\Tests\Forecast;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\Account;
+use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\AssetClassAssumption;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\IncomeStream;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
+use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
+use RetireForecast\FinanceEngine\Dto\MortgageRatePeriod;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
+use RetireForecast\FinanceEngine\Dto\RepaymentMortgageTerms;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
@@ -122,6 +127,82 @@ final class BuyToLetFinanceCostTest extends TestCase
             $residential[2036]->totalTax->pence - $let[2036]->totalTax->pence,
             'ten years of CPI must not change the finance-cost credit on a fixed interest-only loan',
         );
+    }
+
+    /**
+     * The same landlord, but the loan ENDS partway through the plan (board card 0082): either it
+     * is redeemed out of capital at maturity, or the lender calls it and the home is force-sold.
+     * £400,000 of cash so the redemption is fundable and the plan does not fail instead.
+     * $terms, when given, makes it an amortising loan, which knows its own interest year by year
+     * and keeps reporting it after the property it is secured on has gone.
+     */
+    private function maturingLandlord(bool $isLet, MortgageMaturityAction $action, ?RepaymentMortgageTerms $terms = null): Household
+    {
+        $base = $this->landlord($isLet);
+        $home = $base->primaryResidence;
+
+        return new Household(
+            $base->name, $base->region, $base->persons,
+            // An amortising loan owns its own instalment, so the "Mortgage" expense line goes.
+            $terms === null ? $base->expenseProfile : new ExpenseProfile(
+                Money::fromPounds(18_000), Money::zero(), Percent::fromPercent(70),
+            ),
+            pensions: $base->pensions,
+            incomeStreams: $base->incomeStreams,
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(400_000))],
+            primaryResidence: new Property(
+                currentValue: $home->currentValue,
+                ownership: $home->ownership,
+                outstandingMortgage: $home->outstandingMortgage,
+                mortgageRedemptionYear: 2030,
+                mortgageMaturityAction: $action,
+                isLet: $isLet,
+                repaymentTerms: $terms,
+                lettingManagementRate: Percent::zero(),
+                lettingVoidRate: Percent::zero(),
+                lettingMaintenanceRate: Percent::zero(),
+            ),
+        );
+    }
+
+    public function test_a_let_home_redeemed_from_capital_claims_no_credit_from_that_year_on(): void
+    {
+        // The mortgage is repaid out of capital in 2030, and the payment stops that same year,
+        // so from 2030 the household pays no interest and can be relieved on none. Before this was
+        // guarded the reducer was still granted on the "Mortgage" expense line for ever.
+        $residential = $this->yearsByCalendar($this->maturingLandlord(false, MortgageMaturityAction::RepayFromCapital));
+        $let = $this->yearsByCalendar($this->maturingLandlord(true, MortgageMaturityAction::RepayFromCapital));
+
+        foreach ([2030, 2031, 2036] as $year) {
+            $this->assertSame(
+                0,
+                $residential[$year]->totalTax->pence - $let[$year]->totalTax->pence,
+                "a redeemed mortgage relieves nothing in {$year}",
+            );
+        }
+    }
+
+    public function test_a_force_sold_let_home_on_an_amortising_loan_claims_no_credit_after_the_sale(): void
+    {
+        // The lender calls the loan in 2030 and the home is sold. The amortisation schedule does
+        // not know the property is gone, so interestIn() kept returning the year's interest and
+        // the credit outlived both the loan and the home it was secured on.
+        $terms = new RepaymentMortgageTerms(
+            termMonths: 240,
+            firstPaymentYear: 2026,
+            firstPaymentMonth: 1,
+            ratePeriods: [new MortgageRatePeriod(Percent::fromPercent(5))],
+        );
+        $residential = $this->yearsByCalendar($this->maturingLandlord(false, MortgageMaturityAction::ForcedSale, $terms));
+        $let = $this->yearsByCalendar($this->maturingLandlord(true, MortgageMaturityAction::ForcedSale, $terms));
+
+        foreach ([2030, 2031, 2036] as $year) {
+            $this->assertSame(
+                0,
+                $residential[$year]->totalTax->pence - $let[$year]->totalTax->pence,
+                "a sold home relieves nothing in {$year}",
+            );
+        }
     }
 
     /**

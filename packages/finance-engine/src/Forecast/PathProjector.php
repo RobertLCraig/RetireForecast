@@ -1301,37 +1301,6 @@ final class PathProjector
             }
         }
 
-        // Buy-to-let finance-cost restriction (since April 2020): a landlord can no longer deduct
-        // mortgage interest from rental profit, but gets a basic-rate (20%) tax reducer on the
-        // lower of the finance cost and the rental profit. Modelled when the home is LET: the
-        // mortgage interest is charged as spend above (a real outflow, no full deduction), and
-        // here the household tax falls by 20% × min(interest, rental income). Without this the
-        // rent was taxed at the full marginal rate with no relief for the interest — overstating
-        // the tax on a let property. v1: household-level (joint-ownership split not separated),
-        // capped at the tax due (a reducer cannot create a refund). The base is the rental PROFIT,
-        // which since card 0030 is the rent NET of the letting costs deducted above; while profit
-        // was approximated by gross rent, a mortgaged let was relieved on rent it never kept.
-        // The relievable finance cost is mortgage INTEREST only — capital repaid never attracts
-        // relief. An amortising loan knows its own interest for the year (falling as the balance
-        // falls); otherwise the whole Mortgage expense line is interest (an interest-only loan).
-        // Both are FIXED NOMINAL, exactly as the payment is charged below: interest on a fixed
-        // balance at a fixed rate is the same cash every year, so CPI-indexing it overstated the
-        // credit (and, once the inflated figure passed the rent, silently read the reducer base
-        // off the rent instead of the interest).
-        $financeCost = $state['repaymentSchedule'] !== null
-            ? (int) round($state['repaymentSchedule']->interestIn($calendarYear)->pence * $state['ownershipShare'])
-            : $household->expenseProfile->mortgageCosts()->pence;
-        if (($household->primaryResidence?->isLet ?? false) && $financeCost > 0) {
-            $rentalProfit = max(0, array_sum($this->rentalIncomePerOwner($household, $alive, $ages, $cumInflation)) - array_sum($lettingCosts));
-            $reducerBase = min($financeCost, $rentalProfit);
-            $credit = min(
-                (int) round($reducerBase * $this->config->incomeTax->basicRate->asFraction()),
-                $totalTaxNominal,
-            );
-            $totalTaxNominal -= $credit;
-            $netCashNominal += $credit;
-        }
-
         // Household spend (nominal), with the survivor factor when only one remains.
         $aliveCount = count(array_filter($alive));
 
@@ -1486,6 +1455,47 @@ final class PathProjector
             $state['mortgageOutstanding'] = 0;
             $state['mortgageRepaid'] = true; // stops the ongoing mortgage payment (dropped just below)
             $state['homeSold'] = true;
+        }
+
+        // Buy-to-let finance-cost restriction (since April 2020): a landlord can no longer deduct
+        // mortgage interest from rental profit, but gets a basic-rate (20%) tax reducer on the
+        // lower of the finance cost and the rental profit. Modelled when the home is LET: the
+        // mortgage interest is charged as spend below (a real outflow, no full deduction), and
+        // here the household tax falls by 20% × min(interest, rental income). Without this the
+        // rent was taxed at the full marginal rate with no relief for the interest — overstating
+        // the tax on a let property. v1: household-level (joint-ownership split not separated),
+        // capped at the tax due (a reducer cannot create a refund). The base is the rental PROFIT,
+        // which since card 0030 is the rent NET of the letting costs deducted above; while profit
+        // was approximated by gross rent, a mortgaged let was relieved on rent it never kept.
+        // The relievable finance cost is mortgage INTEREST only — capital repaid never attracts
+        // relief. An amortising loan knows its own interest for the year (falling as the balance
+        // falls); otherwise the whole Mortgage expense line is interest (an interest-only loan).
+        // Both are FIXED NOMINAL, exactly as the payment is charged below: interest on a fixed
+        // balance at a fixed rate is the same cash every year, so CPI-indexing it overstated the
+        // credit (and, once the inflated figure passed the rent, silently read the reducer base
+        // off the rent instead of the interest).
+        //
+        // It runs HERE, after the redemption and the forced sale above, so it carries EXACTLY the
+        // condition the payment below carries: a relief for a cost the household no longer bears
+        // is not a rounding difference, it is tax relieved on interest nobody paid, for every
+        // remaining year of the plan (board card 0082). Three ways in were reachable: a loan
+        // redeemed from capital at maturity, a home force-sold in its place, and an amortising
+        // schedule that goes on reporting interest because it does not know the property is
+        // gone. The one guard closes all three, because all three end in these two flags.
+        $financeCost = ! $state['mortgageRepaid'] && ! $state['homeSold']
+            ? ($state['repaymentSchedule'] !== null
+                ? (int) round($state['repaymentSchedule']->interestIn($calendarYear)->pence * $state['ownershipShare'])
+                : $household->expenseProfile->mortgageCosts()->pence)
+            : 0;
+        if (($household->primaryResidence?->isLet ?? false) && $financeCost > 0) {
+            $rentalProfit = max(0, array_sum($this->rentalIncomePerOwner($household, $alive, $ages, $cumInflation)) - array_sum($lettingCosts));
+            $reducerBase = min($financeCost, $rentalProfit);
+            $credit = min(
+                (int) round($reducerBase * $this->config->incomeTax->basicRate->asFraction()),
+                $totalTaxNominal,
+            );
+            $totalTaxNominal -= $credit;
+            $netCashNominal += $credit;
         }
 
         // The "Mortgage" expense line comes out of the CPI-and-survivor-multiplied buckets

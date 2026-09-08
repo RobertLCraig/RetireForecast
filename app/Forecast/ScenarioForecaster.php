@@ -61,7 +61,19 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-08 (inherited-pension-tax-free-under-75): a pension pot the survivor inherits
+     * Bumped 2026-09-08 (section-24-credit-dies-with-the-mortgage): the buy-to-let finance-cost tax
+     * reducer is now granted only while the loan it relieves still exists. The relievable finance
+     * cost was read off the "Mortgage" expense line, or off the amortisation schedule's interest,
+     * with no check that the mortgage was still owed, while the PAYMENT side had always stopped at
+     * `mortgageRepaid` / `homeSold`, so from a redemption at maturity, a forced sale, or a sale of
+     * a home carrying an amortising loan, the household paid no interest and still collected
+     * basic-rate relief on it for every remaining year. Any stored LET plan that redeems its
+     * mortgage or sells the property pays too LITTLE tax under an earlier stamp, so its wealth,
+     * depletion year, estate and success odds are all too FAVOURABLE, and the flattery falls
+     * exactly on the borrowing routes the draw-order and housing comparisons turn on. A plan whose
+     * home is not let, or whose mortgage runs to the end of the projection, is byte-identical.
+     * See board card 0082.
+     * Previous bump 2026-09-08 (inherited-pension-tax-free-under-75): a pension pot the survivor inherits
      * now carries the age its owner died at ({@see PathProjector::drawIsTaxFree}), and where that
      * age is under 75 the survivor draws it as TAX-FREE income, which is what the law does. The
      * projector folded the deceased's pots into one without recording that age, so it charged the
@@ -408,7 +420,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/inherited-pension-tax-free-under-75';
+    public const ENGINE_VERSION = 'finance-engine/section-24-credit-dies-with-the-mortgage';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
