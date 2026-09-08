@@ -108,3 +108,46 @@ pass of its own and not this card's scope.
       general planner (Rob's decision 1, 2026-07-01)
 - [x] Add the targets to `WithdrawalStrategyComparison::CANDIDATES` and give each one a `label()`
 - [x] Re-run `php artisan scenarios:audit`; the panel's "cheapest" figure moves if a target wins
+
+### 2026-09-08 review (v20260908200223-0f1c)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 355s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I checked each box against real code.
+
+**#1 ÔÇö tries a non-named order.** `WithdrawalStrategyComparison::candidates()` adds `DrawCandidate::managingTaxableIncomeTo()` at two statutory targets. The target really reaches the engine: `ScenarioForecaster::deterministicUnderStrategy` ÔåÆ `buildSettings` ÔåÆ `ForecastSettings::$taxableIncomeTargetPence`, read in `PathProjector::fundShortfall` in the `FillBands` branch (it fills to `$target ?? $paLimit` and skips the second basic-rate pass). Pinned by `ScenarioForecasterTest::test_the_search_runs_an_order_that_is_not_one_of_the_three_named_ones`, which fails if the totals match a named order.
+
+**#2 ÔÇö stays in the 4-6 bound.** `candidates()` returns 3 + 2 = 5. `panel()` reports `candidateCount` from the same list it looped. Guarded by `test_the_bounded_search_stays_within_the_forecasts_a_page_can_afford`, which also proves no two `DrawCandidate::key()` collide, so no run is silently lost.
+
+**#3 ÔÇö names a winner in reader terms.** `DrawCandidate::label()` returns "keeping each person's taxable income under ┬úX a year". `panel()` sends it as `cheapestLabel`, rendered in `withdrawal-sequencing.blade.php` and `report.blade.php`. `test_a_generated_order_is_named_in_terms_the_reader_can_act_on` checks the amount is present and no internal setting name is.
+
+I tried to break it and could not. The known weakness (a winner that funds least) is already filed as card 0081, not this card.
+
+VERDICT: sound
+
+**scope: sound**
+
+I checked only what this card's own commit (`155fc1a`) changed. It is small: 12 files, and every one of them is on the card's path.
+
+**Nothing over the fence.** The "Not this card" line bans a full combinatorial search over wrappers and amounts. `WithdrawalStrategyComparison::candidates()` adds exactly two generated orders, both built from statutory figures read off the scenario's tax year, and `DrawCandidate::managingTaxableIncomeTo()` only moves where the pension pass stops. `PathProjector::fundShortfall()` reads the new target inside the `FillBands` branch alone. That is a lever, not a planner.
+
+**No half-done plumbing.** The new `taxableIncomeTargetPence` is carried through every place settings are rebuilt: `ScenarioForecaster::settings()`, `deterministicUnderStrategy()`, and the one other constructor call, `HousingComparison::rentSettings()`. The cache keys include the target, so two candidates cannot share a result.
+
+**Declared gaps, not hidden ones.** The reader still cannot pick a generated order. The card warned about this. The builder raised it as `docs/board/todo/0144-...` instead of quietly widening this card. The two calls reserved for you were answered from the plan and written into DECISIONS as still open.
+
+VERDICT: sound
+
+**breakage: defect**
+
+I attacked the change. Two things break.
+
+**1. A sentence the change made false.** `ResultPresenter::inputNotes` (the drawdown-strategy assumed note) still tells the reader "Your results price every order we can run and name the cheapest; you can pick the one you want in the builder." After this card the cheapest can be a generated target order, and no builder control exists for it. The same claim sits in `resources/views/livewire/scenario-builder.blade.php` beside the draw-order control ("your results price every one of these orders and tell you which is cheapest"). Card 0144 raises the missing input route, but it does not name either sentence, so today the page states something untrue.
+
+**2. The generated order's name overstates what the engine does.** `DrawCandidate::label()` says "keeping each person's taxable income under ┬úX a year". In `PathProjector::fundShortfall` the target caps only NON-SAVINGS income (`$incomeOf` keeps savings and dividends outside the cap), and the last-resort `$drawPensionUfpls(null)` pass runs with no cap once capital is gone. So in the very households where the search matters, the plan breaches the figure its own name is built from.
+
+VERDICT: defect
+
