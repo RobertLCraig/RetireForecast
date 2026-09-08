@@ -97,3 +97,52 @@ pre-existing and none from this card: 120 runs with no integrity stamp and three
 missing card 0064's shipped figures.
 
 Built in a worktree, so the new results note **has not been seen in a browser**.
+
+### 2026-09-08 review (v20260908174305-30b2)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 326s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I tried to break all three. I could not.
+
+**AC#1 ÔÇö netted.** `YearResult::usableWealth()` (packages/finance-engine/src/Forecast/YearResult.php) is liquid + pension minus `pensionTaxIfDrawn()`. `PathProjector::project()` sets `terminalUsableWealth` from that same accessor, and `PathProjector::pensionTaxIfDrawn()` computes it per person at the projected marginal rate. Consumers read the one accessor: `ResultPresenter::ladder()` for the safety-buffer floor, and `Simulator::run()` for the usable percentiles. Test `test_spendable_wealth_is_net_of_tax_on_the_pension_part` pins ┬ú30,000 on a ┬ú200,000 pot.
+
+**AC#2 ÔÇö rate disclosed.** `ResultPresenter::assumedFigures()` emits the note only when the terminal year has positive `pensionTaxIfDrawn()`, and reads the rate off that year rather than restating it. `test_the_netting_rate_is_disclosed` checks the 20%, "marginal rate" and "projected income".
+
+**AC#3 ÔÇö tax-free part kept.** `PathProjector::pensionTaxIfDrawn()` splits each pot with `ufplsSplit` against `lsaHeadroom($lsa, $lsaUsed, $pot)`, seeded from the member's own `state['lsaUsed']`. `test_the_tax_free_quarter_is_not_netted` proves both the fresh case and the ┬ú250,000-already-taken case (┬ú18,275 headroom).
+
+One known gap, and the card states it plainly: a member whose projected income sits in the personal allowance nets nothing. That is disclosed, not hidden.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Scope check on commit `854a32b`** (the card's only code commit ÔÇö the huge stat you were shown is the whole branch, not this card).
+
+Fence held. `YearResult::$totalWealth` in `YearResult::__construct` is still gross, and `SimulationResult::$terminalWealthPercentiles` / `$fanChart` are untouched. `PathProjector::projectYear` leaves the guardrail funded ratio gross on purpose. Nothing over the "Not this card" line.
+
+One thing left half done, and it is an acceptance item, not a nicety.
+
+`ResultPresenter::assumedFigures` builds the netting disclosure **only from the last year** of the forecast (`$terminal->pensionTaxIfDrawn()->isPositive()`). But `ResultPresenter::ladder` nets **every** year, and the safety-buffer breach year is judged on that netted figure.
+
+Failure: a plan that empties its pots before the end (the ordinary drawdown case) has a zero pension tax in the final year, so no note is shown at all ÔÇö yet the ladder's usable-wealth column and the "money is getting thin" year were both moved by a rate the reader can never see. That is exactly the invisible figure the project's hard rule forbids, and AC#2 says the rate must be stated.
+
+Fix direction: raise the disclosure off any year that netted, not only the last one.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Finding ÔÇö the disclosure can vanish while the netting still moves the answer.**
+
+`ResultPresenter::assumedFigures` gates the whole netting disclosure on the **terminal year only**: it takes the last year and emits the note just `if ($terminal->pensionTaxIfDrawn()->isPositive())`. But the netting is applied to **every** year: `ResultPresenter::ladder` reads `$year->usableWealth()` for each row and judges the safety-buffer floor breach against it, and `Simulator` builds the per-year usable series the same way.
+
+So a plan that spends its pension pot down to nil by the end ÔÇö the ordinary drawdown case, and the one this tool exists to model ÔÇö reports a terminal tax of zero, prints no note, and still has every mid-plan usable-wealth figure and the "money is getting thin" year set by a tax rate nobody entered and nobody can see. That is the project's own hard rule ("no invisible figures"): a computed figure reaching a screen undisclosed.
+
+`scenarios:audit` cannot catch it either ÔÇö `AuditScenarios::auditOne` compares the count of `assumedFigures` with the disclosed notes, and both come from the same terminal-year gate, so they agree while being jointly silent.
+
+VERDICT: defect
+
