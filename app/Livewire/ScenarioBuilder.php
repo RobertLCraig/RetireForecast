@@ -17,6 +17,7 @@ use App\Import\ReconciliationLine;
 use App\Import\SpreadsheetReader;
 use App\Models\AssumptionSet;
 use App\Models\Scenario;
+use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -30,6 +31,7 @@ use RetireForecast\FinanceEngine\Dto\CouncilTaxBand;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\PensionBeneficiary;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
+use RetireForecast\FinanceEngine\Forecast\AllocationProfile;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
@@ -303,7 +305,27 @@ class ScenarioBuilder extends Component
             // preset's figure (empty = keep the preset). Real growth rates may be negative;
             // inflation and the income yield cannot. Loose bounds keep an obvious typo out
             // without second-guessing a deliberate stress test.
-            'assumptionOverrides.investmentGrowth' => ['nullable', 'numeric', 'between:-10,30'],
+            // Investment growth is bought by holding more shares, so a figure above what an
+            // all-share mix earns cannot be had at any risk and is REFUSED rather than
+            // manufactured (board card 0062). The reachable range is read from the chosen set's
+            // own asset classes, so re-sourcing a return moves the refusal with it.
+            'assumptionOverrides.investmentGrowth' => ['nullable', 'numeric', 'between:-10,30', function (string $attribute, mixed $value, Closure $fail): void {
+                $unreachable = AssumptionOverrides::unreachableGrowthTarget(
+                    $this->assumptionOverrides,
+                    $this->selectedAssumptionSet(),
+                );
+                if ($unreachable !== null) {
+                    $fail(sprintf(
+                        'No mix of the shares, bonds and cash in this assumption set earns %s%% a year above '
+                        .'inflation. It can pay between %s%% and %s%%. Growth here is bought by holding more '
+                        .'shares, and at %s%% there are none left to buy.',
+                        rtrim(rtrim(number_format($unreachable['target'] * 100, 2), '0'), '.'),
+                        rtrim(rtrim(number_format($unreachable['min'] * 100, 2), '0'), '.'),
+                        rtrim(rtrim(number_format($unreachable['max'] * 100, 2), '0'), '.'),
+                        rtrim(rtrim(number_format($unreachable['max'] * 100, 2), '0'), '.'),
+                    ));
+                }
+            }],
             'assumptionOverrides.inflation' => ['nullable', 'numeric', 'between:0,30'],
             'assumptionOverrides.houseGrowth' => ['nullable', 'numeric', 'between:-15,30'],
             // A volatility is a spread, so it cannot be negative; the ceiling is generous because
@@ -327,6 +349,14 @@ class ScenarioBuilder extends Component
             'assumptionOverrides.statePensionUprating' => ['nullable', Rule::in(array_column(StatePensionUprating::cases(), 'value'))],
             'assumptionOverrides.statePensionUpratingUntilYear' => ['nullable', 'integer', 'between:2026,2100'],
             'assumptionOverrides.planningHorizon' => ['nullable', Rule::in(array_column(PlanningHorizon::cases(), 'value'))],
+            // How the invested money is split, and the mix it de-risks to (board card 0062).
+            // Blank is the engine's own cautious mix, and a blank glide target is no glidepath at
+            // all. The years are REQUIRED alongside a target and bounded at one (a glide has to
+            // take time) and at a length beyond any plan this tool runs: there is no default
+            // length, because one we picked would move the reader's money without their saying so.
+            'assumptionOverrides.allocation' => ['nullable', Rule::in(array_column(AllocationProfile::cases(), 'value'))],
+            'assumptionOverrides.allocationGlideTo' => ['nullable', Rule::in(array_column(AllocationProfile::cases(), 'value'))],
+            'assumptionOverrides.allocationGlideYears' => ['nullable', 'required_with:assumptionOverrides.allocationGlideTo', 'integer', 'between:1,60'],
 
             // The adviser's ongoing fee to PRICE (not to charge the forecast). Blank = the
             // benchmarked average. The upper bound is well above any UK ongoing advice fee, so a
@@ -1776,11 +1806,21 @@ class ScenarioBuilder extends Component
                 'label' => $h->label(),
                 'note' => $h->oddsPhrase(),
             ], PlanningHorizon::cases()),
+            // How the invested money is split, and the mix it de-risks to (board card 0062). The
+            // blank option is the engine's own cautious mix, exactly as a blank rate above is the
+            // preset's; the labels and what each mix means are READ from the enum that owns them.
+            'allocationOptions' => array_map(static fn (AllocationProfile $p): array => [
+                'value' => $p === AllocationProfile::DEFAULT ? '' : $p->value,
+                'label' => $p->label(),
+                'note' => $p->note(),
+            ], AllocationProfile::cases()),
             // The chosen preset's current figures, so each editable assumption shows the
             // value it would override as its placeholder (and updates when the set changes).
+            // The growth placeholder is read against the mix the reader has actually chosen,
+            // because the same preset blends to a different figure under a different mix.
             'assumptionDefaults' => AssumptionOverrides::presetFigures(
                 $this->selectedAssumptionSet(),
-                PortfolioAllocation::cautious40_60(),
+                $this->selectedAllocation(),
             ),
             // For a what-if: the inputs whose value differs from the base, mapped to the base
             // value they diverged from, so each can be highlighted and show its base value
@@ -1816,6 +1856,19 @@ class ScenarioBuilder extends Component
      * editable assumptions' placeholders — the forecast itself resolves the set through
      * {@see ScenarioForecaster::assumptions()}.
      */
+    /**
+     * The asset mix as it stands in the form: the chosen profile, or the engine's cautious
+     * default where none is chosen. Used only for the placeholders; the forecast resolves the
+     * same choice through {@see ScenarioForecaster::settings()}. The growth override is
+     * deliberately NOT applied here, because it is the figure the placeholder is showing.
+     */
+    private function selectedAllocation(): PortfolioAllocation
+    {
+        $profile = trim((string) ($this->assumptionOverrides['allocation'] ?? ''));
+
+        return (AllocationProfile::tryFrom($profile) ?? AllocationProfile::DEFAULT)->allocation();
+    }
+
     private function selectedAssumptionSet(): \RetireForecast\FinanceEngine\Dto\AssumptionSet
     {
         $model = $this->assumptionSetId !== null ? AssumptionSet::find($this->assumptionSetId) : null;

@@ -27,6 +27,15 @@ final class DeterministicPathDraws implements PathDraws
 {
     private readonly float $investmentReturn;
 
+    /**
+     * Year index => the blended return of THAT year's mix, filled as the projector asks. Only
+     * used when the allocation glides; a fixed mix answers from $investmentReturn and never
+     * touches this, so nothing stored moves.
+     *
+     * @var array<int, float>
+     */
+    private array $glidedReturns = [];
+
     private readonly float $cashReturn;
 
     private readonly float $inflationRate;
@@ -46,8 +55,8 @@ final class DeterministicPathDraws implements PathDraws
      * @param  array<string, CareEpisode>  $careEpisodes  personId => injected care spell (empty = care-free)
      */
     public function __construct(
-        AssumptionSet $set,
-        PortfolioAllocation $allocation,
+        private readonly AssumptionSet $set,
+        private readonly PortfolioAllocation $allocation,
         private readonly array $deathAges,
         private readonly array $careEpisodes = [],
     ) {
@@ -61,9 +70,18 @@ final class DeterministicPathDraws implements PathDraws
         $this->investmentCharge = $set->investmentCharge()->asFraction();
     }
 
+    /**
+     * The blended return of the mix in force THIS year. A de-risking glidepath lowers it as the
+     * plan runs on (board card 0062); a fixed mix answers the same figure every year, which is
+     * what every scenario stored before the glidepath existed does.
+     */
     public function investmentRealReturn(int $yearIndex): float
     {
-        return $this->investmentReturn;
+        if (! $this->allocation->glides()) {
+            return $this->investmentReturn;
+        }
+
+        return $this->glidedReturns[$yearIndex] ??= $this->allocation->at($yearIndex)->blendedRealReturn($this->set);
     }
 
     public function cashRealReturn(int $yearIndex): float

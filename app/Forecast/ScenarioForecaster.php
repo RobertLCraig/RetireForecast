@@ -61,7 +61,20 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-08 (last-survivor-planning-horizon): the deterministic plan now runs to a
+     * Bumped 2026-09-08 (growth-is-bought-with-risk): an "investment growth" edit no longer raises
+     * every asset class's expected return with the volatilities and correlations left where they
+     * were. It now lands on its target by RE-WEIGHTING the asset mix
+     * ({@see PortfolioAllocation::forBlendedRealReturn}), so the spread rises with the return, and
+     * a target no mix of the set's asset classes can reach is refused at entry and clamped to the
+     * closest mix for a scenario stored before this. Any stored plan carrying such an edit has the
+     * SAME central projection (the blended mean is unchanged by construction) but a WIDER or
+     * NARROWER Monte Carlo, so its success odds, its percentile bands and its capacity-for-loss
+     * reading are not comparable across the stamp: an edit UP was priced with no extra risk and is
+     * too favourable. Alongside it the mix itself became an input, with a de-risking glidepath, so
+     * a plan that names either runs on figures no earlier stamp could produce. A plan with no
+     * growth edit and no mix chosen is byte-identical, which is why the Monte Carlo golden master
+     * did not move. See board card 0062.
+     * Previous bump 2026-09-08 (last-survivor-planning-horizon): the deterministic plan now runs to a
      * HOUSEHOLD horizon rather than to each person's own median age at death. The last survivor is
      * carried out to a named percentile of the joint age at death ({@see PlanningHorizon}),
      * defaulting to the cautious 75th; the first death stays at that person's own median, and a
@@ -313,7 +326,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/last-survivor-planning-horizon';
+    public const ENGINE_VERSION = 'finance-engine/growth-is-bought-with-risk';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:
@@ -579,12 +592,26 @@ final class ScenarioForecaster
      */
     public function assumptions(Scenario $scenario): AssumptionSet
     {
-        return $this->remember($scenario, 'assumptions', function () use ($scenario): AssumptionSet {
-            $base = $scenario->assumptionSet?->toDto() ?? AssumptionSetLibrary::default();
-            $overrides = $scenario->effectiveBuilderState()['assumptionOverrides'] ?? [];
+        return $this->remember($scenario, 'assumptions', fn (): AssumptionSet => AssumptionOverrides::apply(
+            $this->presetAssumptions($scenario),
+            $scenario->effectiveBuilderState()['assumptionOverrides'] ?? [],
+        ));
+    }
 
-            return AssumptionOverrides::apply($base, $overrides, $this->settings($scenario)->allocation());
-        });
+    /**
+     * The scenario's chosen sourced preset with NO overrides applied. It is what the asset mix is
+     * solved against when the reader has asked for a particular blended return (board card 0062),
+     * and reading it here rather than through {@see assumptions()} is what keeps the settings and
+     * the assumptions from depending on each other: no override touches an asset class's return,
+     * so the mix solved against the preset is the mix solved against the derived set.
+     */
+    private function presetAssumptions(Scenario $scenario): AssumptionSet
+    {
+        return $this->remember(
+            $scenario,
+            'presetAssumptions',
+            fn (): AssumptionSet => $scenario->assumptionSet?->toDto() ?? AssumptionSetLibrary::default(),
+        );
     }
 
     private function household(Scenario $scenario): Household
@@ -623,14 +650,17 @@ final class ScenarioForecaster
             && $home?->mortgageRedemptionYear !== null;
         $action = $forcedSale ? $this->housingAction($scenario) : null;
 
-        [$upratingBasis, $upratingUntilYear] = AssumptionOverrides::statePensionUprating(
-            $scenario->effectiveBuilderState()['assumptionOverrides'] ?? [],
-        );
+        $overrides = $scenario->effectiveBuilderState()['assumptionOverrides'] ?? [];
+        [$upratingBasis, $upratingUntilYear] = AssumptionOverrides::statePensionUprating($overrides);
 
         return new ForecastSettings(
             baseYear: (int) substr($scenario->base_tax_year, 0, 4),
             baseTaxYear: $scenario->base_tax_year,
             drawdownStrategy: $strategy ?? self::DEFAULT_DRAWDOWN_STRATEGY,
+            // How the invested money is split across shares, bonds and cash, and the glidepath it
+            // de-risks along (board card 0062). Null = the reader said nothing, which keeps the
+            // engine's cautious 40/60 AND keeps it disclosed as a figure that is ours, not theirs.
+            allocation: AssumptionOverrides::allocation($overrides, $this->presetAssumptions($scenario)),
             annualRent: $action?->annualRent,
             rentInflationReal: $action?->rentInflationReal ?? ($forcedSale ? $scenario->assumptionSet?->toDto()?->rentInflation : null),
             modelCareCost: (bool) ($scenario->effectiveBuilderState()['modelCareCost'] ?? false),
@@ -658,9 +688,7 @@ final class ScenarioForecaster
                 : Percent::fromPercent((float) $scenario->effectiveBuilderState()['beneficiaryTaxRate']),
             // How long the plan has to last: a percentile of the LAST survivor's age at death, not
             // each person's own median. Absent = the engine's cautious default (board card 0061).
-            planningHorizon: AssumptionOverrides::planningHorizon(
-                $scenario->effectiveBuilderState()['assumptionOverrides'] ?? [],
-            ),
+            planningHorizon: AssumptionOverrides::planningHorizon($overrides),
         );
     }
 

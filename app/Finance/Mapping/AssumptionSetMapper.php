@@ -47,6 +47,13 @@ final class AssumptionSetMapper
                     'name' => $a->name,
                     'expectedRealReturn' => Codec::bps($a->expectedRealReturn),
                     'volatility' => Codec::bps($a->volatility),
+                    // Where each figure came from and when it was last checked (board card 0062).
+                    // Stored with the figures, so a frozen snapshot keeps the citation the run was
+                    // made on rather than picking up a later re-source.
+                    'returnSource' => $a->returnSource,
+                    'returnVerifiedOn' => $a->returnVerifiedOn,
+                    'volatilitySource' => $a->volatilitySource,
+                    'volatilityVerifiedOn' => $a->volatilityVerifiedOn,
                 ],
                 $set->assetClasses,
             ),
@@ -84,6 +91,12 @@ final class AssumptionSetMapper
                     name: $a['name'],
                     expectedRealReturn: Codec::percent($a['expectedRealReturn']),
                     volatility: Codec::percent($a['volatility']),
+                    // Back-compat: a snapshot stored before board card 0062 carries no sourcing,
+                    // which reads as "not stated" rather than inventing a citation for it.
+                    returnSource: $a['returnSource'] ?? null,
+                    returnVerifiedOn: $a['returnVerifiedOn'] ?? null,
+                    volatilitySource: $a['volatilitySource'] ?? null,
+                    volatilityVerifiedOn: $a['volatilityVerifiedOn'] ?? null,
                 ),
                 $payload['assetClasses'],
             ),

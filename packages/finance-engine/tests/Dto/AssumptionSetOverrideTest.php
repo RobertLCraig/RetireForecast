@@ -11,35 +11,24 @@ use RetireForecast\FinanceEngine\Money\Percent;
 
 /**
  * The immutable `with*` derivations that let a user tune an assumption set into a custom
- * one. The trust-critical properties: a return shift moves the BLENDED return by exactly
- * the same amount (so "investment growth = X%" lands on X under any allocation), the risk
+ * one. The trust-critical properties: a derivation changes only its own field, the risk
  * structure (volatilities, correlations) is left alone, and every derivation returns a new
- * set without mutating the original — a derived custom set never corrupts the shared preset.
+ * set without mutating the original, so a derived custom set never corrupts the shared preset.
+ *
+ * A uniform real-return shift USED to live here, as the route a user's "investment growth"
+ * edit took. Board card 0062 deleted it: it raised the return of every asset class and left
+ * the volatilities exactly where they were, so the edit bought return without buying risk.
+ * The blended return now moves by re-weighting the mix, which is pinned in the engine's
+ * PortfolioAllocationTest.
  */
 final class AssumptionSetOverrideTest extends TestCase
 {
-    public function test_a_real_return_shift_moves_every_asset_class_and_the_blend_by_the_same_amount(): void
+    public function test_the_shipped_default_blends_to_its_stated_return(): void
     {
         $base = AssumptionSetLibrary::default();
-        $allocation = PortfolioAllocation::cautious40_60();
 
         // Cautious 40/60 default blend: 0.40 × 4.4% + 0.60 × 0.0% = 1.76% real.
-        $this->assertEqualsWithDelta(0.0176, $allocation->blendedRealReturn($base), 1e-9);
-
-        $shifted = $base->withRealReturnShift(Percent::fromBasisPoints(100)); // +1.00%
-
-        // Each asset class moved up by exactly 100 bps...
-        foreach ($base->assetClasses as $i => $original) {
-            $this->assertSame(
-                $original->expectedRealReturn->basisPoints + 100,
-                $shifted->assetClasses[$i]->expectedRealReturn->basisPoints,
-            );
-            // ...with volatility untouched (the user edits return, not risk).
-            $this->assertSame($original->volatility->basisPoints, $shifted->assetClasses[$i]->volatility->basisPoints);
-        }
-
-        // ...so the blend moved up by exactly 1.00% too, regardless of the weights.
-        $this->assertEqualsWithDelta(0.0276, $allocation->blendedRealReturn($shifted), 1e-9);
+        $this->assertEqualsWithDelta(0.0176, PortfolioAllocation::cautious40_60()->blendedRealReturn($base), 1e-9);
     }
 
     public function test_each_scalar_field_can_be_replaced_independently(): void
@@ -76,7 +65,7 @@ final class AssumptionSetOverrideTest extends TestCase
         $beforeFirstReturn = $base->assetClasses[0]->expectedRealReturn->basisPoints;
 
         $base->withInflationMean(Percent::fromPercent(9.0));
-        $base->withRealReturnShift(Percent::fromBasisPoints(500));
+        $base->withAssetClasses([]);
 
         $this->assertSame($beforeInflation, $base->inflationMean->basisPoints);
         $this->assertSame($beforeFirstReturn, $base->assetClasses[0]->expectedRealReturn->basisPoints);

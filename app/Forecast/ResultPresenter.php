@@ -18,6 +18,7 @@ use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
 use RetireForecast\FinanceEngine\Care\CareAssumptions;
 use RetireForecast\FinanceEngine\Care\DeferredPaymentAgreement;
 use RetireForecast\FinanceEngine\Dto\AnnuityPurchase;
+use RetireForecast\FinanceEngine\Dto\AssetClassAssumption;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
@@ -1184,10 +1185,10 @@ final class ResultPresenter
                 .'nomination with each provider and enter it: it is the single easiest thing on this page to fix.';
         }
 
-        // How the invested money is split across asset classes. Nobody has ever entered this: the
-        // engine falls back to a cautious 40/60 and no caller passes anything else, so the largest
-        // single determinant of the whole answer is a figure the reader has never been shown. The
-        // weights, the class names and the return they blend to are all READ from the engine.
+        // How the invested money is split across asset classes, where the reader has not said. The
+        // engine falls back to a cautious 40/60, so the largest single determinant of the whole
+        // answer is otherwise a figure they were never shown. The weights, the class names and the
+        // return they blend to are all READ from the engine.
         if ($settings !== null && $set !== null && $settings->allocationIsAssumed()) {
             $allocation = $settings->allocation();
             $parts = [];
@@ -1202,7 +1203,9 @@ final class ResultPresenter
                 ."{$blended} a year above inflation, which is the figure your pots grow at. This is the single "
                 .'biggest thing driving whether the money lasts, so it is worth knowing it is ours and not yours: '
                 .'a mix with more shares in it would show more money and a wider range of outcomes, and one with '
-                .'less would show the opposite. It is not yet something you can change on this screen.';
+                .'less would show the opposite. Change it, or set it to move to a safer mix as you get older, '
+                .'under "How your invested money is split" in the assumptions step: the spread of outcomes '
+                .'moves with it, because the growth is bought with the risk.';
         }
 
         // Every figure behind the modelled care risk. They only reach a projection when the care
@@ -3499,7 +3502,7 @@ final class ResultPresenter
      * than passing as the named preset.
      *
      * @param  array<string, mixed>  $overrides  the sparse `assumptionOverrides` map (keys only matter)
-     * @return array{setName: string, sourceNote: string, customised: bool, mix: string, economic: list<array{key: string, label: string, value: string, note: string, edited: bool}>, housing: list<array{label: string, value: string}>}
+     * @return array{setName: string, sourceNote: string, customised: bool, mix: string, assetSourcing: list<array{name: string, return: string, volatility: string}>, economic: list<array{key: string, label: string, value: string, note: string, edited: bool}>, housing: list<array{label: string, value: string}>}
      */
     public static function assumptionsPanel(AssumptionSet $set, HousingAction $action, PortfolioAllocation $allocation, array $overrides = []): array
     {
@@ -3516,8 +3519,22 @@ final class ResultPresenter
             }
         }
 
+        // The growth figure is bought with risk, so the risk is reported beside it and never
+        // without it (board card 0062). Where the reader asked for a return no mix of these asset
+        // classes can produce, the plan ran on the closest one that exists and says so here: a
+        // scenario stored before the card can still hold such a figure, and the number on the row
+        // would otherwise be the only sign that it was not the one they typed.
+        $unreachable = AssumptionOverrides::unreachableGrowthTarget($overrides, $set);
+        $growthNote = 'a year above inflation, for invested pots and proceeds; it is bought by the asset mix below, '
+            .'so it cannot rise without the spread beneath it rising too';
+        if ($unreachable !== null) {
+            $growthNote .= '. You asked for '.self::ratePct($unreachable['target'] * 100).', which no mix of these '
+                .'asset classes can earn, so the plan ran on the closest mix there is';
+        }
+
         $economic = [
-            ['key' => 'investmentGrowth', 'label' => 'Investment growth (blended, real)', 'value' => self::ratePct($blended * 100), 'note' => 'a year above inflation, for invested pots and proceeds'],
+            ['key' => 'investmentGrowth', 'label' => 'Investment growth (blended, real)', 'value' => self::ratePct($blended * 100), 'note' => $growthNote],
+            ['key' => 'portfolioVolatility', 'label' => 'Your portfolio\'s year-to-year spread (real)', 'value' => self::ratePct($allocation->blendedVolatility($set) * 100), 'note' => 'how far the invested money moves either side of the growth rate above in a typical year, given the mix and how its parts move together; this is the risk the growth rate costs'],
             ['key' => 'inflation', 'label' => 'Inflation (CPI)', 'value' => self::ratePct($set->inflationMean->asPercent()), 'note' => 'figures on this page are shown in today\'s money'],
             ['key' => 'houseGrowth', 'label' => 'House price growth (real)', 'value' => self::ratePct($set->houseGrowth->asPercent()), 'note' => 'a year above inflation'],
             ['key' => 'rentGrowth', 'label' => 'Rent growth (real)', 'value' => self::ratePct($set->rentInflation->asPercent()), 'note' => 'a year above inflation'],
@@ -3532,14 +3549,18 @@ final class ResultPresenter
         // it never flags as edited; the figure the household's OWN home is modelled over is, and
         // sits beside it, because the two are different numbers and reading one for the other
         // would understate the risk of every plan that keeps a home.
+        // The two rows go in AFTER the house-growth row, found by its key rather than by a fixed
+        // index: a row added above it (the portfolio spread, board card 0062) used to push the
+        // house volatility above the growth it explains.
         if ($set->houseGrowthVolatility !== null && $set->houseGrowthVolatility->basisPoints > 0) {
-            array_splice($economic, 3, 0, [[
+            $houseIndex = (int) array_key_first(array_filter($economic, fn (array $row): bool => $row['key'] === 'houseGrowth'));
+            array_splice($economic, $houseIndex + 1, 0, [[
                 'key' => 'houseVolatility',
                 'label' => 'House price growth volatility (real, index)',
                 'value' => self::ratePct($set->houseGrowthVolatility->asPercent()),
                 'note' => 'the year-to-year spread of the market as a whole; the central projection uses the mean above',
             ]]);
-            array_splice($economic, 4, 0, [[
+            array_splice($economic, $houseIndex + 2, 0, [[
                 'key' => 'propertyVolatility',
                 'label' => 'Your home\'s price swing (real)',
                 'value' => self::ratePct($set->singlePropertyVolatility()?->asPercent() ?? 0.0),
@@ -3595,11 +3616,36 @@ final class ResultPresenter
             $housing[] = ['label' => 'Rent if you sell & rent', 'value' => $action->annualRent->format().' a year (projected renting cost, not current)'];
         }
 
+        // The mix in force, and where it is going if the reader chose a glidepath. The end mix is
+        // described from the END weights, so a de-risking plan cannot be read as a fixed one.
+        $mix = implode(' / ', $mixParts);
+        if ($allocation->glides()) {
+            $endParts = [];
+            foreach ($set->assetClasses as $i => $assetClass) {
+                $weight = $allocation->endWeights[$i] ?? 0.0;
+                if ($weight > 0.0) {
+                    $endParts[] = self::ratePct($weight * 100).' '.lcfirst($assetClass->name);
+                }
+            }
+            $mix .= ' at the start, moving to '.implode(' / ', $endParts).' over '.$allocation->glideYears
+                .' years and staying there (the growth and spread above are the starting mix\'s)';
+        }
+
         return [
             'setName' => $set->name,
             'sourceNote' => $set->sourceNote,
             'customised' => $changed !== [],
-            'mix' => implode(' / ', $mixParts),
+            'mix' => $mix,
+            // Where each asset-class figure came from and when it was last checked (board card
+            // 0062). Read off the classes themselves, so a re-sourced figure moves its own
+            // citation; a class with no sourcing says so rather than borrowing another's.
+            'assetSourcing' => array_map(static fn (AssetClassAssumption $a): array => [
+                'name' => $a->name,
+                'return' => self::ratePct($a->expectedRealReturn->asPercent()).' real: '
+                    .($a->returnSource ?? 'source not stated').($a->returnVerifiedOn !== null ? ', checked '.$a->returnVerifiedOn : ''),
+                'volatility' => self::ratePct($a->volatility->asPercent()).' spread: '
+                    .($a->volatilitySource ?? 'source not stated').($a->volatilityVerifiedOn !== null ? ', checked '.$a->volatilityVerifiedOn : ''),
+            ], $set->assetClasses),
             'economic' => $economic,
             'housing' => $housing,
         ];

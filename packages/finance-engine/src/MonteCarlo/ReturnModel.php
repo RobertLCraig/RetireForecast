@@ -108,6 +108,11 @@ final class ReturnModel
         $house = [];
         $salary = [];
 
+        // The mix in force in each year. A glidepath (board card 0062) de-risks as the plan runs
+        // on, so the weights are read per year rather than once; a fixed mix returns the same
+        // array every year and consumes no extra draw, so the RNG stream and every stored run
+        // are byte-identical to before.
+        $glides = $this->allocation->glides();
         $weights = $this->allocation->weights;
         $inflMean = $this->set->inflationMean->asFraction();
         $inflVol = $this->set->inflationVolatility->asFraction();
@@ -120,6 +125,10 @@ final class ReturnModel
                 $u[$i] = $this->standardNormal($rng);
             }
             $z = Cholesky::apply($this->cholesky, $u);
+
+            if ($glides) {
+                $weights = $this->allocation->at($y)->weights;
+            }
 
             $blended = 0.0;
             foreach ($this->means as $i => $mean) {

@@ -174,26 +174,42 @@ final class AssumptionSet
     }
 
     /**
-     * A copy with every asset class's expected real return shifted by $delta (basis
-     * points may be negative). Because the blended return is an allocation-weighted sum
-     * over the asset classes and the weights sum to 1, a uniform shift of $delta moves
-     * the blended return by exactly $delta too — so a user editing "investment growth"
-     * to a target moves the deterministic blend and the per-class Monte Carlo draws by
-     * the same amount, with no divergence. Volatility and correlations are untouched (the
-     * user edits the expected return, not the risk).
+     * A copy running on different asset classes.
+     *
+     * There is deliberately no `withRealReturnShift` beside it any more (board card 0062). A user
+     * who edits "investment growth" moves the asset MIX, not the asset classes: shifting every
+     * class's mean and leaving the volatilities and correlations alone raised the return without
+     * raising the risk, which is a free lunch inside a Monte Carlo built to price risk. The mix
+     * that lands on a target return is solved by `PortfolioAllocation::forBlendedRealReturn`.
+     *
+     * So nothing user-facing reaches this. It exists for a caller that has to state a whole
+     * different set of asset figures, which today is a test pinning behaviour with the market
+     * taken out of it.
+     *
+     * @param  list<AssetClassAssumption>  $assetClasses
      */
-    public function withRealReturnShift(Percent $delta): self
+    public function withAssetClasses(array $assetClasses): self
     {
-        $shifted = array_map(
-            fn (AssetClassAssumption $a): AssetClassAssumption => new AssetClassAssumption(
-                $a->name,
-                Percent::fromBasisPoints($a->expectedRealReturn->basisPoints + $delta->basisPoints),
-                $a->volatility,
-            ),
-            $this->assetClasses,
+        return new self(
+            $this->name,
+            $this->sourceNote,
+            $assetClasses,
+            $this->correlationMatrix,
+            $this->inflationMean,
+            $this->inflationVolatility,
+            $this->houseGrowth,
+            $this->rentInflation,
+            $this->salaryGrowth,
+            $this->investmentIncomeYield,
+            $this->houseGrowthVolatility,
+            $this->houseEquityCorrelation,
+            $this->salaryGrowthVolatility,
+            $this->salaryEquityCorrelation,
+            $this->careCostRealGrowth,
+            $this->investmentCharge,
+            $this->singlePropertyVolatility,
+            $this->isDefault,
         );
-
-        return $this->copy(assetClasses: $shifted);
     }
 
     public function withInflationMean(Percent $value): self
@@ -238,14 +254,12 @@ final class AssumptionSet
 
     /**
      * Clone with selected fields replaced (null = keep current). The non-replaceable
-     * fields (name, source, volatilities, correlations — including the house-price and
-     * salary-growth volatilities and their equity correlations — isDefault) carry through
-     * so a derived "custom" set keeps its provenance and risk structure.
-     *
-     * @param  list<AssetClassAssumption>|null  $assetClasses
+     * fields (name, source, the asset classes and their sourcing, volatilities, correlations,
+     * including the house-price and salary-growth volatilities and their equity correlations,
+     * and isDefault) carry through so a derived "custom" set keeps its provenance and its
+     * risk structure.
      */
     private function copy(
-        ?array $assetClasses = null,
         ?Percent $inflationMean = null,
         ?Percent $houseGrowth = null,
         ?Percent $rentInflation = null,
@@ -258,7 +272,7 @@ final class AssumptionSet
         return new self(
             $this->name,
             $this->sourceNote,
-            $assetClasses ?? $this->assetClasses,
+            $this->assetClasses,
             $this->correlationMatrix,
             $inflationMean ?? $this->inflationMean,
             $this->inflationVolatility,

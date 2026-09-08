@@ -7,6 +7,7 @@ namespace RetireForecast\FinanceEngine\Tests\Forecast;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\AssetClassAssumption;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
@@ -141,7 +142,18 @@ final class BuyToLetFinanceCostTest extends TestCase
                 AssumptionSetLibrary::default()
                     ->withInflationMean(Percent::fromPercent(3))
                     ->withInvestmentIncomeYield(Percent::fromPercent(0))
-                    ->withRealReturnShift(Percent::fromPercent(-20)),
+                    // Crush the asset returns so the invested pot cannot grow into the tax answer:
+                    // this test is about the finance-cost credit, not about the market. (It used
+                    // to ask for a uniform return shift; board card 0062 removed that, because a
+                    // user-facing growth edit has to move the mix, not the asset classes.)
+                    ->withAssetClasses(array_map(
+                        static fn (AssetClassAssumption $a): AssetClassAssumption => new AssetClassAssumption(
+                            $a->name,
+                            Percent::fromBasisPoints($a->expectedRealReturn->basisPoints - 2000),
+                            $a->volatility,
+                        ),
+                        AssumptionSetLibrary::default()->assetClasses,
+                    )),
                 new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
             );
 

@@ -3,6 +3,51 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-08: growth is bought with risk, and the asset mix is the reader's to choose
+**Context:** card 0062 (expert panel 2026-08-19, adviser finding 6, which the adviser called the
+one an investment committee would stop on). The asset mix was hardcoded: `ForecastSettings`
+fell back to a cautious 40/60 and nothing ever passed anything else, so the largest single
+determinant of the answer was the one input the household did not have. Worse, the
+"investment growth" override raised the expected return of every asset class by a uniform shift
+and left the volatilities and the correlations untouched, so a reader who raised growth because
+they hold shares got a share-like return at a cautious portfolio's spread.
+
+**Decision: an investment-growth edit RE-WEIGHTS the mix instead of shifting the means.**
+`PortfolioAllocation::forBlendedRealReturn` moves weight between equities and bonds until the
+blend is the target, so the volatility rises with the return and the Monte Carlo prices what was
+asked for. `AssumptionSet::withRealReturnShift` is deleted rather than deprecated: there is no
+honest caller for it.
+
+**Decision: a return no mix of the set's asset classes can reach is REFUSED, not manufactured.**
+The builder rejects it with the range that IS reachable, read from the set's own asset classes. A
+scenario stored before this card can still hold such a figure, so the forecast clamps it to the
+closest mix that exists and the assumptions panel says which figure was asked for and which one
+ran.
+
+**Decision: the mix is four named profiles, not a free-typed equity percentage.** `AllocationProfile`
+(defensive, cautious, balanced, growth) is one axis, how much is in shares, because that is the
+axis that sets both the return and the risk. The default is the cautious 40/60 the engine has
+always used, so nothing stored moves until a reader chooses, and it stays disclosed as ours.
+
+**Decision: a glidepath has no default length.** A reader who picks a mix to de-risk into MUST
+state the years. Every lifestyling convention gives a different length, and a length we picked
+would change how much money the plan has while being indistinguishable from one they chose.
+
+**Decision: each asset-class return and volatility carries its own source and verified-on date,
+sourced apart.** The default set takes its returns from the FCA and its volatilities from the
+long-run record, so one citation covering both would be wrong about one of them. The fields are
+nullable, because a stored snapshot and a test fixture legitimately have none and reading them as
+"not stated" beats inventing a citation. **The URL and the dates are STATED, not fetched:** this
+session had no web. Re-verifying them, and re-sourcing the gilt real return against current
+index-linked gilt yields, is card 0137.
+
+**Consequence:** `ENGINE_VERSION` is `finance-engine/growth-is-bought-with-risk` and the
+stored-scenario re-run is owed. A plan carrying a growth edit keeps its central projection (the
+blended mean is unchanged by construction) and moves its whole Monte Carlo, so its success odds
+and percentile bands are not comparable across the stamp, and an edit UP was priced with no extra
+risk. A plan with no growth edit and no chosen mix is byte-identical, which is why the golden
+master did not move and needs no re-pin.
+
 ## 2026-09-08: the deterministic plan runs to the last survivor, at the 75th percentile
 **Context:** card 0061 (expert panel 2026-08-19, adviser finding 5). Every deterministic surface,
 which is the whole comparison table, the affordability limits and the per-month analysis, ran to

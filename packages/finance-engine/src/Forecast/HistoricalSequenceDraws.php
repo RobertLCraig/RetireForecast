@@ -51,8 +51,8 @@ final class HistoricalSequenceDraws implements PathDraws
      * @param  array<string, int>  $deathAges  personId => age at death
      */
     public function __construct(
-        AssumptionSet $set,
-        PortfolioAllocation $allocation,
+        private readonly AssumptionSet $set,
+        private readonly PortfolioAllocation $allocation,
         private readonly int $startYear,
         private readonly array $deathAges,
     ) {
@@ -73,12 +73,19 @@ final class HistoricalSequenceDraws implements PathDraws
     {
         $year = $this->startYear + $yearIndex;
         if (! HistoricalReturns::has($year)) {
-            return $this->fallbackInvestment;
+            return $this->allocation->glides()
+                ? $this->allocation->at($yearIndex)->blendedRealReturn($this->set)
+                : $this->fallbackInvestment;
         }
 
-        return $this->weightEquity * HistoricalReturns::equityReal($year)
-            + $this->weightBond * HistoricalReturns::bondReal($year)
-            + $this->weightCash * HistoricalReturns::cashReal($year);
+        // A glidepath (board card 0062) replays the historical year against the mix the plan has
+        // de-risked to BY that year, so the stress test cannot show a household holding a mix it
+        // said it would have moved out of. A fixed mix uses the weights read once at construction.
+        $weights = $this->allocation->glides() ? $this->allocation->at($yearIndex)->weights : null;
+
+        return ($weights[0] ?? $this->weightEquity) * HistoricalReturns::equityReal($year)
+            + ($weights[1] ?? $this->weightBond) * HistoricalReturns::bondReal($year)
+            + ($weights[2] ?? $this->weightCash) * HistoricalReturns::cashReal($year);
     }
 
     public function cashRealReturn(int $yearIndex): float

@@ -12,11 +12,14 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\DisabilityAwardRate;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
+use RetireForecast\FinanceEngine\Forecast\AllocationProfile;
+use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Mortality\PlanningHorizon;
 use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 use Tests\Support\BuilderStateFixture;
@@ -321,6 +324,97 @@ class ScenarioBuilderTest extends TestCase
         $chosen = app(ScenarioForecaster::class)->settings($save(['planningHorizon' => 'p50']));
         $this->assertSame(PlanningHorizon::P50, $chosen->planningHorizon);
         $this->assertFalse($chosen->planningHorizonIsAssumed());
+    }
+
+    /**
+     * Board card 0062, criteria 1 and 3. The asset mix was hardcoded: the engine fell back to a
+     * cautious 40/60 and no caller ever passed anything else, so the single largest determinant
+     * of the answer was the one thing the household could not say. It has to be on the screen,
+     * it has to default to the mix every stored scenario ran on, and a de-risking glidepath has
+     * to be offered.
+     */
+    public function test_the_asset_mix_and_its_glidepath_are_offered_and_reach_the_forecast_settings(): void
+    {
+        $component = Livewire::test(ScenarioBuilder::class)->set('step', 1);
+        foreach (AllocationProfile::cases() as $case) {
+            $component->assertSee($case->label());
+        }
+
+        $save = function (array $overrides): Scenario {
+            $component = Livewire::test(ScenarioBuilder::class);
+            foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+                $component->set($key, $value);
+            }
+            foreach ($overrides as $key => $value) {
+                $component->set("assumptionOverrides.{$key}", $value);
+            }
+            $component->call('save')->assertHasNoErrors();
+
+            return Scenario::latest('id')->firstOrFail();
+        };
+
+        // Untouched: the engine's own cautious mix, still reported as a figure the reader did
+        // not choose, so the no-invisible-figures disclosure keeps firing.
+        $settings = app(ScenarioForecaster::class)->settings($save([]));
+        $this->assertSame(PortfolioAllocation::cautious40_60()->weights, $settings->allocation()->weights);
+        $this->assertTrue($settings->allocationIsAssumed());
+        $this->assertFalse($settings->allocation()->glides());
+
+        // A chosen mix reaches the projection and stops being ours.
+        $chosen = app(ScenarioForecaster::class)->settings($save(['allocation' => 'balanced']));
+        $this->assertSame(AllocationProfile::Balanced->allocation()->weights, $chosen->allocation()->weights);
+        $this->assertFalse($chosen->allocationIsAssumed());
+
+        // ...and so does a glidepath, which de-risks the mix as the plan runs on.
+        $gliding = app(ScenarioForecaster::class)->settings(
+            $save(['allocation' => 'balanced', 'allocationGlideTo' => 'defensive', 'allocationGlideYears' => '15']),
+        )->allocation();
+        $this->assertTrue($gliding->glides());
+        $this->assertSame(AllocationProfile::Balanced->allocation()->weights, $gliding->at(0)->weights);
+        $this->assertEqualsWithDelta(
+            AllocationProfile::Defensive->allocation()->weights[0],
+            $gliding->at(15)->weights[0],
+            1e-9,
+        );
+    }
+
+    /**
+     * Board card 0062, criterion 2. Raising "investment growth" used to shift every asset class's
+     * expected return and leave the volatilities and correlations exactly where they were, so a
+     * reader could buy an equity return at a cautious portfolio's risk. A target no mix of these
+     * asset classes can reach is now refused at the point of entry rather than manufactured.
+     */
+    public function test_an_investment_growth_target_no_mix_can_reach_is_refused(): void
+    {
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+
+        // The default set's best asset class returns 4.4% real, so 7% is unbuyable at any risk.
+        $component->set('assumptionOverrides.investmentGrowth', '7')
+            ->call('save')
+            ->assertHasErrors('assumptionOverrides.investmentGrowth');
+
+        // A reachable one is accepted, and it lands on the target by RE-WEIGHTING the mix, which
+        // is what makes the risk move with it.
+        $component->set('assumptionOverrides.investmentGrowth', '3')->call('save')->assertHasNoErrors();
+
+        $forecaster = app(ScenarioForecaster::class);
+        $scenario = Scenario::latest('id')->firstOrFail();
+        $allocation = $forecaster->settings($scenario)->allocation();
+        $set = $forecaster->assumptions($scenario);
+
+        $this->assertEqualsWithDelta(0.03, $allocation->blendedRealReturn($set), 1e-6);
+        $this->assertGreaterThan(
+            PortfolioAllocation::cautious40_60()->blendedVolatility($set),
+            $allocation->blendedVolatility($set),
+        );
+        // The asset classes themselves are untouched: no return was invented.
+        $this->assertSame(
+            AssumptionSetLibrary::default()->assetClasses[0]->expectedRealReturn->basisPoints,
+            $set->assetClasses[0]->expectedRealReturn->basisPoints,
+        );
     }
 
     public function test_a_state_pension_uprating_end_year_outside_the_modelled_range_is_rejected(): void

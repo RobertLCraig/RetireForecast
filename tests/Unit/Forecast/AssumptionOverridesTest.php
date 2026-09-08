@@ -8,14 +8,16 @@ use App\Forecast\AssumptionOverrides;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
+use RetireForecast\FinanceEngine\Forecast\AllocationProfile;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 
 /**
  * The user's editable assumptions, applied onto a sourced preset to derive the custom set
  * the forecast runs. The trust-critical properties: with no overrides the preset is returned
- * unchanged (reconciliation — an unedited custom set IS the preset), a filled figure reaches
- * the engine set exactly (an "investment growth = X%" edit lands the blended return on X), and
- * only filled, known keys are applied so an untouched figure keeps following the preset.
+ * unchanged (reconciliation: an unedited custom set IS the preset), a filled figure reaches the
+ * engine set exactly, and only filled, known keys are applied so an untouched figure keeps
+ * following the preset. Investment growth is the exception that proves it: it lands on its
+ * target by moving the asset MIX and never the set (board card 0062).
  */
 final class AssumptionOverridesTest extends TestCase
 {
@@ -30,7 +32,7 @@ final class AssumptionOverridesTest extends TestCase
     public function test_no_overrides_returns_the_preset_unchanged(): void
     {
         $base = AssumptionSetLibrary::default();
-        $derived = AssumptionOverrides::apply($base, [], $this->allocation);
+        $derived = AssumptionOverrides::apply($base, []);
 
         // Reconciliation: every economic figure is identical to the preset.
         $this->assertSame($this->allocation->blendedRealReturn($base), $this->allocation->blendedRealReturn($derived));
@@ -47,28 +49,80 @@ final class AssumptionOverridesTest extends TestCase
         $derived = AssumptionOverrides::apply(
             $base,
             ['investmentGrowth' => '', 'inflation' => null, 'somethingElse' => '9'],
-            $this->allocation,
         );
 
         $this->assertSame($base->inflationMean->basisPoints, $derived->inflationMean->basisPoints);
         $this->assertSame($this->allocation->blendedRealReturn($base), $this->allocation->blendedRealReturn($derived));
     }
 
-    public function test_an_investment_growth_edit_lands_the_blended_return_on_the_target(): void
+    /**
+     * Board card 0062. An investment-growth edit lands on its target by RE-WEIGHTING the mix,
+     * and touches the assumption set not at all: the asset classes it is blended from keep the
+     * preset's own returns and the preset's own volatilities, and the risk moves with the return.
+     */
+    public function test_an_investment_growth_edit_re_weights_the_mix_and_leaves_the_asset_classes_alone(): void
+    {
+        $base = AssumptionSetLibrary::default();
+        $derived = AssumptionOverrides::apply($base, ['investmentGrowth' => '3']);
+
+        foreach ($base->assetClasses as $i => $original) {
+            $this->assertSame($original->expectedRealReturn->basisPoints, $derived->assetClasses[$i]->expectedRealReturn->basisPoints);
+            $this->assertSame($original->volatility->basisPoints, $derived->assetClasses[$i]->volatility->basisPoints);
+        }
+        $this->assertSame($base->inflationMean->basisPoints, $derived->inflationMean->basisPoints);
+
+        // The mix is where the edit lands, and it costs risk to get there.
+        $allocation = AssumptionOverrides::allocation(['investmentGrowth' => '3'], $base);
+        $this->assertNotNull($allocation);
+        $this->assertEqualsWithDelta(0.03, $allocation->blendedRealReturn($base), 1e-6);
+        $this->assertGreaterThan($this->allocation->blendedVolatility($base), $allocation->blendedVolatility($base));
+    }
+
+    public function test_a_target_no_mix_can_reach_is_reported_and_clamped(): void
     {
         $base = AssumptionSetLibrary::default();
 
-        // The user wants 3% real growth; the derived set's blended return must be 3%.
-        $derived = AssumptionOverrides::apply($base, ['investmentGrowth' => '3'], $this->allocation);
-        $this->assertEqualsWithDelta(0.03, $this->allocation->blendedRealReturn($derived), 1e-4);
+        // Nothing here earns 6% real: the best asset class returns 4.4%.
+        $unreachable = AssumptionOverrides::unreachableGrowthTarget(['investmentGrowth' => '6'], $base);
+        $this->assertNotNull($unreachable);
+        $this->assertEqualsWithDelta(0.044, $unreachable['max'], 1e-9);
 
-        // It holds under a different allocation too (the shift is allocation-aware).
-        $allEquities = new PortfolioAllocation([1.0, 0.0, 0.0]);
-        $derivedEq = AssumptionOverrides::apply($base, ['investmentGrowth' => '6'], $allEquities);
-        $this->assertEqualsWithDelta(0.06, $allEquities->blendedRealReturn($derivedEq), 1e-4);
+        // A scenario stored before the card can still hold one, so it runs on the closest mix
+        // that exists rather than on a return nobody can earn.
+        $clamped = AssumptionOverrides::allocation(['investmentGrowth' => '6'], $base);
+        $this->assertEqualsWithDelta(0.044, $clamped?->blendedRealReturn($base), 1e-9);
 
-        // The non-return figures are untouched by an investment-growth edit.
-        $this->assertSame($base->inflationMean->basisPoints, $derived->inflationMean->basisPoints);
+        // A reachable figure has nothing to report.
+        $this->assertNull(AssumptionOverrides::unreachableGrowthTarget(['investmentGrowth' => '3'], $base));
+    }
+
+    public function test_the_asset_mix_and_its_glidepath_come_off_the_sparse_override_map(): void
+    {
+        $base = AssumptionSetLibrary::default();
+
+        // Nothing said: null, so the engine's own cautious mix applies AND stays disclosed.
+        $this->assertNull(AssumptionOverrides::allocation([], $base));
+
+        $chosen = AssumptionOverrides::allocation(['allocation' => 'growth'], $base);
+        $this->assertSame(AllocationProfile::Growth->allocation()->weights, $chosen?->weights);
+        $this->assertFalse($chosen->glides());
+
+        $glided = AssumptionOverrides::allocation(
+            ['allocation' => 'growth', 'allocationGlideTo' => 'defensive', 'allocationGlideYears' => '20'],
+            $base,
+        );
+        $this->assertTrue($glided?->glides());
+        $this->assertSame(20, $glided->glideYears);
+
+        // A target with no length is NOT glided over a length we invented: the engine supplies
+        // no default here, and the builder requires the figure (board card 0062).
+        $lengthless = AssumptionOverrides::allocation(['allocation' => 'growth', 'allocationGlideTo' => 'defensive'], $base);
+        $this->assertFalse($lengthless?->glides());
+        $this->assertSame(AllocationProfile::Growth->allocation()->weights, $lengthless->weights);
+
+        // ...and all three keys survive the sparse round trip that persists them.
+        $raw = ['allocation' => 'growth', 'allocationGlideTo' => 'defensive', 'allocationGlideYears' => '20'];
+        $this->assertSame($raw, AssumptionOverrides::sparse($raw));
     }
 
     public function test_each_scalar_figure_reaches_the_set(): void
@@ -83,7 +137,6 @@ final class AssumptionOverridesTest extends TestCase
                 'salaryGrowth' => '0.5',
                 'incomeYield' => '2.8',
             ],
-            $this->allocation,
         );
 
         $this->assertSame(350, $derived->inflationMean->basisPoints);
@@ -99,7 +152,7 @@ final class AssumptionOverridesTest extends TestCase
         // is that any figure it supplies for itself must be one the reader can change. A typed
         // figure replaces the derived one outright and stops being reported as assumed.
         $base = AssumptionSetLibrary::default();
-        $derived = AssumptionOverrides::apply($base, ['propertyVolatility' => '12'], $this->allocation);
+        $derived = AssumptionOverrides::apply($base, ['propertyVolatility' => '12']);
 
         $this->assertSame(1200, $derived->singlePropertyVolatility()?->basisPoints);
         $this->assertFalse($derived->singlePropertyVolatilityIsAssumed());

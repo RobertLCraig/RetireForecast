@@ -5,10 +5,32 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0061). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-08 (card 0062). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **Growth is bought with risk now, and the asset mix is an input.** Card 0062. The mix was
+  hardcoded to a cautious 40/60 nothing could move, and the "investment growth" override raised
+  every asset class's mean while leaving the volatilities and correlations alone, which sold an
+  equity return at a cautious portfolio's spread. `Forecast\AllocationProfile` is the one home of
+  the four named mixes (defensive 20/80, cautious 40/60 as the unchanged default, balanced 60/40,
+  growth 80/20) and `PortfolioAllocation::forBlendedRealReturn` is the one home of the re-weighting
+  that lands a growth edit on its target, so the volatility moves with it;
+  `AssumptionSet::withRealReturnShift` is deleted. A target no mix can reach is REFUSED in the
+  builder (with the reachable range, read from the set's own asset classes) and CLAMPED for a
+  scenario stored earlier, which the assumptions panel names. `PortfolioAllocation::at()` owns the
+  glidepath and all three draw sources read it per year; **a glidepath has no default length**, the
+  reader states the years. All three choices ride the sparse `assumptionOverrides` choice-key
+  route, so a scenario stored earlier reads as the default. `ENGINE_VERSION` is
+  `finance-engine/growth-is-bought-with-risk` and the **stored-scenario re-run is owed**: a plan
+  with a growth edit keeps its central projection and moves its whole Monte Carlo.
+  `GoldenMasterTest` did not redden (no growth edit, no chosen mix) and needs no re-pin. Each asset
+  class now carries a source and a verified-on date for its RETURN and for its VOLATILITY apart,
+  surfaced on the results page and the PDF, but **STATED, not fetched** (no web in this session):
+  see [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§33), carded as **0137**, which also carries
+  the card's own unfinished Task, re-sourcing the gilt real return against current index-linked
+  gilt yields. Built in a worktree, so the three new builder controls, the new portfolio-spread row
+  and the sourcing list **have not been seen in a browser**.
 - **The plan no longer runs to a coin-flip lifespan.** Card 0061. Every deterministic surface, so
   the whole comparison table, the affordability limits and the per-month analysis, ran to each
   person's OWN median age at death; for a couple the question is the LAST survivor, whose age at

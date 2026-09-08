@@ -1,6 +1,6 @@
 # Economic assumptions — SIGNED OFF 2026-06-24
 
-_Last updated: 2026-09-05 (§19: how long the State Pension triple lock is assumed to last, now a choice)_
+_Last updated: 2026-09-08 (§33: the asset mix is an input, and each asset class carries its own sourcing)_
 
 > **Status: SIGNED OFF by Rob (2026-06-24), adopted as proposed.** Set A (FCA default) is the
 > engine default; Sets B and C ship as runtime compare overlays. Re-verification against source
@@ -655,6 +655,30 @@ cash **−0.5%**.
    **To verify:** the Income Tax (Purchased Life Annuities) Regulations and the prescribed
    expectation-of-life tables behind the capital element, and a current market range for enhanced
    annuity uplifts.
+
+33. **The asset mix, and the per-figure sourcing of the asset classes** (board card 0062; lives in
+   `Forecast\AllocationProfile`, `Forecast\PortfolioAllocation` and the sourcing constants on
+   `AssumptionSetLibrary`). The mix reaches every projection; the citations reach the screen.
+
+   The mix is four named profiles on one axis, how much of the invested money is in shares:
+   defensive 20/80, cautious 40/60 (the default, and what every scenario stored before the card ran
+   on), balanced 60/40, growth 80/20. Cash is nil in all four, because a cash holding is entered as
+   a cash account and modelled at the cash assumption; putting it inside the mix as well would count
+   the same caution twice. The four points, and the choice of a labelled profile over a typed equity
+   percentage, are a **judgement**, not a published set: they are the standing shape of a UK
+   multi-asset risk-rated range rather than any one provider's.
+
+   A glidepath moves the mix in a straight line to a second profile over a number of years the
+   reader states. There is deliberately **no default length**: the lifestyling conventions differ,
+   and a length the engine picked would change how much money the plan has.
+
+   Each asset class now carries a source and a verified-on date for its return AND for its
+   volatility, separately, because the default set takes the first from the FCA and the second from
+   the long-run record. **The URLs are the ones this document already carried and the date is the
+   2026-06-24 sign-off, both STATED rather than re-checked** (built without web access). Re-verifying
+   them, and re-sourcing the gilt real return against current index-linked gilt yields (a 0.0% real
+   return on a 60% bond weight is a large part of the blended figure and is stale in the cautious
+   direction), is board card **0137**.
 
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/

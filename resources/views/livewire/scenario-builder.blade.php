@@ -327,6 +327,57 @@
                     @endforeach
                 </div>
 
+                {{-- How the invested money is split, and the mix it de-risks to (board card 0062).
+                     This is the largest single determinant of the whole answer and it used to be
+                     hardcoded, so it sits at the top of the choices rather than the bottom. It is
+                     also where the growth rate above comes from: raising that figure moves this
+                     mix into shares, and the risk moves with it. --}}
+                <div class="mt-6 border-t border-gray-200 pt-4">
+                    <label for="allocation" class="{{ $label }}">How your invested money is split</label>
+                    <select id="allocation" wire:model.live="assumptionOverrides.allocation"
+                        class="{{ $field }} sm:max-w-md"
+                        @error('assumptionOverrides.allocation') aria-invalid="true" aria-describedby="allocation-error" @enderror>
+                        @foreach ($allocationOptions as $option)
+                            <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">
+                        This applies to every pension, ISA and investment account in the plan. Money you hold as cash is entered as a cash account and is not part of this mix. More in shares means more growth <strong>and</strong> a wider spread of outcomes: the two always move together here, so the growth rate above is a consequence of this choice, not a separate one.
+                    </p>
+                    <ul class="mt-2 space-y-1 text-xs text-gray-500">
+                        @foreach ($allocationOptions as $option)
+                            <li><strong>{{ $option['label'] }}</strong>: {{ $option['note'] }}</li>
+                        @endforeach
+                    </ul>
+                    @error('assumptionOverrides.allocation') <p id="allocation-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+
+                    <div class="mt-3">
+                        <label for="allocationGlideTo" class="{{ $label }}">Move to a safer mix as you get older</label>
+                        <select id="allocationGlideTo" wire:model.live="assumptionOverrides.allocationGlideTo"
+                            class="{{ $field }} sm:max-w-md"
+                            @error('assumptionOverrides.allocationGlideTo') aria-invalid="true" aria-describedby="allocationGlideTo-error" @enderror>
+                            <option value="">No: keep the same mix for the whole plan</option>
+                            @foreach ($allocationOptions as $option)
+                                <option value="{{ $option['value'] === '' ? 'cautious' : $option['value'] }}">Yes, move to: {{ $option['label'] }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">A glidepath: the mix moves a little each year until it reaches the one you pick, then stays there. It lowers the risk of a bad run late on, and it lowers the growth too. We model the move in a straight line.</p>
+                        @error('assumptionOverrides.allocationGlideTo') <p id="allocationGlideTo-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                    </div>
+
+                    @if (($assumptionOverrides['allocationGlideTo'] ?? '') !== '')
+                        <div class="mt-3">
+                            <label for="allocationGlideYears" class="{{ $label }}">Years it takes to get there</label>
+                            <input id="allocationGlideYears" type="text" inputmode="numeric"
+                                wire:model="assumptionOverrides.allocationGlideYears"
+                                class="{{ $field }} sm:max-w-xs"
+                                @error('assumptionOverrides.allocationGlideYears') aria-invalid="true" aria-describedby="allocationGlideYears-error" @enderror>
+                            <p class="mt-1 text-xs text-gray-500">Counted from the start of the plan. We do not fill this in for you: every rule of thumb gives a different answer, and the length changes how much money the plan has, so it has to be your figure.</p>
+                            @error('assumptionOverrides.allocationGlideYears') <p id="allocationGlideYears-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                        </div>
+                    @endif
+                </div>
+
                 {{-- How long the State Pension triple lock is assumed to hold (board card 0038).
                      It is a policy guess, not a rate, so it is a choice rather than a box. Blank
                      is the engine's default, and that default is the OPTIMISTIC branch, which is

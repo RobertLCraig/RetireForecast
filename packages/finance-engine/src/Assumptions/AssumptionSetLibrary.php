@@ -58,6 +58,31 @@ use RetireForecast\FinanceEngine\Money\Percent;
  */
 final class AssumptionSetLibrary
 {
+    /**
+     * The sourcing carried by every shipped asset class (board card 0062). Held as constants
+     * rather than repeated per class so one home owns each citation, and so a re-source moves
+     * every set that reads it. The returns and the volatilities are cited SEPARATELY because
+     * they come from different places; see {@see AssetClassAssumption}.
+     *
+     * The URLs are the ones docs/spec/ASSUMPTIONS.md already carries, not fetched here: the
+     * session that added them had no web access. The verified-on date is the sign-off date this
+     * file's own docblock records, not a fresh check. Re-verifying both, and re-sourcing the gilt
+     * real return against current index-linked gilt yields, is board card 0137.
+     */
+    public const FCA_RETURN_SOURCE = 'FCA COBS 13 Annex 2 standardised projection rates (intermediate), '
+        .'deflated by the 2% CPI assumption: https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html';
+
+    public const DMS_RETURN_SOURCE = 'Dimson-Marsh-Staunton long-run (1900-2024) realised real returns, via the '
+        .'UBS Global Investment Returns Yearbook and the Barclays Equity Gilt Study: '
+        .'https://www.ubs.com/global/en/investment-bank/insights-and-data/2025/global-investment-returns-yearbook-2025.html';
+
+    public const DMS_VOLATILITY_SOURCE = 'Dimson-Marsh-Staunton long-run (1900-2024) annual standard deviations '
+        .'of real returns, via the UBS Global Investment Returns Yearbook and the Barclays Equity Gilt Study: '
+        .'https://www.ubs.com/global/en/investment-bank/insights-and-data/2025/global-investment-returns-yearbook-2025.html';
+
+    /** The date the figures below were signed off. Not a fresh check: see the sourcing note above. */
+    public const VERIFIED_ON = '2026-06-24';
+
     /** The engine default: FCA-derived real returns + DMS volatilities/correlations. */
     public static function fcaDefault(): AssumptionSet
     {
@@ -67,9 +92,9 @@ final class AssumptionSetLibrary
                 .'(deflated by 2% inflation); volatilities and correlations from the Barclays '
                 .'Equity Gilt Study / Dimson-Marsh-Staunton long-run record. Real, annual.',
             assetClasses: [
-                new AssetClassAssumption('Global equities', Percent::fromPercent(4.4), Percent::fromPercent(23)),
-                new AssetClassAssumption('Gilts/bonds', Percent::fromPercent(0.0), Percent::fromPercent(13)),
-                new AssetClassAssumption('Cash', Percent::fromPercent(-0.5), Percent::fromPercent(2)),
+                self::fcaSourced('Global equities', 4.4, 23),
+                self::fcaSourced('Gilts/bonds', 0.0, 13),
+                self::fcaSourced('Cash', -0.5, 2),
             ],
             correlationMatrix: [
                 [1.0, 0.30, 0.10],
@@ -101,9 +126,9 @@ final class AssumptionSetLibrary
                 .'(1900-2024) Dimson-Marsh-Staunton / Barclays Equity Gilt Study record, '
                 .'including high-inflation decades. Real, annual.',
             assetClasses: [
-                new AssetClassAssumption('Global equities', Percent::fromPercent(5.2), Percent::fromPercent(23)),
-                new AssetClassAssumption('Gilts/bonds', Percent::fromPercent(1.5), Percent::fromPercent(13)),
-                new AssetClassAssumption('Cash', Percent::fromPercent(0.5), Percent::fromPercent(7.5)),
+                self::dmsSourced('Global equities', 5.2, 23),
+                self::dmsSourced('Gilts/bonds', 1.5, 13),
+                self::dmsSourced('Cash', 0.5, 7.5),
             ],
             correlationMatrix: [
                 [1.0, 0.46, 0.10],
@@ -137,9 +162,9 @@ final class AssumptionSetLibrary
                 .'housing anchored to OBR (March 2026) and the Bank of England 2% CPI target. '
                 .'Real, annual.',
             assetClasses: [
-                new AssetClassAssumption('Global equities', Percent::fromPercent(4.4), Percent::fromPercent(23)),
-                new AssetClassAssumption('Gilts/bonds', Percent::fromPercent(0.0), Percent::fromPercent(13)),
-                new AssetClassAssumption('Cash', Percent::fromPercent(-0.5), Percent::fromPercent(2)),
+                self::fcaSourced('Global equities', 4.4, 23),
+                self::fcaSourced('Gilts/bonds', 0.0, 13),
+                self::fcaSourced('Cash', -0.5, 2),
             ],
             correlationMatrix: [
                 [1.0, 0.30, 0.10],
@@ -158,6 +183,38 @@ final class AssumptionSetLibrary
             salaryEquityCorrelation: 0.1,
             careCostRealGrowth: Percent::fromPercent(2.0),
             investmentCharge: Percent::fromPercent(0.5),
+        );
+    }
+
+    /**
+     * An asset class on the FCA basis: the return from the FCA's projection rates, the
+     * volatility from the long-run record. Both figures carry their own citation, so no
+     * shipped class can reach a projection unsourced.
+     */
+    private static function fcaSourced(string $name, float $realReturn, float $volatility): AssetClassAssumption
+    {
+        return new AssetClassAssumption(
+            $name,
+            Percent::fromPercent($realReturn),
+            Percent::fromPercent($volatility),
+            self::FCA_RETURN_SOURCE,
+            self::VERIFIED_ON,
+            self::DMS_VOLATILITY_SOURCE,
+            self::VERIFIED_ON,
+        );
+    }
+
+    /** An asset class on the long-run historical basis: both figures from the same record. */
+    private static function dmsSourced(string $name, float $realReturn, float $volatility): AssetClassAssumption
+    {
+        return new AssetClassAssumption(
+            $name,
+            Percent::fromPercent($realReturn),
+            Percent::fromPercent($volatility),
+            self::DMS_RETURN_SOURCE,
+            self::VERIFIED_ON,
+            self::DMS_VOLATILITY_SOURCE,
+            self::VERIFIED_ON,
         );
     }
 

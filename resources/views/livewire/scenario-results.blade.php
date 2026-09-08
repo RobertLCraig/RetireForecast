@@ -1364,6 +1364,14 @@
         <p class="mt-3 text-xs text-gray-500">
             Investment growth blends {{ $assumptions['mix'] }}. Assumption set: <strong>{{ $assumptions['setName'] }}{{ $assumptions['customised'] ? ' (customised)' : '' }}</strong>. {{ $assumptions['sourceNote'] }}
         </p>
+        {{-- Where each asset-class figure came from and when it was last checked (board card 0062).
+             These two numbers decide the answer more than any other in the model, so they carry
+             their sourcing on the page rather than only in the code. --}}
+        <ul class="mt-2 space-y-1 text-xs text-gray-500">
+            @foreach ($assumptions['assetSourcing'] as $asset)
+                <li><strong>{{ $asset['name'] }}</strong> &mdash; {{ $asset['return'] }}. {{ $asset['volatility'] }}.</li>
+            @endforeach
+        </ul>
         {{-- Selling costs, moving costs, the buy price and the rent are all sale inputs, so they
              show only for a strategy that sells. A stay-put plan uses none of them. --}}
         @if ($salePlanned && $assumptions['housing'])
