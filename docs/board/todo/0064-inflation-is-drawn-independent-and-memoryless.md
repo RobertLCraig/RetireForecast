@@ -122,3 +122,52 @@ long-life block on the results page and in the PDF have not been looked at.
 until an interest-only mortgage stops being CPI-indexed. That is 0024's fix, not this card's, and
 nothing here makes it worse: sticky inflation makes the missing hedge cost more, which is the
 argument for doing 0024, not a reason to widen this one.
+
+### 2026-09-08 review (v20260908133601-3593)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 396s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+All three criteria trace to real code.
+
+**#1 ÔÇö persistence.** `ReturnModel::generatePath` carries an AR(1) deviation term (`$phi * $deviation + $innovationScale * ...`), phi read through `AssumptionSet::inflationPersistence()`, which clamps. The parameter is sourced: `AssumptionSetLibrary::INFLATION_PERSISTENCE` with `INFLATION_DYNAMICS_SOURCE` (ONS series URL) and `INFLATION_DYNAMICS_VERIFIED_ON`, listed in `AssumptionSetLibrary::economicSourcing()` so `CheckFigureFreshness::handle` sweeps it. It is marked stated-not-verified with card 0139 raised ÔÇö the same pattern already used for `SINGLE_PROPERTY_SOURCE`, so it matches the project's own bar, not a shortcut.
+
+**#2 ÔÇö correlation.** `ReturnModel::withInflationRow` appends inflation as the last row and column of the correlation matrix and `Cholesky::decompose` factors the augmented matrix; `generatePath` draws `count($means)+1` normals and reads `$z[$inflationIndex]`. A set with no figures gives a last row of zeros plus 1.0, so the old draw is preserved in the same stream position.
+
+**#3 ÔÇö long life.** `HistoricalBacktester::backtest` takes `?PlanningHorizon $horizon` and passes it to `RepresentativeDeathAge::forHousehold`. `ScenarioForecaster::longLifeHistoricalBacktest` runs it at P90 and returns null when the plan is already there. It is displayed: `ScenarioResults` and `ScenarioReport` both call it.
+
+I tried to break the "same run twice" case and the byte-identical claim; both are guarded.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Over the fence:** nothing. The default inflation rate is untouched ÔÇö `AssumptionSetLibrary::fcaDefault` and friends only gain the two new fields. The other files in the branch diff belong to earlier commits, not this one (`git show 0dbea02` is the card's whole change).
+
+**Left half done:** the card's third task says run the backtester **at the last-survivor 75th and 90th percentiles**. Only the 90th was built. `ScenarioForecaster::longLifeHistoricalBacktest` hard-codes `PlanningHorizon::P90` and returns null otherwise; `ResultPresenter::historicalStressTest` builds a single `longLife` block and defaults its horizon to `P90`. `PlanningHorizon` already has a `P75` case, so the missing half was one call away. The acceptance line only asks for "a long-life horizon", so the box is defensible ÔÇö the task line is not. The next session must either wire the 75th run through both those functions, or the owner must strike it from the task list.
+
+**Small over-build in the same place:** `ResultPresenter::historicalStressTest` takes a `$longLifeHorizon` parameter no caller ever passes. It looks like the seam the missing 75th run was going to use, left unused.
+
+Everything else ÔÇö the AR(1) term, the inflation row in the matrix, the golden-master re-pin, the disclosure rows ÔÇö is inside the card.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Finding ÔÇö the stated inflation/asset correlation is not the one the model realises.**
+
+`ReturnModel::generatePath` builds the year's inflation deviation as `phi * deviation + sqrt(1 - phi^2) * inflVol * z[inflationIndex]`. Only the innovation carries the correlated shock, so for every year after the first the realised correlation between inflation and asset returns is `sqrt(1 - phi^2)` times the stated figure ÔÇö at the shipped `phi = 0.7`, 0.71 times it. Year 0 takes the other branch (`inflVol * z`) and realises the full figure, so one path uses two different correlations.
+
+This makes three things false at once:
+
+- `AssumptionSet`'s docblock for `$inflationAssetCorrelations` ("the correlation of the inflation shock with each asset class's REAL return") ÔÇö it is the correlation of the innovation, not the shock.
+- `ResultPresenter::assumptionsPanel`'s "How markets react to an inflation shock" row shows `-0.55` while the model moves at about `-0.39`: a figure the reader can see but cannot interrogate.
+- `InflationPersistenceTest::test_a_high_inflation_year_coincides_with_negative_real_returns` builds its set with default persistence `0.0`, so the two features are never exercised together and the attenuation is unpinned.
+
+Either scale the correlation up so the stated figure is the realised one, or say on the panel and in the docblock that it applies to the annual surprise.
+
+VERDICT: defect
+
