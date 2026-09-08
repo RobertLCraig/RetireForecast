@@ -100,3 +100,50 @@ test that bites at different times.
 
 Built in a worktree, so the three new builder controls and the two new result notes **have not been
 seen in a browser**.
+
+### 2026-09-08 review (v20260908113915-a394)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 260s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+Traced all four.
+
+**AC#1** ÔÇö the rule runs in the projector: `PathProjector::projectYear` (the guardrail block reading `$household->expenseProfile->spendingGuardrail`) calls `SpendingGuardrail::bites()` and subtracts `cutFrom()` from `$targetPence` before `$spendNominal` is built. The test is re-run each year off that year's opening wealth, so there is no latch, so recovery restores the spend by itself. `SpendingGuardrailTest` pins that.
+
+**AC#2** ÔÇö editable: `ScenarioBuilder::$expense` holds `guardrailOn`, `guardrailTriggerRatio`, `guardrailCutPct`; `ScenarioBuilder::rules()` validates all three; the fields render in `scenario-builder.blade.php` with placeholders read from `ScenarioBuilder::guardrailTriggerDefault()` and `guardrailCutDefaultPct()`. Defaults live in `SpendingGuardrail::DEFAULT_TRIGGER_FUNDED_RATIO_BPS` and `DEFAULT_DISCRETIONARY_CUT_BPS`. They are **stated, not verified** ÔÇö the card says so out loud and carries it as 0138, so that is disclosed, not hidden.
+
+**AC#3** ÔÇö `ResultPresenter::inputNotes()` builds the `spending_guardrail` note: year count, total trimmed, deepest single year, all read off `YearResult::guardrailReduction()`.
+
+**AC#4** ÔÇö `PathProjector` sets `guardrailNoFlexibility` when discretionary is zero and raises `WarningCode::GUARDRAIL_NO_FLEXIBILITY`; `ResultPresenter` turns it into the `guardrail_no_flexibility` note.
+
+I could not break it.
+
+VERDICT: sound
+
+**scope: sound**
+
+Scope check on commit `0c82f5e` (the card's only commit ÔÇö the big branch diff is prior cards).
+
+**Fence:** withdrawal sequencing across wrappers (card 0007) is untouched. Nothing crosses it.
+
+**Growth:** none found that I can cite. Every touched file maps to an acceptance line: `Dto\SpendingGuardrail` (the rule and both figures), `PathProjector::projectYear` plus the new `PathProjector::yearsRemaining` (AC1), `ScenarioBuilder::rules`/`loadState`/`builderState` and `guardrailTriggerDefault` (AC2), `ResultPresenter::inputNotes` (AC3), `WarningCode::GUARDRAIL_NO_FLEXIBILITY` plus the `guardrail_no_flexibility` note in `ResultPresenter::inputNotes` (AC4). `ResultPresenter::assumedFigures` is the project's standing no-invisible-figures rule, not new scope.
+
+**Left half done, and declared:** both default figures are stated not verified, handed to new card `0138`, which is the ordinary shape for an unattended session with no web. The three builder controls were never opened in a browser ÔÇö also declared.
+
+One thing I could not turn into a defect: `ResultPresenter::inputNotes` counts bites off the central projection only, while the probability beside it comes from the many-path run. The note says so in its own words, so it does not overstate.
+
+VERDICT: sound
+
+**breakage: defect**
+
+**Findings (breakage lens)**
+
+1. `ResultPresenter::assumedFigures()` ÔÇö the guardrail disclosure fires on `triggerIsAssumed() OR cutIsAssumed()`, but the sentence it writes says the reader "turned on the spending guardrail without saying where it should bite or how hard", and then states **both** figures. A reader who types a trigger of 1.25 and leaves the cut blank is told their own 1.25 is a figure we assumed. That is the no-invisible-figures rule inverted: an entered figure labelled as ours. `SpendingGuardrailNoticeTest` builds only both-blank and both-set, never the mixed case, so nothing catches it.
+
+2. `PathProjector` guardrail block ÔÇö `$essentialThisYearNominal` is taken from `$essentialPence` **before** rent, the mortgage payment, council tax, running costs and care are added, yet those are all added into the `essentialSpend` the same year reports. So "the essential spend still to be funded" is a different quantity from the year's own essential floor, contradicting the docblock in `SpendingGuardrail`. For a sell-and-rent or mortgaged household the ratio is inflated and the guardrail barely bites. Every guardrail test uses a renter-free, mortgage-free, care-free owner-less household, so the gap is unbuilt.
+
+VERDICT: defect
+
