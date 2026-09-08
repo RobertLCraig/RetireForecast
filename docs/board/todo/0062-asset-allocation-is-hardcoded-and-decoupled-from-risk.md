@@ -111,3 +111,53 @@ are card **0137**. The task is left unticked for the same reason.
 
 Built in a worktree, so the three new builder controls, the new portfolio-spread row, the
 sourcing list and the rewritten allocation disclosure **have not been seen in a browser**.
+
+### 2026-09-08 review (v20260908112821-6fac)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 292s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I checked every criterion against real code.
+
+**#1 ÔÇö allocation is an editable input.** `ScenarioBuilder::rules()` validates `assumptionOverrides.allocation` against `AllocationProfile` cases, the view renders the select, and `ScenarioBuilder::selectedAllocation()` falls back to `AllocationProfile::DEFAULT` (the old 40/60). Real.
+
+**#2 ÔÇö return moves risk, or is refused.** `AssumptionOverrides::allocation()` re-weights via `PortfolioAllocation::forBlendedRealReturn()`, which moves equity/bond weight, so `PortfolioAllocation::blendedVolatility()` moves with it. Out-of-range targets are refused by the closure rule on `assumptionOverrides.investmentGrowth` in `ScenarioBuilder::rules()`, backed by `AssumptionOverrides::unreachableGrowthTarget()`. `withRealReturnShift` is gone. Real.
+
+**#3 ÔÇö glidepath.** `PortfolioAllocation::glidingTo()` and `::at()` hold the arithmetic; all three draw sources read it per year: `DeterministicPathDraws::investmentReturn()`, `HistoricalSequenceDraws::investmentReturn()`, and `ReturnModel::path()`. Real.
+
+**#4 ÔÇö source and verified-on per figure.** `AssetClassAssumption` carries `returnSource`/`returnVerifiedOn` and `volatilitySource`/`volatilityVerifiedOn`; `AssumptionSetLibrary::fcaSourced()` and `::dmsSourced()` set them for every shipped class, guarded by `AssetClassSourcingTest`. The card says "carried, not re-verified" and hands re-sourcing to card 0137 ÔÇö that matches the wording of #4.
+
+Nothing broke. The unticked Task is honestly out of scope.
+
+VERDICT: sound
+
+**scope: sound**
+
+**Scope check on commit `9f8c9f2` (card 0062).**
+
+What I looked for and did not find:
+
+- **Fence break.** "Not this card" is card 0038's disclosure. `ResultPresenter::assumedFigures` only *reworded* the existing allocation note so it stops saying "not something you can change on this screen", which the card made false. That is maintaining 0038's text, not doing 0038.
+- **Creep into other systems.** `ScenarioForecaster::assumptions` / `buildSettings` gained `presetAssumptions` and an `$overrides` local; both are needed to solve the mix. `AssumptionSetLibrary::fcaSourced` / `dmsSourced` and `ResultPresenter::assumptionsPanel`'s `assetSourcing` are AC #4, not extra.
+- **Collateral edits.** `BuyToLetFinanceCostTest::yearsByCalendar` changed only because `AssumptionSet::withRealReturnShift` was deleted; no caller of it survives anywhere.
+- **Half-done engine wiring.** The glidepath is read per year in all three draw sources, including `MonteCarlo\ReturnModel::generatePath`, so no surface shows a de-risking plan the projection did not run.
+
+Left open, and said out loud rather than hidden: Task 4 (re-source the gilt real return) is unticked and carded as 0137, and the new builder controls were built in a worktree and not opened in a browser.
+
+VERDICT: sound
+
+**breakage: defect**
+
+Two things break quietly.
+
+**1. The assumptions panel calls a reader's own mix "the preset".**
+`AssumptionOverrides::changedKeys` filters only `KEYS`; the new mix keys live in `CHOICE_KEYS`. So when a reader picks Balanced or Growth (and no `investmentGrowth`), `ResultPresenter::assumptionsPanel` sets `customised => false` and marks the `investmentGrowth` and `portfolioVolatility` rows `edited => false` ÔÇö while both VALUES have moved off the preset, because they are read from `$allocation->blendedRealReturn()` / `blendedVolatility()`. The panel then shows the reader their own figures wearing the named preset's label. The other `CHOICE_KEYS` (uprating, horizon) do not sit in `$economic`, so this card is what made the gap bite. `AssumptionsPanelTest` never builds a state with `allocation` set and no rate override.
+
+**2. A glidepath silently switches off the "this mix is ours" disclosure.**
+`AssumptionOverrides::allocation` returns non-null as soon as `allocationGlideTo` is filled, substituting `AllocationProfile::DEFAULT` for the START mix. `ForecastSettings::allocationIsAssumed` is `$this->allocation === null`, so `ResultPresenter::inputNotes` drops the cautious-mix disclosure even though the starting mix is still the engine's. That is an engine default reaching a projection undisclosed ÔÇö the exact rule card 0038 exists for.
+
+VERDICT: defect
+
