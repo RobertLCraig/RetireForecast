@@ -122,3 +122,54 @@ as **0135**.
 
 Built in a worktree, so **the two new builder inputs, the chattel note and the two new care
 disclosures have not been seen in a browser.**
+
+### 2026-09-08 review (v20260908094119-5838)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 220s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+**#1 no RNRB on a chattel** ÔÇö `Property::qualifiesForRnrb()` returns false when `isChattelDwelling()`; read by `PathProjector::residenceBandFor` region (`packages/finance-engine/src/Forecast/PathProjector.php`, the RNRB guard uses `primaryResidence?->qualifiesForRnrb()`). Proved by `tests/Iht/ChattelDwellingEstateTest.php`.
+
+**#2 commission + non-resident** ÔÇö `Property::netOfSaleCommission()` / `saleCommissionRate()`, called from `PathProjector::netHomeValue()`, which feeds both the estate value and the care means-test home value. The wording is in `ResultPresenter::inputNotes()`, `chattel_dwelling` note ("cannot simply be left to a non-resident").
+
+**#3 FNC deducted** ÔÇö `CareAssumptions::fundedNursingCareWeekly()` subtracted in `CareAssumptions::nursingAnnual()`, floored at zero. Source URL present. `verified_on` is written as "NOT VERIFIED", so it carries no date; that is stated openly and carded as 0135, not hidden.
+
+**#4 CHC explained** ÔÇö `ResultPresenter` care disclosure text says every care figure assumes CHC is not awarded and an award removes the charge.
+
+**#5 beneficial shares** ÔÇö `Property::beneficialShare()` defaults to an equal split; entered via `HouseholdAssembler::beneficialShares()` and the builder field `property.beneficialShareYours`; the default is disclosed in `ResultPresenter` ("assumed equal shares: half each") when `beneficialShares === null`.
+
+I tried to break each one and could not; the only soft spot (an undated FNC rate) is disclosed and carded.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Scope check on commit 9badd91 (card 0059).** Nothing crossed the "Not this card" fence: no gifting, no taper, no GROB, no deprivation warning. The new files are all on-card.
+
+Two things left half done.
+
+1. **The commission is missing from the one exit that is actually modelled.** `Property::netOfSaleCommission()` is read only by `PathProjector::netHomeValue()`, which serves the estate and `PathProjector::careHomeEquity()`. A park home SOLD inside the plan ÔÇö a sell-and-rent or downsize plan, or a forced sale ÔÇö goes through `HousingProceeds::compute()`, which knows nothing of the site owner's cut, so those proceeds are 10% too big. The card's Why is "the exit always happens eventually"; the build note justifies leaving the wealth line gross, but never mentions a modelled sale.
+
+2. **Two engine-derived defaults, disclosed two different ways.** The equal-shares default is an `assumedFigures()` entry, so `scenarios:audit` counts it. The derived park-home answer (`Property::isChattelDwelling()` falling back to depreciation) is emitted by `ResultPresenter::inputNotes()` under a new `chattel_dwelling` kind, so the assumed-figure parity sweep does not cover it.
+
+VERDICT: defect
+
+**breakage: defect**
+
+**Finding ÔÇö the sale that actually pays the commission does not deduct it.**
+
+`Property::netOfSaleCommission()` says in its docblock it is "the ONE definition of that arithmetic, so the estate and the care means test cannot value the same bricks two different ways". But only `PathProjector::netHomeValue()` calls it. A real disposal does not:
+
+- `HousingProceeds::compute()` (the class docblock calls itself "the ONE definition of the sale maths") takes only the selling-cost components, so no site commission.
+- `PathProjector::sellHome()` (the forced/mid-projection sale, the branch calling `HousingProceeds::compute` with `propertyWhole`) banks the gross-of-commission proceeds.
+- `HousingComparison::saleProceeds()` runs the same class for the sell-and-rent / downsize variants.
+
+So a park home is docked 10% when it is merely valued at death or means-tested, and docked nothing on the one event where the site owner is really paid. Proceeds, later liquid wealth, and the resulting estate are overstated, silently, in every plan that sells. No test builds a chattel home plus a sale; `ChattelDwellingEstateTest` only exercises the estate and the means test.
+
+Both docblocks claiming a single home for the arithmetic are now false.
+
+VERDICT: defect
+
