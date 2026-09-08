@@ -97,3 +97,46 @@ note has not been seen in a browser.
 One thing this session could not settle from the repository: the orient hook asks for a stale block
 to be folded out of `docs/HANDOVER.md` before other work, and that is a doc decision no acceptance
 criterion here covers, so the file grew by one bullet instead.
+
+### 2026-09-08 review (v20260908154332-314d)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 272s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+All three criteria trace to real code.
+
+**#1 ÔÇö MPAA binds in the trigger year.** `PathProjector::applicableAllowance()` reads `$state['mpaaTriggered']`, and `PathProjector::annualAllowanceCharges()` is called at the end of the year loop, after the contribution routes and after `triggerFlexibleAccess()`. The test in `PathProjectorTest::test_the_mpaa_binds_in_the_year_of_the_trigger` reads the allowance named in the year-2 warning, and asserts the untriggered twin is silent, so it fails if the answer slips a year.
+
+**#2 ÔÇö charged, not blocked.** `PathProjector::annualAllowanceCharges()` calls `AnnualAllowanceCalculator::assess` and turns the excess into `marginalTax`, then the year loop takes it from the member's cash and pushes the rest onto net income (so it shows as unmet spend, not forgiven). `ContributionAllowanceTest::test_a_contribution_above_the_allowance_is_charged_not_blocked` asserts the whole ┬ú80k reaches the pot and the tax equals the at-cap household's.
+
+**#3 ÔÇö shown.** `PathProjector::allowanceChargeWarnings()` states the applied allowance (read from the config constant, not restated) and the charge, and is added to the year's warnings. `AssumedFiguresDisclosureTest::test_the_allowance_and_any_charge_are_shown` reads it through the app's disclosure path and rejects a ┬ú0.00 charge.
+
+I tried to break each one and could not.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Scope over the fence:** nothing. CarryÔÇæforward and the taper stay unmodelled and are still flagged in `PathProjector::applicableAllowance`. `ENGINE_VERSION` bump, the reworded `PathProjector::mpaaWarnings`, and the new note in `ResultPresenter::assumedFigures` all serve AC3. No unrelated file rides along in the commit.
+
+**Left half done ÔÇö one thing.** Criterion 1 asks for the MPAA "from that point in the same year". `PathProjector::annualAllowanceCharges` does not do that. It reads one flag, `$state['mpaaTriggered']`, at year end, and measures the WHOLE year's input against ┬ú10,000 ÔÇö including money paid in before the trigger. In life preÔÇætrigger moneyÔÇæpurchase input is tested against the ordinary allowance, and only postÔÇætrigger input against the MPAA. So a member who pays ┬ú30,000 in April and first draws in March is charged on ┬ú20,000 of excess that in life carries none.
+
+That is the adverse direction, so it is a defensible simplification ÔÇö but it is undeclared. `PathProjector::applicableAllowance` says the answer "turns on the trigger DATE", which it does not, and the class flags its other two simplifications by name while this one is not flagged anywhere the reader or the next session can see.
+
+VERDICT: defect
+
+**breakage: defect**
+
+Findings (breakage lens):
+
+**1. Five dead docblock links in `packages/finance-engine/src/Forecast/PathProjector.php`.** The method `contributionHeadroom` no longer exists; it was split into `applicableAllowance` + `annualAllowanceCharges`. `{@see contributionHeadroom}` still stands in the state builder (`initialState`, beside `'mpaaTriggered'`), in the inherited-pot block of the death/inheritance step, in `triggerFlexibleAccess`'s neighbours in the two draw closures (`$drawPension`, `$drawPensionUfpls`), and in `applicableAllowance` itself. This is exactly the `mpaaHeadroom` dead-link defect card 0007 already caught once.
+
+**2. The rule is asserted the old way in the docs.** `docs/spec/METHODOLOGY.md`, pension-contributions bullet: "We model those as a limit on what can go in rather than as a tax charge on the excess." That is now false and it is reader-facing. `docs/DECISIONS.md` decisions 2 and 3 still state the hard cap as current behaviour ("An EMPLOYER contribution the cap blocks is not paid anywhere else", "Modelled as a hard cap ... both are flagged on `contributionHeadroom`"), naming card 0073 only as future work. One rule, three homes, two of them wrong.
+
+No incorrect arithmetic found; the charge path itself holds.
+
+VERDICT: defect
+
