@@ -145,3 +145,49 @@ said house-price and salary growth carry no volatility while the limits list sai
 paragraph also still described inflation as drawn separately, which card 0064 made untrue, so that
 sentence was corrected in the same edit rather than left standing as a second known-false statement
 on a user-facing page.
+
+### 2026-09-08 review (v20260908142904-9283)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 352s, run by this job rather than reported by the card.
+
+**acceptance: defect**
+
+**#1 ÔÇö traced.** `AnnuityRateTable::quote` prices by age, escalation and survivor fraction; `ScenarioBuilder::repricedAnnuities` (called from `updatedPensions` and `updatedAccounts`) re-quotes on change, and `HouseholdAssembler::dcPension` falls back to the same table.
+
+**#2 ÔÇö traced.** `PathProjector::drawAnnuityPriceFromPots` runs each slice through `ufplsSplit`, returning `taxFree` plus `annuitised`.
+
+**#3 ÔÇö traced.** `ChattelsGain::chargeableGain` (s262 five-thirds cap) is called from `PathProjector` on any `CapitalReceipt` with a `chattelCost`, feeding the year's CGT.
+
+**#4 ÔÇö DEFECT.** Two of the biggest economic assumptions, the asset-class expected return and volatility, are **not** swept by the freshness command. `CheckFigureFreshness::handle` loops only `AssumptionSet::economicSourcing()`, and `EconomicAssumptionSourcingTest::NOT_A_FIGURE` deliberately excludes `assetClasses`. Those figures carry their own `returnVerifiedOn` / `volatilityVerifiedOn` on `AssetClassAssumption`, so the dates exist but nothing checks them: they can go five years stale and `figures:freshness` still exits 0 saying "Every statutory and economic figure was verified within the last 12 months." That message is also then untrue. The criterion says every economic assumption is checked by the command.
+
+Fix is small: extend the economic loop in `CheckFigureFreshness::handle` over `$set->assetClasses` too.
+
+VERDICT: defect
+
+**scope: sound**
+
+I checked the card's own build commit (`05419a7`), not the whole board history.
+
+**Over the fence?** No. Card 0060's job ÔÇö buying an annuity with non-pension money ÔÇö is untouched: `PathProjector::drawAnnuityPriceFromAccount` is unchanged and pays no tax-free cash, so only pension pots crystallise. `ScenarioBuilder::updatedAccounts` does re-price an account-funded annuity, but the card's own Links say 0060 "prices its annuities off the rate table this one sources", so that is the card asking for it, not creep.
+
+**Left half done?** Nothing I can pin.
+- The selling-cost Task looks skipped, but `HousingProceeds::DEFAULT_SELLING_COST_RATE_BP` is already 400bp and card 0032's comment records raising it. Nothing left.
+- The known "new builder field" trap is fully walked: validation, `ScenarioBuilder::normaliseRowIds` backfill, `ScenarioBuilder::addCapitalReceipt`, and `BuilderStateFixture::full` all carry `chattelCost`.
+- `EconomicAssumptionSourcingTest::economicFigures` enumerates the `AssumptionSet` constructor by reflection with a named exempt list, so "every" holds as figures are added, and `CheckFigureFreshness::handle` sweeps them and still fails on a stale one.
+- Unverified figures and the owed stored-run re-run are both declared, and card 0140 exists for the sourcing.
+
+I tried to find something quietly grown and could not.
+
+VERDICT: sound
+
+**breakage: defect**
+
+**Finding 1 ÔÇö the sweep changes the joint-life shape and keeps the old rate.**
+`Sweep\Lever\SurvivorAnnuityFractionLever::apply` calls `AnnuityPurchase::withSurvivorFraction`, which copies `$this->rate` unchanged. So the "how much should carry on to my partner?" sweep moves the fraction from 50% to 100% and still pays the 50% quote. `AnnuityRateTable::FULL_SURVIVOR_REDUCTION` exists now and says that costs ~20% of the income. The lever's own docblock ("holds the annuitant's own income fixed", and single-life rows are excluded because "turning it joint-life at the same rate would model survivor income the quote never paid for") asserts the very rule it breaks for an already-joint row. The builder and `HouseholdAssembler::annuity` re-quote; this caller does not. Silent, and flattering: extra survivor income for free.
+
+**Finding 2 ÔÇö docblock made false.** `Dto\AnnuityPurchase` class docblock still says the purchase "buys an annuity paying $amount ├ù the effective rate" (a pot purchase now buys 0.75 ├ù amount), and that "$rate is a user inputÔÇª so no fabricated age/rate table is baked into the engine" ÔÇö the table is now in the engine and is the assembler's fallback.
+
+VERDICT: defect
+
