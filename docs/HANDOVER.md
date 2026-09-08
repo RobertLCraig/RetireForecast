@@ -5,9 +5,13 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0082). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-08 (card 0083). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **`vendor/bin/pint --test` exits zero on a clean tree, so it can gate a release.** Card 0083. One
+  engine file was behind the ruleset (`--dirty` only formats a file when it is next edited); the two
+  app files the card named had already caught up. Cosmetic only, no figure moves.
 
 - **A Section 24 credit no longer outlives the mortgage it relieves.** Card 0082. The relievable
   finance cost was read off the "Mortgage" expense line, or off the amortisation schedule's
