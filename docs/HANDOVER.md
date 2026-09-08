@@ -5,9 +5,21 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0074). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-08 (card 0075). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038, 0044 and 0045 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **The draw order is the reader's now, and the default says so.** Card 0075. Every forecast ran on
+  `TaxEfficient`, chosen in code, while the results page priced all three orders and named the
+  cheapest, so the tool could say a different order saves thousands and offer no way to model it.
+  `DrawdownStrategy` is a backed enum owning the stored string, the `label()` and a `description()`
+  of what each order does; the choice rides the sparse `assumptionOverrides` choice-key route, so a
+  scenario stored earlier reads as the default and is byte-identical. **No `ENGINE_VERSION` bump and
+  no stored re-run is owed**, and `GoldenMasterTest` needed no re-pin. The comparison panel's
+  baseline tile is now the reader's own order, and its alternative is derived rather than the old
+  constant, because the sentence describing the second order moved onto the enum that owns it. See
+  DECISIONS 2026-09-08. Built in a worktree, so the new builder control, the reworded panel sentence
+  and the new results note **have not been seen in a browser**.
 
 - **An ad-hoc pension draw reports its tax-free quarter as tax-free cash.** Card 0074. Every pound of
   an unplanned fill-the-bands draw was printed on the cashflow ladder's `pension_drawdown` line,

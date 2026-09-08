@@ -61,7 +61,7 @@ class ScenarioForecasterTest extends TestCase
         };
         $this->assertSame($lifetimeTax($comparison->cheapest), $comparison->cheapestTaxPence);
         $this->assertSame(
-            $lifetimeTax(WithdrawalStrategyComparison::CURRENT) - $lifetimeTax($comparison->cheapest),
+            $lifetimeTax($comparison->current) - $lifetimeTax($comparison->cheapest),
             $comparison->optimiserSavingPence,
         );
 
@@ -89,7 +89,7 @@ class ScenarioForecasterTest extends TestCase
         $scenario = fn (bool $iht): Scenario => ScenarioFixture::rich($user, ['ihtModelled' => $iht]);
 
         // The fixture has to actually pay the death tax, or this test proves nothing.
-        $modelled = $forecaster->deterministicUnderStrategy($scenario(true), WithdrawalStrategyComparison::CURRENT);
+        $modelled = $forecaster->deterministicUnderStrategy($scenario(true), DrawdownStrategy::DEFAULT);
         $this->assertGreaterThan(0, $modelled->iht?->total->pence ?? 0, 'the fixture pays no IHT, so it cannot pin this');
 
         // Every candidate's total is its own year-by-year tax PLUS its own death tax — one run,
@@ -115,17 +115,49 @@ class ScenarioForecasterTest extends TestCase
 
     public function test_the_panel_never_compares_the_current_order_against_itself(): void
     {
-        // The two tiles are "your current order" and one named alternative. Flip the displayed
-        // default to the alternative (card 0075) and the panel would print the same order twice
-        // and report a £0 saving against itself, which reads as "there is nothing to gain here".
-        // Fail loudly at that moment instead: whoever flips the default picks a new alternative.
-        $this->assertNotSame(
-            WithdrawalStrategyComparison::CURRENT,
-            WithdrawalStrategyComparison::ALTERNATIVE,
-            'the panel would show one draw order in both tiles',
-        );
-        $this->assertContains(WithdrawalStrategyComparison::ALTERNATIVE, WithdrawalStrategyComparison::CANDIDATES);
-        $this->assertContains(WithdrawalStrategyComparison::CURRENT, WithdrawalStrategyComparison::CANDIDATES);
+        // The two tiles are "your current order" and one named alternative. Since card 0075 the
+        // current order is the READER'S, so any of the candidates can be in the first tile: if the
+        // alternative were fixed the panel would print the same order twice and report a £0 saving
+        // against itself, which reads as "there is nothing to gain here". Pinned for every order
+        // the reader can pick, not just for the one that used to be hard-coded.
+        foreach (WithdrawalStrategyComparison::CANDIDATES as $current) {
+            $alternative = WithdrawalStrategyComparison::alternativeTo($current);
+            $this->assertNotSame($current, $alternative, 'the panel would show one draw order in both tiles');
+            $this->assertContains($alternative, WithdrawalStrategyComparison::CANDIDATES);
+        }
+    }
+
+    /**
+     * Board card 0075, criterion 3. The baseline tile is captioned "your current order", and it
+     * read a CONSTANT: a reader who picked a different order was shown somebody else's baseline,
+     * and the saving beside it was measured against a plan that is not theirs.
+     */
+    public function test_the_panel_names_the_chosen_order_as_the_current_one(): void
+    {
+        $user = User::factory()->create();
+        $forecaster = new ScenarioForecaster;
+
+        foreach (DrawdownStrategy::cases() as $chosen) {
+            $scenario = ScenarioFixture::rich($user, [
+                'assumptionOverrides' => ['drawdownStrategy' => $chosen->value],
+            ]);
+            $comparison = WithdrawalStrategyComparison::for($forecaster, $scenario);
+            $panel = $comparison->panel();
+            $this->assertNotNull($panel);
+
+            $this->assertSame($chosen->label(), $panel['baselineLabel'],
+                'the baseline tile must name the order the reader actually picked');
+            $this->assertNotSame($panel['baselineLabel'], $panel['alternativeLabel'],
+                'the second tile must be a different order, whichever one is current');
+
+            // ...and the figure under that caption is the run under THAT order, not another one.
+            $run = $forecaster->deterministicUnderStrategy($scenario, $chosen);
+            $lifetime = $run->iht?->total->pence ?? 0;
+            foreach ($run->years as $year) {
+                $lifetime += $year->totalTax->pence;
+            }
+            $this->assertSame($lifetime, $comparison->baselineTaxPence);
+        }
     }
 
     public function test_the_screen_and_the_printed_panel_both_read_every_figure_it_publishes(): void

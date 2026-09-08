@@ -377,13 +377,13 @@ final class ScenarioForecaster
     public const ENGINE_VERSION = 'finance-engine/ad-hoc-draw-reports-its-tax-free-part';
 
     /**
-     * The draw order every scenario is forecast under unless one is named. THE one home for it:
-     * {@see WithdrawalStrategyComparison::CURRENT} reads this constant rather than
-     * repeating the value, so the "your current order" baseline every saving is measured against
-     * cannot drift from the order the rest of the page is actually showing. FLAGGED (board card
-     * 0075): the reader cannot choose the order, and this default is not disclosed to them.
+     * The draw order a scenario is forecast under where the reader has not chosen one. Read from
+     * the enum that owns the order rather than restated, so the order the projection runs on, the
+     * baseline the comparison panel prices against and the disclosure that names it cannot drift.
+     * Board card 0075 made the order an input: {@see AssumptionOverrides::drawdownStrategy()} is
+     * where the reader's own choice is read, and this is only the fallback.
      */
-    public const DEFAULT_DRAWDOWN_STRATEGY = DrawdownStrategy::TaxEfficient;
+    public const DEFAULT_DRAWDOWN_STRATEGY = DrawdownStrategy::DEFAULT;
 
     /**
      * Derive $what for $scenario once, and hand back the same answer to everything that asks
@@ -721,7 +721,10 @@ final class ScenarioForecaster
         return new ForecastSettings(
             baseYear: (int) substr($scenario->base_tax_year, 0, 4),
             baseTaxYear: $scenario->base_tax_year,
-            drawdownStrategy: $strategy ?? self::DEFAULT_DRAWDOWN_STRATEGY,
+            // The order money is taken out (board card 0075). An explicit $strategy is the
+            // comparison optimiser pricing one candidate; otherwise it is the reader's own choice,
+            // falling back to the default above, which discloses itself as an assumed figure.
+            drawdownStrategy: $strategy ?? AssumptionOverrides::drawdownStrategy($overrides),
             // How the invested money is split across shares, bonds and cash, and the glidepath it
             // de-risks along (board card 0062). Null = the reader said nothing, which keeps the
             // engine's cautious 40/60 AND keeps it disclosed as a figure that is ours, not theirs.

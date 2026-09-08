@@ -428,6 +428,28 @@
                     @error('assumptionOverrides.planningHorizon') <p id="planningHorizon-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                 </div>
 
+                {{-- The order money is taken out (board card 0075). Your results price all three
+                     and name the cheapest, so this is where you pick the one you want run. --}}
+                <div class="mt-6 border-t border-gray-200 pt-4">
+                    <label for="drawdownStrategy" class="{{ $label }}">The order you take money out</label>
+                    <select id="drawdownStrategy" wire:model.live="assumptionOverrides.drawdownStrategy"
+                        class="{{ $field }} sm:max-w-md"
+                        @error('assumptionOverrides.drawdownStrategy') aria-invalid="true" aria-describedby="drawdownStrategy-error" @enderror>
+                        @foreach ($drawdownStrategyOptions as $option)
+                            <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                        @endforeach
+                    </select>
+                    <ul class="mt-2 space-y-1 text-xs text-gray-500">
+                        @foreach ($drawdownStrategyOptions as $option)
+                            <li><strong>{{ $option['label'] }}</strong> {{ $option['note'] }}</li>
+                        @endforeach
+                    </ul>
+                    <p class="mt-1 text-xs text-gray-500">
+                        When a year's spending is more than your income, this decides which pot pays for it. It is one of the biggest levers on the tax you pay over a lifetime, and your results price every one of these orders and tell you which is cheapest. Leave it alone and we use the first, which is what this tool has always done.
+                    </p>
+                    @error('assumptionOverrides.drawdownStrategy') <p id="drawdownStrategy-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                </div>
+
                 {{-- The adviser's ongoing fee is NOT an economic assumption: the forecast never
                      charges it. It is the parameter of the results page's "what paying for advice
                      would cost" comparison, so it sits below the assumptions with that said out loud. --}}

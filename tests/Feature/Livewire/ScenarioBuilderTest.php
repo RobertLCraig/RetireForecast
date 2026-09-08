@@ -19,6 +19,7 @@ use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Forecast\AllocationProfile;
+use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Mortality\PlanningHorizon;
 use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
@@ -326,6 +327,49 @@ class ScenarioBuilderTest extends TestCase
         $chosen = app(ScenarioForecaster::class)->settings($save(['planningHorizon' => 'p50']));
         $this->assertSame(PlanningHorizon::P50, $chosen->planningHorizon);
         $this->assertFalse($chosen->planningHorizonIsAssumed());
+    }
+
+    /**
+     * Board card 0075. The draw order is one of the biggest levers on lifetime tax the tool has,
+     * and the results page prices three of them and names the cheapest — but every forecast ran on
+     * one order chosen in code, which the reader could neither see nor change. So the tool could
+     * say a different order saves thousands and offer no way to model it.
+     */
+    public function test_the_builder_stores_a_chosen_draw_order(): void
+    {
+        $save = function (array $overrides): Scenario {
+            $component = Livewire::test(ScenarioBuilder::class);
+            foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+                $component->set($key, $value);
+            }
+            foreach ($overrides as $key => $value) {
+                $component->set("assumptionOverrides.{$key}", $value);
+            }
+            $component->call('save')->assertHasNoErrors();
+
+            return Scenario::latest('id')->firstOrFail();
+        };
+
+        // Every order the engine supports is offered by name.
+        $component = Livewire::test(ScenarioBuilder::class)->set('step', 1);
+        foreach (DrawdownStrategy::cases() as $case) {
+            $component->assertSee(ucfirst($case->label()));
+        }
+
+        // Untouched: stored sparsely, and the engine's own order applies — a figure the reader
+        // never chose, so it has to disclose itself.
+        $default = $save([]);
+        $this->assertArrayNotHasKey('assumptionOverrides', $default->effectiveBuilderState());
+        $settings = app(ScenarioForecaster::class)->settings($default);
+        $this->assertSame(DrawdownStrategy::DEFAULT, $settings->drawdownStrategy);
+        $this->assertTrue($settings->drawdownStrategyIsAssumed());
+
+        // And a chosen order carries through to the settings the projection runs on.
+        foreach ([DrawdownStrategy::PensionAware, DrawdownStrategy::FillBands] as $chosen) {
+            $settings = app(ScenarioForecaster::class)->settings($save(['drawdownStrategy' => $chosen->value]));
+            $this->assertSame($chosen, $settings->drawdownStrategy);
+            $this->assertFalse($settings->drawdownStrategyIsAssumed());
+        }
     }
 
     /**

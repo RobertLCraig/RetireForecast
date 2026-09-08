@@ -3,6 +3,28 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-08: the draw order is the reader's, and the panel's second tile moves with it
+**Context:** card 0075. Every forecast ran on `DrawdownStrategy::TaxEfficient`, set in code when
+only one order existed. The results page priced all three and named the cheapest, so the tool could
+say a different order saves thousands and offer no way to model it.
+
+**Decision: the order rides the sparse `assumptionOverrides` choice-key route**, like the planning
+horizon and the asset mix before it. A scenario stored earlier carries no key, reads as the default
+and reproduces byte-identically, so there is no `ENGINE_VERSION` bump and no stored re-run is owed.
+
+**Decision: `DEFAULT` stays spend-savings-first, and moves to the enum that owns the order.**
+Nobody has chosen a replacement, and moving it would silently re-rank every stored plan. It is no
+longer invisible: `ForecastSettings::drawdownStrategyIsAssumed()` gates a disclosure that names the
+order in force and what it does.
+
+**Decision: the panel's ALTERNATIVE is derived, not constant.** It was fill-the-bands, pinned by a
+test, because both templates closed with a sentence describing what fill-the-bands does and no test
+could see that sentence go wrong. That sentence now lives on `DrawdownStrategy::description()` and
+travels with the order it is true of, so the alternative can be picked per scenario: fill-the-bands
+unless the reader already draws that way, in which case the historical default is what is worth
+pricing against it. This supersedes the constant-alternative reasoning of 2026-08-19.
+**Status:** active
+
 ## 2026-09-08: inflation has a memory, and it moves against markets
 **Context:** card 0064 (expert panel 2026-08-19, adviser finding 13). `ReturnModel::generatePath`
 drew inflation from an independent normal each year, uncorrelated with the asset shocks. Two

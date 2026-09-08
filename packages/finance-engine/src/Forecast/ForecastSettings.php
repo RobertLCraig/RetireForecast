@@ -72,7 +72,7 @@ final class ForecastSettings
     public function __construct(
         public readonly int $baseYear,
         public readonly string $baseTaxYear = '2026-27',
-        public readonly DrawdownStrategy $drawdownStrategy = DrawdownStrategy::TaxEfficient,
+        public readonly DrawdownStrategy $drawdownStrategy = DrawdownStrategy::DEFAULT,
         public readonly ?PortfolioAllocation $allocation = null,
         public readonly int $freezeEndYear = 2031,
         public readonly ?Money $annualRent = null,
@@ -100,6 +100,16 @@ final class ForecastSettings
          */
         public readonly PlanningHorizon $planningHorizon = PlanningHorizon::DEFAULT,
     ) {}
+
+    /**
+     * Is the draw order the ENGINE's own default rather than one the reader chose? The order money
+     * is taken out is one of the biggest levers on lifetime tax there is, so a reader who did not
+     * pick it has to be told which one is running (board card 0075).
+     */
+    public function drawdownStrategyIsAssumed(): bool
+    {
+        return $this->drawdownStrategy === DrawdownStrategy::DEFAULT;
+    }
 
     /**
      * Is the planning horizon the ENGINE's own default rather than one the reader chose? It moves

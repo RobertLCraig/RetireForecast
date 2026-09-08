@@ -923,10 +923,7 @@
             @endif
         </p>
         <p class="note">A central projection on your current assumptions. "{{ ucfirst($withdrawal['alternativeLabel']) }}"
-            draws pension within your personal allowance and realises gains within your capital-gains allowance before
-            taxed income; each pension draw is taken so a quarter of it is tax-free cash while your lump sum
-            allowance lasts. If you receive Pension Credit it draws your savings first, so pension income does not
-            reduce the credit.</p>
+            {{ $withdrawal['alternativeDescription'] }}</p>
         @if (! empty($withdrawal['steer']))
             <ul>
                 @foreach ($withdrawal['steer'] as $line)

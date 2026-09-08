@@ -6,6 +6,7 @@ namespace App\Forecast;
 
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Forecast\AllocationProfile;
+use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Money\Percent;
@@ -47,7 +48,7 @@ final class AssumptionOverrides
      * the mix it de-risks to and how long that takes ({@see AllocationProfile}, board card 0062).
      * Blank means the engine's own default, exactly as a blank rate does.
      */
-    public const CHOICE_KEYS = ['statePensionUprating', 'statePensionUpratingUntilYear', 'planningHorizon', 'allocation', 'allocationGlideTo', 'allocationGlideYears'];
+    public const CHOICE_KEYS = ['statePensionUprating', 'statePensionUpratingUntilYear', 'planningHorizon', 'allocation', 'allocationGlideTo', 'allocationGlideYears', 'drawdownStrategy'];
 
     /**
      * There is deliberately no default number of glidepath years. Every one of the standing
@@ -186,6 +187,20 @@ final class AssumptionOverrides
         return (self::filled($overrides, 'planningHorizon')
             ? PlanningHorizon::tryFrom((string) $overrides['planningHorizon'])
             : null) ?? PlanningHorizon::DEFAULT;
+    }
+
+    /**
+     * The order money is taken out to meet a shortfall: savings first, pension first, or filling
+     * the tax-free bands. A blank or unknown choice is the engine's own default, so a scenario
+     * stored before board card 0075 reproduces byte-identically.
+     *
+     * @param  array<string, mixed>  $overrides  the sparse `assumptionOverrides` map
+     */
+    public static function drawdownStrategy(array $overrides): DrawdownStrategy
+    {
+        return (self::filled($overrides, 'drawdownStrategy')
+            ? DrawdownStrategy::tryFrom((string) $overrides['drawdownStrategy'])
+            : null) ?? DrawdownStrategy::DEFAULT;
     }
 
     /**

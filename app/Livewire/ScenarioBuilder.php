@@ -33,6 +33,7 @@ use RetireForecast\FinanceEngine\Dto\PensionBeneficiary;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\SpendingGuardrail;
 use RetireForecast\FinanceEngine\Forecast\AllocationProfile;
+use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
@@ -351,6 +352,9 @@ class ScenarioBuilder extends Component
             'assumptionOverrides.statePensionUprating' => ['nullable', Rule::in(array_column(StatePensionUprating::cases(), 'value'))],
             'assumptionOverrides.statePensionUpratingUntilYear' => ['nullable', 'integer', 'between:2026,2100'],
             'assumptionOverrides.planningHorizon' => ['nullable', Rule::in(array_column(PlanningHorizon::cases(), 'value'))],
+            // The order money is taken out to meet a shortfall (board card 0075). Blank = the
+            // engine's own default, which the results page discloses as an assumed figure.
+            'assumptionOverrides.drawdownStrategy' => ['nullable', Rule::in(array_column(DrawdownStrategy::cases(), 'value'))],
             // How the invested money is split, and the mix it de-risks to (board card 0062).
             // Blank is the engine's own cautious mix, and a blank glide target is no glidepath at
             // all. The years are REQUIRED alongside a target and bounded at one (a glide has to
@@ -1948,6 +1952,16 @@ class ScenarioBuilder extends Component
                 'label' => $h->label(),
                 'note' => $h->oddsPhrase(),
             ], PlanningHorizon::cases()),
+            // The order money is taken out to meet a shortfall (board card 0075). It is one of the
+            // biggest levers on lifetime tax the tool has, and the results page prices all three
+            // and names the cheapest, so a reader who wants that one has to be able to run it. The
+            // blank option is the engine's own order; the names are READ from the enum that owns
+            // them, so the order picked here is the order the results page names back.
+            'drawdownStrategyOptions' => array_map(static fn (DrawdownStrategy $s): array => [
+                'value' => $s === DrawdownStrategy::DEFAULT ? '' : $s->value,
+                'label' => ucfirst($s->label()),
+                'note' => $s->description(),
+            ], DrawdownStrategy::cases()),
             // How the invested money is split, and the mix it de-risks to (board card 0062). The
             // blank option is the engine's own cautious mix, exactly as a blank rate above is the
             // preset's; the labels and what each mix means are READ from the enum that owns them.

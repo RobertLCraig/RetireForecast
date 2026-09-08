@@ -14,6 +14,7 @@ use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
+use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
@@ -343,6 +344,44 @@ final class AssumedFiguresDisclosureTest extends TestCase
         $this->assertSame([], array_values(array_filter(
             $disclosures,
             static fn (string $d): bool => str_contains($d, 'triple lock'),
+        )));
+    }
+
+    /**
+     * Board card 0075. The order money is taken out is one of the biggest levers on lifetime tax
+     * there is, and the results page prices three orders and names the cheapest — while every
+     * forecast ran on one chosen in code, with nothing on any screen saying so.
+     */
+    public function test_the_default_draw_order_is_disclosed_as_an_assumed_figure(): void
+    {
+        $disclosures = $this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            variant: 'rent',
+            settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+        );
+
+        $note = $this->only($disclosures, 'draw order');
+        $this->assertStringContainsString(
+            DrawdownStrategy::DEFAULT->label(),
+            $note,
+            'the disclosed order must be the one the engine actually draws in',
+        );
+    }
+
+    public function test_nothing_is_assumed_about_the_draw_order_when_the_reader_chose_one(): void
+    {
+        $disclosures = $this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            variant: 'rent',
+            settings: new ForecastSettings(
+                baseYear: 2026, baseTaxYear: '2026-27',
+                drawdownStrategy: DrawdownStrategy::FillBands,
+            ),
+        );
+
+        $this->assertSame([], array_values(array_filter(
+            $disclosures,
+            static fn (string $d): bool => str_contains($d, 'draw order'),
         )));
     }
 

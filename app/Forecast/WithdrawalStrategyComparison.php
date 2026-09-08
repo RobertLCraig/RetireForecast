@@ -54,31 +54,29 @@ final class WithdrawalStrategyComparison
     ];
 
     /**
-     * The order a scenario is actually forecast under today, and so the baseline every saving is
-     * measured against. Read from the constant {@see ScenarioForecaster::settings()} itself applies
-     * rather than restated, so the "your current order" column cannot drift from what the rest of
-     * the page shows when the displayed default changes.
-     */
-    public const CURRENT = ScenarioForecaster::DEFAULT_DRAWDOWN_STRATEGY;
-
-    /**
-     * The order the panel puts side by side with the current one — the second tile, and the one
+     * The order the panel puts side by side with the reader's own — the second tile, and the one
      * {@see $savingPence} prices. It must never BE the current order, or the panel would show the
-     * same order twice and report a £0 saving against itself; pinned by
-     * ScenarioForecasterTest::test_the_panel_never_compares_the_current_order_against_itself, so
-     * changing the displayed default (card 0075) turns the suite red rather than shipping that.
+     * same order twice and report a £0 saving against itself; pinned for EVERY order the reader
+     * can pick by ScenarioForecasterTest::test_the_panel_never_compares_the_current_order_against_itself.
      *
-     * A deliberate constant rather than "whatever is left", because both templates close with a
-     * sentence DESCRIBING what this order does (draw within the personal allowance, the CGT
-     * allowance, the tax-free quarter, the Pension Credit exception). That prose is true of
-     * fill-the-bands and of nothing else, and no test can see it is wrong — the name guard only
-     * catches a hard-coded LABEL. So whoever changes the default must also pick the new alternative
-     * and reword that sentence. Written here and in DECISIONS 2026-08-19 rather than only on the
-     * card, so it is in front of whoever edits this line.
+     * Fill-the-bands unless that is what the reader already draws in, in which case the historical
+     * default is the thing worth pricing against it. Since card 0075 the current order is the
+     * reader's, so this can no longer be a constant; the sentence both templates close with, which
+     * DESCRIBES what the second order does, travels with the order itself
+     * ({@see DrawdownStrategy::description()}) rather than being written into the template, which
+     * is what used to make a fixed alternative load-bearing. See DECISIONS 2026-08-19.
      */
-    public const ALTERNATIVE = DrawdownStrategy::FillBands;
+    public static function alternativeTo(DrawdownStrategy $current): DrawdownStrategy
+    {
+        return $current === DrawdownStrategy::FillBands
+            ? DrawdownStrategy::TaxEfficient
+            : DrawdownStrategy::FillBands;
+    }
 
     private function __construct(
+        /** The order this scenario is actually forecast under: the reader's, or the engine's default. */
+        public readonly DrawdownStrategy $current,
+        public readonly DrawdownStrategy $alternative,
         public readonly int $baselineTaxPence,
         public readonly int $fillBandsTaxPence,
         public readonly int $savingPence, // baselineTax - fillBandsTax; positive = fill-the-bands pays less
@@ -100,19 +98,26 @@ final class WithdrawalStrategyComparison
             $includesIht = $includesIht || $run->iht !== null;
         }
 
+        // The order this scenario is REALLY run on, read off the settings the projection uses,
+        // so the tile captioned "your current order" cannot show somebody else's baseline.
+        $current = $forecaster->settings($scenario)->drawdownStrategy;
+        $alternative = self::alternativeTo($current);
+
         // The cheapest candidate, starting from the current order so a TIE keeps it: the
         // optimiser only ever reports an order that pays strictly less than what is in place.
-        $cheapest = self::CURRENT;
+        $cheapest = $current;
         foreach (self::CANDIDATES as $candidate) {
             if ($tax[$candidate->name] < $tax[$cheapest->name]) {
                 $cheapest = $candidate;
             }
         }
 
-        $baseline = $tax[self::CURRENT->name];
-        $fillBands = $tax[self::ALTERNATIVE->name];
+        $baseline = $tax[$current->name];
+        $fillBands = $tax[$alternative->name];
 
         return new self(
+            current: $current,
+            alternative: $alternative,
             baselineTaxPence: $baseline,
             fillBandsTaxPence: $fillBands,
             savingPence: $baseline - $fillBands,
@@ -182,11 +187,14 @@ final class WithdrawalStrategyComparison
         }
 
         return [
-            'baselineLabel' => self::label(self::CURRENT),
+            'baselineLabel' => self::label($this->current),
             'baseline' => Money::fromPence($this->baselineTaxPence)->format(),
             // Both tiles and the sentence under them name their order from label(), so neither
             // template can go on naming the order it used to show when a constant changes.
-            'alternativeLabel' => self::label(self::ALTERNATIVE),
+            'alternativeLabel' => self::label($this->alternative),
+            // What that order DOES, in one sentence. It rides the panel rather than the template
+            // because the template cannot know which order is in the second tile any more.
+            'alternativeDescription' => $this->alternative->description(),
             'fillBands' => Money::fromPence($this->fillBandsTaxPence)->format(),
             'difference' => Money::fromPence(abs($this->savingPence))->format(),
             'fillBandsSaves' => $this->fillBandsSaves(),
@@ -214,16 +222,13 @@ final class WithdrawalStrategyComparison
     }
 
     /**
-     * THE one home for a draw order's user-facing name, so the baseline tile, the cheapest-order
-     * sentence and the steer all name the same order the same way — and the tile keeps naming the
-     * right order if {@see ScenarioForecaster::DEFAULT_DRAWDOWN_STRATEGY} changes.
+     * A draw order's user-facing name, so the baseline tile, the cheapest-order sentence and the
+     * steer all name the same order the same way. The name itself lives on the enum that owns the
+     * order ({@see DrawdownStrategy::label()}), which the builder's own control reads too, so the
+     * order the reader picks by name is the order the results page names back at them.
      */
     public static function label(DrawdownStrategy $strategy): string
     {
-        return match ($strategy) {
-            DrawdownStrategy::TaxEfficient => 'spending your savings first',
-            DrawdownStrategy::PensionAware => 'drawing your pension first, up to the basic-rate band',
-            DrawdownStrategy::FillBands => 'filling your tax-free allowances first',
-        };
+        return $strategy->label();
     }
 }

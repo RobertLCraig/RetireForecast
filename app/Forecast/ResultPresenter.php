@@ -1153,6 +1153,21 @@ final class ResultPresenter
                 .'it in the builder.';
         }
 
+        // THE ORDER MONEY IS TAKEN OUT (board card 0075). Every forecast ran on one order picked in
+        // code, while the page beside it priced three and named the cheapest: the tool could say a
+        // different order saves thousands and never say which one it had used. The order in force
+        // and what it does are READ from the enum that owns them.
+        if ($settings !== null && $settings->drawdownStrategyIsAssumed()) {
+            $order = $settings->drawdownStrategy;
+            $out[] = "You didn't say which draw order to use, so we have run this plan on "
+                .$order->label().': it '.$order->description().' Nobody chose that for your household; it is '
+                .'simply the order this tool has always used. It matters because the order you take money out in '
+                .'is one of the biggest levers there is on the tax you pay over a whole lifetime, and from April '
+                .'2027 an unspent pension counts towards Inheritance Tax, so leaving the pension until last is no '
+                .'longer the safe answer for an estate near the threshold. Your results price every order we can '
+                .'run and name the cheapest; you can pick the one you want in the builder.';
+        }
+
         // WHETHER THE TWO PEOPLE ARE MARRIED. Board card 0054: this defaulted to married in the
         // form, in the DTO and in the assembler, and it was the one input where the wrong answer is
         // catastrophic. It now has no default, but a scenario stored before that still carries no
