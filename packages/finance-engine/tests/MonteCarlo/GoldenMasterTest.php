@@ -64,7 +64,7 @@ final class GoldenMasterTest extends TestCase
      * The date the values below were last pinned. Bump it in the same edit that re-pins any of
      * them, and write the DECISIONS.md entry it then demands.
      */
-    private const PIN_REVISION = '2026-09-07';
+    private const PIN_REVISION = '2026-09-08';
 
     /** The exact phrase docs/DECISIONS.md has to carry, so a re-pin cannot be recorded by accident. */
     private const MARKER = 'Monte Carlo golden master pinned ';
@@ -80,26 +80,26 @@ final class GoldenMasterTest extends TestCase
      * @var array<string, int|string>
      */
     private const PINNED = [
-        'successProbabilityEssentials' => '0.5300',
+        'successProbabilityEssentials' => '0.5150',
         'successProbabilityFullSpend' => '0.0150',
-        'terminalWealth.p10' => 4895282,
-        'terminalWealth.p25' => 19089024,
-        'terminalWealth.p50' => 37789068,
-        'terminalWealth.p75' => 70798145,
-        'terminalWealth.p90' => 107357430,
+        'terminalWealth.p10' => 3796678,
+        'terminalWealth.p25' => 20744172,
+        'terminalWealth.p50' => 37464678,
+        'terminalWealth.p75' => 71812438,
+        'terminalWealth.p90' => 108264592,
         'fan.bands' => 38,
         'fan.first.calendarYear' => 2026,
         'fan.first.p10' => 69036832,
-        'fan.first.p50' => 69058171,
-        'fan.first.p90' => 69104401,
+        'fan.first.p50' => 69058862,
+        'fan.first.p90' => 69091951,
         'fan.middle.calendarYear' => 2045,
-        'fan.middle.p10' => 17016594,
-        'fan.middle.p50' => 44512696,
-        'fan.middle.p90' => 99577272,
+        'fan.middle.p10' => 16185116,
+        'fan.middle.p50' => 44092754,
+        'fan.middle.p90' => 101438717,
         'fan.last.calendarYear' => 2063,
-        'fan.last.p10' => 10598492,
-        'fan.last.p50' => 21452177,
-        'fan.last.p90' => 32305861,
+        'fan.last.p10' => 10069609,
+        'fan.last.p50' => 18807761,
+        'fan.last.p90' => 27545912,
     ];
 
     public function test_the_pinned_run_still_produces_the_pinned_numbers(): void

@@ -61,7 +61,19 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-08 (growth-is-bought-with-risk): an "investment growth" edit no longer raises
+     * Bumped 2026-09-08 (inflation-with-a-memory): the Monte Carlo's inflation draw is no longer an
+     * independent memoryless normal. It carries an AR(1) memory
+     * ({@see AssumptionSetLibrary::INFLATION_PERSISTENCE}), so an inflation episode runs for years
+     * the way 1973-75 and 2021-23 did, and it is a factor IN the correlation matrix
+     * ({@see AssumptionSetLibrary::INFLATION_ASSET_CORRELATIONS}), so a high-inflation year lands
+     * on real returns and does so hardest on nominal gilts. Any single year's inflation spread is
+     * unchanged by construction (the innovation is scaled by sqrt(1 - phi^2)), so the CENTRAL
+     * projection does not move; every Monte Carlo band, success probability and capacity-for-loss
+     * reading on every plan is WIDER under this stamp, because the cumulative price level fans
+     * further and the bad years now arrive together. A plan stored under an earlier stamp
+     * understates its tail, most of all where it runs against frozen nominal thresholds. A
+     * hand-rolled set stating neither figure is byte-identical. See board card 0064.
+     * Previous bump 2026-09-08 (growth-is-bought-with-risk): an "investment growth" edit no longer raises
      * every asset class's expected return with the volatilities and correlations left where they
      * were. It now lands on its target by RE-WEIGHTING the asset mix
      * ({@see PortfolioAllocation::forBlendedRealReturn}), so the spread rises with the return, and
@@ -326,7 +338,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/growth-is-bought-with-risk';
+    public const ENGINE_VERSION = 'finance-engine/inflation-with-a-memory';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:
@@ -502,11 +514,28 @@ final class ScenarioForecaster
      * past starting year (replaying that year's real UK returns + inflation), so the results
      * page can show how it would have fared starting into 1929 / 1973-74 / 2000 / 2007.
      * Deterministic (no Monte Carlo run needed), so it shows immediately like the ladder.
+     *
+     * $horizon runs the same test at a different planning horizon (board card 0064). The memo key
+     * carries it, because the two runs are different answers to the same scenario.
      */
-    public function historicalBacktest(Scenario $scenario): HistoricalBacktestResult
+    public function historicalBacktest(Scenario $scenario, ?PlanningHorizon $horizon = null): HistoricalBacktestResult
     {
-        return $this->remember($scenario, 'historicalBacktest', fn (): HistoricalBacktestResult => (new HistoricalBacktester($this->config($scenario), new CohortLifeTable))
-            ->backtest($this->household($scenario), $this->assumptions($scenario), $this->settings($scenario)));
+        return $this->remember($scenario, 'historicalBacktest:'.($horizon->value ?? 'settings'), fn (): HistoricalBacktestResult => (new HistoricalBacktester($this->config($scenario), new CohortLifeTable))
+            ->backtest($this->household($scenario), $this->assumptions($scenario), $this->settings($scenario), horizon: $horizon));
+    }
+
+    /**
+     * The same stress test carried to a long life: the sequence risk above combined with the
+     * longevity risk beside it, which multiply. Null when the plan already runs to the longest
+     * horizon there is, so nothing is shown twice.
+     */
+    public function longLifeHistoricalBacktest(Scenario $scenario): ?HistoricalBacktestResult
+    {
+        if ($this->settings($scenario)->planningHorizon === PlanningHorizon::P90) {
+            return null;
+        }
+
+        return $this->historicalBacktest($scenario, PlanningHorizon::P90);
     }
 
     /** One variant's Monte Carlo run (the scenario's household as it stands). */

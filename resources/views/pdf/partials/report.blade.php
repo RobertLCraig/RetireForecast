@@ -979,6 +979,19 @@
                 </tbody>
             </table>
         @endif
+        @if ($stressTest['longLife'])
+            <p class="note"><strong>And if one of you lives a long time.</strong> The figures above carry each
+                sequence for as long as the plan runs. Carried instead to a
+                {{ lcfirst($stressTest['longLife']['label']) }} lifespan, where
+                {{ $stressTest['longLife']['oddsPhrase'] }}, the plan survives
+                {{ $stressTest['longLife']['survivalPct'] }}% of the same historical starts
+                ({{ $stressTest['longLife']['survivedCount'] }} of {{ $stressTest['tested'] }}).
+                @if ($stressTest['longLife']['worst'] && $stressTest['longLife']['worst']['ranOut'])
+                    Its worst start ({{ $stressTest['longLife']['worst']['startYear'] }}) ran short after
+                    {{ $stressTest['longLife']['worst']['yearsLasted'] }} years.
+                @endif
+                A bad first decade and a long life are two risks that multiply, so this is the pair together.</p>
+        @endif
         <p class="note">Real UK asset returns and inflation, 1871–2020, from the Jordà–Schularick–Taylor Macrohistory
             database (<em>The Rate of Return on Everything</em>). A plan that survives the 1970s and 2008 starts is
             robust to sequence risk; past performance is not a guarantee of the future.</p>

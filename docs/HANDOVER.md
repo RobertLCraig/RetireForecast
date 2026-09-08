@@ -5,9 +5,33 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0063). The exceptions a fresh session needs, newest first. The "what is built"
-inventory and cards 0024, 0025, 0028 to 0038 were folded out to
+_Last updated: 2026-09-08 (card 0064). The exceptions a fresh session needs, newest first. The "what is built"
+inventory and cards 0024, 0025, 0028 to 0038, 0044 and 0045 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **Inflation has a memory now, and it moves against markets.** Card 0064. The Monte Carlo drew
+  inflation from an independent normal each year, so a high year told you nothing about the next
+  and could not coincide with a bad one for the portfolio. `AssumptionSet::$inflationPersistence`
+  (an AR(1) coefficient) and `$inflationAssetCorrelations` (one figure per asset class) are the two
+  new homes, both read through clamping accessors. `ReturnModel` appends inflation to the
+  correlation matrix as the LAST factor and decomposes the augmented matrix, so a price shock hits
+  each asset class by its own amount instead of hanging off equities the way the house and salary
+  factors do; index 0 is still equities, which those two read. **The innovation is scaled by
+  sqrt(1 - phi^2)**, so the spread of any SINGLE year stays exactly the stated
+  `inflationVolatility` and persistence buys cumulative spread and nothing else. A set stating
+  neither figure gives a last Cholesky row of `[0, ..., 0, 1]`, so the shock is the same raw normal
+  in the same place in the stream: byte-identical. Both figures are on all three shipped sets, so
+  `ENGINE_VERSION` is `finance-engine/inflation-with-a-memory` and the **stored-scenario re-run is
+  owed**: the central projection is unmoved, every Monte Carlo band and probability is wider. The
+  **golden master was re-pinned** (essentials success 0.5300 to 0.5150), `PIN_REVISION` bumped and
+  DECISIONS 2026-09-08 records it. Alongside, `HistoricalBacktester::backtest` takes an optional
+  horizon and `ScenarioForecaster::longLifeHistoricalBacktest` runs the same historical starts at
+  the 90th percentile of the last survivor's age at death, reported beside the representative run;
+  it is omitted where that is the same run (a plan already at the 90th, or a household whose
+  lifespans the reader stated). Both engine figures (0.70, and -0.30/-0.50/-0.55) are **STATED, not
+  verified** (no web in this session): see [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§35),
+  carded as **0139**. Built in a worktree, so the two new assumptions rows and the new long-life
+  block **have not been seen in a browser**.
 
 - **A household can now be modelled cutting back after a bad run.** Card 0063. Every path was
   scored against a FIXED real spending target, which overstates the chance of running out (no
@@ -368,51 +392,6 @@ inventory and cards 0024, 0025, 0028 to 0038 were folded out to
   did NOT close is card **0110**: the forecast still credits Pension Credit whether or not anybody
   claimed it, which for an unclaimed award overstates income and, since card 0045, quietly pays
   Support for Mortgage Interest too.
-- **The cheapest borrowing a pensioner can get is finally in the engine.** Card 0045. Support for
-  Mortgage Interest appeared nowhere in the code, the config or the board, while the tool's whole
-  subject is an unaffordable secured debt in later life and its comparison already prices lifetime
-  mortgages at roughly three times the rate. A household on Guarantee Credit that still owns its
-  home now has its mortgage interest met at the DWP standard rate on capital up to the pension-age
-  cap (both on `Benefits\SupportForMortgageInterest`), plus its service charge and ground rent in
-  full, less the utilities part. It is a LOAN, so nothing is credited as income: the amount met
-  comes off the year's spending and the SAME figure is added to `state['smiBalance']`, a second
-  charge secured on the home that rolls up and is redeemed from the proceeds of a forced sale or
-  out of the estate at death. `YearResult::smiBalance()` reports it and `homeEquity()` nets it, so
-  the wealth line cannot flatter a household whose home is being spent. The interest met is capped
-  at the interest ACTUALLY charged that year, so a rolled-up lifetime mortgage gets nothing (there
-  is no liability to meet). **Every stored plan that reaches a Guarantee Credit year while it still
-  owns a home spends too much under the old stamp, so its wealth, depletion year and success odds
-  are too pessimistic and its estate too high**; a plan that never qualifies, or has sold by then,
-  is byte-identical. `ENGINE_VERSION` is `finance-engine/support-for-mortgage-interest` and the
-  **stored-scenario re-run is owed**. No new builder input; the new results note has **not been
-  seen in a browser**. **Both figures behind the arithmetic are STATED, not verified** (no web in
-  this session) and unlike card 0044's they DO reach a projection: see
-  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§21), carded as **0109**. Whether the household
-  would in fact take a charge on its home is not modelled; the card scoped the gate to a Guarantee
-  Credit year and the note says so.
-- **A disability benefit can now start at an age, the carer flag is finally on a screen, and
-  claiming Attendance Allowance is a one-click what-if.** Card 0044.
-  `Person::$receivesDisabilityBenefit` was on or off for life, so the largest favourable event a
-  long survivor period can carry could not be entered; `caresForPartner` had been wired into the
-  Pension Credit carer addition since July 2026 with no way to set it. `Person` now carries
-  `disabilityBenefitFromAge`, and `receivesDisabilityBenefitAt($age)` is the single place the flag
-  and its start age are read together (the projector uses it for the severe-disability count AND the
-  carer test, so a partner's later claim delays the carer addition too). **No `ENGINE_VERSION` bump
-  and no stored re-run are owed:** null means the whole projection, so every stored scenario is
-  byte-identical. New: a `claim_attendance_allowance` quick what-if that sets the flag AND adds the
-  benefit's own tax-free income stream (both halves, because either alone models half the event); a
-  `disability_benefit_passports` result note naming what the forecast does not model (Support for
-  Mortgage Interest, Council Tax Reduction, the Warm Home Discount, the TV licence, Cold Weather
-  Payments, NHS costs); and a warning beside the retirement-age lever that earnings above the
-  Carer's Allowance limit block the carer addition. **Three benefit figures are STATED, not
-  verified** (this session had no web): the 2026/27 Attendance Allowance pair is derived by the same
-  uprating rule as the file's Pension Credit additions, and the earnings limit applies the 16-hours
-  at National Living Wage rule. See [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§20), carded as
-  **0106**. Two faults carded rather than fixed: **0107**, `Person` is rebuilt by hand in three
-  places with no reflection guard (the `ProtectionGap` one would have dropped the new field, and is
-  fixed here); and **0108**, the projector still awards the carer addition to a carer earning far
-  above the limit, which this card made reachable. Built in a worktree, so the two new builder
-  inputs, the new what-if button, the note and the lever warning **have not been seen in a browser**.
 - **A queued run can no longer be killed at 60 seconds or run twice at once, and the forecaster
   remembers what it derived.** Card 0042 (partial: its third criterion is left open and is Rob's,
   see the card). `RunScenarioSimulation` and `RunLeverThreshold` declare an hour's `$timeout`, one

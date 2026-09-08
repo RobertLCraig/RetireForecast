@@ -214,6 +214,7 @@ class ScenarioReport
             'stressTest' => ResultPresenter::historicalStressTest(
                 $forecaster->historicalBacktest($scenario),
                 $forecaster->settings($scenario)->baseYear,
+                $forecaster->longLifeHistoricalBacktest($scenario),
             ),
             // Show-your-working: the assumptions every figure in this report rests on.
             'assumptions' => ResultPresenter::assumptionsPanel(

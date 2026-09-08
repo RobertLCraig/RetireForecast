@@ -83,6 +83,38 @@ final class AssumptionSetLibrary
     /** The date the figures below were signed off. Not a fresh check: see the sourcing note above. */
     public const VERIFIED_ON = '2026-06-24';
 
+    /**
+     * How much of one year's deviation from mean inflation survives into the next (board card
+     * 0064). UK annual CPI/RPI inflation is strongly autocorrelated over the long record — it
+     * arrives in multi-year episodes (1973-75, 1979-81, 2021-23) rather than as independent
+     * annual surprises — and a first-order coefficient around 0.7 is the standing range for
+     * annual UK inflation in the empirical literature. It is applied at the CAUTIOUS end of what
+     * it is for: it widens the cumulative price-level fan, which is adverse here, because the
+     * model runs against nominal tax thresholds frozen for years.
+     *
+     * STATED, NOT VERIFIED: this session had no web access. See docs/spec/ASSUMPTIONS.md §35 and
+     * the card raised there to source it against an ONS CPIH/RPI series.
+     */
+    public const INFLATION_PERSISTENCE = 0.70;
+
+    /**
+     * The correlation of the inflation shock with each asset class's REAL return, in the fixed
+     * asset order below (global equities, gilts/bonds, cash). All NEGATIVE, and by different
+     * amounts, which is the whole point: in a real-return framework an inflation shock is worst
+     * for the asset whose cash flows are fixed in money. Nominal gilts take the full hit; cash
+     * takes it too, because deposit rates lag prices; equities are partly real assets and are hit
+     * less. Together these make a 2022 possible in the model — high inflation and deeply negative
+     * real bond and equity returns in the same year — which independent draws could not produce.
+     *
+     * Kept short of the extreme end deliberately: an over-negative row would price the whole
+     * portfolio as one bet on inflation and, past a point, describes a correlation structure that
+     * cannot exist at all (the augmented matrix stops being positive-definite and the Cholesky
+     * decomposition refuses it, loudly).
+     *
+     * STATED, NOT VERIFIED: this session had no web access. See docs/spec/ASSUMPTIONS.md §35.
+     */
+    public const INFLATION_ASSET_CORRELATIONS = [-0.30, -0.50, -0.55];
+
     /** The engine default: FCA-derived real returns + DMS volatilities/correlations. */
     public static function fcaDefault(): AssumptionSet
     {
@@ -113,6 +145,8 @@ final class AssumptionSetLibrary
             salaryEquityCorrelation: 0.1,
             careCostRealGrowth: Percent::fromPercent(2.0),
             investmentCharge: Percent::fromPercent(0.5),
+            inflationPersistence: self::INFLATION_PERSISTENCE,
+            inflationAssetCorrelations: self::INFLATION_ASSET_CORRELATIONS,
             isDefault: true,
         );
     }
@@ -150,6 +184,8 @@ final class AssumptionSetLibrary
             salaryEquityCorrelation: 0.1,
             careCostRealGrowth: Percent::fromPercent(2.0),
             investmentCharge: Percent::fromPercent(0.5),
+            inflationPersistence: self::INFLATION_PERSISTENCE,
+            inflationAssetCorrelations: self::INFLATION_ASSET_CORRELATIONS,
         );
     }
 
@@ -183,6 +219,8 @@ final class AssumptionSetLibrary
             salaryEquityCorrelation: 0.1,
             careCostRealGrowth: Percent::fromPercent(2.0),
             investmentCharge: Percent::fromPercent(0.5),
+            inflationPersistence: self::INFLATION_PERSISTENCE,
+            inflationAssetCorrelations: self::INFLATION_ASSET_CORRELATIONS,
         );
     }
 

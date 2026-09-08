@@ -695,6 +695,39 @@ cash **−0.5%**.
    is on file for either figure. Sourcing them, and checking whether a funded-ratio trigger or a
    withdrawal-rate trigger is the better-evidenced form, is board card **0138**.
 
+35. **Inflation persistence and its correlation with real asset returns** (board card 0064; lives
+   in `AssumptionSetLibrary::INFLATION_PERSISTENCE` and
+   `AssumptionSetLibrary::INFLATION_ASSET_CORRELATIONS`). **STATED, not verified** (built without
+   web access). Both reach a projection, and both are disclosed on the assumptions panel and in the
+   PDF.
+
+   **Persistence: 0.70.** The share of one year's deviation from mean inflation carried into the
+   next, as a first-order autoregressive coefficient. UK annual inflation arrives in multi-year
+   episodes rather than as independent annual surprises (1973-75, 1979-81, 2021-23), and a
+   first-order coefficient around 0.7 is the standing range for annual UK inflation. It is applied
+   at the cautious end of what it does: it widens the fan of the CUMULATIVE price level, which is
+   adverse here, because the model runs against nominal tax thresholds frozen for years and so
+   understates fiscal drag without it. The innovation is scaled by sqrt(1 - phi^2), so the spread
+   of any SINGLE year stays exactly the stated `inflationVolatility`: persistence buys cumulative
+   spread and nothing else.
+
+   **Correlations with real returns: -0.30 equities, -0.50 gilts, -0.55 cash.** All negative and
+   all by different amounts, which is the point: in a real-return framework an inflation shock is
+   worst for the asset whose cash flows are fixed in money. Nominal gilts take the full hit, cash
+   takes it too (deposit rates lag prices), and equities are partly real assets and are hit less.
+   Together they make a 2022 possible in the model. The figures are judgement rather than a
+   published matrix, and are kept short of the extreme end deliberately: past a point an
+   over-negative row prices the whole portfolio as one bet on inflation, and past a further point
+   describes a correlation structure that cannot exist at all (the augmented matrix stops being
+   positive-definite and the decomposition refuses it).
+
+   Every plan's Monte Carlo tail is wider under these, so the `ENGINE_VERSION` bump owes a
+   stored-scenario re-run. Sourcing both against a series is board card **0139**.
+
+   **To verify:** an ONS CPIH or RPI annual series long enough to estimate the AR(1) coefficient
+   directly, and a published correlation matrix of UK real asset returns against inflation (the
+   Barclays Equity Gilt Study and the DMS yearbook both report the inflation sensitivities).
+
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees

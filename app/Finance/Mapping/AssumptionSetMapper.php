@@ -78,6 +78,11 @@ final class AssumptionSetMapper
             // Null = derive it from the index volatility; the RAW field is stored, not the derived
             // figure, so a re-sourced index still moves a set the reader never overrode.
             'singlePropertyVolatility' => $set->singlePropertyVolatility !== null ? Codec::bps($set->singlePropertyVolatility) : null,
+            // Board card 0064. 0.0 / null = the memoryless, independent inflation draw, which is
+            // what a snapshot stored before the card reproduces: the RAW fields are stored, not the
+            // clamped ones, so a re-sourced figure moves a set the reader never overrode.
+            'inflationPersistence' => $set->inflationPersistence,
+            'inflationAssetCorrelations' => $set->inflationAssetCorrelations,
         ];
     }
 
@@ -129,6 +134,14 @@ final class AssumptionSetMapper
             // exactly as a fresh set does. Its stored RESULT is not comparable across that change,
             // which is what the ENGINE_VERSION bump records.
             singlePropertyVolatility: isset($payload['singlePropertyVolatility']) ? Codec::percent($payload['singlePropertyVolatility']) : null,
+            // Back-compat: a snapshot stored before board card 0064 states neither, which is the
+            // memoryless independent draw, so an old stored run reproduces byte-identically.
+            // Forced back to float, as the correlation matrix above is, because a JSON -0.5 can
+            // decode as a string and the Cholesky decomposition needs floats.
+            inflationPersistence: (float) ($payload['inflationPersistence'] ?? 0.0),
+            inflationAssetCorrelations: isset($payload['inflationAssetCorrelations'])
+                ? array_map(static fn ($v): float => (float) $v, $payload['inflationAssetCorrelations'])
+                : null,
             isDefault: $isDefault,
         );
     }

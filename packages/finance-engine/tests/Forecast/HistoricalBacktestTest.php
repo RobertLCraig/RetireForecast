@@ -21,6 +21,7 @@ use RetireForecast\FinanceEngine\Forecast\HistoricalReturns;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
+use RetireForecast\FinanceEngine\Mortality\PlanningHorizon;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
@@ -130,6 +131,70 @@ final class HistoricalBacktestTest extends TestCase
         $this->assertFalse($badStart->essentialsAlwaysMet, 'retiring into 1973 should run the money out');
         $this->assertNotNull($badStart->depletionCalendarYear);
         $this->assertTrue($calmStart->essentialsAlwaysMet, 'retiring into 1985 should survive');
+    }
+
+    /**
+     * The same couple with NO stated lifespan, so their death ages come from the cohort life table
+     * and therefore move with the planning horizon. The fixture above pins both to 92, and a
+     * lifespan the reader stated is never extended (board card 0061), so it could not see this.
+     */
+    private function coupleOnCohortLifespans(int $weeklySp, int $pot, int $essential, int $discretionary): Household
+    {
+        return new Household(
+            'Backtest', RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired),
+            ],
+            new ExpenseProfile(Money::fromPounds($essential), Money::fromPounds($discretionary), Percent::fromPercent(70)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of($weeklySp, 0)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of($weeklySp, 0)),
+                new DcPension('p2', Money::fromPounds($pot), Money::zero(), Money::zero(), 55),
+            ],
+        );
+    }
+
+    public function test_the_backtest_can_be_run_at_a_longer_life_horizon_than_the_representative_one(): void
+    {
+        // Board card 0064: a bad early sequence and a long life are two risks that MULTIPLY, and
+        // holding the lifespan at the representative horizon means the stress test never combines
+        // them. Asked for a longer horizon, every start year funds more years of life.
+        $household = $this->coupleOnCohortLifespans(241, 400_000, 22_000, 4_000);
+
+        $representative = $this->backtester()->backtest($household, AssumptionSetLibrary::default(), $this->settings());
+        $longLife = $this->backtester()->backtest($household, AssumptionSetLibrary::default(), $this->settings(), horizon: PlanningHorizon::P90);
+
+        $this->assertGreaterThan(
+            $representative->forStartYear(1973)->planYears,
+            $longLife->forStartYear(1973)->planYears,
+            'the long-life horizon should carry the last survivor further',
+        );
+    }
+
+    public function test_the_long_life_horizon_is_the_harder_test_of_the_same_plan(): void
+    {
+        // A borderline plan: more years of spending off the same pot, over the same market
+        // sequences, so no start year can survive the long horizon that failed the shorter one.
+        $household = $this->coupleOnCohortLifespans(180, 240_000, 24_000, 8_000);
+
+        $representative = $this->backtester()->backtest($household, AssumptionSetLibrary::default(), $this->settings(), horizon: PlanningHorizon::P50);
+        $longLife = $this->backtester()->backtest($household, AssumptionSetLibrary::default(), $this->settings(), horizon: PlanningHorizon::P90);
+
+        $this->assertLessThan($representative->survivalRate(), $longLife->survivalRate());
+    }
+
+    public function test_a_stated_lifespan_is_not_extended_by_the_long_life_horizon(): void
+    {
+        // The horizon is a percentile of a MODELLED death age. Where the reader stated the age
+        // themselves it is a fact, not an estimate, and asking for a longer horizon must not
+        // silently overwrite it (board card 0061).
+        $household = $this->couple(241, 400_000, 22_000, 4_000);
+
+        $representative = $this->backtester()->backtest($household, AssumptionSetLibrary::default(), $this->settings());
+        $longLife = $this->backtester()->backtest($household, AssumptionSetLibrary::default(), $this->settings(), horizon: PlanningHorizon::P90);
+
+        $this->assertSame($representative->forStartYear(1973)->planYears, $longLife->forStartYear(1973)->planYears);
     }
 
     public function test_a_bad_start_leaves_less_terminal_wealth_than_a_calm_one(): void

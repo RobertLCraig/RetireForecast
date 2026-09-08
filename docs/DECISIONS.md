@@ -3,6 +3,60 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-08: inflation has a memory, and it moves against markets
+**Context:** card 0064 (expert panel 2026-08-19, adviser finding 13). `ReturnModel::generatePath`
+drew inflation from an independent normal each year, uncorrelated with the asset shocks. Two
+consequences. Real inflation is strongly autocorrelated and arrives in multi-year episodes
+(1973-75, 2021-23), so independent annual draws understate the spread of the cumulative price
+level over a retirement, which bites here because the model runs against nominal tax thresholds
+frozen for years. And in a real-return framework a 2022-style shock is high inflation AND deeply
+negative real gilt returns AND negative real equity returns at once, so drawing them independently
+means the model could never produce the single worst year a bond-heavy retiree has actually lived
+through.
+
+**Decision: the persistence is applied as an AR(1) on the DEVIATION, with the innovation scaled by
+sqrt(1 - phi^2).** That keeps the unconditional spread of any single year exactly the
+`inflationVolatility` the reader stated. The alternative, adding persistence on top of an
+unscaled shock, would have widened the annual spread too, so a figure typed as 1.5% would have
+been modelled at more than 1.5% with nothing on any screen saying so. Persistence buys cumulative
+spread, which is the point, and buys nothing else.
+
+**Decision: inflation is a ROW of the correlation matrix, not a single correlation to equities.**
+The house-price and salary factors beside it hang off equities alone, which was the right call for
+them. It is the wrong call here, because the whole finding is that a price shock hits the asset
+classes by DIFFERENT amounts: nominal gilts worst, cash next (deposit rates lag prices), equities
+least (partly real assets). `ReturnModel` appends inflation as the last factor and decomposes the
+augmented matrix, so index 0 is still global equities for the two factors that read it. A set that
+states no correlations produces a last row of `[0, ..., 0, 1]`, which makes the inflation shock
+exactly the raw normal that used to be drawn in that position, so a hand-rolled set stating
+neither figure is byte-identical.
+
+**Decision: both figures are STATED, not verified.** 0.70 persistence and `[-0.30, -0.50, -0.55]`
+are judgement at the cautious end of the defensible range. This session had no web access, so
+neither is checked against a series. Both reach a projection, so both are written up at
+docs/spec/ASSUMPTIONS.md §35 and both are disclosed on the assumptions panel and in the PDF, and
+card 0139 is raised to source them. A negative correlation row past a point describes a world that
+cannot exist: the augmented matrix stops being positive-definite and the Cholesky decomposition
+refuses it, loudly, rather than producing a quietly wrong one.
+
+**Decision: the historical backtest gains a long-life run rather than replacing its own horizon.**
+Sequence risk and longevity risk multiply, and the backtest held every lifespan at the horizon the
+central projection runs to, so the two were never asked together. `HistoricalBacktester::backtest`
+takes an optional horizon and `ScenarioForecaster::longLifeHistoricalBacktest` runs the same starts
+at the 90th percentile of the last survivor's age at death. It is reported BESIDE the representative
+run, never instead of it, and is omitted where the two are the same run: a plan already at the 90th,
+or a household whose lifespans the reader stated, which are facts and are never extended.
+
+**Consequence: `ENGINE_VERSION` is `finance-engine/inflation-with-a-memory` and the stored-scenario
+re-run is owed.** The central deterministic projection does not move (the mean and the single-year
+spread are unchanged), so every deterministic figure still reconciles; every Monte Carlo band,
+success probability and capacity-for-loss reading on every plan is wider, so a result stored under
+an earlier stamp understates its tail. **Monte Carlo golden master pinned 2026-09-08:** the frozen
+run's essentials success rate falls from 0.5300 to 0.5150, terminal wealth falls at p10 and rises at
+p75 and p90 (the fan opening at both ends), and the last band's whole range moves down. That is the
+expected direction: a wider cumulative price level against frozen thresholds costs a plan more than
+it gains it.
+
 ## 2026-09-08: growth is bought with risk, and the asset mix is the reader's to choose
 **Context:** card 0062 (expert panel 2026-08-19, adviser finding 6, which the adviser called the
 one an investment committee would stop on). The asset mix was hardcoded: `ForecastSettings`

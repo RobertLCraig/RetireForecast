@@ -1329,6 +1329,20 @@
                 </details>
             @endif
 
+            {{-- Sequence risk and longevity risk multiply, so the same starts are run again with the
+                 last survivor carried to a long life. Omitted where that is the same run. --}}
+            @if ($stressTest['longLife'])
+                <div class="mt-4 rounded-md border border-amber-200 bg-amber-50 p-4">
+                    <p class="text-sm font-medium text-amber-900">And if one of you lives a long time</p>
+                    <p class="mt-1 text-sm text-amber-900">The figures above carry each sequence for as long as the plan runs. Carried instead to a {{ lcfirst($stressTest['longLife']['label']) }} lifespan, where {{ $stressTest['longLife']['oddsPhrase'] }}, the plan survives <strong class="tabular-nums">{{ $stressTest['longLife']['survivalPct'] }}%</strong> of the same historical starts ({{ $stressTest['longLife']['survivedCount'] }} of {{ $stressTest['tested'] }}).
+                        @if ($stressTest['longLife']['worst'] && $stressTest['longLife']['worst']['ranOut'])
+                            Its worst start ({{ $stressTest['longLife']['worst']['startYear'] }}) ran short after {{ $stressTest['longLife']['worst']['yearsLasted'] }} years.
+                        @endif
+                    </p>
+                    <p class="mt-1 text-xs text-amber-800">A bad first decade and a long life are two risks that multiply. This is the pair asked together, which is the harder question and the one worth planning against.</p>
+                </div>
+            @endif
+
             <p class="mt-3 text-xs text-gray-500">Real UK asset returns and inflation, 1871–2020, from the Jordà–Schularick–Taylor Macrohistory database (<em>The Rate of Return on Everything</em>). A plan that survives the 1970s and 2008 starts is robust to sequence risk; past performance is not a guarantee of the future.</p>
         </section>
     @endif

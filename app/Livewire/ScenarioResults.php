@@ -490,6 +490,7 @@ class ScenarioResults extends Component
             'stressTest' => ResultPresenter::historicalStressTest(
                 $forecaster->historicalBacktest($this->scenario),
                 $forecaster->settings($this->scenario)->baseYear,
+                $forecaster->longLifeHistoricalBacktest($this->scenario),
             ),
             // How to claim the Pension Credit the forecast models (only when it credits any) —
             // it is means-tested, so it has to be applied for, and is heavily under-claimed.

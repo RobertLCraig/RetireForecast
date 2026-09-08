@@ -49,6 +49,26 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * shock, unlike a per-PROPERTY growth override, which since card 0029 re-centres the sampled
  * house path rather than replacing it (an overridden home is the LEAST certain one there is).
  *
+ * $inflationPersistence is the AR(1) coefficient of the annual inflation draw: how much of one
+ * year's deviation from $inflationMean survives into the next (0.0 = the memoryless independent
+ * draw the engine made before board card 0064). Real inflation arrives in multi-year episodes
+ * (1973-75, 2021-23), and independent annual draws understate the spread of the CUMULATIVE price
+ * level over a retirement — which matters here more than usual, because the model runs against
+ * nominal tax thresholds frozen for years, so it understates fiscal drag. The shock is scaled by
+ * sqrt(1 - phi^2), so the unconditional spread of any single year stays exactly
+ * $inflationVolatility and persistence buys cumulative spread rather than quietly raising the
+ * volatility the reader stated. Read through {@see inflationPersistence()}, which clamps it.
+ *
+ * $inflationAssetCorrelations is the correlation of the inflation shock with each asset class's
+ * REAL return, in $assetClasses order (null = all zeros, the independent draw). In a real-return
+ * framework a 2022-style shock is high inflation AND deeply negative real gilt returns AND
+ * negative real equity returns at once; drawn independently, the model can never produce the
+ * single worst year a bond-heavy retiree has actually lived through. This is a genuine extra ROW
+ * of the correlation matrix (unlike the single house- and salary-equity figures beside it, which
+ * hang off equities alone), because the whole point is that the price shock hits the asset
+ * classes by DIFFERENT amounts: nominal gilts worst, real assets least. Read through
+ * {@see inflationAssetCorrelations()}, which pads and clamps it.
+ *
  * $investmentIncomeYield is the NOMINAL annual income yield (dividends + interest) of
  * a General Investment Account portfolio. The forecast splits a GIA's total return
  * into this taxable income (taxed each year as dividends) and the remaining capital
@@ -93,6 +113,14 @@ final class AssumptionSet
     public const SINGLE_PROPERTY_VOLATILITY_MULTIPLE = 2.0;
 
     /**
+     * The ceiling on {@see $inflationPersistence}. At 0.95 an inflation episode still dies out
+     * over a decade; above it the series is near enough a random walk, whose cumulative spread
+     * grows without limit and would swamp every other risk in the model rather than widening it.
+     * A cap, not a default: the shipped figure is far below it.
+     */
+    public const MAX_INFLATION_PERSISTENCE = 0.95;
+
+    /**
      * @param  list<AssetClassAssumption>  $assetClasses
      * @param  list<list<float>>  $correlationMatrix  same order as $assetClasses
      */
@@ -114,8 +142,48 @@ final class AssumptionSet
         public readonly ?Percent $careCostRealGrowth = null,
         public readonly ?Percent $investmentCharge = null,
         public readonly ?Percent $singlePropertyVolatility = null,
+        public readonly float $inflationPersistence = 0.0,
+        public readonly ?array $inflationAssetCorrelations = null,
         public readonly bool $isDefault = false,
     ) {}
+
+    /**
+     * The AR(1) coefficient in force, clamped to [0, 0.95]. Zero is the memoryless draw; the
+     * ceiling keeps the independent component's variance (1 - phi^2) meaningfully positive, so a
+     * near-unit-root figure cannot turn the price level into a random walk with no mean to revert
+     * to. Negative persistence is not a thing inflation does, so it clamps to zero rather than
+     * modelling a price level that alternates.
+     */
+    public function inflationPersistence(): float
+    {
+        return max(0.0, min(self::MAX_INFLATION_PERSISTENCE, $this->inflationPersistence));
+    }
+
+    /**
+     * The correlation of the inflation shock with each asset class's REAL return, in
+     * {@see $assetClasses} order and always the same length as it: the stated figures where the
+     * set carries them, else all zeros, which is the independent draw the engine made before
+     * board card 0064. A set carrying the wrong number of figures is padded with zeros rather
+     * than throwing, because a missing correlation is the OLD behaviour and not a fault.
+     *
+     * @return list<float>
+     */
+    public function inflationAssetCorrelations(): array
+    {
+        $out = [];
+        foreach ($this->assetClasses as $i => $unused) {
+            $out[] = max(-1.0, min(1.0, (float) ($this->inflationAssetCorrelations[$i] ?? 0.0)));
+        }
+
+        return $out;
+    }
+
+    /** Does this set model inflation as anything other than an independent memoryless draw? */
+    public function modelsInflationDynamics(): bool
+    {
+        return $this->inflationPersistence() > 0.0
+            || array_filter($this->inflationAssetCorrelations(), static fn (float $r): bool => $r !== 0.0) !== [];
+    }
 
     /** The real (above-CPI) escalation of self-funder care fees (zero if none). */
     public function careCostRealGrowth(): Percent
@@ -208,6 +276,8 @@ final class AssumptionSet
             $this->careCostRealGrowth,
             $this->investmentCharge,
             $this->singlePropertyVolatility,
+            $this->inflationPersistence,
+            $this->inflationAssetCorrelations,
             $this->isDefault,
         );
     }
@@ -256,8 +326,8 @@ final class AssumptionSet
      * Clone with selected fields replaced (null = keep current). The non-replaceable
      * fields (name, source, the asset classes and their sourcing, volatilities, correlations,
      * including the house-price and salary-growth volatilities and their equity correlations,
-     * and isDefault) carry through so a derived "custom" set keeps its provenance and its
-     * risk structure.
+     * and isDefault, plus the inflation persistence and its asset correlations) carry through so
+     * a derived "custom" set keeps its provenance and its risk structure.
      */
     private function copy(
         ?Percent $inflationMean = null,
@@ -287,6 +357,8 @@ final class AssumptionSet
             $careCostRealGrowth ?? $this->careCostRealGrowth,
             $investmentCharge ?? $this->investmentCharge,
             $singlePropertyVolatility ?? $this->singlePropertyVolatility,
+            $this->inflationPersistence,
+            $this->inflationAssetCorrelations,
             $this->isDefault,
         );
     }

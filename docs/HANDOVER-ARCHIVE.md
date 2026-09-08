@@ -781,3 +781,53 @@ LTM/part-time what-if; the freshness-CI and a11y housekeeping; decision-support 
 spending "smile"; equity release; IHT wired into the forecast; the local-model assistant (all three
 phases); the Phase A/B/C/D builds; the five silent-drop completeness fixes; and the personal-data
 scrub. Each has its Done bullet above, a dated DECISIONS entry, and the full record in git log.
+
+## Folded out of HANDOVER.md on 2026-09-08 (card 0064)
+
+Cards 0044 and 0045, verbatim from the brief's exceptions list.
+
+- **The cheapest borrowing a pensioner can get is finally in the engine.** Card 0045. Support for
+  Mortgage Interest appeared nowhere in the code, the config or the board, while the tool's whole
+  subject is an unaffordable secured debt in later life and its comparison already prices lifetime
+  mortgages at roughly three times the rate. A household on Guarantee Credit that still owns its
+  home now has its mortgage interest met at the DWP standard rate on capital up to the pension-age
+  cap (both on `Benefits\SupportForMortgageInterest`), plus its service charge and ground rent in
+  full, less the utilities part. It is a LOAN, so nothing is credited as income: the amount met
+  comes off the year's spending and the SAME figure is added to `state['smiBalance']`, a second
+  charge secured on the home that rolls up and is redeemed from the proceeds of a forced sale or
+  out of the estate at death. `YearResult::smiBalance()` reports it and `homeEquity()` nets it, so
+  the wealth line cannot flatter a household whose home is being spent. The interest met is capped
+  at the interest ACTUALLY charged that year, so a rolled-up lifetime mortgage gets nothing (there
+  is no liability to meet). **Every stored plan that reaches a Guarantee Credit year while it still
+  owns a home spends too much under the old stamp, so its wealth, depletion year and success odds
+  are too pessimistic and its estate too high**; a plan that never qualifies, or has sold by then,
+  is byte-identical. `ENGINE_VERSION` is `finance-engine/support-for-mortgage-interest` and the
+  **stored-scenario re-run is owed**. No new builder input; the new results note has **not been
+  seen in a browser**. **Both figures behind the arithmetic are STATED, not verified** (no web in
+  this session) and unlike card 0044's they DO reach a projection: see
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§21), carded as **0109**. Whether the household
+  would in fact take a charge on its home is not modelled; the card scoped the gate to a Guarantee
+  Credit year and the note says so.
+- **A disability benefit can now start at an age, the carer flag is finally on a screen, and
+  claiming Attendance Allowance is a one-click what-if.** Card 0044.
+  `Person::$receivesDisabilityBenefit` was on or off for life, so the largest favourable event a
+  long survivor period can carry could not be entered; `caresForPartner` had been wired into the
+  Pension Credit carer addition since July 2026 with no way to set it. `Person` now carries
+  `disabilityBenefitFromAge`, and `receivesDisabilityBenefitAt($age)` is the single place the flag
+  and its start age are read together (the projector uses it for the severe-disability count AND the
+  carer test, so a partner's later claim delays the carer addition too). **No `ENGINE_VERSION` bump
+  and no stored re-run are owed:** null means the whole projection, so every stored scenario is
+  byte-identical. New: a `claim_attendance_allowance` quick what-if that sets the flag AND adds the
+  benefit's own tax-free income stream (both halves, because either alone models half the event); a
+  `disability_benefit_passports` result note naming what the forecast does not model (Support for
+  Mortgage Interest, Council Tax Reduction, the Warm Home Discount, the TV licence, Cold Weather
+  Payments, NHS costs); and a warning beside the retirement-age lever that earnings above the
+  Carer's Allowance limit block the carer addition. **Three benefit figures are STATED, not
+  verified** (this session had no web): the 2026/27 Attendance Allowance pair is derived by the same
+  uprating rule as the file's Pension Credit additions, and the earnings limit applies the 16-hours
+  at National Living Wage rule. See [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§20), carded as
+  **0106**. Two faults carded rather than fixed: **0107**, `Person` is rebuilt by hand in three
+  places with no reflection guard (the `ProtectionGap` one would have dropped the new field, and is
+  fixed here); and **0108**, the projector still awards the carer addition to a carer earning far
+  above the limit, which this card made reachable. Built in a worktree, so the two new builder
+  inputs, the new what-if button, the note and the lever warning **have not been seen in a browser**.

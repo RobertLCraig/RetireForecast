@@ -419,9 +419,16 @@ final class ResultPresenter
      * crises. "Years lasted" for a start that ran out is depletionYear - baseYear; a start
      * that survived shows how many years it was projected for. Every figure is the engine's.
      *
+     * $longLife is the same test carried to a long life (board card 0064): sequence risk and
+     * longevity risk multiply, so the panel reports what the plan survives when they are asked
+     * together, not only at the horizon the central projection runs to. It is omitted where the
+     * plan already runs to the longest horizon there is, or where the household's lifespans were
+     * stated by the reader and so cannot be extended (the two runs then agree, and reporting the
+     * same figure twice under a longer-sounding label would be the misleading thing to do).
+     *
      * @return array<string, mixed>|null null when nothing was tested
      */
-    public static function historicalStressTest(HistoricalBacktestResult $result, int $baseYear): ?array
+    public static function historicalStressTest(HistoricalBacktestResult $result, int $baseYear, ?HistoricalBacktestResult $longLife = null, ?PlanningHorizon $longLifeHorizon = null): ?array
     {
         if ($result->count() === 0) {
             return null;
@@ -457,7 +464,7 @@ final class ResultPresenter
             }
         }
 
-        return [
+        $panel = [
             'tested' => $result->count(),
             'fromYear' => $result->outcomes[0]->startYear,
             'toYear' => $result->outcomes[$result->count() - 1]->startYear,
@@ -465,7 +472,24 @@ final class ResultPresenter
             'survivalPct' => (int) round($result->survivalRate() * 100),
             'worst' => $shape($result->worst()),
             'crises' => $crises,
+            'longLife' => null,
         ];
+
+        // Only report the long-life run where it is a DIFFERENT answer. A stated lifespan is never
+        // extended, so for that household the two runs are the same numbers, and a second block
+        // saying so under a longer label would read as a harder test that had been passed.
+        if ($longLife !== null && $longLife->count() > 0 && $longLife->outcomes != $result->outcomes) {
+            $horizon = $longLifeHorizon ?? PlanningHorizon::P90;
+            $panel['longLife'] = [
+                'label' => $horizon->label(),
+                'oddsPhrase' => $horizon->oddsPhrase(),
+                'survivedCount' => $longLife->survivedCount(),
+                'survivalPct' => (int) round($longLife->survivalRate() * 100),
+                'worst' => $shape($longLife->worst()),
+            ];
+        }
+
+        return $panel;
     }
 
     /** @return array<string, mixed> */
@@ -3646,6 +3670,26 @@ final class ResultPresenter
                 'note' => 'the spread the Monte Carlo moves YOUR home over, wider than the index because one home is not a market; a growth rate you entered for the home sets where this spread is centred, not how wide it is',
             ]]);
         }
+        // Show-your-working for the inflation draw (board card 0064). Two figures move every plan
+        // that runs against frozen nominal thresholds, and neither is visible in the mean above:
+        // how sticky an inflation episode is, and how hard a price shock hits real returns. Both
+        // go in right after the inflation row, found by its key rather than a fixed index.
+        if ($set->modelsInflationDynamics()) {
+            $inflationIndex = (int) array_key_first(array_filter($economic, fn (array $row): bool => $row['key'] === 'inflation'));
+            $worst = min($set->inflationAssetCorrelations());
+            array_splice($economic, $inflationIndex + 1, 0, [[
+                'key' => 'inflationPersistence',
+                'label' => 'How long an inflation shock lasts',
+                'value' => self::ratePct($set->inflationPersistence() * 100),
+                'note' => 'the share of one year\'s inflation surprise still there the next year; real inflation comes in multi-year runs rather than one-off surprises, so the price level over a whole retirement is far less certain than any single year is',
+            ], [
+                'key' => 'inflationAssetCorrelation',
+                'label' => 'How markets react to an inflation shock',
+                'value' => number_format($worst, 2),
+                'note' => 'how far real investment returns move the other way in a high-inflation year, for the asset hit hardest; a negative figure means the model can produce a 2022, with high inflation and losses on the portfolio in the same year, instead of treating the two as unrelated',
+            ]]);
+        }
+
         // Same show-your-working for salary: when salary growth is stochastic, surface the volatility
         // it is sampled over so a working household's earnings spread traces to a stated figure. Placed
         // right after the salary-growth row (whose index shifts by one if the house row was inserted).

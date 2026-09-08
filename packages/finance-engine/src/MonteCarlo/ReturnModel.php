@@ -15,8 +15,12 @@ use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
  * Each year, independent standard-normal draws are correlated via the Cholesky
  * factor of the asset correlation matrix, scaled by each asset's volatility and
  * centred on its expected real return. The allocation blends the per-asset returns
- * into the invested-pot return; the cash asset drives the cash return. Inflation is
- * drawn independently around its mean.
+ * into the invested-pot return; the cash asset drives the cash return.
+ *
+ * Inflation is a factor IN that matrix rather than a draw beside it (board card 0064), so a
+ * price shock lands on each asset class by its own amount, and it carries an AR(1) memory, so
+ * an episode runs for years the way real inflation does. Both are off on a set that states
+ * neither, which is then exactly the independent memoryless draw the engine made before.
  *
  * House-price growth is stochastic when the set carries a house volatility: a per-year
  * house shock is drawn, correlated to the equity shock (asset index 0) by the set's
@@ -69,7 +73,14 @@ final class ReturnModel
         private readonly AssumptionSet $set,
         private readonly PortfolioAllocation $allocation,
     ) {
-        $this->cholesky = Cholesky::decompose($set->correlationMatrix);
+        // Inflation is decomposed AS AN EXTRA FACTOR alongside the asset classes rather than drawn
+        // beside them (board card 0064), so a price shock lands on each asset class by its own
+        // amount: hardest on nominal gilts, least on real assets. It goes LAST, so index 0 is still
+        // global equities for the house and salary factors that hang off it, and — because a set
+        // stating no correlations produces a last row of [0, ..., 0, 1] — the inflation shock is
+        // then exactly the raw normal that used to be drawn here, in the same position in the RNG
+        // stream. A set that models nothing new is therefore byte-identical to before.
+        $this->cholesky = Cholesky::decompose(self::withInflationRow($set));
 
         $means = [];
         $vols = [];
@@ -119,9 +130,20 @@ final class ReturnModel
         $houseIndependentScale = sqrt(max(0.0, 1.0 - $this->houseEquityCorrelation ** 2));
         $salaryIndependentScale = sqrt(max(0.0, 1.0 - $this->salaryEquityCorrelation ** 2));
 
+        // Inflation's AR(1) memory: phi is how much of one year's deviation from the mean survives
+        // into the next, and the innovation is scaled by sqrt(1 - phi^2) so the UNCONDITIONAL
+        // spread of any single year stays exactly the stated volatility. Persistence therefore buys
+        // cumulative spread over a retirement — which is the point, the model running against
+        // nominal thresholds frozen for years — without silently raising the volatility the reader
+        // typed. Year 0 is drawn from that same stationary distribution, so no year is special.
+        $phi = $this->set->inflationPersistence();
+        $innovationScale = sqrt(max(0.0, 1.0 - $phi ** 2));
+        $inflationIndex = count($this->means);
+        $deviation = 0.0;
+
         for ($y = 0; $y < $years; $y++) {
             $u = [];
-            foreach ($this->means as $i => $unused) {
+            for ($i = 0; $i <= $inflationIndex; $i++) {
                 $u[$i] = $this->standardNormal($rng);
             }
             $z = Cholesky::apply($this->cholesky, $u);
@@ -138,7 +160,10 @@ final class ReturnModel
 
             $investment[] = $blended;
             $cash[] = $this->means[$this->cashIndex] + $this->vols[$this->cashIndex] * $z[$this->cashIndex];
-            $inflation[] = $inflMean + $inflVol * $this->standardNormal($rng);
+            $deviation = $y === 0
+                ? $inflVol * $z[$inflationIndex]
+                : $phi * $deviation + $innovationScale * $inflVol * $z[$inflationIndex];
+            $inflation[] = $inflMean + $deviation;
 
             // House-price shock, correlated to the equity shock (z[0]) by rho: a fresh normal
             // supplies the idiosyncratic part. Only drawn when the set has a house volatility,
@@ -162,6 +187,27 @@ final class ReturnModel
         }
 
         return ['investment' => $investment, 'cash' => $cash, 'inflation' => $inflation, 'house' => $house, 'salary' => $salary];
+    }
+
+    /**
+     * The set's asset correlation matrix with inflation appended as a final row and column, from
+     * {@see AssumptionSet::inflationAssetCorrelations()} (which pads and clamps, so the row is
+     * always the right length and always in [-1, 1]). The result is symmetric with 1.0 on the
+     * diagonal, which is the contract {@see Cholesky::decompose} needs; it still throws where the
+     * stated correlations describe a world that cannot exist, rather than quietly producing one.
+     *
+     * @return list<list<float>>
+     */
+    private static function withInflationRow(AssumptionSet $set): array
+    {
+        $row = $set->inflationAssetCorrelations();
+        $matrix = [];
+        foreach ($set->correlationMatrix as $i => $assetRow) {
+            $matrix[] = [...array_map(static fn ($v): float => (float) $v, $assetRow), $row[$i] ?? 0.0];
+        }
+        $matrix[] = [...$row, 1.0];
+
+        return $matrix;
     }
 
     /** A standard normal draw via Box-Muller from the seeded uniform generator. */
