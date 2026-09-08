@@ -1337,6 +1337,64 @@ final class PathProjectorTest extends TestCase
         $this->assertTrue($income['pension_drawdown']->isPositive(), 'the pension should be drawn once cash is exhausted');
     }
 
+    /**
+     * A household whose ad-hoc draw is taken UFPLS-style: a quarter of each withdrawal is
+     * tax-free while the Lump Sum Allowance lasts ({@see PathProjector::ufplsSplit}). The
+     * cashflow ladder labels `pension_drawdown` as taxable pension income, so the tax-free
+     * quarter has to be reported on the tax-free cash line instead (board card 0074).
+     */
+    private function adHocDrawHousehold(): Household
+    {
+        // No private income and a spend far above the State Pension: the shortfall exhausts
+        // the small cash buffer and is then met from the pot, in one place only.
+        return new Household(
+            'Ad-hoc draw',
+            RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired),
+            ],
+            new ExpenseProfile(Money::fromPounds(40_000), Money::zero(), Percent::fromPercent(70)),
+            [new DcPension('p2', Money::fromPounds(300_000), Money::zero(), Money::zero(), 55)],
+            [new Account('p1', AccountType::Cash, Money::fromPounds(5_000))],
+        );
+    }
+
+    public function test_an_ad_hoc_draws_tax_free_part_is_reported_as_a_lump_sum(): void
+    {
+        $income = $this->forecaster()->forecast(
+            $this->adHocDrawHousehold(),
+            $this->flatAssumptions(),
+            $this->settings(DrawdownStrategy::FillBands),
+        )->years[0]->incomeBySource;
+
+        $this->assertTrue($income['pension_drawdown']->isPositive(), 'the taxable part is still reported as drawdown');
+        $this->assertTrue(
+            $income['pension_lump_sum']->isPositive(),
+            'the tax-free quarter of an ad-hoc draw belongs on the tax-free cash line, not the taxable drawdown line',
+        );
+    }
+
+    public function test_the_split_draw_lines_reconcile_to_the_total_drawn(): void
+    {
+        $year0 = $this->forecaster()->forecast(
+            $this->adHocDrawHousehold(),
+            $this->flatAssumptions(),
+            $this->settings(DrawdownStrategy::FillBands),
+        )->years[0];
+
+        // Flat assumptions, no growth and no contributions, so what left the pot over the year
+        // is exactly the opening balance less the closing one.
+        $leftThePots = 30_000_000 - $year0->pensionWealth->pence;
+        $this->assertGreaterThan(0, $leftThePots);
+
+        $this->assertSame(
+            $leftThePots,
+            $year0->incomeBySource['pension_lump_sum']->pence + $year0->incomeBySource['pension_drawdown']->pence,
+            'the tax-free and taxable lines together must equal the money that left the pots',
+        );
+    }
+
     public function test_forecast_terminates_at_the_last_survivor_death(): void
     {
         $result = $this->forecaster()->forecast(

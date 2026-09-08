@@ -632,13 +632,13 @@ from the original plan, flagged inline:
   get a second one: a planned `WithdrawalKind::Pcls` crystallises cash / 25% of the pot, the residue is
   drawn first and taxed in full, and it grows with the pot so the share holds. An **inherited** pot
   has neither a quarter nor any of the heir's allowance to spend, and drawing it is not a flexible-access
-  trigger for the heir. **Still open:** a **starting** pot is assumed wholly uncrystallised, because
+  trigger for the heir. An **ad-hoc** UFPLS reports its tax-free part on the cashflow ladder's
+  `pension_lump_sum` line and only the balance on `pension_drawdown`, which the page labels as taxable
+  pension income (`fundShortfall` returns `fromPensionTaxFree` beside the gross; card **0074**).
+  **Still open:** a **starting** pot is assumed wholly uncrystallised, because
   `DcPension::$pclsTakenToDate` is an allowance ledger across all of the member's pensions rather than a
   per-pot crystallisation record, so a reader who has already taken tax-free cash is given a second
-  quarter of it (card **0080**); the tax-free part of an **ad-hoc** UFPLS is reported on the cashflow
-  ladder under `pension_drawdown` rather than `pension_lump_sum`, because `fundShortfall` returns one
-  `fromPension` total, so the money is visible and the year reconciles but a reader adding up taxable
-  income off the ladder gets too big a figure (card **0074**); a draw from an inherited pot is taxed in
+  quarter of it (card **0080**); a draw from an inherited pot is taxed in
   full even where the member died **under 75**, when in life it is tax-free income, because
   `PathProjector::settleEstates` stores no age at death (card **0079**); and no ad-hoc draw, taxed or
   tax-free, reaches the Pension Credit means test, which is assessed before the shortfall is funded and

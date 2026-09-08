@@ -61,7 +61,17 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-08 (annual-allowance-is-a-bill-not-a-wall): the money-purchase annual allowance
+     * Bumped 2026-09-08 (ad-hoc-draw-reports-its-tax-free-part): an unplanned pension draw taken
+     * UFPLS-style now reports its tax-free quarter on the cashflow ladder's tax-free cash line and
+     * only the balance on the drawdown line, which the page labels as taxable pension income
+     * ({@see PathProjector::fundShortfall}, which returns that part alongside the gross). NO figure
+     * moves: the tax, the wealth and the odds are what they always were, and the two lines still sum
+     * to the money that left the pots. What moves is the LADDER stored under an earlier stamp, which
+     * files every pound of such a draw as taxable, so a reader adding up their taxable income off it
+     * gets a figure about a third too big and cannot reconcile it against the tax the same row
+     * shows. A plan that never makes an ad-hoc pension draw, or draws under a strategy other than
+     * fill-the-bands, is byte-identical. See board card 0074.
+     * Previous bump 2026-09-08 (annual-allowance-is-a-bill-not-a-wall): the money-purchase annual allowance
      * is no longer a hard cap on what may be paid into a pension. Every contribution the plan asks
      * for is now paid in, and input above the allowance carries an annual allowance CHARGE at the
      * member's marginal rate ({@see PathProjector::annualAllowanceCharges}), which is what the law
@@ -364,7 +374,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/annual-allowance-is-a-bill-not-a-wall';
+    public const ENGINE_VERSION = 'finance-engine/ad-hoc-draw-reports-its-tax-free-part';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

@@ -1724,11 +1724,12 @@ final class PathProjector
             $funded = $this->fundShortfall($household, $settings, $state, $alive, $ages, $taxablePerPerson, $savingsPerPerson, $dividendsPerPerson, $shortfall, $thresholdFactor, $benefitNominal > 0, $seedGains);
             $fundedNominal = $funded['funded'];
             $totalTaxNominal += $funded['extraTax'];
-            // FLAGGED (board card 0074): fundShortfall returns ONE fromPension total, so the
-            // tax-free quarter of a UFPLS-style draw is filed here as taxable drawdown. The money
-            // is visible and the year reconciles, but a reader adding up taxable income off the
-            // ladder gets too big a figure.
-            $src['pension_drawdown'] += $funded['fromPension'];
+            // The tax-free quarter of a UFPLS-style ad-hoc draw goes on the tax-free cash line and
+            // only the balance on the drawdown line, which the ladder labels as taxable pension
+            // income (board card 0074). The two are one gross split in two, never two sums, so the
+            // year still reconciles to the money that left the pots.
+            $src['pension_lump_sum'] += $funded['fromPensionTaxFree'];
+            $src['pension_drawdown'] += $funded['fromPension'] - $funded['fromPensionTaxFree'];
             $src['asset_drawdown'] += $funded['fromAssets'];
             // The disposals that funded the year already counted against each person's CGT
             // annual exempt amount (they include $seedGains, shared once), so bed-and-ISA below
@@ -3223,12 +3224,18 @@ final class PathProjector
      * and how much was drawn from pensions (gross) vs other assets — so the cashflow
      * ladder can show where the shortfall money came from.
      *
+     * `fromPensionTaxFree` is the part of `fromPension` that arrived free of tax (the UFPLS-style
+     * quarter, while the Lump Sum Allowance lasts: {@see ufplsSplit}). It is a SUBSET of
+     * `fromPension`, never a second sum, so the caller files it on the tax-free cash line and only
+     * the balance on the taxable drawdown line, which is what lets a reader add up taxable income
+     * off the cashflow ladder and get the figure the year's tax was computed on (board card 0074).
+     *
      * @param  array<string, mixed>  $state
      * @param  array<string, bool>  $alive
      * @param  array<string, int>  $taxablePerPerson  nominal NON-SAVINGS taxable income per person
      * @param  array<string, int>  $savingsPerPerson  nominal savings income (interest) per person
      * @param  array<string, int>  $dividendsPerPerson  nominal dividend income per person
-     * @return array{funded: int, extraTax: int, fromPension: int, fromAssets: int}
+     * @return array{funded: int, extraTax: int, fromPension: int, fromPensionTaxFree: int, fromAssets: int}
      */
     private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $ages, array $taxablePerPerson, array $savingsPerPerson, array $dividendsPerPerson, int $shortfall, float $thresholdFactor = 1.0, bool $onGuaranteeCredit = false, array $seedGains = []): array
     {
@@ -3236,6 +3243,7 @@ final class PathProjector
         $funded = 0;
         $extraTax = 0;
         $fromPension = 0; // gross pension withdrawn to meet the shortfall
+        $fromPensionTaxFree = 0; // the part of that gross which was tax-free cash (subset)
         $fromAssets = 0;  // capital drawn from cash/GIA/ISA
         // GIA gains realised this year by disposals, per person (feeds CGT below). Seeded with
         // any gains a year-0 purchase draw already realised ($seedGains, pence), so the AEA
@@ -3424,7 +3432,7 @@ final class PathProjector
         // part consumes, so the draw is ~a third larger for the same taxable income) and the
         // person's remaining Lump Sum Allowance. {@see maxUfplsGross} solves both. With no
         // allowance left the split is all-taxable, so this degrades exactly to $drawPension.
-        $drawPensionUfpls = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, &$drawnTaxable, $alive, $ages, $household, $incomeOf, $thresholdFactor): void {
+        $drawPensionUfpls = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, &$fromPensionTaxFree, &$drawnTaxable, $alive, $ages, $household, $incomeOf, $thresholdFactor): void {
             $pclsRate = $this->config->pension->pclsRate->asFraction();
             $lsa = $this->config->pension->lumpSumAllowance->pence;
 
@@ -3492,6 +3500,7 @@ final class PathProjector
                     $funded += $net;
                     $extraTax += $taxDelta;
                     $fromPension += $gross;
+                    $fromPensionTaxFree += $taxFree;
                     $alreadyTaxable += $taxablePart;
                 }
                 unset($pot);
@@ -3561,7 +3570,7 @@ final class PathProjector
             $funded = $fundedBeforeCgt;
         }
 
-        return ['funded' => $funded, 'extraTax' => $extraTax, 'fromPension' => $fromPension, 'fromAssets' => $fromAssets, 'realisedGain' => $realisedGain];
+        return ['funded' => $funded, 'extraTax' => $extraTax, 'fromPension' => $fromPension, 'fromPensionTaxFree' => $fromPensionTaxFree, 'fromAssets' => $fromAssets, 'realisedGain' => $realisedGain];
     }
 
     /**

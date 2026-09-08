@@ -5,9 +5,23 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0073). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-08 (card 0074). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038, 0044 and 0045 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **An ad-hoc pension draw reports its tax-free quarter as tax-free cash.** Card 0074. Every pound of
+  an unplanned fill-the-bands draw was printed on the cashflow ladder's `pension_drawdown` line,
+  which the page labels as taxable pension income, so a reader adding up their taxable income off
+  the table got a figure about a third too big and could not reconcile it against the tax the same
+  row shows. `PathProjector::fundShortfall` now returns `fromPensionTaxFree` beside `fromPension`,
+  fed only by `$drawPensionUfpls` out of the `ufplsSplit` it already computes, and the caller files
+  that part on `pension_lump_sum` and the balance on `pension_drawdown`. It is a SUBSET, never a
+  second sum, so the year still reconciles to the money that left the pots. **No figure moves**:
+  tax, wealth, depletion and the odds are unchanged and nothing needed a re-pin. `ENGINE_VERSION` is
+  `finance-engine/ad-hoc-draw-reports-its-tax-free-part` and the **stored-scenario re-run is owed**
+  for any plan making such a draw, because the stored LADDER is what is wrong and a stored run has
+  no other way to say so. Built in a worktree, so the relabelled rows **have not been seen in a
+  browser**.
 
 - **The pension annual allowance is a bill now, not a wall, and it binds the year the trigger
   happens.** Card 0073. Two faults with one cause. The allowance was a hard cap: a contribution
