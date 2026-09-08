@@ -61,7 +61,18 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-08 (spendable-wealth-net-of-pension-tax): SPENDABLE wealth no longer counts a
+     * Bumped 2026-09-08 (pension-draw-assessed-for-pension-credit): money drawn out of a pension to
+     * cover a year's shortfall is now assessable INCOME for that year's Pension Credit, which is
+     * what the means test does with it. The award and the draw are settled together, to a fixed
+     * point, because each decides the other ({@see PathProjector::projectYear}); only the TAXABLE
+     * part is assessed, the tax-free quarter being capital in the claimant's hands. Any stored plan
+     * that both holds a Pension Credit award and draws taxable pension money to meet its spending
+     * keeps a credit under an earlier stamp that in life would have been taken away pound for
+     * pound, so its income, wealth, depletion year and success odds are all too FAVOURABLE. A plan
+     * with no award, or one that never draws taxable pension money in a year it has one, is
+     * byte-identical. The Monte Carlo golden master DID move and was re-pinned: see DECISIONS
+     * 2026-09-08. See board card 0077.
+     * Previous bump 2026-09-08 (spendable-wealth-net-of-pension-tax): SPENDABLE wealth no longer counts a
      * pension pot as if no tax were due on it. The pot's tax-free part comes off first (a quarter,
      * capped by what is left of the member's Lump Sum Allowance) and the balance is netted at the
      * member's projected marginal rate ({@see PathProjector::pensionTaxIfDrawn}), so
@@ -387,7 +398,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/spendable-wealth-net-of-pension-tax';
+    public const ENGINE_VERSION = 'finance-engine/pension-draw-assessed-for-pension-credit';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

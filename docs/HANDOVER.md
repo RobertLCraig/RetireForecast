@@ -5,9 +5,31 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0076). The exceptions a fresh session needs, newest first. The "what is built"
-inventory and cards 0024, 0025, 0028 to 0038, 0044 and 0045 were folded out to
+_Last updated: 2026-09-08 (card 0077). The exceptions a fresh session needs, newest first. The "what is built"
+inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **Money drawn out of a pension now reaches the Pension Credit means test.** Card 0077. The award
+  for a year was worked out from the income the household already had, and only then did the
+  projector take money out of a pot to cover the rest, so a household could draw thousands and keep
+  a credit the means test would have taken away pound for pound. The award and the draw are now
+  solved TOGETHER, to a fixed point, in `PathProjector::projectYear`: everything from the Support
+  for Mortgage Interest block to the end of the drawdown is one pass, re-run against a restored
+  state until re-assessing the means test on what the pass drew leaves the award where the pass had
+  it. That equality is the settling test, not a tolerance. The step between passes is a SECANT
+  (`MAX_PENSION_CREDIT_PASSES` = 8): plain substitution closes only a quarter of the gap each time,
+  because three quarters of a draw is taxable, and would need scores of passes. Only the TAXABLE
+  part is assessed, the tax-free quarter being capital. **The draw ORDER is settled once, before the
+  year draws anything**, and does not move with the claw-back: letting it read the pass's own
+  clawed-back award put the iteration on the wrong one of two self-consistent answers. `ENGINE_VERSION`
+  is `finance-engine/pension-draw-assessed-for-pension-credit` and the **stored-scenario re-run is
+  owed** for any plan holding an award and drawing taxable pension money. The **Monte Carlo golden
+  master was re-pinned** (essentials success 0.5150 to 0.4850, terminal wealth down at every
+  percentile above p10); `PIN_REVISION` was already today's date, so its companion test could not
+  demand the entry, and DECISIONS 2026-09-08 records it anyway. No screen changed. One finding
+  carded rather than fixed: **0143**, the claw-back is capped at the year it happens in, so the
+  Pension-Credit-aware draw order, which defers the pension until the capital is gone and then draws
+  a little every year, now loses more credit across a plan than the order it is meant to beat.
 
 - **Spendable wealth is net of the tax on the pension part now.** Card 0076. "How much you would
   have left" added the pot to the cash at face value, and that figure is what the safety-buffer
@@ -357,18 +379,9 @@ inventory and cards 0024, 0025, 0028 to 0038, 0044 and 0045 were folded out to
   supply its own settings to see the criterion); and **0126**, a home sold BEFORE the base year has
   no builder field, so a household that already downsized gets no addition and is not told why.
 - **A shortfall now says what kind of bill it is, and a failing plan is pointed at free debt help.**
-  Card 0052. `ResultPresenter::priorityDebtGuidance()` owns the framing and rides the ladder array
-  as `priorityDebt`, so the results page and the PDF carry the same words beside the same
-  unmet-spend table. It reads the FIRST year the plan cannot fund its spending; secured is decided
-  by whether that year still owes a mortgage (`YearResult::mortgageBalance()`), so a renter is never
-  told a home is at stake. Both cases name mortgage and council tax as priority debts; a secured one
-  adds the lender's forbearance duty and the court's power to suspend possession.
-  `sources-and-contacts.blade.php` grew a fourth `showBenefitsDebt` column (Citizens Advice,
-  National Debtline, StepChange, Turn2us, Shelter), on wherever a plan runs short or holds a
-  mortgage, mirrored in the PDF. **No `ENGINE_VERSION` bump and no stored re-run is owed:** it is
-  copy, no figure moves. Every phone number, URL and legal citation in it is **STATED, not verified**
-  (no web in this session). Built in a worktree, so the panel and the column **have not been seen in
-  a browser**.
+  Card 0052, folded out to [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) on 2026-09-08. What still
+  stands: its panel and its fourth contacts column have not been seen in a browser, and every phone
+  number, URL and legal citation in it is stated rather than verified.
 - **The two Pension Credit additions are decided by entitlement, and a mixed-age couple is told
   why it gets nothing.** Card 0051. `Dto\DisabilityAwardRate` holds WHICH part of an award a person
   has, and `Person::qualifiesForSevereDisabilityAdditionAt()` is the one predicate both the

@@ -109,6 +109,14 @@ final class PathProjector
     private const MARGINAL_RATE_PROBE_PENCE = 100_000;
 
     /**
+     * How many times a year may re-solve the Pension Credit award against the pension draw that
+     * award decides the size of (board card 0077). The secant step lands on the answer in three
+     * passes for the ordinary shape; the rest is headroom for a year whose draw crosses a tax
+     * band or a strategy's Guarantee-Credit branch and moves the line the step is drawn through.
+     */
+    private const MAX_PENSION_CREDIT_PASSES = 8;
+
+    /**
      * What a mixed-age couple is told in a year the qualifying-age gate blocks Pension Credit.
      * One home for the copy, so the message and the rule that raises it cannot drift apart
      * ({@see WarningCode::MIXED_AGE_COUPLE}, board card 0051). It states the rule and names the
@@ -1319,18 +1327,19 @@ final class PathProjector
         // household's appropriate minimum guarantee, credited as income before any shortfall
         // is funded — so a sale that turns the exempt home into assessable capital (raising the
         // tariff income) erodes it in-projection, the downsizing trap made visible.
-        $pensionCreditAward = $this->pensionCreditAward($household, $state, $alive, $calendarYear, $ages, $taxablePerPerson, $aliveCount, $meansTestExcluded, array_keys($disabilityCareFraction));
-        $benefitNominal = $pensionCreditAward === null
-            ? 0
-            : $pensionCreditAward->guaranteeCreditWeekly->pence * $this->config->statePension->weeksPerYear;
-        // The two contingency disclosures the award itself cannot carry (board card 0046), built
-        // HERE so they read the same capital and the same award the means test above was settled
-        // on — the year's assets are drawn down and its surplus banked further below, and a
-        // warning computed off that later state would describe a different household.
-        $benefitWarnings = $this->benefitContingencyWarnings($household, $state, $pensionCreditAward, $benefitNominal > 0, $alive, $calendarYear);
-        $netCashNominal += $benefitNominal;
-        $grossIncomeNominal += $benefitNominal;
-        $src['means_tested_benefit'] += $benefitNominal;
+        //
+        // The award has to be asked for more than once, because money drawn out of a pension to
+        // cover the year's shortfall is itself assessable income (board card 0077) and the
+        // shortfall is not known yet. It is asked HERE, off the state as it stands now, so that
+        // every re-ask sees the same capital: the forced sale below, the drawdown and the banked
+        // surplus all move assets, and an award assessed on a later state would be assessed on a
+        // household this one is not. {@see pensionCreditAward} for what the extra income is.
+        $stateAtAward = $state;
+        $awardAssessedOn = fn (int $extraAssessableAnnual): ?PensionCreditResult => $this->pensionCreditAward(
+            $household, $stateAtAward, $alive, $calendarYear, $ages, $taxablePerPerson, $aliveCount,
+            $meansTestExcluded, array_keys($disabilityCareFraction), $extraAssessableAnnual,
+        );
+        $pensionCreditAward = $awardAssessedOn(0);
 
         $survivor = $aliveCount === 1 ? $household->expenseProfile->survivorSpendFactor->asFraction() : 1.0;
 
@@ -1586,183 +1595,286 @@ final class PathProjector
             $essentialNominal += $mortgagePaymentNominal;
         }
 
-        // Support for Mortgage Interest: a household on Guarantee Credit qualifies with no waiting
-        // period, and DWP meets the interest on eligible mortgage capital (up to its cap, at its
-        // own standard rate) plus — for a pension-age claimant — the service charge and ground
-        // rent. It is a LOAN, so it is not credited as income: the bill simply stops arriving, and
-        // what was met is added to a charge on the home that is repaid on sale or at death. Both
-        // sides come off ONE figure, so what the household is spared and what it owes cannot
-        // disagree. {@see SupportForMortgageInterest}, board card 0045.
-        $smiMetNominal = $this->supportForMortgageInterestNominal(
-            $household, $state, $benefitNominal, $mortgagePaymentNominal, $propertyGrowth, $survivor, $yearIndex,
-        );
-        if ($smiMetNominal > 0) {
-            $spendNominal = max(0, $spendNominal - $smiMetNominal);
-            $essentialNominal = max(0, $essentialNominal - $smiMetNominal);
-            $state['smiBalance'] += $smiMetNominal;
-        }
+        // ================================================================================
+        // Board card 0077. Everything from here to the end of the drawdown is ONE PASS at a
+        // fixed point, because the award and the draw each decide the other: the award is part
+        // of the income that covers the spending, so it sets the shortfall; the shortfall sets
+        // how much has to come out of a pension; and taxable pension money is assessable income
+        // for the means test, so it sets the award. Solved in one direction only, which is the
+        // order that does not need solving twice and the order this engine used to run, a
+        // household could draw thousands out of a pot and keep a credit that in life would have
+        // been taken away pound for pound.
+        //
+        // Each pass runs against a RESTORED state, so a pass is never charged twice for the
+        // Support for Mortgage Interest it met, the care it was assessed for or the assets it
+        // drew. It settles when the award the pass USED is the award that pass's own draw
+        // implies, which is the reconciliation the reader is shown.
+        //
+        // The overwhelming majority of years settle on the first pass and are byte-identical to
+        // the pre-card engine: a household with no award has nothing to claw back, and a
+        // household that draws nothing taxable out of a pension has changed nothing the means
+        // test can see.
+        //
+        // The DRAW ORDER, though, is settled once and holds for every pass: it asks whether the
+        // household is on Guarantee Credit, and it is, before it draws anything. Letting it read
+        // the pass's own clawed-back award instead put the iteration on the wrong answer of two
+        // self-consistent ones: a pass that had lost the whole award stopped protecting a credit
+        // it no longer had, filled the free tax bands out of the pension, and left the capital
+        // that would have kept the award untouched. Pinned by
+        // PathProjectorTest::test_fill_bands_is_pension_credit_aware_and_leaves_the_pension_intact.
+        $onGuaranteeCredit = ($pensionCreditAward?->guaranteeCreditWeekly->pence ?? 0) > 0;
+        $passState = $state;
+        $passSpendNominal = $spendNominal;
+        $passEssentialNominal = $essentialNominal;
+        $passNetCashNominal = $netCashNominal;
+        $passGrossIncomeNominal = $grossIncomeNominal;
+        $passTotalTaxNominal = $totalTaxNominal;
+        $passSrc = $src;
+        // The taxable pension draw this pass's award is assessed on, and the pass before it:
+        // the two points the secant step below extrapolates through.
+        $assessedDrawNominal = 0;
+        $previousAssessedDraw = null;
+        $previousGap = null;
+        for ($pass = 0; ; $pass++) {
+            $benefitNominal = $pensionCreditAward === null
+                ? 0
+                : $pensionCreditAward->guaranteeCreditWeekly->pence * $this->config->statePension->weeksPerYear;
+            $netCashNominal += $benefitNominal;
+            $grossIncomeNominal += $benefitNominal;
+            $src['means_tested_benefit'] += $benefitNominal;
 
-        // Rent (the "sell and rent" leg) is an essential cost with its own inflation. It applies
-        // once the household no longer owns a home: always for a year-0 rent variant (no
-        // primaryResidence), or from the sale year for a forced sale. An owner still in the home
-        // pays no rent (even where a post-sale rent figure is set for the forced-sale years).
-        $ownsHome = $home !== null && ! $state['homeSold'];
-        $rentChargedNominal = 0;
-        $housingBenefitNominal = 0;
-        if ($settings->annualRent !== null && ! $ownsHome) {
-            $rentChargedNominal = (int) round($settings->annualRent->pence * $state['rentFactor']);
-
-            // Housing Benefit meets some or all of that rent for a pension-age renter whose income
-            // and capital qualify (board card 0048). It comes off the rent rather than being
-            // credited as income, the way Council Tax Reduction comes off the council tax: it is
-            // paid towards one bill and cannot be spent on anything else, so banking it as income
-            // would let the household eat it.
-            //
-            // $rentChargedNominal stays the GROSS rent the landlord asks for, because that is what
-            // the deposit and the referencing warnings below are sized against: a letting agent's
-            // affordability test is on the rent, not on what the tenant is left paying.
-            $housingBenefitNominal = $this->housingBenefitNominal($household, $state, $pensionCreditAward, $rentChargedNominal);
-            $rentPaidNominal = max(0, $rentChargedNominal - $housingBenefitNominal);
-
-            $spendNominal += $rentPaidNominal;
-            $essentialNominal += $rentPaidNominal;
-        }
-
-        // Property running costs (maintenance, insurance) for owners are essential too — the
-        // counterpart to a renter's rent. They stop once the home is sold.
-        if ($household->primaryResidence?->runningCosts !== null && ! $state['homeSold']) {
-            // Only the household's share of the running costs (it owns a share of the home, entered whole).
-            $runningNominal = (int) round($household->primaryResidence->runningCosts->pence * $state['spendFactor'] * $state['ownershipShare']);
-            $spendNominal += $runningNominal;
-            $essentialNominal += $runningNominal;
-        }
-
-        // Council tax, held apart from the running costs above because it is the one that
-        // SHRINKS — see councilTaxNominal for the three reliefs and the order they apply in.
-        $councilTaxNominal = $this->councilTaxNominal($household, $state, $pensionCreditAward, $aliveCount);
-        $spendNominal += $councilTaxNominal;
-        $essentialNominal += $councilTaxNominal;
-
-        // Late-life care costs (a Monte Carlo risk; the draws return 0 for the deterministic and
-        // historical views). Care is an essential outflow, so it lifts both the target and the
-        // essential floor and is funded like any spend; the real total is accumulated for the
-        // result so the risk is visible, not silently buried in the success rate. careAnnualCost
-        // is the gross self-funder fee in today's money, inflated by spendFactor like the rest
-        // of spend — the means test then caps each resident's year at what the household
-        // actually bears (a self-funder pays the full fee; once their own capital falls to the
-        // upper limit the local authority pays the balance above the income-based contribution).
-        // Assessed per person, England's individual assessment: the resident's own accounts,
-        // their own taxable income, and the home only when no partner still lives in it (or it
-        // is let) — see careAssessableCapital.
-        // Care fees are the fastest-inflating major late-life cost (largely National-Living-Wage-
-        // pinned staff cost, ratcheted above prices), so they carry an optional REAL escalation on
-        // top of the CPI everyone rides — compounded per projection year here in real pence, exactly
-        // as the property-costs bucket is above. Zero rate = flat-real (the sampled fee times CPI),
-        // the pre-2026-07-18 behaviour, so a null-careCostRealGrowth set reproduces byte-identically.
-        $careGrowth = $draws->careCostRealGrowth();
-        $careEscalation = $careGrowth > 0.0 ? (1.0 + $careGrowth) ** $yearIndex : 1.0;
-
-        // Pension Credit is assessable INCOME for the care financial assessment: the charging
-        // regulations take income into account unless it is expressly disregarded, and Guarantee
-        // Credit is not disregarded. Being tax-free it never reaches $taxablePerPerson, so a
-        // resident on the credit used to be assessed as if the state top-up were not theirs to
-        // contribute: the household banked it as income and was never charged it, while in life
-        // it is handed to the home. Counting it makes the pair reconcile: the award is credited
-        // as income above and charged back here, so a fully funded resident's credit is a wash.
-        // The household award is split per living member, because England assesses each resident
-        // individually and a couple with one partner in permanent care is treated as two single
-        // people for the credit — half of a couple's award is the resident's own money.
-        // v1 flag: that couple award is not re-computed as two single awards (two singles get
-        // more than a couple), so a couple's resident share is if anything understated.
-        $pensionCreditPerPerson = $aliveCount > 0 ? intdiv($benefitNominal, $aliveCount) : 0;
-
-        $careChargedNominal = 0;
-        foreach ($household->persons as $person) {
-            if (! ($alive[$person->id] ?? false)) {
-                continue;
+            // Support for Mortgage Interest: a household on Guarantee Credit qualifies with no waiting
+            // period, and DWP meets the interest on eligible mortgage capital (up to its cap, at its
+            // own standard rate) plus — for a pension-age claimant — the service charge and ground
+            // rent. It is a LOAN, so it is not credited as income: the bill simply stops arriving, and
+            // what was met is added to a charge on the home that is repaid on sale or at death. Both
+            // sides come off ONE figure, so what the household is spared and what it owes cannot
+            // disagree. {@see SupportForMortgageInterest}, board card 0045.
+            $smiMetNominal = $this->supportForMortgageInterestNominal(
+                $household, $state, $benefitNominal, $mortgagePaymentNominal, $propertyGrowth, $survivor, $yearIndex,
+            );
+            if ($smiMetNominal > 0) {
+                $spendNominal = max(0, $spendNominal - $smiMetNominal);
+                $essentialNominal = max(0, $essentialNominal - $smiMetNominal);
+                $state['smiBalance'] += $smiMetNominal;
             }
-            $feeReal = $draws->careAnnualCost($person->id, $ages[$person->id]);
-            if ($feeReal <= 0) {
-                continue;
-            }
-            $feeReal = (int) round($feeReal * $careEscalation);
-            $careChargedNominal += $this->careMeans->annualCharge(
-                grossAnnualFee: Money::fromPence((int) round($feeReal * $state['spendFactor'])),
-                capital: Money::fromPence($this->careAssessableCapital($household, $state, $person->id, $aliveCount)),
-                // Plus the CARE component of any disability award still in payment (board card
-                // 0050). A financial assessment takes Attendance Allowance and the DLA care
-                // component into account like any other undisregarded income; only the mobility
-                // component is left out, and it is left out by never being added here.
-                assessableAnnualIncome: Money::fromPence($taxablePerPerson[$person->id] + $pensionCreditPerPerson + $careComponentPerPerson[$person->id]),
-                peaUprating: $state['spendFactor'],
-            )->pence;
-        }
-        if ($careChargedNominal > 0) {
-            $spendNominal += $careChargedNominal;
-            $essentialNominal += $careChargedNominal;
-            $state['careRealTotal'] += (int) round($careChargedNominal / $state['spendFactor']);
-        }
 
-        // CGT on GIA gains realised AT the base date ({@see Household::$realisedGainsAtStart} —
-        // a year-0 purchase savings draw that sold GIA holdings). Charged up-front here, before
-        // the shortfall is funded, so a CGT bill the year's cash cannot cover is itself funded
-        // (or surfaces as unmet spend) like any other cost. The seed gains are then passed into
-        // fundShortfall so the annual exempt amount is shared ONCE between the seed and any
-        // in-year disposal — a year-0 disposal is taxed exactly once, never twice, never free.
-        // A GIA sold to buy a purchased life annuity earlier this year is the same kind of event,
-        // so it seeds the same way and shares the same annual exempt amount (board card 0060).
-        // A chattel sold this year (board card 0065) is the same kind of event and seeds the same
-        // way, so the sale of a painting and the sale of a share holding share one exempt amount.
-        $seedGains = $annuityGains;
-        foreach ($chattelGains as $pid => $gain) {
-            $seedGains[$pid] = ($seedGains[$pid] ?? 0) + $gain;
-        }
-        if ($yearIndex === 0 && $household->realisedGainsAtStart !== []) {
-            foreach ($household->realisedGainsAtStart as $pid => $gain) {
-                $seedGains[$pid] = ($seedGains[$pid] ?? 0) + $gain->pence;
-            }
-        }
-        if ($seedGains !== []) {
-            $seedCgt = $this->capitalGainsTax($seedGains, $taxablePerPerson, $alive);
-            if ($seedCgt > 0) {
-                $totalTaxNominal += $seedCgt;
-                $netCashNominal -= $seedCgt;
-            }
-        }
+            // Rent (the "sell and rent" leg) is an essential cost with its own inflation. It applies
+            // once the household no longer owns a home: always for a year-0 rent variant (no
+            // primaryResidence), or from the sale year for a forced sale. An owner still in the home
+            // pays no rent (even where a post-sale rent figure is set for the forced-sale years).
+            $ownsHome = $home !== null && ! $state['homeSold'];
+            $rentChargedNominal = 0;
+            $housingBenefitNominal = 0;
+            if ($settings->annualRent !== null && ! $ownsHome) {
+                $rentChargedNominal = (int) round($settings->annualRent->pence * $state['rentFactor']);
 
-        // Fund any shortfall from assets per the drawdown strategy.
-        $shortfall = $spendNominal - $netCashNominal;
-        $fundedNominal = 0;
-        $gainsThisYear = $seedGains;
-        if ($shortfall > 0) {
-            $funded = $this->fundShortfall($household, $settings, $state, $alive, $ages, $taxablePerPerson, $savingsPerPerson, $dividendsPerPerson, $shortfall, $thresholdFactor, $benefitNominal > 0, $seedGains);
-            $fundedNominal = $funded['funded'];
-            $totalTaxNominal += $funded['extraTax'];
-            // The tax-free quarter of a UFPLS-style ad-hoc draw goes on the tax-free cash line and
-            // only the balance on the drawdown line, which the ladder labels as taxable pension
-            // income (board card 0074). The two are one gross split in two, never two sums, so the
-            // year still reconciles to the money that left the pots.
-            $src['pension_lump_sum'] += $funded['fromPensionTaxFree'];
-            $src['pension_drawdown'] += $funded['fromPension'] - $funded['fromPensionTaxFree'];
-            $src['asset_drawdown'] += $funded['fromAssets'];
-            // The disposals that funded the year already counted against each person's CGT
-            // annual exempt amount (they include $seedGains, shared once), so bed-and-ISA below
-            // reads them rather than re-claiming an allowance that is already spent.
-            $gainsThisYear = $funded['realisedGain'];
-        } elseif ($shortfall < 0) {
-            // Surplus first funds any planned contributions to long-term assets
-            // (DC pension top-ups, regular account savings); what remains is saved as cash, in the
-            // name of whoever's income produced it (board card 0040). Banking it all to the first
-            // living person made the care means test, which assesses the individual, depend on the
-            // order the two people were typed in.
-            $surplus = -$shortfall;
-            $surplus -= $this->applyContributions($household, $state, $alive, $ages, $state['spendFactor'], $surplus);
-            if ($surplus > 0) {
-                foreach ($this->attributeSurplus($surplus, $netPerPerson, $alive) as $ownerId => $share) {
-                    $state['cash'][$ownerId] += $share;
+                // Housing Benefit meets some or all of that rent for a pension-age renter whose income
+                // and capital qualify (board card 0048). It comes off the rent rather than being
+                // credited as income, the way Council Tax Reduction comes off the council tax: it is
+                // paid towards one bill and cannot be spent on anything else, so banking it as income
+                // would let the household eat it.
+                //
+                // $rentChargedNominal stays the GROSS rent the landlord asks for, because that is what
+                // the deposit and the referencing warnings below are sized against: a letting agent's
+                // affordability test is on the rent, not on what the tenant is left paying.
+                $housingBenefitNominal = $this->housingBenefitNominal($household, $state, $pensionCreditAward, $rentChargedNominal);
+                $rentPaidNominal = max(0, $rentChargedNominal - $housingBenefitNominal);
+
+                $spendNominal += $rentPaidNominal;
+                $essentialNominal += $rentPaidNominal;
+            }
+
+            // Property running costs (maintenance, insurance) for owners are essential too — the
+            // counterpart to a renter's rent. They stop once the home is sold.
+            if ($household->primaryResidence?->runningCosts !== null && ! $state['homeSold']) {
+                // Only the household's share of the running costs (it owns a share of the home, entered whole).
+                $runningNominal = (int) round($household->primaryResidence->runningCosts->pence * $state['spendFactor'] * $state['ownershipShare']);
+                $spendNominal += $runningNominal;
+                $essentialNominal += $runningNominal;
+            }
+
+            // Council tax, held apart from the running costs above because it is the one that
+            // SHRINKS — see councilTaxNominal for the three reliefs and the order they apply in.
+            $councilTaxNominal = $this->councilTaxNominal($household, $state, $pensionCreditAward, $aliveCount);
+            $spendNominal += $councilTaxNominal;
+            $essentialNominal += $councilTaxNominal;
+
+            // Late-life care costs (a Monte Carlo risk; the draws return 0 for the deterministic and
+            // historical views). Care is an essential outflow, so it lifts both the target and the
+            // essential floor and is funded like any spend; the real total is accumulated for the
+            // result so the risk is visible, not silently buried in the success rate. careAnnualCost
+            // is the gross self-funder fee in today's money, inflated by spendFactor like the rest
+            // of spend — the means test then caps each resident's year at what the household
+            // actually bears (a self-funder pays the full fee; once their own capital falls to the
+            // upper limit the local authority pays the balance above the income-based contribution).
+            // Assessed per person, England's individual assessment: the resident's own accounts,
+            // their own taxable income, and the home only when no partner still lives in it (or it
+            // is let) — see careAssessableCapital.
+            // Care fees are the fastest-inflating major late-life cost (largely National-Living-Wage-
+            // pinned staff cost, ratcheted above prices), so they carry an optional REAL escalation on
+            // top of the CPI everyone rides — compounded per projection year here in real pence, exactly
+            // as the property-costs bucket is above. Zero rate = flat-real (the sampled fee times CPI),
+            // the pre-2026-07-18 behaviour, so a null-careCostRealGrowth set reproduces byte-identically.
+            $careGrowth = $draws->careCostRealGrowth();
+            $careEscalation = $careGrowth > 0.0 ? (1.0 + $careGrowth) ** $yearIndex : 1.0;
+
+            // Pension Credit is assessable INCOME for the care financial assessment: the charging
+            // regulations take income into account unless it is expressly disregarded, and Guarantee
+            // Credit is not disregarded. Being tax-free it never reaches $taxablePerPerson, so a
+            // resident on the credit used to be assessed as if the state top-up were not theirs to
+            // contribute: the household banked it as income and was never charged it, while in life
+            // it is handed to the home. Counting it makes the pair reconcile: the award is credited
+            // as income above and charged back here, so a fully funded resident's credit is a wash.
+            // The household award is split per living member, because England assesses each resident
+            // individually and a couple with one partner in permanent care is treated as two single
+            // people for the credit — half of a couple's award is the resident's own money.
+            // v1 flag: that couple award is not re-computed as two single awards (two singles get
+            // more than a couple), so a couple's resident share is if anything understated.
+            $pensionCreditPerPerson = $aliveCount > 0 ? intdiv($benefitNominal, $aliveCount) : 0;
+
+            $careChargedNominal = 0;
+            foreach ($household->persons as $person) {
+                if (! ($alive[$person->id] ?? false)) {
+                    continue;
+                }
+                $feeReal = $draws->careAnnualCost($person->id, $ages[$person->id]);
+                if ($feeReal <= 0) {
+                    continue;
+                }
+                $feeReal = (int) round($feeReal * $careEscalation);
+                $careChargedNominal += $this->careMeans->annualCharge(
+                    grossAnnualFee: Money::fromPence((int) round($feeReal * $state['spendFactor'])),
+                    capital: Money::fromPence($this->careAssessableCapital($household, $state, $person->id, $aliveCount)),
+                    // Plus the CARE component of any disability award still in payment (board card
+                    // 0050). A financial assessment takes Attendance Allowance and the DLA care
+                    // component into account like any other undisregarded income; only the mobility
+                    // component is left out, and it is left out by never being added here.
+                    assessableAnnualIncome: Money::fromPence($taxablePerPerson[$person->id] + $pensionCreditPerPerson + $careComponentPerPerson[$person->id]),
+                    peaUprating: $state['spendFactor'],
+                )->pence;
+            }
+            if ($careChargedNominal > 0) {
+                $spendNominal += $careChargedNominal;
+                $essentialNominal += $careChargedNominal;
+                $state['careRealTotal'] += (int) round($careChargedNominal / $state['spendFactor']);
+            }
+
+            // CGT on GIA gains realised AT the base date ({@see Household::$realisedGainsAtStart} —
+            // a year-0 purchase savings draw that sold GIA holdings). Charged up-front here, before
+            // the shortfall is funded, so a CGT bill the year's cash cannot cover is itself funded
+            // (or surfaces as unmet spend) like any other cost. The seed gains are then passed into
+            // fundShortfall so the annual exempt amount is shared ONCE between the seed and any
+            // in-year disposal — a year-0 disposal is taxed exactly once, never twice, never free.
+            // A GIA sold to buy a purchased life annuity earlier this year is the same kind of event,
+            // so it seeds the same way and shares the same annual exempt amount (board card 0060).
+            // A chattel sold this year (board card 0065) is the same kind of event and seeds the same
+            // way, so the sale of a painting and the sale of a share holding share one exempt amount.
+            $seedGains = $annuityGains;
+            foreach ($chattelGains as $pid => $gain) {
+                $seedGains[$pid] = ($seedGains[$pid] ?? 0) + $gain;
+            }
+            if ($yearIndex === 0 && $household->realisedGainsAtStart !== []) {
+                foreach ($household->realisedGainsAtStart as $pid => $gain) {
+                    $seedGains[$pid] = ($seedGains[$pid] ?? 0) + $gain->pence;
                 }
             }
+            if ($seedGains !== []) {
+                $seedCgt = $this->capitalGainsTax($seedGains, $taxablePerPerson, $alive);
+                if ($seedCgt > 0) {
+                    $totalTaxNominal += $seedCgt;
+                    $netCashNominal -= $seedCgt;
+                }
+            }
+
+            // Fund any shortfall from assets per the drawdown strategy.
+            $shortfall = $spendNominal - $netCashNominal;
+            $fundedNominal = 0;
+            $gainsThisYear = $seedGains;
+            $taxablePensionDrawn = 0;
+            if ($shortfall > 0) {
+                $funded = $this->fundShortfall($household, $settings, $state, $alive, $ages, $taxablePerPerson, $savingsPerPerson, $dividendsPerPerson, $shortfall, $thresholdFactor, $onGuaranteeCredit, $seedGains);
+                $fundedNominal = $funded['funded'];
+                $totalTaxNominal += $funded['extraTax'];
+                // The tax-free quarter of a UFPLS-style ad-hoc draw goes on the tax-free cash line and
+                // only the balance on the drawdown line, which the ladder labels as taxable pension
+                // income (board card 0074). The two are one gross split in two, never two sums, so the
+                // year still reconciles to the money that left the pots.
+                $src['pension_lump_sum'] += $funded['fromPensionTaxFree'];
+                $src['pension_drawdown'] += $funded['fromPension'] - $funded['fromPensionTaxFree'];
+                $src['asset_drawdown'] += $funded['fromAssets'];
+                // What the means test can see of that draw: the TAXABLE part alone. The tax-free
+                // quarter is capital in the claimant's hands, not income, so it is left out here
+                // and the capital it becomes is assessed the way any other capital is — by the
+                // tariff, at the open of the year after it was drawn.
+                $taxablePensionDrawn = $funded['fromPension'] - $funded['fromPensionTaxFree'];
+                // The disposals that funded the year already counted against each person's CGT
+                // annual exempt amount (they include $seedGains, shared once), so bed-and-ISA below
+                // reads them rather than re-claiming an allowance that is already spent.
+                $gainsThisYear = $funded['realisedGain'];
+            } elseif ($shortfall < 0) {
+                // Surplus first funds any planned contributions to long-term assets
+                // (DC pension top-ups, regular account savings); what remains is saved as cash, in the
+                // name of whoever's income produced it (board card 0040). Banking it all to the first
+                // living person made the care means test, which assesses the individual, depend on the
+                // order the two people were typed in.
+                $surplus = -$shortfall;
+                $surplus -= $this->applyContributions($household, $state, $alive, $ages, $state['spendFactor'], $surplus);
+                if ($surplus > 0) {
+                    foreach ($this->attributeSurplus($surplus, $netPerPerson, $alive) as $ownerId => $share) {
+                        $state['cash'][$ownerId] += $share;
+                    }
+                }
+            }
+
+            // Has the pass settled? It has when re-assessing the award on the income this pass
+            // actually produced leaves the award where the pass had it. A household with no award
+            // is settled by definition: no further income can claw back a credit of nil.
+            $reassessed = $benefitNominal === 0 ? null : $awardAssessedOn($taxablePensionDrawn);
+            if ($benefitNominal === 0
+                || $taxablePensionDrawn === $assessedDrawNominal
+                || ($reassessed?->guaranteeCreditWeekly->pence ?? 0) === $pensionCreditAward?->guaranteeCreditWeekly->pence) {
+                break;
+            }
+            if ($pass >= self::MAX_PENSION_CREDIT_PASSES) {
+                // Not settled inside the budget. The last pass stands, with its award assessed on
+                // the pass before it — the same one-directional answer the engine gave before this
+                // card, for the one shape of household the iteration cannot pin down. It is not
+                // reachable by the arithmetic below (the step lands exactly on a straight line, and
+                // the taper is one), so it is a backstop rather than a case.
+                break;
+            }
+
+            // Where to assess the next pass. Each pound of assessable income takes a pound of the
+            // award, and each pound of award lost has to be drawn out of the pot instead, so
+            // stepping straight to what this pass drew converges by only a quarter of the gap at a
+            // time (three quarters of a draw is taxable) and would need scores of passes to land on
+            // the penny. The gap between what a pass assessed and what it drew is a straight line
+            // in that assessed figure, so the secant through the last two passes lands on its root
+            // at once; the first pass has no second point and takes the plain step.
+            $gap = $taxablePensionDrawn - $assessedDrawNominal;
+            $next = $previousGap !== null && $previousGap !== $gap
+                ? (int) round($assessedDrawNominal - $gap * ($assessedDrawNominal - $previousAssessedDraw) / ($gap - $previousGap))
+                : $taxablePensionDrawn;
+            $previousAssessedDraw = $assessedDrawNominal;
+            $previousGap = $gap;
+            $assessedDrawNominal = max(0, $next);
+            $pensionCreditAward = $awardAssessedOn($assessedDrawNominal);
+
+            $state = $passState;
+            $spendNominal = $passSpendNominal;
+            $essentialNominal = $passEssentialNominal;
+            $netCashNominal = $passNetCashNominal;
+            $grossIncomeNominal = $passGrossIncomeNominal;
+            $totalTaxNominal = $passTotalTaxNominal;
+            $src = $passSrc;
         }
+
+        // The two contingency disclosures the award itself cannot carry (board card 0046), built
+        // on the SETTLED award and on the state the means test read — the year's assets are drawn
+        // down and its surplus banked above, and a warning computed off that later state would
+        // describe a different household.
+        $benefitWarnings = $this->benefitContingencyWarnings($household, $stateAtAward, $pensionCreditAward, $benefitNominal > 0, $alive, $calendarYear);
 
         // Board card 0073. The annual allowance is settled HERE and nowhere else: after every
         // contribution route (employer, net-pay, surplus) and after every withdrawal that can set
@@ -1967,8 +2079,16 @@ final class PathProjector
      *                                               28 days of the benefit itself: the annual grid
      *                                               cannot pay a part-year addition, and dropping it
      *                                               is the adverse of the two roundings.
+     * @param  int  $extraAssessableAnnual  taxable pension money the year is expected to draw to
+     *                                      cover its shortfall, which is assessable income like
+     *                                      any other pension income (board card 0077). It is not
+     *                                      in $taxablePerPerson, which is the income known BEFORE
+     *                                      the shortfall is funded, and the caller settles the two
+     *                                      against each other. Household-level: Guarantee Credit
+     *                                      is assessed on the household's income, so which member
+     *                                      drew it does not change the award.
      */
-    private function pensionCreditAward(Household $household, array $state, array $alive, int $calendarYear, array $ages, array $taxablePerPerson, int $aliveCount, array $excludedFromAssessable = [], array $inFundedCarePlacement = []): ?PensionCreditResult
+    private function pensionCreditAward(Household $household, array $state, array $alive, int $calendarYear, array $ages, array $taxablePerPerson, int $aliveCount, array $excludedFromAssessable = [], array $inFundedCarePlacement = [], int $extraAssessableAnnual = 0): ?PensionCreditResult
     {
         $weeksPerYear = $this->config->statePension->weeksPerYear;
 
@@ -2036,7 +2156,7 @@ final class PathProjector
             }
         }
 
-        $assessableIncomeWeekly = Money::fromPence((int) round($assessableAnnual / $weeksPerYear));
+        $assessableIncomeWeekly = Money::fromPence((int) round(($assessableAnnual + $extraAssessableAnnual) / $weeksPerYear));
 
         $applicableBase = $this->pensionCredit->applicableAmountWeekly($aliveCount === 2, $severeDisability, $carers);
         $applicableWeekly = Money::fromPence((int) round($applicableBase->pence * $state['spFactor']));
@@ -3545,13 +3665,11 @@ final class PathProjector
             $drawNonPension();                  // remaining GIA (CGT on gains beyond the AEA)
             // Remaining pension - last resort. On Guarantee Credit this is the ONLY pension step:
             // capital comes first precisely so the credit is not clawed back pound for pound.
-            // NOTE what the model does NOT do: this year's award was already assessed in
-            // {@see pensionCreditAward}, from the income known BEFORE the shortfall is
-            // funded, and nothing here writes back. So no ad-hoc draw - taxed or tax-free -
-            // reduces the award, in this year or any later one. A v1 simplification, and the
-            // un-cautious side: in life a drawdown draw is assessable income and would cut the
-            // credit. Assessing after the draw needs a fixed point (the award moves the shortfall,
-            // which moves the draw, which moves the award), which is board card 0077.
+            // What the taxable part of this draw does to the award is settled by the caller, which
+            // re-assesses the means test on it and funds the year again until the two agree
+            // ({@see projectYear}, board card 0077). $onGuaranteeCredit is therefore read as at
+            // the pass being run: once the claw-back has taken the whole award, the order stops
+            // avoiding the pension, because there is no longer a credit to protect.
             $drawPensionUfpls(null);
         } elseif ($strategy === DrawdownStrategy::PensionAware) {
             $drawPension($basicLimit);   // pension up to the basic-rate band first

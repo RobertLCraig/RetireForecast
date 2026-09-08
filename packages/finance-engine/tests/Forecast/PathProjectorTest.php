@@ -619,18 +619,20 @@ final class PathProjectorTest extends TestCase
             $fillBands->years[1]->pensionWealth->pence,
         );
 
-        // ...and the point of preferring capital is the credit it saves: across the plan the
-        // Pension-Credit-aware order keeps strictly more Guarantee Credit than the order that
-        // draws pension income, which the means test claws back £-for-£.
-        $credit = function ($forecast): int {
-            $total = 0;
-            foreach ($forecast->years as $year) {
-                $total += $year->incomeBySource['means_tested_benefit']->pence;
-            }
+        // ...and the point of preferring capital is the credit it saves in the years it prefers
+        // it: while the cash lasts the Pension-Credit-aware order takes nothing taxable out of
+        // the pension and keeps its whole award, where the order that draws pension income has
+        // the award taken off it pound for pound from year 0.
+        $this->assertGreaterThan(0, $fillBands->years[0]->incomeBySource['means_tested_benefit']->pence);
+        $this->assertSame(0, $pensionAware->years[0]->incomeBySource['means_tested_benefit']->pence);
 
-            return $total;
-        };
-        $this->assertGreaterThan($credit($pensionAware), $credit($fillBands));
+        // What is deliberately NOT asserted, and used to be: that this order keeps more credit
+        // across the WHOLE plan. It does not, and board card 0077 is what changed the answer.
+        // Once a draw actually reduces the award, the claw-back is capped at the year the draw
+        // is made in, so a few large draws cost less credit in total than the same money taken
+        // in small amounts over many years, and deferring the pension until the cash is gone is
+        // what spreads it. Whether the order should answer that is board card 0143; this test
+        // guards the rule the order states, not a total that now turns on the shape of the draw.
     }
 
     /**

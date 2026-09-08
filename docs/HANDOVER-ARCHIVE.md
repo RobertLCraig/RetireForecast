@@ -6,6 +6,21 @@
 > that); this is the "how we got here" detail. Each item also has a dated DECISIONS.md
 > entry and the full record in `git log`. Newest-first within each part.
 
+## Card 0052, moved out of the live handover on 2026-09-08
+
+Folded out to make room for card 0077 while keeping the live brief loadable in one session. It is
+copy, no figure moves, and no stored run is owed for it.
+
+**A shortfall now says what kind of bill it is, and a failing plan is pointed at free debt help.**
+`ResultPresenter::priorityDebtGuidance()` owns the framing and rides the ladder array as
+`priorityDebt`, so the results page and the PDF carry the same words beside the same unmet-spend
+table. It reads the FIRST year the plan cannot fund its spending; secured is decided by whether that
+year still owes a mortgage (`YearResult::mortgageBalance()`), so a renter is never told a home is at
+stake. Both cases name mortgage and council tax as priority debts; a secured one adds the lender's
+forbearance duty and the court's power to suspend possession. `sources-and-contacts.blade.php` grew
+a fourth `showBenefitsDebt` column (Citizens Advice, National Debtline, StepChange, Turn2us,
+Shelter), on wherever a plan runs short or holds a mortgage, mirrored in the PDF.
+
 ## Card 0047, moved out of the live handover on 2026-09-08
 
 Folded out to make room for card 0076 while keeping the live brief loadable in one session. The

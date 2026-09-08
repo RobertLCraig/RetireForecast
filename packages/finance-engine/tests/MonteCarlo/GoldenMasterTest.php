@@ -80,13 +80,13 @@ final class GoldenMasterTest extends TestCase
      * @var array<string, int|string>
      */
     private const PINNED = [
-        'successProbabilityEssentials' => '0.5150',
+        'successProbabilityEssentials' => '0.4850',
         'successProbabilityFullSpend' => '0.0150',
         'terminalWealth.p10' => 3796678,
-        'terminalWealth.p25' => 20744172,
-        'terminalWealth.p50' => 37464678,
-        'terminalWealth.p75' => 71812438,
-        'terminalWealth.p90' => 108264592,
+        'terminalWealth.p25' => 19404532,
+        'terminalWealth.p50' => 36395284,
+        'terminalWealth.p75' => 71090928,
+        'terminalWealth.p90' => 107280928,
         'fan.bands' => 38,
         'fan.first.calendarYear' => 2026,
         'fan.first.p10' => 69036832,
@@ -94,12 +94,12 @@ final class GoldenMasterTest extends TestCase
         'fan.first.p90' => 69091951,
         'fan.middle.calendarYear' => 2045,
         'fan.middle.p10' => 16185116,
-        'fan.middle.p50' => 44092754,
-        'fan.middle.p90' => 101438717,
+        'fan.middle.p50' => 44072767,
+        'fan.middle.p90' => 101310658,
         'fan.last.calendarYear' => 2063,
-        'fan.last.p10' => 10069609,
-        'fan.last.p50' => 18807761,
-        'fan.last.p90' => 27545912,
+        'fan.last.p10' => 9578042,
+        'fan.last.p50' => 16349924,
+        'fan.last.p90' => 23121806,
     ];
 
     public function test_the_pinned_run_still_produces_the_pinned_numbers(): void

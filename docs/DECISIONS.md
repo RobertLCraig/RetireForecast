@@ -3,6 +3,52 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-08: the Pension Credit award and the pension draw are solved together
+**Context:** card 0077. The award for a year was worked out from the income the household was
+already receiving, and only then did the projector take money out of a pot to cover what was still
+unpaid. Nothing went back. A household could draw thousands out of a pension and keep a credit that
+the means test would have taken away pound for pound. Nobody chose that order; it is the one that
+does not need solving twice.
+
+**Decision: iterate to a fixed point, and settle on the award the year's own draw implies.** The
+award sets the shortfall, the shortfall sets the draw, and the draw sets the award, so the year is
+re-run against a restored state until re-assessing the means test on what the pass drew leaves the
+award where the pass had it. That equality, rather than a tolerance in pence, is the settling test,
+because the award is quantised to whole weekly pence and a penny of wobble in the draw cannot move
+it. The step between passes is a secant rather than a plain substitution: three quarters of a draw
+is taxable, so plain substitution closes only a quarter of the gap each time and would need scores
+of passes to land on the penny, while the gap is a straight line in the figure being solved for and
+the secant lands on its root in three. `PathProjector::MAX_PENSION_CREDIT_PASSES` bounds it at
+eight, and on that budget being exhausted the last pass stands, which is the pre-card answer.
+
+**Decision: only the TAXABLE part of a draw is assessed.** A pension lump sum is capital in the
+claimant's hands, not income; the capital it becomes is then assessed the way all capital is, by the
+tariff, at the open of the following year. Assessing the gross would have taken about a third more
+credit than the rules allow.
+
+**Decision: the draw ORDER is settled once, before the year draws anything, and does not move with
+the claw-back.** Letting each pass read its own clawed-back award put the iteration on the wrong one
+of two self-consistent answers: a pass that had lost the whole award stopped protecting a credit it
+no longer had, filled the free tax bands out of the pension, and left untouched the capital that
+would have kept the award. Whether the household is on Guarantee Credit is a fact about the
+household before it draws, which is also how a real person decides.
+
+**Monte Carlo golden master pinned 2026-09-08** (second pin of the day; this supersedes the pin made
+for card 0064). The frozen household reaches Guarantee Credit late in life on many paths and draws a
+pension there, so it now loses that credit: essentials success falls from 0.5150 to 0.4850, terminal
+wealth falls at every percentile above p10, and the last fan band falls hardest. `PIN_REVISION` was
+already today's date, so its companion test could not demand this entry; it is written because the
+figures moved, not because a test asked.
+
+**Known, and carded rather than fixed:** the claw-back is capped at the year it happens in, so the
+same total pension money costs less credit drawn in a few large amounts than in small amounts over
+many years. The Pension-Credit-aware draw order defers the pension until the capital is gone and so
+does the second of those, which on the household in
+`PathProjectorTest::test_fill_bands_is_pension_credit_aware_and_leaves_the_pension_intact` now keeps
+less credit across the plan than the order it is meant to beat. That is a question about the order,
+not about the means test, and it is board card 0143.
+**Status:** active
+
 ## 2026-09-08: spendable wealth is netted at the projected marginal rate, not at encashment rates
 **Context:** card 0076. "How much you would have left" added the pension pot to the cash and
 investments at face value. Three quarters of a pot is taxable on the way out, and that figure is
