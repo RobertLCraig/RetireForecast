@@ -16,7 +16,6 @@ So any change to draw ordering silently re-rolls every stored result and the sui
 The exposed places are `ReturnModel::generatePath()`, `JointLifeSampler::sampleDeathAge()` - which
 consumes a **variable** number of draws, one per year of life - and `CareCostSampler`.
 
-The engineer called this the cheapest high-value test in the codebase, at about an hour.
 
 ## Not this card
 Changing any sampling behaviour. This card only pins what it currently does.
@@ -31,6 +30,9 @@ Changing any sampling behaviour. This card only pins what it currently does.
 - [x] Add `packages/finance-engine/tests/MonteCarlo/GoldenMasterTest.php` using `HouseholdFixture`
 - [x] Pin the essentials probability, a terminal-wealth percentile and a fan-chart point
 - [x] Note in the test docblock that a diff here needs a DECISIONS entry
+
+## Plan
+The engineer called a golden master the cheapest high-value test in the codebase, at about an hour.
 
 ## Comments
 

@@ -9,12 +9,11 @@ Two related problems with how a flat's running costs behave over a projection.
 **No lumpy capital item.** Service charges escalate smoothly and there is no major-works event
 anywhere. A Section 20 demand on a block is legally enforceable, cannot be deferred, and lands as
 one bill. That is exactly the shape of liability a survivor on a thin margin cannot absorb, and no
-scenario carries one. The machinery already exists - `oneOffCosts`, used for the park-home re-roof.
+scenario carries one.
 
 **The escalator is too benign.** Block insurance, building-safety compliance and energy inside a
 service charge have all compounded faster than CPI since 2019. A service charge that includes water
-and electricity is exposed to energy prices that no CPI escalator captures. The property reviewer
-would model CPI plus 3% real, with CPI plus 1.5% as the optimistic sensitivity.
+and electricity is exposed to energy prices that no CPI escalator captures.
 
 Over a long projection that difference is thousands a year of real spend, concentrated in the
 survivor years. It can flip a verdict on its own.
@@ -40,6 +39,12 @@ Utilities and insurance categorisation, which is card 0033.
 - [x] Re-source the leasehold default for `propertyCostsRealGrowth`, with `source` and `verified_on`
 - [x] Disclose it via `assumedFigures()`, reading the constant that owns it
 - [ ] Re-run every stored scenario
+
+## Plan
+The machinery for the lumpy item already exists: `oneOffCosts`, used for the park-home re-roof.
+
+The escalator the property reviewer would model is CPI plus 3% real, with CPI plus 1.5% as the
+optimistic sensitivity.
 
 ## Comments
 

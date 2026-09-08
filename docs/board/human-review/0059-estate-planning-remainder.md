@@ -24,8 +24,8 @@ field anywhere for beneficial shares or for how the property is co-owned. It is 
 couple is married and material the moment they are not.
 
 **Lifetime gifting is absent.** No gifts out, no seven-year taper, no annual exemption, no normal
-expenditure out of income. The estate planner's recommendation is to **leave this out** for now: it
-is honestly disclosed, and the other cards come first.
+expenditure out of income. It is honestly disclosed, so a reader is not misled, but a household
+that gifts cannot model what the gift does.
 
 ## Links
 
@@ -53,6 +53,10 @@ Gift with reservation of benefit and deprivation warnings, which are card 0049.
 - [x] Add the funded nursing care deduction to `CareAssumptions`, sourced
 - [x] Add a Continuing Healthcare note to the care panel
 - [x] Add beneficial shares, or disclose the 50/50 assumption
+
+## Plan
+The estate planner's recommendation on lifetime gifting is to **leave it out** for now: it is
+honestly disclosed, and the other cards come first.
 
 ## Comments
 

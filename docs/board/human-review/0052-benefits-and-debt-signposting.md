@@ -14,13 +14,12 @@ There is also no route to help. `sources-and-contacts.blade.php` has three colum
 money, later-life mortgages, and capital gains. There is no benefits column and no debt column, so
 a household whose plan fails is pointed at the investment world and nowhere else.
 
-The reviewer called this the cheapest gap to close in the whole report, because it is copy rather
-than engine, and the gap that would embarrass the tool most in front of a caseworker.
+The reviewer called this the gap that would embarrass the tool most in front of a caseworker.
 
-Worth adding at the same time: a household facing an unaffordable mortgage in later life can ask
-the lender for forbearance under its regulatory duties, and a court has powers to suspend
-possession where arrears can be cleared over a reasonable period. Neither is in the tool's
-vocabulary.
+Two real-world routes out are missing from the tool's vocabulary as well. A household facing an
+unaffordable mortgage in later life can ask the lender for forbearance under its regulatory duties,
+and a court has powers to suspend possession where arrears can be cleared over a reasonable period.
+A reader is told about neither.
 
 ## Not this card
 Modelling arrears, possession or a debt-management plan. This card is framing and signposting.
@@ -36,6 +35,10 @@ Modelling arrears, possession or a debt-management plan. This card is framing an
 - [x] Add the benefits and debt column to `sources-and-contacts.blade.php`
 - [x] Add the secured-shortfall wording to `ResultPresenter`, so the PDF inherits it
 - [x] Add the priority-debt note to the unmet-spend output
+
+## Plan
+The cheapest gap to close in the whole report, in the reviewer's words, because it is copy rather
+than engine. Add the forbearance and possession-suspension wording in the same pass.
 
 ## Comments
 

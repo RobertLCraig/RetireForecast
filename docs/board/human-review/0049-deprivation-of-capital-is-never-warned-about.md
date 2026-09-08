@@ -14,16 +14,13 @@ money as still held where avoiding a charge was a significant motivation and the
 reasonably foreseeable. A local authority can recover from the person who received the money.
 Neither rule has a time limit.
 
-This does not need a calculation engine. It needs a warning on events the model already knows
-about: a pension lump sum or withdrawal, a capital receipt, a large one-off cost, a gift, a home
-sale.
+The events that raise the question are ones the model already knows about: a pension lump sum or
+withdrawal, a capital receipt, a large one-off cost, a gift, a home sale. The reader meets every one
+of them here and is told nothing about any of them.
 
-The right place is beside the lump-sum tax-shock output, because that is the screen where somebody
-decides to take money out of a pot.
-
-The related warning worth adding at the same time is gift with reservation of benefit - signing a
-home over to a child and continuing to live in it. It is the idea a household in this position
-hears from friends, and it is the one that costs them everything.
+Gift with reservation of benefit is the same silence: signing a home over to a child and continuing
+to live in it. It is the idea a household in this position hears from friends, and it is the one
+that costs them everything.
 
 ## Links
 
@@ -45,6 +42,11 @@ Modelling gifts out, PETs and the seven-year taper. That is card 0059.
 - [x] Add a deprivation `WarningCode` triggered by the existing capital events
 - [ ] Surface it beside the lump-sum output and on the capital and care panels
 - [x] Add the reservation-of-benefit warning to the equity-release copy
+
+## Plan
+This does not need a calculation engine. It needs a warning on the events listed in `## Why`, and
+the right place for it is beside the lump-sum tax-shock output, because that is the screen where
+somebody decides to take money out of a pot. Add the gift-with-reservation warning in the same pass.
 
 ## Comments
 

@@ -19,7 +19,6 @@ debt passes the property value the no-negative-equity floor binds, so terminal w
 and the property is fully consumed. A reader sees a number and assumes it is the home minus some
 cost. It is not the home at all.
 
-`IhtDistribution` already reports the tax as a distribution, so the machinery exists.
 
 ## Links
 
@@ -42,6 +41,9 @@ Leading the results page with the probability, which is card 0010.
 - [x] Add a terminal-wealth percentile series to `Simulator`, as `IhtDistribution` already does
 - [x] Use it in `ScenarioCompare` and the estate panel
 - [x] Add the plain-words equity-release sentence and the caveat to `ResultPresenter`, so the PDF inherits both
+
+## Plan
+`IhtDistribution` already reports the tax as a distribution, so the machinery exists.
 
 ## Comments
 

@@ -20,9 +20,6 @@ fix applies word for word to the income replacing it, and was not carried across
 The transition year is exactly where an affordability cliff would show, and all three errors point
 the same way.
 
-Two of the three fixes need the State Pension age **month**, which `initialState()` already
-computes and then discards.
-
 ## Not this card
 The salary proration, which is already correct.
 
@@ -39,6 +36,10 @@ The salary proration, which is already correct.
 - [x] Apply the fraction in `statePensionIncome`, `dbIncome` and `niForPerson`
 - [x] Tests for a birthday in each quarter
 - [ ] Re-run every stored scenario
+
+## Plan
+Two of the three fixes need the State Pension age **month**, which `initialState()` already
+computes and then discards.
 
 ## Comments
 

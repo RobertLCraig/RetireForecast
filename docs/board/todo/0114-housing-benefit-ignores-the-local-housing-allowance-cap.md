@@ -15,15 +15,6 @@ The reason it shipped that way is that the engine holds no LHA table and cannot 
 is one rate per broad rental market area per bedroom entitlement, re-set every April, and the
 unattended session that built card 0048 had **no web access**.
 
-Two shapes of answer, and the choice between them is the work here:
-
-1. **A builder input.** The reader looks their LHA rate up on gov.uk and enters it, and the engine
-   caps eligible rent at it. Cheap, exact for the household that does the lookup, and consistent
-   with how every other local figure (the council tax bill, the service charge) reaches this tool.
-   A blank input then has to mean something, and the adverse reading is to cap at nothing entered.
-2. **A shipped table.** Accurate with no lookup, and stale within a year unless somebody re-fetches
-   190-odd areas every April.
-
 ## Links
 
 **Relates to**
@@ -48,6 +39,15 @@ beside this one and are not carded.
 - [ ] Bump `ScenarioForecaster::ENGINE_VERSION`: every capped rent plan moves.
 
 ## Plan
+**Two shapes of answer, and choosing between them is Task 1.**
+
+1. **A builder input.** The reader looks their LHA rate up on gov.uk and enters it, and the engine
+   caps eligible rent at it. Cheap, exact for the household that does the lookup, and consistent
+   with how every other local figure (the council tax bill, the service charge) reaches this tool.
+   A blank input then has to mean something, and the adverse reading is to cap at nothing entered.
+2. **A shipped table.** Accurate with no lookup, and stale within a year unless somebody re-fetches
+   190-odd areas every April.
+
 Stand in `C:\Dev\RetireForecast` on `master`. One engine file holds the award
 (`packages/finance-engine/src/Benefits/HousingBenefit.php`) and one call site charges it
 (`PathProjector::housingBenefitNominal`). The note is in `ResultPresenter::inputNotes`, marked

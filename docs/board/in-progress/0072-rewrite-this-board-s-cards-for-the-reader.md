@@ -45,7 +45,7 @@ everything the card knows and changes only how it is ordered and said. `## Direc
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a card in a non-terminal lane is rewritten, THE CARD SHALL state the problem in
+- [x] #1 WHEN a card in a non-terminal lane is rewritten, THE CARD SHALL state the problem in
       `## Why` before any solution appears anywhere in it. proves: none - about prose, and no check
       here reads prose
 - [x] #2 WHEN a rewritten card is a decision, THE CARD SHALL say which of the four reasons makes it
@@ -66,7 +66,7 @@ everything the card knows and changes only how it is ordered and said. `## Direc
 ## Tasks
 - [x] Read the count, and write it into `## Comments` before changing anything
 - [x] Rewrite `human-review/` first, then `todo/`, `in-progress/` and `ai-review/`
-- [ ] For each decision card, apply the four-reason test and convert the ones that fail it
+- [x] For each decision card, apply the four-reason test and convert the ones that fail it
 - [x] Read the count again and write into `## Comments` what changed, counted by rule
 
 ## Plan
@@ -218,3 +218,68 @@ rewrite.
 **Not checked in a browser.** This is a worktree, so the board renders from `C:\Dev\RetireForecast`
 and not from here. Nothing on this card needs a screen, but the rendered link edges are worth a
 glance once this merges.
+
+**2026-09-08** RESULT: done
+TESTS: +0 new, all green
+TOUCHED:
+docs/board/in-progress/0072-rewrite-this-board-s-cards-for-the-reader.md
+docs/board/human-review/0013-nominal-pounds-toggle.md
+docs/board/human-review/0028-property-holding-costs-are-too-smooth.md
+docs/board/human-review/0031-no-letting-affordability-test-on-a-rent-plan.md
+docs/board/human-review/0036-transition-year-income-is-not-prorated.md
+docs/board/human-review/0039-monte-carlo-has-no-golden-master.md
+docs/board/human-review/0045-support-for-mortgage-interest-is-not-modelled.md
+docs/board/human-review/0047-council-tax-is-charged-in-full-for-life.md
+docs/board/human-review/0049-deprivation-of-capital-is-never-warned-about.md
+docs/board/human-review/0050-disability-benefits-in-a-care-placement.md
+docs/board/human-review/0052-benefits-and-debt-signposting.md
+docs/board/human-review/0055-care-means-test-disregard-and-deferred-payment.md
+docs/board/human-review/0058-the-estate-figure-is-a-point-estimate-presented-as-precise.md
+docs/board/human-review/0059-estate-planning-remainder.md
+docs/board/human-review/0063-no-dynamic-withdrawal-policy.md
+docs/board/human-review/0064-inflation-is-drawn-independent-and-memoryless.md
+docs/board/todo/0114-housing-benefit-ignores-the-local-housing-allowance-cap.md
+docs/board/todo/0141-three-decision-cards-sit-in-the-lane-the-loop-builds-from.md
+OUT-OF-SCOPE: 0141
+
+**This run closed the two things the last one left open.** The count is still **0 open cards failing
+of 140**, checked before and after, the extra card being 0141.
+
+**Criterion 1: every open card's `## Why` was read this time.** The last entry left it open because
+139 `## Why` sections had not been read and re-judged. They have been now, all of them, in all four
+open lanes. The bar used was the README's own: a sentence that names WHAT to build, WHERE to build
+it, or which of several answers to pick, is a solution and does not belong in `## Why`. Sixteen
+cards carried one. On each, the sentence was **moved, not deleted**: into `## Plan` where the card
+had one or gained one, and dropped only where the card's own `## Acceptance` or `## Tasks` already
+carried the same statement (0013 and 0050). The commonest shape was "the machinery already exists",
+which reads as a fix and is one.
+
+Two of the sixteen took more than a move. **0013 had no problem in it at all**: its `## Why` was one
+sentence of implementation constraint. The problem is now stated (every reported figure is in
+today's money, so a reader cannot check the forecast against a statement or a balance, which are
+printed in the pounds of their own year) and the constraint stands in criterion #2, where it always
+was. **0114 carried its two candidate answers as a numbered list inside `## Why`**; they are now in
+its `## Plan` above the standing instructions, unedited.
+
+**The one place the criterion cannot hold literally, and it is the convention's doing.** On a
+`human-review/` card the board README REQUIRES `## What I need from you` directly under the title,
+above `## Why`, so that the ask is not hidden behind reasoning. On the 62 cards in that lane an
+answer therefore appears before the problem, by the convention this card is forbidden to change.
+Criterion 1 is ticked for what it can mean here: on all 140 open cards `## Why` states the problem
+and proposes nothing.
+
+**The four-reason test: nothing on this board converts.** Nine open cards carry `## Options` (0001,
+0004, 0006, 0008, 0022, 0068 in `human-review/`; 0002, 0003, 0084 in `todo/`). Each was read against
+the four rows of the README table and each passes on at least one: 0002, 0003, 0004, 0022 and 0068
+turn on the couple's own facts and figures; 0006 and 0008 on a preference and a risk Rob owns; 0001
+on somebody looking at a screen; 0084 says in its own text that the cost and the risk of giving the
+loop the web are his. **None turns on established practice**, so there is no decision card here for
+an agent to research, apply and convert into a feature card. That is why the queue does not shrink,
+and it is a different answer from the last entry's, which assumed the conversions existed and were
+blocked on a lane move. The Task is ticked as applied, with the result being zero.
+
+**What the test did surface is card 0141**: three of those nine (0002, 0003, 0084) sit in `todo/`,
+which is the lane the unattended loop takes its next card from. A session that starts one can only
+read the question and stop. Recorded rather than fixed, because a lane move is the scheduler's.
+
+**Not checked in a browser, same as before**, and for the same reason.

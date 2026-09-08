@@ -16,8 +16,6 @@ and ground rent, which matters on a leasehold flat.
 The rate is roughly a third of a commercial lifetime-mortgage roll-up rate on the same security. It
 is being compared against those products and it is not in the comparison.
 
-The mechanic already exists: a rolled-up balance with a no-negative-equity cap, as
-`Property::mortgageRollUpRate` and `growState` already do.
 
 ## Not this card
 Whether the household qualifies. That depends on Pension Credit, which is a separate question.
@@ -35,6 +33,10 @@ Whether the household qualifies. That depends on Pension Credit, which is a sepa
 - [ ] Source the rate and the capital cap, with `source` and `verified_on`
 - [x] Deduct the balance from the estate at death
 - [x] Show it alongside the equity-release comparison
+
+## Plan
+The mechanic already exists: a rolled-up balance with a no-negative-equity cap, as
+`Property::mortgageRollUpRate` and `growState` already do.
 
 ## Comments
 

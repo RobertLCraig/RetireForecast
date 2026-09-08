@@ -1,9 +1,13 @@
 # Nominal-pounds toggle
 
 ## Why
-Deferred from slice #3 of PLAN-output-inflation-and-charts.md. It needs the engine's internal
-pre-deflation figures exposed rather than a presenter re-inflation, because re-inflating in the
-presenter would drift from the engine's own numbers.
+Every figure the results page reports is in today's money, and the reader cannot get at any other
+view of it. A pension statement, a mortgage balance and a bank balance are all quoted in the pounds
+of the year they are printed in, so a reader who wants to check the forecast against the paper they
+already hold has nothing to check it against.
+
+Nobody decided to leave it out. It was slice #3 of PLAN-output-inflation-and-charts.md and the
+slice shipped without it.
 
 ## Not this card
 The wealth chart's terminal p25/p75, also still open from slice #3.

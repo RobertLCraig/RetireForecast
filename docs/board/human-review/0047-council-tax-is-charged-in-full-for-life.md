@@ -19,8 +19,6 @@ typical bill is well over a thousand pounds a year the model charges and they wo
 extra bathroom, a room used for the disabled person's needs, or space to use a wheelchair indoors -
 and it drops the bill a whole band. It is claimable now, not at some future point in the plan.
 
-The Council Tax Reduction calculation can reuse the Pension Credit applicable amount the engine
-already computes.
 
 ## Links
 
@@ -44,6 +42,10 @@ Pension Credit itself, which is card 0046.
 - [x] Apply the single-person discount from the first death
 - [x] Compute Council Tax Reduction from the existing applicable amount, sourced and dated
 - [x] Add the disabled band reduction as an input, and prompt for it
+
+## Plan
+The Council Tax Reduction calculation can reuse the Pension Credit applicable amount the engine
+already computes.
 
 ## Comments
 

@@ -15,9 +15,8 @@ The two ways round it are both costly and neither is modelled: a UK homeowner gu
 times, which a household that has just sold no longer has, or six to twelve months' rent in
 advance at every renewal, which locks up capital permanently.
 
-The tool already flags an unaffordable purchase rather than modelling it away. This is the same
-idea on the rent side, and it is the mirror of the survivor-affordability wall the model found on
-the mortgage side - which is the most valuable finding the tool has produced.
+This is the mirror of the survivor-affordability wall the model found on the mortgage side, which
+is the most valuable finding the tool has produced. On the rent side it is not asked at all.
 
 ## Links
 
@@ -40,6 +39,10 @@ Housing Benefit for a pension-age renter, which is card 0048.
 - [ ] Source the referencing multiple, with `source` and `verified_on`
 - [x] Charge deposit plus first month as a one-off at the start of a rent plan
 - [x] Copy on the rent result explaining what a failed reference means
+
+## Plan
+Follow what the tool already does with an unaffordable purchase: flag it rather than modelling it
+away.
 
 ## Comments
 

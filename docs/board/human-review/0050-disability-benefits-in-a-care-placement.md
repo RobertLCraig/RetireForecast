@@ -18,8 +18,9 @@ care spell - mobility component and all.
 Care is the stress that decides plan rankings, and the model gets the household's largest tax-free
 income wrong on both sides of the assessment.
 
-The fix needs the award split into its care and mobility parts at input. Both rates are normally
-known separately.
+The award is held as one figure, and the two sides of the assessment treat its two parts
+differently, so nothing in the model can tell them apart. Both rates are normally known separately
+to the household.
 
 ## Links
 

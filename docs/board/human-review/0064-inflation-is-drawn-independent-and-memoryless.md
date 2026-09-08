@@ -17,7 +17,7 @@ model runs against nominal tax thresholds frozen for years, so it understates fi
 Drawing them independently means the model never produces the single worst year a bond-heavy
 retiree has actually lived through.
 
-Both are small changes to `ReturnModel` and both widen exactly the tail that matters.
+Both understate exactly the tail that matters.
 
 This compounds with card 0024. Until an interest-only mortgage stops being CPI-indexed, high
 inflation in this model is pure downside, because the natural hedge on a nominal debt has been
@@ -50,6 +50,9 @@ The choice of default inflation rate, which is already sourced and signed off.
 - [x] Add an inflation row to the correlation matrix
 - [x] Run the backtester at the last-survivor 75th and 90th percentiles as well
 - [x] Re-pin the golden master from card 0039 afterwards
+
+## Plan
+Both are small changes to `ReturnModel`.
 
 ## Comments
 

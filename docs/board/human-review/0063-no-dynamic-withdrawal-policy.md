@@ -18,12 +18,8 @@ bad run costs nothing and buys a lot of survival probability - **unless the hous
 discretionary spend left**, in which case that is itself the finding, and the tool cannot currently
 state it.
 
-One rule is enough. A funded-ratio trigger is the cheapest honest version: if projected usable
-wealth falls below a multiple of remaining essential spend, cut discretionary spend by a set
-percentage until it recovers. Published rules exist and are citable.
-
-Reporting matters as much as the rule: show how often and how deeply it bit, not just the improved
-probability.
+Published rules for cutting back after a bad run exist and are citable, so the tool is silent about
+behaviour that is well documented.
 
 ## Links
 
@@ -46,6 +42,14 @@ Withdrawal sequencing across wrappers, which is card 0007.
 - [x] Implement one funded-ratio guardrail in the projector, sourced and dated
 - [x] Report the bite count and depth alongside the success probability
 - [x] State the no-flexibility-left case explicitly
+
+## Plan
+One rule is enough. A funded-ratio trigger is the cheapest honest version: if projected usable
+wealth falls below a multiple of remaining essential spend, cut discretionary spend by a set
+percentage until it recovers.
+
+Reporting matters as much as the rule: show how often and how deeply it bit, not just the improved
+probability.
 
 ## Comments
 

@@ -18,7 +18,7 @@ essentials, and the plan is penalised for keeping a property.
 
 Under a deferred payment agreement the fee becomes a debt secured on the home, accruing interest,
 and is deductible from the estate at death. That is a completely different estate and solvency
-outcome from a forced sale. Modelling it turns a false failure into a correct estate reduction.
+outcome from a forced sale, and the model reports neither.
 
 ## Links
 
@@ -41,6 +41,9 @@ Disability benefits in the assessment, which is card 0050.
 - [x] Model a deferred payment agreement as the default funding route, with the statutory interest rate sourced
 - [x] Deduct the accrued balance from the estate
 - [x] Test that a keeping-the-home plan no longer fails essentials for an unfundable charge
+
+## Plan
+Modelling the deferred payment turns a false plan failure into a correct estate reduction.
 
 ## Comments
 
