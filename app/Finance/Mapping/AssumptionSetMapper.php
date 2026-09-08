@@ -6,6 +6,7 @@ namespace App\Finance\Mapping;
 
 use RetireForecast\FinanceEngine\Dto\AssetClassAssumption;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
+use RetireForecast\FinanceEngine\Dto\FigureSource;
 
 /**
  * Maps the engine's {@see AssumptionSet} DTO to and from storage. Unlike the
@@ -83,6 +84,19 @@ final class AssumptionSetMapper
             // clamped ones, so a re-sourced figure moves a set the reader never overrode.
             'inflationPersistence' => $set->inflationPersistence,
             'inflationAssetCorrelations' => $set->inflationAssetCorrelations,
+            // Board card 0065. The per-figure sourcing rides the snapshot so a stored run stays
+            // auditable back to where each of its economic figures came from and when that was last
+            // checked. Without it a run kept its figures and lost their provenance, which is the
+            // half that decides whether the figures can still be relied on.
+            'economicSourcing' => array_map(
+                static fn (FigureSource $s): array => [
+                    'figure' => $s->figure,
+                    'label' => $s->label,
+                    'source' => $s->source,
+                    'verifiedOn' => $s->verifiedOn,
+                ],
+                $set->economicSourcing,
+            ),
         ];
     }
 
@@ -143,6 +157,18 @@ final class AssumptionSetMapper
                 ? array_map(static fn ($v): float => (float) $v, $payload['inflationAssetCorrelations'])
                 : null,
             isDefault: $isDefault,
+            // Back-compat: a snapshot stored before board card 0065 carries no sourcing, which
+            // reads as "not stated" rather than inventing a citation for it, exactly as the
+            // per-asset-class sourcing above does.
+            economicSourcing: array_map(
+                static fn (array $s): FigureSource => new FigureSource(
+                    figure: (string) $s['figure'],
+                    label: (string) $s['label'],
+                    source: (string) $s['source'],
+                    verifiedOn: (string) $s['verifiedOn'],
+                ),
+                $payload['economicSourcing'] ?? [],
+            ),
         );
     }
 }

@@ -39,6 +39,7 @@ use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\PlanningHorizon;
+use RetireForecast\FinanceEngine\Pension\AnnuityRateTable;
 use RetireForecast\FinanceEngine\Property\CgtPrivateResidenceCalculator;
 use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
@@ -515,6 +516,9 @@ class ScenarioBuilder extends Component
             'capitalReceipts.*.amount' => $moneyReq,
             // What the money is and where it comes from — the documentation half of the input.
             'capitalReceipts.*.label' => ['nullable', 'string', 'max:120'],
+            // What the thing sold originally cost, where the receipt is a SALE of personal
+            // possessions. Blank means it is not a sale, which is the common case (board card 0065).
+            'capitalReceipts.*.chattelCost' => $money,
 
             'housing.salePrice' => $moneyReq,
             'housing.buyPrice' => $money,
@@ -1025,6 +1029,14 @@ class ScenarioBuilder extends Component
         foreach ($this->accounts as $ai => $account) {
             $this->accounts[$ai] += $this->blankAnnuity();
         }
+
+        // What a sold possession cost (board card 0065) arrived after receipts existed, so a
+        // receipt saved earlier loads without the key. It backfills BLANK, which is a windfall and
+        // is what every such receipt already was, so nothing stored changes and no what-if child
+        // reads a delta it never made.
+        foreach ($this->capitalReceipts as $ri => $receipt) {
+            $this->capitalReceipts[$ri] += ['chattelCost' => ''];
+        }
     }
 
     /**
@@ -1036,12 +1048,73 @@ class ScenarioBuilder extends Component
         return Percent::fromBasisPoints(AnnuityPurchase::ENHANCED_UPLIFT_BPS)->asPercent().'%';
     }
 
-    /** Default annuity sub-form fields for a DC pot (rate defaulted to a sourced ~7.2% joint level quote). */
+    /**
+     * The sourced annuity rate for one sub-form row's SHAPE: the age the income starts, whether it
+     * escalates with prices, and how much of it continues to a survivor. One home for the lookup,
+     * shared by the blank row and by the live repricing below, reading
+     * {@see AnnuityRateTable} rather than restating any figure from it (board card 0065).
+     *
+     * A row with no age yet is priced at the table's own default quote age, so the field the reader
+     * first sees is a figure the table stands behind rather than a number typed into this file.
+     */
+    private function annuityRateFor(array $row): string
+    {
+        $startAge = self::positiveInt($row['annuityIncomeFromAge'] ?? null)
+            ?? self::positiveInt($row['annuityAtAge'] ?? null)
+            ?? AnnuityRateTable::DEFAULT_QUOTE_AGE;
+
+        $survivorFraction = empty($row['annuityJoint'])
+            ? null
+            : ((float) ($row['annuitySurvivorFraction'] === '' ? 50 : ($row['annuitySurvivorFraction'] ?? 50))) / 100;
+
+        $rate = AnnuityRateTable::quote($startAge, ($row['annuityEscalation'] ?? 'none') !== 'none', $survivorFraction);
+
+        return number_format($rate->asPercent(), 1, '.', '');
+    }
+
+    /** A form value read as a positive whole number, or null when it is blank or not one. */
+    private static function positiveInt(mixed $value): ?int
+    {
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : null;
+    }
+
+    /**
+     * Re-price the annuity on the row a sub-form field just changed, where that field is one the
+     * quote is priced on. Returns the list, so the two callers ({@see updatedPensions} and
+     * {@see updatedAccounts}) share one rule instead of drifting: the two sub-forms are one Blade
+     * partial and a reader cannot tell them apart.
+     *
+     * The rate is DERIVED, not remembered, so a reader who typed their own quote and then changed
+     * the shape gets the quote for the new shape. That is the point of the card: a typed rate
+     * standing while the shape moves under it is the silent over-statement being fixed.
+     */
+    private function repricedAnnuities(array $rows, ?string $key): array
+    {
+        if ($key === null) {
+            return $rows;
+        }
+        $parts = explode('.', $key);
+        if (count($parts) !== 2) {
+            return $rows;
+        }
+        [$index, $field] = [(int) $parts[0], $parts[1]];
+
+        $pricedOn = ['annuityAtAge', 'annuityIncomeFromAge', 'annuityEscalation', 'annuityJoint', 'annuitySurvivorFraction'];
+        if (! in_array($field, $pricedOn, true) || ! isset($rows[$index])) {
+            return $rows;
+        }
+
+        $rows[$index]['annuityRate'] = $this->annuityRateFor($rows[$index]);
+
+        return $rows;
+    }
+
+    /** Default annuity sub-form fields for a DC pot; the rate is looked up, never typed here. */
     private function blankAnnuity(): array
     {
         return [
             'annuitise' => false, 'annuityAmount' => '', 'annuityAtAge' => '',
-            'annuityRate' => '7.2', 'annuityEscalation' => 'none',
+            'annuityRate' => $this->annuityRateFor([]), 'annuityEscalation' => 'none',
             'annuityJoint' => false, 'annuitySurvivorFraction' => '50',
             // Board card 0060: a deferred start age (blank = income starts at the purchase age)
             // and the enhanced (impaired-health) flag. The same sub-form serves a DC pot and a
@@ -1431,6 +1504,18 @@ class ScenarioBuilder extends Component
         $this->pensions[] = $pension;
     }
 
+    /**
+     * The chattels exempt amount, for the capital-receipts help text. READ from the tax-year config
+     * that owns the figure, never restated, so an uprating moves the screen with it (board card
+     * 0065, the same discipline as {@see enhancedAnnuityUplift}).
+     */
+    public function chattelsExemptAmount(): string
+    {
+        return '£'.number_format(
+            TaxYearRegistry::for($this->baseTaxYear, RegionProfile::EnglandWalesNi)->cgt->chattelsExemptAmount->pence / 100,
+        );
+    }
+
     /** The full new State Pension weekly rate for the chosen base year, as a pounds string. */
     public function fullStatePensionWeekly(): string
     {
@@ -1438,9 +1523,14 @@ class ScenarioBuilder extends Component
             ->statePension->newStatePensionWeekly->toDecimal();
     }
 
-    /** When a State pension's "level" changes, derive (or clear) its weekly figure so the user need not. */
+    /**
+     * When a State pension's "level" changes, derive (or clear) its weekly figure so the user need
+     * not; and when an annuity's shape changes, re-quote its rate (board card 0065).
+     */
     public function updatedPensions(mixed $value, ?string $key): void
     {
+        $this->pensions = $this->repricedAnnuities($this->pensions, $key);
+
         if ($key === null || ! str_ends_with($key, '.level')) {
             return;
         }
@@ -1453,6 +1543,12 @@ class ScenarioBuilder extends Component
             $this->pensions[$i]['weeklyForecast'] = '';
         }
         // 'amount' leaves whatever the user typed.
+    }
+
+    /** An account can buy an annuity too, so its sub-form is re-quoted by the same rule. */
+    public function updatedAccounts(mixed $value, ?string $key): void
+    {
+        $this->accounts = $this->repricedAnnuities($this->accounts, $key);
     }
 
     public function removePension(int $i): void
@@ -1496,7 +1592,7 @@ class ScenarioBuilder extends Component
 
     public function addCapitalReceipt(): void
     {
-        $this->capitalReceipts[] = ['id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'year' => '', 'amount' => '', 'label' => ''];
+        $this->capitalReceipts[] = ['id' => $this->newRowId(), 'ownerId' => $this->firstPersonId(), 'year' => '', 'amount' => '', 'label' => '', 'chattelCost' => ''];
     }
 
     public function removeCapitalReceipt(int $i): void

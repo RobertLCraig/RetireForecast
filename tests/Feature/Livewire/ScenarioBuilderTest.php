@@ -57,10 +57,12 @@ class ScenarioBuilderTest extends TestCase
             ->set('pensions.0.annuitise', true)
             ->set('pensions.0.annuityAmount', '120000')
             ->set('pensions.0.annuityAtAge', '66')
-            ->set('pensions.0.annuityRate', '7.2')
             ->set('pensions.0.annuityEscalation', 'rpi')
             ->set('pensions.0.annuityJoint', true)
             ->set('pensions.0.annuitySurvivorFraction', '50')
+            // The reader's own quote goes in LAST, because changing the shape re-quotes the rate
+            // (board card 0065). Typing it here is what proves an entered figure still wins.
+            ->set('pensions.0.annuityRate', '7.2')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -97,8 +99,8 @@ class ScenarioBuilderTest extends TestCase
             ->set('accounts.0.annuityAmount', '100000')
             ->set('accounts.0.annuityAtAge', '68')
             ->set('accounts.0.annuityIncomeFromAge', '72')
-            ->set('accounts.0.annuityRate', '7.2')
             ->set('accounts.0.annuityEnhanced', true)
+            ->set('accounts.0.annuityRate', '7.2')
             ->call('save')
             ->assertHasNoErrors();
 

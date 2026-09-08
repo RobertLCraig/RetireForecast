@@ -22,6 +22,7 @@ use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
+use RetireForecast\FinanceEngine\Pension\AnnuityRateTable;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 use Tests\Support\BuilderStateFixture;
@@ -111,13 +112,15 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertSame(PensionEscalationBasis::Rpi, $joint->escalation);
         $this->assertSame(5000, $joint->survivorFraction->basisPoints);
 
-        // Single life → null survivor fraction; a blank rate defaults to the sourced ~7.2%.
+        // Single life → null survivor fraction; a blank rate is QUOTED for the shape of the row
+        // (board card 0065), so it is read from the table that owns the figures rather than
+        // restated here. It used to fall back on a flat 7.2% whatever the row asked for.
         $single = $dc([
             'annuitise' => true, 'annuityAmount' => '50000', 'annuityAtAge' => '60', 'annuityRate' => '', 'annuityJoint' => false,
         ])->annuityPurchase;
         $this->assertNull($single->survivorFraction);
         $this->assertSame(PensionEscalationBasis::None, $single->escalation);
-        $this->assertSame(720, $single->rate->basisPoints);
+        $this->assertSame(AnnuityRateTable::quote(60, false, null)->basisPoints, $single->rate->basisPoints);
 
         // Toggle on but the amount left blank → nothing built (no half-specified annuity).
         $this->assertNull($dc(['annuitise' => true, 'annuityAtAge' => '65'])->annuityPurchase);

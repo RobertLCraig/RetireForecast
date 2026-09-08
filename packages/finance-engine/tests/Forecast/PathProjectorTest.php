@@ -1373,10 +1373,13 @@ final class PathProjectorTest extends TestCase
         $this->assertSame(0, $control->incomeBySource['other_taxable']->pence);
         $this->assertSame(10_000_000, $control->pensionWealth->pence);
 
-        // With the annuity: the pot is converted (pension wealth gone), paying £100k × 7.2% = £7,200
-        // a year of taxable income — completeness: the annuity demonstrably reaches the forecast.
+        // With the annuity: the pot is converted (pension wealth gone). Since board card 0065 the
+        // £100k is CRYSTALLISED first, so £25k comes out as a tax-free lump sum and £75k buys the
+        // income: £75,000 x 7.2% = £5,400 a year taxable. Completeness: both halves of the purchase
+        // demonstrably reach the forecast.
         $this->assertSame(0, $withAnnuity->pensionWealth->pence, 'the pot is exchanged for the annuity, so holds no drawable value');
-        $this->assertSame(720_000, $withAnnuity->incomeBySource['other_taxable']->pence);
+        $this->assertSame(540_000, $withAnnuity->incomeBySource['other_taxable']->pence);
+        $this->assertSame(2_500_000, $withAnnuity->incomeBySource['pension_lump_sum']->pence);
     }
 
     public function test_a_level_annuity_erodes_in_real_terms_while_an_escalating_one_holds(): void
@@ -1397,20 +1400,22 @@ final class PathProjectorTest extends TestCase
 
         $real = fn (array $years, int $i): int => $years[$i]->incomeBySource['other_taxable']->pence;
 
-        // Both start at the same £7,200 real in the purchase year.
-        $this->assertSame(720_000, $real($level, 0));
-        $this->assertSame(720_000, $real($rpi, 0));
+        // Both start at the same £5,400 real in the purchase year (£75k of the £100k buys the
+        // income; the other £25k is the tax-free lump sum, board card 0065).
+        $this->assertSame(540_000, $real($level, 0));
+        $this->assertSame(540_000, $real($rpi, 0));
 
         // A level annuity pays a flat NOMINAL income, so its REAL value falls with inflation...
         $this->assertLessThan($real($level, 0), $real($level, 5));
         // ...while an RPI annuity escalates with inflation, holding its real value (± a rounding penny).
-        $this->assertEqualsWithDelta(720_000, $real($rpi, 5), 5);
+        $this->assertEqualsWithDelta(540_000, $real($rpi, 5), 5);
     }
 
     public function test_a_joint_annuity_continues_to_the_survivor_but_a_single_life_one_stops(): void
     {
-        // The annuitant (p2) dies at 70 (2028); the partner (p1) lives to 85. A level annuity of
-        // £7,200 is bought at 68. Flat assumptions, so nominal == real and the figures are exact.
+        // The annuitant (p2) dies at 70 (2028); the partner (p1) lives to 85. £100,000 of pension
+        // money is annuitised at 68 on a level 7.2% rate. Flat assumptions, so nominal == real and
+        // the figures are exact.
         $build = fn (?Percent $survivorFraction): Household => new Household(
             'Joint annuity', RegionProfile::EnglandWalesNi,
             [
@@ -1438,13 +1443,14 @@ final class PathProjectorTest extends TestCase
         $joint = $byYear($build(Percent::fromPercent(50)));
         $single = $byYear($build(null));
 
-        // While the annuitant lives (2027), both pay the full £7,200.
-        $this->assertSame(720_000, $joint[2027]);
-        $this->assertSame(720_000, $single[2027]);
+        // While the annuitant lives (2027), both pay the full £5,400 (£75k of the £100k buys the
+        // income; the other £25k came out as the tax-free lump sum, board card 0065).
+        $this->assertSame(540_000, $joint[2027]);
+        $this->assertSame(540_000, $single[2027]);
 
-        // After the annuitant dies (2029, aged 71): the joint annuity pays the survivor 50% = £3,600;
+        // After the annuitant dies (2029, aged 71): the joint annuity pays the survivor 50% = £2,700;
         // the single-life annuity stops entirely.
-        $this->assertSame(360_000, $joint[2029]);
+        $this->assertSame(270_000, $joint[2029]);
         $this->assertSame(0, $single[2029]);
     }
 

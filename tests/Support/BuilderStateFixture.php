@@ -69,7 +69,10 @@ final class BuilderStateFixture
                     'inflationLinked' => true, 'startAge' => '60', 'endAge' => '90'],
             ],
             'capitalReceipts' => [
-                ['id' => 'cr1', 'ownerId' => 'p1', 'year' => '2029', 'amount' => '90000', 'label' => 'Family gift'],
+                // chattelCost is blank: a gift is not a disposal, so nothing is chargeable. The key
+                // is present because a base state missing a key the builder backfills reads as a
+                // what-if delta in every child (board card 0065).
+                ['id' => 'cr1', 'ownerId' => 'p1', 'year' => '2029', 'amount' => '90000', 'label' => 'Family gift', 'chattelCost' => ''],
             ],
             'hasProperty' => true,
             'property' => ['currentValue' => '525000', 'ownership' => 'mortgaged', 'everLet' => false,

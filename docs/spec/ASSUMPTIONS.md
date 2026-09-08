@@ -728,6 +728,41 @@ cash **−0.5%**.
    directly, and a published correlation matrix of UK real asset returns against inflation (the
    Barclays Equity Gilt Study and the DMS yearbook both report the inflation sensitivities).
 
+36. **The annuity rate table** (board card 0065; lives in `Pension\AnnuityRateTable`).
+   **STATED, not verified** (built without web access). It reaches a projection through the rate
+   field on the builder's annuity sub-form, and every figure it produces is visible there and can
+   be typed over, so nothing it decides is invisible.
+
+   Before it, the rate was one free-text field coupled to nothing, defaulted to a level joint-life
+   quote. Ticking "rises with inflation" bought an index-linked annuity at a level annuity's rate,
+   which is roughly a third more income than the market sells, silently and in the flattering
+   direction; and the same figure stood while the purchase age moved by fifteen years, which moves
+   a real quote by more than half again.
+
+   **Base rates, single life, level, standard health, per £1 of purchase price:** 5.60% at 55,
+   6.20% at 60, 7.10% at 65, 8.10% at 70, 9.60% at 75, 11.60% at 80, 14.00% at 85, interpolated
+   between and clamped outside. **Index-linked multiple: 0.62** of the level rate at outset.
+   **Joint-life reduction: 20%** where the WHOLE income continues to a survivor, scaled linearly by
+   the fraction, so the common half-pension option costs 10%.
+
+   Not priced, deliberately, and each of them makes a real quote LOWER than this table: a guarantee
+   period, value protection, the spouse's age, the buyer's postcode, and the market moving with
+   gilt yields. That is why the sub-form says to enter a real quote.
+
+   **To verify:** a dated snapshot from a live open-market-option quote service (Money Helper's
+   annuity comparison tool, or the Hargreaves Lansdown / Legal and General best-buy tables), across
+   the age range and for each of the four shapes. Board card **0140**.
+
+37. **The chattels exempt amount and the marginal relief** (board card 0065; live in
+   `CgtParameters::$chattelsExemptAmount` and `Tax\ChattelsGain`). These are statutory rather than
+   economic, but they were added in the same pass and are **STATED, not verified** against a live
+   fetch: £6,000 of proceeds per item or set, and a chargeable gain capped at five thirds of the
+   excess above it. TCGA 1992 s262
+   (https://www.legislation.gov.uk/ukpga/1992/12/section/262), restated at
+   https://www.gov.uk/capital-gains-tax-personal-possessions . The £6,000 has not been uprated
+   since 1989, which is why both tax years carry it; confirming that against the current gov.uk
+   page is board card **0140**.
+
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees

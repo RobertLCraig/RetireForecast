@@ -949,9 +949,9 @@
 
             <fieldset class="{{ $section }}">
                 <legend class="{{ $legend }}">One-off capital receipts</legend>
-                <p class="mt-1 text-sm text-gray-600">A documented lump you expect to receive — a family gift, an inheritance, the sale of something outside this plan. It is added to your cash savings in that year. Money from outside the plan is entered here, never assumed.</p>
+                <p class="mt-1 text-sm text-gray-600">A documented lump you expect to receive — a family gift, an inheritance, the sale of something outside this plan. It is added to your cash savings in that year. Money from outside the plan is entered here, never assumed. <strong>If you are SELLING a possession</strong> (art, jewellery, an antique), say what it cost you. Above {{ $this->chattelsExemptAmount() }} a sale is taxed, and we can only work the tax out if we know what you paid.</p>
                 @foreach ($capitalReceipts as $i => $receipt)
-                    <div wire:key="capital-receipt-{{ $i }}" class="mt-4 grid items-end gap-3 sm:grid-cols-5">
+                    <div wire:key="capital-receipt-{{ $i }}" class="mt-4 grid items-end gap-3 sm:grid-cols-6">
                         <div>
                             <label for="capitalReceipts-{{ $i }}-ownerId" class="text-xs text-gray-600">Received by</label>
                             <select id="capitalReceipts-{{ $i }}-ownerId" wire:model="capitalReceipts.{{ $i }}.ownerId" class="{{ $field }}">
@@ -971,6 +971,11 @@
                         <div>
                             <label for="capitalReceipts-{{ $i }}-label" class="text-xs text-gray-600">What / from whom</label>
                             <input id="capitalReceipts-{{ $i }}-label" type="text" wire:model="capitalReceipts.{{ $i }}.label" class="{{ $field }}" placeholder="e.g. family gift">
+                        </div>
+                        <div>
+                            <label for="capitalReceipts-{{ $i }}-chattelCost" class="text-xs text-gray-600">If you sold it: what it cost you (£)</label>
+                            <input id="capitalReceipts-{{ $i }}-chattelCost" type="text" inputmode="decimal" wire:model="capitalReceipts.{{ $i }}.chattelCost" class="{{ $field }}" @error('capitalReceipts.'.$i.'.chattelCost') aria-invalid="true" @enderror>
+                            @error('capitalReceipts.'.$i.'.chattelCost') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
                         </div>
                         <button type="button" wire:click="removeCapitalReceipt({{ $i }})" class="mb-2 text-sm text-red-700 underline">Remove</button>
                     </div>

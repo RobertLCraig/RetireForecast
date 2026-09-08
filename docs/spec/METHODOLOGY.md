@@ -89,8 +89,13 @@ pound.
 
 **Defined-benefit** pensions are paid from their normal retirement age, escalated for inflation, with
 optional tax-free **commutation** (a lump sum in exchange for a permanently reduced pension) and a
-**survivor** pension. An **annuity** can be bought with part of a pot at a rate you enter (the tool
-bakes in no age/rate table), level or inflation-linked, single or joint life.
+**survivor** pension. An **annuity** can be bought with part of a pot, level or inflation-linked,
+single or joint life. The rate is worked out for you from published market rates for the age the
+income starts, whether it escalates and whether it continues to a survivor, and you can type your
+own quote over it. Buying one out of a **pension** pot crystallises the money it uses, so a quarter
+of it comes back to you as a tax-free lump sum and the other three quarters buy the income; an
+annuity bought with money that is not pension money has no lump sum, and only the interest part of
+each payment is taxed.
 
 ## The State Pension
 
@@ -372,14 +377,17 @@ and inflation, and runs the full projection.
 
 Investment returns are modelled in **real (above-inflation)** terms across three asset classes —
 equities, bonds and cash. Each year draws correlated random returns (mean plus volatility, using the
-asset correlations), and inflation is drawn separately. The invested pot earns the blend of its
-holdings; the default is a cautious 40% growth / 60% defensive mix. The return, volatility and
-correlation figures, and their sources (FCA projection rates with historical volatilities), are set
-out in the [economic assumptions](ASSUMPTIONS.md).
+asset correlations). Inflation is drawn alongside them, not separately: it carries a year-to-year
+memory, so a high-inflation year makes the next one more likely, and it is correlated with each
+asset class's real return, so prices and markets can go against you in the same year. **House-price
+and salary growth are drawn too**, each with its own volatility and its own correlation to
+equities, so a home's value and a wage do not simply travel up a straight line. The invested pot
+earns the blend of its holdings; the default is a cautious 40% growth / 60% defensive mix. Every
+return, volatility and correlation figure carries its own source and the date it was last checked,
+set out in the [economic assumptions](ASSUMPTIONS.md).
 
-Not modelled: house-price and salary growth have **no** year-to-year volatility in the simulation
-(they use their expected values); returns are drawn from a normal distribution, so there are no fat
-tails or regime shifts; partner deaths are independent.
+Not modelled: returns are drawn from a normal distribution, so there are no fat tails or regime
+shifts; partner deaths are independent.
 
 ## The historical stress test
 
@@ -447,7 +455,10 @@ An honest list of the current limits (each is flagged in the code):
 - **Capital gains:** no lettings relief; one rate per owner; capital losses are not relieved; the CGT
   band is judged on non-savings income. Deemed-occupation absences are modelled, but we do not check
   that no other home was eligible for relief while you were away, and job-related accommodation is not
-  distinguished.
+  distinguished. **Selling personal possessions** (art, jewellery, antiques) is charged where you tell
+  us what the item cost, using the per-item exempt amount and the marginal relief just above it; the
+  restricted-loss rule and the exemption for wasting assets (anything with an expected life of 50
+  years or less, such as a car) are not modelled, so leave the cost blank for those.
 - **Inheritance tax** (when the toggle is on) values the estate at each death inside the projection and
   applies the headline bands (relationship-status aware), but not the fuller estate: no lifetime gifts or
   7-year taper, trusts, business/agricultural relief, the 36% charity rate, non-descendant beneficiaries,
@@ -469,7 +480,7 @@ An honest list of the current limits (each is flagged in the code):
   couple-eligibility rule (both partners must be on a qualifying disability benefit); the carer addition is
   supported by the engine but not yet exposed as a builder input.
 - **Monte Carlo:** normal returns (no fat tails); independent partner deaths; the historical data
-  ends in 2020. (House-price and salary growth now carry volatility — see the assumptions panel.)
+  ends in 2020.
 - **Pensions:** the lump-sum-allowance cap on a DB commutation lump sum is not enforced; one smooth
   inflation proxy for DB escalation. **Contribution tax relief** is modelled for "net pay" schemes
   (the contribution comes off gross salary, so relief lands at your own tax rate straight away, and

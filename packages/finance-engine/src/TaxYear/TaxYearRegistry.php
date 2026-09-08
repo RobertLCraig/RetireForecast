@@ -302,6 +302,13 @@ final class TaxYearRegistry
      * elsewhere in the UK, still count as living there (TCGA 1992 s223(3); gov.uk HS283
      * https://www.gov.uk/tax-sell-home/absence-from-home). Working abroad is uncapped,
      * so it carries no parameter.
+     *
+     * The chattels exempt amount is £6,000 of PROCEEDS per item or per set, above which the gain is
+     * capped at five thirds of the excess ({@see ChattelsGain}). Statute since 1989 and never
+     * uprated, so both tax years carry it. TCGA 1992 s262
+     * (https://www.legislation.gov.uk/ukpga/1992/12/section/262), restated on gov.uk at
+     * https://www.gov.uk/capital-gains-tax-personal-possessions ; STATED not verified against a
+     * live fetch, board card 0065.
      */
     private static function cgtParameters(): CgtParameters
     {
@@ -312,6 +319,7 @@ final class TaxYearRegistry
             privateResidenceFinalExemptionMonths: 9,
             deemedOccupationAnyReasonMonths: 36,
             deemedOccupationWorkElsewhereUkMonths: 48,
+            chattelsExemptAmount: Money::fromPounds(6_000),
         );
     }
 

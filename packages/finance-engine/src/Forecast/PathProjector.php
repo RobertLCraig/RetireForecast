@@ -50,6 +50,7 @@ use RetireForecast\FinanceEngine\StatePension\StatePensionAge;
 use RetireForecast\FinanceEngine\StatePension\StatePensionCalculator;
 use RetireForecast\FinanceEngine\Support\Warning;
 use RetireForecast\FinanceEngine\Support\WarningCode;
+use RetireForecast\FinanceEngine\Tax\ChattelsGain;
 use RetireForecast\FinanceEngine\Tax\IncomeTaxCalculator;
 use RetireForecast\FinanceEngine\Tax\NationalInsuranceCalculator;
 use RetireForecast\FinanceEngine\Tax\TaxableIncome;
@@ -1016,7 +1017,19 @@ final class PathProjector
         // account, into a lifetime income before the year's income is assembled, so the source is
         // reduced and the annuity pays from its purchase year (or from the deferred income age).
         // Selling a GIA holding to buy one realises a gain, carried to the year's CGT charge below.
-        $annuityGains = $this->processAnnuityPurchases($household, $state, $yearIndex, $calendarYear, $alive, $cumInflation);
+        $annuityPurchases = $this->processAnnuityPurchases($household, $state, $yearIndex, $calendarYear, $alive, $cumInflation);
+        $annuityGains = $annuityPurchases['gains'];
+
+        // Annuitising a PENSION pot crystallises it, so a quarter comes out as a tax-free lump sum
+        // and only the balance bought the income above (board card 0065). It is banked here, in the
+        // same three places a planned lump sum is banked below, so the money reaches the plan, is
+        // attributed to whoever's pension it came out of, and is visible on the cashflow ladder as
+        // pension tax-free cash rather than appearing from nowhere.
+        foreach ($annuityPurchases['taxFreeCash'] as $annuitantId => $lumpSum) {
+            $taxFreeCashNominal += $lumpSum;
+            $netPerPerson[$annuitantId] += $lumpSum;
+            $src['pension_lump_sum'] += $lumpSum;
+        }
 
         // Board card 0050. Attendance Allowance and the DLA care component stop 28 days into a
         // care placement the local authority funds; the mobility component runs on. Settled HERE,
@@ -1219,6 +1232,12 @@ final class PathProjector
         // tariff income from the following year instead, as in reality). If the owner has died
         // the household still receives it; any unspent residue banks to the first living
         // person's cash via the ordinary surplus path below.
+        //
+        // A receipt that states what the thing SOLD originally cost is a DISPOSAL, not a windfall,
+        // so it carries a chargeable gain under the chattels rule (board card 0065). The gain is
+        // collected here and charged with the year's other disposals below, so the one annual
+        // exempt amount is shared and nothing is taxed twice.
+        $chattelGains = [];
         foreach ($household->capitalReceipts as $receipt) {
             if ($receipt->calendarYear !== $calendarYear) {
                 continue;
@@ -1231,6 +1250,20 @@ final class PathProjector
             // household's and is shared like any other unattributable sum.
             if ($alive[$receipt->ownerId] ?? false) {
                 $netPerPerson[$receipt->ownerId] += $amount;
+            }
+            if ($receipt->chattelCost !== null) {
+                // The cost is stated in the same today's money as the proceeds, so both are carried
+                // to this year's prices together and the REAL gain is what the reader described.
+                // The exempt amount is the statutory figure as it stands, frozen exactly like the
+                // annual exempt amount it is charged alongside.
+                $gain = ChattelsGain::chargeableGain(
+                    Money::fromPence($amount),
+                    Money::fromPence((int) round($receipt->chattelCost->pence * $cumInflation)),
+                    $this->config->cgt->chattelsExemptAmount,
+                );
+                if ($gain->isPositive()) {
+                    $chattelGains[$receipt->ownerId] = ($chattelGains[$receipt->ownerId] ?? 0) + $gain->pence;
+                }
             }
         }
 
@@ -1660,7 +1693,12 @@ final class PathProjector
         // in-year disposal — a year-0 disposal is taxed exactly once, never twice, never free.
         // A GIA sold to buy a purchased life annuity earlier this year is the same kind of event,
         // so it seeds the same way and shares the same annual exempt amount (board card 0060).
+        // A chattel sold this year (board card 0065) is the same kind of event and seeds the same
+        // way, so the sale of a painting and the sale of a share holding share one exempt amount.
         $seedGains = $annuityGains;
+        foreach ($chattelGains as $pid => $gain) {
+            $seedGains[$pid] = ($seedGains[$pid] ?? 0) + $gain;
+        }
         if ($yearIndex === 0 && $household->realisedGainsAtStart !== []) {
             foreach ($household->realisedGainsAtStart as $pid => $gain) {
                 $seedGains[$pid] = ($seedGains[$pid] ?? 0) + $gain->pence;
@@ -2829,13 +2867,20 @@ final class PathProjector
      * the age the income starts. Selling a general investment account to fund one realises a gain,
      * which is returned so the year charges CGT on it exactly as any other disposal.
      *
+     * A purchase out of a DC POT crystallises the money it takes, so a quarter of it comes back as
+     * a tax-free lump sum and only the balance buys the income (board card 0065). That cash is
+     * returned rather than banked here, because the caller owns the year's income assembly and is
+     * where a tax-free sum is attributed to its owner and filed under its source.
+     *
      * @param  array<string, mixed>  $state
      * @param  array<string, bool>  $alive
-     * @return array<string, int> personId => GIA gain realised by a purchase this year, pence
+     * @return array{gains: array<string, int>, taxFreeCash: array<string, int>} per person, pence:
+     *                                                                           the GIA gain a purchase realised, and the tax-free lump sum it paid out
      */
     private function processAnnuityPurchases(Household $household, array &$state, int $yearIndex, int $calendarYear, array $alive, float $cumInflation): array
     {
         $realisedGains = [];
+        $taxFreeCash = [];
 
         foreach ($state['annuities'] as &$annuity) {
             if ($annuity['purchased']) {
@@ -2847,9 +2892,15 @@ final class PathProjector
                 continue;
             }
 
-            $bought = $annuity['source'] === null
-                ? $this->drawAnnuityPriceFromPots($state, $pid, $annuity['amount'])
-                : $this->drawAnnuityPriceFromAccount($state, $pid, $annuity['source'], $annuity['amount'], $realisedGains);
+            if ($annuity['source'] === null) {
+                $draw = $this->drawAnnuityPriceFromPots($state, $pid, $annuity['amount']);
+                $bought = $draw['annuitised'];
+                if ($draw['taxFree'] > 0) {
+                    $taxFreeCash[$pid] = ($taxFreeCash[$pid] ?? 0) + $draw['taxFree'];
+                }
+            } else {
+                $bought = $this->drawAnnuityPriceFromAccount($state, $pid, $annuity['source'], $annuity['amount'], $realisedGains);
+            }
 
             $annuity['purchased'] = true;
             if ($bought > 0) {
@@ -2875,25 +2926,57 @@ final class PathProjector
         }
         unset($annuity);
 
-        return $realisedGains;
+        return ['gains' => $realisedGains, 'taxFreeCash' => $taxFreeCash];
     }
 
-    /** Draw an annuity's purchase price across the owner's DC pots, in order. Returns what it got. */
-    private function drawAnnuityPriceFromPots(array &$state, string $pid, int $needed): int
+    /**
+     * Draw an annuity's purchase price across the owner's DC pots, in order, CRYSTALLISING each
+     * slice as it goes: a quarter of the uncrystallised part comes out as a tax-free lump sum and
+     * only the balance buys the annuity (board card 0065). That is what actually happens when a
+     * pot is annuitised, and the engine used to hand the insurer the whole amount and tax every
+     * penny of the income that came back, which under-rated annuitising against drawdown twice
+     * over in the same direction.
+     *
+     * The split is {@see ufplsSplit}, the same rule and the same lump-sum-allowance ledger a UFPLS
+     * uses, because it is the same event: money crystallised, a quarter paid out tax free. Only the
+     * destination of the other three quarters differs. So an already-crystallised slice, and an
+     * inherited pot (no headroom at all), each yield no lump sum here exactly as they do there.
+     *
+     * Buying a lifetime annuity is NOT flexible access, so it does not trigger the MPAA.
+     *
+     * @param  array<string, mixed>  $state
+     * @return array{taxFree: int, annuitised: int} nominal pence
+     */
+    private function drawAnnuityPriceFromPots(array &$state, string $pid, int $needed): array
     {
-        $bought = 0;
+        $lsa = $this->config->pension->lumpSumAllowance->pence;
+        $pclsRate = $this->config->pension->pclsRate->asFraction();
+        $taxFree = 0;
+        $annuitised = 0;
+
         foreach ($state['pots'][$pid] as &$pot) {
             if ($needed <= 0) {
                 break;
             }
             $take = min($needed, $pot['value']);
+            if ($take <= 0) {
+                continue;
+            }
+            [$slice, $rest] = self::ufplsSplit(
+                $take,
+                self::lsaHeadroom($lsa, $state['lsaUsed'][$pid], $pot),
+                $pclsRate,
+                $pot['crystallised'] ?? 0,
+            );
             $this->drawFromPot($pot, $take);
+            $state['lsaUsed'][$pid] += $slice;
             $needed -= $take;
-            $bought += $take;
+            $taxFree += $slice;
+            $annuitised += $rest;
         }
         unset($pot);
 
-        return $bought;
+        return ['taxFree' => $taxFree, 'annuitised' => $annuitised];
     }
 
     /**

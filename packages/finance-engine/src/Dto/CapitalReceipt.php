@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Dto;
 
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Tax\ChattelsGain;
 
 /**
  * A documented one-off capital inflow — a family gift, an inheritance, the sale of
@@ -24,6 +25,17 @@ use RetireForecast\FinanceEngine\Money\Money;
  * pool at household level; any residue banks to the first living person's cash — the
  * engine-wide surplus convention). A receipt dated after the last survivor's death is
  * never realised: the projection has ended.
+ *
+ * $chattelCost turns the receipt from money arriving into a DISPOSAL: it is what the item sold
+ * originally cost, in the same today's-money terms as $amount, and stating it is what makes the
+ * sale chargeable to capital gains tax under the chattels rule ({@see ChattelsGain}). Null is the
+ * default and covers everything that is not a disposal by the person receiving it, which is most
+ * receipts: a gift, an inheritance, a lottery win, a compensation payment. Board card 0065, which
+ * found that a plan turning on selling the art or the jewellery was optimistic by the whole tax
+ * bill, because a sale of personal possessions was charged nothing at all.
+ *
+ * The proceeds still arrive in full and are still untaxed as income; the tax is charged as a cost
+ * of the same year, alongside every other disposal and sharing the one annual exempt amount.
  */
 final class CapitalReceipt
 {
@@ -32,5 +44,6 @@ final class CapitalReceipt
         public readonly string $label,
         public readonly Money $amount,
         public readonly int $calendarYear,
+        public readonly ?Money $chattelCost = null,
     ) {}
 }

@@ -123,10 +123,16 @@ final class PurchasedLifeAnnuityTest extends TestCase
         // The same £7,200 a year, bought two ways: from a DC pot (taxable in full) and from cash
         // (a purchased life annuity, where the capital element is a return of the buyer's own
         // money and is exempt). Everything else about the two households is identical.
-        $annuity = fn (): AnnuityPurchase => new AnnuityPurchase(68, Money::fromPounds(100_000), Percent::fromPercent(7.2));
-
-        $fromPot = $this->couple([], [new DcPension('p2', Money::fromPounds(100_000), Money::zero(), Money::zero(), 55, annuityPurchase: $annuity())]);
-        $fromCash = $this->couple([$this->cashAccount($annuity())]);
+        //
+        // The pot leg commits £133,333.32 rather than £100,000, because since board card 0065 a
+        // pension purchase crystallises first: a quarter comes out as a tax-free lump sum and the
+        // remaining £99,999.99 is what buys the income. That is what makes the two GROSS incomes
+        // equal, which is the whole basis of the comparison below.
+        $fromPot = $this->couple([], [new DcPension(
+            'p2', Money::fromPounds(133_334), Money::zero(), Money::zero(), 55,
+            annuityPurchase: new AnnuityPurchase(68, Money::fromPence(13_333_332), Percent::fromPercent(7.2)),
+        )]);
+        $fromCash = $this->couple([$this->cashAccount(new AnnuityPurchase(68, Money::fromPounds(100_000), Percent::fromPercent(7.2)))]);
 
         $potYear = $this->forecaster()->forecast($fromPot, $this->flatAssumptions(), $this->settings())->years[0];
         $cashYear = $this->forecaster()->forecast($fromCash, $this->flatAssumptions(), $this->settings())->years[0];

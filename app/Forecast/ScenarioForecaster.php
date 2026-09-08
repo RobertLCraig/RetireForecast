@@ -61,7 +61,19 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-08 (inflation-with-a-memory): the Monte Carlo's inflation draw is no longer an
+     * Bumped 2026-09-08 (annuity-takes-its-tax-free-cash-first): annuitising a DC pot now
+     * CRYSTALLISES the money it takes, so a quarter of it comes out as a tax-free lump sum (against
+     * the same Lump Sum Allowance ledger every other lump sum uses) and only the balance buys the
+     * income. The engine used to hand the insurer the whole amount and tax every penny that came
+     * back, which under-rated annuitising against drawdown twice over in the same direction: the
+     * plan never saw the tax-free cash, and the income it did see was taxed in full. Any stored plan
+     * that annuitises a PENSION pot therefore shows a SMALLER secured income under this stamp and a
+     * larger cash balance in the purchase year, and pays less tax on the income for the rest of the
+     * plan; whether that leaves it better or worse off depends on the plan. An annuity bought with
+     * money that is not pension money has nothing to crystallise and is byte-identical, as is a plan
+     * that buys no annuity at all, which is why the Monte Carlo golden master did not move. The
+     * amount entered is now the money COMMITTED, not the money annuitised. See board card 0065.
+     * Previous bump 2026-09-08 (inflation-with-a-memory): the Monte Carlo's inflation draw is no longer an
      * independent memoryless normal. It carries an AR(1) memory
      * ({@see AssumptionSetLibrary::INFLATION_PERSISTENCE}), so an inflation episode runs for years
      * the way 1973-75 and 2021-23 did, and it is a factor IN the correlation matrix
@@ -338,7 +350,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/inflation-with-a-memory';
+    public const ENGINE_VERSION = 'finance-engine/annuity-takes-its-tax-free-cash-first';
 
     /**
      * The draw order every scenario is forecast under unless one is named. THE one home for it:

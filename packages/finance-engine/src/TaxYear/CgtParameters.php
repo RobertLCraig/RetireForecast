@@ -6,6 +6,7 @@ namespace RetireForecast\FinanceEngine\TaxYear;
 
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\Tax\ChattelsGain;
 
 /**
  * Capital Gains Tax parameters for residential property, for one tax year.
@@ -25,6 +26,11 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * kept you living elsewhere in the UK. Working abroad has no cap, so it needs no parameter.
  * These are fixed statute, not annually uprated figures, so both tax years carry the same
  * numbers; they ride the CGT block's 2026-06-27 HS283 verification.
+ *
+ * $chattelsExemptAmount is the per-item (or per-set) threshold below which selling personal
+ * possessions is not chargeable at all, and above which the gain is capped at five thirds of the
+ * excess ({@see ChattelsGain}). It is fixed statute at £6,000 and has not been uprated since 1989,
+ * so both tax years carry the same figure. Board card 0065.
  */
 final class CgtParameters
 {
@@ -35,5 +41,6 @@ final class CgtParameters
         public readonly int $privateResidenceFinalExemptionMonths,
         public readonly int $deemedOccupationAnyReasonMonths,
         public readonly int $deemedOccupationWorkElsewhereUkMonths,
+        public readonly Money $chattelsExemptAmount,
     ) {}
 }

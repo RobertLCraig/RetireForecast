@@ -5,9 +5,35 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0064). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-08 (card 0065). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038, 0044 and 0045 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **An annuity is priced now, it takes its tax-free cash first, and every economic assumption
+  carries its own source.** Card 0065. `Pension\AnnuityRateTable` is the one home of what an annuity
+  pays: a base single-life level rate by age, interpolated between seven anchors, times an
+  index-linked multiple (0.62) and a survivor's reduction (20% at a full survivor's pension, scaled
+  linearly by the fraction). The builder re-quotes whenever the age, the escalation basis or the
+  joint-life setting changes (`ScenarioBuilder::repricedAnnuities`, shared by the pension and
+  account sub-forms, which are one Blade partial), and the assembler uses the same table where a
+  saved row carries no rate; a reader's own quote is only overwritten when they change the shape it
+  was quoted for. Alongside it, annuitising a DC pot now CRYSTALLISES the money it takes, through
+  the same `ufplsSplit` and lump-sum-allowance ledger every other lump sum uses, so a quarter comes
+  out as tax-free cash and only the balance buys the income; the amount entered is now the money
+  COMMITTED. `ENGINE_VERSION` is `finance-engine/annuity-takes-its-tax-free-cash-first` and the
+  **stored-scenario re-run is owed** for any plan that annuitises a pension pot; `GoldenMasterTest`
+  did not redden (its fixture buys no annuity). `CapitalReceipt::$chattelCost` turns a receipt into
+  a DISPOSAL and `Tax\ChattelsGain` owns TCGA 1992 s262, seeding the year's existing CGT charge so a
+  painting and a share holding share one annual exempt amount; null (every stored receipt) keeps it
+  a windfall, so nothing stored moves. And `Dto\FigureSource` gives every economic assumption its own
+  citation and verified-on date, swept by `php artisan figures:freshness` beside the statutory
+  figures and enforced by `EconomicAssumptionSourcingTest`, which enumerates the `AssumptionSet`
+  constructor by reflection so a figure added without a source reddens. The annuity table's three
+  figures and both chattels figures are **STATED, not verified** (no web in this session): see
+  [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (sections 36 and 37), carded as **0140**. The
+  methodology page's contradiction about house-price and salary volatility is fixed. Built in a
+  worktree, so the re-quoting rate field, the new capital-receipt cost input and the reworded
+  methodology **have not been seen in a browser**.
 
 - **Inflation has a memory now, and it moves against markets.** Card 0064. The Monte Carlo drew
   inflation from an independent normal each year, so a high year told you nothing about the next

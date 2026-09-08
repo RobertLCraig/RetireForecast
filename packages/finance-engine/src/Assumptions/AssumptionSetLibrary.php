@@ -6,6 +6,7 @@ namespace RetireForecast\FinanceEngine\Assumptions;
 
 use RetireForecast\FinanceEngine\Dto\AssetClassAssumption;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
+use RetireForecast\FinanceEngine\Dto\FigureSource;
 use RetireForecast\FinanceEngine\Money\Percent;
 
 /**
@@ -84,6 +85,65 @@ final class AssumptionSetLibrary
     public const VERIFIED_ON = '2026-06-24';
 
     /**
+     * The citations the ECONOMIC assumptions carry, one constant per source so a re-source moves
+     * every set that reads it (board card 0065). Before this they shared one prose `sourceNote` per
+     * set, with nothing per figure and no date any command could read, while the statutory figures
+     * beside them had carried both from the start. These move the answer far more than the
+     * statutory ones do.
+     *
+     * Every URL here is one docs/spec/ASSUMPTIONS.md already carries. None was fetched: the
+     * unattended build loop has no web access, so the verified-on dates below are the dates each
+     * figure was signed off in this repository, not fresh checks. `figures:freshness` is what turns
+     * that into something that ages loudly.
+     */
+    public const OBR_MACRO_SOURCE = 'OBR Economic and Fiscal Outlook, March 2026, with the Bank of England '
+        .'2% CPI target as the inflation anchor: https://obr.uk/efo/economic-and-fiscal-outlook-march-2026/';
+
+    public const ONS_HOUSING_SOURCE = 'ONS Private rent and house prices, UK (June 2026): '
+        .'https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/privaterentandhousepricesuk/june2026';
+
+    public const HOUSE_RISK_SOURCE = 'Jorda, Knoll, Kuvshinov, Schularick and Taylor, "The Rate of Return on '
+        .'Everything, 1870-2015", NBER Working Paper 24112 (housing far less volatile than equities, low '
+        .'equity-housing covariance): https://www.nber.org/papers/w24112';
+
+    public const SALARY_RISK_SOURCE = 'Champagne, Kurmann and Stewart, "Dissecting Aggregate Real Wage '
+        .'Fluctuations", FRB San Francisco WP 2011-23, sanity-checked against ONS Average weekly earnings: '
+        .'https://www.frbsf.org/wp-content/uploads/wp11-23bk.pdf';
+
+    public const CARE_COST_SOURCE = 'PSSRU/LSE (Wittenberg et al.), long-term care expenditure projections '
+        .'(care unit costs escalated on earnings, about 2% real above prices): '
+        .'https://eprints.lse.ac.uk/88376/1/Wittenberg_Adult%20Social%20Care_Published.pdf';
+
+    public const INVESTMENT_CHARGE_SOURCE = 'DWP Pension Charges Survey 2020 (0.48% average member-borne '
+        .'ongoing charge in qualifying default arrangements): '
+        .'https://www.gov.uk/government/publications/pension-charges-survey-2020-charges-in-defined-contribution-pension-schemes/pension-charges-survey-2020-charges-in-defined-contribution-pension-schemes';
+
+    /**
+     * The single-property volatility MULTIPLE is a reviewer's calibration, not a published series,
+     * and the citation says so rather than dressing it up. The published record supports the
+     * direction and the order of magnitude; the 2.0 itself is board card 0086.
+     */
+    public const SINGLE_PROPERTY_SOURCE = 'Direction and order of magnitude from the long-run housing-returns '
+        .'record: https://www.nber.org/papers/w24112 . The multiple itself is the property reviewer\'s '
+        .'calibration of 2026-08-19 and is NOT from a published series: board card 0086.';
+
+    /** The date the single-property multiple was calibrated. See {@see SINGLE_PROPERTY_SOURCE}. */
+    public const SINGLE_PROPERTY_VERIFIED_ON = '2026-08-19';
+
+    /**
+     * The inflation dynamics ({@see INFLATION_PERSISTENCE}, {@see INFLATION_ASSET_CORRELATIONS})
+     * are STATED against the shape of the UK record, not fitted to a downloaded series. Board card
+     * 0139 carries fitting them.
+     */
+    public const INFLATION_DYNAMICS_SOURCE = 'Stated against the shape of the UK CPI/RPI record (multi-year '
+        .'episodes in 1973-75, 1979-81 and 2021-23), which is the ONS inflation and price indices series: '
+        .'https://www.ons.gov.uk/economy/inflationandpriceindices . NOT fitted to a downloaded series: '
+        .'board card 0139.';
+
+    /** The date the inflation dynamics were stated. See {@see INFLATION_DYNAMICS_SOURCE}. */
+    public const INFLATION_DYNAMICS_VERIFIED_ON = '2026-09-08';
+
+    /**
      * How much of one year's deviation from mean inflation survives into the next (board card
      * 0064). UK annual CPI/RPI inflation is strongly autocorrelated over the long record — it
      * arrives in multi-year episodes (1973-75, 1979-81, 2021-23) rather than as independent
@@ -148,6 +208,7 @@ final class AssumptionSetLibrary
             inflationPersistence: self::INFLATION_PERSISTENCE,
             inflationAssetCorrelations: self::INFLATION_ASSET_CORRELATIONS,
             isDefault: true,
+            economicSourcing: self::economicSourcing(self::OBR_MACRO_SOURCE),
         );
     }
 
@@ -186,6 +247,9 @@ final class AssumptionSetLibrary
             investmentCharge: Percent::fromPercent(0.5),
             inflationPersistence: self::INFLATION_PERSISTENCE,
             inflationAssetCorrelations: self::INFLATION_ASSET_CORRELATIONS,
+            // This set reads its macro figures off the same long-run record its asset figures come
+            // from, not off a forward-looking forecast, so its macro citation is that record.
+            economicSourcing: self::economicSourcing(self::DMS_RETURN_SOURCE),
         );
     }
 
@@ -221,6 +285,7 @@ final class AssumptionSetLibrary
             investmentCharge: Percent::fromPercent(0.5),
             inflationPersistence: self::INFLATION_PERSISTENCE,
             inflationAssetCorrelations: self::INFLATION_ASSET_CORRELATIONS,
+            economicSourcing: self::economicSourcing(self::OBR_MACRO_SOURCE),
         );
     }
 
@@ -254,6 +319,41 @@ final class AssumptionSetLibrary
             self::DMS_VOLATILITY_SOURCE,
             self::VERIFIED_ON,
         );
+    }
+
+    /**
+     * The per-figure sourcing every shipped set carries (board card 0065). One builder rather than
+     * three lists, because only the MACRO citation differs between the sets: a forward-looking set
+     * anchors its inflation, house and salary means to the OBR, while the historical set reads them
+     * off the same long-run record its asset figures come from. Everything else (the risk figures,
+     * the care escalation, the charge) is the same source whichever set is chosen.
+     *
+     * The order and the KEYS are the AssumptionSet constructor's own property names, which is what
+     * lets `EconomicAssumptionSourcingTest` enumerate that constructor and fail on a figure added
+     * here without a citation.
+     *
+     * @return list<FigureSource>
+     */
+    private static function economicSourcing(string $macroSource): array
+    {
+        return [
+            new FigureSource('correlationMatrix', 'Asset-class correlations', self::DMS_VOLATILITY_SOURCE, self::VERIFIED_ON),
+            new FigureSource('inflationMean', 'Mean annual CPI inflation', $macroSource, self::VERIFIED_ON),
+            new FigureSource('inflationVolatility', 'Annual inflation volatility', $macroSource, self::VERIFIED_ON),
+            new FigureSource('houseGrowth', 'Real house-price growth', self::ONS_HOUSING_SOURCE, self::VERIFIED_ON),
+            new FigureSource('rentInflation', 'Real rent growth', self::ONS_HOUSING_SOURCE, self::VERIFIED_ON),
+            new FigureSource('salaryGrowth', 'Real salary growth', $macroSource, self::VERIFIED_ON),
+            new FigureSource('investmentIncomeYield', 'Portfolio income yield', self::DMS_RETURN_SOURCE, self::VERIFIED_ON),
+            new FigureSource('houseGrowthVolatility', 'House-price index volatility', self::HOUSE_RISK_SOURCE, self::VERIFIED_ON),
+            new FigureSource('houseEquityCorrelation', 'House-price to equity correlation', self::HOUSE_RISK_SOURCE, self::VERIFIED_ON),
+            new FigureSource('salaryGrowthVolatility', 'Real salary-growth volatility', self::SALARY_RISK_SOURCE, self::VERIFIED_ON),
+            new FigureSource('salaryEquityCorrelation', 'Salary-growth to equity correlation', self::SALARY_RISK_SOURCE, self::VERIFIED_ON),
+            new FigureSource('careCostRealGrowth', 'Real care-fee escalation', self::CARE_COST_SOURCE, self::VERIFIED_ON),
+            new FigureSource('investmentCharge', 'Ongoing investment charge', self::INVESTMENT_CHARGE_SOURCE, self::VERIFIED_ON),
+            new FigureSource('singlePropertyVolatility', 'One home\'s volatility over the index', self::SINGLE_PROPERTY_SOURCE, self::SINGLE_PROPERTY_VERIFIED_ON),
+            new FigureSource('inflationPersistence', 'Inflation persistence', self::INFLATION_DYNAMICS_SOURCE, self::INFLATION_DYNAMICS_VERIFIED_ON),
+            new FigureSource('inflationAssetCorrelations', 'Inflation to asset-class correlations', self::INFLATION_DYNAMICS_SOURCE, self::INFLATION_DYNAMICS_VERIFIED_ON),
+        ];
     }
 
     /** All shipped sets, default first. */

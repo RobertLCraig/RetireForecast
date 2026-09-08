@@ -145,7 +145,33 @@ final class AssumptionSet
         public readonly float $inflationPersistence = 0.0,
         public readonly ?array $inflationAssetCorrelations = null,
         public readonly bool $isDefault = false,
+        /**
+         * One {@see FigureSource} per economic assumption above, so each figure carries its own
+         * citation and its own verified-on date rather than sharing one prose note (board card
+         * 0065). Empty on a hand-rolled set: a test fixture stating flat zeros is not sourcing
+         * anything. Every SHIPPED set carries the full list, which
+         * `EconomicAssumptionSourcingTest` enforces by enumerating this constructor.
+         *
+         * @var list<FigureSource>
+         */
+        public readonly array $economicSourcing = [],
     ) {}
+
+    /**
+     * This set's economic sourcing, keyed by the property each entry describes, so a caller asking
+     * "where did the house-growth figure come from" reads it by name rather than by position.
+     *
+     * @return array<string, FigureSource>
+     */
+    public function economicSourcing(): array
+    {
+        $out = [];
+        foreach ($this->economicSourcing as $source) {
+            $out[$source->figure] = $source;
+        }
+
+        return $out;
+    }
 
     /**
      * The AR(1) coefficient in force, clamped to [0, 0.95]. Zero is the memoryless draw; the
@@ -279,6 +305,7 @@ final class AssumptionSet
             $this->inflationPersistence,
             $this->inflationAssetCorrelations,
             $this->isDefault,
+            $this->economicSourcing,
         );
     }
 
@@ -360,6 +387,7 @@ final class AssumptionSet
             $this->inflationPersistence,
             $this->inflationAssetCorrelations,
             $this->isDefault,
+            $this->economicSourcing,
         );
     }
 }

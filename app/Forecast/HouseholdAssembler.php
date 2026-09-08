@@ -41,7 +41,9 @@ use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
 use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\Pension\AnnuityRateTable;
 use RetireForecast\FinanceEngine\Pension\WithdrawalKind;
+use RetireForecast\FinanceEngine\Tax\ChattelsGain;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 
 /**
@@ -623,9 +625,14 @@ final class HouseholdAssembler
     /**
      * The optional annuity purchase on a DC pot OR on a non-pension account: null unless the
      * annuitise toggle is on and the amount + age are set (so an incomplete toggle silently builds
-     * nothing). The rate defaults to a sourced ~7.2% (level joint-life at 65) and the survivor
-     * fraction to 50% for a joint annuity. Which asset the row belongs to is what decides the tax
-     * treatment, and that is settled by the DTO the purchase is attached to, not here.
+     * nothing). The survivor fraction defaults to 50% for a joint annuity. Which asset the row
+     * belongs to is what decides the tax treatment, and that is settled by the DTO the purchase is
+     * attached to, not here.
+     *
+     * A row carrying NO rate is quoted from {@see AnnuityRateTable} for the shape it actually
+     * describes (board card 0065). It used to fall back on a flat 7.2%, a level joint-life quote at
+     * 65, whatever age, escalation or survivor's pension the row asked for: an index-linked annuity
+     * priced at a level one's rate buys roughly half again the income the market sells.
      *
      * @param  array<string, mixed>  $p
      */
@@ -641,14 +648,21 @@ final class HouseholdAssembler
             return null;
         }
 
+        $escalation = PensionEscalationBasis::from($p['annuityEscalation'] ?? 'none');
+        $survivorFraction = empty($p['annuityJoint'])
+            ? null
+            : ($this->percent($p['annuitySurvivorFraction'] ?? null) ?? Percent::fromPercent(50));
+
         return new AnnuityPurchase(
             atAge: $atAge,
             amount: $amount,
-            rate: $this->percent($p['annuityRate'] ?? null) ?? Percent::fromPercent(7.2),
-            escalation: PensionEscalationBasis::from($p['annuityEscalation'] ?? 'none'),
-            survivorFraction: empty($p['annuityJoint'])
-                ? null
-                : ($this->percent($p['annuitySurvivorFraction'] ?? null) ?? Percent::fromPercent(50)),
+            rate: $this->percent($p['annuityRate'] ?? null) ?? AnnuityRateTable::quote(
+                $this->intOrNull($p['annuityIncomeFromAge'] ?? null) ?? $atAge,
+                $escalation !== PensionEscalationBasis::None,
+                $survivorFraction?->asFraction(),
+            ),
+            escalation: $escalation,
+            survivorFraction: $survivorFraction,
             // A deferred start (blank = income from the purchase age) and the enhanced flag.
             incomeFromAge: $this->intOrNull($p['annuityIncomeFromAge'] ?? null),
             enhanced: (bool) ($p['annuityEnhanced'] ?? false),
@@ -692,6 +706,11 @@ final class HouseholdAssembler
     /**
      * A documented one-off capital receipt (a family gift / inheritance / outside-asset sale):
      * who receives it, what it is, how much (today's money) and which calendar year it lands.
+     *
+     * A cost stated against it makes the receipt a DISPOSAL of personal possessions rather than a
+     * windfall, and the forecast charges capital gains tax on it under the chattels rule
+     * ({@see ChattelsGain}, board card 0065). Blank keeps it a windfall, which is what a gift or an
+     * inheritance is, so nothing entered before this field existed changes.
      */
     private function capitalReceipt(array $r): CapitalReceipt
     {
@@ -700,6 +719,7 @@ final class HouseholdAssembler
             label: (string) ($r['label'] ?? ''),
             amount: $this->moneyRequired($r['amount'] ?? null),
             calendarYear: (int) $r['year'],
+            chattelCost: $this->money($r['chattelCost'] ?? null),
         );
     }
 
