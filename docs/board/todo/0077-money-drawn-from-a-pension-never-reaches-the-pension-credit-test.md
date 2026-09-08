@@ -109,3 +109,69 @@ income. Pension Credit is assessed on income net of tax. The two agree for the h
 matters most to, whose income sits inside the personal allowance, and where they differ the gross
 reading takes MORE credit away, which is the cautious side. Correcting it is a change to how every
 income reaches the test, not to this card's draw.
+
+### 2026-09-08 review (v20260908184018-4dc8)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 417s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I checked each acceptance box against real code.
+
+**AC1 ÔÇö a draw cuts the award.**
+`PathProjector::projectYear` now runs the award and the draw in a loop (the `for ($pass = 0; ; $pass++)` block). The award is asked for through the `$awardAssessedOn` closure, which passes `$extraAssessableAnnual` into `PathProjector::pensionCreditAward`, where it is added to the weekly assessable income before `PensionCreditCalculator::award`. Proved by `PensionCreditDrawAssessedTest::test_an_ad_hoc_pension_draw_reduces_the_pension_credit_award`.
+
+**AC2 ÔÇö tax-free part left out.**
+In the same loop the assessed figure is `$funded['fromPension'] - $funded['fromPensionTaxFree']`, so only the taxable part reaches the test. The capital tariff stays separate, in `PathProjector::meansTestAssessableCapital`. Proved by `test_the_tax_free_part_of_a_draw_is_not_assessed_as_income`, which also asserts the gross reading gives a different answer.
+
+**AC3 ÔÇö one settled figure.**
+The loop only breaks when re-assessing on what the pass drew gives the same award the pass used (or there is no award). `$taxablePensionDrawn` is reset to 0 at the top of every pass, and state plus the six running totals are restored before each retry, so no pass is double-charged. Proved by `test_the_award_and_the_draw_reconcile_in_the_same_year`.
+
+I tried to break it and could not.
+
+VERDICT: sound
+
+**scope: sound**
+
+I checked the one commit for this card (`105f841`), not the whole branch diff.
+
+**What it touched, and why each is on-card**
+
+- `PathProjector::projectYear` ÔÇö the fixed-point loop and the snapshot/restore. This is the card's own task.
+- `PathProjector::pensionCreditAward` ÔÇö one new `$extraAssessableAnnual` argument, added to the *income* line only. The capital tariff is worked out separately and is untouched, which is what the card's second task asked for.
+- `ScenarioForecaster::ENGINE_VERSION` ÔÇö a stamp bump. Required, because stored results move.
+- `GoldenMasterTest::PINNED` and `PathProjectorTest::test_fill_bands_is_pension_credit_aware_and_leaves_the_pension_intact` ÔÇö both moved because the engine moved, and the reason is written at each.
+
+**The fence (card 0046)**
+
+Nothing crossed it. How secure the credit is, and the claim prompt, are still done by `PathProjector::benefitContingencyWarnings`, which only had its state argument re-pointed at the pre-loop state so it reads the same household it always read.
+
+**Half done**
+
+One thing is deliberately left: the draw order is fixed before the loop, so `$onGuaranteeCredit` never moves. That is written down at the code, and raised as card 0143 rather than hidden.
+
+Nothing grew.
+
+VERDICT: sound
+
+**breakage: defect**
+
+**What I found**
+
+One real hole, and it is the same bug the card fixed, one layer up.
+
+In `PathProjector::projectYear`, the fixed-point loop breaks at once when `$benefitNominal === 0`, with the comment "a household with no award is settled by definition: no further income can claw back a credit of nil."
+
+That comment is false. Two other awards are computed inside the loop from the same `$pensionCreditAward` object and stay positive when the Guarantee Credit is nil:
+
+- `PathProjector::housingBenefitNominal` ÔåÆ `HousingBenefit::annualAward` tapers the rent off `$award->assessableIncomeWeekly`.
+- `PathProjector::councilTaxNominal` ÔåÆ `CouncilTax::reductionAnnual` tapers the bill off the same figure.
+
+So a pension-age renter just above the guarantee draws ┬ú15,000 of taxable pension money, the loop never re-asks, and their Housing Benefit and Council Tax Reduction are still worked out as if the draw never happened. That is exactly the overstated-income failure the card names, for the households least able to absorb it.
+
+No test builds this case: `PensionCreditDrawAssessedTest` and `HousingBenefitTest` never combine a nil-guarantee renter with a taxable pension draw.
+
+VERDICT: defect
+
