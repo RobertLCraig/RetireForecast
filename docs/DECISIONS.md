@@ -3,6 +3,41 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-09-08: the draw-order search generates candidates, at two statutory targets
+
+**Context:** card 0078. The search priced the three orders the tool has names for and called the
+winner "the cheapest of the 3 draw orders we tried", so it was a pick from a menu: it could not find
+an order nobody had written down. The card names two calls as Rob's, and this was an unattended
+session with no way to ask him. Both were answerable from the repository, so the card was built to
+the plan's own recommended default rather than left blocked.
+
+**Decision: the second question is settled, not deferred.** The card asks whether an order the
+reader cannot pick is worth showing at all, and whether card 0075 should land first. 0075 HAS
+landed: the draw order is a builder control now. The generated orders are still not pickable, which
+is the same gap one step further out, so it is carded (0144) rather than carried as a reason to
+wait. Showing a cheaper order the reader cannot yet run is what the tool already does with every
+other figure it prices; hiding it would be hiding a saving.
+
+**Decision: two targets, and both are statutory thresholds.** The set is 5 candidates, inside the
+plan's 4-to-6 ceiling, because each one is a whole deterministic forecast on a page render. X is the
+personal allowance and the top of the basic-rate band, read off the scenario's own
+`TaxYearConfig`. The plan's #6 also suggests "one or two in between"; those are NOT here, because a
+value in between is a figure of ours with no source behind it, and this is a tool with no magic
+numbers in it. A statutory threshold needs no defending and no `verified_on` of its own.
+
+**Decision: the target rides the settings, not the enum.** `ForecastSettings::$taxableIncomeTargetPence`
+is null for every run a reader can ask for, and only `DrawdownStrategy::FillBands` reads it: with a
+target the pension pass fills to X and the second pass at the basic-rate ceiling does not run,
+because the target IS the band being filled. Nothing decides anything, so this is not the general
+planner Rob's decision 1 of 2026-07-01 rules out, and it adds no `DrawdownStrategy` case, which
+would have put an unrunnable option in the builder's control. **No `ENGINE_VERSION` bump and no
+stored re-run is owed:** every stored scenario carries no target and is byte-identical, which is why
+`GoldenMasterTest` did not redden.
+
+**Open for Rob:** whether five is the right size and whether a target between the two thresholds is
+worth its forecast. Reversing either is one line in
+`WithdrawalStrategyComparison::taxableIncomeTargets()`.
+
 ## 2026-09-08: the Pension Credit award and the pension draw are solved together
 **Context:** card 0077. The award for a year was worked out from the income the household was
 already receiving, and only then did the projector take money out of a pot to cover what was still

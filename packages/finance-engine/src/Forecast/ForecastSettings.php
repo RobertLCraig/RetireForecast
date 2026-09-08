@@ -99,6 +99,18 @@ final class ForecastSettings
          * coin-flip lifespan leaves roughly even odds of a decade of unfunded life.
          */
         public readonly PlanningHorizon $planningHorizon = PlanningHorizon::DEFAULT,
+        /**
+         * Hold each person's taxable income under this many pence (base-year) while the draw order
+         * is filling bands: the "manage taxable income to £X" lever the withdrawal-sequencing plan
+         * describes, which the app's bounded search prices at a few values of X so an order nobody
+         * has written a name for can win (board card 0078).
+         *
+         * It is NOT a general planner and it does not decide anything: the order of the draw stays
+         * the {@see DrawdownStrategy} above, and this only says where the pension pass stops.
+         * Read by {@see DrawdownStrategy::FillBands} alone; null everywhere else, and null for
+         * every run a reader can ask for, so no stored scenario moves.
+         */
+        public readonly ?int $taxableIncomeTargetPence = null,
     ) {}
 
     /**
@@ -173,7 +185,7 @@ final class ForecastSettings
             $this->freezeEndYear, $this->annualRent, $this->rentInflationReal, $on,
             $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
             $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
-            $this->planningHorizon,
+            $this->planningHorizon, $this->taxableIncomeTargetPence,
         );
     }
 }

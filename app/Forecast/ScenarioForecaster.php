@@ -718,16 +718,16 @@ final class ScenarioForecaster
      * so the results page can read the blended real return the invested proceeds grow at
      * (`settings()->allocation()->blendedRealReturn($assumptions)`) for the assumptions panel.
      */
-    public function settings(Scenario $scenario, ?DrawdownStrategy $strategy = null): ForecastSettings
+    public function settings(Scenario $scenario, ?DrawdownStrategy $strategy = null, ?int $taxableIncomeTargetPence = null): ForecastSettings
     {
         return $this->remember(
             $scenario,
-            'settings:'.($strategy?->name ?? 'default'),
-            fn (): ForecastSettings => $this->buildSettings($scenario, $strategy),
+            'settings:'.($strategy?->name ?? 'default').':'.($taxableIncomeTargetPence ?? 'none'),
+            fn (): ForecastSettings => $this->buildSettings($scenario, $strategy, $taxableIncomeTargetPence),
         );
     }
 
-    private function buildSettings(Scenario $scenario, ?DrawdownStrategy $strategy): ForecastSettings
+    private function buildSettings(Scenario $scenario, ?DrawdownStrategy $strategy, ?int $taxableIncomeTargetPence = null): ForecastSettings
     {
         // A forced sale (a home whose mortgage is called for redemption and not refinanceable)
         // is modelled in place by the projector: it needs the entered post-sale rent and the
@@ -781,6 +781,10 @@ final class ScenarioForecaster
             // How long the plan has to last: a percentile of the LAST survivor's age at death, not
             // each person's own median. Absent = the engine's cautious default (board card 0061).
             planningHorizon: AssumptionOverrides::planningHorizon($overrides),
+            // A GENERATED candidate the search is pricing (board card 0078): hold the pension draw
+            // under £X of taxable income instead of the order's own bands. Null for every ordinary
+            // run and for every stored scenario, so nothing a reader saved moves.
+            taxableIncomeTargetPence: $taxableIncomeTargetPence,
         );
     }
 
@@ -789,9 +793,9 @@ final class ScenarioForecaster
      * on the same household + assumptions as {@see deterministic()}, so the withdrawal-sequencing
      * comparison can price each strategy on an identical basis. {@see WithdrawalStrategyComparison}.
      */
-    public function deterministicUnderStrategy(Scenario $scenario, DrawdownStrategy $strategy): ForecastResult
+    public function deterministicUnderStrategy(Scenario $scenario, DrawdownStrategy $strategy, ?int $taxableIncomeTargetPence = null): ForecastResult
     {
-        return $this->remember($scenario, 'underStrategy:'.$strategy->name, fn (): ForecastResult => (new DeterministicForecaster($this->config($scenario), new CohortLifeTable))
-            ->forecast($this->household($scenario), $this->assumptions($scenario), $this->settings($scenario, $strategy)));
+        return $this->remember($scenario, 'underStrategy:'.$strategy->name.':'.($taxableIncomeTargetPence ?? 'none'), fn (): ForecastResult => (new DeterministicForecaster($this->config($scenario), new CohortLifeTable))
+            ->forecast($this->household($scenario), $this->assumptions($scenario), $this->settings($scenario, $strategy, $taxableIncomeTargetPence)));
     }
 }

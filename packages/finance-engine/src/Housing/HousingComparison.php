@@ -390,6 +390,7 @@ final class HousingComparison
             annualRent: $action->annualRent ?? Money::zero(),
             rentInflationReal: $action->rentInflationReal ?? $assumptions->rentInflation,
             modelCareCost: $settings->modelCareCost,
+            taxableIncomeTargetPence: $settings->taxableIncomeTargetPence,
         );
     }
 

@@ -10,6 +10,7 @@ use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
 
 /**
  * Prices the household's withdrawal (drawdown) sequencing: the total tax paid across the
@@ -35,15 +36,9 @@ use RetireForecast\FinanceEngine\Money\Money;
 final class WithdrawalStrategyComparison
 {
     /**
-     * The bounded candidate set the optimiser searches: the named strategies, nothing generated.
-     *
-     * FLAGGED (board card 0078), because "nothing generated" is a real limit and not just a choice
-     * of size: the plan's #6 also describes a "manage taxable income to £X" candidate, tried at a
-     * few values of X, and one of those can beat all three of these. It is not here because the plan
-     * says to confirm the candidate set with Rob first, and because his decision 1 of 2026-07-01 was
-     * a third NAMED strategy and "not a general planner yet". So the search reports the cheapest of
-     * the orders the tool can actually run, which is what it says on the page, and 0078 owns
-     * widening it. The plan's ceiling is 4 to 6: each candidate is a whole deterministic forecast.
+     * The orders the tool has a NAME for: the ones the reader can pick in the builder, and the
+     * ones {@see alternativeTo} chooses the second panel tile from. The search itself is wider
+     * than this — see {@see candidates()}.
      *
      * @var list<DrawdownStrategy>
      */
@@ -52,6 +47,49 @@ final class WithdrawalStrategyComparison
         DrawdownStrategy::PensionAware,
         DrawdownStrategy::FillBands,
     ];
+
+    /**
+     * The bounded candidate set the optimiser actually searches: the named orders above, plus a
+     * GENERATED "manage taxable income to £X" order at each target in {@see TAXABLE_INCOME_TARGETS}.
+     *
+     * Board card 0078: before this the set stopped at the named orders, so "the cheapest of the N
+     * draw orders we tried" could only ever be an order somebody had already written down, and a
+     * household sitting just over a threshold paid for that every year of the plan.
+     *
+     * The plan's ceiling is 4 to 6, because each candidate is a whole deterministic forecast run on
+     * a page render; this is 5. The targets are statutory thresholds read from the scenario's own
+     * tax year, never figures of ours, which is why this takes the config.
+     *
+     * @return list<DrawCandidate>
+     */
+    public static function candidates(TaxYearConfig $config): array
+    {
+        $candidates = array_map(DrawCandidate::order(...), self::CANDIDATES);
+        foreach (self::taxableIncomeTargets($config) as $target) {
+            $candidates[] = DrawCandidate::managingTaxableIncomeTo($target);
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * The values of X the "manage taxable income to £X" order is tried at, in pence of the
+     * scenario's base tax year: the personal allowance (the last pound taxed at nothing) and the
+     * top of the basic-rate band (the last pound taxed at 20%). Both are the STATUTORY thresholds
+     * the engine already sources; no figure is invented here, and no value "in between" is guessed,
+     * which would be exactly that.
+     *
+     * @return list<int>
+     */
+    private static function taxableIncomeTargets(TaxYearConfig $config): array
+    {
+        $personalAllowance = $config->incomeTax->personalAllowance->pence;
+
+        return [
+            $personalAllowance,
+            $personalAllowance + $config->incomeTax->basicRateBand->pence,
+        ];
+    }
 
     /**
      * The order the panel puts side by side with the reader's own — the second tile, and the one
@@ -80,19 +118,22 @@ final class WithdrawalStrategyComparison
         public readonly int $baselineTaxPence,
         public readonly int $fillBandsTaxPence,
         public readonly int $savingPence, // baselineTax - fillBandsTax; positive = fill-the-bands pays less
-        public readonly DrawdownStrategy $cheapest,
+        public readonly DrawCandidate $cheapest,
         public readonly int $cheapestTaxPence,
         public readonly int $optimiserSavingPence, // baselineTax - cheapestTax; never negative
         public readonly bool $includesIht, // the totals carry the death tax as well as the yearly tax
+        public readonly int $candidateCount, // how many whole forecasts the search actually ran
     ) {}
 
     public static function for(ScenarioForecaster $forecaster, Scenario $scenario): self
     {
+        $candidates = self::candidates($forecaster->config($scenario));
+
         $tax = [];
         $includesIht = false;
-        foreach (self::CANDIDATES as $candidate) {
-            $run = $forecaster->deterministicUnderStrategy($scenario, $candidate);
-            $tax[$candidate->name] = self::lifetimeTax($run);
+        foreach ($candidates as $candidate) {
+            $run = $forecaster->deterministicUnderStrategy($scenario, $candidate->strategy, $candidate->taxableIncomeTargetPence);
+            $tax[$candidate->key()] = self::lifetimeTax($run);
             // Read off the run rather than the scenario's toggle, so what the page SAYS is in the
             // total is read from the same object the total was summed out of.
             $includesIht = $includesIht || $run->iht !== null;
@@ -105,15 +146,15 @@ final class WithdrawalStrategyComparison
 
         // The cheapest candidate, starting from the current order so a TIE keeps it: the
         // optimiser only ever reports an order that pays strictly less than what is in place.
-        $cheapest = $current;
-        foreach (self::CANDIDATES as $candidate) {
-            if ($tax[$candidate->name] < $tax[$cheapest->name]) {
+        $cheapest = DrawCandidate::order($current);
+        foreach ($candidates as $candidate) {
+            if ($tax[$candidate->key()] < $tax[$cheapest->key()]) {
                 $cheapest = $candidate;
             }
         }
 
-        $baseline = $tax[$current->name];
-        $fillBands = $tax[$alternative->name];
+        $baseline = $tax[DrawCandidate::order($current)->key()];
+        $fillBands = $tax[DrawCandidate::order($alternative)->key()];
 
         return new self(
             current: $current,
@@ -122,9 +163,10 @@ final class WithdrawalStrategyComparison
             fillBandsTaxPence: $fillBands,
             savingPence: $baseline - $fillBands,
             cheapest: $cheapest,
-            cheapestTaxPence: $tax[$cheapest->name],
-            optimiserSavingPence: $baseline - $tax[$cheapest->name],
+            cheapestTaxPence: $tax[$cheapest->key()],
+            optimiserSavingPence: $baseline - $tax[$cheapest->key()],
             includesIht: $includesIht,
+            candidateCount: count($candidates),
         );
     }
 
@@ -200,7 +242,7 @@ final class WithdrawalStrategyComparison
             'fillBandsSaves' => $this->fillBandsSaves(),
             'differs' => $this->savingPence !== 0,
             // The bounded search across every named draw order (PLAN-withdrawal-sequencing #6).
-            'candidateCount' => count(self::CANDIDATES),
+            'candidateCount' => $this->candidateCount,
             'cheapestLabel' => $this->cheapestLabel(),
             'optimiserSaving' => Money::fromPence($this->optimiserSavingPence)->format(),
             'optimiserSaves' => $this->optimiserSaves(),
@@ -218,7 +260,7 @@ final class WithdrawalStrategyComparison
      */
     public function cheapestLabel(): string
     {
-        return self::label($this->cheapest);
+        return $this->cheapest->label();
     }
 
     /**

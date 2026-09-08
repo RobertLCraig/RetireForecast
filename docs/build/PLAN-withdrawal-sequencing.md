@@ -180,10 +180,13 @@ before each engine edit, and claim the lane in HANDOVER.
    in its bounded `CANDIDATES` set (the three named strategies) and reports the cheapest plus its £ saving
    against the order in place. Extending the existing comparison rather than adding a sibling keeps it at one
    forecast per candidate.
-   > **The candidate set stops at the three NAMED orders, so nothing is generated.** #6 below also describes a
-   > "manage taxable income to £X" candidate; it is not built, because #6 itself says to confirm the candidate
-   > set with Rob first and Decision 1 rules out a general planner in v1. Carded as **0078** rather than left
-   > as a note, with the two calls it needs from Rob (how many targets, and whether it waits for card 0075).
+   > **The "manage taxable income to £X" candidate is BUILT (card 0078).** The set is now 5: the three named
+   > orders plus that one at two values of X, the personal allowance and the top of the basic-rate band, both
+   > read off the scenario's own tax year. `ForecastSettings::$taxableIncomeTargetPence` carries the target to
+   > the projector and only `FillBands` reads it, so the order of the draw is still the engine's and this is
+   > not the general planner Decision 1 rules out. **Rob has not confirmed the set**; it is the plan's own
+   > recommended default (see DECISIONS 2026-09-08). What a generated winner still lacks is a way for the
+   > reader to run it: card **0144**.
 
 Each slice ships alone; stopping after 1–3 already delivered the headline value (the core is shipped).
 

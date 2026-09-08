@@ -5,9 +5,25 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0077). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-08 (card 0078). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **The cheapest-draw-order search generates candidates now, so it is a search.** Card 0078. It
+  priced the three orders the tool has names for and called the winner the cheapest of the ones it
+  tried, which could never be an order nobody had written down. `App\Forecast\DrawCandidate` is one
+  order the search prices, a `DrawdownStrategy` plus an optional taxable-income TARGET, and
+  `WithdrawalStrategyComparison::candidates()` builds the set: the three named orders plus "keep each
+  person's taxable income under £X a year" at the personal allowance and at the top of the
+  basic-rate band, both read off the scenario's own tax year, so no figure is invented. Five
+  candidates, inside the plan's 4-to-6 ceiling, and each is still one forecast.
+  `ForecastSettings::$taxableIncomeTargetPence` carries the target and only `FillBands` reads it:
+  with a target the pension pass fills to X and the basic-rate pass does not run. **No
+  `ENGINE_VERSION` bump and no stored re-run is owed** (null target everywhere a reader can reach),
+  and `GoldenMasterTest` did not redden. `scenarios:audit` reports no new problem class. **Rob has
+  not confirmed the candidate set**, which the card names as his call; it is the plan's own
+  recommended default and DECISIONS 2026-09-08 records what was chosen and how to reverse it. No
+  screen changed, but the panel can now name a winner the reader cannot run: card **0144**.
 
 - **Money drawn out of a pension now reaches the Pension Credit means test.** Card 0077. The award
   for a year was worked out from the income the household already had, and only then did the

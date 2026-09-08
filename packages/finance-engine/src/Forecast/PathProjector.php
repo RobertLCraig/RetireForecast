@@ -3654,12 +3654,17 @@ final class PathProjector
             // Fill each tax-free band before a taxed pound. A household on Guarantee Credit is
             // the exception: any pension income claws the credit back £-for-£, so for them draw
             // capital first and leave the pension (and the credit) intact.
+            // With a taxable-income TARGET the household is held under ONE ceiling of its own
+            // instead of the order's two statutory ones (board card 0078): the pension pass fills
+            // to the target, and there is no second pass, because the target IS the band being
+            // filled. Null (every run a reader can ask for) leaves the order exactly as it was.
+            $target = $settings->taxableIncomeTargetPence;
             if (! $onGuaranteeCredit) {
-                $drawPensionUfpls($paLimit);    // pension within the personal allowance (0% income tax)
+                $drawPensionUfpls($target ?? $paLimit); // pension within the personal allowance (0% income tax)
             }
             $drawGiaToAea();                    // GIA gains within the CGT annual exempt amount (0% CGT)
             $drawTaxFreeCapital();              // cash + ISA (tax-free capital)
-            if (! $onGuaranteeCredit) {
+            if ($target === null && ! $onGuaranteeCredit) {
                 $drawPensionUfpls($basicLimit); // pension within the basic-rate band (20%)
             }
             $drawNonPension();                  // remaining GIA (CGT on gains beyond the AEA)

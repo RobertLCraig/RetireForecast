@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Forecast;
 
+use App\Forecast\DrawCandidate;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\WithdrawalStrategyComparison;
 use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
+use RetireForecast\FinanceEngine\Money\Money;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
@@ -50,8 +52,8 @@ class ScenarioForecasterTest extends TestCase
 
         // The reported delta is the difference of two of the engine's OWN runs, never a
         // re-derivation: re-run the winner and the current order and subtract.
-        $lifetimeTax = function (DrawdownStrategy $strategy) use ($forecaster): int {
-            $run = $forecaster->deterministicUnderStrategy($this->scenario(), $strategy);
+        $lifetimeTax = function (DrawCandidate $candidate) use ($forecaster): int {
+            $run = $forecaster->deterministicUnderStrategy($this->scenario(), $candidate->strategy, $candidate->taxableIncomeTargetPence);
             $total = $run->iht?->total->pence ?? 0;
             foreach ($run->years as $year) {
                 $total += $year->totalTax->pence;
@@ -61,19 +63,139 @@ class ScenarioForecasterTest extends TestCase
         };
         $this->assertSame($lifetimeTax($comparison->cheapest), $comparison->cheapestTaxPence);
         $this->assertSame(
-            $lifetimeTax($comparison->current) - $lifetimeTax($comparison->cheapest),
+            $lifetimeTax(DrawCandidate::order($comparison->current)) - $lifetimeTax($comparison->cheapest),
             $comparison->optimiserSavingPence,
         );
 
         // The winner really is the cheapest of the candidate set, and the optimiser never
         // reports a saving for an order that pays MORE than the one in place.
-        foreach (WithdrawalStrategyComparison::CANDIDATES as $candidate) {
+        foreach ($this->candidates() as $candidate) {
             $this->assertLessThanOrEqual($lifetimeTax($candidate), $comparison->cheapestTaxPence);
         }
         $this->assertGreaterThanOrEqual(0, $comparison->optimiserSavingPence);
+    }
 
-        // The search stays bounded: each candidate is a whole forecast, so this is the cost.
-        $this->assertLessThanOrEqual(6, count(WithdrawalStrategyComparison::CANDIDATES));
+    /** The candidate set the optimiser really searches, for the fixture's own tax year. */
+    private function candidates(): array
+    {
+        return WithdrawalStrategyComparison::candidates((new ScenarioForecaster)->config($this->scenario()));
+    }
+
+    /**
+     * The rich couple spending well beyond their income, holding most of their money in a taxable
+     * account. The stock fixture funds its spending out of income, so every draw order ties and
+     * nothing about ORDER can be seen in it at all; this household has to draw on its capital every
+     * year, which is the only state in which which pot it draws first can matter.
+     */
+    private function drawsOnItsCapital(): Scenario
+    {
+        $state = BuilderStateFixture::full();
+        $state['expenseLines'][0]['amount'] = '70000';
+        $state['accounts'][1]['balance'] = '300000';
+        $state['accounts'][1]['unrealisedGain'] = '90000';
+
+        return ScenarioFixture::rich(User::factory()->create(), $state);
+    }
+
+    /**
+     * Board card 0078, criterion 1. The search only ever ran the three orders the tool has NAMES
+     * for, so "the cheapest of the draw orders we tried" was a pick from a menu: it could not find
+     * an order nobody had already written down, and a household sitting just over a threshold paid
+     * for that every year of its plan. A generated candidate has to be a genuinely DIFFERENT
+     * forecast, not a rename of one of the three, or the search has widened on paper only.
+     */
+    public function test_the_search_runs_an_order_that_is_not_one_of_the_three_named_ones(): void
+    {
+        $forecaster = new ScenarioForecaster;
+        $scenario = $this->drawsOnItsCapital();
+
+        $lifetimeTax = function (DrawCandidate $candidate) use ($forecaster, $scenario): int {
+            $run = $forecaster->deterministicUnderStrategy($scenario, $candidate->strategy, $candidate->taxableIncomeTargetPence);
+            $total = $run->iht?->total->pence ?? 0;
+            foreach ($run->years as $year) {
+                $total += $year->totalTax->pence;
+            }
+
+            return $total;
+        };
+
+        $named = [];
+        foreach (WithdrawalStrategyComparison::CANDIDATES as $strategy) {
+            $named[$strategy->name] = $lifetimeTax(DrawCandidate::order($strategy));
+        }
+
+        $candidates = WithdrawalStrategyComparison::candidates($forecaster->config($scenario));
+        $generated = array_values(array_filter($candidates, fn (DrawCandidate $c): bool => $c->isGenerated()));
+        $this->assertNotEmpty($generated, 'the search still tries only the orders the tool has names for');
+
+        // Each generated order really is a different order: it pays a lifetime tax none of the
+        // three named ones pays. Equal totals would mean the target never reached the projector.
+        foreach ($generated as $candidate) {
+            $this->assertNotContains($lifetimeTax($candidate), $named,
+                "The generated order \"{$candidate->label()}\" pays exactly what a named order pays, so it is not "
+                .'a different order at all: the target never reached the projector.');
+        }
+
+        // ...and it can WIN, which is the whole point of the card: on this household the cheapest
+        // order of the set is one the tool holds no name for, so the old search could not find it.
+        $comparison = WithdrawalStrategyComparison::for($forecaster, $scenario);
+        $this->assertTrue($comparison->cheapest->isGenerated(),
+            'the cheapest order here is a generated one, so a search that stops at the named orders misses it');
+        $this->assertLessThan(min($named), $comparison->cheapestTaxPence);
+    }
+
+    /**
+     * Board card 0078, criterion 2. Every candidate is a whole deterministic forecast run on a page
+     * render, so the size of the set IS what the page costs. The plan's ceiling is 4 to 6.
+     */
+    public function test_the_bounded_search_stays_within_the_forecasts_a_page_can_afford(): void
+    {
+        $candidates = $this->candidates();
+
+        $this->assertGreaterThanOrEqual(4, count($candidates));
+        $this->assertLessThanOrEqual(6, count($candidates));
+
+        // ...and the panel reports the number it really ran, not a count of a different list.
+        $comparison = WithdrawalStrategyComparison::for(new ScenarioForecaster, $this->scenario());
+        $this->assertSame(count($candidates), $comparison->panel()['candidateCount']);
+
+        // No two candidates share a key, or one would silently overwrite another's total and the
+        // search would run fewer orders than it says it did.
+        $keys = array_map(fn (DrawCandidate $c): string => $c->key(), $candidates);
+        $this->assertSame($keys, array_unique($keys));
+    }
+
+    /**
+     * Board card 0078, criterion 3. A generated order has no name in the tool, so the panel could
+     * only have named it by its internal setting. The reader has to be told the thing they would
+     * actually do and the figure it turns on.
+     */
+    public function test_a_generated_order_is_named_in_terms_the_reader_can_act_on(): void
+    {
+        // The panel names the winner, so start from a household a generated order actually wins on.
+        $comparison = WithdrawalStrategyComparison::for(new ScenarioForecaster, $this->drawsOnItsCapital());
+        $this->assertTrue($comparison->cheapest->isGenerated());
+        $this->assertSame($comparison->cheapest->label(), $comparison->panel()['cheapestLabel'],
+            'the panel must name the order that actually won, not the nearest one that has a name');
+
+        $generated = array_values(array_filter($this->candidates(), fn (DrawCandidate $c): bool => $c->isGenerated()));
+        $this->assertNotEmpty($generated);
+
+        foreach ($generated as $candidate) {
+            $label = $candidate->label();
+
+            // The amount is in the name, because the amount is the whole instruction.
+            $this->assertStringContainsString(
+                Money::fromPence($candidate->taxableIncomeTargetPence)->format(),
+                $label,
+                "\"{$label}\" does not say what to keep the income under, which is the only actionable part of it.",
+            );
+            // ...and no internal setting is printed at a reader.
+            foreach ([$candidate->strategy->value, $candidate->strategy->name, 'pence', 'target', '::'] as $internal) {
+                $this->assertStringNotContainsStringIgnoringCase($internal, $label,
+                    "\"{$label}\" names the internal setting \"{$internal}\" rather than what the reader would do.");
+            }
+        }
     }
 
     public function test_the_lifetime_tax_the_optimiser_ranks_on_counts_the_tax_paid_at_death(): void
@@ -185,8 +307,8 @@ class ScenarioForecasterTest extends TestCase
             // itself the moment a constant moves, and the key check cannot see a literal. So the
             // names live only in WithdrawalStrategyComparison::label(), which is what card 0075
             // has to change and nothing else.
-            foreach (WithdrawalStrategyComparison::CANDIDATES as $candidate) {
-                $phrase = implode(' ', array_slice(explode(' ', WithdrawalStrategyComparison::label($candidate)), 0, 3));
+            foreach ($this->candidates() as $candidate) {
+                $phrase = implode(' ', array_slice(explode(' ', $candidate->label()), 0, 3));
                 $this->assertStringNotContainsStringIgnoringCase($phrase, $source,
                     "The {$where} withdrawal panel writes the draw order \"{$phrase}\" out by hand instead of reading it from label(), so it will keep that name after the order changes.");
             }
