@@ -31,13 +31,46 @@ ruleset already in force. Found while working card 0027, which changed no PHP.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN `vendor/bin/pint --test` runs over the whole repository on a clean tree, THE APP SHALL exit zero. proves: manual — Pint is the formatter, not something the suite runs; the check is the command itself.
-- [ ] #2 THE APP SHALL keep the test suite green across the reformat, since the change is cosmetic only. proves: none — no single test names this; it is the whole suite, run before and after.
+- [x] #1 WHEN `vendor/bin/pint --test` runs over the whole repository on a clean tree, THE APP SHALL exit zero. proves: manual — Pint is the formatter, not something the suite runs; the check is the command itself.
+- [x] #2 THE APP SHALL keep the test suite green across the reformat, since the change is cosmetic only. proves: none — no single test names this; it is the whole suite, run before and after.
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Run `vendor/bin/pint` (no `--dirty`) from the project root
-- [ ] Read the diff and confirm every hunk is formatting, not behaviour
-- [ ] Run `php artisan test` and confirm it is still green
+- [x] Run `vendor/bin/pint` (no `--dirty`) from the project root
+- [x] Read the diff and confirm every hunk is formatting, not behaviour
+- [x] Run `php artisan test` and confirm it is still green
 
 ## Comments
+
+**2026-09-08**
+RESULT: done
+TESTS: +0 new, all green
+TOUCHED: packages/finance-engine/src/Pension/TaxFreeCashCalculator.php
+TOUCHED: docs/board/in-progress/0083-three-tracked-files-are-not-pint-clean.md
+TOUCHED: docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+Only ONE of the three files the card names was still dirty. `app/Forecast/LumpSumTaxShock.php` and
+`app/Forecast/QuickWhatIf.php` were both brought up to the ruleset by cards worked between this card
+being written and it being picked up, since `--dirty` formats a file the moment it is next edited.
+Nothing was needed for them and neither was touched.
+
+The remaining file is `packages/finance-engine/src/Pension/TaxFreeCashCalculator.php`, fixed by
+`fully_qualified_strict_types`, `braces_position`, `single_line_empty_body` and `ordered_imports`.
+The whole diff is two lines: `fully_qualified_strict_types` shortened the docblock's
+`{@see \RetireForecast\FinanceEngine\Forecast\PathProjector::ufplsSplit}` to `{@see
+PathProjector::ufplsSplit}` and hoisted the matching `use` to the top. The other three fixers found
+nothing left to change once that one had run. No statement, no signature and no expression moved.
+
+That hoist is the one thing worth a second look on an ENGINE file, because Pint turning a docblock
+reference into a real `use` is how engine isolation has been broken here before. It is safe this
+time: the class hoisted is `RetireForecast\FinanceEngine\Forecast\PathProjector`, engine code
+already, so the file imports nothing from `App\` or `Illuminate\` and the framework-free rule still
+holds. `EngineIsolationTest` agrees.
+
+Both criteria are `manual` and `none`, so no test was written for them; the checks are the two
+commands themselves. `vendor/bin/pint --test` now reports `passed` and exits zero on a clean tree,
+which is criterion #1 and which also means `pint --test` can be used as a gate from here. The full
+suite was run after the reformat and is green, which is criterion #2.
+
+No screen changed and nothing here needs a browser check.

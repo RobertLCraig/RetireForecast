@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Pension;
 
+use RetireForecast\FinanceEngine\Forecast\PathProjector;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\RoundingMode;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
@@ -30,7 +31,7 @@ final class TaxFreeCashCalculator
      *                                    quarter and gets no second one, so only what is left of
      *                                    the payment earns an entitlement. Null (the default) is
      *                                    the ordinary wholly-uncrystallised pot. Same rule as
-     *                                    {@see \RetireForecast\FinanceEngine\Forecast\PathProjector::ufplsSplit},
+     *                                    {@see PathProjector::ufplsSplit},
      *                                    which is the projector's integer-pence twin of this
      *                                    method; `TaxFreeCashCrystallisationParityTest` holds the
      *                                    two to the same answer, because the panel used to show a
