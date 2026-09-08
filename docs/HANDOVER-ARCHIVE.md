@@ -6,6 +6,38 @@
 > that); this is the "how we got here" detail. Each item also has a dated DECISIONS.md
 > entry and the full record in `git log`. Newest-first within each part.
 
+## Card 0048, moved out of the live handover on 2026-09-08
+
+Folded out to make room for card 0065 while keeping the live brief loadable in one session. It was
+the largest block in the exceptions list that no longer changes how a fresh session works: the rule
+is built and its four open gaps each carry a board card of their own (0113, 0114, 0115, 0116), which
+is where a reader now meets them.
+
+**A pension-age renter is finally awarded Housing Benefit, and property capital is valued net of
+the costs of selling it.** The engine paid Guarantee Credit and nothing else, so a sell-and-rent
+plan met its whole rent for life in exactly the tail where a plan is judged to run short, while the
+buy-outright leg had no equivalent omission. `Benefits\HousingBenefit` owns the pension-age rules
+and is built to the same shape as `Benefits\CouncilTax`: the whole eligible rent on Guarantee
+Credit, otherwise the rent less `TAPER_BPS` (65%) of every pound of weekly income above the Pension
+Credit guarantee, nil above the £16,000 capital limit. The award comes OFF the rent and is never
+credited as income; `YearResult::housingBenefit()` reports it and the gross rent still drives the
+deposit and referencing warnings. Alongside it, `CapitalAssessment::propertyCapital` values property
+capital at market value less `NOTIONAL_SALE_COSTS_BPS` (10%) and then less the secured debt, in that
+order, which is the one definition the benefits means test now reads. **Every stored sell-and-rent
+plan that reaches a qualifying year was too pessimistic, and a plan with a let home moves through
+its Pension Credit award**; a plan that never rents and holds no let property is byte-identical.
+`ENGINE_VERSION` was `finance-engine/pension-age-housing-benefit` and the stored-scenario re-run it
+owed is still owed. Built in a worktree, so the two new result notes have not been seen in a
+browser. **Both statutory figures are STATED, not verified** and both reach a projection: see
+[docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§24), carded as **0113**. Three things the card did
+NOT close: **0114**, no Local Housing Allowance cap on eligible rent, which makes every award the
+optimistic end; **0115**, the care means test still values property without the sale-costs
+deduction, so one quantity now has two definitions; and the card's own criterion #2, the
+sale-proceeds disregard, which is left open because no state in this engine holds proceeds with an
+intention to buy: `HousingAction` carries no date, so the year-0 rebuy is instantaneous and cannot
+be otherwise. That gap is card **0116**, which opens on whether a gap between selling and buying is
+worth modelling at all, because that call is Rob's.
+
 ## Card 0038, moved out of the live handover on 2026-09-08
 
 Folded out to make room for card 0061 while keeping the live brief loadable in one session. It is
