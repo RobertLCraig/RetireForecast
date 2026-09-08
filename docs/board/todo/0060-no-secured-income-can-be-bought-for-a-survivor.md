@@ -100,3 +100,57 @@ Two smaller calls, both recorded in DECISIONS 2026-09-07. A deferred annuity pay
 the annuitant dies inside the deferral (value protection is not modelled, the adverse reading), and
 no uplift is invented for the wait: a real deferred quote pays more, so the reader enters the rate
 they were quoted.
+
+### 2026-09-08 review (v20260908095129-17d6)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 219s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I traced each criterion to real code.
+
+**AC#1 ÔÇö buy from a named non-pension account.** `Account::$annuityPurchase` (`packages/finance-engine/src/Dto/Account.php`), built by `HouseholdAssembler::annuity()`/`account()`, seeded by `PathProjector::annuityState()` with the account type as `source`, and paid for by `PathProjector::drawAnnuityPriceFromAccount()` ÔÇö capped at the wrapper, GIA gain fed to the year's CGT. UI: `resources/views/livewire/partials/annuity-fields.blade.php`, included for `accounts` in `scenario-builder.blade.php`, validated in `ScenarioBuilder::rules()`.
+
+**AC#2 ÔÇö tax only the interest element.** `PurchasedLifeAnnuity::capitalElementPerYear()`, set once in `processAnnuityPurchases()` using life expectancy at the income-start age, carried per year by `annuityIncomeNominal()` as `exempt`, and subtracted only inside the income-tax pass in `PathProjector::project()` (`$annuityExempt`). Means tests still see the full income.
+
+**AC#3 ÔÇö deferred start.** `AnnuityPurchase::$incomeFromAge` / `incomeStartAge()`; `annuityIncomeNominal()` pays nothing before that age. Field present and validated.
+
+**AC#4 ÔÇö enhanced at a disclosed uplift.** `AnnuityPurchase::ENHANCED_UPLIFT_BPS` and `effectiveRate()`; disclosed by `ScenarioBuilder::enhancedAnnuityUplift()` and `ResultPresenter::assumedFigures()`, both reading the constant.
+
+I tried to break each one and could not.
+
+VERDICT: sound
+
+**scope: defect**
+
+**Scope check on commit `096df91`** (the card's only commit; the huge diff in the brief is the whole branch, not this work).
+
+What it built matches the four criteria. Nothing crosses the 0065 fence: the annuity rate itself is untouched, and the tax-free lump sum is not referenced.
+
+Two findings.
+
+1. **Left half done, and not tracked.** Task 4, "Add a partially-annuitised what-if variant", is unticked. The comment says to "raise it as a card of its own if the preset is wanted", but no such card exists (`docs/board/todo/` holds only 0065 and the new 0136 for annuity work). So the one thing the card's own Why argues for, a third option on the table to compare, exists nowhere on the board. The figures got card 0136; this got nothing.
+
+2. **Small growth, cheap.** `ScenarioBuilder::blankAnnuity()` and `rules()` add `annuityIncomeFromAge` and `annuityEnhanced` to **pension** pots too, not only the non-pension accounts the card is about. Criteria #3 and #4 do not say "non-pension", so this reads as in scope, but it does widen an existing feature. Note it, do not fix it.
+
+Fix 1 by raising the card.
+
+VERDICT: defect
+
+**breakage: defect**
+
+I read the engine paths, not just the summary.
+
+**Finding ÔÇö the "named account" is not actually the source.**
+
+`PathProjector::drawAnnuityPriceFromAccount` takes the price from `$state[$key][$pid]`, where `$key` is derived from the account **type** (`Cash`/`PremiumBonds` ÔåÆ `'cash'`, `Gia`, `Isa`). Those state buckets are per-person **pooled totals across every account of that type** (built in the state setup beside `$state['cash'][...]`, and used that way everywhere, e.g. `growState`, `inheritEstate`). The annuity hangs off one `Account` (`Account::$annuityPurchase`), but nothing ever reads that account's own `balance`.
+
+Breakage:
+- A ┬ú5,000 cash account carrying an annuity of ┬ú100,000 buys the full ┬ú100,000 if the person also holds a ┬ú200,000 premium-bonds or other cash account. The cap the card asks for (AC #1, a *named* account) is not enforced, and the result is an overstated secured income ÔÇö the exact failure this project says it must not make.
+- The docblock on `drawAnnuityPriceFromAccount` states "out of ONE named non-pension wrapper ÔÇª Capped at what is in it." That sentence is false as written.
+- `PurchasedLifeAnnuityTest` builds households with a single account per type, so no test constructs the case.
+
+VERDICT: defect
+
