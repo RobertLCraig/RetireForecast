@@ -26,14 +26,17 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
-# Real financial sample/template spreadsheets — contain personal data, never commit.
+# Real financial sample/template spreadsheets â€” contain personal data, never commit.
 /docs/*.xlsx
 /storage/app/import-samples/
 
-# Local scenario captures — real people's data to re-model from, never commit.
+# Local scenario captures â€” real people's data to re-model from, never commit.
 # (.json covers raw builder_state / overrides exports taken before a scenario rebuild.)
 /docs/*.local.md
 /docs/*.local.json
 
 # Playwright MCP session artifacts (snapshots, console logs)
 .playwright-mcp/
+
+# Local Claude Code agent config, machine-specific, not shared.
+.claude/
