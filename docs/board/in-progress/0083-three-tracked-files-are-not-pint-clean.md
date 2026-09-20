@@ -366,3 +366,36 @@ which is exactly what I saw, and `0151` has that file carded for being twice the
 load.
 
 No screen changed and nothing here needs a browser check.
+
+**2026-09-20**
+RESULT: done
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0083-three-tracked-files-are-not-pint-clean.md
+OUT-OF-SCOPE: none — every fault I hit is already carded (0149, 0150, 0151, 0152)
+
+Tenth pick-up, ninth verification. Nothing the card asks for was outstanding: the reformat is on disk
+and committed (`133a7dc`), no PHP file was touched, no tick was changed. Both criteria are `manual`
+and `none`, so there is no failing test to write for either — the checks are the two commands, and
+both were re-run here rather than read off the entries above. `vendor/bin/pint --test` over the whole
+repository, on a tree `git status` reported clean, gives `{"tool":"pint","result":"passed"}` and exit
+0 — criterion #1. The suite is green: 1605 tests, 1604 passed, 1 skipped, 16,785 assertions,
+identical to all eight previous runs — criterion #2. Run as `php -d memory_limit=1G
+vendor/bin/phpunit`; I confirmed `vendor/bin/pest.bat` is still absent (`0150`) rather than taking it
+from the thread.
+
+The engine deletion of card `0149` happened an EIGHTH time — the tree carrying nothing but those
+deletions — and recovery was the two commands that card records, unchanged, losing nothing,
+`composer.lock` untouched. One detail worth a line for whoever works 0149, because it is cheap and
+this run could check it: the count I saw was **288** deleted paths, not the 289 the HANDOVER bullet
+and the third pick-up's entry both state. I did not chase which file differs, and it changes neither
+the recovery nor the card.
+
+Otherwise this run adds no fact the board does not already hold. I checked the lanes rather than
+inferring them: `0149`, `0150`, `0151` and `0152` are all still in `todo/`, and `0147` and `0148` are
+still in `human-review/` where the ninth pick-up found them, so that run's observation — lane moves
+work for other cards, and whatever holds `0083` is specific to it — still stands and is not revised
+by anything I saw. I raised no new card and edited no other file, HANDOVER included: its `0149`
+bullet already says the deletion recurs on every pick-up, and `0151` has that file carded for being
+twice the size a session can load, so a run with nothing new should not be adding lines to it.
+
+No screen changed and nothing here needs a browser check.
