@@ -302,3 +302,34 @@ naming a cause. I did not move this card or any other — the scheduler owns lan
 shoving a card across would hide the very mechanism the card is about.
 
 No screen changed and nothing here needs a browser check.
+
+**2026-09-20**
+RESULT: done
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0083-three-tracked-files-are-not-pint-clean.md
+OUT-OF-SCOPE: none — every fault I hit is already carded (0147, 0149, 0150, 0151, 0152)
+
+Eighth pick-up, seventh verification. The reformat is on disk and committed (`133a7dc`); no PHP file
+was touched, no tick was changed, nothing the card asks for was outstanding. Both criteria are
+`manual` and `none`, so there is no failing test to write for either — the checks are the two
+commands, and both were re-run here rather than read off the entries above. `vendor/bin/pint --test`
+over the whole repository, on a tree `git status` reported clean, gives
+`{"tool":"pint","result":"passed"}` and exit 0 — criterion #1. The suite is green: 1605 tests, 1604
+passed, 1 skipped, 16,785 assertions, identical to all six previous runs — criterion #2. Run as
+`php -d memory_limit=1G vendor/bin/phpunit`, because `0147` is still open and there is still no
+`vendor/bin/pest.bat` (`0150`).
+
+The engine deletion of card `0149` happened a SIXTH time — 288 files, the tree carrying nothing else
+— and recovery was the two commands that card records, unchanged, losing nothing, `composer.lock`
+untouched.
+
+This run adds no fact the board does not already hold, and the honest thing is to say so rather than
+manufacture one. Every condition I met on arrival is carded: the deletion (0149), the runner that
+runs out of memory (0147), the Pest binary that does not exist (0150), the handover that exceeds the
+budget its own hook prints (0151), and this card sitting finished in `in-progress` and being handed
+out again (0152). So I raised no new card and edited no other file — not HANDOVER either: its 0149
+bullet already says the deletion recurs on every pick-up, which is exactly what I saw, and 0151 has
+that file carded for being twice the size a session can load, so a run with nothing new to report
+should not be adding lines to it.
+
+No screen changed and nothing here needs a browser check.
