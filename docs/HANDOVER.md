@@ -13,9 +13,9 @@ inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded ou
   the working tree, index and `master` untouched.** Card 0149. **Read `git status` before committing
   in a worktree**, or those deletions merge back and the engine is gone. Recovery loses nothing:
   `git checkout -- packages/finance-engine`, then `composer update retireforecast/finance-engine`.
-  It has now been seen TWICE in the same worktree, the second time after that recovery had already
-  run, so recovering once does not settle it for the session: check `git status` again before you
-  commit, not only when you start.
+  It has recurred on EVERY subsequent pick-up of this worktree, each time after a recovery had
+  already run, so expect it rather than treating it as a one-off: recovering does not settle it for
+  the session, and you check `git status` again before you commit, not only when you start.
 
 - **`php artisan test` does not finish: it dies on a PHP fatal error at the 128M Herd CLI default,
   partway through the Feature suite.** Card 0147. It is the runner, not a test — run

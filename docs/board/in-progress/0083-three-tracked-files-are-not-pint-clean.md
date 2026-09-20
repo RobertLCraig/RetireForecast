@@ -178,3 +178,38 @@ unchanged. I have not edited 0149; the recurrence is noted in HANDOVER, whose bu
 implied one recovery settles it.
 
 No screen changed and nothing here needs a browser check.
+
+**2026-09-20**
+RESULT: done
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0083-three-tracked-files-are-not-pint-clean.md
+TOUCHED: docs/HANDOVER.md
+TOUCHED: docs/board/todo/0150-every-card-session-is-told-to-run-a-test-runner-this-project-does-not-have.md
+OUT-OF-SCOPE: 0150
+
+Fifth pick-up, and a verification like the three before it: the reformat is on disk and committed,
+no PHP file was touched, no tick was changed. Both criteria are `manual` and `none`, so there is no
+failing test to write for either — the checks are the two commands, and both were re-run here rather
+than read off the entries above. `vendor/bin/pint --test` over the whole repository, on a tree
+`git status` reported clean, gives `{"tool":"pint","result":"passed"}` and exit 0 — criterion #1.
+The suite is green: 1605 tests, 1604 passed, 1 skipped, 16,785 assertions, identical to all three
+previous runs — criterion #2.
+
+The engine deletion of card `0149` happened a THIRD time, again in this same worktree and again
+after a previous run had recovered from it. Recovery was the two commands 0149 records, unchanged
+and losing nothing. I have not edited 0149. What I changed is the HANDOVER bullet, which said it had
+been seen "TWICE" and so still read as something a recovery might settle: it now says it recurs on
+every pick-up, which is what the evidence supports and is the one fact this run adds.
+
+The new card is **0150**. The scheduler's standing instruction tells every card session to run
+`.\vendor\bin\pest.bat`; this project has no such file and never has — the runner is PHPUnit. Three
+runs of this card each hit that, each substituted something, and each wrote it down only in prose in
+this thread, which is why it is now a card rather than a fourth paragraph. It bites harder while
+`0147` is open, because the documented fallback `php artisan test` does not finish either, so a
+session is left with no command it was told about that works. I could not settle which side should
+move — correct the instruction, or adopt Pest — because the template lives in `C:\Dev\ProgressBoard`
+and I did not read it; the card says exactly that rather than guessing.
+
+The suite here was run as `php -d memory_limit=1G vendor/bin/phpunit`, for the reason `0147` gives.
+
+No screen changed and nothing here needs a browser check.
