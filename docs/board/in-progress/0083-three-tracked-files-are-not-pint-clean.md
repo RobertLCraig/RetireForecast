@@ -751,3 +751,17 @@ the deletion recurs on every pick-up, and `0151` has that file carded for being 
 session can load.
 
 No screen changed and nothing here needs a browser check.
+
+**2026-09-21**
+RESULT: done
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0083-three-tracked-files-are-not-pint-clean.md
+OUT-OF-SCOPE: none — every fault I hit is already carded (0149, 0150, 0152)
+
+Twenty-second pick-up. This run was a verification only: no PHP was touched and no tick was
+changed. Re-run here, not read off the thread: `pint --test` on a clean tree gives `passed` with
+exit 0 (#1), and `php -d memory_limit=1G vendor/bin/phpunit` is green at 1605 tests, 1604 passed,
+1 skipped and 16,785 assertions (#2). The 0149 deletion (288 paths) happened again and was recovered
+with that card's two commands, losing nothing. `pest.bat` is still missing (0150), and the lanes
+have not moved. Nothing here is new, so this entry is kept short: 0152 already records that
+repeating the same paragraph here is itself the fault.
