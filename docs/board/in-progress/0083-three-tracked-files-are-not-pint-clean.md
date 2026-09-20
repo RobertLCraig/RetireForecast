@@ -112,3 +112,69 @@ The other finding is **0148**: card `0117` in `todo/` asks for this card's work,
 with both criteria still open. It was written first and never picked up. A session taking it next
 would find it already green and have to choose between a tick it did not earn and a card it cannot
 close. I have not edited `0117`.
+
+**2026-09-20**
+RESULT: done
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0083-three-tracked-files-are-not-pint-clean.md
+TOUCHED: docs/board/todo/0149-a-worktree-can-start-with-the-engine-source-deleted.md
+TOUCHED: docs/HANDOVER.md
+OUT-OF-SCOPE: 0149
+
+Third pick-up of this card, and like the second it is a verification: the reformat was already on
+disk and committed, no PHP file was touched, and no tick was changed. Both criteria are `manual` and
+`none`, so there is nothing to write a failing test against; the checks are the two commands, and
+both were re-run here rather than read off the entries above.
+
+`vendor/bin/pint --test` over the whole repository on a clean tree reports
+`{"tool":"pint","result":"passed"}` and exits zero, which is criterion #1. The suite is green — 1605
+tests, 1604 passed, 1 skipped, 16,785 assertions, the same counts as the previous run — which is
+criterion #2. The suite was run as `php -d memory_limit=1G vendor/bin/phpunit`, because card `0147`
+is still open and the documented `php artisan test` still dies at the 128M Herd default. There is no
+`vendor/bin/pest.bat` in this project; the runner is PHPUnit.
+
+One thing had to be settled before anything could run, and it is the reason this entry exists rather
+than being a second copy of the one above. **This worktree started with the entire
+`packages/finance-engine` source deleted from its working tree** — 289 tracked files, the directory
+present and empty, index and branch untouched. It is carded as **0149** rather than fixed quietly,
+because the cause is in the scheduler's worktree tooling and not in this repository, and because the
+expensive outcome is a session that does not look at `git status` committing those deletions onto a
+card about formatting. Recovery here was `git checkout -- packages/finance-engine` followed by
+`composer update retireforecast/finance-engine`, which restored the files and re-created the vendor
+link; `composer.lock` is unchanged and no tracked file carries a change from it.
+
+What I could not settle from the repository is what emptied it. The observed state is consistent
+with a recursive delete following the Windows junction Composer uses to wire a path package, but the
+tooling that would do it lives in `C:\Dev\ProgressBoard` and I did not read it. Card 0149 says
+exactly that rather than asserting a cause.
+
+No screen changed and nothing here needs a browser check.
+
+**2026-09-20**
+RESULT: done
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0083-three-tracked-files-are-not-pint-clean.md
+TOUCHED: docs/HANDOVER.md
+TOUCHED: docs/board/todo/0149-a-worktree-can-start-with-the-engine-source-deleted.md (written by the
+previous run, uncommitted on disk when I arrived; committed unchanged with this entry)
+OUT-OF-SCOPE: none new — 0149 already covers the fault I hit
+
+Fourth pick-up, and again a verification: the reformat is on disk and committed, no PHP file was
+touched, no tick was changed. Both criteria are `manual` and `none`, so there is no failing test to
+write for either; the checks are the two commands and both were re-run here rather than read off the
+entries above. `vendor/bin/pint --test` over the whole repository on a clean tree reports
+`{"tool":"pint","result":"passed"}` and exits zero — criterion #1. The suite is green: 1605 tests,
+1604 passed, 1 skipped, 16,785 assertions, identical to the previous two runs — criterion #2. Run as
+`php -d memory_limit=1G vendor/bin/phpunit`, because card `0147` is still open. This project has no
+`vendor/bin/pest.bat`; the runner is PHPUnit, and the scheduler's standing instruction to run Pest
+cannot be followed here.
+
+What this run adds is one fact the previous entry could not know: **the engine deletion of card 0149
+happened AGAIN in this same worktree, after that run had already recovered from it.** I arrived to
+find `packages/finance-engine` emptied a second time and the previous run's docs edits still
+uncommitted beside it — which is the exact shape 0149 warns about, a session finding 289 deletions
+staged up against a formatting card. Recovery was the two commands 0149 records and they worked
+unchanged. I have not edited 0149; the recurrence is noted in HANDOVER, whose bullet previously
+implied one recovery settles it.
+
+No screen changed and nothing here needs a browser check.

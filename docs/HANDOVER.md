@@ -5,9 +5,17 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-09-08 (card 0083). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
+
+- **A card worktree can start with `packages/finance-engine` emptied — 289 tracked files deleted in
+  the working tree, index and `master` untouched.** Card 0149. **Read `git status` before committing
+  in a worktree**, or those deletions merge back and the engine is gone. Recovery loses nothing:
+  `git checkout -- packages/finance-engine`, then `composer update retireforecast/finance-engine`.
+  It has now been seen TWICE in the same worktree, the second time after that recovery had already
+  run, so recovering once does not settle it for the session: check `git status` again before you
+  commit, not only when you start.
 
 - **`php artisan test` does not finish: it dies on a PHP fatal error at the 128M Herd CLI default,
   partway through the Feature suite.** Card 0147. It is the runner, not a test — run
