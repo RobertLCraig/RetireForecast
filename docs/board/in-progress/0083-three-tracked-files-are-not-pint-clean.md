@@ -262,3 +262,43 @@ green". I deliberately added no bullet for 0151: the hook already announces it u
 startup, and a file carded for being too long is a poor place to spend four more lines saying so.
 
 No screen changed and nothing here needs a browser check.
+
+**2026-09-20**
+RESULT: done
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0083-three-tracked-files-are-not-pint-clean.md
+TOUCHED: docs/board/todo/0152-a-card-with-every-criterion-ticked-stays-in-in-progress-and-is-picked-up-again.md
+OUT-OF-SCOPE: 0152
+
+Seventh pick-up, sixth verification: the reformat is on disk and committed, no PHP file was touched,
+no tick was changed. Both criteria are `manual` and `none`, so there is no failing test to write for
+either — the checks are the two commands, and both were re-run here rather than read off the entries
+above. `vendor/bin/pint --test` over the whole repository, on a tree `git status` reported clean,
+gives `{"tool":"pint","result":"passed"}` and exit 0 — criterion #1. The suite is green: 1605 tests,
+1604 passed, 1 skipped, 16,785 assertions, identical to all five previous runs — criterion #2. Run
+as `php -d memory_limit=1G vendor/bin/phpunit`, because `0147` is still open and there is still no
+`vendor/bin/pest.bat` (`0150`).
+
+The engine deletion of card `0149` happened a FIFTH time, and recovery was the two commands that
+card records, unchanged and losing nothing; `composer.lock` untouched. The tree carried nothing but
+those 288 deletions. This adds no new fact — HANDOVER already says it recurs on every pick-up — so I
+changed nothing there. Nothing else in HANDOVER needed an edit either: every bullet a fresh session
+would read against what I saw is already accurate, and 0151 has that file carded for being twice the
+size a session can load, so a run with no new fact should not be adding lines to it.
+
+The one thing this run adds is card **0152**, and it is about this card rather than about the
+project. `0083` was built and both criteria ticked on 2026-09-08 in commit `133a7dc`. Four
+re-verification commits followed on 2026-09-20 and mine is the fifth, so five sessions have now been
+handed a finished card and produced no work it asked for — each writing a `RESULT: done` entry
+saying so in its own words. The thread is longer than the card. Previous runs each recorded the
+recurrence as prose here, which is exactly how 0149 and 0150 survived being found repeatedly, so
+this time it is a card. It also means `0083` has never reached `ai-review/`, and a card that produced
+code has not been adversarially reviewed.
+
+What I could not settle is why the move does not fire. The scheduler's standing instruction says it
+reads the ticked acceptance to decide the next lane, and the ticks have said "met" for twelve days;
+but that logic lives in `C:\Dev\ProgressBoard` and I did not read it, so 0152 says that rather than
+naming a cause. I did not move this card or any other — the scheduler owns lane moves, and an agent
+shoving a card across would hide the very mechanism the card is about.
+
+No screen changed and nothing here needs a browser check.
