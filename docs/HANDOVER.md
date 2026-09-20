@@ -9,6 +9,10 @@ _Last updated: 2026-09-08 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **`php artisan test` does not finish: it dies on a PHP fatal error at the 128M Herd CLI default,
+  partway through the Feature suite.** Card 0147. It is the runner, not a test — run
+  `php -d memory_limit=1G vendor/bin/phpunit` for a true green/red until 0147 lands.
+
 - **`vendor/bin/pint --test` exits zero on a clean tree, so it can gate a release.** Card 0083. One
   engine file was behind the ruleset (`--dirty` only formats a file when it is next edited); the two
   app files the card named had already caught up. Cosmetic only, no figure moves.

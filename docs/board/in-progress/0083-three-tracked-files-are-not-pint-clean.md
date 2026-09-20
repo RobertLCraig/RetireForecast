@@ -74,3 +74,41 @@ which is criterion #1 and which also means `pint --test` can be used as a gate f
 suite was run after the reformat and is green, which is criterion #2.
 
 No screen changed and nothing here needs a browser check.
+
+**2026-09-20**
+RESULT: done
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0083-three-tracked-files-are-not-pint-clean.md
+TOUCHED: docs/board/todo/0147-the-documented-test-command-runs-out-of-memory.md
+TOUCHED: docs/board/todo/0148-card-0117-asks-for-work-that-card-0083-has-already-done.md
+TOUCHED: docs/HANDOVER.md
+OUT-OF-SCOPE: 0147, 0148
+
+Picked this card up in a fresh worktree and found the build already on disk and committed
+(`133a7dc`), so this run is a verification rather than a second build. Nothing about the reformat
+was redone and no PHP file was touched. Both criteria are `manual` and `none`, so there is no test
+to write; the checks are the two commands, and both were re-run here rather than read off the entry
+above.
+
+`vendor/bin/pint --test` on a clean tree reports `{"tool":"pint","result":"passed"}` and exits zero,
+which is criterion #1. The suite is green — 1605 tests, 1604 passed, 1 skipped, 16,785 assertions —
+which is criterion #2. The ticks above were already set by the run that did the work and are left as
+they are.
+
+Two things had to be settled before the suite would run at all, and both are the environment rather
+than this card:
+
+The worktree's copied `vendor/` had a stale autoload map pointing at a `retireforecast/finance-engine`
+path that does not exist here, so PHPUnit died loading the engine tests. `composer update
+retireforecast/finance-engine` fixed it, exactly as `CLAUDE.md` says it should, and left
+`composer.lock` unchanged.
+
+`php artisan test` then died on a PHP fatal error — 128M exhausted, the Herd CLI default — partway
+through the Feature suite, before it had run everything. That is the documented command failing, not
+a test failing, so it is carded as **0147** rather than worked around quietly. The green figures
+above come from `php -d memory_limit=1G vendor/bin/phpunit`, which is the same suite with headroom.
+
+The other finding is **0148**: card `0117` in `todo/` asks for this card's work, in narrower terms,
+with both criteria still open. It was written first and never picked up. A session taking it next
+would find it already green and have to choose between a tick it did not earn and a card it cannot
+close. I have not edited `0117`.
