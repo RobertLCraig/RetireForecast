@@ -61,3 +61,6 @@ lane by the time this is picked up; `git log --follow` finds it).
 what `0083` covered.
 
 ## Comments
+
+
+**2026-09-20** The loop moved this card from todo/ to human-review/ WITHOUT trying it. All 2 of its open acceptance criteria say proves: manual, so there is nothing left an unattended session could close and starting one would change nothing. Each open criterion names what to look at and what a pass is: tick what passes and move the card on, or say what failed and move it back to todo/.
