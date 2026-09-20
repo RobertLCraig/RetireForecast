@@ -687,3 +687,35 @@ the deletion recurs on every pick-up, and `0151` has that file carded for being 
 session can load.
 
 No screen changed and nothing here needs a browser check.
+
+**2026-09-20**
+RESULT: done
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0083-three-tracked-files-are-not-pint-clean.md
+OUT-OF-SCOPE: none — every fault I hit is already carded (0149, 0150, 0151, 0152)
+
+Twentieth pick-up, nineteenth verification. Nothing the card asks for was outstanding: the reformat
+is on disk and committed (`133a7dc`), no PHP file was touched, no tick was changed. Both criteria are
+`manual` and `none`, so there is no failing test to write for either — the checks are the two
+commands, and both were re-run here rather than read off the entries above. `vendor/bin/pint --test`
+over the whole repository, on a tree `git status` reported clean, gives
+`{"tool":"pint","result":"passed"}` and exit 0 — criterion #1. The suite is green: 1605 tests, 1604
+passed, 1 skipped, 16,785 assertions, identical to all eighteen previous runs — criterion #2. Run as
+`php -d memory_limit=1G vendor/bin/phpunit`; I confirmed `vendor/bin/pest.bat` is still absent
+(`0150`) rather than taking it from the thread.
+
+The engine deletion of card `0149` happened an EIGHTEENTH time — 288 deleted paths, the count every
+pick-up since the tenth has recorded rather than the 289 the older entries and the HANDOVER bullet
+still state, and the tree carrying nothing else. Recovery was the two commands that card records,
+unchanged, losing nothing, `composer.lock` untouched.
+
+Otherwise this run adds no fact the board does not already hold, and the honest thing is to say so
+rather than manufacture one. I checked the lanes rather than inferring them and they are exactly
+where the nineteenth pick-up left them: `0149`, `0150`, `0151` and `0152` in `todo/`, `0147` and
+`0148` in `human-review/`. So the standing observation holds unrevised — lane moves work for other
+cards, and whatever keeps handing out this finished card is specific to it, which is what `0152` is
+for. I raised no new card and edited no other file, HANDOVER included: its `0149` bullet already says
+the deletion recurs on every pick-up, and `0151` has that file carded for being twice the size a
+session can load.
+
+No screen changed and nothing here needs a browser check.
