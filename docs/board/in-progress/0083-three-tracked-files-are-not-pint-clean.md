@@ -213,3 +213,52 @@ and I did not read it; the card says exactly that rather than guessing.
 The suite here was run as `php -d memory_limit=1G vendor/bin/phpunit`, for the reason `0147` gives.
 
 No screen changed and nothing here needs a browser check.
+
+**2026-09-20**
+RESULT: done
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0083-three-tracked-files-are-not-pint-clean.md
+TOUCHED: docs/HANDOVER.md
+TOUCHED: docs/board/todo/0151-the-handover-is-too-big-for-the-session-it-is-written-for.md
+OUT-OF-SCOPE: 0151
+
+Sixth pick-up, and a verification like the four before it: the reformat is on disk and committed, no
+PHP file was touched, no tick was changed. Both criteria are `manual` and `none`, so there is no
+failing test to write for either — the checks are the two commands, and both were re-run here rather
+than read off the entries above. `vendor/bin/pint --test` over the whole repository, on a tree
+`git status` reported clean, gives `{"tool":"pint","result":"passed"}` and exit 0 — criterion #1.
+The suite is green: 1605 tests, 1604 passed, 1 skipped, 16,785 assertions, identical to all four
+previous runs — criterion #2. Run as `php -d memory_limit=1G vendor/bin/phpunit`, because `0147` is
+still open and there is still no `vendor/bin/pest.bat` (`0150`).
+
+The engine deletion of card `0149` happened a FOURTH time, in this same worktree, again after a
+previous run had recovered from it. This run adds no new fact about it: the HANDOVER bullet already
+says it recurs on every pick-up, and that is now what the evidence keeps showing rather than
+something this entry revises. Recovery was the two commands 0149 records — `git checkout --
+packages/finance-engine`, then `composer update retireforecast/finance-engine` — unchanged, losing
+nothing, and `composer.lock` untouched. I have not edited 0149. Unlike the previous run I arrived to
+a tree carrying nothing but those 288 deletions, so no earlier session's work was left uncommitted
+beside them.
+
+The new card is **0151**, and it is the one thing here that was not already carded. The project's
+own `SessionStart` hook prints, at the top of every session, that `docs/HANDOVER.md` is over the
+budget a fresh session can load — so the first document every agent is told to read cannot be read
+in full by the session it briefs. I measured rather than repeated it: the file is 78,981 bytes, and
+the unstructured exception list before the first `##` heading is 59,958 of them, 76% of the file
+across 42 bullets that nothing prunes. `HandoverHygieneTest` guards the doc's shape but not its
+size, which is how it reached twice the budget with the suite green throughout. Six consecutive
+pick-ups of this card have now read that hook output and had no scope to act on it, which is why it
+is a card instead of a seventh paragraph. I did not fold anything: choosing what is stale is a
+judgement about live risk, and a fold nothing holds in place is undone within a few cards.
+
+What I could not settle from the repository is the budget itself. The hook's "~40 KB" is the only
+figure stated anywhere here, and no doc or test ratifies it, so 0151 asks for it to be agreed rather
+than asserting it.
+
+The one HANDOVER edit is a clause on the existing `0147` bullet recording that `vendor/bin/pest.bat`
+does not exist and PHPUnit is the runner. That belongs there because a session is told to run Pest
+before it reads anything, and the bullet it now sits on is the one that answers "what gives me a
+green". I deliberately added no bullet for 0151: the hook already announces it unprompted at every
+startup, and a file carded for being too long is a poor place to spend four more lines saying so.
+
+No screen changed and nothing here needs a browser check.
