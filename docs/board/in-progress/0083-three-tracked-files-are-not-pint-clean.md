@@ -333,3 +333,36 @@ that file carded for being twice the size a session can load, so a run with noth
 should not be adding lines to it.
 
 No screen changed and nothing here needs a browser check.
+
+**2026-09-20**
+RESULT: done
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0083-three-tracked-files-are-not-pint-clean.md
+OUT-OF-SCOPE: none — every fault I hit is already carded (0149, 0150, 0151, 0152)
+
+Ninth pick-up, eighth verification. Nothing the card asks for was outstanding: the reformat is on
+disk and committed (`133a7dc`), no PHP file was touched, no tick was changed. Both criteria are
+`manual` and `none`, so there is no failing test to write for either — the checks are the two
+commands, and both were re-run here rather than read off the entries above. `vendor/bin/pint --test`
+over the whole repository, on a tree `git status` reported clean, gives
+`{"tool":"pint","result":"passed"}` and exit 0 — criterion #1. The suite is green: 1605 tests, 1604
+passed, 1 skipped, 16,785 assertions, identical to all seven previous runs — criterion #2. Run as
+`php -d memory_limit=1G vendor/bin/phpunit`, because `0147` is unresolved and there is still no
+`vendor/bin/pest.bat` (`0150`).
+
+The engine deletion of card `0149` happened a SEVENTH time — 288 files, the tree carrying nothing
+else — and recovery was the two commands that card records, unchanged, losing nothing,
+`composer.lock` untouched.
+
+The one observation this run adds is evidence about `0152` rather than a new fault, so it is prose
+here and not a tenth card: the scheduler's lane moves ARE working. `0147` and `0148`, raised by the
+second pick-up of this card, have both been moved out of `todo/` into `human-review/` since. So
+whatever holds `0083` in `in-progress` with every criterion ticked is specific to this card, not a
+dead mechanism — which narrows what `0152` is looking for. I have not edited `0152`.
+
+I raised no new card and edited no other file. Every condition I met on arrival is already carded,
+and HANDOVER needs no line: its `0149` bullet already says the deletion recurs on every pick-up,
+which is exactly what I saw, and `0151` has that file carded for being twice the size a session can
+load.
+
+No screen changed and nothing here needs a browser check.
