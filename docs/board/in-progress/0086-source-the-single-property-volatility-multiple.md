@@ -69,3 +69,18 @@ is set up now. It needs either a session where WebSearch/WebFetch are allowed, o
 `research` skill interactively, and card 0085 should go in the same pass. Once a figure is sourced,
 the build is the constant, §13 and its source-list entry, and an ENGINE_VERSION bump. The existing
 test already reads the constant, so it follows the new figure without an edit.
+
+**2026-09-21** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0086-source-the-single-property-volatility-multiple.md
+OUT-OF-SCOPE: none
+This is the second unattended run today, and it was blocked the same way. The WebSearch and WebFetch
+schemas loaded, but both calls were refused for permission: one search for idiosyncratic UK
+house-price dispersion and one fetch of Nationwide's HPI methodology page. A fresh grep of `docs/`
+found no source added since the first run. §13 of ASSUMPTIONS.md is still the only mention. Both
+criteria stay open for the same reasons as before, and nothing but this entry changed. The suite ran
+through `php artisan test` because this worktree has no `vendor/bin/pest.bat` (card 0150).
+**Direction:** the scheduler keeps picking this card up, and each unattended run will end here. The
+card needs to be held out of the unattended loop until one of two things happens. Either WebSearch
+and WebFetch are allowed for the build sessions, or Rob runs the `research` skill interactively,
+covering 0085 at the same time. That is Rob's call, not a build.
