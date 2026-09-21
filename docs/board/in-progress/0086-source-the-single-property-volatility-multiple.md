@@ -84,3 +84,16 @@ through `php artisan test` because this worktree has no `vendor/bin/pest.bat` (c
 card needs to be held out of the unattended loop until one of two things happens. Either WebSearch
 and WebFetch are allowed for the build sessions, or Rob runs the `research` skill interactively,
 covering 0085 at the same time. That is Rob's call, not a build.
+
+**2026-09-21** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0086-source-the-single-property-volatility-multiple.md
+OUT-OF-SCOPE: none
+Third unattended run, blocked the same way. WebSearch (idiosyncratic house-price volatility,
+repeat sales, UK) and WebFetch (Nationwide HPI methodology) both loaded and were then refused for
+permission. A grep of `docs/` turned up no new source. The only other hit was card 0087, which has
+the same kind of sourcing gap. Both criteria stay open, and the constant, ASSUMPTIONS.md and
+ENGINE_VERSION are unchanged. The suite ran through `php artisan test` because `vendor/bin/pest.bat`
+is still missing in this worktree (card 0150). **Direction:** unchanged from the two entries above.
+Nothing new came out of this run, and the next unattended run will end the same way. Holding the
+card out of the loop, or allowing web tools for build sessions, is Rob's call.
