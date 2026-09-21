@@ -581,3 +581,13 @@ followed, and the first query was still refused for permission. Both criteria st
 code and ASSUMPTIONS.md are unchanged. The suite passed (1604 passed, 1 skipped) and so did pint.
 **Direction:** unchanged. This needs Rob's call: hold the card out of the loop, or allow
 WebSearch/WebFetch in the build sessions' permission settings.
+
+**2026-09-21** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0086-source-the-single-property-volatility-multiple.md
+OUT-OF-SCOPE: none
+Fifty-fourth unattended run, blocked the same way. WebSearch loaded, a "Tool loaded" message
+followed, and the first query was still refused for permission. Both criteria stay open, and the
+code and ASSUMPTIONS.md are unchanged. The suite passed (1604 passed, 1 skipped) and so did pint.
+**Direction:** unchanged. This needs Rob's call: hold the card out of the loop, or allow
+WebSearch/WebFetch in the build sessions' permission settings.
