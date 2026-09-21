@@ -787,3 +787,14 @@ Twenty-fourth pick-up, verification only; no PHP touched, no tick changed. Re-ru
 passed, exit 0 (#1); `php -d memory_limit=1G vendor/bin/phpunit` green, 1605 tests, 1604 passed,
 1 skipped, 16,785 assertions (#2). The 0149 deletion (288 paths) recurred and was recovered with
 that card's two commands; `pest.bat` is still absent (0150). Lanes unchanged. Nothing new, see 0152.
+
+**2026-09-21**
+RESULT: done
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0083-three-tracked-files-are-not-pint-clean.md
+OUT-OF-SCOPE: none — already carded (0149, 0150, 0152)
+
+Twenty-fifth pick-up, verification only; no PHP touched, no tick changed. Re-run here: `pint --test`
+passed, exit 0 (#1); `php -d memory_limit=1G vendor/bin/phpunit` green, 1605 tests, 1604 passed,
+1 skipped, 16,785 assertions (#2). The 0149 deletion (288 paths) recurred and was recovered with
+that card's two commands, losing nothing; `pest.bat` is still absent (0150). Nothing new, see 0152.
