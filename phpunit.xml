@@ -22,6 +22,9 @@
         </include>
     </source>
     <php>
+        <!-- The suite outgrew Herd's 128M CLI default and died of a PHP fatal partway through the
+             Feature tests (card 0147), which the loop then read as a red suite on every card. -->
+        <ini name="memory_limit" value="1G"/>
         <env name="APP_ENV" value="testing"/>
         <!-- Run the suite in PERSONAL-USE advice mode (the working default while this is a private
              family tool, DECISIONS 2026-07-04): the guidance-only partition test then SKIPS instead

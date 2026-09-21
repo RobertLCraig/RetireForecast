@@ -36,17 +36,17 @@ here suggests one is.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] WHEN `php artisan test` is run from the project root with no extra flags, THE APP SHALL run every test to completion without a PHP fatal error. proves: manual - the check is the command itself; a suite cannot assert on the memory limit of the process running it.
-- [ ] THE APP SHALL report the same counts as the hand-raised run does today (1605 tests, 1604 passed, 1 skipped, as at 2026-09-20), so the fix is shown to have added headroom and not skipped work. proves: manual - same reason.
+- [x] WHEN `php artisan test` is run from the project root with no extra flags, THE APP SHALL run every test to completion without a PHP fatal error. proves: manual - the check is the command itself; a suite cannot assert on the memory limit of the process running it.
+- [x] THE APP SHALL report the same counts as the hand-raised run does today (1605 tests, 1604 passed, 1 skipped, as at 2026-09-20), so the fix is shown to have added headroom and not skipped work. proves: manual - same reason.
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Reproduce: `php artisan test` from the project root, and note where it dies.
-- [ ] Set the limit where the test process reads it, not machine-wide. PHPUnit supports
+- [x] Reproduce: `php artisan test` from the project root, and note where it dies.
+- [x] Set the limit where the test process reads it, not machine-wide. PHPUnit supports
       `<ini name="memory_limit" value="1G"/>` inside the `<php>` block already in `phpunit.xml`,
       which keeps the fix in the repository rather than in one developer's php.ini.
-- [ ] Confirm `php artisan test` now completes, and that the counts match the figures above.
-- [ ] Leave `CLAUDE.md` alone if `phpunit.xml` carries the fix — the documented command is then
+- [x] Confirm `php artisan test` now completes, and that the counts match the figures above.
+- [x] Leave `CLAUDE.md` alone if `phpunit.xml` carries the fix — the documented command is then
       already correct. Only if the fix needs a flag does the instruction change.
 
 ## Plan
@@ -62,3 +62,7 @@ first, watching the same fatal error appear, then raising it is the cheapest way
 
 
 **2026-09-20** The loop moved this card from todo/ to human-review/ WITHOUT trying it. All 2 of its open acceptance criteria say proves: manual, so there is nothing left an unattended session could close and starting one would change nothing. Each open criterion names what to look at and what a pass is: tick what passes and move the card on, or say what failed and move it back to todo/.
+
+**2026-09-21** Built and both criteria checked, in an attended session. `<ini name="memory_limit" value="1G"/>` is in the `<php>` block of `phpunit.xml`, and `CLAUDE.md` is unchanged because the documented command is now correct as written. Proved to bite before trusting it: at `64M` the same command died in 2 seconds on `Allowed memory size of 67108864 bytes exhausted`, which is 64M, where the untouched failure had read 134217728, the 128M Herd default - so the element sets the limit and is not being ignored. At `1G`, `php artisan test` with no flags ran to completion: 1605 tests, 1604 passed, 1 skipped, 16785 assertions, exit 0. That is criterion #2's figure exactly, so the headroom was added and nothing was skipped.
+
+What it cost while open, for the record: the loop runs the suite before it promotes any card here, so every card on this board read as red. `0083` alone was resumed 55 times on 2026-09-21 for $52.09, because its own criteria were met and only this held it. A second fault was stacked on top: `vendor/retireforecast/finance-engine`, the path-repository junction `composer.json` declares, had gone missing from the main tree, so the suite could not even load there. `composer install` recreated it; `0149` is the card for why it vanishes.

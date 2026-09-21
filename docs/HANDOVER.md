@@ -17,11 +17,10 @@ inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded ou
   already run, so expect it rather than treating it as a one-off: recovering does not settle it for
   the session, and you check `git status` again before you commit, not only when you start.
 
-- **`php artisan test` does not finish: it dies on a PHP fatal error at the 128M Herd CLI default,
-  partway through the Feature suite.** Card 0147. It is the runner, not a test — run
-  `php -d memory_limit=1G vendor/bin/phpunit` for a true green/red until 0147 lands. There is no
-  `vendor/bin/pest.bat` here either, though an unattended session is told to run one (card 0150):
-  PHPUnit is the runner, so that command above is the whole answer, not a fallback.
+- **There is no `vendor/bin/pest.bat` here, though an unattended session is told to run one** (card
+  0150). PHPUnit is the runner and `php artisan test` is the whole answer, not a fallback. It runs to
+  completion since card 0147 put `memory_limit` 1G in `phpunit.xml` (2026-09-21); before that it
+  died at the 128M Herd default and every card read as red.
 
 - **`vendor/bin/pint --test` exits zero on a clean tree, so it can gate a release.** Card 0083. One
   engine file was behind the ruleset (`--dirty` only formats a file when it is next edited); the two
