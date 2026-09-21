@@ -97,3 +97,14 @@ ENGINE_VERSION are unchanged. The suite ran through `php artisan test` because `
 is still missing in this worktree (card 0150). **Direction:** unchanged from the two entries above.
 Nothing new came out of this run, and the next unattended run will end the same way. Holding the
 card out of the loop, or allowing web tools for build sessions, is Rob's call.
+
+**2026-09-21** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0086-source-the-single-property-volatility-multiple.md
+OUT-OF-SCOPE: none
+Fourth unattended run, blocked the same way. WebSearch loaded and was then refused for permission. I
+did not try curl from the shell, because that would get round a permission Rob has not granted. Both
+criteria stay open, and the code and ASSUMPTIONS.md are unchanged. The suite ran through
+`php artisan test` because `vendor/bin/pest.bat` is still missing here (card 0150). **Direction:**
+this is the same as the three entries above. The scheduler should stop picking this card up until
+web tools are allowed or Rob researches it interactively.
