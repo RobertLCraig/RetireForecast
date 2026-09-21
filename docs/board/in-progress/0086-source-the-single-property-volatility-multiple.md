@@ -108,3 +108,14 @@ criteria stay open, and the code and ASSUMPTIONS.md are unchanged. The suite ran
 `php artisan test` because `vendor/bin/pest.bat` is still missing here (card 0150). **Direction:**
 this is the same as the three entries above. The scheduler should stop picking this card up until
 web tools are allowed or Rob researches it interactively.
+
+**2026-09-21** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0086-source-the-single-property-volatility-multiple.md
+OUT-OF-SCOPE: none
+Fifth unattended run, blocked the same way. WebSearch loaded and was then refused for permission on
+the first query. Both criteria stay open, and the code and ASSUMPTIONS.md are unchanged. The suite
+ran through `php artisan test` because `vendor/bin/pest.bat` is still missing here (card 0150).
+**Direction:** unchanged. Five runs in a row have ended on the same refusal. Until web tools are
+allowed for build sessions, or Rob researches this interactively along with 0085, every further run
+spends a full suite pass (about 7 minutes) and produces nothing but another entry like this one.
