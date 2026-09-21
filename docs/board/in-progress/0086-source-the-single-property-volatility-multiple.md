@@ -705,3 +705,13 @@ Sixty-fifth unattended run, blocked the same way. WebSearch loaded, a "Tool load
 followed, and the first query was still refused for permission. Both criteria stay open, and the
 code and ASSUMPTIONS.md are unchanged. **Direction:** unchanged. This needs Rob's call: hold the
 card out of the loop, or allow WebSearch/WebFetch in the build sessions' permission settings.
+
+**2026-09-21** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0086-source-the-single-property-volatility-multiple.md
+OUT-OF-SCOPE: none
+Sixty-sixth unattended run, blocked the same way. WebSearch loaded, a "Tool loaded" message
+followed, and the first query was still refused for permission. Both criteria stay open, and the
+code and ASSUMPTIONS.md are unchanged. `vendor/bin/pest.bat` is still missing (card 0150), so the
+suite ran through `php artisan test`. **Direction:** unchanged. This needs Rob's call: hold the card
+out of the loop, or allow WebSearch/WebFetch in the build sessions' permission settings.
