@@ -502,3 +502,14 @@ Forty-fifth unattended run, blocked the same way. WebSearch loaded and was refus
 on the first query. Both criteria stay open, and the code and ASSUMPTIONS.md are unchanged. The
 suite passed (1604 passed, 1 skipped) and so did pint. **Direction:** unchanged. This needs Rob's
 call: hold the card out of the loop, or allow web tools for build sessions.
+
+**2026-09-21** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0086-source-the-single-property-volatility-multiple.md
+OUT-OF-SCOPE: none
+Forty-sixth unattended run, blocked the same way. WebSearch was refused for permission twice, once
+before and once after a "Tool loaded" message in the session, and a WebFetch of Nationwide's HPI
+methodology page was refused too. A loaded tool is still not a granted one. Both criteria stay open,
+and the code and ASSUMPTIONS.md are unchanged. The suite passed (1604 passed, 1 skipped) and so did
+pint. **Direction:** unchanged. This needs Rob's call: hold the card out of the loop, or allow
+WebSearch/WebFetch in the build sessions' permission settings.
