@@ -178,3 +178,13 @@ Eleventh unattended run, blocked the same way. WebSearch loaded and was refused 
 the first query. Both criteria stay open, and the code and ASSUMPTIONS.md are unchanged.
 **Direction:** unchanged. This needs Rob's call: hold the card out of the loop, or allow web tools
 for build sessions.
+
+**2026-09-21** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0086-source-the-single-property-volatility-multiple.md
+OUT-OF-SCOPE: none
+Twelfth unattended run, blocked the same way. WebSearch loaded and was refused for permission on
+the first query. Both criteria stay open, and the code and ASSUMPTIONS.md are unchanged. The suite
+ran through `php artisan test` (1604 passed, 1 skipped) because `vendor/bin/pest.bat` is still
+missing (card 0150). **Direction:** unchanged. This needs Rob's call: hold the card out of the
+loop, or allow web tools for build sessions.
