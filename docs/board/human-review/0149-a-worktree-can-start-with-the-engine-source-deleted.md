@@ -83,3 +83,20 @@ copy survived this occurrence, and there is no reason recorded to think it alway
 
 
 **2026-09-21** The loop moved this card from todo/ to human-review/ WITHOUT trying it. All 2 of its open acceptance criteria say proves: manual, so there is nothing left an unattended session could close and starting one would change nothing. Each open criterion names what to look at and what a pass is: tick what passes and move the card on, or say what failed and move it back to todo/.
+
+**2026-09-21** A likely mechanism, observed by an attended session and not yet proved, so no criterion
+is ticked. `vendor/retireforecast/finance-engine` is a JUNCTION, the path repository `composer.json`
+declares with `symlink: true`. In the main tree it points at `packages/finance-engine`; in the loop's
+worktree it pointed at the WORKTREE's own `packages/finance-engine`. The loop refreshes a worktree's
+`vendor` from the main tree with `robocopy ... /MIR` (`Add-CarriedState` in ProgressBoard's
+`bin/work-card.ps1`), and `/MIR` purges from the destination whatever the source does not have,
+following a junction as though it were a directory. On 2026-09-21 the main tree's junction was found
+MISSING - `vendor/retireforecast/` was empty - so each refresh mirrored an empty directory onto the
+worktree's junction and purged through it: all 288 files of the worktree's engine, every time, with
+no error, exactly as described above. `composer install` recreated the main tree's junction.
+
+Worth knowing before building the fix: even with the junction present, mirroring through it copies
+the main tree's engine files over the worktree's own, so a card that edits the engine would be tested
+against `master`'s engine. Both halves point at `/MIR` needing `/XJ` in `Add-CarriedState`, which is a
+ProgressBoard change and not one this repository can make. Why the main tree's junction went missing
+is not established.

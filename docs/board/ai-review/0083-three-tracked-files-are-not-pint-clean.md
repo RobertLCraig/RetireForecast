@@ -886,3 +886,21 @@ passed, exit 0 (#1); `php -d memory_limit=1G vendor/bin/phpunit` green, 1605 tes
 that card's two commands, losing nothing; `composer.lock` untouched. `pest.bat` is still absent
 (0150). Lanes unchanged — 0149/0150/0151/0152 in `todo/`, 0147/0148 in `human-review/`. Nothing new,
 see 0152.
+
+**2026-09-21** Moved to `ai-review/` by an attended session, which is where every pick-up above said
+it belonged. Both criteria were met long ago and are met on `master` now, with nothing to merge:
+`133a7dc` put the Pint fix on `master`, and since `0147` landed as `d62b252` the plain
+`php artisan test` runs green (1605 tests, 1604 passed, 1 skipped), so the suite gate that held this
+card on every take no longer holds it.
+
+Why it circled: every take ended in one of two holds and neither could be cleared from inside the
+card. A red suite, which was `0147`'s memory limit and not this card; and when that marker was spent,
+a merge back that conflicted on this file and `docs/HANDOVER.md`, because the pick-ups kept writing
+here on `card/0083` while other work wrote here on `master`. The loop resumes an in-progress card
+before it starts anything else, so the rest of this board waited behind it: 55 sessions and $52.09 on
+2026-09-21 alone. That is `0152`'s case, observed in full.
+
+`card/0083` carried 45 re-verification commits and two cards that `master` already had under other
+numbers, `0149` and `0152`. Nothing on it was unique, and its tip is kept as the tag
+`archive/card-0083-loop-2026-09-21` (`31b3fd7`). The branch and the loop's worktree are removed, so
+there is nothing left for a take to resume.
