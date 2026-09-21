@@ -51,3 +51,21 @@ panel both READ it, so changing it moves every screen with no other edit. Run
 `php artisan test --testsuite=Engine` after, then the full suite.
 
 ## Comments
+
+**2026-09-21** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0086-source-the-single-property-volatility-multiple.md
+OUT-OF-SCOPE: none
+This unattended session had no web access either. WebSearch and WebFetch were both refused for
+permission, the same gap that produced this card. I checked the two local places a source could
+already be: the SecondBrain vault (`find.py` for house price volatility, idiosyncratic and repeat
+sales found nothing on the subject), and `docs/` in this repository, where only ASSUMPTIONS.md §13
+and this card mention the repeat-sales literature, with no citation. Both criteria are left open.
+Criterion 1's fallback, "record that the search found none", would be false here, because no search
+was run. I did not cite a paper from memory, because a verified_on date needs a fetched page.
+Criterion 2 only applies once a figure has been sourced. The constant, ASSUMPTIONS.md and
+ENGINE_VERSION are unchanged. **Direction:** this card cannot be built by the unattended loop as it
+is set up now. It needs either a session where WebSearch/WebFetch are allowed, or Rob running the
+`research` skill interactively, and card 0085 should go in the same pass. Once a figure is sourced,
+the build is the constant, §13 and its source-list entry, and an ENGINE_VERSION bump. The existing
+test already reads the constant, so it follows the new figure without an edit.
