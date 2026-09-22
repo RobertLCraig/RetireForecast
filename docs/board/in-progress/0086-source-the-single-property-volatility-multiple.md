@@ -997,3 +997,23 @@ settled it. Both criteria stay open; criterion 1's fallback of recording that th
 is still false to write, because no search ran. **Direction:** unchanged. This needs Rob's call:
 hold the card out of the loop, or allow WebSearch/WebFetch in the build sessions' permission
 settings. Ninety-two runs have now ended on this refusal, and the loop has no route past it.
+
+**2026-09-22** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0086-source-the-single-property-volatility-multiple.md
+OUT-OF-SCOPE: none
+Ninety-third unattended run, blocked the same way. Both web tools were tried and both were refused
+for permission after loading: WebSearch (idiosyncratic house price volatility, individual property
+versus index, repeat sales, UK) and a WebFetch of Nationwide's HPI methodology page. I did not reach
+for curl, which would route round a permission Rob has not granted.
+`AssumptionSet::SINGLE_PROPERTY_VOLATILITY_MULTIPLE` is still 2.0 at
+`packages/finance-engine/src/Dto/AssumptionSet.php:113`, and ASSUMPTIONS.md §13 still carries it as
+the second sourcing gap, the 2026-08-19 reviewer's judgement with no published citation, so no
+earlier run has settled it. Both criteria stay open. Criterion 1's fallback of recording that the
+search found none stays false to write, because no search ran. Criterion 2 needs a sourced figure
+first; the existing test already reads the constant, so it will follow a new figure with no edit.
+The suite passed through `php artisan test` (1604 passed, 1 skipped) because `vendor/bin/pest.bat`
+is still missing in this worktree (card 0150), and pint passed. **Direction:** unchanged. This needs
+Rob's call: hold the card out of the loop, or allow WebSearch/WebFetch in the build sessions'
+permission settings. Ninety-three runs have now ended on this refusal and the loop has no route past
+it; each one costs a full suite pass and produces only another entry like this.
