@@ -85,3 +85,14 @@ in docs/research/ or DECISIONS.md gives a sourced management, void or maintenanc
 criteria stay open and `Property.php` is untouched. Each run like this one only adds a comment. The
 scheduler should stop picking this card until web access is granted, or until Rob does the
 research pass for 0085, 0086 and 0087 in an attended session.
+
+**2026-09-23** RESULT: blocked
+TESTS: +0 new, suite not changed
+TOUCHED: docs/board/in-progress/0087-source-the-letting-cost-rates.md
+OUT-OF-SCOPE: none
+Fourth run today. WebSearch and WebFetch were refused again, on the first call of each. docs/ still
+has no letting-market URL (no ARLA, Propertymark, Rightmove, Zoopla, NRLA or letting-agent source),
+so both criteria stay open and `Property.php` is untouched. Nothing on this card can move without
+web access or an attended research pass, so the scheduler should stop picking it until one of those
+happens. The suite was run with `php artisan test`, because this worktree has no `pest.bat` (card
+0150).
