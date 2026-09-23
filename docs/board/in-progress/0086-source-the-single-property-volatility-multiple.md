@@ -1153,3 +1153,23 @@ and the existing test already reads the constant so it will follow a new figure 
 a full suite pass and produces nothing but another entry like this one. This needs Rob's call: hold
 the card out of the unattended loop, or allow WebSearch/WebFetch in the build sessions' permission
 settings — and card 0085 wants the same pass.
+
+**2026-09-23** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0086-source-the-single-property-volatility-multiple.md
+OUT-OF-SCOPE: none
+Hundred-and-first unattended run, blocked the same way. WebSearch loaded, a "Tool loaded" message
+followed, and the first query — idiosyncratic single-property house-price volatility against an
+index, UK repeat-sales dispersion — was still refused for permission. I did not fall back to curl,
+which would route round a permission Rob has not granted. A fresh grep confirms nothing has moved:
+`SINGLE_PROPERTY_VOLATILITY_MULTIPLE` is still 2.0 in
+`packages/finance-engine/src/Dto/AssumptionSet.php`, and ASSUMPTIONS.md §13 still carries it as the
+2026-08-19 reviewer's judgement, flagged as the second sourcing gap with no citation. The only two
+files in `docs/` mentioning the repeat-sales literature remain §13 and this card. Both criteria stay
+open for the reasons every entry above gives: criterion 1's "record that the search found none"
+fallback would be a false statement, because no search ran; criterion 2 needs a sourced figure
+first, and the existing test reads the constant so it will follow a new figure without an edit.
+`vendor/bin/pest.bat` is still missing here (card 0150), so the suite ran through `php artisan
+test`. **Direction:** unchanged. A hundred and one runs have now ended on the same refusal. This
+needs Rob's call: hold the card out of the unattended loop, or allow WebSearch/WebFetch in the build
+sessions' permission settings, with card 0085 in the same pass.
