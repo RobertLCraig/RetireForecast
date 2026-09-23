@@ -1173,3 +1173,16 @@ first, and the existing test reads the constant so it will follow a new figure w
 test`. **Direction:** unchanged. A hundred and one runs have now ended on the same refusal. This
 needs Rob's call: hold the card out of the unattended loop, or allow WebSearch/WebFetch in the build
 sessions' permission settings, with card 0085 in the same pass.
+
+**2026-09-23** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: docs/board/in-progress/0086-source-the-single-property-volatility-multiple.md
+OUT-OF-SCOPE: none
+Hundred-and-second unattended run, blocked the same way. WebSearch loaded, a "Tool loaded" message
+followed, and the first query was still refused for permission. I did not fall back to curl.
+`SINGLE_PROPERTY_VOLATILITY_MULTIPLE` is still 2.0 at
+`packages/finance-engine/src/Dto/AssumptionSet.php:113`, and ASSUMPTIONS.md §13 is unchanged. Both
+criteria stay open for the reasons the entries above give. `vendor/bin/pest.bat` is still missing
+here (card 0150), so the suite ran through `php artisan test`. **Direction:** unchanged. This needs
+Rob's call: hold the card out of the unattended loop, or allow WebSearch/WebFetch in the build
+sessions' permission settings, with card 0085 in the same pass.
