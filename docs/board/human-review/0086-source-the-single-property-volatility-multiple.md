@@ -1186,3 +1186,5 @@ criteria stay open for the reasons the entries above give. `vendor/bin/pest.bat`
 here (card 0150), so the suite ran through `php artisan test`. **Direction:** unchanged. This needs
 Rob's call: hold the card out of the unattended loop, or allow WebSearch/WebFetch in the build
 sessions' permission settings, with card 0085 in the same pass.
+
+**2026-09-23** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
