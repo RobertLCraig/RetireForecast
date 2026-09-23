@@ -96,3 +96,5 @@ so both criteria stay open and `Property.php` is untouched. Nothing on this card
 web access or an attended research pass, so the scheduler should stop picking it until one of those
 happens. The suite was run with `php artisan test`, because this worktree has no `pest.bat` (card
 0150).
+
+**2026-09-23** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
