@@ -65,3 +65,13 @@ records the gap. Both criteria are open. The second one only applies once a sour
 so I wrote no test for it and left the constants in `Property.php` alone. As the Plan says, this
 card needs a session with web access, and it should do 0085 and 0086 in the same pass. Unattended
 runs will keep blocking here until web access is granted to the loop.
+
+**2026-09-23** RESULT: blocked
+TESTS: +0 new, suite not changed
+TOUCHED: docs/board/in-progress/0087-source-the-letting-cost-rates.md
+OUT-OF-SCOPE: none
+This is the second run today, and nothing has changed. WebSearch and WebFetch were both refused on
+their first call. A grep of docs/ outside the board still finds the gap only at ASSUMPTIONS.md
+§14 (lines 231-232), with no source anywhere. Both criteria are still open, and `Property.php`
+has not been touched. Repeating this run won't help. Rob needs to either grant web access to the
+unattended loop, or do the research pass (0085, 0086 and 0087 together) in an attended session.
