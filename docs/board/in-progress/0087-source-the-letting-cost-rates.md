@@ -53,3 +53,15 @@ so changing one moves the screen with no other edit. Run `php artisan test --tes
 after, then the full suite.
 
 ## Comments
+
+**2026-09-23** RESULT: blocked
+TESTS: +0 new, suite not changed
+TOUCHED: docs/board/in-progress/0087-source-the-letting-cost-rates.md
+OUT-OF-SCOPE: none
+This session could not use WebSearch or WebFetch; the permission for both was refused, as it was on
+card 0086. The repository has no source for the rates either: nothing in docs/research/ or
+docs/spec/ gives a management-fee, void or maintenance figure with a URL. ASSUMPTIONS.md §14 still
+records the gap. Both criteria are open. The second one only applies once a sourced figure exists,
+so I wrote no test for it and left the constants in `Property.php` alone. As the Plan says, this
+card needs a session with web access, and it should do 0085 and 0086 in the same pass. Unattended
+runs will keep blocking here until web access is granted to the loop.
