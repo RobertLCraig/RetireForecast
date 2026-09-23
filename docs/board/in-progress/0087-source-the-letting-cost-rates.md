@@ -75,3 +75,13 @@ their first call. A grep of docs/ outside the board still finds the gap only at 
 §14 (lines 231-232), with no source anywhere. Both criteria are still open, and `Property.php`
 has not been touched. Repeating this run won't help. Rob needs to either grant web access to the
 unattended loop, or do the research pass (0085, 0086 and 0087 together) in an attended session.
+
+**2026-09-23** RESULT: blocked
+TESTS: +0 new, suite not changed
+TOUCHED: docs/board/in-progress/0087-source-the-letting-cost-rates.md
+OUT-OF-SCOPE: none
+Third run today, same result. WebSearch and WebFetch were each refused on their first call. Nothing
+in docs/research/ or DECISIONS.md gives a sourced management, void or maintenance rate, so both
+criteria stay open and `Property.php` is untouched. Each run like this one only adds a comment. The
+scheduler should stop picking this card until web access is granted, or until Rob does the
+research pass for 0085, 0086 and 0087 in an attended session.
