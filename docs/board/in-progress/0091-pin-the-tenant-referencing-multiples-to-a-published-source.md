@@ -263,3 +263,12 @@ OUT-OF-SCOPE: none
 
 Twenty-first unattended pick-up. WebSearch was refused again, same message. Nothing changed and
 both criteria stay open.
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0091-pin-the-tenant-referencing-multiples-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+Twenty-second unattended pick-up. WebSearch was refused again, same message. Nothing changed and
+both criteria stay open.
