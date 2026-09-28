@@ -35,7 +35,7 @@ Whether to spend the pot. That is a decumulation question, cards 0060 and 0063.
 <!-- AC:BEGIN -->
 - [x] #1 WHEN an unused pension passes on a death at or after 75, THE APP SHALL show the beneficiary's income tax alongside the inheritance tax.
 - [x] #2 THE APP SHALL let the assumed beneficiary tax rate be edited, defaulting to the adverse rate and disclosed as an assumed figure.
-- [x] #3 THE APP SHALL record who each pension is nominated to, and use that rather than marital status when applying the spouse exemption.
+- [ ] #3 THE APP SHALL record who each pension is nominated to, and use that rather than marital status when applying the spouse exemption.
 <!-- AC:END -->
 
 ## Tasks
@@ -176,3 +176,5 @@ VERDICT: defect
 
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #3 because the breakage finding holds on main. `InheritanceTaxCalculator::computeFirstDeath()` still sets `$nominatedToSpouse` to zero whenever `$spouseSurvives` is false, which `PathProjector::recordFirstDeathIht` makes true only for `MarriedOrCivilPartnership`, and `PensionBeneficiary` offers only `SpouseOrCivilPartner` or `SomeoneElse`. So for a cohabiting couple marital status, not the nomination, still decides: the whole pot is charged beneficiary income tax at a post-75 first death, while `PathProjector::settleEstates` hands it to the surviving partner, whose withdrawals are taxed again. Let a pot be nominated to a cohabiting partner and test that case. The child-nominated pot staying in the household is card 0133.
