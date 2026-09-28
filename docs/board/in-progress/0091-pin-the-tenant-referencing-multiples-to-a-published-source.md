@@ -490,3 +490,13 @@ OUT-OF-SCOPE: none
 Forty-sixth unattended pick-up. WebSearch was refused again, same message. Nothing changed and
 both criteria stay open. The scheduler keeps re-picking this card with no web access. It needs an
 attended session with WebSearch and WebFetch allowed, or it should stop being scheduled unattended.
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0091-pin-the-tenant-referencing-multiples-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+Forty-seventh unattended pick-up. WebSearch and WebFetch were both refused again, same message.
+Nothing changed and both criteria stay open. Same fix as before: an attended session with web
+tools allowed, or take this card off the unattended queue.
