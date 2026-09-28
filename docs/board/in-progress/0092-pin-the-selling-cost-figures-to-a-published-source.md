@@ -136,3 +136,12 @@ OUT-OF-SCOPE: none
 Sixth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
 not used, as above. Both criteria stay open. Nothing changes until Rob runs this attended or grants
 WebSearch/WebFetch to card sessions.
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+Seventh unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
+not used, as above. Both criteria stay open.
