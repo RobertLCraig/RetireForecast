@@ -25,6 +25,7 @@ The value of any particular growth rate. That is a scenario input.
 - [x] #1 WHEN a property carries a growth override, THE APP SHALL apply it as the mean and keep drawing year-to-year variation around it. proves: `test_a_growth_override_sets_the_mean_and_keeps_the_year_to_year_variation`
 - [x] #2 THE APP SHALL apply a sourced single-property volatility uplift to a primary residence, disclosed as an assumed figure and editable. proves: `test_the_single_property_volatility_uplift_is_disclosed_with_its_value`
 - [x] #3 WHEN a depreciating home such as a park home is modelled, THE APP SHALL use a wider volatility than the index default. proves: `test_a_depreciating_park_home_is_modelled_over_a_wider_spread_than_the_index`
+- [ ] #4 THE APP SHALL never let a sampled property fall to or below zero value in a year, whatever the volatility multiple, and a test SHALL build the tail draw that would otherwise cross it.
 <!-- AC:END -->
 
 ## Tasks
@@ -178,3 +179,5 @@ VERDICT: defect
 
 
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #4 because the breakage finding still holds on master. `SampledPathDraws::propertyGrowthReal` returns `mean + shock * singlePropertyMultiple` with no floor, and `PathProjector::growState` multiplies the value by `1 + growth` with none either. At the doubled DMS volatility, a draw of about z <= -4.6 makes a home worth less than nothing, and it then compounds and can clear a lifetime mortgage through the no-negative-equity cap. The stale `SampledPathDraws` class docblock belongs on the same pass.
