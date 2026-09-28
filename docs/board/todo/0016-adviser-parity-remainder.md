@@ -20,6 +20,7 @@ B5 capacity for loss, which is card 0011 and comes first in the plan's order.
       longer understated by the absence of bed-and-ISA.
 - [x] #2 THE APP SHALL model the GBP 3,600 non-earner relief route.
 - [x] #3 THE APP SHALL cap relievable contributions by the annual allowance and the MPAA.
+- [ ] #4 THE APP SHALL let the reader turn bed-and-ISA off in the builder, and SHALL honour that choice on every housing arm, including rent (`HousingComparison::rentSettings` carries `useIsaAllowance`).
 <!-- AC:END -->
 
 ## Tasks
@@ -145,3 +146,5 @@ VERDICT: defect
 <!-- The card's thread, appended by ProgressBoard. Append-only: entries are added, never edited or removed. An entry beginning **Decided:** is an answer, and that is what a decision card exits on. -->
 
 **2026-08-29** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #4 because both findings still hold on master. Nothing in `ScenarioBuilder` writes `useIsaAllowance`, yet `ResultPresenter::assumedFigures()` tells the reader to "say so". And `HousingComparison::rentSettings` rebuilds `ForecastSettings` without `useIsaAllowance`, so the rent arm always shelters its sale proceeds while stay-put and buy obey the switch. The same method also drops `modelIht`, `homeToDescendants` and `sellingCosts`; rebuild it from the incoming settings rather than field by field.
