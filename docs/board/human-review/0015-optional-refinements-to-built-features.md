@@ -1,5 +1,15 @@
 # Optional refinements to built features
 
+## What I need from you
+
+**Run this card in an attended session where web search works, so it can source three care figures: an age gradient for care onset, a female-to-male ratio for length of stay, and the council fee as a share of the self-funder fee.** Unattended sessions refuse web tools, so the loop cannot move it (two takes have ended there).
+
+**Pass:** each figure lands in `CareAssumptions` with a `source` URL and a `verified_on` date, has an editable control with its sourced alternatives, and its line comes off DATA-MODEL "Known divergences". The likely sources are the PSSRU/LSE paper the class already cites, the CMA care-homes market study, and LaingBuisson.
+
+**Fail:** if a figure has no citable source, say so on the card and leave that item open rather than guess, because each one moves a headline result.
+
+If you already hold any of the three figures with a source, write them here and the loop can build from them. The fourth open item, the annuitisation month, is sequenced behind card 0036, which now carries it as criterion #4.
+
 ## Why
 All flagged v1 limits, recorded in DATA-MODEL "Known divergences" and docs/build/PLAN.md. None
 is a correctness gap; each is a known simplification to pick off by value.
