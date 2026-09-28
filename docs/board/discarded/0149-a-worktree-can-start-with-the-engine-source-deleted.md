@@ -100,3 +100,5 @@ the main tree's engine files over the worktree's own, so a card that edits the e
 against `master`'s engine. Both halves point at `/MIR` needing `/XJ` in `Add-CarriedState`, which is a
 ProgressBoard change and not one this repository can make. Why the main tree's junction went missing
 is not established.
+
+**2026-09-28** Manager pass: discarded as superseded by `progressboard#0183` ("Carrying `vendor` into a worktree mirrors through a nested junction, and can delete a project's source", in ProgressBoard's `todo/`). That card carries this card's 2026-09-21 mechanism, and it covers both halves: the purge through the nested junction and the wrong-tree engine. Its acceptance holds the fix. The fault is still live: `Add-CarriedState` in `C:\Dev\ProgressBoard\bin\work-card.ps1` removes only a top-level junction and still calls `robocopy /MIR` without `/XJ`. But both the fix and its check live in ProgressBoard, not here.
