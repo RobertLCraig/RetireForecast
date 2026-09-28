@@ -1,5 +1,16 @@
 # Queue safety and forecast performance
 
+## What I need from you
+Choose A or B for criterion #3: may this card keep decrypted forecasts in a cache that outlives the web request?
+
+- **A. Yes, build a persistent forecast cache.** It keys each plan's forecast on `ScenarioForecaster::stamp()`, so a changed plan recomputes and an unchanged one is served from the cache. It saves about 64 ms per plan per page load, about 1.3 s with twenty plans. Decrypted figures would sit in a local store with an expiry and an erase path, as `ScenarioExport::build()` already does for its 24-hour PDF archive.
+- **B. No, reword #3 to the in-request reading.** #3 then says forecasts are not recomputed within one request, which is already built and tested. The persistent cache becomes its own card, where where-and-how-long can be decided on its own.
+
+I recommend **B**. The saving is about a second on a screen with no browser sign-off yet (card 0001), and where personal forecasts are stored is a bigger question than a performance card should settle in passing.
+
+**Pass:** reply "A" or "B". On A, the card goes back to todo with its "Not this card" line lifted. On B, #3 is reworded and ticked, and a new card holds the persistent cache.
+**Fail:** no reply means the card stays here; nothing else on it is open.
+
 ## Why
 From the expert panel, 2026-08-19 (engineer findings F6, F12, F13). Detail in the gitignored
 `docs/REVIEW-PANEL-2026-08-19.local.md`.
@@ -255,3 +266,5 @@ which is PHPUnit and not Pest. The suite ran as `php artisan test` and style as
 `.\vendor\bin\pint.bat --dirty`.
 
 **2026-09-06** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+**2026-09-28** Manager pass: this is a genuine choice for Rob, not a build fault. #1 and #2 are built and proven; #3 cannot be met inside this card's own "Not this card" fence, because every Livewire re-render is a new request. Wrote the A-or-B ask at the top.
