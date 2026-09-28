@@ -83,3 +83,14 @@ hit 68 times. Every task on this card is a web lookup, so nothing can move here 
 stay open. The second criterion is conditional on a sourced figure differing, so it has nothing to
 test until the first is met. Needs an attended session with web access, per the card's own Plan;
 settle 0085, 0086, 0087 and 0091 in the same research pass. Do not re-queue it unattended.
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+Second unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). A browser tool
+(Playwright) was offered, but using it to fetch pages after the web permission was refused would
+route round that refusal, so it was not used. Both criteria stay open. This card needs Rob to run it
+attended, or to grant WebSearch/WebFetch to card sessions.
