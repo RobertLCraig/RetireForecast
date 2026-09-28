@@ -9,7 +9,7 @@ A3 ISA rules, A4 salary sacrifice, B3 estate checklist, B4 annual review.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 THE APP SHALL state how far wealth can fall before the essential spending floor is
+- [ ] #1 THE APP SHALL state how far wealth can fall before the essential spending floor is
       breached, for a given scenario.
 - [x] #2 THE APP SHALL express that as a percentage fall and a cash figure, both net of the
       mortgage, consistent with the project's one definition of total wealth.
@@ -121,3 +121,5 @@ VERDICT: defect
 <!-- The card's thread, appended by ProgressBoard. Append-only: entries are added, never edited or removed. An entry beginning **Decided:** is an answer, and that is what a decision card exits on. -->
 
 **2026-08-29** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 2 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 2 of 2 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #1 because the figure it states can be wrong. `CapacityForLoss::forScenario` still decides from two probes, `holds(0)` and `holds(100)`, and the engine is not monotone in wealth: `CapitalAssessment` tariff income cuts Pension Credit on capital, so a Pension Credit household can pass at 0%, pass at 100% and fail in between, and the panel then says no fall would breach the floor. Build a Pension Credit test household that fails in the middle, and make the search find it. The scope review's leftovers (`AdviceCostComparison::variantInputs()` is a fourth copy of the variant resolution; PLAN-adviser-parity.md still says B5 is unbuilt) belong on the same pass.
