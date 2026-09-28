@@ -32,8 +32,8 @@ Withdrawal sequencing across wrappers, which is card 0007.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 THE APP SHALL offer a spending guardrail that reduces discretionary spend when wealth falls below a trigger, and restores it on recovery.
-- [x] #2 THE APP SHALL expose the trigger and the reduction as editable inputs with a sourced default.
+- [ ] #1 THE APP SHALL offer a spending guardrail that reduces discretionary spend when wealth falls below a trigger, and restores it on recovery.
+- [ ] #2 THE APP SHALL expose the trigger and the reduction as editable inputs with a sourced default.
 - [x] #3 WHEN a guardrail is in use, THE APP SHALL report how many years it bit and by how much.
 - [x] #4 WHEN a household has no discretionary spend left to cut, THE APP SHALL say so.
 <!-- AC:END -->
@@ -159,3 +159,5 @@ VERDICT: defect
 
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #1 and #2 because both breakage findings still hold on `master`. #2: `ResultPresenter::assumedFigures` fires on `triggerIsAssumed() || cutIsAssumed()` but tells the reader they gave neither figure and states both, so a trigger the reader typed is presented as ours. #1: in `PathProjector::projectYear` the guardrail's essential spend is read from `$essentialPence` after the mortgage payment and property costs have been taken out of it, so a mortgaged or renting household's funded ratio is inflated and the guardrail barely bites. No test builds a mixed-blank guardrail or a mortgaged or renting household with one.
