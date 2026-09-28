@@ -25,9 +25,10 @@ The salary proration, which is already correct.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 WHEN a State Pension starts part way through a year, THE APP SHALL pay only the part of the year after the entitlement date.
+- [ ] #1 WHEN a State Pension starts part way through a year, THE APP SHALL pay only the part of the year after the entitlement date.
 - [x] #2 WHEN a defined-benefit pension starts at normal retirement age, THE APP SHALL pay only the part of the year after that birthday.
 - [x] #3 WHEN a person reaches State Pension age part way through a year, THE APP SHALL charge National Insurance on the earnings before that date.
+- [ ] #4 WHEN an annuity is bought or an income stream starts at a birthday part way through a year, THE APP SHALL pay only the part of that year after the start, by the same `startFraction` rule.
 <!-- AC:END -->
 
 ## Tasks
@@ -157,3 +158,5 @@ VERDICT: defect
 
 
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #1 and added #4 because both findings still hold on master. #1: `PathProjector::startFraction` returns `(12 - month) / 12`, so a November State Pension pays one month, while the code comment in `statePensionIncome` and METHODOLOGY.md both say two months, rounded to the nearest month. Settle one rule and make the code, comment and spec agree. #4: `annuityIncomeNominal` pays a full year in the purchase year, and `incomeStreamsNominal` does the same at `startAge`, which is the same asymmetry this card fixed for DB pensions. Card 0015 parks its annuitisation-month item behind this one for that reason.
