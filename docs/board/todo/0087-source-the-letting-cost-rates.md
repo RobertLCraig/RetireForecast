@@ -1,3 +1,6 @@
+---
+waiting_on: progressboard#0211, the research-only web session Rob ruled for on 0084 - recheck 2026-10-13
+---
 # Pin the three letting-cost rates to a published source
 
 ## What I need from you
@@ -109,3 +112,5 @@ happens. The suite was run with `php artisan test`, because this worktree has no
 **2026-09-23** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
 
 **2026-09-28** Manager pass: this card's text was restored from commit `51b1442`. Commit `36d2291` ("board: 0088 what the session left uncommitted") had committed it as an empty file. That commit also emptied one other card, `...running-costs-are-charged-as-household-spend.md`, which this pass has not touched. The card is left in `human-review/` with an ask: four unattended takes ended on the same WebSearch refusal, and only Rob can decide whether the loop gets the web (card 0084).
+
+**2026-09-29** **Decided:** B, in the narrower form Rob ruled on 0084 on 2026-09-28: the unattended loop gets the web only in a separate research session that can write notes under `docs/research/` and nothing else, and a later build session with no web builds this card from the note. Settled by an attended agent under Rob's rule that human-review holds only what he must decide: this card's A-or-B ask is the question 0084 asked, and Rob answered it there. The research session is `progressboard#0211`, not yet built, so this card carries `waiting_on:` until it lands, which keeps the build loop from spending another take on the refusal.
