@@ -128,3 +128,12 @@ OUT-OF-SCOPE: none
 Sixth unattended pick-up. WebSearch was refused again ("you haven't granted it yet"). I did not
 route round the refusal with curl: that would override a permission Rob has not given. Nothing
 changed and both criteria stay open.
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0091-pin-the-tenant-referencing-multiples-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+Seventh unattended pick-up. WebSearch was refused again, same message. Nothing changed and both
+criteria stay open.
