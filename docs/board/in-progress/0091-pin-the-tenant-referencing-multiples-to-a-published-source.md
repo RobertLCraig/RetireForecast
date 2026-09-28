@@ -58,3 +58,21 @@ results-page banner READ them, so changing one moves the screen with no other ed
 needed unless a stored figure moves: the flag changes no projected number.
 
 ## Comments
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0091-pin-the-tenant-referencing-multiples-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+This session has no web access either. WebSearch and WebFetch were both refused with a
+permission error, which is the gap the card's Plan predicted. I also searched the local
+SecondBrain vault and `docs/research/` for a published referencing criterion (income multiple,
+guarantor multiple, rent in advance). Neither holds one.
+
+So neither criterion can be met here. Criterion 1 allows "record that the search found none",
+but no search ran, so writing that into ASSUMPTIONS.md §15 would be false. Criterion 2 only
+fires once a sourced figure exists. The constants in `Tenancy.php` and §15 are untouched.
+
+Next step: run this card in an attended session with WebSearch and WebFetch allowed (the Plan
+already says so). One research pass can settle 0085, 0086 and 0087 at the same time.
