@@ -34,6 +34,7 @@ How secure Pension Credit is treated as being, and the missing claim prompt, whi
 - [x] #1 WHEN a household on Pension Credit draws taxable pension money to cover a shortfall, THE APP SHALL reduce that year's award by what the means test would take. proves: `test_an_ad_hoc_pension_draw_reduces_the_pension_credit_award`
 - [x] #2 THE APP SHALL leave the tax-free part of a draw out of the assessment, because it is capital and not income. proves: `test_the_tax_free_part_of_a_draw_is_not_assessed_as_income`
 - [x] #3 THE APP SHALL settle to a single consistent figure for the year, with the award, the shortfall and the draw agreeing. proves: `test_the_award_and_the_draw_reconcile_in_the_same_year`
+- [ ] #4 WHEN a household on no Guarantee Credit draws taxable pension money, THE APP SHALL re-assess its Housing Benefit and Council Tax Reduction on that draw in the same year. proves: `test_a_pension_draw_reduces_housing_benefit_when_the_guarantee_credit_is_nil`
 <!-- AC:END -->
 
 ## Tasks
@@ -177,3 +178,5 @@ VERDICT: defect
 
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened, added #4, because the breakage finding still holds on `master`. The fixed-point loop in `PathProjector::projectYear` still stops as soon as `$benefitNominal === 0` ("settled by definition"). But `housingBenefitNominal` and `councilTaxNominal` taper off the same award's `assessableIncomeWeekly`, and both can still be positive, so a renter just above the guarantee who draws taxable pension money keeps their Housing Benefit and Council Tax Reduction as if the draw never happened.
