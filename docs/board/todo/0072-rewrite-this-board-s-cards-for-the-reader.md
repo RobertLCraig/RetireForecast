@@ -59,7 +59,7 @@ everything the card knows and changes only how it is ordered and said. `## Direc
       exactly, in both directions. proves: none - as #2
 - [x] #5 THE REWRITE SHALL preserve every measurement, date and decision the card already carried,
       and SHALL NOT edit `## Direction` or `## Decided`. proves: none - as #2
-- [x] #6 WHEN this board's rewrite is finished, THE BOARD SHALL report zero open cards failing the
+- [ ] #6 WHEN this board's rewrite is finished, THE BOARD SHALL report zero open cards failing the
       checks. proves: none - as #2
 <!-- AC:END -->
 
@@ -96,7 +96,7 @@ card whose `## Plan` says what was applied and where it came from. Count those s
 cards merely rewritten - that is the change that gives him evenings back.
 
 **If the board is too big for one session, stop cleanly.** Tick nothing, write the count you reached
-into `## Direction`, and leave the card where it is; the next session carries on from that entry. A
+into `## Comments`, and leave the card where it is; the next session carries on from that entry. A
 part-rewritten board is normal. A card ticked off a board that is not at 0 is not.
 
 ## Comments
@@ -332,3 +332,5 @@ VERDICT: sound
 
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 6 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 6 of 6 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #6 because `php C:\Dev\ProgressBoard\artisan board:convention --path=C:\Dev\RetireForecast --cards` now reports 4 open cards failing, not 0: 0142 (unexplained link 0076), 0151 (a proves: line the loop cannot read), 0042 (unexplained link 0001) and 0078 (unexplained links 0081, 0144). This same pass has fixed 0078's links, so re-run the command and fix what is left. The 2026-09-08 scope finding does not break a criterion. Card 0141 was declared out of scope. The Tasks-versus-Plan mismatch is settled by editing the Plan line to say `## Comments`, because #5 forbids writing to `## Direction`.
