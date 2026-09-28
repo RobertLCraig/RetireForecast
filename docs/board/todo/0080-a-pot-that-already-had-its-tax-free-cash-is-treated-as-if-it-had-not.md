@@ -39,7 +39,7 @@ is card 0079.
 ## Acceptance
 <!-- AC:BEGIN -->
 - [x] #1 THE APP SHALL let the reader say how much of a pension pot is already in drawdown. proves: `test_a_pot_can_be_entered_as_partly_crystallised`
-- [x] #2 WHEN a pot is entered as already in drawdown, THE APP SHALL charge full income tax on that part of it and give no tax-free quarter. proves: `test_a_draw_from_an_already_crystallised_pot_takes_no_tax_free_quarter`
+- [ ] #2 WHEN a pot is entered as already in drawdown, THE APP SHALL charge full income tax on that part of it and give no tax-free quarter. proves: `test_a_draw_from_an_already_crystallised_pot_takes_no_tax_free_quarter`
 - [x] #3 WHERE the reader does not say, THE APP SHALL disclose which answer it assumed and what that answer costs them. proves: `test_the_assumed_crystallised_share_is_disclosed`
 <!-- AC:END -->
 
@@ -166,3 +166,5 @@ VERDICT: defect
 
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #2 because `App\Forecast\LumpSumTaxShock::alreadyCrystallised` still builds the crystallised part only from earlier `pcls` plan rows and never reads `DcPension::crystallisedValue()`. So for a pot entered as already in drawdown, the tax-shock panel shows a tax-free quarter on money `PathProjector` taxes in full: one withdrawal, two answers. `LumpSumTaxShockTest` has no case with a starting `crystallisedValue`. The scope finding also stands: `crystallisedValue` is backfilled and validated on DB and State Pension rows, where it means nothing.
