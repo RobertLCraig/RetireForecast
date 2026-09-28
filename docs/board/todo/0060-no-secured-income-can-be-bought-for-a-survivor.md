@@ -34,7 +34,7 @@ Annuity rate sourcing and the tax-free lump sum interaction, which are in card 0
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 THE APP SHALL let an annuity be bought from a named non-pension account.
+- [ ] #1 THE APP SHALL let an annuity be bought from a named non-pension account.
 - [x] #2 WHEN an annuity is bought with non-pension money, THE APP SHALL tax only the interest element, using the exempt proportion for the buyer's age.
 - [x] #3 THE APP SHALL let an annuity purchase be deferred to a chosen age, with income starting later.
 - [x] #4 THE APP SHALL let an annuity be marked as enhanced for impaired health, at a disclosed uplift.
@@ -162,3 +162,5 @@ VERDICT: defect
 
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #1 because the 2026-09-08 breakage finding still holds on `master`. `PathProjector::drawAnnuityPriceFromAccount` takes the price from `$state[$key][$pid]`, the person's pooled total for that account TYPE, and never reads the named account's own balance, so a £5,000 cash account can buy a £100,000 annuity when the same person holds other cash. Cap the draw at the named account and add the two-accounts-of-one-type case to `PurchasedLifeAnnuityTest`. The scope finding also stands: the partly-annuitised what-if (Task 4) has no card of its own yet.
