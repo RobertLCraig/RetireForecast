@@ -2,11 +2,27 @@
 
 ## What I need from you
 
-Decide how much of the four-item list below you do now, because the first item — the working
-partner's State Pension forecast — is the single unverified number that decides whether this
-household has a means-tested safety net at all, and the whole benefits layer of the model is
-ranked on it. None of the four can be settled from this repository: they are a DWP login, a phone
-call, a council tax bill and an award letter.
+**Check the working partner's State Pension forecast (weekly amount and qualifying years), and say whether you make the other three benefits calls at the same time. Reply 1 or 2.**
+
+1. **All four, in the order 1, 3, 4, 2.** Check the forecast at gov.uk/check-state-pension or on
+   the award letter; ask the council for the disabled band reduction; check the older partner's
+   care and mobility rates against the award letter; phone Age UK on 0800 678 1602 for a benefits
+   check. The two outside clocks (the council reassessment, the Age UK appointment) start now.
+2. **Item 1 only.** Check the forecast; the other three wait. The board unblocks just the same, but
+   the council tax reduction keeps not paying and the two outside clocks do not start.
+
+I recommend **1**. Only item 1 blocks the board, but items 2 and 3 run on somebody else's clock, so
+waiting on them costs weeks, and item 3 is the only one that pays cash straight away.
+
+**Pass:** the weekly amount **and** the qualifying years, from a printed or screenshotted forecast
+or the award letter, written here. On option 1 also: the council's answer on the band reduction,
+the letter's two rates matching those in `docs/SCENARIO-V2.local.md`, and an Age UK appointment date.
+
+**Fail:** a weekly figure without the qualifying years, or one you cannot tie to a document. If the
+forecast is under £238.00 a week, say so here, because that switches Pension Credit and its
+passported help on, and ask DWP whether voluntary contributions are still open.
+
+Paste-ready: `**2026-MM-DD** **Decided:** Option 1, all four, in the order 1, 3, 4, 2. Forecast: £___/wk, ___ qualifying years.`
 
 **Why it needs you.** Every item is local knowledge nobody has written down, held by you or by a
 body only you can ask: your own DWP record, whether the flat has a feature that qualifies for the
