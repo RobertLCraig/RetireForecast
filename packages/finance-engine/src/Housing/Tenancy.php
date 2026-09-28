@@ -66,7 +66,8 @@ final class Tenancy
 
     /**
      * The label the up-front tenancy charge is filed under. One home for it, because the charge
-     * is written by {@see HousingComparison} and recognised again by the projector.
+     * is written by {@see HousingComparison} (a year-0 move) and by the projector (a forced sale,
+     * board card 0090), and recognised again by the projector's disclosure.
      */
     public const UP_FRONT_LABEL = 'Tenancy deposit';
 

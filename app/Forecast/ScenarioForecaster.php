@@ -61,7 +61,13 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-08 (section-24-credit-dies-with-the-mortgage): the buy-to-let finance-cost tax
+     * Bumped 2026-09-28 (forced-sale-tenancy-deposit): a home sold mid-projection (a forced sale at
+     * mortgage maturity, or on the last borrower entering care) starts a tenancy, and is now
+     * charged its Tenant Fees Act deposit in the sale year, as the year-0 rent variant always was.
+     * Any stored plan with a forced sale and a post-sale rent spends too LITTLE under an earlier
+     * stamp, by one deposit, and must be re-run. A plan with no mid-projection sale, or with no
+     * rent entered, is byte-identical.
+     * Previous bump 2026-09-08 (section-24-credit-dies-with-the-mortgage): the buy-to-let finance-cost tax
      * reducer is now granted only while the loan it relieves still exists. The relievable finance
      * cost was read off the "Mortgage" expense line, or off the amortisation schedule's interest,
      * with no check that the mortgage was still owed, while the PAYMENT side had always stopped at
@@ -420,7 +426,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/section-24-credit-dies-with-the-mortgage';
+    public const ENGINE_VERSION = 'finance-engine/forced-sale-tenancy-deposit';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

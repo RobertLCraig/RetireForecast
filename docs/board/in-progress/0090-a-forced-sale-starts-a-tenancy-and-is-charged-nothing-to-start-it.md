@@ -31,17 +31,17 @@ The referencing flag, which already covers every rented year including a forced-
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] WHEN a plan starts renting part-way through after a sale, THE APP SHALL charge the tenancy deposit in the year the tenancy starts. proves: `test_a_forced_sale_is_charged_the_tenancy_deposit_in_the_sale_year`
-- [ ] THE APP SHALL state what that tenancy costs up front on the result, as it does for a year-0 rent plan. proves: `test_a_forced_sale_result_states_the_up_front_tenancy_cost`
+- [x] WHEN a plan starts renting part-way through after a sale, THE APP SHALL charge the tenancy deposit in the year the tenancy starts. proves: `test_a_forced_sale_is_charged_the_tenancy_deposit_in_the_sale_year`
+- [x] THE APP SHALL state what that tenancy costs up front on the result, as it does for a year-0 rent plan. proves: `test_a_forced_sale_result_states_the_up_front_tenancy_cost`
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Decide where the charge belongs. `HousingComparison` cannot see a mid-projection sale, so the
+- [x] Decide where the charge belongs. `HousingComparison` cannot see a mid-projection sale, so the
       likely home is `PathProjector`, on the year `$state['homeSold']` first flips true, using
       `Tenancy::deposit()` on the year's nominal rent.
-- [ ] Keep one definition: the year-0 variant and the forced-sale path must charge the same figure
+- [x] Keep one definition: the year-0 variant and the forced-sale path must charge the same figure
       off the same constant, not two copies of the arithmetic.
-- [ ] Bump `ScenarioForecaster::ENGINE_VERSION` and note that stored forced-sale scenarios need
+- [x] Bump `ScenarioForecaster::ENGINE_VERSION` and note that stored forced-sale scenarios need
       re-running.
 
 ## Plan
@@ -55,3 +55,34 @@ are in `packages/finance-engine/src/Forecast/PathProjector.php` (`rentReferencin
 `php artisan test --testsuite=Engine`, then the full suite.
 
 ## Comments
+
+**2026-09-28**
+RESULT: done
+TESTS: +2 new, all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php
+TOUCHED: packages/finance-engine/src/Housing/Tenancy.php
+TOUCHED: packages/finance-engine/tests/Forecast/ForcedSaleTest.php
+TOUCHED: app/Forecast/ScenarioForecaster.php
+TOUCHED: docs/HANDOVER.md
+TOUCHED: docs/board/todo/0154-a-care-forced-sale-charges-rent-to-someone-living-in-a-care-home.md
+OUT-OF-SCOPE: 0154
+
+Both tests were watched failing first: the sale year cost the same as the next year (no deposit), and
+no `TENANCY_UP_FRONT_COST` note was raised. The charge is in `PathProjector::projectYear`, appended to
+the year's one-offs in the maturity forced-sale year, sized with `Tenancy::deposit()` on that year's
+rent (same `rentFactor` the rent line uses) and filed under `Tenancy::UP_FRONT_LABEL`. So the existing
+`tenancyUpFrontWarnings()` states it with no new copy, and the year-0 variant and this path share one
+definition. The year-0 rent variant cannot trigger it (it has no home, so `homeSold` never flips).
+
+Assumed: the CARE-forced sale (card 0056, last borrower into permanent care) is NOT charged a deposit.
+That person moves into a care home, not a tenancy. While checking this I found the rent line has no
+care exclusion either, so that route is charged rent on top of the care fee: raised as 0154.
+
+Re-examined one test: `test_a_forced_sale_frees_the_equity_and_conserves_wealth` reddened by exactly
+the deposit (£1,153.85 on £12,000 rent). It now expects the net proceeds less the deposit in the sale
+step. That is the change this card asked for, not a loosening.
+
+`ENGINE_VERSION` is now `finance-engine/forced-sale-tenancy-deposit`. Stored plans with a forced sale
+and a rent figure need re-running (one deposit too cheap). `GoldenMasterTest` did not redden. The
+results note is not new copy, but it now shows on forced-sale plans, and that still needs a browser
+check from `C:\Dev\RetireForecast` (not possible from this worktree).

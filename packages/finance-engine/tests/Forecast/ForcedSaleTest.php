@@ -27,9 +27,11 @@ use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Housing\HousingProceeds;
+use RetireForecast\FinanceEngine\Housing\Tenancy;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
+use RetireForecast\FinanceEngine\Support\WarningCode;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
@@ -135,9 +137,15 @@ final class ForcedSaleTest extends TestCase
         )->netProceeds->pence;
         $this->assertSame(Money::fromPounds(284_000)->pence, $expectedNet);
 
+        // The sale year also pays the deposit on the tenancy it starts (board card 0090), so that
+        // leaves in the same step.
         $saleStep = $years[2030]->liquidWealth->pence - $years[2029]->liquidWealth->pence;
         $ordinaryStep = $years[2032]->liquidWealth->pence - $years[2031]->liquidWealth->pence;
-        $this->assertSame($expectedNet, $saleStep - $ordinaryStep, 'liquid rises by exactly the net proceeds at the sale');
+        $this->assertSame(
+            $expectedNet - Tenancy::deposit(Money::fromPounds(12_000))->pence,
+            $saleStep - $ordinaryStep,
+            'liquid rises by exactly the net proceeds less the tenancy deposit at the sale',
+        );
     }
 
     public function test_property_costs_stop_and_rent_begins_at_a_forced_sale(): void
@@ -165,6 +173,50 @@ final class ForcedSaleTest extends TestCase
             $noRent[2029]->spendTarget->pence - $noRent[2031]->spendTarget->pence,
             'the home is gone, so its costs stop; no rent is charged when none is entered',
         );
+    }
+
+    /**
+     * Board card 0090. A forced sale starts a tenancy just as the year-0 rent variant does, so it
+     * pays the same deposit, in the year of the move. The rent exactly replaces the stopped costs
+     * here, so the sale year differs from the next year by the deposit and nothing else.
+     */
+    public function test_a_forced_sale_is_charged_the_tenancy_deposit_in_the_sale_year(): void
+    {
+        $rent = Money::fromPounds(12_000);
+        $years = $this->byYear($this->forecast(
+            $this->costsHousehold(),
+            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', annualRent: $rent),
+        ));
+
+        $this->assertSame(
+            Tenancy::deposit($rent)->pence,
+            $years[2030]->spendTarget->pence - $years[2031]->spendTarget->pence,
+            'the sale year carries the deposit on top of a year of rent, and only it',
+        );
+        $this->assertSame($years[2029]->spendTarget->pence, $years[2031]->spendTarget->pence, 'charged once, not every rented year');
+    }
+
+    /** Board card 0090. The forced-sale reader is told what moving in costs, as a year-0 renter is. */
+    public function test_a_forced_sale_result_states_the_up_front_tenancy_cost(): void
+    {
+        $rent = Money::fromPounds(12_000);
+        $forecast = $this->forecast(
+            $this->costsHousehold(),
+            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', annualRent: $rent),
+        );
+
+        $stated = [];
+        foreach ($forecast->years as $year) {
+            foreach ($year->warnings as $warning) {
+                if ($warning->code === WarningCode::TENANCY_UP_FRONT_COST) {
+                    $stated[$year->calendarYear] = $warning->message;
+                }
+            }
+        }
+
+        $this->assertSame([2030], array_keys($stated), 'stated once, in the year the tenancy starts');
+        $this->assertStringContainsString(Tenancy::deposit($rent)->format(), $stated[2030]);
+        $this->assertStringContainsString(Tenancy::upFrontCash($rent)->format(), $stated[2030]);
     }
 
     private function costsHousehold(): Household

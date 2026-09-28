@@ -1553,6 +1553,15 @@ final class PathProjector
         if ($repayOneOff > 0) {
             $oneOffs[] = ['label' => 'Mortgage redemption', 'amount' => $repayOneOff];
         }
+        // A sale this year starts a tenancy, and a tenancy costs its deposit to start (board card
+        // 0090). The year-0 rent variant is charged the same figure by HousingComparison; this is
+        // the mid-projection move, which it cannot see. Sized on this year's rent, the same figure
+        // the rent line charges below, and filed under the same label so the disclosure finds it.
+        // Not on a care-forced sale: the last borrower has gone into a care home, not a tenancy.
+        if ($saleForcedByMaturity && ! $homeSoldAtYearStart && $state['homeSold'] && $settings->annualRent?->isPositive()) {
+            $rentThisYear = Money::fromPence((int) round($settings->annualRent->pence * $state['rentFactor']));
+            $oneOffs[] = ['label' => Tenancy::UP_FRONT_LABEL, 'amount' => Tenancy::deposit($rentThisYear)->pence];
+        }
         $oneOffTotalNominal = array_sum(array_column($oneOffs, 'amount'));
 
         // The spending guardrail (board card 0063). Everything above scores the year against a
