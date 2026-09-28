@@ -26,7 +26,7 @@ Capital gains computation itself, which the panel found correct and better than 
 <!-- AC:BEGIN -->
 - [x] #1 WHEN a leasehold property is sold, THE APP SHALL itemise the management pack, licence to assign and notice fees separately from conveyancing. proves: `test_the_housing_step_itemises_the_leasehold_sale_fees_separately_from_conveyancing`
 - [x] #2 WHEN a disposal triggers a 60-day capital gains return, THE APP SHALL include a disclosed cost for preparing it. proves: `test_a_disposal_that_charges_cgt_is_charged_for_preparing_the_sixty_day_return`
-- [x] #3 THE APP SHALL raise the default selling-cost rate to a sourced figure appropriate to a leasehold sale, and disclose it. proves: `test_the_assumed_selling_cost_rate_is_read_from_the_engine_constant`
+- [ ] #3 THE APP SHALL raise the default selling-cost rate to a sourced figure appropriate to a leasehold sale, and disclose it. proves: `test_the_assumed_selling_cost_rate_is_read_from_the_engine_constant`
 <!-- AC:END -->
 
 ## Tasks
@@ -159,3 +159,5 @@ VERDICT: defect
 
 
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #3 because no real user gets the sourced rate. `HousingProceeds::compute()` uses `DEFAULT_SELLING_COST_RATE_BP` (4%) only when there are no components, and `ScenarioBuilder::defaultSellingCosts()` always supplies six lines that come to about 2.6% on a GBP 400,000 sale. Make the itemised defaults add up to the sourced figure, or say on the card and the page why they do not. On the same pass: the GBP 750 CGT-return fee is appended after the components, so a reader who enters their own quote pays both, and `assumptionsPanel()` has no row for it. The engine-version finding is moot now, the stamp has moved on since.
