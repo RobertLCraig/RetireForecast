@@ -34,6 +34,7 @@ The repayment amortisation schedule, which is already correct and pinned to a le
 - [x] #1 WHEN a mortgage payment is charged from `ExpenseProfile::$mortgageCosts`, THE APP SHALL hold it fixed in nominal terms rather than escalating it with CPI.
 - [x] #2 WHEN a household member dies, THE APP SHALL charge the survivor the full mortgage payment, unreduced by the survivor factor.
 - [x] #3 WHEN a let property's finance cost is computed for the Section 24 credit, THE APP SHALL use nominal interest rather than a CPI-inflated figure.
+- [ ] #4 WHEN a `while_mortgaged` line is not the mortgage payment itself (a mortgage life or protection premium, a fee) or is discretionary, THE APP SHALL keep it indexed to CPI and in its own spend tier, so the essential floor never loses real essential spend to it, and the flat-payment treatment SHALL be stated on screen for every mortgage shape.
 <!-- AC:END -->
 
 ## Tasks
@@ -137,3 +138,5 @@ VERDICT: defect
 
 
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #4 because the scope and breakage findings still hold on master. `PathProjector::projectYear` subtracts the whole `mortgageCosts()` bucket from `$essentialPence` for every household, and `HouseholdAssembler` fills that bucket by condition alone, so a discretionary line or an insurance premium labelled "mortgage" is frozen in cash and strips essential spend (essential GBP 10,000 plus a discretionary GBP 12,000 mortgage line reports a GBP 12,000 floor). `ResultPresenter::inputNotes` still says "fixed in cash terms" only for a repayment mortgage.
