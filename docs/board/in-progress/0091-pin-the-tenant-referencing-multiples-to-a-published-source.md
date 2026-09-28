@@ -98,3 +98,13 @@ OUT-OF-SCOPE: none
 Third unattended pick-up, same refusal for WebSearch and WebFetch. Nothing changed. Please stop
 re-queuing this card unattended: it needs an attended session, or web tools allowed for card
 sessions.
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0091-pin-the-tenant-referencing-multiples-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+Fourth unattended pick-up. WebSearch and WebFetch were both tried again and both refused ("you
+haven't granted it yet"). Nothing changed. The fix is outside this card: Rob runs it attended, or
+allows WebSearch and WebFetch for card sessions, or pulls it off the unattended queue.
