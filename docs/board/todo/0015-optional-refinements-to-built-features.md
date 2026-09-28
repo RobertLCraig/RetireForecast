@@ -1,3 +1,6 @@
+---
+waiting_on: progressboard#0211, the research-only web session Rob ruled for on 0084 - recheck 2026-10-13
+---
 # Optional refinements to built features
 
 ## What I need from you
@@ -142,3 +145,5 @@ assistant's doc index (`php artisan assistant:index-docs`) should be re-run afte
 the assistant is enabled; it is inert by default and could not be rebuilt here.
 
 **2026-08-22** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with 1 of 1 acceptance criteria still open, so what this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+**2026-09-29** **Decided:** the three care figures (onset age gradient, female-to-male length-of-stay ratio, council fee as a share of the self-funder fee) are sourced by the research-only web session Rob ruled for on 0084 on 2026-09-28, not by an attended session he has to start: that session writes a note under `docs/research/` and nothing else, and a build session with no web builds from it. Settled by an attended agent under Rob's rule that human-review holds only what he must decide: this card's ask is the same web-access question 0084 asked, and Rob answered it there. The session is `progressboard#0211`, not yet built, and its task list names only 0084, 0086, 0087, 0091 and 0129, so whoever lands it should add `research:` here too. Until then this card carries `waiting_on:`. The annuitisation month stays sequenced behind 0036 as before.
