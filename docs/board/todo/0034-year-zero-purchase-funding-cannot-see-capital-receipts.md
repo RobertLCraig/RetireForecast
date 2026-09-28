@@ -28,6 +28,7 @@ Whether a particular receipt is realistic. That is a scenario input question.
 <!-- AC:BEGIN -->
 - [x] #1 WHEN a purchase is funded in a year that also carries a capital receipt, THE APP SHALL use the receipt before borrowing.
 - [x] #2 WHEN borrowing is still required after available funds are used, THE APP SHALL charge only the shortfall.
+- [ ] #3 THE APP SHALL build every housing variant's household through `Household::copy()` (or a guard that fails when a new `Household` field is not carried), and the `CapitalReceipt` docblock SHALL say that a buy plan spends the receipt on the purchase first.
 <!-- AC:END -->
 
 ## Tasks
@@ -147,3 +148,5 @@ VERDICT: defect
 
 
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 2 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 2 of 2 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #3 because the breakage finding still holds on master. `HousingComparison::withHousing()` still builds `new Household(...)` by hand, outside the reflection guard `HouseholdWitherTest` puts on `Household::copy()`, so the next field added to `Household` is silently dropped from every sell plan. The `CapitalReceipt` docblock still says the whole receipt is credited to spendable cash. Also untested: two receipts dated the base year.
