@@ -104,3 +104,14 @@ OUT-OF-SCOPE: none
 Third unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
 not used, for the reason in the entry above. Both criteria stay open. Re-queuing this card
 unattended cannot move it; it needs an attended session or a WebSearch/WebFetch grant.
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+Fourth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
+not used, as above. Nothing in the repository can stand in for the missing sources, so both
+criteria stay open. The scheduler should stop re-queuing this card unattended: it needs Rob in an
+attended session, or a WebSearch/WebFetch grant for card sessions.
