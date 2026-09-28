@@ -31,7 +31,7 @@ Disability benefits in the assessment, which is card 0050.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 WHEN a home is occupied by a qualifying relative, THE APP SHALL disregard it from the care means test.
+- [ ] #1 WHEN a home is occupied by a qualifying relative, THE APP SHALL disregard it from the care means test.
 - [x] #2 WHEN a care charge cannot be met from liquid assets and the home is assessable, THE APP SHALL model a deferred payment secured on the home rather than reporting an unmet essential.
 - [x] #3 WHEN a deferred payment is in place, THE APP SHALL accrue interest and deduct the balance from the estate at death.
 <!-- AC:END -->
@@ -158,3 +158,5 @@ VERDICT: defect
 
 
 **2026-09-07** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #1 because the breakage finding holds on main: `HousingComparison::buyVariant()` builds its new `Property` without `occupiedByQualifyingRelative` (the name appears nowhere in `HousingComparison.php`), so a household that ticks it has the home disregarded in the base plan and assessed in every buy or move variant. Carry it across as `disabledBandReduction` already is, and test a variant. Also fix the `YearResult::$totalWealth` docblock, which omits the deferred care balance that `homeEquity()` now subtracts.
