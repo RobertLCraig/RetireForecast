@@ -1102,3 +1102,6 @@ meaning. What moved is a figure computed at render time.
   this worktree, so the new "what is counted" sentence on screen and in the PDF needs Rob's eye on a
   real page and a real export, along with everything the earlier passes left for the same reason.
 
+## Comments
+
+**2026-09-28** Manager pass: back to ai-review, because the finding is already fixed on master. The seventh review's defect (the optimiser ranked on income tax only) and the sixth review's (a second lump sum turned crystallised money back into uncrystallised) are both fixed in commit `288a463`. They are pinned by `ScenarioForecasterTest::test_the_lifetime_tax_the_optimiser_ranks_on_counts_the_tax_paid_at_death` and `PathProjectorTest::test_two_lump_sums_crystallise_as_much_as_one_of_twice_the_size`, and `WithdrawalStrategyComparison::lifetimeTax` now adds the run's own IHT. The card only reached human-review through `d4bbe9a` ("clearing the tree so 0018 can merge back"), a housekeeping move with no park reason, so the fixed build never got its review. The reviews logged in between stopped at a session limit and judged nothing.
