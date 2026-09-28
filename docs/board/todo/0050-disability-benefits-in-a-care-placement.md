@@ -33,9 +33,9 @@ The property disregard and deferred payments, which are card 0055.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 THE APP SHALL record a disability award as separate care and mobility components.
+- [ ] #1 THE APP SHALL record a disability award as separate care and mobility components.
 - [x] #2 WHEN a resident self-funds their care, THE APP SHALL include the care component in assessable income and disregard the mobility component.
-- [x] #3 WHEN a placement is funded by the local authority, THE APP SHALL stop the care component after the statutory period and keep the mobility component running.
+- [ ] #3 WHEN a placement is funded by the local authority, THE APP SHALL stop the care component after the statutory period and keep the mobility component running.
 <!-- AC:END -->
 
 ## Tasks
@@ -156,3 +156,5 @@ VERDICT: defect
 
 
 **2026-09-07** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #1 and #3 because the breakage findings hold on main. #1: `PayAndExpenditures::incomeBlock()` still imports a DLA or disability row as type `other`, so an imported award has no care or mobility component and is assessed for nobody. #3: `PathProjector::disabilityCareComponentFractions()` settles funding from `careAssessableCapital()` before the year's forced sale banks the proceeds, and the care charge reads it again after, so one resident can be LA-funded for the care component and a self-funder for fees in the same year; add a test with a sale year inside a care spell. Also noted: the Pension Credit carer-addition change in `pensionCreditAward()` has no test of its own.
