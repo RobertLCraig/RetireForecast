@@ -34,7 +34,8 @@ Support for Mortgage Interest itself, which is card 0045.
 - [x] #1 THE APP SHALL let a disability benefit start at a chosen age rather than being on or off for life. proves: `test_a_disability_benefit_can_start_at_a_chosen_age`, `test_a_disability_benefit_start_age_is_a_builder_input_and_reaches_the_household`
 - [x] #2 THE APP SHALL offer claiming Attendance Allowance later in life as a what-if, showing the benefit and everything it passports. proves: `test_the_attendance_allowance_preset_claims_it_later_in_life_with_its_own_money`, `test_a_disability_benefit_note_names_the_start_age_and_everything_it_passports`
 - [x] #3 THE APP SHALL expose whether a person cares for their partner as a builder input. proves: `test_caring_for_a_partner_is_a_builder_input_and_reaches_the_household`
-- [x] #4 WHEN a lever extends working life, THE APP SHALL flag that earnings above the carer earnings limit block underlying entitlement to Carer's Allowance. proves: `test_the_working_longer_lever_shows_the_carer_earnings_limit_on_the_page`
+- [ ] #4 WHEN a lever extends working life, THE APP SHALL flag that earnings above the carer earnings limit block underlying entitlement to Carer's Allowance. proves: `test_the_working_longer_lever_shows_the_carer_earnings_limit_on_the_page`
+- [ ] #5 THE APP SHALL describe the carer flag in the builder only as the model applies it: while `PathProjector::meansTestedBenefitNominal()` awards the carer addition whatever the carer earns, the help text SHALL NOT say pay above the limit stops it counting.
 <!-- AC:END -->
 
 ## Tasks
@@ -185,3 +186,5 @@ VERDICT: defect
 
 
 **2026-09-06** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #4 and added #5 because both findings hold on main. `ThresholdPresenter::leverCaveat()` still tests only `caresForPartner` and employment, so it warns when the partner has no qualifying benefit or when `disabilityBenefitFromAge` is later than the lever's years, where no carer addition exists to postpone; test those two cases. The builder help text for "Cares for their partner" in `scenario-builder.blade.php` still says pay above the limit stops it counting, which the projector does not apply (card 0108). Also noted, not reopened: `QuickWhatIf::claimAttendanceAllowance()` can stack a second disability stream on a person whose flag is unticked.
