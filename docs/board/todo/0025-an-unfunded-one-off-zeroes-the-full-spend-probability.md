@@ -30,6 +30,7 @@ Whether a particular purchase gap should be funded. That is a scenario input que
 - [x] #1 WHEN a plan misses its full spending target in some years, THE APP SHALL report the fraction of years met, not only an all-or-nothing flag.
 - [x] #2 WHEN a one-off capital cost cannot be funded, THE APP SHALL raise a distinct warning naming that cost, rather than only depressing a spending probability.
 - [x] #3 WHEN the essentials and full-spend probabilities are reported together, THE APP SHALL not let them diverge by more than the years actually unfunded.
+- [ ] #4 WHEN a plan carries an unfunded one-off cost, THE APP SHALL NOT call it fully funded anywhere: the `/afford` card and verdict (`AffordabilityAssessment::card()` / `verdict()`), `Interpretation::outcome()` and `SustainableSpend::forScenario()` all see the unfunded cost, and a keep-the-home plan that cannot redeem its mortgage is still flagged unaffordable.
 <!-- AC:END -->
 
 ## Tasks
@@ -148,3 +149,5 @@ VERDICT: defect
 
 
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #4 because the breakage finding still holds on master. Excluding an unfunded lump from `fullSpendMet()` flipped `fullSpendAlwaysMet` to true for such a plan, and the replacement warning reaches only `ResultPresenter::inputNotes()`. Commit `a6088ce` made the results page read the sell plan's own notes, but `AffordabilityAssessment`, `Interpretation` and `SustainableSpend` still read the flag only, so `/afford` can answer "Yes, this covers your full budget" over a GBP 125,000 unfunded purchase. The scope finding also stands: "Mortgage redemption" is now in the exempt one-off list, which quietly removed the keep-the-home shortfall signal.
