@@ -88,3 +88,13 @@ haven't granted it yet"). Nothing else changed since the entry above, so both cr
 and `Tenancy.php` and ASSUMPTIONS.md §15 are untouched. Re-queuing this card unattended will hit
 the same refusal every time: it needs Rob to run it attended, or to allow WebSearch and WebFetch
 for card sessions.
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0091-pin-the-tenant-referencing-multiples-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+Third unattended pick-up, same refusal for WebSearch and WebFetch. Nothing changed. Please stop
+re-queuing this card unattended: it needs an attended session, or web tools allowed for card
+sessions.
