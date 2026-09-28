@@ -30,6 +30,7 @@ Annuity escalation, which is already honoured.
 - [x] #1 WHEN a defined-benefit pension is set to no escalation in payment, THE APP SHALL hold it flat in nominal terms for the whole projection.
 - [x] #2 WHEN a capped escalation basis is chosen, THE APP SHALL apply inflation up to the cap and no more.
 - [x] #3 WHEN a pension is deferred, THE APP SHALL revalue it on its revaluation basis until normal retirement age, then escalate it on its in-payment basis.
+- [ ] #4 WHEN a member dies before normal retirement age and a survivor's pension is paid, THE APP SHALL escalate that pension on its in-payment basis from the death, and a test SHALL set different revaluation and in-payment bases to prove it.
 <!-- AC:END -->
 
 ## Tasks
@@ -173,3 +174,5 @@ VERDICT: defect
 
 
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #4 because the breakage finding still holds on master. `PathProjector::escalateDbPensions()` picks the phase from the member's age whether alive or dead, while `survivorDbIncomeNominal()` pays from the death, so a widow's pension in payment escalates on the revaluation basis until the member's notional retirement age. Same pass: `PensionEscalationBasis::increase()` floors only the capped cases at zero, so in a deflation year a capped pension pays more than plain CPI; and one `fixedEscalationRate` still serves both phases, which the build did not declare.
