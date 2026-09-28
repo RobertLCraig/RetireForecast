@@ -34,7 +34,7 @@ Awarding Housing Benefit, which is card 0048.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 THE APP SHALL report Pension Credit as a contingent income line, outside the guaranteed floor. proves: `test_pension_credit_is_reported_as_a_contingent_line_outside_the_secure_floor`
+- [ ] #1 THE APP SHALL report Pension Credit as a contingent income line, outside the guaranteed floor. proves: `test_pension_credit_is_reported_as_a_contingent_line_outside_the_secure_floor`
 - [x] #2 WHEN a household comes within a small margin of the Pension Credit line in any year, THE APP SHALL prompt them to claim, and state the backdating limit. proves: `test_guidance_appears_when_a_year_only_just_misses_the_pension_credit_line`
 - [x] #3 WHEN assessable capital crosses the limit in any year, THE APP SHALL surface the capital-cliff warning on that year. proves: `test_the_capital_cliff_is_warned_on_the_year_capital_crosses_the_limit`
 - [x] #4 WHEN a household receives Guarantee Credit, THE APP SHALL NOT warn that capital ends their means-tested help. proves: `test_a_household_on_guarantee_credit_is_not_warned_that_capital_ends_its_help`
@@ -171,3 +171,5 @@ VERDICT: defect
 
 
 **2026-09-06** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #1 because the findings hold on main. Pension Credit left `secureIncome`, but `ResultPresenter::floorAt()` still sets `gap` to essentials minus secure income, and the "Met from savings / pension" tile on screen and in the PDF, plus `ScenarioContext::incomeFloorFacts()` ("must come from savings and investments"), now overstate the savings draw by the whole award. The survivor block in `scenario-results.blade.php` and `pdf/partials/report.blade.php` renders only `secureIncome`, so the survivor's Pension Credit is in no table or total. Also judge the scope finding: `PathProjector::benefitContingencyWarnings()` runs the capital cliff at every age, and `InputNotesTest::test_a_sensible_household_raises_no_notes` had its spending raised to silence it.
