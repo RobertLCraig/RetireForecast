@@ -15,6 +15,7 @@ tails, A4 State-Pension uprating.
       reusing the `/afford` screen rather than a new surface.
 - [x] #2 WHEN a scenario has no completed Monte Carlo run, THE APP SHALL say so plainly rather
       than showing a deterministic figure in the probability's place.
+- [ ] #3 THE APP SHALL feed the hero only from a completed FULL Monte Carlo run (not a 1,000-path preview), and SHALL colour it green only at 80% or above, per the band table in PLAN-output-inflation-and-charts.md section B1.
 <!-- AC:END -->
 
 ## Tasks
@@ -112,3 +113,5 @@ VERDICT: defect
 <!-- The card's thread, appended by ProgressBoard. Append-only: entries are added, never edited or removed. An entry beginning **Decided:** is an answer, and that is what a decision card exits on. -->
 
 **2026-08-29** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 2 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 2 of 2 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #3 because the 2026-08-29 breakage and scope findings still hold on master. `Affordability::storedMonteCarlo()` reads `Scenario::latestCompletedRun()`, which filters on status and never on mode, so a preview run fills the hero, hides the "Check how sure" button and sits under copy about thousands of futures. The hero's `$leadTones` map in `affordability.blade.php` still paints the `good` band (75 to 89%) green. Also worth doing on the same pass: the all-failing case, where `lead()` takes a failing plan as the strongest.
