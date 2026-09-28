@@ -94,3 +94,13 @@ Second unattended pick-up, same wall: WebSearch refused ("haven't granted it yet
 (Playwright) was offered, but using it to fetch pages after the web permission was refused would
 route round that refusal, so it was not used. Both criteria stay open. This card needs Rob to run it
 attended, or to grant WebSearch/WebFetch to card sessions.
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+Third unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
+not used, for the reason in the entry above. Both criteria stay open. Re-queuing this card
+unattended cannot move it; it needs an attended session or a WebSearch/WebFetch grant.
