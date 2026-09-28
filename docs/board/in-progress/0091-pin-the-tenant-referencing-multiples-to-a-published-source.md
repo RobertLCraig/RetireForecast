@@ -76,3 +76,15 @@ fires once a sourced figure exists. The constants in `Tenancy.php` and §15 are 
 
 Next step: run this card in an attended session with WebSearch and WebFetch allowed (the Plan
 already says so). One research pass can settle 0085, 0086 and 0087 at the same time.
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0091-pin-the-tenant-referencing-multiples-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+Second unattended pick-up, same wall. WebSearch and WebFetch were both refused again ("you
+haven't granted it yet"). Nothing else changed since the entry above, so both criteria stay open
+and `Tenancy.php` and ASSUMPTIONS.md §15 are untouched. Re-queuing this card unattended will hit
+the same refusal every time: it needs Rob to run it attended, or to allow WebSearch and WebFetch
+for card sessions.
