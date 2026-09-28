@@ -49,3 +49,5 @@ own, so the churn is not mixed into a card that changed behaviour. The isolation
 `packages/finance-engine/tests/Architecture/EngineIsolationTest.php`.
 
 ## Comments
+
+**2026-09-28** Discarded: superseded by 0083, which already did this work. `pint --test` passes (checked by the 0148 manager pass).
