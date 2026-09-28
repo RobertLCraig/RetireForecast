@@ -33,7 +33,7 @@ Modelling gifts out, PETs and the seven-year taper. That is card 0059.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 WHEN a plan moves a large sum - a lump sum, a receipt, a gift, a one-off cost or a home sale - THE APP SHALL warn that it can be treated as still held for means-tested benefits and for care charging.
+- [ ] #1 WHEN a plan moves a large sum - a lump sum, a receipt, a gift, a one-off cost or a home sale - THE APP SHALL warn that it can be treated as still held for means-tested benefits and for care charging.
 - [x] #2 WHEN equity release or transferring a home is discussed, THE APP SHALL warn about gift with reservation of benefit.
 - [x] #3 THE APP SHALL point the reader at a benefits check before they move the money.
 <!-- AC:END -->
@@ -153,3 +153,5 @@ VERDICT: defect
 
 
 **2026-09-07** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #1 because the finding holds on main. `ResultPresenter::housingActionFor()` still returns the action only for `buy_outright`, so on the sell-and-rent variant `inputNotes()` sees no year-0 sale and the engine cannot see one either; the largest capital move the tool compares raises no deprivation warning on screen or in the PDF. `DeprivationNoticeTest::test_selling_the_home_at_year_zero_is_warned_about` bypasses `housingActionFor`, so drive it through the real caller. Also fix, per the review: the year-0 branch in the `capital_deprivation` note hides later engine warnings, a `Mortgage redemption` one-off warns as if paying a debt were deprivation, and the care panel (`ResultPresenter::careImpactPanel`) still has no deprivation line (Task 2).
