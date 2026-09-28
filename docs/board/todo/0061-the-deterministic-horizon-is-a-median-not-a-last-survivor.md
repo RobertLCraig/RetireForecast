@@ -33,7 +33,7 @@ Leading the page with the probability, which is card 0010.
 <!-- AC:BEGIN -->
 - [x] #1 THE APP SHALL set the deterministic planning horizon on a household last-survivor basis, not on each person's own median.
 - [x] #2 THE APP SHALL default that horizon to a stated high percentile, and offer 50th, 75th and 90th as named settings on the age-of-death lever.
-- [x] #3 WHEN a median-lifespan figure is shown, THE APP SHALL label it as roughly even odds rather than as a plan lasting for life.
+- [ ] #3 WHEN a median-lifespan figure is shown, THE APP SHALL label it as roughly even odds rather than as a plan lasting for life.
 <!-- AC:END -->
 
 ## Tasks
@@ -180,3 +180,5 @@ VERDICT: defect
 
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #3 because the Affordability page still prints a median-lifespan result as lasting for life with no odds phrase. `resources/views/livewire/affordability.blade.php` still says "keep the essentials paid for life", "still lasts for life" and "for the rest of your life", and `App\Livewire\Affordability` never passes `planningHorizonBasis`. The advice-cost block in `scenario-results.blade.php` and in `pdf/partials/report.blade.php` still says "The money would still last for life." Two other findings from the same review also still hold. `HousingComparison::rentSettings` still drops `planningHorizon`, so a rent leg runs at the default; that belongs on card 0124, whose field list does not name it yet. And a stored run with an older engine version still shows the new horizon caption.
