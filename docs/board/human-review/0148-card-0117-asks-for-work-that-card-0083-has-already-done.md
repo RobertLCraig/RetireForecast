@@ -1,5 +1,11 @@
 # Card 0117 asks for work that card 0083 has already done, so a session will pick it up and find nothing
 
+## What I need from you
+Move `docs/board/todo/0117-two-files-fail-the-house-style-check.md` to `discarded/`, and add a dated line to it saying "superseded by 0083". Then tick both criteria here and move this card on.
+
+**Pass:** from `C:\Dev\RetireForecast` in PowerShell, `vendor\bin\pint.bat --test` prints `{"tool":"pint","result":"passed"}`. It did on 2026-09-28. If it passes, 0117 has nothing left in it, and moving 0117 is the whole job.
+**Fail:** pint names a file. Then 0117 still has real work: leave 0117 in `todo/`, add a dated line to it naming the file, and move this card to `discarded/`.
+
 ## Why
 `0117-two-files-fail-the-house-style-check.md` sits in `todo/` with both its criteria open. Its
 criteria are that `vendor/bin/pint --test` exits zero over the whole repository, and that the engine
@@ -64,3 +70,5 @@ what `0083` covered.
 
 
 **2026-09-20** The loop moved this card from todo/ to human-review/ WITHOUT trying it. All 2 of its open acceptance criteria say proves: manual, so there is nothing left an unattended session could close and starting one would change nothing. Each open criterion names what to look at and what a pass is: tick what passes and move the card on, or say what failed and move it back to todo/.
+
+**2026-09-28** Manager pass: checked, and the duplicate is real. `vendor\bin\pint.bat --test` passes on `master` today, and 0117's two files are a subset of 0083's three (0083 is now in `ai-review/`). What is left is a lane move on another card, which no loop session makes, so this stays in `human-review/` with the move as the ask.
