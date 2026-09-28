@@ -26,9 +26,10 @@ Modelling arrears, possession or a debt-management plan. This card is framing an
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 WHEN a plan has unmet spend and a live mortgage, THE APP SHALL state that the shortfall is a secured-debt shortfall and what that means. proves: `test_a_shortfall_on_a_live_mortgage_is_named_a_secured_debt_shortfall`
+- [ ] #1 WHEN a plan has unmet spend and a live mortgage, THE APP SHALL state that the shortfall is a secured-debt shortfall and what that means. proves: `test_a_shortfall_on_a_live_mortgage_is_named_a_secured_debt_shortfall`
 - [x] #2 THE APP SHALL show a benefits and debt column of contacts wherever a plan has unmet spend or a mortgage. proves: `test_the_benefits_and_debt_contacts_column_is_off_until_it_is_asked_for`, `test_the_results_page_frames_a_secured_shortfall_and_offers_the_debt_contacts`
 - [x] #3 THE APP SHALL name mortgage and council tax as priority debts when it reports a shortfall. proves: `test_a_shortfall_names_mortgage_and_council_tax_as_priority_debts`
+- [ ] #4 WHEN the app says which benefits a forecast counts, THE APP SHALL name every benefit the engine pays, including Housing Benefit, Council Tax Reduction and Support for Mortgage Interest, or say nothing about coverage.
 <!-- AC:END -->
 
 ## Tasks
@@ -141,3 +142,4 @@ Secondary, same function: `YearResult::smiBalance()` and the new deferred-care c
 
 VERDICT: defect
 
+**2026-09-28** Manager pass: reopened #1 and added #4 because both findings hold on main. #1: `ResultPresenter::priorityDebtGuidance()` still sets `secured` from `YearResult::mortgageBalance()` alone, so a lifetime mortgage (a `mortgageRollUpRate` loan with no instalments) is framed with arrears and possession, which cannot happen to it; test an equity-release shortfall. #4: the always-shown bullet still says the forecast counts entered benefits plus Pension Credit "and nothing else", though `PathProjector` also pays `HousingBenefit::annualAward`, `CouncilTax::reductionAnnual` and `SupportForMortgageInterest::annualAmountMet`.
