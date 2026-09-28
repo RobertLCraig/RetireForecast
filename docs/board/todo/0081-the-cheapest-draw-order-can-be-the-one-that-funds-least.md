@@ -34,7 +34,7 @@ about the number the winner is picked by, whatever the candidates are.
 <!-- AC:BEGIN -->
 - [x] #1 THE APP SHALL NOT report a draw order as cheapest when it leaves more of the household's
       spending unfunded than the order in place does.
-- [x] #2 WHEN candidate orders do not all fund the same spending, THE APP SHALL say so on the panel
+- [ ] #2 WHEN candidate orders do not all fund the same spending, THE APP SHALL say so on the panel
       rather than comparing their tax silently.
 - [x] #3 THE APP SHALL keep the reported saving the difference of two of the engine's own runs
       (card 0007 acceptance #5 must not regress).
@@ -151,3 +151,5 @@ VERDICT: defect
 
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #2 because the panel's second tile still compares tax silently. `WithdrawalStrategyComparison::for` filters funding only when choosing `$cheapest`. `savingPence` and `fillBandsSaves()` are still a raw tax difference against `alternativeTo($current)`, so `withdrawal-sequencing.blade.php` and the PDF can still say "£X less tax by spending your savings first" for an order that funds less. Gate or caveat `differs` and `fillBandsSaves` on the same `fundsAtLeastAsMuchAs` test, and add a test where the alternative underfunds.
