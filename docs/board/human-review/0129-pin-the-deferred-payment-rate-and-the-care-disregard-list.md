@@ -1,5 +1,14 @@
 # The deferred payment interest rate and the care property disregard are stated, not verified
 
+## What I need from you
+Reply A or B: who looks up the deferred payment rate and Schedule 2's property disregard, given the unattended loop cannot reach the web (card 0084 asks the same question)?
+
+- **A. An attended session.** The card stays out of the loop. The next time you run a session by hand, tell it "source card 0129". It has the web and can read the OBR-based rate and the 2014 Regulations in one sitting. I recommend A: it is what 0084 recommends, and it keeps an agent nobody is watching off the internet.
+- **B. Web for the loop.** You allow WebSearch and WebFetch in the unattended build sessions' permissions. This card and the other sourcing cards (0085, 0086, 0087, 0091, 0092) then build on their own. The risk of an unwatched agent fetching from the internet is yours to accept.
+
+**Pass:** you reply A or B. After A, the card stays here until an attended session writes a primary-source URL and `verified_on` into `Care\DeferredPaymentAgreement`, `Dto\Property` and `docs/spec/ASSUMPTIONS.md` §28. After B, it goes back to `todo/` and the loop's next take does that.
+**Fail:** the card is moved back to `todo/` without either answer. The loop will park it again, because both criteria are `proves: manual` web reads. Answer 0084 first.
+
 ## Why
 Card 0055 built the care property disregard and the deferred payment agreement in an unattended
 session with no web access, so both are the session's own statement of the rule rather than
@@ -70,3 +79,5 @@ Run `php artisan test` after.
 
 
 **2026-09-07** The loop moved this card from todo/ to human-review/ WITHOUT trying it. All 2 of its open acceptance criteria say proves: manual, so there is nothing left an unattended session could close and starting one would change nothing. Each open criterion names what to look at and what a pass is: tick what passes and move the card on, or say what failed and move it back to todo/.
+
+**2026-09-28** Manager pass: left in `human-review/` with an ask. Both open criteria need a source read on the web, which an unattended session is refused. Only Rob can decide whether the loop gets the web (card 0084).
