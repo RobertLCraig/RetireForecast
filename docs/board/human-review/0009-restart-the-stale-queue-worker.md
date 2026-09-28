@@ -1,5 +1,17 @@
 # Restart the stale queue worker
 
+## What I need from you
+
+**With a queue worker running, open Compare for scenario 9, click "Re-run all", and check the figures refresh without any artisan command.** Start the worker with the line in HANDOVER "How to pick up", then open <http://retireforecast.test/scenarios/9/compare>.
+
+**Pass:**
+- Every plan's Monte Carlo card shows a spinner or progress, then a result, within a few minutes and with no command typed.
+- No plan is left on "Not simulated yet" when it finishes.
+
+**Fail:** a spinner that never resolves, or a plan with no result. Say which plan and whether `php artisan queue:work` was running; the card then goes back to todo with that as the finding.
+
+Everything behind the button is already proven headless (run 769, and `ScenarioCompareTest::test_re_run_all_queues_a_full_run_for_every_plan_compared`). The click on a real page is the only step left, and card 0001's browser sign-off does not include it.
+
 ## Why
 The queue worker is stale, so the in-app "Re-run all" does nothing and every queued Monte Carlo
 silently fails to progress. It also gates the browser sign-off (0001), because thresholds, the
