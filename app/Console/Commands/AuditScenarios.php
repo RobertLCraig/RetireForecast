@@ -150,7 +150,11 @@ final class AuditScenarios extends Command
 
         // A sell/rent plan MUST be read from its own variant; deterministic() always projects the
         // stay-put path, which silently reports the wrong plan.
-        $forecast = $forecaster->deterministicVariants($scenario)[$variant];
+        $variants = $forecaster->deterministicVariants($scenario);
+        $forecast = $variants[$variant];
+        // The household as entered, which the input-sanity notes read whatever plan is shown:
+        // the notes are asked for exactly as the screen asks for them (board card 0089).
+        $entered = $variants['stay_put'];
 
         // 1. The listing's variant label must match what is actually modelled.
         if ($scenario->variant->value !== $variant) {
@@ -210,7 +214,7 @@ final class AuditScenarios extends Command
             if (count($values) > 3 && $values[3] >= $values[0]) {
                 $problems[] = "#{$id} is set to depreciate but its home is not losing value";
             }
-            if ($this->notesOfKind($household, $forecast, $action, 'home_depreciates') === []) {
+            if ($this->notesOfKind($household, $entered, $forecast, $action, 'home_depreciates') === []) {
                 $problems[] = "#{$id} depreciates without telling the reader";
             }
         }
@@ -241,7 +245,7 @@ final class AuditScenarios extends Command
         $set = $forecaster->assumptions($scenario);
         $runSettings = $forecaster->settings($scenario);
         $assumed = ResultPresenter::assumedFigures($household, $applicable, $forecast, $variant, $set, $runSettings);
-        $disclosed = $this->notesOfKind($household, $forecast, $applicable, 'assumed_figure', $variant, $set, $runSettings);
+        $disclosed = $this->notesOfKind($household, $entered, $forecast, $applicable, 'assumed_figure', $variant, $set, $runSettings);
         if (count($assumed) !== count($disclosed)) {
             $problems[] = "#{$id} uses ".count($assumed).' assumed figure(s) but shows '.count($disclosed);
         }
@@ -292,10 +296,10 @@ final class AuditScenarios extends Command
     }
 
     /** @return list<array{kind: string, text: string}> */
-    private function notesOfKind($household, $forecast, $action, string $kind, ?string $variant = null, ?AssumptionSetDto $set = null, ?ForecastSettings $settings = null): array
+    private function notesOfKind($household, $entered, $shown, $action, string $kind, ?string $variant = null, ?AssumptionSetDto $set = null, ?ForecastSettings $settings = null): array
     {
         return array_values(array_filter(
-            ResultPresenter::inputNotes($household, $forecast, $action, $variant, $set, $settings),
+            ResultPresenter::inputNotes($household, $entered, $action, $variant, $set, $settings, $shown),
             static fn (array $note): bool => $note['kind'] === $kind,
         ));
     }

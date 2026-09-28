@@ -7,6 +7,8 @@ namespace Tests\Feature\Livewire;
 use App\DecisionSupport\CapacityForLoss;
 use App\Enums\ScenarioStatus;
 use App\Enums\SimulationStatus;
+use App\Export\ScenarioReport;
+use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
 use App\Jobs\RunScenarioSimulation;
@@ -17,6 +19,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Mortality\PlanningHorizon;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\ScenarioFixture;
@@ -590,6 +593,92 @@ class ScenarioResultsTest extends TestCase
     {
         Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
             ->assertSee(PlanningHorizon::DEFAULT->oddsPhrase());
+    }
+
+    /**
+     * Board card 0089. A buy plan whose price dwarfs the sale proceeds and the savings, with no
+     * buy mortgage, so the engine charges an unfunded purchase gap on the buy path and nowhere
+     * else.
+     */
+    private function unfundedBuyScenario(): Scenario
+    {
+        return ScenarioFixture::rich($this->user, [
+            'variant' => 'buy_outright',
+            'housing' => array_replace(BuilderStateFixture::full()['housing'], ['buyPrice' => '5000000']),
+        ]);
+    }
+
+    /**
+     * @param  list<array{kind: string, text: string}>  $notes
+     * @return list<array{kind: string, text: string}>
+     */
+    private static function ofKinds(array $notes, array $kinds): array
+    {
+        return array_values(array_filter($notes, static fn (array $n): bool => in_array($n['kind'], $kinds, true)));
+    }
+
+    public function test_an_unfunded_purchase_note_reaches_the_results_page(): void
+    {
+        // Card 0025's headline: the note naming the cost of an unfunded purchase. The notes were
+        // read off the stay-put forecast, which charges no purchase, so it could never appear.
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->unfundedBuyScenario()])
+            ->assertViewHas('inputNotes', fn (array $notes): bool => self::ofKinds($notes, ['unfunded_one_off']) !== []);
+    }
+
+    public function test_forecast_derived_disclosures_read_the_selected_variant(): void
+    {
+        $scenario = $this->unfundedBuyScenario();
+        $forecaster = app(ScenarioForecaster::class);
+        $variants = $forecaster->deterministicVariants($scenario);
+        $household = $scenario->toHousehold();
+        $action = ResultPresenter::housingActionFor($scenario->toHousingAction(), 'buy_outright');
+        $set = $forecaster->assumptions($scenario);
+        $settings = $forecaster->settings($scenario);
+        $derived = ['assumed_figure', 'unfunded_one_off'];
+
+        // What the buy plan's OWN forecast discloses, and what the stay-put one would. The two
+        // must differ, or this test could pass whichever forecast the page read.
+        $own = self::ofKinds(ResultPresenter::inputNotes($household, $variants['buy_outright'], $action, 'buy_outright', $set, $settings), $derived);
+        $stayPut = self::ofKinds(ResultPresenter::inputNotes($household, $variants['stay_put'], $action, 'buy_outright', $set, $settings), $derived);
+        $this->assertNotSame($stayPut, $own, 'the fixture must make the two forecasts disclose differently');
+
+        // Screen and print both show the plan on display.
+        Livewire::test(ScenarioResults::class, ['scenario' => $scenario])
+            ->assertViewHas('inputNotes', fn (array $notes): bool => self::ofKinds($notes, $derived) === $own);
+        $this->assertSame($own, self::ofKinds((new ScenarioReport)->data($scenario)['inputNotes'], $derived));
+    }
+
+    public function test_input_sanity_notes_do_not_change_with_the_selected_strategy(): void
+    {
+        // An earner with no retirement age (a sanity note on the household as entered). The same
+        // household shown on stay put and on a sell plan must carry the same sanity notes.
+        $scenario = $this->unfundedBuyScenario();
+        $forecaster = app(ScenarioForecaster::class);
+        $variants = $forecaster->deterministicVariants($scenario);
+        $household = $scenario->toHousehold();
+        $sanity = ['no_salary', 'no_retirement_age', 'early_death'];
+
+        $asEntered = self::ofKinds(ResultPresenter::inputNotes($household, $variants['stay_put']), $sanity);
+
+        // A shown plan whose every member dies in the base year. It is a statement about the
+        // plan, not about the household as entered, so no early-death note may follow from it.
+        $stay = $variants['stay_put'];
+        $buy = $variants['buy_outright'];
+        $shown = new ForecastResult(
+            years: $buy->years,
+            essentialsAlwaysMet: $buy->essentialsAlwaysMet,
+            fullSpendAlwaysMet: $buy->fullSpendAlwaysMet,
+            depletionCalendarYear: $buy->depletionCalendarYear,
+            terminalTotalWealth: $buy->terminalTotalWealth,
+            terminalUsableWealth: $buy->terminalUsableWealth,
+            finalCalendarYear: $buy->finalCalendarYear,
+            deathCalendarYears: array_map(static fn (): int => $stay->years[0]->calendarYear, $stay->deathCalendarYears),
+        );
+
+        $this->assertSame($asEntered, self::ofKinds(
+            ResultPresenter::inputNotes($household, $stay, null, 'buy_outright', null, null, $shown),
+            $sanity,
+        ));
     }
 
     private function scenario(): Scenario

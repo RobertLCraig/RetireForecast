@@ -532,6 +532,8 @@ class ScenarioResults extends Component
                 // lock is assumed to hold. All three reach every projection and none of them was
                 // on any screen before board card 0038.
                 $forecaster->settings($this->scenario),
+                // The plan on display, which the forecast-derived notes read (board card 0089).
+                $ladderForecast,
             ),
             // Temporary "new in this build" review markers — the recent additions are mostly
             // new rows / notes inside existing cards, so point at where each one shows. Prune

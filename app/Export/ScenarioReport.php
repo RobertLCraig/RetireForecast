@@ -178,6 +178,8 @@ class ScenarioReport
                 // lock is assumed to hold. Without them the print drops three disclosures the
                 // screen shows, which is the drift this whole layer exists to prevent.
                 $forecaster->settings($scenario),
+                // The plan in this report, which the forecast-derived notes read (board card 0089).
+                $ladderForecast,
             ),
             'runDiff' => $runDiff,
             // Care isn't modelled unless the toggle is on; say so rather than let "the money

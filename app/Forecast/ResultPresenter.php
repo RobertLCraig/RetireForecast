@@ -2290,15 +2290,23 @@ final class ResultPresenter
      * longevity/health setting below their current age produces (the engine floors a death
      * age at the current age). Both were live-edit foot-guns in Rob's 2026-06-29 walkthrough.
      *
+     * Two forecasts, two note families (board card 0089). $entered is the household exactly as
+     * entered (stay put): the input-sanity notes (a) and (b), and the notes describing the
+     * entered home's own loan and council tax, read it, so they cannot change with the strategy
+     * on display. $shown is the plan on display (null = the same forecast): every note read off
+     * what a plan's projection did (its assumed figures, its unfunded costs, its warnings) reads
+     * it, or a sell plan is told what the stay-put path did.
+     *
      * @return list<array{kind: string, text: string}>
      */
-    public static function inputNotes(Household $household, ForecastResult $forecast, ?HousingAction $housingAction = null, ?string $variant = null, ?AssumptionSet $set = null, ?ForecastSettings $settings = null): array
+    public static function inputNotes(Household $household, ForecastResult $entered, ?HousingAction $housingAction = null, ?string $variant = null, ?AssumptionSet $set = null, ?ForecastSettings $settings = null, ?ForecastResult $shown = null): array
     {
-        if ($forecast->years === []) {
+        if ($entered->years === []) {
             return [];
         }
 
-        $baseYear = $forecast->years[0]->calendarYear;
+        $forecast = $shown ?? $entered;
+        $baseYear = $entered->years[0]->calendarYear;
 
         $notes = [];
         foreach ($household->persons as $i => $person) {
@@ -2319,7 +2327,7 @@ final class ResultPresenter
 
             // (b) Modelled to die in the base year — what a longevity/health age below the
             // current age produces, since the engine floors a death age at the current age.
-            $deathYear = $forecast->deathCalendarYears[$person->id] ?? null;
+            $deathYear = $entered->deathCalendarYears[$person->id] ?? null;
             if ($deathYear !== null && $deathYear <= $baseYear) {
                 $notes[] = ['kind' => 'early_death', 'text' => "{$name} is modelled to die in {$deathYear} (age {$currentAge}), the very start of the forecast. If that isn't intended, check their longevity or health setting — a value below the current age is treated as the current age."];
             }
@@ -2415,8 +2423,8 @@ final class ResultPresenter
             // never sold. A plan redeemed mid-projection (a forced sale at maturity, or the care
             // trigger stated below) ends holding no home and no balance, so reading the final year
             // would report a £0 debt against a £0 home and tell the reader nothing.
-            $finalYear = $forecast->years[count($forecast->years) - 1];
-            foreach ($forecast->years as $projected) {
+            $finalYear = $entered->years[count($entered->years) - 1];
+            foreach ($entered->years as $projected) {
                 if ($projected->propertyWealth->isPositive()) {
                     $finalYear = $projected;
                 }
@@ -2429,7 +2437,7 @@ final class ResultPresenter
             $consumed = $finalYear->homeEquity()->isPositive() ? '' : ' Read that last figure carefully: by '
                 ."{$finalYear->calendarYear} the rolled-up balance has grown past what the home is worth, so "
                 .'the lender takes the property and no part of the home is inherited at all. Your beneficiaries '
-                ."inherit only the money outside it, about {$forecast->terminalUsableWealth->format()} on this "
+                ."inherit only the money outside it, about {$entered->terminalUsableWealth->format()} on this "
                 .'projection. You are never asked for the difference (that is what the no-negative-equity '
                 .'guarantee buys), but from this point on borrowing more costs your estate nothing further '
                 .'because there is nothing further of the home left to lose.';
@@ -2608,9 +2616,9 @@ final class ResultPresenter
         // no-invisible-figures rule: a bill that is being reduced has to say by how much, and a
         // bill still hidden inside the running costs has to say that it is being charged in full.
         if ($home !== null && $home->annualCouncilTax !== null) {
-            $first = $forecast->years[0];
+            $first = $entered->years[0];
             $survivor = null;
-            foreach ($forecast->years as $year) {
+            foreach ($entered->years as $year) {
                 if ($year->aliveCount === 1 && $first->aliveCount > 1) {
                     $survivor = $year;
                     break;
@@ -2651,8 +2659,8 @@ final class ResultPresenter
         // line, two things have to be said or the reader cannot check either: that the help is in
         // the figures and on what terms, and where the model still leaves them short.
         //
-        // The rent is read from the housing ACTION, not from the years: the forecast handed to
-        // this method is the stay-put one, which charges no rent at all.
+        // The rent is read from the housing ACTION, not from the years, so the note reads the
+        // same whichever forecast a caller hands in.
         $rentPlan = $variant === 'rent' && $housingAction?->annualRent !== null && $housingAction->annualRent->isPositive();
         if ($rentPlan) {
             $notes[] = ['kind' => 'housing_benefit', 'text' => 'This plan pays '
