@@ -34,7 +34,8 @@ The care means test itself, which is card 0055.
 <!-- AC:BEGIN -->
 - [x] #1 WHEN the last surviving borrower enters permanent residential care and the home carries a roll-up balance, THE APP SHALL sell the home and repay the balance in that year.
 - [x] #2 WHEN that happens, THE APP SHALL reassess the household on its new capital position with no home.
-- [x] #3 THE APP SHALL state this redemption trigger wherever an equity-release plan is displayed.
+- [ ] #3 THE APP SHALL state this redemption trigger wherever an equity-release plan is displayed.
+- [ ] #4 WHEN the home is sold because every living person has entered care, THE APP SHALL NOT charge rent for those years.
 <!-- AC:END -->
 
 ## Tasks
@@ -148,3 +149,5 @@ VERDICT: defect
 
 
 **2026-09-07** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #3 and added #4 because both findings hold on main. #3: the help text under `property-mortgageRollUpRate` in `scenario-builder.blade.php` still says the balance is repaid "when the home is eventually sold", with no mention of care, on the one screen where an equity-release plan is entered. #4: `PathProjector::projectYear()` charges rent whenever `annualRent !== null && ! $ownsHome`, so a household all in care after the care-triggered sale pays rent and the full care fee; `LifetimeMortgageCareRedemptionTest` never sets `annualRent`. Also for the builder: the roll-up note's new last-year-with-property loop in `ResultPresenter::inputNotes()` changes the figures for a maturity forced sale and is untested.
