@@ -23,7 +23,7 @@ Changing any sampling behaviour. This card only pins what it currently does.
 ## Acceptance
 <!-- AC:BEGIN -->
 - [x] #1 WHEN the simulator runs against a fixed household, fixed settings and a fixed seed, THE APP SHALL produce the same success probability, terminal wealth percentiles and fan-chart points as the pinned expected values. proves: `test_the_pinned_run_still_produces_the_pinned_numbers`
-- [x] #2 WHEN a pinned value legitimately changes, THE APP SHALL require the change to be deliberate, recorded in DECISIONS.md. proves: `test_the_pinned_run_is_recorded_in_the_decision_log`
+- [ ] #2 WHEN a pinned value legitimately changes, THE APP SHALL require the change to be deliberate, recorded in DECISIONS.md. proves: `test_the_pinned_run_is_recorded_in_the_decision_log`
 <!-- AC:END -->
 
 ## Tasks
@@ -130,3 +130,5 @@ VERDICT: defect
 
 
 **2026-09-06** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 2 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 2 of 2 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #2 because the finding holds on main: `GoldenMasterTest::test_the_pinned_run_is_recorded_in_the_decision_log` still checks `MARKER . PIN_REVISION`, a hand-typed date, and never reads `PINNED`, so editing a pinned number without bumping the date stays green with no DECISIONS.md entry. Derive the marker from a hash of `PINNED`. Also fix the class docblock's cause list, which omits `TaxYearRegistry`, `CareAssumptions::default()` and `CohortLifeTable`.
