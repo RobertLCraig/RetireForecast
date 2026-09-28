@@ -1,5 +1,19 @@
 # Public-release blockers
 
+## What I need from you
+
+1. **Choose how a public build gets its stress-test returns: A, license DMS or the Barclays Equity Gilt Study, or B, ship no historical stress test in a public build.**
+2. **Do the manual WCAG 2.2 AA checks on the signed-in results page** that no tool can make: the ApexCharts charts, 400% zoom reflow, a screen-reader walkthrough, and link text read in context.
+
+On 1: the free Bank of England data has share prices but no dividends, and dividends are about half of the long-run UK equity return, so a free rebuild would test the wrong number. The CC BY-NC-SA JST data the app uses now cannot ship publicly.
+- **A** costs a licence fee and gives the best data; the stress panel stays as it is.
+- **B** is free; the public build hides the historical sequence panel, and private use keeps JST.
+- I recommend **A** if a public release is ever real, and **B** until then. A third route (BoE prices plus an assumed dividend yield) was judged worse than both.
+
+**Pass:** for 1, one line here saying A or B. For 2, each of the four checks works: charts have a readable table twin, nothing clips or scrolls sideways at 400%, a screen reader reads the headings and figures in order, and every link makes sense on its own.
+
+**Fail:** for 2, name the page and the check that failed; that becomes the finding and the card goes back to todo. If there is no public release planned, say so and this card can wait parked.
+
 ## Why
 Four items, each flagged in code, harmless while the app is private and mandatory before any
 public launch. Grouped because they share one trigger: the decision to release.
