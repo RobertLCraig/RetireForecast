@@ -32,6 +32,7 @@ Utilities and insurance categorisation, which is card 0033.
 - [x] #1 THE APP SHALL let a user enter dated major-works costs against a property, and charge them in the year given. proves: `test_a_one_off_cost_can_be_tied_to_owning_the_home` and `test_a_major_works_cost_is_charged_in_the_year_it_falls`
 - [x] #2 WHEN a leasehold property has no explicit cost-growth rate, THE APP SHALL apply a sourced default above CPI and disclose it as an assumed figure. proves: `test_a_blank_rate_escalates_the_bucket_at_the_engine_default` and `test_the_assumed_property_cost_growth_is_disclosed_with_its_value`
 - [x] #3 THE APP SHALL expose the property cost-growth rate as an editable input with its sourced alternatives. proves: `test_the_property_cost_growth_input_offers_its_sourced_alternatives`
+- [ ] #4 THE APP SHALL carry the reader's property cost-growth rate (a stated 0 included) through every rebuilt `ExpenseProfile` (`EssentialSpendLever::apply()`, `DiscretionarySpendLever::apply()`), SHALL show the rate in force on results whether assumed or chosen, and SHALL show the property-cost note only on a plan that keeps the home.
 <!-- AC:END -->
 
 ## Tasks
@@ -170,3 +171,5 @@ VERDICT: defect
 
 
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #4 because the acceptance and breakage findings still hold on master. `EssentialSpendLever::apply()` still builds `new ExpenseProfile(...)` without `propertyCostsRealGrowth`, so a reader who entered 0% is swept at the 3% default. The builder help says any chosen rate is shown on results, but `assumedFigures()` prints it only when the rate is blank. The `property_costs_growth` note in `ResultPresenter::inputNotes()` is still not gated on the variant, so sell and rent plans are told about costs their projection drops.
