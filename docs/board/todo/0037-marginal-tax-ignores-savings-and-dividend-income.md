@@ -26,6 +26,7 @@ The combined income-tax pass itself, which is correct.
 <!-- AC:BEGIN -->
 - [x] #1 WHEN extra pension income is drawn, THE APP SHALL compute its tax against the person's full income including savings and dividends.
 - [x] #2 THE APP SHALL reconcile each year's total tax against a full recomputation from final taxable income, to the penny.
+- [ ] #3 WHEN the default `TaxEfficient` drawdown strategy is used, THE APP SHALL reconcile each year's total tax to a full recomputation to the penny, proven by a test that runs `TaxEfficient` and not only `PensionAware`.
 <!-- AC:END -->
 
 ## Tasks
@@ -147,3 +148,5 @@ VERDICT: sound
 
 
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 2 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 2 of 2 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened with new #3 because the review's scope finding holds on main: `DrawdownMarginalTaxTest::settings()` still pins `PensionAware`, while `ScenarioForecaster::DEFAULT_DRAWDOWN_STRATEGY` is `TaxEfficient`, the strategy every stored plan runs, which draws pension in two passes. Run the reconciliation under `TaxEfficient` as well.
