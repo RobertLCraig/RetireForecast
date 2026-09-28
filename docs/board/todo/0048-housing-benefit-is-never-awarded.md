@@ -1,3 +1,6 @@
+---
+needs: 0116
+---
 # A pension-age renter never receives Housing Benefit
 
 ## Why
@@ -20,6 +23,10 @@ Two related gaps in the capital treatment:
   costs of sale that the rules allow.
 
 ## Links
+
+**Blocked by**
+- `0116` - criterion #2 cannot bite until a plan can sell in one year and buy in another; no
+  engine state holds the proceeds of a former home for even one modelled day.
 
 **Relates to**
 - `0051` - the mixed-age couple warning, which is the case this card has to refuse an award to,
@@ -179,3 +186,5 @@ Still not seen in a browser: the two result notes from the first run are proved 
 worktree is not served by Herd.
 
 **2026-09-06** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 4 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+**2026-09-28** Manager pass: back to todo with `needs: 0116`. #1, #3 and #4 are built; #2 is open only because `Dto\HousingAction` has no date, so no plan can hold sale proceeds before buying again. That is card 0116's subject, so it is now a declared blocker rather than a reason for the loop to retake this card and change nothing. When 0116 lands, #2 is ordinary build work.
