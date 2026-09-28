@@ -54,3 +54,5 @@ is yours. Paste into `## Comments`:
     affected cards `waiting_on:`. Web access for the unattended loop stays off for now.
 
 ## Comments
+
+**2026-09-28** **Decided:** Option 2, in a narrower form. The unattended loop gets the web ONLY in a separate research session that can write notes under `docs/research/` and nothing else: no shell, no code, no agents, no MCP. A later build session, which keeps no web, builds from the note. Rob: "sessions that do web loops/research are just that, just research" and "they cannot execute other code". Built by `progressboard#0211`; the five cards waiting on this (0084, 0086, 0087, 0091, 0129) get a `research:` key once it lands.
