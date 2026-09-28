@@ -17,6 +17,7 @@ The wealth chart's terminal p25/p75, also still open from slice #3.
 - [x] #1 THE APP SHALL offer a nominal-versus-real toggle on the results figures.
 - [x] #2 THE APP SHALL take nominal figures from the engine's own pre-deflation values, never
       by re-inflating a deflated figure in the presenter.
+- [ ] #3 THE APP SHALL prove the nominal toggle through the component (`ScenarioResultsTest` sets `nominalPounds` and sees nominal figures), and every doc that describes the charts SHALL say they can be nominal: the `ResultPresenter::timeSeriesCharts()` docblock, the `YearResult::mortgageBalance()` docblock, and DECISIONS "Money over time" item 3, which still says real terms only and the toggle is deferred.
 <!-- AC:END -->
 
 ## Tasks
@@ -113,3 +114,5 @@ VERDICT: defect
 <!-- The card's thread, appended by ProgressBoard. Append-only: entries are added, never edited or removed. An entry beginning **Decided:** is an answer, and that is what a decision card exits on. -->
 
 **2026-08-29** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 2 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 2 of 2 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #3 because the breakage finding still holds on master. No test sets `nominalPounds`, the `timeSeriesCharts()` docblock still claims the charts read the same years as the ladder, and DECISIONS.md still records the toggle as deferred. None of these breaks #1 or #2, so they are a new criterion.
