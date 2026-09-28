@@ -31,8 +31,8 @@ Pension Credit itself, which is card 0046.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 THE APP SHALL hold council tax as its own cost line, separate from maintenance and insurance. proves: `test_council_tax_is_its_own_cost_line_beside_maintenance_and_insurance`
-- [x] #2 WHEN only one person remains in a household, THE APP SHALL apply the single-person discount. proves: `test_the_single_person_discount_applies_once_one_member_remains`
+- [ ] #1 THE APP SHALL hold council tax as its own cost line, separate from maintenance and insurance. proves: `test_council_tax_is_its_own_cost_line_beside_maintenance_and_insurance`
+- [ ] #2 WHEN only one person remains in a household, THE APP SHALL apply the single-person discount. proves: `test_the_single_person_discount_applies_once_one_member_remains`
 - [x] #3 WHEN income and capital qualify, THE APP SHALL award Council Tax Reduction on the pension-age basis. proves: `test_council_tax_reduction_is_awarded_on_the_pension_age_basis`
 - [x] #4 THE APP SHALL let a user record a disabled band reduction and apply it. proves: `test_the_council_tax_bill_and_a_disabled_band_reduction_reach_the_property`
 <!-- AC:END -->
@@ -174,3 +174,5 @@ VERDICT: defect
 
 
 **2026-09-06** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #1 and #2 because the findings hold on main. #1: the bill is not yet separate from upkeep everywhere. `DemoScenario::baseState()` still has `runningCosts` 5000 beside the new `councilTax` 2200, so the demo pays council tax twice (same in `HouseholdFixture::household()` and `BuilderStateFixture::full()`); `HousingComparison::newHomeRunningCosts()` falls back to 1% of value described as including council tax, then copies `annualCouncilTax` as well; and `ResultPresenter::plsaBenchmark()` adds `runningCosts` but never the council tax line, so moving the bill out drops comparable spend. #2: `PathProjector::councilTaxNominal()` still applies the discount on `aliveCount === 1`, so a survivor at home whose partner is in permanent care (a disregarded person) pays the couple's rate.
