@@ -1,3 +1,6 @@
+---
+waiting_on: progressboard#0211, the research-only web session Rob ruled for on 0084 - recheck 2026-10-13
+---
 # The deferred payment interest rate and the care property disregard are stated, not verified
 
 ## What I need from you
@@ -81,3 +84,6 @@ Run `php artisan test` after.
 **2026-09-07** The loop moved this card from todo/ to human-review/ WITHOUT trying it. All 2 of its open acceptance criteria say proves: manual, so there is nothing left an unattended session could close and starting one would change nothing. Each open criterion names what to look at and what a pass is: tick what passes and move the card on, or say what failed and move it back to todo/.
 
 **2026-09-28** Manager pass: left in `human-review/` with an ask. Both open criteria need a source read on the web, which an unattended session is refused. Only Rob can decide whether the loop gets the web (card 0084).
+
+**2026-09-29** **Decided:** B, in the narrower form Rob ruled on 0084 on 2026-09-28: the unattended loop gets the web only in a separate research session that can write notes under `docs/research/` and nothing else, and a later build session with no web builds this card from the note. Settled by an attended agent under Rob's rule that human-review holds only what he must decide: this card's A-or-B ask is the question 0084 asked, and Rob answered it there. The research session is `progressboard#0211`, not yet built, so this card carries `waiting_on:` until it lands, which keeps the build loop from spending another take on the refusal.
+
