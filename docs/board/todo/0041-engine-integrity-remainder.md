@@ -42,6 +42,7 @@ Performance work, which is card 0042.
 - [x] #2 WHEN any expense-profile field is added, THE APP SHALL fail a test if a wither drops it.
 - [x] #3 WHEN a what-if adds the first row to a list that is empty in its base, THE APP SHALL keep that list positional.
 - [x] #4 WHEN an internal invariant is broken, THE APP SHALL throw or report with a stack trace rather than continuing silently.
+- [ ] #5 WHEN a forced sale is disclosed on screen, THE APP SHALL state the mortgage balance the engine redeems that year, not the balance as entered, proven for a repayment and a lifetime mortgage and for a part-owned home.
 <!-- AC:END -->
 
 ## Tasks
@@ -189,3 +190,5 @@ VERDICT: defect
 
 
 **2026-09-06** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened with new #5 because the breakage finding holds on main: the `MortgageMaturityAction::ForcedSale` arm of the `mortgage_redemption` note in `ResultPresenter::inputNotes()` still prints `$home->outstandingMortgage`, the figure as entered, while `PathProjector::projectYear()` now redeems the year's balance. On a rolled-up lifetime mortgage the note understates the debt. `ForcedSaleTest` also builds no part-owned home, so the new division by `ownershipShare` is untested.
