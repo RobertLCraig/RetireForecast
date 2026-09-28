@@ -71,3 +71,15 @@ re-run of every stored scenario, because these figures change projected money. R
 `php artisan test` and `php artisan scenarios:audit` after.
 
 ## Comments
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+First unattended pick-up. WebSearch was refused ("haven't granted it yet"), the same wall card 0091
+hit 68 times. Every task on this card is a web lookup, so nothing can move here and both criteria
+stay open. The second criterion is conditional on a sourced figure differing, so it has nothing to
+test until the first is met. Needs an attended session with web access, per the card's own Plan;
+settle 0085, 0086, 0087 and 0091 in the same research pass. Do not re-queue it unattended.
