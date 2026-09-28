@@ -72,3 +72,5 @@ what `0083` covered.
 **2026-09-20** The loop moved this card from todo/ to human-review/ WITHOUT trying it. All 2 of its open acceptance criteria say proves: manual, so there is nothing left an unattended session could close and starting one would change nothing. Each open criterion names what to look at and what a pass is: tick what passes and move the card on, or say what failed and move it back to todo/.
 
 **2026-09-28** Manager pass: checked, and the duplicate is real. `vendor\bin\pint.bat --test` passes on `master` today, and 0117's two files are a subset of 0083's three (0083 is now in `ai-review/`). What is left is a lane move on another card, which no loop session makes, so this stays in `human-review/` with the move as the ask.
+
+**2026-09-28** Done: 0117 moved to `discarded/` in ca6fdd7. Nothing else was asked.
