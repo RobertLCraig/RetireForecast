@@ -33,9 +33,9 @@ Exposing allocation as an input, which is card 0062.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 THE APP SHALL disclose the State Pension uprating floor, the portfolio allocation and every care assumption as assumed figures, each reading the constant that owns it.
-- [x] #2 THE APP SHALL let a user choose between full triple lock, triple lock to a stated year then a lower basis, and inflation only.
-- [x] #3 WHEN any of these defaults is used, THE APP SHALL show its value and why it applies.
+- [ ] #1 THE APP SHALL disclose the State Pension uprating floor, the portfolio allocation and every care assumption as assumed figures, each reading the constant that owns it.
+- [ ] #2 THE APP SHALL let a user choose between full triple lock, triple lock to a stated year then a lower basis, and inflation only.
+- [ ] #3 WHEN any of these defaults is used, THE APP SHALL show its value and why it applies.
 <!-- AC:END -->
 
 ## Tasks
@@ -171,3 +171,4 @@ No test runs a rent variant with a non-default choice; `StatePensionUpratingTest
 
 VERDICT: defect
 
+**2026-09-28** Manager pass: reopened #1, #2 and #3 because both review findings still hold on main. `HousingComparison::rentSettings()` still rebuilds `ForecastSettings` without `statePensionUprating` or `tripleLockUntilYear`, so the rent leg runs the full triple lock whatever the reader chose, and no note says so (#2, #3). `ResultPresenter::assumedFigures()` still gates the uprating note on a `StatePensionEntitlement`, though `PathProjector::meansTestedBenefitNominal()` uprates Pension Credit by the same floor with no State Pension held, and `ForecastSettings::statePensionUpratingIsAssumed()` is false under `TripleLockUntil` while the floor still runs to that year (#1, #3). Add a test that runs a rent variant with a non-default choice.
