@@ -15,6 +15,7 @@ Single-scenario export, which has plenty of headroom.
       export via a queued or batched job rather than one request.
 - [x] #2 THE APP SHALL complete a 30-scenario export without exceeding the memory limit or the
       gateway timeout.
+- [ ] #3 THE APP SHALL serve `/scenarios/pdf/archive` only for the latest successful build that is under 24 hours old, SHALL delete older archives, and SHALL let a user retry a build that is stuck in `building`.
 <!-- AC:END -->
 
 ## Tasks
@@ -112,3 +113,5 @@ VERDICT: defect
 <!-- The card's thread, appended by ProgressBoard. Append-only: entries are added, never edited or removed. An entry beginning **Decided:** is an answer, and that is what a decision card exits on. -->
 
 **2026-08-29** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 2 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 2 of 2 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #3 because the scope finding still holds on master. `ScenarioPdfController::downloadArchive()` checks only `ScenarioExport::exists()`, never the state or the age, so a months-old or failed-build archive is served, and nothing but `GdprService::erase()` ever deletes one. The `retry_after` finding is already fixed: `config/queue.php` now sets the database connection to 3900 (commit `fa90346`). The memory docblock in `ScenarioExport` is still wrong (`ZipArchive::addFromString` holds every PDF until `close()`); fix the claim or add each PDF from a temp file on the same pass.
