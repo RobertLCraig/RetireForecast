@@ -38,6 +38,7 @@ Disclosing the current default, which is card 0038.
 - [x] #2 WHEN a user changes the expected return, THE APP SHALL change the volatility with it, or refuse the change.
 - [x] #3 THE APP SHALL offer a de-risking glidepath over the projection.
 - [x] #4 THE APP SHALL carry a source and a verified-on date for each asset class return and volatility.
+- [ ] #5 WHEN a reader chooses a mix or a glidepath, THE APP SHALL mark the figures that moved as edited in the assumptions panel, and SHALL still disclose a starting mix the engine supplied.
 <!-- AC:END -->
 
 ## Tasks
@@ -169,3 +170,5 @@ VERDICT: defect
 
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened, added #5, because both breakage findings still hold on `master` and neither breaks an existing criterion. (1) `AssumptionOverrides::changedKeys` still filters only `KEYS`, so a reader who picks Balanced or Growth sees their moved return and volatility in `ResultPresenter::assumptionsPanel` marked unedited, under the preset's name. (2) `AssumptionOverrides::allocation` returns a non-null mix as soon as `allocationGlideTo` is set, so `ForecastSettings::allocationIsAssumed` is false and the cautious starting mix, which the engine chose, goes undisclosed.
