@@ -115,3 +115,14 @@ Fourth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet
 not used, as above. Nothing in the repository can stand in for the missing sources, so both
 criteria stay open. The scheduler should stop re-queuing this card unattended: it needs Rob in an
 attended session, or a WebSearch/WebFetch grant for card sessions.
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+Fifth unattended pick-up, same wall: the WebSearch schema loaded, but the call was refused
+("haven't granted it yet"). Browser tools not used, as above. Both criteria stay open. Five
+identical pick-ups on one day: the fix is on the scheduler side (skip cards whose Plan says
+"Needs a session with web access"), not another retry.
