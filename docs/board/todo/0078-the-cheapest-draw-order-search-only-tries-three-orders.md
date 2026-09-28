@@ -32,6 +32,10 @@ Two things this card must settle before any code, because they are Rob's call an
 **Relates to**
 - `0075` - the reader still cannot pick the order their own forecast runs on, so more orders they
   can see but not use widens that gap; it may want to land first.
+- `0081` - stops the search naming a winner that funds less spending; it filters the candidates
+  this card generates.
+- `0144` - a generated order can win but the reader cannot pick it in the builder; raised by this
+  card's build.
 
 ## Not this card
 A full combinatorial search over wrappers and amounts. Even professional tools stop short of it, and
@@ -42,7 +46,7 @@ the plan rules it out by name.
 - [x] #1 THE APP SHALL try at least one draw order that is not one of the three named ones.
 - [x] #2 THE APP SHALL keep the number of forecasts a results page runs within the bound the plan
       sets (4 to 6 candidates in total).
-- [x] #3 WHEN a generated order wins, THE APP SHALL name it to the reader in terms they can act on,
+- [ ] #3 WHEN a generated order wins, THE APP SHALL name it to the reader in terms they can act on,
       not as an internal setting.
 <!-- AC:END -->
 
@@ -153,3 +157,5 @@ I attacked the change. Two things break.
 
 VERDICT: defect
 
+
+**2026-09-28** Manager pass: reopened #3 because the generated order's name still promises more than the engine does. `DrawCandidate::label` says "keeping each person's taxable income under £X a year", but `PathProjector::fundShortfall` caps only non-savings income, and its last-resort `$drawPensionUfpls(null)` pass has no cap at all. The same review's other finding also stands. `ResultPresenter::inputNotes` still says "Your results price every order we can run" and says the reader can pick it in the builder, and `scenario-builder.blade.php` has the same claim. Neither is true for a generated order. This pass also added the missing `0081` and `0144` links that `board:convention` flagged.
