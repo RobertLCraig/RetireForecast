@@ -31,6 +31,7 @@ Lifetime gifting, which is card 0059.
 - [x] #1 WHEN a household disposes of a qualifying residence and later dies owning a cheaper home or none, THE APP SHALL restore the lost residence nil-rate band as a downsizing addition.
 - [x] #2 THE APP SHALL cap the addition at the value of non-home assets passing to direct descendants.
 - [x] #3 THE APP SHALL apply the estate taper to the total band after the addition, not before.
+- [ ] #4 THE APP SHALL report as the downsizing addition only the part of the residence band it actually supplies after the taper, so no screen or PDF shows an addition beside a smaller or zero band.
 <!-- AC:END -->
 
 ## Tasks
@@ -177,3 +178,5 @@ VERDICT: defect
 
 
 **2026-09-07** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: added #4 because the breakage finding holds on main. `InheritanceTaxCalculator::compute()` clips the band with `min($rnrbAfterTaper, home + addition)` but still returns `$downsizingAddition` unclipped, so the card's own taper tests leave an addition of 175,000 beside a band of 75,000 or 0, and `ResultPresenter::ihtPanel()` prints it. Also for the builder to judge: `PathProjector::recordFinalDeathIht()` drops the disposal when `homeToDescendants` is false, which may be wrong for a household that owns no home. The rent leg running no IHT at all is card 0124 (`HousingComparison::rentSettings()` drops `modelIht`).
