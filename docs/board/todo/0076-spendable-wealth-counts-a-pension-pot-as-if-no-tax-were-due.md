@@ -22,7 +22,7 @@ Total wealth on the wealth chart, which is a stock of assets and is correct gros
 ## Acceptance
 <!-- AC:BEGIN -->
 - [x] #1 THE APP SHALL report spendable wealth net of the tax that would be due on the pension part. proves: `test_spendable_wealth_is_net_of_tax_on_the_pension_part`
-- [x] #2 THE APP SHALL state the rate it netted at and where it came from. proves: `test_the_netting_rate_is_disclosed`
+- [ ] #2 THE APP SHALL state the rate it netted at and where it came from. proves: `test_the_netting_rate_is_disclosed`
 - [x] #3 THE APP SHALL keep the tax-free part of a pension pot unnetted, up to what is left of the lump sum allowance. proves: `test_the_tax_free_quarter_is_not_netted`
 <!-- AC:END -->
 
@@ -148,3 +148,5 @@ VERDICT: defect
 
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #2 because `ResultPresenter::assumedFigures` still shows the netting-rate note only when the TERMINAL year's `pensionTaxIfDrawn()` is positive. `ResultPresenter::ladder` nets every year, so a plan that empties its pots before the end has its mid-plan usable wealth and "money is getting thin" year set by a rate the reader never sees. Show the note whenever any year was netted. `AuditScenarios::auditOne` cannot catch this, because it reads the same gate.
