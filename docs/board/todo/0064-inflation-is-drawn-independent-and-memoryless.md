@@ -41,7 +41,7 @@ The choice of default inflation rate, which is already sourced and signed off.
 ## Acceptance
 <!-- AC:BEGIN -->
 - [x] #1 THE APP SHALL model inflation with year-to-year persistence, using a sourced parameter.
-- [x] #2 THE APP SHALL correlate inflation with real asset returns, so a high-inflation year can coincide with negative real returns.
+- [ ] #2 THE APP SHALL correlate inflation with real asset returns, so a high-inflation year can coincide with negative real returns.
 - [x] #3 THE APP SHALL let the historical backtest run at a long-life horizon as well as the representative one.
 <!-- AC:END -->
 
@@ -184,3 +184,5 @@ VERDICT: defect
 
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #2 because the correlation the reader sees is still not the one the model uses. `ReturnModel::generatePath` puts the correlated shock only on the AR(1) innovation, scaled by `sqrt(1 - phi^2)`, so after year 0 the realised inflation/asset correlation is about 0.71 times the stated figure at the shipped `phi = 0.7`. The assumptions panel shows -0.55 while the model moves at about -0.39. Either scale the correlation so the stated figure is the realised one, or relabel it as the correlation of the annual surprise. Add a test with persistence and correlation both on. The scope finding also stands: the backtest runs only at P90, and Task 3 asked for P75 as well.
