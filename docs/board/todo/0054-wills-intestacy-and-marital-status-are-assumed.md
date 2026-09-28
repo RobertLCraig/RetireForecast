@@ -31,7 +31,7 @@ The relationship-status mechanics, which the panel found correct and well tested
 <!-- AC:BEGIN -->
 - [x] #1 THE APP SHALL require marital status to be chosen, with no default, and disclose it as an assumed figure if one is ever supplied. proves: `test_a_couple_must_choose_a_relationship_status`, `test_a_relationship_status_nobody_gave_is_disclosed_as_an_assumed_figure`
 - [x] #2 THE APP SHALL ask whether each person has a current will, defaulting to no will. proves: `test_a_will_is_not_assumed_when_nobody_answered`, `test_a_will_is_never_assumed_and_costs_the_estate_when_there_is_none`
-- [x] #3 WHEN no will exists, THE APP SHALL apply the intestacy rules rather than granting full spouse exemption. proves: `test_no_will_splits_the_estate_under_the_intestacy_rules`, `test_a_married_first_death_with_no_will_is_not_fully_spouse_exempt`
+- [ ] #3 WHEN no will exists, THE APP SHALL apply the intestacy rules rather than granting full spouse exemption. proves: `test_no_will_splits_the_estate_under_the_intestacy_rules`, `test_a_married_first_death_with_no_will_is_not_fully_spouse_exempt`
 - [x] #4 THE APP SHALL capture the date of marriage or civil partnership, and the residence position of the recipient spouse. proves: `test_a_will_the_marriage_date_and_the_residence_position_are_builder_inputs`
 <!-- AC:END -->
 
@@ -157,3 +157,5 @@ VERDICT: defect
 
 
 **2026-09-07** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #3 because the findings hold on main. `PathProjector::recordFirstDeathIht()` still passes `issueTakeUnderIntestacy: $settings->homeToDescendants`, so an intestate couple who untick "Leave home to descendants" get full spouse exemption again with no `IHT_INTESTACY` warning; that box is not a question about children. In `InheritanceTaxCalculator::computeFirstDeath()` the intestacy warning is still gated on `$intestate` alone, so an estate under the statutory legacy shows both "no Inheritance Tax is due" and "the children take the other half"; assert the warnings in `IntestacyTest::test_an_intestate_estate_below_the_statutory_legacy_still_passes_wholly_to_the_spouse`. Also noted: `ResultPresenter::assumedFigures()` does not disclose the no-will default, and `HousingComparison::withHousing` drops `marriageDate` (read by nothing yet, card 0128).
