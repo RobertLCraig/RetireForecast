@@ -40,10 +40,10 @@ Buying an annuity with non-pension money, which is card 0060.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 WHEN an annuity's age, escalation basis or joint-life setting changes, THE APP SHALL recalculate the rate from a sourced table rather than leaving a typed figure standing.
+- [ ] #1 WHEN an annuity's age, escalation basis or joint-life setting changes, THE APP SHALL recalculate the rate from a sourced table rather than leaving a typed figure standing.
 - [x] #2 WHEN an annuity is bought from a pension pot, THE APP SHALL take the tax-free lump sum first and annuitise the balance.
 - [x] #3 WHEN personal possessions are sold above the chargeable threshold, THE APP SHALL compute the capital gains tax.
-- [x] #4 THE APP SHALL carry a source URL and a verified-on date for every economic assumption, checked by the freshness command.
+- [ ] #4 THE APP SHALL carry a source URL and a verified-on date for every economic assumption, checked by the freshness command.
 <!-- AC:END -->
 
 ## Tasks
@@ -193,3 +193,5 @@ VERDICT: defect
 
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #1 and #4 because both findings still hold on `master`. #4: `CheckFigureFreshness::handle` still loops only `AssumptionSet::economicSourcing()`, and `EconomicAssumptionSourcingTest::NOT_A_FIGURE` still exempts `assetClasses`, so the asset-class return and volatility dates are never checked. #1: `SurvivorAnnuityFractionLever::apply` calls `AnnuityPurchase::withSurvivorFraction`, which copies `$this->rate` unchanged, so the sweep moves a joint-life annuity from 50% to 100% survivor and still pays the 50% quote. The `AnnuityPurchase` class docblock is also out of date: it still says the rate is only ever typed in and that the whole amount is annuitised.
