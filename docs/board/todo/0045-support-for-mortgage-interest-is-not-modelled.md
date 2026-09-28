@@ -22,9 +22,10 @@ Whether the household qualifies. That depends on Pension Credit, which is a sepa
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 WHEN a household receives Guarantee Credit and carries an eligible mortgage, THE APP SHALL meet the interest at the DWP standard rate up to the capital cap.
+- [ ] #1 WHEN a household receives Guarantee Credit and carries an eligible mortgage, THE APP SHALL meet the interest at the DWP standard rate up to the capital cap.
 - [x] #2 THE APP SHALL accrue what is met as a separate charge against the property, repaid on sale or death.
 - [x] #3 THE APP SHALL include eligible service charges and ground rent in the pension-age housing costs it covers.
+- [ ] #4 WHEN care fees or a means test value the home, THE APP SHALL deduct the Support for Mortgage Interest charge from its equity, as the estate and forced-sale paths already do.
 <!-- AC:END -->
 
 ## Tasks
@@ -159,3 +160,5 @@ VERDICT: defect
 
 
 **2026-09-06** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #1 and added #4 because both findings hold on main. `PathProjector::supportForMortgageInterestNominal()` still gates on `primaryResidence !== null` and `homeSold` only, never `Property::isLet`, so a let home the household does not live in gets its interest met; SMI is for the home you occupy. `PathProjector::careAssessableCapital()` still counts property less mortgage and ignores `smiBalance`, so a care year charges fees against equity DWP already holds a charge over; `meansTestedBenefitNominal()` has the same gap for a let home. The unsourced rate and cap remain card 0109's.
