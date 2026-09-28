@@ -54,10 +54,10 @@ Housing Benefit and Council Tax Reduction, which are cards 0048 and 0047.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 WHEN a person receives only a mobility component or a lowest-rate care component, THE APP SHALL NOT award the severe disability addition.
+- [ ] #1 WHEN a person receives only a mobility component or a lowest-rate care component, THE APP SHALL NOT award the severe disability addition.
 - [x] #2 WHEN each member of a couple cares for the other, THE APP SHALL award two carer additions.
 - [x] #3 WHEN a claimant over State Pension age holds an undrawn money-purchase pot, THE APP SHALL treat it as notional income, or list the divergence.
-- [x] #4 WHEN a couple is mixed-age, THE APP SHALL explain that Pension Credit is unavailable and what replaces it.
+- [ ] #4 WHEN a couple is mixed-age, THE APP SHALL explain that Pension Credit is unavailable and what replaces it.
 <!-- AC:END -->
 
 ## Tasks
@@ -206,3 +206,5 @@ VERDICT: defect
 
 
 **2026-09-07** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #1 and #4 because the findings hold on main. #1: `Person::$disabilityAwardRate` still defaults to `QualifyingCare` and nothing reconciles it with an income stream of type `DisabilityBenefitMobility` (card 0050's home for the same fact), so a mobility-only award entered as that stream, with the new select left blank, still gets the severe-disability and carer additions in `PathProjector::pensionCreditAward()`. Make one field own the fact or cross-check them, and test that case. The `disability_care_component_in_care` note in `ResultPresenter::inputNotes()` still says the award is the care component whatever was chosen. #4: `ResultPresenter::pensionCreditGuidance()` still renders the Pension Credit `howToClaim` ("Apply online at gov.uk/pension-credit") to a mixed-age couple told they cannot claim it.
