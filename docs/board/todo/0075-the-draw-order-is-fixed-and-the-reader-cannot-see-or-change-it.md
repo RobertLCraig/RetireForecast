@@ -26,6 +26,7 @@ Inventing new draw orders. The three the engine already has are the set.
 - [x] #1 THE APP SHALL let the reader choose the draw order their forecast is run on, from the orders the engine supports. proves: `test_the_builder_stores_a_chosen_draw_order`
 - [x] #2 WHEN no order is chosen, THE APP SHALL disclose the one it used as an assumed figure, with why it applies. proves: `test_the_default_draw_order_is_disclosed_as_an_assumed_figure`
 - [x] #3 THE APP SHALL name the reader's own order in the comparison panel, whichever it is. proves: `test_the_panel_names_the_chosen_order_as_the_current_one`
+- [ ] #4 WHEN the reader has chosen the default order themselves, THE APP SHALL NOT tell them they did not choose one, and the comparison panel's own docblocks SHALL describe the reader's order against its alternative rather than tax-efficient against fill-the-bands.
 <!-- AC:END -->
 
 ## Tasks
@@ -141,3 +142,5 @@ VERDICT: defect
 
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened, added #4, because both breakage findings still hold on `master`. `ForecastSettings::drawdownStrategyIsAssumed` is true whenever the order equals `DrawdownStrategy::DEFAULT`, so a reader who picks "spend your savings first" is still told nobody chose it. `WithdrawalStrategyComparison`'s class docblock, the `$savingPence` comment and `fillBandsSaves()` still describe a fixed tax-efficient-versus-fill-the-bands comparison that `alternativeTo()` no longer makes.
