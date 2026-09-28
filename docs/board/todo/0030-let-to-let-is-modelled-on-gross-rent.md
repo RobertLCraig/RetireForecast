@@ -34,7 +34,7 @@ Section 24 finance-cost relief, which the projector already models correctly.
 ## Acceptance
 <!-- AC:BEGIN -->
 - [x] #1 WHEN a property is let, THE APP SHALL deduct management, void and maintenance costs from gross rent, each a disclosed sourced default and each editable. proves: `test_letting_costs_come_off_the_gross_rent`, `test_the_readers_own_letting_rates_win_over_the_defaults`, `test_the_assumed_letting_costs_are_disclosed_with_their_values`, `test_the_letting_cost_rates_a_reader_enters_reach_the_property`
-- [x] #2 WHEN a let property carries a service charge, THE APP SHALL treat it as a letting expense rather than household spend. proves: `test_a_let_homes_service_charge_is_a_letting_expense_not_taxed_as_profit`
+- [ ] #2 WHEN a let property carries a service charge, THE APP SHALL treat it as a letting expense rather than household spend. proves: `test_a_let_homes_service_charge_is_a_letting_expense_not_taxed_as_profit`
 - [x] #3 WHEN a let plan is displayed, THE APP SHALL show the letting caveats on the result, not only in code comments. proves: `test_a_let_plan_shows_the_letting_caveats_on_the_result`
 <!-- AC:END -->
 
@@ -159,3 +159,5 @@ VERDICT: defect
 
 
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #2 because the service charge is still charged twice on master. `PathProjector::lettingCostsPerOwner()` adds `propertyCostsNominal()` to the letting deduction, which comes off `$taxablePerPerson` and so off net cash, while the same bucket stays in the spend target unless `homeSold`. Deduct it from the tax base only, or drop it from spend while the home is let, and add a test that compares net income against spend. The same pass should close the second breakage point: `rentalIncomePerOwner()` ignores `IncomeStream::$taxable`, so a tax-free rental stream lets the deduction shelter other income.
