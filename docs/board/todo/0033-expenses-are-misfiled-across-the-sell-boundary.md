@@ -35,6 +35,7 @@ Major works and the service-charge escalator, which is card 0028.
 - [x] #1 WHEN a home whose service charge includes utilities is sold, THE APP SHALL add a replacement utilities cost to the new housing situation.
 - [x] #2 THE APP SHALL treat buildings and contents insurance as essential spend wherever cover is required.
 - [x] #3 WHEN a purchase running cost is derived rather than entered, THE APP SHALL disclose it as a computed figure with the rule that produced it.
+- [ ] #4 THE APP SHALL grow the utilities inside a service charge the same way on keep and sell plans (never on the service-charge escalator while owned and flat after the sale), and the results spend slider SHALL scale a line's `utilities` with its `amount`.
 <!-- AC:END -->
 
 ## Tasks
@@ -181,3 +182,5 @@ VERDICT: defect
 
 
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-09-28** Manager pass: reopened #4 because the breakage and scope findings still hold on master. `PathProjector::projectYear` grows the whole `propertyCosts` bucket, utilities included, at CPI+3% while the home is owned and keeps only base-level utilities after a sale, so selling looks about 1.8x cheaper on energy over 20 years. `ScenarioResults::applySliders` still scales only `amount`. `ResultPresenter::plsaBenchmark()` still subtracts the utilities along with the rest of the charge.
