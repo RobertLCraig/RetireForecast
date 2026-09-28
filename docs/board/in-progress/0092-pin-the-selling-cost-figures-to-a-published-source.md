@@ -343,3 +343,12 @@ OUT-OF-SCOPE: none
 
 Twenty-ninth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
 tools not used, as above. Both criteria stay open.
+
+**2026-09-28**
+RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
+OUT-OF-SCOPE: none
+
+Thirtieth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
+tools not used, as above. Both criteria stay open.
