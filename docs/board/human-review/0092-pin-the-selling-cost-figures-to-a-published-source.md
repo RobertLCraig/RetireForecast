@@ -408,3 +408,30 @@ Thirty-sixth unattended pick-up, same wall: WebSearch refused ("haven't granted 
 tools not used, as above. Both criteria stay open.
 
 **2026-09-29** The loop moved this card from in-progress/ to human-review/. 36 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-09-30 manager (m20260930012953-f99a)
+
+**outcome: rob**
+
+A person must supply the web research, or give the loop permission to do it, before the card can advance.
+
+**what the session said**
+
+The loop cannot move this card. It has no web access. Both acceptance criteria are still open. No review found a fault, because no work was done. Every task on the card is a web lookup:
+
+- a published cost-of-selling survey
+- leasehold fee figures (management pack, licence to assign, notices)
+- an accountant's fee for the 60-day capital-gains return
+
+The second criterion depends on the first, so it has nothing to test yet. Thirty-six unattended takes all hit the same wall: WebSearch was refused. If a person only moves the card back to `todo/`, the loop repeats the same failure.
+
+You can pick one of two options:
+1. Run this card yourself in an attended session that has web access. Do cards 0085, 0086, 0087 and 0091 in the same research pass, because they have the same gap.
+2. Give WebSearch and WebFetch to card sessions, then move the card to `todo/`.
+
+I recommend option 1. It fixes all five cards at once.
+
+WHY: A person must supply the web research, or give the loop permission to do it, before the card can advance.
+
+OUTCOME: rob
+
