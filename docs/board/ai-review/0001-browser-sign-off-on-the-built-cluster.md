@@ -75,5 +75,15 @@ map, assistant answers and the "Check how sure" MC runs will all be dead on the 
 - **Re-run the Monte Carlo.** House-price volatility, salary volatility and above-CPI care
   escalation are live for the first time, so every stored fan is narrower than the model now says.
 
-## Decided
-<!-- one line, dated, when the pass is done -->
+## Comments
+
+**2026-09-30** Triage of the human-review lane. This card asks a person to look at finished work,
+and that is what `ai-review/` is for, so it moves there: a reviewing agent drives the eight steps
+with the browser tools against the Herd site, which serves this tree and not a worktree. State
+found today: `https://retireforecast.test` answers 200; **no queue worker is running** (no
+`queue:work` process, `jobs` 0 pending, `failed_jobs` 0), so steps 3, 4 and 5 spin until one is
+started with the line in HANDOVER "How to pick up", which only an attended session may do. Two
+checks other cards defer to this pass are folded in: card 0009's in-app "Re-run all" click on
+`/scenarios/9/compare` with the worker up, and card 0012's four hand a11y checks on the results
+page (ApexCharts table twins, 400% reflow, screen-reader order, link text in context). Anything
+that reads as nonsense or a placeholder is a finding, one per step number.
