@@ -1,7 +1,3 @@
----
-waiting_on: a real broker quote for consumer buy-to-let - recheck 2026-09-01
----
-
 # A real broker quote would firm up scenario 43's BTL rate
 
 ## What I need from you
@@ -57,3 +53,13 @@ proposed minimum energy efficiency standard for lets by 2030, and that the lease
 freeholder consent to sublet and may prohibit it.
 
 Detail in the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md` (property finding 5).
+
+## Comments
+
+**2026-09-30** **Decided:** Dropped under its own acceptance #2: the 5.75% market average stays
+and stays labelled as an average, and no broker is called. The card said itself that a quoted rate
+would not change the conclusion, and the 2026-08-19 panel found the let plan fails on costs the
+model leaves out (management, voids, repairs, the service charge as a letting expense), not on the
+rate. That correction is card 0030 (todo) and card 0088 (in progress). If the let plan survives
+those two and is still wanted, a new card asks for the quote then. Rob: say so here if you disagree
+and it goes back to `todo/` unchanged.
