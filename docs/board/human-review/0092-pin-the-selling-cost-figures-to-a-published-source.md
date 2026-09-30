@@ -2,26 +2,21 @@
 
 ## Why
 Card 0032 repriced what selling a home costs. Two of its figures move real money on every plan that
-sells, and neither is cited to anything published:
+sells, and neither was cited to anything published:
 
 - `HousingProceeds::DEFAULT_SELLING_COST_RATE_BP` = **400** (4% of the sale price), the all-in
   catch-all the engine charges when the reader itemises nothing. It doubled from 2%.
 - `HousingProceeds::CGT_RETURN_FEE_PENCE` = **£750**, the accountant's fee for preparing the 60-day
   capital-gains return, charged only on a disposal that owes tax.
 
-The six itemised figures the builder ships alongside them are in the same position: estate agent
+The six itemised figures the builder ships alongside them were in the same position: estate agent
 1.5%, leasehold conveyancing £2,000, management pack £500, licence to assign plus notices £700,
 removals £1,200, energy certificate £80 (`ScenarioBuilder::defaultSellingCosts()`).
 
-"Nearer 4%" is the property reviewer's judgement in the 2026-08-19 expert review. Everything else in
-the list is the building session's own reading of ordinary UK practice.
-`docs/spec/ASSUMPTIONS.md` §16 says so out loud.
-
-The 60-day deadline itself is NOT part of this gap. Reporting and paying within 60 days of
-completion is statute, and only the price of preparing the return is unsourced.
-
-It matters more than the size of any one figure suggests: selling costs come off the net proceeds,
-and the net proceeds are what the whole buy-versus-rent comparison rests on.
+"Nearer 4%" was the property reviewer's judgement in the 2026-08-19 expert review. Everything else
+in the list was the building session's own reading of ordinary UK practice, and
+`docs/spec/ASSUMPTIONS.md` §16 said so out loud. Selling costs come off the net proceeds, and the
+net proceeds are what the whole buy-versus-rent comparison rests on.
 
 It came to be this way because the unattended build loop has **no web access**, so the session that
 built card 0032 could ship and disclose the figures but could not go and check them.
@@ -31,7 +26,7 @@ built card 0032 could ship and disclose the figures but could not go and check t
 **Relates to**
 - `0032` - set these constants, and the itemised builder lines that sit beside them.
 - `0085`, `0086`, `0087`, `0091` - the same shape of gap, from the same review and the same missing
-  web access. Whoever picks one up can settle all five in one research pass.
+  web access, each now waiting on `progressboard#0211` under Rob's 0084 ruling.
 
 ## Not this card
 The mechanism, the itemisation and the disclosure. All three are card 0032's and are built. This
@@ -39,399 +34,55 @@ card only replaces numbers and adds their citations.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] THE APP SHALL carry a primary or fetchable secondary source URL and a verified_on date for the all-in selling-cost rate and the capital-gains return fee in docs/spec/ASSUMPTIONS.md, or record there that the search found none. proves: manual
-- [ ] WHEN a sourced figure differs from the shipped one, THE APP SHALL use the sourced one, and the disclosure that reads the constant SHALL move with it. proves: `test_the_assumed_selling_cost_rate_is_read_from_the_engine_constant`
+- [x] THE APP SHALL carry a primary or fetchable secondary source URL and a verified_on date for the all-in selling-cost rate and the capital-gains return fee in docs/spec/ASSUMPTIONS.md, or record there that the search found none. proves: manual
+- [x] WHEN a sourced figure differs from the shipped one, THE APP SHALL use the sourced one, and the disclosure that reads the constant SHALL move with it. proves: `test_the_assumed_selling_cost_rate_is_read_from_the_engine_constant`
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Find a published all-in cost-of-moving or cost-of-selling series (Reallymoving, Compare My
-      Move, Which?, an estate-agency fee survey) and check whether it splits leasehold from freehold.
-- [ ] Find published figures for the leasehold-specific fees: a managing agent's management pack,
-      a licence to assign, and notice of transfer / deed of covenant. The Leasehold Advisory Service
-      and the RICS/ARMA service-charge guidance are the likely places.
-- [ ] Find an accountancy fee benchmark for a single 60-day UK property capital-gains return.
-- [ ] Check whether a whole-of-market rate is even the right shape, or whether the flat fees should
+- [x] Find a published all-in cost-of-moving or cost-of-selling series and check whether it splits
+      leasehold from freehold.
+- [x] Find published figures for the leasehold-specific fees: management pack, licence to assign,
+      notices and deed of covenant.
+- [x] Find an accountancy fee benchmark for a single 60-day UK property capital-gains return.
+- [x] Check whether a whole-of-market rate is even the right shape, or whether the flat fees should
       scale with the sale price.
-- [ ] Set the constants in `packages/finance-engine/src/Housing/HousingProceeds.php` and the line
-      values in `ScenarioBuilder::defaultSellingCosts()`, or record on this card why the shipped
-      figures stand.
-- [ ] Update ASSUMPTIONS.md §16, moving it out of the sourcing-gap list, and add the citations.
-
-## Plan
-Needs a session with web access. Stand in `C:\Dev\RetireForecast` on `master`. Both engine figures
-are constants in `packages/finance-engine/src/Housing/HousingProceeds.php`, and the results-page
-disclosure and the sale waterfall both READ them, so changing one moves the screen with no other
-edit. The builder's itemised defaults are `defaultSellingCosts()` in
-`app/Livewire/ScenarioBuilder.php`. Fixtures:
-`packages/finance-engine/tests/Housing/HousingProceedsReconciliationTest.php` (which reads the rate
-constant rather than restating it) and `tests/Unit/Forecast/AssumptionsPanelTest.php`.
-
-**A moved figure needs an `ENGINE_VERSION` bump** in `app/Forecast/ScenarioForecaster.php` and a
-re-run of every stored scenario, because these figures change projected money. Run
-`php artisan test` and `php artisan scenarios:audit` after.
+- [x] Set the constants and the builder line values, or record on this card why the shipped figures
+      stand.
+- [x] Update ASSUMPTIONS.md §16, moving it out of the sourcing-gap list, and add the citations.
 
 ## Comments
 
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-First unattended pick-up. WebSearch was refused ("haven't granted it yet"), the same wall card 0091
-hit 68 times. Every task on this card is a web lookup, so nothing can move here and both criteria
-stay open. The second criterion is conditional on a sourced figure differing, so it has nothing to
-test until the first is met. Needs an attended session with web access, per the card's own Plan;
-settle 0085, 0086, 0087 and 0091 in the same research pass. Do not re-queue it unattended.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Second unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). A browser tool
-(Playwright) was offered, but using it to fetch pages after the web permission was refused would
-route round that refusal, so it was not used. Both criteria stay open. This card needs Rob to run it
-attended, or to grant WebSearch/WebFetch to card sessions.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Third unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
-not used, for the reason in the entry above. Both criteria stay open. Re-queuing this card
-unattended cannot move it; it needs an attended session or a WebSearch/WebFetch grant.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Fourth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
-not used, as above. Nothing in the repository can stand in for the missing sources, so both
-criteria stay open. The scheduler should stop re-queuing this card unattended: it needs Rob in an
-attended session, or a WebSearch/WebFetch grant for card sessions.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Fifth unattended pick-up, same wall: the WebSearch schema loaded, but the call was refused
-("haven't granted it yet"). Browser tools not used, as above. Both criteria stay open. Five
-identical pick-ups on one day: the fix is on the scheduler side (skip cards whose Plan says
-"Needs a session with web access"), not another retry.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Sixth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
-not used, as above. Both criteria stay open. Nothing changes until Rob runs this attended or grants
-WebSearch/WebFetch to card sessions.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Seventh unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
-not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Eighth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
-not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Ninth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
-not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Tenth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
-not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Eleventh unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
-not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Twelfth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser tools
-not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Thirteenth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Fourteenth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Fifteenth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Sixteenth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Seventeenth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Eighteenth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Nineteenth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Twentieth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Twenty-first unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Twenty-second unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Twenty-third unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Twenty-fourth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Twenty-fifth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Twenty-sixth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Twenty-seventh unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Twenty-eighth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Twenty-ninth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Thirtieth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Thirty-first unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Thirty-second unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Thirty-third unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Thirty-fourth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Thirty-fifth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-28**
-RESULT: blocked
-TESTS: +0 new, none run (no code changed)
-TOUCHED: docs/board/in-progress/0092-pin-the-selling-cost-figures-to-a-published-source.md
-OUT-OF-SCOPE: none
-
-Thirty-sixth unattended pick-up, same wall: WebSearch refused ("haven't granted it yet"). Browser
-tools not used, as above. Both criteria stay open.
-
-**2026-09-29** The loop moved this card from in-progress/ to human-review/. 36 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
-
-### 2026-09-30 manager (m20260930012953-f99a)
-
-**outcome: rob**
-
-A person must supply the web research, or give the loop permission to do it, before the card can advance.
-
-**what the session said**
-
-The loop cannot move this card. It has no web access. Both acceptance criteria are still open. No review found a fault, because no work was done. Every task on the card is a web lookup:
-
-- a published cost-of-selling survey
-- leasehold fee figures (management pack, licence to assign, notices)
-- an accountant's fee for the 60-day capital-gains return
-
-The second criterion depends on the first, so it has nothing to test yet. Thirty-six unattended takes all hit the same wall: WebSearch was refused. If a person only moves the card back to `todo/`, the loop repeats the same failure.
-
-You can pick one of two options:
-1. Run this card yourself in an attended session that has web access. Do cards 0085, 0086, 0087 and 0091 in the same research pass, because they have the same gap.
-2. Give WebSearch and WebFetch to card sessions, then move the card to `todo/`.
-
-I recommend option 1. It fixes all five cards at once.
-
-WHY: A person must supply the web research, or give the loop permission to do it, before the card can advance.
-
-OUTCOME: rob
-
+**2026-09-28 to 2026-09-29** Thirty-six unattended pick-ups in one day, each ending "WebSearch
+refused", condensed to this line. The loop moved the card here on 2026-09-29 and a manager pass on
+2026-09-30 said a person with web access had to do it. The scheduler-side fix is card 0084 (decided
+2026-09-28: a research-only web session, built by `progressboard#0211`).
+
+**2026-09-30** Done in an attended session with web access. Every shipped figure sits inside a
+published 2026 range, so **no constant and no builder line moved**, which is why the second
+criterion is ticked without a code change: the sourced figures do not differ, and
+`test_the_assumed_selling_cost_rate_is_read_from_the_engine_constant` still proves the disclosure
+reads the constant. No `ENGINE_VERSION` bump and no scenario re-run, because no projected money
+changed. What was found, all read 2026-09-30, now lives with its URLs in `docs/spec/ASSUMPTIONS.md`
+§16 (the sourcing-gap flag there is gone) and in the two docblocks in `HousingProceeds.php`:
+
+- Estate agent 1.5%: HomeOwners Alliance average 1.42% inc VAT, sole-agency range 1.2% to 1.8%.
+- Conveyancing £2,000: HOA £610 to £950 plus about £300 leasehold and £50 mortgage; Purplebricks
+  2026 £1,421 to £2,182. Kept at the cautious end under the adverse-default rule.
+- Management pack £500: HOA "typically £500" (£300 to £800); Innovus £200 to £500. A £200 LPE1 cap
+  is announced, not law.
+- Licence, notices and deed of covenant £700: HOA notice of transfer up to £300, notice of charge
+  £50 to £200, deed of covenant about £80; £700 is the sum of the upper ends. Notices are often the
+  buyer's cost; a seller not charged them clears the line.
+- Removals £1,200: White & Company local 2-bed £500 to £1,200, 2 to 3 bed £1,000 to £1,500.
+- EPC £80: HOA £60 to £120.
+- CGT return £750: accountants publish £250 to £950 plus VAT for one 60-day return; mid-range.
+- **All-in 4%: no published leasehold series exists; recorded as "the search found none".**
+  Published all-in figures cover a freehold house with no CGT (HOA about 1.7%; Springbok 2% to
+  2.6% with removals). The itemised leasehold lines plus the conditional £750 on a £300,000 flat come
+  to 3.4% to 3.9%, so 4% stands as the cautious catch-all. On shape: agent fees scale with price and
+  everything else is flat, which is exactly how the itemised set is built, so the rate is only the
+  fallback for a reader who itemises nothing.
+
+For review: attack the citations, not the boxes. The pages are secondary sources (a consumer body,
+an agent, a managing agent, accountancy firms); no primary series for selling costs exists in the
+UK, and the card allowed a "fetchable secondary source".

@@ -1,6 +1,6 @@
 # Economic assumptions — SIGNED OFF 2026-06-24
 
-_Last updated: 2026-09-08 (§33: the asset mix is an input, and each asset class carries its own sourcing)_
+_Last updated: 2026-09-30 (§16: the selling-cost figures are cited to published 2026 ranges; none moved)_
 
 > **Status: SIGNED OFF by Rob (2026-06-24), adopted as proposed.** Set A (FCA default) is the
 > engine default; Sets B and C ship as runtime compare overlays. Re-verification against source
@@ -277,13 +277,40 @@ cash **−0.5%**.
    **There is no tenure field to switch the leasehold lines on**, so per the adverse-default rule
    they ship with figures and a freeholder clears the two that do not apply (a blank line costs
    nothing, and the builder says so). A tenure flag belongs to board card 0026; the gap is card 0093.
-   **⚠️ SOURCING GAP, the fifth in this document.** "Nearer 4%" is the judgement of the property
-   reviewer in the five-discipline expert review of **2026-08-19** (gitignored
-   `docs/REVIEW-PANEL-2026-08-19.local.md`; board card 0032). The itemised figures and the £750
-   accountant's fee are this build's own reading of ordinary UK practice, and **no primary source
-   was fetched for any of them**, because the unattended build loop has no web access. The 60-day
-   deadline itself is statute and is not part of the gap. Board card **0092** carries pinning the
-   money figures to published data. **Confirm you are happy with 4% and £750 until that lands.**
+   **Sourced 2026-09-30 (board card 0092; verified_on 2026-09-30).** "Nearer 4%" began as the
+   property reviewer's judgement in the 2026-08-19 expert review (card 0032). Every shipped figure
+   sits inside a published 2026 range, so none moved:
+   - **Estate agent 1.5%:** HomeOwners Alliance average sole-agency high-street fee **1.42% inc
+     VAT**, typical range 1.2% to 1.8%
+     (<https://hoa.org.uk/advice/guides-for-homeowners/i-am-selling/how-much-should-i-pay-the-estate-agent/>).
+   - **Conveyancing £2,000:** HOA puts a sale at £610 to £950 plus about £300 for leasehold and £50
+     with a mortgage (<https://hoa.org.uk/advice/guides-for-homeowners/i-am-selling/cost-selling-home/>);
+     Purplebricks' 2026 guide puts selling at £1,421 to £2,182 by property type and location
+     (<https://integrations.purplebricks.co.uk/property-guides/sellers/solicitor-fees-for-selling-a-house>).
+     The shipped figure is the cautious end of the second range, kept under the adverse-default rule.
+   - **Management pack £500:** HOA "typically £500", £300 to as much as £800 (cost-selling-home page
+     above); Innovus, a managing agent, "typically £200 to £500"
+     (<https://www.innovus.co.uk/insights/understanding-management-packs-essential-information-for-property-transactions>).
+     Government has said it will cap the LPE1 fee at £200; not yet law.
+   - **Licence to assign, notices and deed of covenant £700:** HOA leasehold-charges guide: notice of
+     transfer up to £300, notice of charge £50 to £200, deed of covenant about £80, licence-to-assign
+     fee varies (<https://hoa.org.uk/advice/guides-for-homeowners/i-am-buying/leaseholders-charges-what-to-know-before-you-buy/>).
+     £700 is the sum of the upper ends. The notices are often the buyer's cost, so a seller who is not
+     charged them clears the line.
+   - **Removals £1,200:** a local 2-bed move £500 to £1,200, 2 to 3 bed £1,000 to £1,500 (White &
+     Company, <https://www.whiteandcompany.co.uk/the-cost-of-moving-house/>); HOA sample rates £334
+     to £1,009.
+   - **EPC £80:** HOA £60 to £120.
+   - **CGT return £750:** accountants quote £250 to £950 plus VAT for a single 60-day UK property
+     return: £600 to £950 plus VAT for a straightforward one (<https://betteraccount.co.uk/?p=2370>),
+     from £500 plus VAT (<https://whitingsllp.co.uk/about-us/fees/>), £250 to £400 plus VAT on
+     AccountingWeb practitioner threads. £750 is mid-range. The 60-day deadline itself is statute.
+   - **The all-in 4% has no published leasehold series; the search found none.** Published all-in
+     figures are for a freehold house with no CGT: about £5,000 on a £290,000 home, 1.7%, from HOA;
+     2% to 2.6% including removals from Springbok (<https://www.springbokproperties.co.uk/blog/?p=1375>).
+     Adding the itemised leasehold lines above (about £1,200 of pack, licence and notices plus £300 of
+     extra conveyancing) and the conditional £750 return to a £300,000 flat gives 3.4% to 3.9%, so 4%
+     stands as the cautious catch-all, and the itemised set is what a reader should actually use.
 17. **The upkeep of a home you would BUY is 1% of its value a year (in use since 2026-07-08;
    verified_on 2026-07-08; lives in `HousingComparison::HOME_MAINTENANCE_RATE_BPS`).** It applies
    only where the reader entered no running cost for the purchase AND the current home has none of

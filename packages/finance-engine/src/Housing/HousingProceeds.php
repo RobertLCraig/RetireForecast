@@ -57,8 +57,9 @@ final class HousingProceeds
      *
      * **Source of record: the expert property review of 2026-08-19** (board card 0032), which puts
      * a realistic all-in figure for a leasehold sale plus a move "nearer 4%"; verified_on
-     * 2026-08-19. That is a reviewer's judgement, NOT a published series, so a primary citation is
-     * still owed. See docs/spec/ASSUMPTIONS.md §16.
+     * 2026-08-19. No published series covers a leasehold sale all-in (searched 2026-09-30, card
+     * 0092); the itemised lines it stands in for are each cited to a published 2026 range and sum
+     * to 3.4% to 3.9% on a £300,000 flat, so 4% is the cautious end. See docs/spec/ASSUMPTIONS.md §16.
      */
     public const DEFAULT_SELLING_COST_RATE_BP = 400;
 
@@ -87,9 +88,8 @@ final class HousingProceeds
      * computation is the tangled end. A reader with a real quote enters it as an ordinary
      * {@see SellingCostComponent} line.
      *
-     * **SOURCING GAP:** unlike the 60-day deadline itself, this figure is not cited to a published
-     * fee survey — the unattended build loop has no web access. Board card 0092 carries pinning it.
-     * See docs/spec/ASSUMPTIONS.md §16.
+     * **Sourced 2026-09-30** (card 0092): accountants publish £250 to £950 plus VAT for a single
+     * 60-day return, so £750 is mid-range. Citations in docs/spec/ASSUMPTIONS.md §16.
      */
     public const CGT_RETURN_FEE_PENCE = 750_00;
 
