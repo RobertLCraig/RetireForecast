@@ -151,3 +151,28 @@ pick up", and the browser gate is already recorded there under 0001. There is no
 HANDOVER does not already own.
 
 **2026-08-22** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with 1 of 2 acceptance criteria still open, so what this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-09-30 manager (m20260930012953-f99a)
+
+**outcome: rob**
+
+All the code behind the button is proven, and the only step left is a click in a real browser, which only Rob can do.
+
+**what the session said**
+
+I read the code. `ScenarioCompare::runFullFamily()` sends one full run to the queue for each plan in the compare set. `ScenarioCompareTest::test_re_run_all_queues_a_full_run_for_every_plan_compared` tests that step.
+
+The builder showed that the queue worker completes a run without help (run 769). It also showed that all 21 plans in the compare set have a completed run.
+
+One step is not done: a person must click "Re-run all" on the real page and watch the figures refresh. The build worktree is not the folder that Herd serves, so the loop cannot do this click. If it goes back to the builder, the same thing will happen a fourth time.
+
+What to do:
+1. Start the worker with the line in HANDOVER "How to pick up".
+2. Open <http://retireforecast.test/scenarios/9/compare>.
+3. Click "Re-run all".
+4. Check that each plan shows a spinner and then a result.
+
+WHY: All the code behind the button is proven, and the only step left is a click in a real browser, which only Rob can do.
+
+OUTCOME: rob
+
