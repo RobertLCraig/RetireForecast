@@ -29,5 +29,13 @@ rather than seeded. Until they exist, any demonstration runs on the real couple'
 Option 1, and it is only worth doing when a demonstration is actually in prospect. This is not
 blocking anything today.
 
-## Decided
-<!-- -->
+## Comments
+
+**2026-09-30** **Decided:** Out of date. An obviously-fictional demo couple has existed since
+2026-06-28, five weeks before this card was written: `App\Demo\DemoScenario` ("Sam Sample
+(fictional)", born 1962, and "Jo Sample (fictional)", born 1960), seeded onto a "Demo user
+(fictional)" account by `php artisan db:seed --class=Database\Seeders\DemoScenarioSeeder`.
+DECISIONS 2026-06-24 allows exactly this ("any first-run sample must be obviously fictional"): the
+no-client-data rule forbids the real couple, not an invented one, so seeding it rather than typing
+it into the builder costs nothing and is already done. Nothing is left to decide. Rob, if you want
+a different demo set, edit `DemoScenario::baseState()` and re-seed.
