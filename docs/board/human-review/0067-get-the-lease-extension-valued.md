@@ -53,3 +53,20 @@ Detail in the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
 **Relates to**
 - `0026` - modelling the lease term needs a real premium to anchor the cost, and this is where that
   number comes from.
+
+## Comments
+
+**2026-09-30** The aside about the 2024 reform is answered here, so it need not go to the
+solicitor. As of September 2026 only two parts of the Leasehold and Freehold Reform Act 2024 are
+in force: the two-year ownership rule went on 31 January 2025 and the right-to-manage cost rules in
+March 2025. The new valuation method, the abolition of marriage value, 990-year extensions and the
+ground-rent treatment all wait on secondary legislation setting the deferment and capitalisation
+rates, so an extension completing now on a lease under 80 years still pays marriage value under
+the old method, and the statutory term is still 90 years. Sources disagree on whether the rates
+consultation has even opened; one practitioner puts commencement at 2027 optimistic, 2028
+realistic (<https://connaughtlaw.com/leasehold-and-freehold-reform-act-2024/>; also
+<https://www.learnsignal.com/blog/leasehold-freehold-reform-update-guide/>, both read 2026-09-30).
+So "extend now or wait" turns on the unexpired term: above 80 years there is no marriage value to
+save by waiting; below it, waiting is a bet on a date nobody will commit to while the premium
+rises each year. Ask the valuer to state the unexpired term and the 80-year crossing date on the
+report.
