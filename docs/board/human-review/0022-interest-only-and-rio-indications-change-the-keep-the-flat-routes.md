@@ -1,68 +1,44 @@
 ---
-waiting_on: four questions to Mark Braidford (My Later Life) - recheck 2026-08-22
+waiting_on: the broker's reversion rates in writing, and YCC's answer on working to 72 - recheck 2026-10-28
 needs: 0024, 0027, 0058, 0067, 0068, 0069, 0070
 ---
 
 # Interest-only and RIO indications change what keeping the flat costs
 
-**Updated 2026-08-11: the RIO is withdrawn and the interest-only maximum has dropped.** Mark's
-"Revised amounts" email supersedes the 6 August indications this card was written on. Scenarios
-55/56/58 and 42 have been repriced to match; option 3 below is no longer available.
-
-**Updated 2026-08-12: a keep-the-flat plan now works, and it is not the one being sourced.** A
-combination sweep (scenarios 61-67, full Monte Carlo) found that the **lifetime mortgage plus the £80k
-art sale plus YCC working to 72 reaches 88.9%**, against 89.8% for selling and buying cheaper on the
-same levers. Given identical help the **interest-only offer reaches only 45.4%**, because the levers
-add a one-off stock of capital and that product charges roughly all of YCC's solo income every year for
-life. A new option 5 records this and the recommendation has changed.
-
 ## What I need from you
 
-**Three things, in order: send Mark the remaining questions, pick between keeping the flat and the
-larger estate, and confirm with YCC that working to 72 is on the table.**
+**Two messages to send now. The keep-or-sell choice itself is not yet askable, and this card does
+not ask it.**
 
-1. **Send the remaining questions in the private doc back to Mark** (SCENARIO-V2.local.md, "Questions
-   to put back to Mark"). Pass: a reversion rate for each product in writing. A failure, meaning no
-   revert rate given, leaves scenario 58's stress as the working assumption, and 58 fails a year
-   *earlier* than the current base. Question 2 is now answered and has been struck through; a sharper
-   one replaces it: **why did the £199,000 interest-only survive the survivor-affordability test when
-   the smaller £180,000 RIO did not?**
-2. **Choose between keeping the flat and the larger estate**, by picking a numbered option below.
-   Pass: the answer written into `## Decided`. An agent cannot settle this: the two candidates are
-   level on security, so the choice is what the flat is worth to them against roughly £243,000, which
-   is their call and not a modelling result. Compare the two here:
-   <http://retireforecast.test/scenarios/64/results> (keep the flat) ·
-   <http://retireforecast.test/scenarios/66/results> (sell and buy cheaper)
-3. **Confirm with YCC that working to 72 is actually on the table**, because both surviving options
-   depend on it. Pass: a yes or no. A no drops 64 to 79.4% and 66 to 85.0%, which reopens the choice.
+1. **Email Mark Braidford (My Later Life)** the remaining questions in the private doc
+   (`docs/SCENARIO-V2.local.md`, "Questions to put back to Mark"), plus one: **why did the £199,000
+   interest-only pass the survivor-affordability test when the smaller £180,000 RIO did not?**
+   Pass: a reversion rate for each product, in writing. Fail: no reversion rate, which leaves
+   scenario 58's stress as the working assumption, and 58 fails a year earlier than the current base.
+2. **Ask YCC whether working to 72 is actually on the table.** Both surviving plans lean on it.
+   Pass: a yes or a no, written here. Fail is a no, which is not a dead end: it drops scenario 64 to
+   79.4% and 66 to 85.0% and reopens the ranking.
 
-**Pass** is all three, and each has its own above. Question 3 is the cheapest and the most
-load-bearing, so it is worth asking first.
-
-**Fail** on 1 is no reversion rate given, which leaves scenario 58's stress as the working
-assumption, and 58 fails a year earlier than the current base. Fail on 3 is a no, which is not a
-dead end but does reopen question 2.
-
-**Why it needs you** Question 2 is the one nothing here can settle: the two candidates are level on
-security, so the choice is what the flat is worth to them against roughly £243,000, and that is
-their call rather than a modelling result. Questions 1 and 3 are both other people to ask.
+**Why it needs you** Both are messages to other people (rule 2). The third question this card used
+to ask, keep the flat or take the larger estate, is a preference (rule 1), but the 2026-08-19 panel
+said not to put it yet: the two leading plans are inside Monte Carlo noise of each other and seven
+unpriced items, each larger than the gap, are open on the cards in `needs:`. When those land, an
+agent re-runs scenarios 64 and 66 and rewrites this ask with the two figures actually being traded.
 
 ## Why
-The 11 August email offers a **10-year 50+ interest-only mortgage at circa 6% for £199,000** and a
-**lifetime mortgage of £144,000 at circa 9.16%**. The stored base is the LiveMore £160,000 repayment
-quote, which needs **~£49,495 found from outside**, more than the ~£42k that is realistically
-available. The interest-only product narrows that to **£9,000**, so a keep-the-flat plan is close to
-executable, which is a different question from whether it works.
+The 11 August broker email offers a **10-year 50+ interest-only mortgage at about 6% for £199,000**
+and a **lifetime mortgage of £144,000 at about 9.16%**; the RIO was withdrawn on survivor
+affordability. The stored base (scenario 9) is the LiveMore £160,000 repayment quote, which needs
+**about £49,495 found from outside** (card 0004). The interest-only product narrows that to
+**£9,000** but does not carry the survivor: the interest alone is about 102% of the working
+partner's net income, and stacked with the £80k art sale and working to 72 it still reaches only
+45.4% and ends with £0 spendable (scenarios 55 to 58).
 
-It does not work on its own. Modelled as scenarios 55-58, the product buys one year and does not carry
-the survivor: the interest alone is **~102%** of Chee's net income, against 142% on the LiveMore
-repayment. It does not work stacked either, which is the 2026-08-12 finding above: with the art sale
-and six extra working years it still reaches only 45.4% and still ends with £0 spendable. The full
-figures, the arithmetic check and what is not modelled are in the private doc.
-
-**The RIO died on the constraint the model already predicted.** Affordability is assessed jointly and
-on the survivor alone; Chee's Nest pension is now excluded, and Francis's pension and benefits cease
-on his death. That is the same structural wall the forecast has hit from the other side three times.
+A combination sweep on 2026-08-12 (scenarios 61 to 67, full Monte Carlo) found the two plans that do
+work: **lifetime mortgage plus art sale plus working to 72 keeps the flat at 88.9%** (scenario 64),
+against **sell and buy cheaper on the same levers at 89.8%** (scenario 66). Level on security;
+£167,473 estate against £410,588, so keeping the flat costs roughly **£243,000** of inheritance and
+about £120,000 of spendable money. Full figures and what is not modelled are in the private doc.
 
 ## Links
 
@@ -86,80 +62,49 @@ on his death. That is the same structural wall the forecast has hit from the oth
   whether either option is executable.
 
 ## Options
-1. **Keep base 9 as the LiveMore £160k C&I; hold 55–58 as what-ifs.** Cost: the base keeps a
-   ~£49,495 funding gap it cannot close (card 0004), so the stored "plan" stays one nobody could
-   actually execute. Nothing else moves until the reversion rates come back.
-2. **Promote 55 (50+ interest-only £199k @ ~6%) to the base.** Cost: card 0004's gap shrinks from
-   ~£49,495 to **£9,000** but does not vanish, and the base still holds no savings to pay it from. It
-   also inherits a **£199,000 balloon in 2036** and an unquoted rate after 2031. Modelled honestly
-   (56), the term end forces a sale and ends at **£0** against selling now at £300,741.
-3. ~~**Promote 57 (RIO £180k @ 6.1%) to the base.**~~ **No longer available**: withdrawn 11 August on
-   survivor affordability. Scenario 57 is retained as a historical comparator only.
-4. **Make 66 (sell & buy cheaper £165k + art sale + YCC to 72) the base**, demoting every mortgage
-   route to a comparator. Cost: it forecloses the flat, and it depends on both the art sale and six
-   extra working years. It is the highest-money plan modelled: **89.8%**, £410,588 estate, £257,690
-   spendable.
+1. **Keep base 9 as the LiveMore £160k repayment; hold 55 to 58 as what-ifs.** Cost: the base keeps
+   a ~£49,495 funding gap it cannot close (card 0004), so the stored "plan" stays one nobody could
+   execute.
+2. **Promote 55 (50+ interest-only £199k at ~6%) to the base.** Cost: the gap shrinks to £9,000, but
+   the base inherits a £199,000 balloon in 2036 and an unquoted rate after 2031; modelled honestly
+   (56) the term end forces a sale and ends at £0.
+3. ~~**Promote 57 (RIO £180k at 6.1%).**~~ Withdrawn 11 August on survivor affordability; 57 is a
+   historical comparator only.
+4. **Make 66 (sell and buy cheaper £165k + art sale + YCC to 72) the base.** Cost: forecloses the
+   flat; depends on the art sale and six more working years. Highest-money plan: 89.8%, £410,588
+   estate, £257,690 spendable.
 5. **Make 64 (lifetime mortgage £144k + art sale + YCC to 72) the base and keep the flat.** Cost:
-   **88.9%**, statistically level with option 4, but £167,473 estate against £410,588, so keeping the
-   flat costs roughly **£243,000** of inheritance. It also depends on the same two levers, and the
-   lifetime mortgage is the product that erodes the estate by design.
+   88.9%, level with 4, but £167,473 estate: roughly £243,000 of inheritance for the flat, on a
+   product that erodes the estate by design.
 
 ## Recommendation
-**Option 5 if keeping the flat matters to them; option 4 if it does not.** The two are level on
-security (88.9% vs 89.8%, inside Monte Carlo noise), so this is no longer a modelling question. It is
-a straight trade: the flat, or about £243,000 of estate and £120,000 of spendable money. That is
-exactly the kind of call an agent should not make, and it is now a clean one to put to them.
+**Option 5 if keeping the flat matters to them; option 4 if it does not**, and neither until the
+`needs:` cards land. **Drop option 2**: with the same levers that carry 64 to 88.9% it reaches
+45.4%, so the reversion rate no longer decides anything; still get it in writing if the
+interest-only route is pursued anyway. Both surviving options rest on three things that are not
+modelling outputs (the extra working years, the value put on the possessions, a family gift
+reclassified as unguaranteed), so whichever is chosen should be shown with each one failing.
 
-**Drop option 2.** The interest-only product cannot be rescued: given the same art sale and the same
-six extra working years that carry the lifetime mortgage to 88.9%, it reaches **45.4%** and still ends
-with **£0 spendable**. The reversion rate no longer decides anything, because the product fails on its
-own mandatory payment before the revert rate is reached.
+When it is askable, paste one:
+`**2026-MM-DD** **Decided:** Option 5, keep the flat, scenario 64 is the base.`
+`**2026-MM-DD** **Decided:** Option 4, sell and buy cheaper, scenario 66 is the base.`
 
-**Still get the reversion rate in writing** if the interest-only route is pursued anyway. And note that
-both surviving options lean on "YCC works to 72": without it, 64 falls to 79.4% and 66 to 85.0%. That
-is six more years of her working life, not a modelling dial, and it should be confirmed with her before
-either becomes the base.
+## Comments
 
-## Direction
+**2026-08-19** The expert panel: do not answer this card yet. Three reviewers separately found the
+two leading options inside noise of each other, with unpriced items each larger than the gap: the
+Pension Credit pillar of the keep-the-flat case is probably gone on the corrected State Pension
+figure (0068); the interest-only and repayment routes are modelled wrong in opposite directions
+(0024); the estate figures are point estimates beside a probability, and under a rolled-up loan the
+beneficiaries inherit the liquid assets, not the flat (0058); the lease extension, a major-works
+cycle, dual running and the valuation spread are all unpriced (0067, 0070, 0027, 0069). Also
+missing from the options: a variant that buys secured income for the survivor (0060), and the
+later-life disability benefit and what it passports (0044, 0045). Detail in the gitignored
+`docs/REVIEW-PANEL-2026-08-19.local.md`.
 
-**2026-08-19 - the expert panel says do not answer this card yet.** Three reviewers, working
-separately, reached the same conclusion: the two leading options are inside noise of each other,
-and the items nobody has priced are each larger than the gap between them.
-
-Four things have to land before the trade is real.
-
-1. **The Pension Credit argument is probably gone.** On the corrected State Pension attribution the
-   survivor sits just above the Guarantee Credit line, and because the guarantee is uprated by the
-   same factor as the pension, the gap never closes. So the lifetime Pension Credit in the model is
-   close to zero, and the "selling forfeits Pension Credit" line - one of the two pillars of the
-   case for keeping the flat - goes with it. That figure survived a full audit because the audit
-   checks reconciliation, not plausibility. Card 0068 confirms the pension figure first.
-2. **The comparison is not like-for-like.** An interest-only or lifetime-mortgage payment is
-   currently indexed to inflation and cut by the survivor factor, while a repayment mortgage is
-   modelled correctly. Both are wrong, in opposite directions, on exactly the routes this card is
-   choosing between. Card 0024.
-3. **The estate figures are single-path numbers standing beside a ten-thousand-path probability**,
-   and where a rolled-up loan is involved the property is fully consumed - the beneficiaries
-   inherit the liquid assets, not the flat. That should be said in those words before anyone
-   chooses. Card 0058.
-4. **The unpriced property items.** The lease extension, which the equity-release lender may
-   require anyway (card 0067); one major-works cycle (card 0070); the months of dual running that a
-   sale actually takes (card 0027); and a valuation spread that the base currently sits at the
-   optimistic end of (card 0069).
-
-**Two additions to the options themselves.** The board is choosing between two plans without the
-third: no variant has been tested that buys secured income for the survivor, because the engine can
-only fund an annuity from a pension pot (card 0060). And the survivor's largest upside - a
-disability benefit claimed later in life, and the Pension Credit and mortgage-interest support it
-passports - cannot be modelled at all (cards 0044 and 0045).
-
-**One framing point to carry into whatever is decided.** Both surviving options depend on three
-things that are not modelling outputs: the extra working years, the value assumed for the
-possessions, and a family gift already reclassified as unguaranteed. A plan resting on all three
-should not be presented with a single high probability. Show what happens if any one of them does
-not hold.
-
-Full detail in the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
-## Decided
-<!-- -->
-
+**2026-09-30** Triage. The ask was rewritten to stop asking the keep-or-sell question the panel
+said to hold: all seven `needs:` cards are still open (0024 and 0058 in todo, 0027 in progress,
+0067 to 0070 in this lane), so that question waits on them and the two messages are what is left
+for a person. The card's 2026-08-11 and 08-12 update banners were folded into `## Why`, and the two
+real first names in the old text were replaced with roles (card 0043 is removing private data from
+tracked files).
