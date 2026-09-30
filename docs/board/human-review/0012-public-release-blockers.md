@@ -215,3 +215,30 @@ left them alone again rather than widen the diff. `pint --dirty` is clean. Someb
 bare `pint` on master.
 
 **2026-08-22** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with 2 of 4 acceptance criteria still open, so what this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-09-30 manager (m20260930012953-f99a)
+
+**outcome: question**
+
+#2 cannot move until you choose, because the choice depends on cost and on whether you plan a public release at all. #4 needs your hand checks after that.
+
+**The question:** For a public build, do you want A (buy the DMS or Barclays licence and keep the stress panel) or B (hide the stress panel in public builds)?
+
+**what the session said**
+
+This card has no review finding against a ticked box. #1 and #3 stay ticked. Two boxes are open, and both need you:
+
+- **#2 needs a choice from you.** The builder cannot pick the data source. Your choice changes what gets built.
+  - **A:** Buy a licence for DMS or the Barclays Equity Gilt Study. This costs money. It gives the best data, and the stress panel (the chart that tests bad market years) stays as it is.
+  - **B:** Show no stress panel in a public build. This is free. Private use keeps the JST data it uses now.
+  - The builder said A if you ever release publicly. Until then, B. I agree.
+- **#4 needs you at a real browser.** The builder has done every check a machine can do. You must do the four hand checks. The card says these go with card 0001.
+
+If you have no plan to release publicly, say so. Then the card can stay parked.
+
+QUESTION: For a public build, do you want A (buy the DMS or Barclays licence and keep the stress panel) or B (hide the stress panel in public builds)?
+
+WHY: #2 cannot move until you choose, because the choice depends on cost and on whether you plan a public release at all. #4 needs your hand checks after that.
+
+OUTCOME: question
+
