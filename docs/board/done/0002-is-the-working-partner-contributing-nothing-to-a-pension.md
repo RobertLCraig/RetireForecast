@@ -36,3 +36,7 @@ about. Until it is answered, treat every pension figure for the working partner 
 <!-- -->
 
 **2026-08-18** Several scenarios were created that simulate the working person being beyond retirement age and therefore no longer contributing to a pension. (Unsure how correct this might turn out to be.)
+
+**2026-10-04** RESULT: done
+TOUCHED: 0156 (todo) - flag on the result page and PDF any person earning a salary with nothing paid into a pension; the already-retired scenarios the answer describes are already covered by the no_salary note, so only the still-earning ones were silent.
+TOUCHED: 0157 (human-review) - the answer did not give the payslip rates, so this asks for the member and employer percentages (or a confirmed nil) and the date the working partner really stops work, which decides whether the already-retired scenarios are right.
