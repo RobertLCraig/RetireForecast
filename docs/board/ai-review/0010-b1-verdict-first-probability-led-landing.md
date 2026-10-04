@@ -15,7 +15,7 @@ tails, A4 State-Pension uprating.
       reusing the `/afford` screen rather than a new surface.
 - [x] #2 WHEN a scenario has no completed Monte Carlo run, THE APP SHALL say so plainly rather
       than showing a deterministic figure in the probability's place.
-- [ ] #3 THE APP SHALL feed the hero only from a completed FULL Monte Carlo run (not a 1,000-path preview), and SHALL colour it green only at 80% or above, per the band table in PLAN-output-inflation-and-charts.md section B1.
+- [x] #3 THE APP SHALL feed the hero only from a completed FULL Monte Carlo run (not a 1,000-path preview), and SHALL colour it green only at 80% or above, per the band table in PLAN-output-inflation-and-charts.md section B1.
 <!-- AC:END -->
 
 ## Tasks
@@ -115,3 +115,20 @@ VERDICT: defect
 **2026-08-29** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 2 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 2 of 2 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #3 because the 2026-08-29 breakage and scope findings still hold on master. `Affordability::storedMonteCarlo()` reads `Scenario::latestCompletedRun()`, which filters on status and never on mode, so a preview run fills the hero, hides the "Check how sure" button and sits under copy about thousands of futures. The hero's `$leadTones` map in `affordability.blade.php` still paints the `good` band (75 to 89%) green. Also worth doing on the same pass: the all-failing case, where `lead()` takes a failing plan as the strongest.
+
+**2026-10-04** RESULT: done
+TESTS: +2 new, all green
+TOUCHED: app/Livewire/Affordability.php, app/Forecast/AffordabilityAssessment.php, resources/views/livewire/affordability.blade.php, tests/Feature/Livewire/AffordabilityTest.php, docs/board/todo/0158-the-afford-hero-can-lead-with-a-failing-plan.md, docs/board/todo/0159-compare-and-threshold-odds-can-come-from-a-preview-run.md
+OUT-OF-SCOPE: 0158, 0159
+
+#3 built. `Affordability::storedMonteCarlo()` now asks for a Done run with `SimulationMode::Full`, so a 1,000-path preview no longer fills the hero, no longer hides the "Check how sure" button, and `checkHowSure()` queues the full run for that plan. `latestCompletedRun()` is unchanged, because the results page reads it and makes the previews.
+
+Colour: the card gains `mcTone` and the lead gains `tone`, read off the probability by `AffordabilityAssessment::tone()`: green at 80% or above, amber 70 to 79%, red below 70%, per the PLAN B1 table. The view's `$leadTones` map now keys on `tone`, not on the word band. The word band is still `ResultPresenter::lastsBand()` (unchanged, as Direction decided), so a 76% plan reads "Likely to last" in amber. That word/colour mismatch at 75 to 79% stays until someone retunes `lastsBand()`, which touches Compare and the threshold explorer too. The B1 table puts 50 to 69% at orange/red; I used red, three tones only.
+
+Watched red first: `test_a_preview_run_does_not_feed_the_hero` failed because the preview filled `lead.checked`; `test_the_hero_is_green_only_at_eighty_percent_or_above` failed on the rendered 76% hero carrying the green classes.
+
+Raised 0158: the all-failing case, where `lead()` takes a failing plan as the strongest (named in the 2026-09-28 manager pass but not in #3). Raised 0159: Compare and the threshold pictograph still read `latestCompletedRun()`, so a newer preview beats an older full run there.
+
+Not acted on: the 2026-08-29 scope note that the dashboard now shows "What can I afford?" for a childless forecast. No criterion covers it; that is Rob's call.
+
+Not seen in a browser. Herd serves C:\Dev\RetireForecast, not this worktree. It needs `npm run build` and a look at /afford at 76% and 82%.
