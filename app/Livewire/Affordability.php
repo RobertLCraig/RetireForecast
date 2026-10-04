@@ -6,6 +6,8 @@ namespace App\Livewire;
 
 use App\DecisionSupport\CombinationComparisonData;
 use App\DecisionSupport\SustainableSpend;
+use App\Enums\SimulationMode;
+use App\Enums\SimulationStatus;
 use App\Forecast\AffordabilityAssessment;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
@@ -139,11 +141,16 @@ class Affordability extends Component
     /**
      * The plan's own-variant result from its latest completed full Monte Carlo run, if any — the
      * honest "how sure" figure. Null when no run has been computed for this plan yet (the new
-     * what-ifs), so the view offers to run one rather than implying certainty.
+     * what-ifs), so the view offers to run one rather than implying certainty. A 1,000-path preview
+     * does not count: it is not the "thousands of futures" the hero claims (card 0010 #3).
      */
     private function storedMonteCarlo(Scenario $plan, string $variant): ?SimulationResult
     {
-        $result = $plan->latestCompletedRun()?->results
+        $result = $plan->simulationRuns()
+            ->where('status', SimulationStatus::Done)
+            ->where('mode', SimulationMode::Full)
+            ->latest()
+            ->first()?->results
             ->first(fn (Result $r): bool => $r->variant->value === $variant);
 
         return $result?->simulationResult();

@@ -13,8 +13,8 @@
          A green "yes, this lasts" beside an unshown coin-flip was the most misleading thing here,
          so the chance and its plain word come first and the expected path is demoted below it. --}}
     @php($lead = $bottomLine['lead'])
-    @php($leadTones = ['strong' => 'border-green-300 bg-green-50', 'good' => 'border-green-300 bg-green-50', 'borderline' => 'border-amber-300 bg-amber-50', 'weak' => 'border-red-300 bg-red-50', 'poor' => 'border-red-300 bg-red-50'])
-    <section aria-labelledby="how-sure-heading" class="mt-6 rounded-xl border-2 p-6 {{ $leadTones[$lead['band']['level'] ?? ''] ?? 'border-gray-300 bg-gray-50' }}">
+    @php($leadTones = ['green' => 'border-green-300 bg-green-50', 'amber' => 'border-amber-300 bg-amber-50', 'red' => 'border-red-300 bg-red-50'])
+    <section aria-labelledby="how-sure-heading" class="mt-6 rounded-xl border-2 p-6 {{ $leadTones[$lead['tone'] ?? ''] ?? 'border-gray-300 bg-gray-50' }}">
         <p id="how-sure-heading" class="text-sm font-semibold tracking-wide text-gray-700 uppercase">How sure is your strongest plan?</p>
 
         @if ($lead['checked'])

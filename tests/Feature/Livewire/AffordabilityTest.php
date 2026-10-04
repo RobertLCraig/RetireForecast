@@ -183,6 +183,46 @@ class AffordabilityTest extends TestCase
             ->assertSee('Check how sure');
     }
 
+    /**
+     * B1 (card 0010 #3): a 1,000-path preview is a completed run too, but it is not the "thousands of
+     * possible futures" the hero claims. It must not fill the hero, nor hide the offer of the real run.
+     */
+    public function test_a_preview_run_does_not_feed_the_hero(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user, ['variant' => 'stay_put', 'name' => 'Keep the home', 'expenseLines.ess1.amount' => '8000']);
+        $this->completedRun($base, $user, $this->mc(0.62), SimulationMode::Preview);
+
+        Livewire::test(Affordability::class, ['scenario' => $base])
+            ->assertOk()
+            ->assertViewHas('bottomLine', fn (array $b): bool => $b['lead']['checked'] === false && $b['lead']['percent'] === null)
+            ->assertViewHas('anyUnchecked', true)
+            ->assertDontSee('62%')
+            ->assertSee('Check how sure');
+    }
+
+    /**
+     * B1 (card 0010 #3): green is reserved for 80% and above, per the band table in
+     * PLAN-output-inflation-and-charts.md section B1. 70 to 79% is amber, below 70% red. A 76% plan
+     * sits in the existing "good" word band (75 to 89%), which is exactly where the two scales part.
+     */
+    public function test_the_hero_is_green_only_at_eighty_percent_or_above(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $hero = 'border-2 p-6 border-green-300 bg-green-50';
+
+        foreach ([[0.76, 'amber'], [0.69, 'red'], [0.80, 'green'], [0.95, 'green']] as [$p, $tone]) {
+            $base = ScenarioFixture::rich($user, ['variant' => 'stay_put', 'name' => 'Keep the home', 'expenseLines.ess1.amount' => '8000']);
+            $this->completedRun($base, $user, $this->mc($p));
+
+            $page = Livewire::test(Affordability::class, ['scenario' => $base]);
+            $tone === 'green' ? $page->assertSeeHtml($hero) : $page->assertDontSeeHtml($hero);
+            $page->assertViewHas('bottomLine', fn (array $b): bool => $b['lead']['tone'] === $tone);
+        }
+    }
+
     /** A minimal but valid Monte Carlo result, pinned to a chosen "chance essentials last". */
     private function mc(float $ess): SimulationResult
     {
@@ -203,12 +243,12 @@ class AffordabilityTest extends TestCase
         );
     }
 
-    private function completedRun(Scenario $plan, User $user, SimulationResult $mc): void
+    private function completedRun(Scenario $plan, User $user, SimulationResult $mc, SimulationMode $mode = SimulationMode::Full): void
     {
         $run = SimulationRun::create([
             'scenario_id' => $plan->id,
             'user_id' => $user->id,
-            'mode' => SimulationMode::Full,
+            'mode' => $mode,
             'n_paths' => $mc->nPaths,
             'seed' => $mc->seed,
             'status' => SimulationStatus::Done,

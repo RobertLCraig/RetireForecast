@@ -134,7 +134,7 @@ final class AffordabilityAssessment
      * so putting it in the probability's place would read as certainty the tool does not have.
      *
      * @param  array<string, mixed>|null  $card  the strongest card, {@see cards()} sorts it first
-     * @return array{plan: ?string, checked: bool, percent: ?string, band: ?array{level: string, word: string}}
+     * @return array{plan: ?string, checked: bool, percent: ?string, band: ?array{level: string, word: string}, tone: ?string}
      */
     private static function lead(?array $card): array
     {
@@ -143,7 +143,22 @@ final class AffordabilityAssessment
             'checked' => ($card['mcEssentials'] ?? null) !== null,
             'percent' => $card['mcEssentials'] ?? null,
             'band' => $card['mcBand'] ?? null,
+            'tone' => $card['mcTone'] ?? null,
         ];
+    }
+
+    /**
+     * The hero's colour, from the band table in PLAN-output-inflation-and-charts.md section B1: green
+     * only at 80% or above, amber 70 to 79%, red below. Read off the probability, not the word band,
+     * because the word band (`ResultPresenter::lastsBand()`) puts 75 to 89% in one level.
+     */
+    private static function tone(float $successProbability): string
+    {
+        return match (true) {
+            $successProbability >= 0.80 => 'green',
+            $successProbability >= 0.70 => 'amber',
+            default => 'red',
+        };
     }
 
     /**
@@ -217,6 +232,7 @@ final class AffordabilityAssessment
             // The plain word for that chance, from the one banding home, so this landing and the
             // comparison chip can never disagree on where "likely to last" starts.
             'mcBand' => $mc !== null ? ResultPresenter::lastsBand($mc->successProbabilityEssentials) : null,
+            'mcTone' => $mc !== null ? self::tone($mc->successProbabilityEssentials) : null,
         ];
     }
 
