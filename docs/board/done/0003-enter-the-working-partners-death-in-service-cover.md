@@ -35,3 +35,6 @@ forward is the other half: the retired partner is uncovered and that is where th
 <!-- -->
 
 **2026-08-18** Unknown value. Unlikely to be an issue at this stage.
+
+**2026-10-04** RESULT: done
+TOUCHED: none. No card written: the answer (2026-08-18) says the cover value is unknown and unlikely to matter at this stage, which is option 2 (leave it), so there is nothing to build and no follow-on question for a person.
