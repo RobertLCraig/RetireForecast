@@ -22,11 +22,14 @@ use RetireForecast\FinanceEngine\Sweep\Lever\WealthFallLever;
  * room at all — and the reader cannot tell the two apart from a probability.
  *
  * So: search for the answer rather than assert it. Mark everything the household owns down by the
- * same fraction on the base date ({@see WealthFallLever}) and binary-search the largest fall at
- * which the **essential spending floor is still met in every year of the projection**. That bar,
- * not "the money lasts", is what capacity for loss means: the floor is what the household cannot
- * do without, and a plan whose discretionary spending is squeezed has not run out of capacity.
- * Losing more can only make the floor harder to meet, which is what makes the search valid.
+ * same fraction on the base date ({@see WealthFallLever}) and find the largest fall such that it,
+ * and every smaller fall, still meets the **essential spending floor in every year of the
+ * projection**. That bar, not "the money lasts", is what capacity for loss means: the floor is
+ * what the household cannot do without, and a plan whose discretionary spending is squeezed has
+ * not run out of capacity. Losing more does NOT always make the floor harder to meet: Pension
+ * Credit's tariff income on capital can cost a household more than a smaller sum would, so a plan
+ * can pass at 0% and 100% and fail in between. The search therefore checks every point up to the
+ * first breach rather than bisecting.
  *
  * **The answer is a whole percentage, rounded DOWN, and the cash figure is derived from it.** The
  * search is over integer percentages, so the figure reported is one the projection was actually
@@ -36,7 +39,7 @@ use RetireForecast\FinanceEngine\Sweep\Lever\WealthFallLever;
  *
  * **Variant-aware.** The plan on display is resolved first, so a sell-and-rent plan is stressed as
  * a renter with the proceeds invested, and a stay-put plan as an owner. Deterministic and
- * synchronous like {@see SustainableSpend} and {@see ProtectionGap} — about eight forecasts — so
+ * synchronous like {@see SustainableSpend} and {@see ProtectionGap} — up to 101 forecasts — so
  * it inherits the central path's optimism: it is what the EXPECTED path could absorb, and any
  * surface showing it must say so.
  */
@@ -50,8 +53,9 @@ final class CapacityForLoss
      *
      * `percent` is that fall as a whole percentage of total wealth and `cash` is the same fall in
      * pounds; `wealth` is the total it is measured against, so a reader can check the arithmetic.
-     * `survivesTotalLoss` is true when even losing everything leaves the essentials covered —
-     * income alone carries the floor — and `percent` is then 100.
+     * `survivesTotalLoss` is true when EVERY whole-percent fall up to and including losing
+     * everything leaves the essentials covered — income alone carries the floor — and `percent`
+     * is then 100.
      *
      * `alreadyBreached` is the OTHER end, and the reason this never returns null: a plan that runs
      * short of its essentials at some point as it stands has no room to lose anything at all, and
@@ -81,23 +85,18 @@ final class CapacityForLoss
             return self::result(0, $wealth, survivesTotalLoss: false, alreadyBreached: true);
         }
 
-        if ($holds(100)) {
-            return self::result(100, $wealth, survivesTotalLoss: true, alreadyBreached: false);
-        }
-
-        // Invariant: the plan holds at $low and fails at $high. Seven halvings settle it.
-        $low = 0;
-        $high = 100;
-        while ($high - $low > 1) {
-            $mid = intdiv($low + $high, 2);
-            if ($holds($mid)) {
-                $low = $mid;
-            } else {
-                $high = $mid;
+        // Walk up one point at a time and stop at the first fall that breaks the floor. Not a
+        // bisection: the engine is not monotone in wealth (tariff income on capital can take a
+        // means-tested award away that a smaller sum would have kept), so a plan can hold at both
+        // ends and fail in between, and only every point checked proves no earlier one fails.
+        // ponytail: up to 101 forecasts; fine at today's few milliseconds each, cache per run if not.
+        for ($percent = 1; $percent <= 100; $percent++) {
+            if (! $holds($percent)) {
+                return self::result($percent - 1, $wealth, survivesTotalLoss: false, alreadyBreached: false);
             }
         }
 
-        return self::result($low, $wealth, survivesTotalLoss: false, alreadyBreached: false);
+        return self::result(100, $wealth, survivesTotalLoss: true, alreadyBreached: false);
     }
 
     /**

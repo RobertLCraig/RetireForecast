@@ -2,9 +2,9 @@
 
 > **Status: PART-BUILT.** **A1 (fee drag), A2 (net-pay contribution relief), B2 (protection gap) and
 > B1 (cost of advice) shipped 2026-07-31; A2's remainder (the annual-allowance / MPAA cap and the
-> £3,600 non-earner route) and A3 in full (bed-and-ISA) shipped 2026-08-22.** What is left is A4
-> salary sacrifice, B3 the estate checklist, B4 the annual review, and B5 capacity for loss (card
-> 0011). See DECISIONS
+> £3,600 non-earner route) and A3 in full (bed-and-ISA) shipped 2026-08-22. B5 capacity for loss is
+> built (card 0011, under review).** What is left is A4 salary sacrifice, B3 the estate checklist and
+> B4 the annual review. See DECISIONS
 > 2026-07-31 and DATA-MODEL "Known divergences"; the figures below were re-verified against primary
 > sources at build time and the shipped default is **0.50%**, with the reasoning for not taking the
 > most adverse figure recorded in docs/spec/ASSUMPTIONS.md §10. Everything else here is still spec.
@@ -228,7 +228,7 @@ all) and **cadence** (someone reviews it annually), not sophistication.
 | **Protection / life cover review** | Nothing | **B2 — build** |
 | **Estate & admin readiness (will, LPA, nominations)** | Nothing | **B3 — build** |
 | **Ongoing annual review** | Nothing | **B4 — build** |
-| **Capacity for loss** | Partial (income floor) | **B5 — build the objective half** |
+| **Capacity for loss** | Partial (income floor) | **B5 — ✅ BUILT (card 0011)** |
 | Attitude-to-risk psychometrics | Nothing | **Non-goal** — see below |
 | Fund / product / platform selection | Nothing | **Non-goal** |
 | DB transfer advice | DB modelled as income | **Non-goal** — see below |
@@ -308,7 +308,7 @@ depletion year and success probability.
 This is the feature most likely to keep the tool *used* rather than run once and abandoned, and it reuses
 `result_snapshots` plus the existing assistant for the narration.
 
-### B5. Capacity for loss (build) vs attitude to risk (don't)
+### B5. Capacity for loss (build) vs attitude to risk (don't): ✅ BUILT (card 0011)
 
 Split the regulated pair deliberately:
 - **Capacity for loss is objective and computable** — how far can this household's assets fall before the
@@ -369,7 +369,7 @@ _Revised 2026-07-28 after the answers above._ Accuracy first, then the reuse-hea
    non-earner route 2026-08-22). Next by this order: B2.
 3. ~~**B2 protection gap**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). Next by this order: B1.
 4. ~~**B1 cost of advice**~~ — ✅ **BUILT 2026-07-31** (DECISIONS 2026-07-31). Next by this order: B5.
-5. **B5 capacity for loss** — mostly framing over existing stress machinery.
+5. ~~**B5 capacity for loss**~~ — ✅ **BUILT** (card 0011): `CapacityForLoss`, a results-page panel and its PDF twin.
 6. ~~**A3 ISA rules**~~ — ✅ **BUILT**: the overall £20,000 cap is enforced 2026-07-31 (spilling to
    GIA), and bed-and-ISA (actually using the allowance) 2026-08-22. The decision that gated it, whether
    the tool should assume the household takes it, was answered yes: DECISIONS 2026-08-22.

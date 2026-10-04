@@ -154,10 +154,13 @@ final class WealthFallLeverTest extends TestCase
         $this->assertNotNull($fallen->primaryResidence?->repaymentTerms, 'the amortisation schedule survives the re-valuation');
     }
 
-    public function test_the_lever_declares_itself_monotone_and_clamps(): void
+    public function test_the_lever_declares_itself_not_monotone_and_clamps(): void
     {
         $lever = new WealthFallLever;
-        $this->assertSame(LeverDirection::Decreasing, $lever->direction());
+        // Not monotone: Pension Credit's tariff income on capital can leave a middling fall worse
+        // off than a total one (CapacityForLossTest builds the household), so a sweep must not
+        // fit a monotone curve to it.
+        $this->assertSame(LeverDirection::Unknown, $lever->direction());
 
         $this->assertSame(
             WealthFallLever::baseWealth($this->household(), $this->settings())->pence,

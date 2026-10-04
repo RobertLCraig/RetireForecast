@@ -712,8 +712,8 @@ Full log and rationale: [DECISIONS.md](DECISIONS.md). The load-bearing "do not r
 - **Done:** the tool is feature-complete for personal use. The inventory of what that covers was
   folded out to [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) on 2026-09-05; scope lives in
   [docs/build/PLAN.md](build/PLAN.md). The one exception still worth carrying: the adviser-parity
-  sweep is closed bar A4 salary sacrifice, B3 the estate checklist, B4 the annual review and B5
-  capacity for loss, all of which are card 0011.
+  sweep is closed bar A4 salary sacrifice, B3 the estate checklist and B4 the annual review. B5
+  capacity for loss is built and under review on card 0011.
 - **In progress:** nothing mid-edit.
 - **Known bugs / broken:** a reviewed defect backlog in [docs/board/todo/](board/todo/); do not restate it here, read the lane. It came from a five-discipline expert review on 2026-08-19, whose full report, with the private figures the cards omit, is the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`. **Several of those defects change which plan the comparison ranks first**, so the ranked chart and card 0022 should not be read off until the head of the queue is cleared.
 Documented v1 scope limits remain flagged in code and listed in [DATA-MODEL.md](DATA-MODEL.md) "Known divergences" (for example Scotland income tax throws rather than guessing; emergency tax models the over-deduction magnitude, not PAYE-table pennies).

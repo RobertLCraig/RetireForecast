@@ -234,7 +234,8 @@ the planned compliance step). The genuinely new, aligned items, kept as a post-v
   withdrawal rate, critical yield, replacement rate, narrative generator, capacity-for-loss panel) was
   replaced by the **per-year surplus/shortfall classification + configurable safety floor** (Rob found
   the diagnostics framing unhelpful — DECISIONS 2026-06-30 "per-year surplus/shortfall + safety floor").
-  Do not build these.
+  Do not build these. Capacity for loss came back later in a different form, as adviser-parity B5
+  (card 0011, docs/build/PLAN-adviser-parity.md), so that one entry no longer stands.
 - **Hardening + process (cheap):** ✅ a **Content-Security-Policy** header — **DONE** (Phase D Tier-2,
   `config/security.php`); ✅ the build-time **source-freshness** check — **DONE (2026-06-30,**
   `figures:freshness`); ✅ the **annual ONS mortality refresh** ingest + diff — **DONE (2026-07-01,**

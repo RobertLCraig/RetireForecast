@@ -9,6 +9,7 @@ use App\Forecast\ScenarioForecaster;
 use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use RetireForecast\FinanceEngine\Benefits\CapitalAssessment;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Money\RoundingMode;
@@ -187,6 +188,51 @@ final class CapacityForLossTest extends TestCase
         $this->assertTrue($result['survivesTotalLoss']);
         $this->assertFalse($result['alreadyBreached']);
         $this->assertSame(100, $result['percent']);
+    }
+
+    /**
+     * The engine is NOT monotone in wealth, so two probes at 0% and 100% prove nothing about the
+     * falls between them. A single pensioner renting on Pension Credit shows why: with nothing left,
+     * the credit passports Housing Benefit and the whole rent is met. With a middling sum left, the
+     * capital's tariff income ({@see CapitalAssessment})
+     * takes the credit away, capital over the upper limit then ends Housing Benefit outright, and a
+     * year comes when the rent is more than the capital left to pay it. That household passes at
+     * both ends and fails in the middle, and the panel must report the FIRST fall that breaks the
+     * floor, not "no fall would breach it".
+     */
+    public function test_a_pension_credit_household_that_fails_in_the_middle_reports_the_first_breach(): void
+    {
+        $state = BuilderStateFixture::minimalValid();
+        $state['relationshipStatus'] = 'single';
+        $state['expense']['survivorFactor'] = '100';
+        $state['people'][0]['dob'] = '1956-01-01';
+        $state['pensions'] = [
+            ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '200', 'qualifyingYears' => '', 'deferralWeeks' => '0'],
+        ];
+        $state['accounts'] = [
+            ['id' => 'acc1', 'ownerId' => 'p1', 'type' => 'isa', 'balance' => '900000', 'unrealisedGain' => '', 'yield' => ''],
+        ];
+        $state['expenseLines'][0]['amount'] = '12000';
+        $state['housing']['annualRent'] = '30000';
+        $state['housing']['rentInflationReal'] = '0';
+        $scenario = $this->scenario($state);
+
+        // The shape the old two-probe search could not see. If the engine changes and this
+        // household stops having it, these fail first and say why.
+        $this->assertTrue($this->essentialsHoldAfter($scenario, 0), 'precondition: the plan holds as it stands');
+        $this->assertTrue($this->essentialsHoldAfter($scenario, 100), 'precondition: Pension Credit and Housing Benefit carry the floor with nothing left');
+
+        $result = $this->capacity()->forScenario($scenario);
+
+        $this->assertFalse($result['survivesTotalLoss'], 'a fall between the two ends breaks the floor, so losing everything is not survivable in the sense the panel claims');
+        $this->assertFalse($result['alreadyBreached']);
+        for ($percent = 0; $percent <= $result['percent']; $percent++) {
+            $this->assertTrue($this->essentialsHoldAfter($scenario, $percent), "every fall up to the reported one must hold, and {$percent}% does not");
+        }
+        $this->assertFalse(
+            $this->essentialsHoldAfter($scenario, $result['percent'] + 1),
+            'one point more must break the floor, or the answer is not the first breach',
+        );
     }
 
     /**

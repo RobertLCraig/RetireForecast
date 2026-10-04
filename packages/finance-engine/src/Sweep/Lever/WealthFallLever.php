@@ -44,8 +44,10 @@ use RetireForecast\FinanceEngine\Sweep\SweepLever;
  *    no pot to mark down, and they are what a household's remaining capacity ultimately rests on.
  *
  * CRN-safe: the fall changes no one's lifespan and adds or removes nobody, so the random streams
- * a Monte Carlo consumes are unchanged between grid points. Success is monotone decreasing in
- * the fall — losing more can only make the floor harder to meet.
+ * a Monte Carlo consumes are unchanged between grid points. Success is NOT monotone in the fall:
+ * Pension Credit's tariff income on capital (and the Housing Benefit capital limit behind it) can
+ * leave a household with a middling sum worse off than one with nothing, so a caller searching
+ * for a threshold must check every point rather than bisect.
  */
 final class WealthFallLever implements SweepLever
 {
@@ -101,7 +103,7 @@ final class WealthFallLever implements SweepLever
 
     public function direction(): LeverDirection
     {
-        return LeverDirection::Decreasing;
+        return LeverDirection::Unknown;
     }
 
     /**

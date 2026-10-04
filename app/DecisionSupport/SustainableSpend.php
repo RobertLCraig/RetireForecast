@@ -66,14 +66,7 @@ final class SustainableSpend
     {
         // Resolve the scenario's own housing variant ONCE — it does not change as the lever moves,
         // and rebuilding it per probe would cost ~20 sale/purchase decompositions for nothing.
-        $variant = $scenario->effectiveBuilderState()['variant'] ?? 'stay_put';
-        $assumptions = $this->forecaster->assumptions($scenario);
-        $inputs = $this->forecaster->housingComparison($scenario)->variantInputs(
-            $scenario->toHousehold(),
-            $this->forecaster->settings($scenario),
-            $assumptions,
-            $scenario->toHousingAction(),
-        )[$variant];
+        ['assumptions' => $assumptions] = $inputs = $this->forecaster->variantInputs($scenario);
 
         $forecaster = new DeterministicForecaster($this->forecaster->config($scenario), new CohortLifeTable);
         $lever = new DiscretionarySpendLever;

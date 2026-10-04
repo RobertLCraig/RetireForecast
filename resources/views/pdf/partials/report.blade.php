@@ -735,7 +735,7 @@
                 </tbody>
             </table>
             <p>Lose up to {{ $capacityForLoss['percent'] }}% of that and your essential spending is still paid in
-                every year of this plan. Lose more and it is not. The total is your savings, pensions and the home
+                every year of this plan, at every whole percent up to that. Lose one point more and it is not. The total is your savings, pensions and the home
                 after the mortgage, worked out from your figures rather than entered.</p>
         @endif
         <p class="note">How this is worked out: everything you own (savings, pensions and the home) is marked down by

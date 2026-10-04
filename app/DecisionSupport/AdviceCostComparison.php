@@ -10,7 +10,6 @@ use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
-use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -69,8 +68,8 @@ final class AdviceCostComparison
      */
     public function forScenario(Scenario $scenario, ?string $strategy = null): ?array
     {
-        $assumptions = $this->forecaster->assumptions($scenario);
-        $inputs = $this->variantInputs($scenario, $assumptions, $strategy);
+        // The plan on display, so an advised sell plan is priced as a seller and not as if it stayed put.
+        ['assumptions' => $assumptions] = $inputs = $this->forecaster->variantInputs($scenario, $strategy);
 
         $fee = $this->feeFor($scenario);
         $diyCharge = $assumptions->investmentCharge();
@@ -152,27 +151,5 @@ final class AdviceCostComparison
             'terminalWealth' => $forecast->terminalTotalWealth,
             'depletionYear' => $forecast->depletionCalendarYear,
         ];
-    }
-
-    /**
-     * The household as the scenario's own housing choice leaves it, with the settings that go with
-     * it — the same resolution {@see ProtectionGap} and {@see SustainableSpend} use, so an advised
-     * sell plan is priced as a seller and not as if it stayed put.
-     *
-     * @return array{household: Household, settings: ForecastSettings}
-     */
-    private function variantInputs(Scenario $scenario, AssumptionSet $assumptions, ?string $strategy): array
-    {
-        $all = $this->forecaster->housingComparison($scenario)->variantInputs(
-            $scenario->toHousehold(),
-            $this->forecaster->settings($scenario),
-            $assumptions,
-            $scenario->toHousingAction(),
-        );
-
-        $variant = $strategy ?? $scenario->effectiveBuilderState()['variant'] ?? 'stay_put';
-        $inputs = $all[$variant] ?? $all['stay_put'];
-
-        return ['household' => $inputs['household'], 'settings' => $inputs['settings']];
     }
 }

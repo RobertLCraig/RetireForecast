@@ -1084,7 +1084,7 @@
                 </div>
 
                 <p class="mt-4 text-sm text-gray-700">
-                    Lose up to <strong>{{ $capacityForLoss['percent'] }}%</strong> of that and your essential spending is still paid in every year of this plan. Lose more and it is not.
+                    Lose up to <strong>{{ $capacityForLoss['percent'] }}%</strong> of that and your essential spending is still paid in every year of this plan, at every whole percent up to that. Lose one point more and it is not.
                 </p>
             @endif
 
