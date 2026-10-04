@@ -319,10 +319,26 @@ final class Property
         return $this->lettingRate($this->lettingVoidRate, self::DEFAULT_LETTING_VOID_BPS);
     }
 
-    /** Repairs, inventory, gas safety and electrical checks, as a share of rent (zero unless let). */
+    /**
+     * Repairs, inventory, gas safety and electrical checks, as a share of rent (zero unless let).
+     *
+     * Zero as well where the reader entered running costs, which already carry the repairs: the
+     * rate yields to the reader's own figure, stated or not, so the repairs are charged once
+     * (board card 0088). The result says so, naming the rate set aside.
+     */
     public function lettingMaintenanceRate(): Percent
     {
+        if ($this->repairsInRunningCosts()) {
+            return Percent::zero();
+        }
+
         return $this->lettingRate($this->lettingMaintenanceRate, self::DEFAULT_LETTING_MAINTENANCE_BPS);
+    }
+
+    /** Is this a let home whose repairs are carried by its running costs rather than the rate? */
+    public function repairsInRunningCosts(): bool
+    {
+        return $this->isLet && $this->runningCosts !== null && $this->runningCosts->isPositive();
     }
 
     /**
@@ -355,7 +371,7 @@ final class Property
         return array_filter([
             'management' => $this->lettingManagementRate === null ? $this->lettingManagementRate() : null,
             'void' => $this->lettingVoidRate === null ? $this->lettingVoidRate() : null,
-            'maintenance' => $this->lettingMaintenanceRate === null ? $this->lettingMaintenanceRate() : null,
+            'maintenance' => $this->lettingMaintenanceRate === null && ! $this->repairsInRunningCosts() ? $this->lettingMaintenanceRate() : null,
         ], static fn (?Percent $rate): bool => $rate !== null);
     }
 

@@ -1155,7 +1155,7 @@
                                     <label for="property-lettingMaintenanceRate" class="{{ $label }}">Repairs and checks (% of rent)</label>
                                     <input id="property-lettingMaintenanceRate" type="text" inputmode="decimal" placeholder="5" wire:model="property.lettingMaintenanceRate" class="{{ $field }}" @error('property.lettingMaintenanceRate') aria-invalid="true" aria-describedby="property-lettingMaintenanceRate-error" @enderror>
                                     @error('property.lettingMaintenanceRate') <p id="property-lettingMaintenanceRate-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
-                                    <p class="mt-1 text-xs text-gray-500">Repairs, inventory, gas safety and electrical checks.</p>
+                                    <p class="mt-1 text-xs text-gray-500">Repairs, inventory, gas safety and electrical checks. Not used if you entered running costs, which already cover repairs.</p>
                                 </div>
                             </div>
                             <p class="mt-3 text-xs text-gray-600">

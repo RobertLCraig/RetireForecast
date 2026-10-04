@@ -1718,12 +1718,11 @@ final class PathProjector
 
             // Property running costs (maintenance, insurance) for owners are essential too — the
             // counterpart to a renter's rent. They stop once the home is sold.
-            if ($household->primaryResidence?->runningCosts !== null && ! $state['homeSold']) {
-                // Only the household's share of the running costs (it owns a share of the home, entered whole).
-                $runningNominal = (int) round($household->primaryResidence->runningCosts->pence * $state['spendFactor'] * $state['ownershipShare']);
-                $spendNominal += $runningNominal;
-                $essentialNominal += $runningNominal;
-            }
+            // A let home's are still the household's cash (the landlord pays them), and are ALSO a
+            // letting expense off the rent: see lettingCostsPerOwner.
+            $runningNominal = $this->runningCostsNominal($household, $state);
+            $spendNominal += $runningNominal;
+            $essentialNominal += $runningNominal;
 
             // Council tax, held apart from the running costs above because it is the one that
             // SHRINKS — see councilTaxNominal for the three reliefs and the order they apply in.
@@ -2765,7 +2764,9 @@ final class PathProjector
      *  - the let home's SERVICE CHARGE, its ground rent and its levies, apportioned across the
      *    owners pro rata to their gross rent. That bill is still charged as spend (they really do
      *    pay it, so the cash is unchanged); what changes is that it stops being taxed as though
-     *    they had not.
+     *    they had not;
+     *  - its RUNNING COSTS (upkeep and insurance), on the same terms and for the same reason
+     *    (board card 0088), but only once its council tax is held apart from them.
      *
      * Each owner's deduction is CAPPED at their own gross rent. Expenses above the rent are a
      * rental loss, which in law is carried forward against future rental profit rather than set
@@ -2791,7 +2792,11 @@ final class PathProjector
         }
 
         $rate = $home->lettingCostRate()->asFraction();
-        $expense = $this->propertyCostsNominal($household, $state, $alive, $yearIndex);
+        // The running costs join the service charge only where the council tax is held apart:
+        // a bundled bill is the household's own (it stands in for the one on wherever they live
+        // now) and cannot be told apart from the landlord's costs, so none of it is deducted.
+        $expense = $this->propertyCostsNominal($household, $state, $alive, $yearIndex)
+            + ($home->annualCouncilTax !== null ? $this->runningCostsNominal($household, $state) : 0);
 
         $costs = [];
         foreach ($gross as $ownerId => $rent) {
@@ -2799,6 +2804,23 @@ final class PathProjector
         }
 
         return $costs;
+    }
+
+    /**
+     * The home's running costs this year in nominal pence: the household's share of them (it owns
+     * a share of the home, entered whole), on CPI. Zero once the home is sold. One home for the
+     * figure the spend charges and the letting deduction takes off the rent.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function runningCostsNominal(Household $household, array $state): int
+    {
+        $costs = $household->primaryResidence?->runningCosts;
+        if ($costs === null || $state['homeSold']) {
+            return 0;
+        }
+
+        return (int) round($costs->pence * $state['spendFactor'] * $state['ownershipShare']);
     }
 
     /**

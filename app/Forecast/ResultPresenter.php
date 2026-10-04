@@ -2595,17 +2595,43 @@ final class ResultPresenter
         // Three of the gaps are large enough to decide the plan on their own, so they are stated on
         // the result: a minimum-energy-efficiency retrofit is a five-figure bill nobody has costed,
         // a lease usually forbids subletting without the freeholder's consent (so the plan may not
-        // be available at all), and the council tax on the let flat is still charged to the
-        // household although a tenant normally pays it. Factual, not advice.
+        // be available at all), and the council tax on the let flat. Card 0088: that bill is the
+        // tenant's, but it is still charged, standing in for the one on the home the household now
+        // lives in, which has no figure of its own; the note says so, and says what the running
+        // costs do now (a letting expense, and they carry the repairs). Factual, not advice.
         if ($home !== null && $home->isLet) {
+            $running = $home->runningCosts !== null && $home->runningCosts->isPositive() ? $home->runningCosts->format() : null;
+            if ($home->annualCouncilTax !== null) {
+                $councilTax = "Third, council tax: once this home is let its bill is the tenant's, not yours, but you still pay "
+                    .'council tax on the home you live in now, and the forecast has no figure for that one, so it keeps '
+                    ."charging the {$home->annualCouncilTax->format()} a year you entered for this home in its place.";
+            } elseif ($running !== null) {
+                $councilTax = "Third, council tax: once this home is let its bill is the tenant's, not yours, but you still pay "
+                    .'council tax on the home you live in now, and the forecast has no figure for that one. Your bill is '
+                    ."inside this home's {$running} of running costs, so it is charged there in its place, and none of those "
+                    .'running costs is taken off the rent as a letting expense, because the forecast cannot tell the council '
+                    .'tax in them apart from the upkeep. Enter the council tax in its own box to change that.';
+            } else {
+                $councilTax = "Third, council tax: the forecast charges none. This home's bill is the tenant's once it is let, "
+                    .'but you still pay council tax on the home you live in now, and there is no figure for that one.';
+            }
+            if ($running !== null && $home->annualCouncilTax !== null) {
+                $councilTax .= " This home's {$running} of running costs are taken off the rent as a landlord's expense, "
+                    .'and you still pay them.';
+            }
+            if ($home->repairsInRunningCosts()) {
+                $setAside = $home->lettingMaintenanceRate !== null && $home->lettingMaintenanceRate->basisPoints > 0
+                    ? 'the '.self::ratePct($home->lettingMaintenanceRate->asPercent()).' repairs rate you entered'
+                    : 'the repairs rate';
+                $councilTax .= " Those running costs already cover repairs, so {$setAside} is not taken off the rent on top.";
+            }
+
             $notes[] = ['kind' => 'letting_caveats', 'text' => 'This plan lets your home out, and three things about that '
                 .'are not in the figures. First, your lease: most leases need the freeholder\'s written consent before '
                 .'you sublet and some forbid it outright, and a licence to sublet usually costs a fee, so check the '
                 .'lease before you count on this plan at all. Second, energy efficiency: a let home has to meet a '
                 .'minimum standard, and the proposed rise to EPC C by 2030 would put either a five-figure retrofit or '
-                .'a formal exemption application in front of you, and neither is costed here. Third, council tax: we '
-                .'keep charging you this home\'s running costs in full, council tax included, although a tenant '
-                .'normally pays that, so the running costs here are on the cautious side. Two consequences of letting '
+                .'a formal exemption application in front of you, and neither is costed here. '.$councilTax.' Two consequences of letting '
                 .'ARE in the figures: the equity stops counting as your exempt main home for Pension Credit, and time '
                 .'spent let reduces the Private Residence Relief on a later sale.'];
         }

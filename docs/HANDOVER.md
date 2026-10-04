@@ -9,6 +9,16 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A let home's running costs come off the rent, and they carry its repairs.** Card 0088.
+  `PathProjector::runningCostsNominal()` is the one home of the figure the spend charges and
+  `lettingCostsPerOwner` deducts, but only where `annualCouncilTax` is held apart.
+  `Property::repairsInRunningCosts()` zeroes the repairs rate where running costs exist. The let
+  home's council tax is still charged, as a stand-in for the rented home's bill (card 0155).
+  Reasons in DECISIONS 2026-10-04. `ENGINE_VERSION` is
+  `finance-engine/let-home-running-costs-are-a-letting-expense`; the **re-run is owed** for let
+  plans with running costs. Built in a worktree, so the note and the builder hint are **not seen in
+  a browser**.
+
 - **A forced sale is charged the tenancy deposit in the sale year.** Card 0090. `ENGINE_VERSION` is
   `finance-engine/forced-sale-tenancy-deposit`; the **stored re-run is owed** for any plan with a
   maturity forced sale and a rent figure. A care-forced sale is charged no deposit, but is still

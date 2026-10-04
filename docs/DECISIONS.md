@@ -3,6 +3,37 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-04: a let home's council tax stays charged, and its running costs carry the repairs
+
+**Context:** card 0088. A let home's `runningCosts` were charged as household spend and never taken
+off the rent, and the default 5% repairs-and-checks rate from card 0030 charged the same repairs
+again. The card also said council tax was charged on two homes. It is not: since card 0047 the
+let home's `annualCouncilTax` is the ONLY council tax a let plan pays, because the home the
+household moves to has no council tax figure anywhere.
+
+**Decision: keep charging the let home's council tax, and say why on the result.** The criterion
+allowed either branch. Dropping it would leave a let plan paying no council tax at all, which
+flatters letting against staying put, the wrong way round under the adverse-default rule. The
+`letting_caveats` note now says the bill is the tenant's and is charged in place of the one on
+the home they live in now. Charging that home its own bill is the gap carded as 0155.
+
+**Decision: running costs come off the rent only where the council tax is held apart.** A figure
+with the council tax still inside it mixes the household's own bill with the landlord's costs, and
+nothing can split them. Deducting none of it is the adverse answer; the note tells the reader to
+enter the council tax in its own box.
+
+**Decision: the repairs rate yields to running costs, stated or not.** `runningCosts` already
+carries the repairs, and a single figure cannot be split, so where a let home has positive running
+costs `Property::lettingMaintenanceRate()` is zero, the default is not disclosed as applied, and
+the note names a stated rate that was set aside. The reader's running costs win because they are
+the reader's own figure and usually the larger one (adverse). The inventory and the safety
+certificates in the rate are lost with it; a reader whose running costs leave those out can add
+them there. To reverse: delete `Property::repairsInRunningCosts()` and its callers.
+
+`ENGINE_VERSION` is `finance-engine/let-home-running-costs-are-a-letting-expense`; stored let plans
+with running costs owe a re-run. First built 2026-09-28 on a branch that would not merge; rebuilt
+on master 2026-10-04 with the same three decisions.
+
 ## 2026-09-08: a draw order that funds less of the spending is not in the running
 
 **Context:** card 0081. `WithdrawalStrategyComparison` ranked candidate draw orders on lifetime tax

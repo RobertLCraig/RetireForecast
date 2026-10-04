@@ -61,7 +61,14 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-09-28 (forced-sale-tenancy-deposit): a home sold mid-projection (a forced sale at
+     * Bumped 2026-10-04 (let-home-running-costs-are-a-letting-expense): a LET home's running costs
+     * are now deducted from rental profit as a landlord's expense (where its council tax is held
+     * apart from them), and where it carries running costs the repairs-and-checks rate yields to
+     * them, so its repairs are charged once. Any stored let plan with running costs was taxed on
+     * rent it had spent and charged its repairs twice under an earlier stamp, so its wealth,
+     * depletion year and odds are too UNFAVOURABLE. A home that is not let is byte-identical.
+     * See board card 0088.
+     * Previous bump 2026-09-28 (forced-sale-tenancy-deposit): a home sold mid-projection (a forced sale at
      * mortgage maturity, or on the last borrower entering care) starts a tenancy, and is now
      * charged its Tenant Fees Act deposit in the sale year, as the year-0 rent variant always was.
      * Any stored plan with a forced sale and a post-sale rent spends too LITTLE under an earlier
@@ -426,7 +433,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/forced-sale-tenancy-deposit';
+    public const ENGINE_VERSION = 'finance-engine/let-home-running-costs-are-a-letting-expense';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

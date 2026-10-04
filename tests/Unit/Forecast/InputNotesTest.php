@@ -184,6 +184,25 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('council tax', $text, 'the model still charges it although a tenant normally pays it');
     }
 
+    public function test_a_let_home_is_not_charged_the_tenants_council_tax(): void
+    {
+        // Card 0088 takes the criterion's second branch: the bill stays in the figures, and the
+        // result says why. Once the home is let its council tax is the tenant's, but the household
+        // pays one on wherever it lives now and the forecast has no figure for that home, so this
+        // one is charged in its place. Dropping it instead would leave a let plan paying no council
+        // tax at all, which flatters letting against staying put.
+        $notes = $this->landlordNotes(['isLet' => true, 'councilTax' => '1500', 'runningCosts' => '2000']);
+
+        $kinds = array_column($notes, 'kind');
+        $text = $notes[array_search('letting_caveats', $kinds, true)]['text'];
+
+        $this->assertStringContainsString('tenant', $text, 'the let home\'s own bill is the tenant\'s');
+        $this->assertStringContainsString('£1,500.00', $text, 'the note names the bill still charged');
+        $this->assertStringContainsString('in its place', $text, 'and why it is still charged');
+        $this->assertStringContainsString('£2,000.00', $text, 'the running costs taken off the rent are named');
+        $this->assertStringContainsString('repairs', $text, 'and so is the repairs rate they replace');
+    }
+
     public function test_a_home_they_live_in_raises_no_letting_note(): void
     {
         // No noise: none of it applies to a household living in their own home.

@@ -51,6 +51,8 @@ final class LettingCostsTest extends TestCase
         ?Percent $void = null,
         ?Percent $maintenance = null,
         int $serviceChargePounds = 0,
+        ?int $runningCostsPounds = null,
+        ?int $councilTaxPounds = null,
     ): Household {
         return new Household(
             'Landlord', RegionProfile::EnglandWalesNi,
@@ -74,10 +76,12 @@ final class LettingCostsTest extends TestCase
             primaryResidence: new Property(
                 currentValue: Money::fromPounds(350_000),
                 ownership: OwnershipType::Outright,
+                runningCosts: $runningCostsPounds === null ? null : Money::fromPounds($runningCostsPounds),
                 isLet: $isLet,
                 lettingManagementRate: $management,
                 lettingVoidRate: $void,
                 lettingMaintenanceRate: $maintenance,
+                annualCouncilTax: $councilTaxPounds === null ? null : Money::fromPounds($councilTaxPounds),
             ),
         );
     }
@@ -160,6 +164,48 @@ final class LettingCostsTest extends TestCase
             $this->otherTaxable($this->landlord(isLet: false)),
             $this->otherTaxable($this->landlord(isLet: false, serviceChargePounds: 3_000)),
         );
+    }
+
+    public function test_a_let_homes_running_costs_are_deducted_from_rental_profit(): void
+    {
+        // Card 0088. Insurance and upkeep on a home somebody else lives in are the landlord's
+        // letting expenses, exactly as card 0030 found for the service charge. The cash still
+        // leaves the household (it stays in the spend); what changes is that it is no longer taxed
+        // as profit. The council tax is held apart, so the running costs are the landlord's alone,
+        // and the repairs rate is zero so only the running costs move the figure.
+        $without = $this->otherTaxable($this->landlord(maintenance: Percent::zero(), councilTaxPounds: 1_500));
+        $with = $this->otherTaxable($this->landlord(maintenance: Percent::zero(), runningCostsPounds: 2_000, councilTaxPounds: 1_500));
+
+        $this->assertSame(Money::fromPounds(2_000)->pence, $without - $with);
+    }
+
+    public function test_running_costs_that_still_hold_the_council_tax_are_not_deducted(): void
+    {
+        // The mirror, and the adverse answer. With no council tax of its own the bill is still
+        // inside the running costs, and that bill is the household's own (it stands in for the one
+        // on the home they now live in), not a landlord's expense. The forecast cannot tell the two
+        // apart, so it deducts none of it rather than sheltering rent with the household's own bill.
+        $this->assertSame(
+            $this->otherTaxable($this->landlord(maintenance: Percent::zero())),
+            $this->otherTaxable($this->landlord(maintenance: Percent::zero(), runningCostsPounds: 2_000)),
+        );
+    }
+
+    public function test_repairs_are_not_charged_by_both_the_rate_and_the_running_costs(): void
+    {
+        // Card 0088. The repairs-and-checks rate and a home's running costs both carry the repairs,
+        // so a let home entered with both paid for them twice. The reader's own running-costs
+        // figure carries them, and the rate yields: only management and void come off the rent.
+        $costs = Property::DEFAULT_LETTING_MANAGEMENT_BPS + Property::DEFAULT_LETTING_VOID_BPS;
+        $expected = Money::fromPounds(self::OTHER_INCOME + self::RENT - 2_000)
+            ->minus(Money::fromPounds(self::RENT)->applyRate(Percent::fromBasisPoints($costs)))->pence;
+
+        $defaulted = $this->landlord(runningCostsPounds: 2_000, councilTaxPounds: 1_500);
+        $this->assertSame($expected, $this->otherTaxable($defaulted), 'the default repairs rate is not charged on top of running costs');
+        $this->assertArrayNotHasKey('maintenance', $defaulted->primaryResidence?->assumedLettingRates() ?? [], 'a rate that was not applied is not disclosed as applied');
+
+        $stated = $this->landlord(maintenance: Percent::fromPercent(5), runningCostsPounds: 2_000, councilTaxPounds: 1_500);
+        $this->assertSame($expected, $this->otherTaxable($stated), 'nor is a stated one: the repairs are paid once');
     }
 
     public function test_letting_costs_can_never_shelter_income_that_is_not_rent(): void

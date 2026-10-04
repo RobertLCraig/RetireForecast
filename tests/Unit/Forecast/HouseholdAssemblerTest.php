@@ -556,6 +556,9 @@ class HouseholdAssemblerTest extends TestCase
         $state['property']['isLet'] = true;
         $state['property']['lettingManagementRate'] = '0';
         $state['property']['lettingVoidRate'] = '4.5';
+        // Running costs carry a let home's repairs and the repairs rate yields to them (card 0088),
+        // so the blank-rate default below is only seen on a home entered without any.
+        $state['property']['runningCosts'] = '';
 
         $property = (new HouseholdAssembler)->household($state)->primaryResidence;
 
