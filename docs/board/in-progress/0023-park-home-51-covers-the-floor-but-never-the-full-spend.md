@@ -128,3 +128,15 @@ the same warning to the private doc.
 there is nothing new to look at, but the input note and headline tile that card 0025 added still
 carry that card's own outstanding browser check.
 
+**2026-10-05** RESULT: partial
+TESTS: +0 new, all green (php artisan test: 1636 passed, 1 skipped)
+TOUCHED: docs/board/todo/0161-the-app-database-is-behind-the-code-so-the-audit-cannot-pass.md
+OUT-OF-SCOPE: 0161
+
+Only #4 was open. No production code changed, so no test was written: #4 is a property of the app database, not of the code, and proves: is not named for it.
+
+#1 to #3 still hold after today's re-work of card 0025 (d3b9ac3). I checked the one way it could undo them: `Simulator` still counts `fullSpendAlwaysMet`, not the new `ForecastResult::fullyFunded()`, so #51's GBP 1.37 unfunded purchase lump no longer zeroes its full-spend probability. The /afford verdict now asks `fullyFunded()`, so #51 there reads as not fully funded because of that lump. That is the gap charged visibly, which is what #2 asks for. I did not re-run the 2026-08-29 side-by-side projection.
+
+#4 is NOT met. `php artisan scenarios:audit` (read-only, run from this worktree against the app Postgres DB) exits 1 on two problem classes, and none is about #51's figures or disclosure. #51's five lines are all integrity-stamp lines. (a) 120 runs 'carry no integrity stamp', as on 2026-08-29. (b) NEW since then: all 3 stored assumption sets miss inflationPersistence, inflationAssetCorrelations and economicSourcing, because they were not re-seeded after cards 0062, 0064 and 0065. Clearing both rewrites Rob's app database and moves the ranked report, which this card's 'Not this card' rules out. It also cannot be undone by deleting a file. So I raised it as card 0161 (not_for_the_loop), with the order: migrate, re-seed AssumptionSetSeeder, Re-run all, audit. #4 should pass once 0161 is done. Consider giving this card needs: 0161.
+
+Not checked in a browser: no screen changed.
