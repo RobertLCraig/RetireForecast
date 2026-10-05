@@ -146,3 +146,5 @@ Second take, same block as the 2026-10-05 entry above. Nothing in the repository
 The scheduler moved the card back to in-progress without either gate changing, so a third take will stop here too. To unblock: Rob answers the question on this card. Yes: re-queue it after 0029 and 0030 pass review. No: discard it; the plan file stays as the record. Until then the card should not be re-queued unattended.
 
 No criterion named met. #1 was ticked by the 2026-08-29 take and I did not touch it. Nothing to look at in a browser.
+
+**2026-10-05** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 7 of 8 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
