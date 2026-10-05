@@ -147,6 +147,25 @@ final class UnfundedPurchaseTest extends TestCase
     }
 
     /**
+     * AC #4: judging the lump apart is not calling the plan funded. Every reader that says
+     * "fully funded" asks fullyFunded(), which sees the unfunded lump and its size.
+     */
+    public function test_a_plan_with_an_unfunded_one_off_is_never_fully_funded(): void
+    {
+        [$buy, $settings] = $this->buyHousehold(
+            new HousingAction(salePrice: Money::fromPounds(400_000), buyPrice: Money::fromPounds(500_000)),
+            essentialPounds: 17_114,
+        );
+
+        $forecast = (new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
+            ->forecast($buy, $this->flat(), $settings);
+
+        $this->assertTrue($forecast->fullSpendAlwaysMet, 'the recurring budget is met every year');
+        $this->assertFalse($forecast->fullyFunded(), 'but the purchase gap is not funded');
+        $this->assertSame(Money::fromPounds(133_000)->pence, $forecast->unfundedOneOffSpend()->pence);
+    }
+
+    /**
      * AC #2: the gap is not simply forgiven for being a lump. It stays inside the year's unmet
      * spend, and the year carries its own warning NAMING the cost and its size, so the reader is
      * told which purchase has no money behind it rather than reading a depressed probability.

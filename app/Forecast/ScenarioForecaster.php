@@ -61,7 +61,13 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-05 (only-the-mortgage-payment-is-flat): every line that runs only while the
+     * Bumped 2026-10-05 (unredeemed-mortgage-fails-full-spend): a mortgage repaid from capital
+     * that the household cannot afford was judged apart from the recurring budget like a purchase
+     * lump, so the keep-the-home plan read as fully funded with only a warning. It now fails the
+     * year's full spend again, and carries no unfunded-one-off warning. A plan stored under an
+     * earlier stamp with an unaffordable redemption has full-spend figures that are too
+     * FAVOURABLE; every other plan is byte-identical. See board card 0025.
+     * Previous bump 2026-10-05 (only-the-mortgage-payment-is-flat): every line that runs only while the
      * mortgage does was held flat in cash, charged to a survivor whole and taken out of the
      * ESSENTIAL floor, whatever it was. Only the payment is now; a protection premium or a fee
      * rides CPI and the survivor factor, and a discretionary line stays discretionary
@@ -448,7 +454,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/only-the-mortgage-payment-is-flat';
+    public const ENGINE_VERSION = 'finance-engine/unredeemed-mortgage-fails-full-spend';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

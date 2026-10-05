@@ -83,6 +83,23 @@ final class ForecastResult
         return $this->yearsMetFraction(static fn (YearResult $y): bool => $y->essentialsMet);
     }
 
+    /**
+     * The plan funds EVERYTHING it is charged: the recurring budget every year AND every one-off
+     * lump. $fullSpendAlwaysMet judges the recurring budget only, so a plan with an unfunded
+     * purchase reads true there; any reader that says "fully funded" asks this instead (board
+     * card 0025).
+     */
+    public function fullyFunded(): bool
+    {
+        return $this->fullSpendAlwaysMet && $this->unfundedOneOffSpend()->isZero();
+    }
+
+    /** The one-off capital lumps this path could not fund, summed across its years (real). */
+    public function unfundedOneOffSpend(): Money
+    {
+        return array_reduce($this->years, static fn (Money $sum, YearResult $y): Money => $sum->plus($y->unmetOneOffSpend()), Money::zero());
+    }
+
     /** @param  callable(YearResult): bool  $met */
     private function yearsMetFraction(callable $met): float
     {

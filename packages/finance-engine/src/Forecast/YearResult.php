@@ -20,9 +20,9 @@ use RetireForecast\FinanceEngine\Support\Warning;
  * $unmetSpend is the part of the target spend that could not be funded because
  * assets were exhausted — the first year it is positive is when the money runs out.
  *
- * $unmetOneOffSpend is the part of $unmetSpend that is a one-off CAPITAL lump (an unfunded
- * home purchase, a mortgage redeemed from capital) rather than the household's recurring
- * budget. Recurring spend is funded first — the same order {@see $essentialsMet} already
+ * $unmetOneOffSpend is the part of $unmetSpend that is a documented one-off CAPITAL lump (an
+ * unfunded home purchase) rather than the household's recurring budget. A mortgage redeemed
+ * from capital is not one of them: failing to redeem fails the year. Recurring spend is funded first — the same order {@see $essentialsMet} already
  * assumes — so a shortfall is charged against the year's one-offs before anything else, and
  * {@see fullSpendMet()} judges the RECURRING budget only. Without the split, one unfunded
  * pound of a year-0 purchase failed a fifty-year plan on every path.

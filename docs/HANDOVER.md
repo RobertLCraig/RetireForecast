@@ -9,6 +9,12 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **"Fully funded" now includes the one-off lumps.** Card 0025. Readers that say a plan is fully
+  funded ask `ForecastResult::fullyFunded()`, not `$fullSpendAlwaysMet`; an unaffordable mortgage
+  redemption fails full spend again. `ENGINE_VERSION` is `finance-engine/unredeemed-mortgage-fails-full-spend`;
+  the **re-run is owed** for keep-the-home plans that cannot redeem. The new `/afford` verdict is
+  not seen in a browser.
+
 - **Only the mortgage payment is held flat.** Card 0024. A premium, fee or discretionary line that
   stops with the mortgage now rides CPI in its own tier (`HouseholdAssembler::isMortgagePayment`).
   `ENGINE_VERSION` is `finance-engine/only-the-mortgage-payment-is-flat`; the **re-run is owed** for

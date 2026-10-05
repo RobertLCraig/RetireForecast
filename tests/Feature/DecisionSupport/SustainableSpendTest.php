@@ -131,6 +131,6 @@ final class SustainableSpendTest extends TestCase
 
         return $forecast->depletionCalendarYear === null
             && $forecast->essentialsAlwaysMet
-            && $forecast->fullSpendAlwaysMet;
+            && $forecast->fullyFunded();
     }
 }

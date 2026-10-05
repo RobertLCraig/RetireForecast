@@ -56,8 +56,8 @@ final class SustainableSpend
      * how large a discretionary budget is set (the excess simply goes unfunded), so the search is
      * insensitive to the lever and runs to its ceiling. Do not reintroduce it.
      *
-     * Returns **null** when even zero discretionary spend fails: the plan cannot cover essentials at
-     * any level of restraint. Reporting "£0" there would say "no room for treats" when the truth is
+     * Returns **null** when even zero discretionary spend fails: the plan cannot cover essentials, or
+     * fund a one-off cost it is charged, at any level of restraint. Reporting "£0" there would say "no room for treats" when the truth is
      * "this plan is broken" — a distinction callers must render differently.
      *
      * @return array{annual: Money, monthly: Money, ceilingHit: bool}|null
@@ -76,10 +76,11 @@ final class SustainableSpend
             $forecast = $forecaster->forecast($swept->household, $assumptions, $swept->settings);
 
             // Money must last AND every year's full budget must actually be funded. The second
-            // condition is what makes the search sensitive to the lever at all.
+            // condition is what makes the search sensitive to the lever at all. It includes the
+            // one-off lumps (board card 0025): spare money that leaves a purchase unfunded is not spare.
             return $forecast->depletionCalendarYear === null
                 && $forecast->essentialsAlwaysMet
-                && $forecast->fullSpendAlwaysMet;
+                && $forecast->fullyFunded();
         };
 
         // A plan that fails on essentials alone has no allowance to report.

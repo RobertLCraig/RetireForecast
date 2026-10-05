@@ -1346,7 +1346,8 @@ final class PathProjector
         // is to repay it from capital, the outstanding balance is a one-off outflow that year
         // (funded from assets, like any one-off). A fixed-£ debt, so it is already nominal. If the
         // assets are not there the shortfall surfaces, flagging the keep-the-home option as
-        // unaffordable. Refinance rolls the loan over (no event); a forced sale is handled by the
+        // unaffordable: it is NOT judged apart like a purchase lump below, so it fails full spend
+        // (board card 0025). Refinance rolls the loan over (no event); a forced sale is handled by the
         // block just below. Once redeemed, the ongoing mortgage *payment* stops too (dropped just
         // below), so a repay-and-stay path is not charged both the repayment and the payment.
         $repayOneOff = 0;
@@ -1557,14 +1558,12 @@ final class PathProjector
 
         // The year's one-off CAPITAL lumps, kept as a labelled list rather than one anonymous
         // total: a documented one-off cost (the unfunded part of a home purchase is the worked
-        // example) plus a mortgage redeemed from capital. They join the spend target like any
-        // other outflow, but they are told apart from the recurring budget when the year is
-        // judged below — a lump the plan cannot fund is a failure of that lump, not of the
-        // household's ordinary spending.
+        // example). They join the spend target like any other outflow, but they are told apart
+        // from the recurring budget when the year is judged below — a lump the plan cannot fund
+        // is a failure of that lump, not of the household's ordinary spending. A mortgage
+        // redeemed from capital is charged beside them but NOT judged apart: a keep-the-home plan
+        // that cannot redeem is the plan failing (board card 0025), so it is added after the total.
         $oneOffs = $this->oneOffCostsNominal($household, $ages, $cumInflation, $state['homeSold']);
-        if ($repayOneOff > 0) {
-            $oneOffs[] = ['label' => 'Mortgage redemption', 'amount' => $repayOneOff];
-        }
         // A sale this year starts a tenancy, and a tenancy costs its deposit to start (board card
         // 0090). The year-0 rent variant is charged the same figure by HousingComparison; this is
         // the mid-projection move, which it cannot see. Sized on this year's rent, the same figure
@@ -1575,6 +1574,9 @@ final class PathProjector
             $oneOffs[] = ['label' => Tenancy::UP_FRONT_LABEL, 'amount' => Tenancy::deposit($rentThisYear)->pence];
         }
         $oneOffTotalNominal = array_sum(array_column($oneOffs, 'amount'));
+        // Every lump this year, the redemption included, for the warnings that ask what LEFT the
+        // household's hands rather than how the year is judged.
+        $allOneOffs = $repayOneOff > 0 ? [...$oneOffs, ['label' => 'Mortgage redemption', 'amount' => $repayOneOff]] : $oneOffs;
 
         // The spending guardrail (board card 0063). Everything above scores the year against a
         // FIXED real target, which no real household spends into insolvency: measured against the
@@ -1616,7 +1618,7 @@ final class PathProjector
             }
         }
 
-        $spendNominal = (int) round($targetPence * $state['spendFactor'] * $survivor) + $oneOffTotalNominal;
+        $spendNominal = (int) round($targetPence * $state['spendFactor'] * $survivor) + $oneOffTotalNominal + $repayOneOff;
         $essentialNominal = (int) round($essentialPence * $state['spendFactor'] * $survivor);
 
         // The mortgage payment is added back HERE, after the CPI and survivor multiplies, because
@@ -2030,7 +2032,7 @@ final class PathProjector
                 ...$this->tenancyUpFrontWarnings($oneOffs, $rentChargedNominal, $m),
                 ...$this->rentReferencingWarnings($rentChargedNominal, $grossIncomeNominal, $m),
                 ...$this->deprivationWarnings(
-                    $oneOffs,
+                    $allOneOffs,
                     $src,
                     ! $homeSoldAtYearStart && $state['homeSold'],
                     (int) round($this->config->benefits->housingSupportUpperCapitalLimit->pence * $cumInflation),

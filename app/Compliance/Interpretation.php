@@ -192,7 +192,8 @@ final class Interpretation
     private static function outcome(ForecastResult $f): string
     {
         $spend = match (true) {
-            $f->fullSpendAlwaysMet => 'your full spending is funded every year',
+            $f->fullyFunded() => 'your full spending is funded every year',
+            $f->fullSpendAlwaysMet => 'your yearly spending is funded every year, but '.$f->unfundedOneOffSpend()->format().' of one-off costs has nothing to fund it',
             $f->essentialsAlwaysMet => 'essentials are funded every year, though not always the full spend',
             default => 'even essentials fall short in some years',
         };

@@ -341,6 +341,31 @@ final class PathProjectorTest extends TestCase
         $this->assertTrue($byYear[2030]->unmetSpend->isPositive(), 'a redemption that cannot be met surfaces as unmet spend');
     }
 
+    public function test_a_redemption_the_household_cannot_afford_fails_the_full_spend_measure(): void
+    {
+        // Board card 0025: only a documented one-off (an unfunded purchase gap) is judged apart
+        // from the recurring budget. A mortgage that cannot be redeemed is the keep-the-home plan
+        // failing, so it must still fail full spend, not ride out as a warning.
+        $home = new Property(
+            currentValue: Money::fromPounds(300_000),
+            ownership: OwnershipType::Mortgaged,
+            outstandingMortgage: Money::fromPounds(200_000),
+            mortgageRedemptionYear: 2030,
+            mortgageMaturityAction: MortgageMaturityAction::RepayFromCapital,
+        );
+        $household = $this->homeownerCouple($home, [new Account('p1', AccountType::Cash, Money::fromPounds(20_000))]);
+
+        $forecast = $this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings());
+        $byYear = [];
+        foreach ($forecast->years as $y) {
+            $byYear[$y->calendarYear] = $y;
+        }
+
+        $this->assertFalse($byYear[2030]->fullSpendMet(), 'the redemption year is a short year');
+        $this->assertFalse($forecast->fullSpendAlwaysMet);
+        $this->assertFalse($forecast->fullyFunded());
+    }
+
     public function test_a_refinanced_mortgage_has_no_redemption_spike(): void
     {
         $home = new Property(
