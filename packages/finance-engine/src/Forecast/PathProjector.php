@@ -1159,7 +1159,7 @@ final class PathProjector
         // the service charge on the building all come off the gross rent before it is either
         // banked or taxed. Applied here, once, to the owner's taxable income, so the cash the
         // household keeps and the profit HMRC sees can never disagree about the same let.
-        $lettingCosts = $this->lettingCostsPerOwner($household, $state, $alive, $ages, $cumInflation, $yearIndex);
+        ['perOwner' => $lettingCosts, 'expense' => $lettingExpenseNominal] = $this->lettingCostsPerOwner($household, $state, $alive, $ages, $cumInflation, $yearIndex);
         foreach ($lettingCosts as $ownerId => $cost) {
             $taxablePerPerson[$ownerId] -= $cost;
             $src['other_taxable'] -= $cost;
@@ -1732,11 +1732,13 @@ final class PathProjector
 
             // Property running costs (maintenance, insurance) for owners are essential too — the
             // counterpart to a renter's rent. They stop once the home is sold.
-            // A let home's are still the household's cash (the landlord pays them), and are ALSO a
-            // letting expense off the rent: see lettingCostsPerOwner.
+            // A let home's running costs and service charge that were taken off the rent as letting
+            // expenses (see lettingCostsPerOwner) have been paid out of it, so they leave the spend
+            // here: charged as both, the household paid them twice (board card 0030). Any part the
+            // rent could not cover stays in the spend, where the household still pays it.
             $runningNominal = $this->runningCostsNominal($household, $state);
-            $spendNominal += $runningNominal;
-            $essentialNominal += $runningNominal;
+            $spendNominal += $runningNominal - $lettingExpenseNominal;
+            $essentialNominal += $runningNominal - $lettingExpenseNominal;
 
             // Council tax, held apart from the running costs above because it is the one that
             // SHRINKS — see councilTaxNominal for the three reliefs and the order they apply in.
@@ -2749,7 +2751,8 @@ final class PathProjector
     {
         $gross = [];
         foreach ($household->incomeStreams as $stream) {
-            if ($stream->type !== IncomeStreamType::Rental || ! ($alive[$stream->ownerId] ?? false)) {
+            // A tax-free rent never reaches taxable income, so it has no costs to take off there.
+            if ($stream->type !== IncomeStreamType::Rental || ! $stream->taxable || ! ($alive[$stream->ownerId] ?? false)) {
                 continue;
             }
             $age = $ages[$stream->ownerId] ?? 0;
@@ -2776,33 +2779,38 @@ final class PathProjector
      *
      *  - the percentage costs, {@see Property::lettingCostRate()} (management, void, maintenance);
      *  - the let home's SERVICE CHARGE, its ground rent and its levies, apportioned across the
-     *    owners pro rata to their gross rent. That bill is still charged as spend (they really do
-     *    pay it, so the cash is unchanged); what changes is that it stops being taxed as though
-     *    they had not;
+     *    owners pro rata to their gross rent;
      *  - its RUNNING COSTS (upkeep and insurance), on the same terms and for the same reason
      *    (board card 0088), but only once its council tax is held apart from them.
+     *
+     * Those two are bills the spend also charges, so the part of them deducted here is returned
+     * as 'expense' and taken back OUT of the spend: paid from the rent, not paid twice.
      *
      * Each owner's deduction is CAPPED at their own gross rent. Expenses above the rent are a
      * rental loss, which in law is carried forward against future rental profit rather than set
      * against other income; the engine does not model the carry-forward, so the year floors at nil
-     * profit rather than sheltering a pension it could not shelter.
+     * profit rather than sheltering a pension it could not shelter. The percentage costs are
+     * taken first, so an expense the cap cuts off stays in the spend, where it is still paid.
      *
      * @param  array<string, mixed>  $state
      * @param  array<string, bool>  $alive
      * @param  array<string, int>  $ages
-     * @return array<string, int> ownerId => pence to deduct from that owner's rental income
+     * @return array{perOwner: array<string, int>, expense: int} ownerId => pence to deduct from
+     *                                                           that owner's rental income, and the
+     *                                                           part of it that is a spend bill
      */
     private function lettingCostsPerOwner(Household $household, array $state, array $alive, array $ages, float $cumInflation, int $yearIndex): array
     {
         $home = $household->primaryResidence;
+        $none = ['perOwner' => [], 'expense' => 0];
         if ($home === null || ! $home->isLet || $state['homeSold']) {
-            return [];
+            return $none;
         }
 
         $gross = $this->rentalIncomePerOwner($household, $alive, $ages, $cumInflation);
         $total = array_sum($gross);
         if ($total <= 0) {
-            return [];
+            return $none;
         }
 
         $rate = $home->lettingCostRate()->asFraction();
@@ -2813,11 +2821,15 @@ final class PathProjector
             + ($home->annualCouncilTax !== null ? $this->runningCostsNominal($household, $state) : 0);
 
         $costs = [];
+        $expenseDeducted = 0;
         foreach ($gross as $ownerId => $rent) {
-            $costs[$ownerId] = min($rent, (int) round($rent * $rate) + (int) round($expense * $rent / $total));
+            $percentage = min($rent, (int) round($rent * $rate));
+            $costs[$ownerId] = min($rent, $percentage + (int) round($expense * $rent / $total));
+            $expenseDeducted += $costs[$ownerId] - $percentage;
         }
 
-        return $costs;
+        // Never more than the bill itself, which per-owner rounding could overshoot by a penny.
+        return ['perOwner' => $costs, 'expense' => min($expense, $expenseDeducted)];
     }
 
     /**

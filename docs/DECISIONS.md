@@ -3,6 +3,25 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-05: a let home's bills come off the rent and leave the spend
+
+**Context:** card 0030 #2, reopened by review. `PathProjector::lettingCostsPerOwner` took the let
+home's service charge (and, since card 0088, its running costs) off the owner's taxable income,
+which is also the cash the year banks, while the same bills stayed in the spend. The household
+paid them twice. Separately, `rentalIncomePerOwner` ignored `IncomeStream::$taxable`, so the costs
+of a rent entered as tax-free came off the pension instead.
+
+**Decision: the deducted part leaves the spend** (and the essential floor), rather than the
+deduction touching the tax base only. The card asks for the charge to be a letting expense
+"rather than household spend", and this keeps one figure as both the cash and the tax base, so the
+means tests and the drawdown pricing that read it need no second path. The percentage costs are
+taken first; a bill the per-owner rent cap cuts off stays in the spend, where it is still paid.
+The essential floor drops with it, which does not flatter: the rent that paid the bill is gone
+from the income the floor is tested against.
+
+**Decision: only taxable rental streams carry letting costs.** A tax-free rent has no taxable
+profit to come off. Reverse by giving such a stream its own cash deduction, not by un-filtering.
+
 ## 2026-10-05: the rent arm runs on the reader's own settings, and bed-and-ISA has a switch
 
 **Context:** card 0016 #4. `HousingComparison::rentSettings` built a fresh `ForecastSettings` field

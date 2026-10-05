@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-05 (home-value-never-below-nothing): a Monte Carlo tail draw at a wide
+     * Bumped 2026-10-05 (let-home-bills-are-paid-once): a let home's service charge and running
+     * costs came off the rent as letting expenses AND stayed in the spend, so the household paid
+     * them twice; the part deducted now leaves the spend. A rental stream entered as tax-free no
+     * longer has letting costs taken off the household's other taxable income. Let plans with a
+     * service charge, running costs or a tax-free rent move. Board card 0030 #2.
+     * Previous bump 2026-10-05 (home-value-never-below-nothing): a Monte Carlo tail draw at a wide
      * single-property multiple took a home's value negative, where it compounded and could clear a
      * lifetime mortgage through the no-negative-equity cap. A home now keeps at least a penny. Only
      * sampled runs with such a tail path move; the central projection does not. Board card 0029 #4.
@@ -462,7 +467,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/home-value-never-below-nothing';
+    public const ENGINE_VERSION = 'finance-engine/let-home-bills-are-paid-once';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

@@ -53,6 +53,7 @@ final class LettingCostsTest extends TestCase
         int $serviceChargePounds = 0,
         ?int $runningCostsPounds = null,
         ?int $councilTaxPounds = null,
+        bool $rentTaxable = true,
     ): Household {
         return new Household(
             'Landlord', RegionProfile::EnglandWalesNi,
@@ -71,7 +72,7 @@ final class LettingCostsTest extends TestCase
             pensions: [new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30))],
             incomeStreams: [
                 new IncomeStream('p1', IncomeStreamType::Other, Money::fromPounds(self::OTHER_INCOME), taxable: true, inflationLinked: false, startAge: 0),
-                new IncomeStream('p1', IncomeStreamType::Rental, Money::fromPounds(self::RENT), taxable: true, inflationLinked: false, startAge: 0),
+                new IncomeStream('p1', IncomeStreamType::Rental, Money::fromPounds(self::RENT), taxable: $rentTaxable, inflationLinked: false, startAge: 0),
             ],
             primaryResidence: new Property(
                 currentValue: Money::fromPounds(350_000),
@@ -149,11 +150,38 @@ final class LettingCostsTest extends TestCase
     {
         // A leaseholder letting the flat out pays the service charge to run a building somebody
         // else lives in: it is a deductible letting expense, not the household's own shopping.
-        // The cash still leaves them (it stays in the spend), but it is no longer taxed as profit.
+        // It comes off the rent, so it is no longer taxed as profit.
         $without = $this->otherTaxable($this->landlord());
         $with = $this->otherTaxable($this->landlord(serviceChargePounds: 3_000));
 
         $this->assertSame(Money::fromPounds(3_000)->pence, $without - $with);
+
+        // And it is paid ONCE. Coming off the rent, it leaves the household's spend, or the year
+        // charges it twice: once as lost rent and again as shopping. The £3,000 is already inside
+        // the £18,000 floor, so declaring it changes the year by its tax saving and nothing else.
+        // The running costs (card 0088) ride the same deduction: they are a real £2,000 on top of
+        // the floor, so they cost exactly that, less their own tax saving.
+        $plain = $this->year0($this->landlord(maintenance: Percent::zero(), councilTaxPounds: 1_500));
+        $charged = $this->year0($this->landlord(maintenance: Percent::zero(), serviceChargePounds: 3_000, runningCostsPounds: 2_000, councilTaxPounds: 1_500));
+        $surplus = fn (YearResult $y): int => $y->netIncome->pence - $y->spendTarget->pence;
+        $taxSaved = $plain->totalTax->pence - $charged->totalTax->pence;
+
+        $this->assertGreaterThan(0, $taxSaved);
+        $this->assertSame(
+            $surplus($plain) - Money::fromPounds(2_000)->pence + $taxSaved,
+            $surplus($charged),
+            'a let home\'s service charge and running costs are paid out of the rent, not charged again as spend',
+        );
+    }
+
+    public function test_a_tax_free_rental_stream_cannot_shelter_other_income(): void
+    {
+        // A rental stream entered as tax-free never reaches the taxable income, so its letting
+        // costs have nothing to come off: deducting them anyway took them off the pension.
+        $this->assertSame(
+            Money::fromPounds(self::OTHER_INCOME)->pence,
+            $this->otherTaxable($this->landlord(rentTaxable: false)),
+        );
     }
 
     public function test_a_residences_service_charge_is_not_deducted_from_anything(): void

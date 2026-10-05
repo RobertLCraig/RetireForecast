@@ -9,8 +9,13 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A let home's service charge and running costs are paid once.** Card 0030 #2. The part
+  `PathProjector::lettingCostsPerOwner` takes off the rent now leaves the spend; a tax-free rental
+  stream carries no letting costs. `ENGINE_VERSION` is `finance-engine/let-home-bills-are-paid-once`;
+  the **re-run is owed** for let plans. Reasons in DECISIONS 2026-10-05.
+
 - **A sampled home never falls to or below nothing.** Card 0029 #4. `PathProjector::grownHomeValue`
-  keeps a home that had value at a penny or more. `ENGINE_VERSION` is
+  keeps a home that had value at a penny or more. `ENGINE_VERSION` was
   `finance-engine/home-value-never-below-nothing`; only Monte Carlo runs with a tail path move.
   The card's park-home re-run (task 4) is still owed on the live database.
 
