@@ -637,6 +637,29 @@ class ScenarioResultsTest extends TestCase
         $this->assertStringContainsString('Spend +30%', $child->overrides['name']);
     }
 
+    /**
+     * Board card 0033, criterion 4. The spend slider scaled a line's `amount` and left the
+     * `utilities` inside it fixed, so sliding spend down made more and more of a service charge
+     * read as utilities and a sell plan kept a charge it should have dropped.
+     */
+    public function test_the_spend_slider_scales_the_utilities_inside_a_line_with_its_amount(): void
+    {
+        $base = ScenarioFixture::rich($this->user, [
+            'expenseLines' => [
+                ['id' => 'ess1', 'label' => 'Essentials', 'amount' => '28000', 'category' => 'essential', 'savedAsAsset' => false],
+                ['id' => 'sc1', 'label' => 'Service charge', 'amount' => '4000', 'utilities' => '1500', 'category' => 'essential',
+                    'condition' => 'while_owning_home', 'savedAsAsset' => false],
+            ],
+        ]);
+
+        Livewire::test(ScenarioResults::class, ['scenario' => $base])
+            ->set('slideSpend', -50)->call('makeWhatIf');
+
+        $line = collect($base->children()->latest()->first()->effectiveBuilderState()['expenseLines'])->firstWhere('id', 'sc1');
+        $this->assertEquals(2000, $line['amount']);
+        $this->assertEquals(750, $line['utilities']);
+    }
+
     public function test_the_income_floor_shows_the_survivor_cliff_for_a_couple(): void
     {
         // The rich fixture is a couple, so the income-floor section carries the survivor-year twin

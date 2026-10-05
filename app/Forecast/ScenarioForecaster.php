@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-05 (let-home-bills-are-paid-once): a let home's service charge and running
+     * Bumped 2026-10-05 (service-charge-utilities-on-cpi): the utilities inside a service charge
+     * ({@see ExpenseProfile::escalatingPropertyCosts}) no longer ride the service-charge escalator
+     * while the home is owned, so they grow on CPI on keep and sell plans alike. A stay-put or
+     * let plan whose charge carries a utilities figure spent too much under an earlier stamp, so
+     * its result is too PESSIMISTIC beside the sell plans. Board card 0033 #4.
+     * Previous bump 2026-10-05 (let-home-bills-are-paid-once): a let home's service charge and running
      * costs came off the rent as letting expenses AND stayed in the spend, so the household paid
      * them twice; the part deducted now leaves the spend. A rental stream entered as tax-free no
      * longer has letting costs taken off the household's other taxable income. Let plans with a
@@ -467,7 +472,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/let-home-bills-are-paid-once';
+    public const ENGINE_VERSION = 'finance-engine/service-charge-utilities-on-cpi';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

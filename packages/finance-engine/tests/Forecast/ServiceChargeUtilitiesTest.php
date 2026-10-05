@@ -112,6 +112,19 @@ final class ServiceChargeUtilitiesTest extends TestCase
         $this->assertSame(Money::fromPounds(16_000)->pence, $spend[2031]);
     }
 
+    public function test_the_utilities_in_a_service_charge_never_ride_its_escalator(): void
+    {
+        // Card 0033, criterion 4. A 5% real escalator on the £4,000 charge used to grow the £1,500
+        // of water and electricity inside it while the flat was owned, then drop it back to £1,500
+        // after the sale, so selling looked cheaper on energy. Only the £2,500 that is the charge
+        // proper escalates; the utilities ride CPI (zero here) on both sides of the sale.
+        $spend = $this->spendByYear($this->forcedSeller(Money::fromPounds(1_500), Percent::fromPercent(5)));
+
+        $escalatedCharge = (int) round(Money::fromPounds(2_500)->pence * (1.05 ** 3));
+        $this->assertSame(Money::fromPounds(17_500)->pence + $escalatedCharge, $spend[2029], 'owned: the charge escalates, the utilities do not');
+        $this->assertSame(Money::fromPounds(17_500)->pence, $spend[2031], 'sold: the same £1,500 of utilities');
+    }
+
     private function owners(Money $propertyCosts, Money $utilities): Household
     {
         return new Household(
@@ -132,10 +145,10 @@ final class ServiceChargeUtilitiesTest extends TestCase
 
     /**
      * A household whose home is force-sold in 2030, spending £16,000 plus a £4,000 service charge.
-     * Zero inflation and an explicit zero escalator, so every year's spend is penny-exact and the
-     * only thing that can move it across the sale is the bucket coming off.
+     * Zero inflation and, unless $growth is given, an explicit zero escalator, so every year's spend
+     * is penny-exact and the only thing that can move it across the sale is the bucket coming off.
      */
-    private function forcedSeller(?Money $utilities): Household
+    private function forcedSeller(?Money $utilities, ?Percent $growth = null): Household
     {
         return new Household(
             'ForcedSeller',
@@ -146,7 +159,7 @@ final class ServiceChargeUtilitiesTest extends TestCase
                 Money::zero(),
                 Percent::fromPercent(100),
                 propertyCosts: Money::fromPounds(4_000),
-                propertyCostsRealGrowth: Percent::zero(),
+                propertyCostsRealGrowth: $growth ?? Percent::zero(),
                 propertyCostsUtilities: $utilities,
             ),
             accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(600_000))],

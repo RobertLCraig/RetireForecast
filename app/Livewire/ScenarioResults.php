@@ -219,8 +219,11 @@ class ScenarioResults extends Component
         if ($this->slideSpend !== 0) {
             $factor = 1 + $this->slideSpend / 100;
             foreach ($state['expenseLines'] ?? [] as $i => $line) {
-                if (is_numeric($line['amount'] ?? '')) {
-                    $state['expenseLines'][$i]['amount'] = (string) round(((float) $line['amount']) * $factor, 2);
+                // The utilities are a subset of the amount, so they scale with it (board card 0033).
+                foreach (['amount', 'utilities'] as $key) {
+                    if (is_numeric($line[$key] ?? '')) {
+                        $state['expenseLines'][$i][$key] = (string) round(((float) $line[$key]) * $factor, 2);
+                    }
                 }
             }
         }

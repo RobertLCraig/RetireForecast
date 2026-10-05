@@ -226,6 +226,16 @@ final class ExpenseProfile
         return $utilities->greaterThan($this->propertyCosts()) ? $this->propertyCosts() : $utilities;
     }
 
+    /**
+     * The part of the property-costs bucket that rides {@see propertyCostsRealGrowth()}: the bucket
+     * less its utilities. An energy bill is on CPI wherever the household lives, so it must grow the
+     * same before and after a sale.
+     */
+    public function escalatingPropertyCosts(): Money
+    {
+        return $this->propertyCosts()->minus($this->propertyCostsUtilities());
+    }
+
     /** The rent paid to a landlord out of essential spend (zero if none). */
     public function tenantRent(): Money
     {

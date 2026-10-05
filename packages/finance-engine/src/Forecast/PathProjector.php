@@ -1545,13 +1545,13 @@ final class PathProjector
         // Home-ownership costs can outpace inflation: the property-costs bucket carries an
         // optional REAL growth rate, compounded per projection year here in real pence — the
         // spendFactor below then adds the CPI everyone rides, so the nominal growth is CPI + the
-        // rate. Charged only while the home is still owned: the sell variants strip the bucket
-        // (propertyCosts() is zero) and a forced sale subtracts it above, so the escalation
-        // follows the bucket for free. Added before the survivor/CPI multiply so it is treated
-        // exactly like the base bucket it grows.
+        // rate. Charged only while the home is still owned, and never on the utilities inside the
+        // bucket: those survive a sale flat in real terms, so escalating them while owned would make
+        // selling look cheaper on energy than it is (board card 0033). Added before the survivor/CPI
+        // multiply so it is treated exactly like the base bucket it grows.
         $propertyGrowth = $household->expenseProfile->propertyCostsRealGrowth()->asFraction();
         if ($propertyGrowth > 0.0 && ! $state['homeSold']) {
-            $escalation = (int) round($household->expenseProfile->propertyCosts()->pence * ((1.0 + $propertyGrowth) ** $yearIndex - 1.0));
+            $escalation = (int) round($household->expenseProfile->escalatingPropertyCosts()->pence * ((1.0 + $propertyGrowth) ** $yearIndex - 1.0));
             $targetPence += $escalation;
             $essentialPence += $escalation;
         }
@@ -2874,7 +2874,8 @@ final class PathProjector
         }
 
         $survivor = count(array_filter($alive)) === 1 ? $profile->survivorSpendFactor->asFraction() : 1.0;
-        $escalated = $bucket * ((1.0 + $profile->propertyCostsRealGrowth()->asFraction()) ** $yearIndex);
+        $escalating = $profile->escalatingPropertyCosts()->pence;
+        $escalated = $escalating * ((1.0 + $profile->propertyCostsRealGrowth()->asFraction()) ** $yearIndex) + ($bucket - $escalating);
 
         return (int) round($escalated * $state['spendFactor'] * $survivor);
     }

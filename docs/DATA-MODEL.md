@@ -157,7 +157,9 @@ leave the remainder in the essential floor as ordinary always-charged spend (no 
 service-charge escalator applies to it and nothing can strip it twice). Read it through
 `propertyCostsUtilities()`, which clamps it to the bucket it comes out of. Builder key
 `expenseLines.*.utilities`, offered only on a `while_owning_home` line and stored **sparsely**;
-the reader always enters it, the engine never supplies one.
+the reader always enters it, the engine never supplies one. While the home is owned the escalator
+grows only `escalatingPropertyCosts()` (the bucket less its utilities), so the utilities ride CPI
+on keep and sell plans alike; the results spend slider scales `utilities` with `amount`.
 
 **Insurance is essential where cover is required (card 0033, 2026-09-05):** a spend line's tier is
 read through `HouseholdAssembler::tierOf()`, not off its stored `category`. A **discretionary** line
