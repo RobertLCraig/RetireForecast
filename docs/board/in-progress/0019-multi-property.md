@@ -118,3 +118,17 @@ property to model, now or expected?** If not, discard this card: the plan file s
 why the design landed where it did, and costs nothing to leave there.
 
 Nothing here has been looked at in a browser, and there is nothing to look at yet.
+
+**2026-10-05** RESULT: blocked
+TESTS: +0 new, none run (no code written)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Stopped before building. The settled plan (docs/build/PLAN-multi-property.md lines 14-27) puts two gates in front of any code, and neither is open.
+
+1. **Rob's question is still unanswered: is there a second property to model, now or expected?** The 2026-08-29 comment on this card, the plan's gate 2 and DECISIONS 2026-08-29 ("not an agent's to settle") all say the answer decides build or discard. Nothing in the repository since records an answer. The card moved to in-progress by the unattended scheduler, not by a reply. Building eight criteria of engine, builder and UI work for a property that may not exist is the exact scope nobody decided.
+2. **Gate 1 is only half open.** Cards 0029 and 0030 sit in ai-review, not done. Their code is merged but unreviewed, so the letting-cost model and the growth-override semantics this card reuses could still change under review.
+
+To unblock: Rob answers the question on this card. Yes: re-queue it once 0029 and 0030 pass review, and the plan is ready to build as written. No: discard the card; the plan file stays as the record.
+
+I named no criterion met. #1 was already ticked on the card by the 2026-08-29 take and I did not touch it. Nothing to look at in a browser.
