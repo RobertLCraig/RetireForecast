@@ -25,7 +25,7 @@ The value of any particular growth rate. That is a scenario input.
 - [x] #1 WHEN a property carries a growth override, THE APP SHALL apply it as the mean and keep drawing year-to-year variation around it. proves: `test_a_growth_override_sets_the_mean_and_keeps_the_year_to_year_variation`
 - [x] #2 THE APP SHALL apply a sourced single-property volatility uplift to a primary residence, disclosed as an assumed figure and editable. proves: `test_the_single_property_volatility_uplift_is_disclosed_with_its_value`
 - [x] #3 WHEN a depreciating home such as a park home is modelled, THE APP SHALL use a wider volatility than the index default. proves: `test_a_depreciating_park_home_is_modelled_over_a_wider_spread_than_the_index`
-- [ ] #4 THE APP SHALL never let a sampled property fall to or below zero value in a year, whatever the volatility multiple, and a test SHALL build the tail draw that would otherwise cross it.
+- [x] #4 THE APP SHALL never let a sampled property fall to or below zero value in a year, whatever the volatility multiple, and a test SHALL build the tail draw that would otherwise cross it.
 <!-- AC:END -->
 
 ## Tasks
@@ -181,3 +181,21 @@ VERDICT: defect
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #4 because the breakage finding still holds on master. `SampledPathDraws::propertyGrowthReal` returns `mean + shock * singlePropertyMultiple` with no floor, and `PathProjector::growState` multiplies the value by `1 + growth` with none either. At the doubled DMS volatility, a draw of about z <= -4.6 makes a home worth less than nothing, and it then compounds and can clear a lifetime mortgage through the no-negative-equity cap. The stale `SampledPathDraws` class docblock belongs on the same pass.
+
+**2026-10-05** RESULT: done
+TESTS: +1 new, all green
+TOUCHED:
+  packages/finance-engine/src/Forecast/PathProjector.php
+  packages/finance-engine/src/MonteCarlo/SampledPathDraws.php
+  packages/finance-engine/tests/MonteCarlo/SinglePropertyVolatilityTest.php
+  app/Forecast/ScenarioForecaster.php
+  docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+**What was built for #4.** `PathProjector::growState` now grows the home through a new `grownHomeValue()`, which keeps a home that had any value at a penny or more. It is applied to both `property` and `propertyWhole`. A home with value 0 stays 0, because 0 in the state means sold. The floor sits in `growState`, not in `SampledPathDraws`, so every driver (sampled, deterministic, historical) goes through it. It is not a modelling figure: a penny is the least a home can be worth and still be a home. It does not change the shape of the draw, so no ordinary path moves; GoldenMasterTest stayed green with no re-pin.
+
+**Watched red first.** `test_a_tail_draw_never_takes_a_home_to_or_below_nothing` builds the tail by hand: a 9% index, the builder's maximum 60% single-property figure (a 6.67 multiple), and one index draw 20 points under its mean (about z = -2.2). Against the old code it failed with the home at -16,166,667 pence in 2027, the reviewer's defect exactly. It passes after the fix, and checks every year of the projection.
+
+**Also on this pass.** The stale `SampledPathDraws` class docblock now says the house draw is re-centred and widened, not followed as sampled. `ENGINE_VERSION` is bumped to `finance-engine/home-value-never-below-nothing`, because a stored Monte Carlo run with such a tail path would differ.
+
+**Still open, as before.** Card task 4 (re-run the stored park-home scenarios and report the range) needs Rob's live database and is still owed; it is in HANDOVER.md. Nothing here was seen in a browser; the builder and results pages are unchanged by this pass. `vendor/bin/pest.bat` does not exist here (card 0150); the suite was run with `php artisan test` and passed, and `pint --dirty` passed.
