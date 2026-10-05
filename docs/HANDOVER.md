@@ -9,6 +9,12 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A survivor's DB pension escalates on its in-payment basis from the death.** Card 0035 #4.
+  `PathProjector::escalateDbPensions` starts payment at the earlier of normal retirement age and
+  the year after the member's death. `ENGINE_VERSION` is
+  `finance-engine/survivor-db-escalates-in-payment-from-death`; the **re-run is owed** for plans
+  whose two DB bases differ and whose member dies deferred.
+
 - **A let home's service charge and running costs are paid once.** Card 0030 #2. The part
   `PathProjector::lettingCostsPerOwner` takes off the rent now leaves the spend; a tax-free rental
   stream carries no letting costs. `ENGINE_VERSION` is `finance-engine/let-home-bills-are-paid-once`;

@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-05 (service-charge-utilities-on-cpi): the utilities inside a service charge
+     * Bumped 2026-10-06 (survivor-db-escalates-in-payment-from-death): a survivor's DB pension
+     * left by a member who died deferred escalated on the scheme's REVALUATION basis until the
+     * member's notional retirement age, though it is in payment from the death. It now uses the
+     * in-payment basis. Only a plan whose two bases differ and whose member dies deferred moves.
+     * Board card 0035 #4.
+     * Previous bump 2026-10-05 (service-charge-utilities-on-cpi): the utilities inside a service charge
      * ({@see ExpenseProfile::escalatingPropertyCosts}) no longer ride the service-charge escalator
      * while the home is owned, so they grow on CPI on keep and sell plans alike. A stay-put or
      * let plan whose charge carries a utilities figure spent too much under an earlier stamp, so
@@ -472,7 +477,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/service-charge-utilities-on-cpi';
+    public const ENGINE_VERSION = 'finance-engine/survivor-db-escalates-in-payment-from-death';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

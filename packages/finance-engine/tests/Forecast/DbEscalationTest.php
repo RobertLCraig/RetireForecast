@@ -81,12 +81,14 @@ final class DbEscalationTest extends TestCase
         PensionEscalationBasis $revaluationBasis = PensionEscalationBasis::Cpi,
         int $memberBirthYear = 1956,
         ?Percent $fixedEscalationRate = null,
+        int $memberDeathAge = 99,
+        ?Percent $spousePensionFraction = null,
     ): array {
         $household = new Household(
             'DB escalation',
             RegionProfile::EnglandWalesNi,
             [
-                new Person('p1', new DateTimeImmutable($memberBirthYear.'-01-01'), Sex::Male, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(99)),
+                new Person('p1', new DateTimeImmutable($memberBirthYear.'-01-01'), Sex::Male, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge($memberDeathAge)),
                 new Person('p2', new DateTimeImmutable(($memberBirthYear + 2).'-01-01'), Sex::Female, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(99)),
             ],
             new ExpenseProfile(Money::fromPounds(18_000), Money::zero(), Percent::fromPercent(70)),
@@ -100,6 +102,7 @@ final class DbEscalationTest extends TestCase
                     revaluationBasis: $revaluationBasis,
                     escalationInPayment: $escalationInPayment,
                     fixedEscalationRate: $fixedEscalationRate,
+                    spousePensionFraction: $spousePensionFraction,
                 ),
             ],
         );
@@ -206,6 +209,40 @@ final class DbEscalationTest extends TestCase
         // (board card 0036); 2037 is the first whole year and the one to compare a frozen pension on.
         $this->assertEqualsWithDelta($this->compounded(5.0, 10) * 11 / 12, $db[2036], 50.0, 'ten years of deferred revaluation reach the payment date');
         $this->assertSame($db[2037], $db[2046], 'and nothing is added once it is in payment');
+    }
+
+    /**
+     * AC#4. A member who dies DEFERRED leaves a survivor's pension that is in payment from the
+     * death, so it escalates on the in-payment basis from then on, not on the revaluation basis
+     * until the member's notional retirement age. The member is 55 in 2026 with a normal
+     * retirement age of 65 and dies at 58, so the widow is paid from 2030, six years before 2036.
+     *
+     * The two bases are set apart in both directions. Revaluation CPI and in-payment None must be
+     * flat from the death; the old rule kept adding CPI until 2036. The mirror must rise at 5%
+     * from the death; the old rule held it flat until 2036.
+     */
+    public function test_a_survivor_pension_escalates_on_its_in_payment_basis_from_the_death(): void
+    {
+        $frozen = $this->dbIncomeByYear(
+            escalationInPayment: PensionEscalationBasis::None,
+            inflationPercent: 5.0,
+            revaluationBasis: PensionEscalationBasis::Cpi,
+            memberBirthYear: 1971,
+            memberDeathAge: 58,
+            spousePensionFraction: Percent::fromPercent(50),
+        );
+        $this->assertGreaterThan(0, $frozen[2030], 'the widow is paid from the year after the death');
+        $this->assertSame($frozen[2030], $frozen[2040], 'a survivor pension frozen in payment stands still from the death');
+
+        $rising = $this->dbIncomeByYear(
+            escalationInPayment: PensionEscalationBasis::Cpi,
+            inflationPercent: 5.0,
+            revaluationBasis: PensionEscalationBasis::None,
+            memberBirthYear: 1971,
+            memberDeathAge: 58,
+            spousePensionFraction: Percent::fromPercent(50),
+        );
+        $this->assertEqualsWithDelta($rising[2030] * (1.05 ** 10), $rising[2040], 50.0, 'and one escalating at CPI in payment rises from the death');
     }
 
     /**

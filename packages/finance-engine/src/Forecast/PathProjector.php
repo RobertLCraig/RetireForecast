@@ -3396,7 +3396,7 @@ final class PathProjector
      * This year's survivor DB pension income, per person, in nominal pence. When a DB member has
      * died, a scheme with a spousePensionFraction continues that fraction of the pension to the
      * surviving partner for life (the joint-life analogue of {@see annuityIncomeNominal}). Escalated
-     * by the same dbFactor as the member's own pension in payment. Without this the guaranteed DB
+     * by the scheme's own factor, on its in-payment basis from the death ({@see escalateDbPensions}). Without this the guaranteed DB
      * income would silently fall to £0 on the member's death, understating the survivor's secure income.
      *
      * A single-fraction v1 model: a scheme with no survivor fraction pays nothing (as today), and the
@@ -5098,7 +5098,7 @@ final class PathProjector
                 : $salaryNominal;
             $state['salaryFactor'][$pid] = $factor * (1.0 + $personSalaryNominal);
         }
-        $this->escalateDbPensions($state, $infl, $yearIndex);
+        $this->escalateDbPensions($state, $draws, $infl, $yearIndex);
         // The State Pension's uprating, on the basis the reader chose ({@see StatePensionUprating}).
         // Bump number n carries the factor into year n, the same boundary escalateDbPensions uses,
         // so "the lock ends in 2036" means 2036 is the last year the floor lifts the pension into.
@@ -5126,13 +5126,18 @@ final class PathProjector
      * the payment date), and every later bump is escalation in payment. A member already past
      * normal retirement age in the base year is in payment for every bump, as they should be.
      *
+     * A member who dies deferred brings the survivor's pension into payment the year after the
+     * death ({@see survivorDbIncomeNominal}), so payment starts at whichever comes first. The bump
+     * landing on that first survivor year is still revaluation, by the same boundary.
+     *
      * @param  array<string, mixed>  $state
      */
-    private function escalateDbPensions(array &$state, float $inflation, int $yearIndex): void
+    private function escalateDbPensions(array &$state, PathDraws $draws, float $inflation, int $yearIndex): void
     {
         foreach ($state['dbSchemes'] as $key => $scheme) {
             $ageNextYear = $state['baseAge'][$scheme['ownerId']] + $yearIndex + 1;
-            $basis = $ageNextYear <= $scheme['normalRetirementAge']
+            $paymentStartAge = min($scheme['normalRetirementAge'], $draws->deathAge($scheme['ownerId']) + 1);
+            $basis = $ageNextYear <= $paymentStartAge
                 ? $scheme['revaluationBasis']
                 : $scheme['escalationInPayment'];
 
