@@ -34,7 +34,7 @@ Section 24 finance-cost relief, which the projector already models correctly.
 ## Acceptance
 <!-- AC:BEGIN -->
 - [x] #1 WHEN a property is let, THE APP SHALL deduct management, void and maintenance costs from gross rent, each a disclosed sourced default and each editable. proves: `test_letting_costs_come_off_the_gross_rent`, `test_the_readers_own_letting_rates_win_over_the_defaults`, `test_the_assumed_letting_costs_are_disclosed_with_their_values`, `test_the_letting_cost_rates_a_reader_enters_reach_the_property`
-- [ ] #2 WHEN a let property carries a service charge, THE APP SHALL treat it as a letting expense rather than household spend. proves: `test_a_let_homes_service_charge_is_a_letting_expense_not_taxed_as_profit`
+- [x] #2 WHEN a let property carries a service charge, THE APP SHALL treat it as a letting expense rather than household spend. proves: `test_a_let_homes_service_charge_is_a_letting_expense_not_taxed_as_profit`
 - [x] #3 WHEN a let plan is displayed, THE APP SHALL show the letting caveats on the result, not only in code comments. proves: `test_a_let_plan_shows_the_letting_caveats_on_the_result`
 <!-- AC:END -->
 
@@ -161,3 +161,18 @@ VERDICT: defect
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #2 because the service charge is still charged twice on master. `PathProjector::lettingCostsPerOwner()` adds `propertyCostsNominal()` to the letting deduction, which comes off `$taxablePerPerson` and so off net cash, while the same bucket stays in the spend target unless `homeSold`. Deduct it from the tax base only, or drop it from spend while the home is let, and add a test that compares net income against spend. The same pass should close the second breakage point: `rentalIncomePerOwner()` ignores `IncomeStream::$taxable`, so a tax-free rental stream lets the deduction shelter other income.
+
+**2026-10-05** RESULT: done
+TESTS: +1 new (test_a_tax_free_rental_stream_cannot_shelter_other_income), 1 extended (test_a_let_homes_service_charge_is_a_letting_expense_not_taxed_as_profit), all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php, packages/finance-engine/tests/Forecast/LettingCostsTest.php, app/Forecast/ScenarioForecaster.php, docs/DECISIONS.md, docs/HANDOVER.md, docs/board/todo/0163-support-for-mortgage-interest-is-paid-on-a-let-home.md (new), docs/board/todo/0164-the-letting-note-claims-a-prr-cut-that-is-not-modelled.md (new)
+OUT-OF-SCOPE: 0163, 0164
+
+**#2, the reopened one.** Took the manager pass's second option: the part of the service charge (and, since 0088, the running costs) that `lettingCostsPerOwner` deducts from the rent now leaves the spend and the essential floor, in the spend pass beside the running costs. It now returns `{perOwner, expense}`; percentage costs are taken first, so a bill the per-owner rent cap cuts off stays in the spend. Chosen over tax-base-only because the AC says "rather than household spend" and it keeps one figure as both cash and tax base, so the means tests and drawdown pricing need no second path. Reasons in DECISIONS 2026-10-05.
+
+Watched fail first: the extended test compares (netIncome - spendTarget) with and without a GBP 3,000 service charge and GBP 2,000 running costs; it failed by exactly GBP 5,000, the double charge. The new tax-free test failed at GBP 14,000 against GBP 20,000: a tax-free rent's 25% costs came off the pension. Fixed by filtering `rentalIncomePerOwner` on `IncomeStream::$taxable` (the manager pass's second breakage point).
+
+#1 and #3 were met by the earlier take and untouched here; their tests still pass. But the review's PRR point against #3 still stands (the note says the PRR cut is in the figures; `isLet` alone builds no CGT history), so it is raised as 0164 rather than fixed in passing. If you read that as #3 not met, untick it.
+
+Raised 0163: SMI is not gated on the home being let, and since this change it would take the let home's service charge off the spend a second time.
+
+ENGINE_VERSION is `finance-engine/let-home-bills-are-paid-once`. Not done: task 4 (stored-scenario re-run and `scenarios:audit`): the live database is Rob's, not this worktree's. No browser check: no view changed. Full suite: 1641 passed, 1 skipped (the compliance partition test, skipped by design in advice mode). There is no pest.bat here (card 0150); ran `php artisan test` and `pint --dirty`.
