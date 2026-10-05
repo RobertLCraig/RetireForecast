@@ -523,6 +523,25 @@ class ScenarioResultsTest extends TestCase
             ->assertDontSee('Projected spendable money over time');
     }
 
+    public function test_the_nominal_pounds_toggle_shows_the_engines_own_pre_deflation_figures(): void
+    {
+        // Card 0013. The figure the box must bring onto the page is the engine's own nominal
+        // twin of the last projected year, not anything the presenter computes. Nothing else on
+        // the page is nominal, so the figure is absent until the box is ticked.
+        $scenario = $this->scenario();
+        $years = app(ScenarioForecaster::class)->deterministicVariants($scenario)[$scenario->variant->value]->years;
+        $last = $years[count($years) - 1];
+        $nominal = $last->nominal->totalWealth->format();
+        $this->assertNotSame($last->totalWealth->format(), $nominal, 'the fixture must inflate, or real and nominal coincide');
+
+        Livewire::test(ScenarioResults::class, ['scenario' => $scenario])
+            ->assertSee('Wealth by type (real pounds)')
+            ->assertDontSee($nominal)
+            ->set('nominalPounds', true)
+            ->assertSee('Wealth by type (cash pounds)')
+            ->assertSee($nominal);
+    }
+
     public function test_a_stale_queued_run_with_no_worker_surfaces_a_start_a_worker_hint(): void
     {
         // No worker: the job is captured but never executed, so the run stays queued at 0%.

@@ -2356,6 +2356,10 @@ item of that plan (the presentation slice, after A1/A2 correctness).
    deferred** to its own slice: showing nominal figures needs the engine's internal pre-deflation values
    exposed, and re-deriving them by re-inflating in the presenter would duplicate the projector's deflation
    logic and risk drift (violating the one-definition rule) — so it is an engine decision, not a presenter one.
+   **Superseded 2026-08-22 (card 0013):** the toggle is built. The three charts are real by default and can be
+   switched to nominal pounds, read from the engine's own pre-deflation `YearResult::$nominal`; see the
+   2026-08-22 entry "A nominal-pounds view reads the engine's pre-deflation year". Item 2's "same years as the
+   ladder" holds for the real view only.
 4. **Categorical colour from the validated dataviz reference palette** (eight-hue set, documented stacking
    order, CVD-checked on the app's white surface via `scripts/validate_palette.js`); the three sub-3:1 light
    slots meet the relief rule via the `<details>` table twin. The C1 stack **caps at the eight palette hues**:

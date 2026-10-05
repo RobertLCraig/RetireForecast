@@ -197,7 +197,8 @@ final class YearResult
     }
 
     /**
-     * The outstanding mortgage on the home this year (real money, zero if none). Non-zero and
+     * The outstanding mortgage on the home this year (zero if none), in the same money as the
+     * rest of this year: real on a reported year, nominal on its {@see $nominal} twin. Non-zero and
      * GROWING when a lifetime mortgage rolls up unpaid; level when it is repaid/serviced.
      */
     public function mortgageBalance(): Money

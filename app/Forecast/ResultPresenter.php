@@ -1841,9 +1841,11 @@ final class ResultPresenter
     /**
      * The three hero time-series charts (C1 income staircase, C2 wealth composition,
      * C3 costs over time), each a stacked-area ApexCharts blob over the deterministic
-     * projection years plus a reconciling <details> table. Built from the SAME
-     * {@see ForecastResult::$years} the cashflow {@see ladder()} reads, so a chart can
-     * never drift from the ladder (one definition — asserted in the reconciliation test).
+     * projection years plus a reconciling <details> table. In real terms (the default) it is
+     * built from the SAME {@see ForecastResult::$years} the cashflow {@see ladder()} reads, so a
+     * chart can never drift from the ladder (one definition — asserted in the reconciliation
+     * test). In nominal terms it reads each year's twin instead, which the ladder never shows,
+     * so that view agrees with the ladder only by deflating back (asserted in NominalTwinTest).
      *
      * Figures are REAL (today's money) by default, like the ladder and fan. Passing $nominal
      * switches all three charts and their tables to the pounds of the year itself, read from
