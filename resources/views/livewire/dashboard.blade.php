@@ -22,8 +22,11 @@
                     @elseif ($export['state'] === 'ready') border-green-200 bg-green-50 text-green-800
                     @else border-blue-200 bg-blue-50 text-blue-800 @endif"
              role="status" aria-live="polite"
-             @if ($export['state'] === 'building') wire:poll.2500ms @endif>
-            @if ($export['state'] === 'building')
+             @if ($export['state'] === 'building' && ! $export['stuck']) wire:poll.2500ms @endif>
+            @if ($export['stuck'])
+                <span>Your export seems to be stuck: no forecast has been rendered for a while.</span>
+                <a href="{{ route('scenarios.pdf') }}" class="ml-2 font-medium underline hover:no-underline">Start it again</a>
+            @elseif ($export['state'] === 'building')
                 <span>Building your export — {{ $export['done'] }} of {{ $export['total'] }} forecasts rendered.</span>
                 <p class="mt-1 text-xs">Each forecast is rendered on its own, so a big export takes a few minutes. You can carry on using the site.</p>
             @elseif ($export['state'] === 'ready' && $export['downloadable'])

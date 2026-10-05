@@ -72,8 +72,10 @@ class ScenarioPdfController extends Controller
         abort_if($count === 0, 404);
 
         if (! $this->export->fitsOneRequest($count)) {
-            // A second click while one is already running would only rebuild the same archive.
-            if (($this->export->status($user)['state'] ?? null) !== 'building') {
+            // A second click while one is already running would only rebuild the same archive,
+            // unless it is stuck (no worker took it, or the one that did died), when it retries.
+            $status = $this->export->status($user);
+            if (($status['state'] ?? null) !== 'building' || $this->export->stuck($status)) {
                 $this->export->queue($user, $count);
             }
 
@@ -88,12 +90,16 @@ class ScenarioPdfController extends Controller
         return $pdf->download('retireforecast-all-scenarios.pdf');
     }
 
-    /** The finished archive from a queued export, streamed from disk rather than held in memory. */
+    /**
+     * The finished archive from a queued export, streamed from disk rather than held in memory.
+     * Only the latest build, only if it succeeded, and only for a day: a bookmark must not
+     * serve stale figures or a failed build's leftovers.
+     */
     public function downloadArchive(): Response
     {
         $user = auth()->user();
 
-        abort_unless($this->export->exists($user), 404);
+        abort_unless($this->export->servable($user), 404);
 
         return $this->export->download($user);
     }

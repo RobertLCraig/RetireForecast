@@ -223,6 +223,86 @@ class ScenarioExportBatchTest extends TestCase
         Livewire::test(Dashboard::class)->assertSee('worker died');
     }
 
+    /** A built archive is a 24-hour download, not a bookmark that serves stale figures forever. */
+    public function test_an_archive_older_than_a_day_is_not_served(): void
+    {
+        ScenarioFixture::rich($this->user);
+        (new BuildScenarioExport($this->user->id))->handle(app(ScenarioExport::class));
+        $this->get(route('scenarios.pdf.archive'))->assertOk();
+
+        $this->travel(25)->hours();
+
+        $this->get(route('scenarios.pdf.archive'))->assertNotFound();
+    }
+
+    /** A failed rebuild must not leave the previous build's archive downloadable as if it were the latest. */
+    public function test_a_failed_build_removes_the_previous_archive(): void
+    {
+        ScenarioFixture::rich($this->user);
+        $export = app(ScenarioExport::class);
+        (new BuildScenarioExport($this->user->id))->handle($export);
+
+        $export->fail($this->user, 'worker died');
+
+        $this->get(route('scenarios.pdf.archive'))->assertNotFound();
+        $this->assertFalse($export->exists($this->user));
+    }
+
+    /** Asking for a new build supersedes the old archive, so only the latest build is ever on offer. */
+    public function test_queueing_a_new_build_removes_the_previous_archive(): void
+    {
+        Queue::fake();
+        ScenarioFixture::rich($this->user);
+        $export = app(ScenarioExport::class);
+        (new BuildScenarioExport($this->user->id))->handle($export);
+
+        $export->queue($this->user, 9);
+
+        $this->get(route('scenarios.pdf.archive'))->assertNotFound();
+        $this->assertFalse($export->exists($this->user));
+    }
+
+    /** An archive nobody comes back for is still deleted once it is past its day. */
+    public function test_the_sweep_deletes_archives_older_than_a_day_and_keeps_fresh_ones(): void
+    {
+        $other = User::factory()->create();
+        ScenarioFixture::rich($this->user);
+        ScenarioFixture::rich($other);
+        $export = app(ScenarioExport::class);
+        (new BuildScenarioExport($this->user->id))->handle($export);
+        (new BuildScenarioExport($other->id))->handle($export);
+        touch(Storage::disk('local')->path($export->path($this->user)), now()->subHours(25)->getTimestamp());
+
+        $this->artisan('exports:prune')->assertSuccessful();
+
+        $this->assertFalse($export->exists($this->user));
+        $this->assertTrue($export->exists($other));
+    }
+
+    /**
+     * With no worker running, a queued build never starts and its state says "building" for good.
+     * Once it has made no progress for {@see ScenarioExport::STUCK_AFTER_MINUTES}, asking again
+     * queues a fresh build, and the dashboard says it is stuck and offers that retry.
+     */
+    public function test_a_build_stuck_in_building_can_be_retried(): void
+    {
+        Queue::fake();
+        for ($i = 0; $i <= ScenarioExport::BATCH_ABOVE; $i++) {
+            ScenarioFixture::rich($this->user);
+        }
+        $this->get(route('scenarios.pdf'));
+
+        $this->travel(ScenarioExport::STUCK_AFTER_MINUTES + 1)->minutes();
+
+        Livewire::test(Dashboard::class)
+            ->assertSee('seems to be stuck')
+            ->assertSee(route('scenarios.pdf'), escape: false);
+
+        $this->get(route('scenarios.pdf'));
+
+        Queue::assertPushed(BuildScenarioExport::class, 2);
+    }
+
     /**
      * The archive's contents, keyed by entry name in archive order.
      *

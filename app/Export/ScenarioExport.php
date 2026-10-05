@@ -8,6 +8,7 @@ use App\Jobs\BuildScenarioExport;
 use App\Models\Scenario;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -23,9 +24,11 @@ use ZipArchive;
  * dompdf holds the whole document in memory until it is written, so both the peak memory and
  * the render time grow with the number of scenarios (the figures are under {@see BATCH_ABOVE}).
  * Past that threshold the export moves to the worker and is built in batches of one: each
- * scenario is rendered as its own complete report and added to a zip, so peak memory is the
- * cost of the BIGGEST SINGLE report rather than the sum of all of them, and it stops growing
- * with the count. The download is then a file stream, which costs nothing to serve.
+ * scenario is rendered as its own complete report and added to a zip, so dompdf's peak is the
+ * cost of the BIGGEST SINGLE report rather than the sum of all of them. The finished PDFs do
+ * still add up: ZipArchive holds every string it is given until close(), so memory grows by
+ * about one rendered PDF (~1.2 MB) per forecast, a far smaller slope than a single render's.
+ * The download is then a file stream, which costs nothing to serve.
  *
  * The reader gets one PDF per forecast instead of one long PDF. That is the price of not
  * holding the whole document in memory: with no PDF-merging library in this project, a single
@@ -62,6 +65,13 @@ class ScenarioExport
     /** How long a finished archive is kept before it is treated as stale. */
     private const KEEP_FOR_HOURS = 24;
 
+    /**
+     * A build with no progress for this long is treated as stuck, and the user may start it
+     * again. Each forecast renders in a second or two, so a quarter of an hour with no forecast
+     * finished means no worker picked the job up, or the one that did has died.
+     */
+    public const STUCK_AFTER_MINUTES = 15;
+
     public function __construct(private readonly ScenarioReport $reports) {}
 
     /** Would this user's export be built in the request, or queued? */
@@ -80,9 +90,10 @@ class ScenarioExport
         return Cache::get($this->key($user));
     }
 
-    /** Queue a fresh build, replacing any earlier one. */
+    /** Queue a fresh build, replacing any earlier one. The old archive goes now, so only the latest build is on offer. */
     public function queue(User $user, int $total): void
     {
+        Storage::disk('local')->delete($this->path($user));
         $this->write($user, 'building', done: 0, total: $total);
 
         BuildScenarioExport::dispatch($user->id);
@@ -92,7 +103,8 @@ class ScenarioExport
      * Render every scenario into the archive, one at a time. Runs on the worker.
      *
      * The loop is the whole point: one report is assembled, rendered and thrown away before
-     * the next is started, so nothing accumulates across scenarios. Each entry is a complete
+     * the next is started, so no dompdf document accumulates across scenarios (the rendered
+     * PDFs do, in ZipArchive's buffer, until close()). Each entry is a complete
      * standalone report — the same print a single download gives — named so the archive
      * opens in the dashboard's own order.
      */
@@ -127,10 +139,15 @@ class ScenarioExport
         $this->write($user, 'ready', done: $total, total: $total);
     }
 
-    /** Record a terminal failure with its reason, so the dashboard stops waiting. */
+    /**
+     * Record a terminal failure with its reason, so the dashboard stops waiting. Whatever the
+     * failed build left on disk goes too: a half-written or previous archive must not be
+     * served as if it were this build's.
+     */
     public function fail(User $user, string $reason): void
     {
         $status = $this->status($user);
+        Storage::disk('local')->delete($this->path($user));
 
         $this->write($user, 'failed', $status['done'] ?? 0, $status['total'] ?? 0, $reason);
     }
@@ -145,6 +162,47 @@ class ScenarioExport
     public function exists(User $user): bool
     {
         return Storage::disk('local')->exists($this->path($user));
+    }
+
+    /** May the archive be served: the latest build succeeded, under a day ago, and its file is there? */
+    public function servable(User $user): bool
+    {
+        $status = $this->status($user);
+
+        return ($status['state'] ?? null) === 'ready'
+            && Carbon::parse($status['at'])->gt(now()->subHours(self::KEEP_FOR_HOURS))
+            && $this->exists($user);
+    }
+
+    /**
+     * Has this build made no progress for long enough to be retried?
+     *
+     * @param  array<string, mixed>|null  $status
+     */
+    public function stuck(?array $status): bool
+    {
+        return ($status['state'] ?? null) === 'building'
+            && Carbon::parse($status['at'])->lt(now()->subMinutes(self::STUCK_AFTER_MINUTES));
+    }
+
+    /**
+     * Delete every archive older than a day, across all users. Run hourly by the scheduler, so
+     * an archive nobody comes back for does not keep a copy of a household's figures on disk.
+     */
+    public function prune(): int
+    {
+        $disk = Storage::disk('local');
+        $cutoff = now()->subHours(self::KEEP_FOR_HOURS)->getTimestamp();
+        $deleted = 0;
+
+        foreach ($disk->allFiles('exports') as $file) {
+            if ($disk->lastModified($file) < $cutoff) {
+                $disk->delete($file);
+                $deleted++;
+            }
+        }
+
+        return $deleted;
     }
 
     /**

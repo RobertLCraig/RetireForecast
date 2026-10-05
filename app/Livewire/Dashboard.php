@@ -67,8 +67,11 @@ class Dashboard extends Component
             return null;
         }
 
-        // A "ready" state whose file has since been cleared away has nothing to offer.
-        return $status + ['downloadable' => $status['state'] === 'ready' && $export->exists(auth()->user())];
+        // A "ready" state whose file has since been cleared away, or gone stale, has nothing to offer.
+        return $status + [
+            'downloadable' => $export->servable(auth()->user()),
+            'stuck' => $export->stuck($status),
+        ];
     }
 
     public function render(): View
