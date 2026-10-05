@@ -153,3 +153,8 @@ Re-checked today, read-only, from this worktree against the app Postgres DB: `ph
 #1 to #3 are unchanged since the last entry. To finish: Rob works card 0161 (migrate, re-seed AssumptionSetSeeder, re-run all scenarios), then a re-run of the audit settles #4. This card should carry needs: 0161 so the loop stops picking it up first.
 
 Not checked in a browser: no screen changed.
+
+## Comments
+<!-- The card's thread, appended by ProgressBoard. Append-only: entries are added, never edited or removed. An entry beginning **Decided:** is an answer, and that is what a decision card exits on. -->
+
+**2026-10-05** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 4 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
