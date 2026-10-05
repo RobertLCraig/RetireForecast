@@ -26,7 +26,7 @@ Capital gains computation itself, which the panel found correct and better than 
 <!-- AC:BEGIN -->
 - [x] #1 WHEN a leasehold property is sold, THE APP SHALL itemise the management pack, licence to assign and notice fees separately from conveyancing. proves: `test_the_housing_step_itemises_the_leasehold_sale_fees_separately_from_conveyancing`
 - [x] #2 WHEN a disposal triggers a 60-day capital gains return, THE APP SHALL include a disclosed cost for preparing it. proves: `test_a_disposal_that_charges_cgt_is_charged_for_preparing_the_sixty_day_return`
-- [ ] #3 THE APP SHALL raise the default selling-cost rate to a sourced figure appropriate to a leasehold sale, and disclose it. proves: `test_the_assumed_selling_cost_rate_is_read_from_the_engine_constant`
+- [x] #3 THE APP SHALL raise the default selling-cost rate to a sourced figure appropriate to a leasehold sale, and disclose it. proves: `test_the_assumed_selling_cost_rate_is_read_from_the_engine_constant`
 <!-- AC:END -->
 
 ## Tasks
@@ -161,3 +161,24 @@ VERDICT: defect
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #3 because no real user gets the sourced rate. `HousingProceeds::compute()` uses `DEFAULT_SELLING_COST_RATE_BP` (4%) only when there are no components, and `ScenarioBuilder::defaultSellingCosts()` always supplies six lines that come to about 2.6% on a GBP 400,000 sale. Make the itemised defaults add up to the sourced figure, or say on the card and the page why they do not. On the same pass: the GBP 750 CGT-return fee is appended after the components, so a reader who enters their own quote pays both, and `assumptionsPanel()` has no row for it. The engine-version finding is moot now, the stamp has moved on since.
+
+**2026-10-05** RESULT: done
+TESTS: +0 new (1 extended), all green
+TOUCHED:
+- app/Forecast/ResultPresenter.php
+- tests/Unit/Forecast/AssumptionsPanelTest.php
+- docs/board/todo/0167-a-readers-own-cgt-return-quote-is-charged-on-top-of-the-default.md
+- docs/board/todo/0168-the-assumptions-panel-has-no-row-for-the-cgt-return-fee.md
+OUT-OF-SCOPE: 0167, 0168
+
+**#3, reopened by the 2026-09-28 manager pass, took its second option: say on the page why the itemised defaults do not add up to 4%.** The first option (make them add up) would mean inflating lines past the published ranges card 0092 checked, or moving the agent fee the card fenced off. So no figure moves, no ENGINE_VERSION bump and no re-run is owed.
+
+What was built: on an itemised sale, `ResultPresenter::assumptionsPanel()` adds a 'Selling costs in total' row. It shows the lines' total in pounds and as a share of the sale price (the builder defaults come to 2.99% on GBP 300,000), and sets beside it the all-in rate READ from `HousingProceeds::DEFAULT_SELLING_COST_RATE_BP`, saying it is the cautious catch-all from the 2026-08-19 review, charged only when nothing is itemised, and that the lines win because they are mostly flat fees inside published ranges. The no-components row is unchanged.
+
+Test: `test_the_assumed_selling_cost_rate_is_read_from_the_engine_constant` extended with the itemised case (the builder's six default lines). Watched it fail first: the total row was absent (`'' contains GBP 8,980.00`).
+
+Task 3 ('disclose through assumedFigures()') stays as card 0032's first take explained: that path only sees buy_outright plans, so the panel is where every sell plan's reader sees it.
+
+The two GBP 750 findings on the same manager pass are not criterion #3 and are raised, not fixed: 0167 (a reader's own quote is charged on top of the GBP 750) and 0168 (the panel has no row for the fee, so it is GBP 750 under the waterfall on a CGT sale).
+
+Not seen in a browser: Herd serves the main checkout. The new panel row still needs a look on the results page and in the PDF.
