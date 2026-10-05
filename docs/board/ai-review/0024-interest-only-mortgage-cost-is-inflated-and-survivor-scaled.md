@@ -34,7 +34,7 @@ The repayment amortisation schedule, which is already correct and pinned to a le
 - [x] #1 WHEN a mortgage payment is charged from `ExpenseProfile::$mortgageCosts`, THE APP SHALL hold it fixed in nominal terms rather than escalating it with CPI.
 - [x] #2 WHEN a household member dies, THE APP SHALL charge the survivor the full mortgage payment, unreduced by the survivor factor.
 - [x] #3 WHEN a let property's finance cost is computed for the Section 24 credit, THE APP SHALL use nominal interest rather than a CPI-inflated figure.
-- [ ] #4 WHEN a `while_mortgaged` line is not the mortgage payment itself (a mortgage life or protection premium, a fee) or is discretionary, THE APP SHALL keep it indexed to CPI and in its own spend tier, so the essential floor never loses real essential spend to it, and the flat-payment treatment SHALL be stated on screen for every mortgage shape.
+- [x] #4 WHEN a `while_mortgaged` line is not the mortgage payment itself (a mortgage life or protection premium, a fee) or is discretionary, THE APP SHALL keep it indexed to CPI and in its own spend tier, so the essential floor never loses real essential spend to it, and the flat-payment treatment SHALL be stated on screen for every mortgage shape.
 <!-- AC:END -->
 
 ## Tasks
@@ -148,3 +148,37 @@ VERDICT: defect
 **2026-09-29** The loop moved this card from todo/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 4 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
 
 **2026-09-29** Returned to todo/ by an attended session. The park above was not this card's: `Get-NoProgressCounts` in ProgressBoard's `bin/work-card.ps1` read another board's holds for the same card number out of the shared log, so it parked this card with no take of its own since it was sent back. Fixed in ProgressBoard `6d49915`, which reads each log line's board from its run id.
+
+**2026-10-05** RESULT: done
+TESTS: +5 new, all green
+TOUCHED:
+app/Forecast/HouseholdAssembler.php
+app/Forecast/ResultPresenter.php
+app/Forecast/ScenarioForecaster.php
+app/Livewire/ScenarioBuilder.php
+packages/finance-engine/src/Dto/ExpenseProfile.php
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/src/Sweep/Lever/DiscretionarySpendLever.php
+packages/finance-engine/src/Sweep/Lever/EssentialSpendLever.php
+packages/finance-engine/tests/Dto/ExpenseProfileWitherTest.php
+packages/finance-engine/tests/Forecast/ContingentCostsTest.php
+tests/Unit/Forecast/InputNotesTest.php
+tests/Unit/Forecast/MortgageLinkedCostsTest.php
+docs/HANDOVER.md
+docs/spec/METHODOLOGY.md
+docs/board/todo/0160-repayment-instalment-can-land-on-a-protection-premium-line.md
+OUT-OF-SCOPE: 0160
+
+Built #4 only; #1 to #3 were already met and nothing here moves them.
+
+The assembler now splits the while_mortgaged lines three ways. `mortgageCosts` (flat in cash, unscaled at a death) holds only an ESSENTIAL line that `HouseholdAssembler::isMortgagePayment()` says is the payment: its label names none of insurance, assurance, protection, premium, cover, fee. The rest go to two new `ExpenseProfile` fields, `mortgageLinkedEssential` and `mortgageLinkedDiscretionary`. They stay inside their own spend path, so they ride CPI and the survivor factor like any spend, and `PathProjector` takes them out (each from its own tier) only once the mortgage is no longer owed: repaid, home sold, or a repayment schedule past its last instalment. `withoutPropertyCosts` removes them per tier too, and both sweep levers carry them. The PLSA basis subtracts them so it does not move.
+
+On screen: a new `mortgage_payment` results note fires for any non-repayment mortgage line, stating the payment is fixed in cash terms and does NOT fall if one of you dies, and that premiums and fees still rise with prices. The builder hint on an auto-classified mortgage line now says which treatment that line gets, from the same rule.
+
+Watched failing first, on HEAD source via a parked patch: floor read GBP 12,000 not 10,000 (discretionary GBP 12,000 overpayment); a GBP 1,200 premium was worth GBP 664 real in 2046 not GBP 1,200; essential fell GBP 9,200 not 7,200 at redemption; no note existed. The first fixture was a single person and failed for the wrong reason (survivor factor from year 0), so it was switched to a couple and re-watched failing for the right reason. The engine test `test_without_property_costs_takes_each_mortgage_linked_line_from_its_own_tier` guards new plumbing and could not be watched failing for a reason (the field did not exist). `ExpenseProfileWitherTest` was extended with the two new fields; its allowed-change list for `withoutPropertyCosts` legitimately grew by the discretionary path.
+
+Assumed: which line is the payment is read off the label, like the condition already is. No builder control lets the reader say so explicitly. If Rob wants one, that is a new card.
+
+`ENGINE_VERSION` bumped to `finance-engine/only-the-mortgage-payment-is-flat`. Task 5 (stored-scenario re-run, then `scenarios:audit`) is still not done: it writes to the shared live database from unmerged code, so it belongs after the merge. Not seen in a browser: Herd serves C:\Dev\RetireForecast, not this worktree, so the note and the hint still need a browser check.
+
+Card 0160: `ResultPresenter::isMortgageLine()` is a second definition of 'the payment' and can put a repayment instalment on a 'Mortgage protection' line listed first.
