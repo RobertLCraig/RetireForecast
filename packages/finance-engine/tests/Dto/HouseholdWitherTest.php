@@ -22,6 +22,7 @@ use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\ResidenceDisposal;
 use RetireForecast\FinanceEngine\Dto\Sex;
+use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
@@ -126,6 +127,30 @@ final class HouseholdWitherTest extends TestCase
                 '$this->'.$field,
                 $body,
                 "Household::copy() never mentions \${$field}: a wither would silently drop it",
+            );
+        }
+    }
+
+    /**
+     * The housing transform builds every buy and rent variant's household outside `copy()`,
+     * because it sets fields `copy()` cannot (a null home for rent, the former residence's
+     * disposal, the year-0 realised gains). So it carries the same duty: its reconstruction must
+     * name every public property, or a new field reaches the stay-put plan and silently falls
+     * out of every sell plan. Board card 0034 #3.
+     */
+    public function test_the_housing_transform_names_every_household_field(): void
+    {
+        $source = (string) file_get_contents((new \ReflectionClass(HousingComparison::class))->getFileName());
+        $start = (int) strpos($source, 'private function withHousing(');
+        $this->assertGreaterThan(0, $start, 'HousingComparison::withHousing() moved — update this test');
+        $end = strpos($source, 'function ', $start + 30);
+        $body = $end === false ? substr($source, $start) : substr($source, $start, $end - $start);
+
+        foreach ($this->fieldNames() as $field) {
+            $this->assertMatchesRegularExpression(
+                '/\b'.$field.':/',
+                $body,
+                "HousingComparison::withHousing() never passes {$field}: every sell plan would silently drop it",
             );
         }
     }

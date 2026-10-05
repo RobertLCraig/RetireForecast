@@ -435,6 +435,11 @@ final class HousingComparison
      * the Inheritance Tax downsizing addition; without it a sell plan is taxed as though the
      * residence nil-rate band had simply been thrown away.
      *
+     * This builds the household by hand, not through `Household::copy()`, because it sets fields
+     * `copy()` treats null as "unchanged" for (no home on a rent plan, no disposal). It must still
+     * pass EVERY Household field, or a new one silently falls out of every sell plan; guarded by
+     * `HouseholdWitherTest::test_the_housing_transform_names_every_household_field`.
+     *
      * @param  array{atAge: int, amount: Money, label: string}|null  $oneOffCost
      * @param  array<string, Money>  $realisedGains
      * @param  list<CapitalReceipt>|null  $capitalReceipts
@@ -482,6 +487,7 @@ final class HousingComparison
             capitalReceipts: $capitalReceipts ?? $household->capitalReceipts,
             realisedGainsAtStart: $realisedGains,
             formerResidenceDisposal: $formerResidenceDisposal,
+            marriageDate: $household->marriageDate,
         );
     }
 }
