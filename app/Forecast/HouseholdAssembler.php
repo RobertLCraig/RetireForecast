@@ -282,7 +282,12 @@ final class HouseholdAssembler
             fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_owning_home',
             'utilities',
         );
-        $mortgageCosts = $this->sumLines($lines, fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_mortgaged');
+        // Only the PAYMENT is held flat in cash and charged to a survivor whole; every other line
+        // that stops with the mortgage stays ordinary spend in its own tier (board card 0024).
+        $whileMortgaged = fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_mortgaged';
+        $mortgageCosts = $this->sumLines($lines, fn (array $l): bool => $whileMortgaged($l) && self::tierOf($l) === 'essential' && self::isMortgagePayment($l));
+        $mortgageLinkedEssential = $this->sumLines($lines, fn (array $l): bool => $whileMortgaged($l) && self::tierOf($l) === 'essential' && ! self::isMortgagePayment($l));
+        $mortgageLinkedDiscretionary = $this->sumLines($lines, fn (array $l): bool => $whileMortgaged($l) && self::tierOf($l) !== 'essential');
         $employmentCosts = $this->sumLines($lines, fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_working');
 
         return new ExpenseProfile(
@@ -308,6 +313,8 @@ final class HouseholdAssembler
             propertyCosts: $propertyCosts->isPositive() ? $propertyCosts : null,
             employmentCosts: $employmentCosts->isPositive() ? $employmentCosts : null,
             mortgageCosts: $mortgageCosts->isPositive() ? $mortgageCosts : null,
+            mortgageLinkedEssential: $mortgageLinkedEssential->isPositive() ? $mortgageLinkedEssential : null,
+            mortgageLinkedDiscretionary: $mortgageLinkedDiscretionary->isPositive() ? $mortgageLinkedDiscretionary : null,
             essentialSpendPath: $essentialPath,
             discretionarySpendPath: $discretionaryPath,
             // Above-CPI growth for the while-owning-home lines (service charge / ground rent /
@@ -380,6 +387,26 @@ final class HouseholdAssembler
         }
 
         return 'always';
+    }
+
+    /**
+     * Is this line the mortgage PAYMENT, rather than something else that runs only while the
+     * mortgage does? Read off the label, as the condition is: a line naming cover or a charge
+     * ("Mortgage protection insurance", "Mortgage broker fee") is a price that rises with prices,
+     * not interest on a fixed balance (board card 0024).
+     *
+     * @param  array<string, mixed>  $line
+     */
+    public static function isMortgagePayment(array $line): bool
+    {
+        $label = strtolower((string) ($line['label'] ?? ''));
+        foreach (['insurance', 'assurance', 'protection', 'premium', 'cover', 'fee'] as $keyword) {
+            if (str_contains($label, $keyword)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

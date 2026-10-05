@@ -49,6 +49,8 @@ final class ExpenseProfileWitherTest extends TestCase
             discretionarySpendPath: SpendPath::flat(Money::fromPounds(6_000)),
             propertyCostsRealGrowth: Percent::fromPercent(2),
             propertyCostsUtilities: Money::fromPounds(900),
+            mortgageLinkedEssential: Money::fromPounds(600),
+            mortgageLinkedDiscretionary: Money::fromPounds(400),
         );
     }
 
@@ -78,7 +80,9 @@ final class ExpenseProfileWitherTest extends TestCase
         $cases = [
             'withoutPropertyCosts' => [
                 fn (): ExpenseProfile => $base->withoutPropertyCosts(),
-                ['essentialAnnualSpend', 'essentialSpendPath', 'oneOffCosts', 'propertyCosts', 'mortgageCosts', 'propertyCostsUtilities'],
+                // It also takes away the lines that ran only while the mortgage did, each from its
+                // own tier, so the discretionary path moves by the discretionary one (card 0024).
+                ['essentialAnnualSpend', 'essentialSpendPath', 'discretionaryAnnualSpend', 'discretionarySpendPath', 'oneOffCosts', 'propertyCosts', 'mortgageCosts', 'propertyCostsUtilities', 'mortgageLinkedEssential', 'mortgageLinkedDiscretionary'],
             ],
             'withMortgageCosts' => [
                 fn (): ExpenseProfile => $base->withMortgageCosts(Money::fromPounds(7_500)),

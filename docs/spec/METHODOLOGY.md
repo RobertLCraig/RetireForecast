@@ -424,7 +424,9 @@ Each projected year the engine:
    balance amortises to zero over the term and the instalment stops when it does). Whichever shape
    it takes, a mortgage payment is treated as what it is — **fixed in cash terms**, so it costs less
    in real money each year, and **unchanged when one partner dies**, unlike ordinary household
-   spending.
+   spending. That is the payment only. Any other line that runs only while the mortgage does (a
+   protection premium, a fee, a voluntary overpayment) stops with it, but until then rises with
+   prices and stays in the tier it was entered in.
 6. Funds any shortfall by the chosen **withdrawal strategy**, grossing pension withdrawals up for
    tax; invests any surplus.
 7. Charges capital gains tax on any GIA disposal, and on death passes the estate to the survivor (so

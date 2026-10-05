@@ -1516,6 +1516,18 @@ final class PathProjector
         $targetPence = max(0, $targetPence - $mortgagePay);
         $essentialPence = max(0, $essentialPence - $mortgagePay);
 
+        // The OTHER lines that run only while the mortgage does (a protection premium, a fee, a
+        // voluntary overpayment) are not interest on a fixed balance: they stay in their own tier,
+        // ride CPI and the survivor factor like the rest of spend, and only stop when the debt
+        // does (board card 0024). A repayment schedule's debt ends with its last instalment.
+        $mortgageOwed = ! $state['mortgageRepaid'] && ! $state['homeSold']
+            && ($state['repaymentSchedule'] === null || $state['repaymentSchedule']->paymentIn($calendarYear)->isPositive());
+        if (! $mortgageOwed) {
+            $linkedEssential = $household->expenseProfile->mortgageLinkedEssential()->pence;
+            $targetPence = max(0, $targetPence - $linkedEssential - $household->expenseProfile->mortgageLinkedDiscretionary()->pence);
+            $essentialPence = max(0, $essentialPence - $linkedEssential);
+        }
+
         // After a forced sale the home is gone, so its property costs (service charge / ground
         // rent — the while_owning_home bucket) stop too, alongside the running costs below. The
         // year-0 sell variants drop these via withoutPropertyCosts; here they drop from the sale year.

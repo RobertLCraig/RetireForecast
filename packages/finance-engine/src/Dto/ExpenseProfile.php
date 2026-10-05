@@ -45,7 +45,13 @@ use RetireForecast\FinanceEngine\Money\Percent;
  *    or by *redemption* while the home is kept (the projector drops it once the mortgage is
  *    repaid from capital — a stricter condition than "while owning", which service charge etc.
  *    keep). Separated so a repay-and-stay path does not double-count the repayment plus the
- *    ongoing payment.
+ *    ongoing payment. It is the PAYMENT only: the projector holds it flat in cash and charges a
+ *    survivor the whole of it, which is right for interest on a fixed balance and wrong for
+ *    anything else (board card 0024).
+ *  - $mortgageLinkedEssential / $mortgageLinkedDiscretionary — the other lines that run only
+ *    while the mortgage does (a mortgage life or protection premium, a fee, a voluntary
+ *    overpayment), one per tier. They stop when the mortgage does, but until then they are
+ *    ordinary spend in their own tier: indexed to CPI and survivor-scaled like the rest.
  *  - $employmentCosts — status-linked costs (e.g. commuting) charged only while someone is
  *    working; the projector drops them in years no one earns (i.e. from retirement).
  * All are treated as essential (their auto-classified members — mortgage, service charge,
@@ -140,6 +146,8 @@ final class ExpenseProfile
          * look better, so the adverse default is the one that does not have it.
          */
         public readonly ?SpendingGuardrail $spendingGuardrail = null,
+        public readonly ?Money $mortgageLinkedEssential = null,
+        public readonly ?Money $mortgageLinkedDiscretionary = null,
     ) {
         $this->essentialSpendPath = $this->resolvePath($essentialSpendPath, $essentialAnnualSpend, 'essential');
         $this->discretionarySpendPath = $this->resolvePath($discretionarySpendPath, $discretionaryAnnualSpend, 'discretionary');
@@ -185,6 +193,18 @@ final class ExpenseProfile
     public function mortgageCosts(): Money
     {
         return $this->mortgageCosts ?? Money::zero();
+    }
+
+    /** The essential lines, other than the payment, that stop with the mortgage (zero if none). */
+    public function mortgageLinkedEssential(): Money
+    {
+        return $this->mortgageLinkedEssential ?? Money::zero();
+    }
+
+    /** The discretionary lines that stop with the mortgage (zero if none). */
+    public function mortgageLinkedDiscretionary(): Money
+    {
+        return $this->mortgageLinkedDiscretionary ?? Money::zero();
     }
 
     /**
@@ -234,7 +254,8 @@ final class ExpenseProfile
      * buy/rent variants, where that home is sold. That means BOTH the ownership costs
      * (service charge / ground rent) AND the mortgage payment: a sold home pays neither.
      * The costs are essential by nature and flat, so they come out of every band of the
-     * essential path (capped at zero); the discretionary path is unchanged.
+     * essential path (capped at zero). The discretionary path loses only the discretionary lines
+     * that ran while the mortgage did.
      *
      * The dated lumps marked `while_owning_home` go with them. A major-works demand is a
      * liability of owning the flat, so a plan that sold it in year 0 must not be charged for a
@@ -249,7 +270,8 @@ final class ExpenseProfile
      */
     public function withoutPropertyCosts(): self
     {
-        $gross = $this->propertyCosts()->plus($this->mortgageCosts());
+        $gross = $this->propertyCosts()->plus($this->mortgageCosts())->plus($this->mortgageLinkedEssential());
+        $linkedDiscretionary = $this->mortgageLinkedDiscretionary();
         $oneOffs = array_values(array_filter(
             $this->oneOffCosts,
             static fn (array $cost): bool => ($cost['condition'] ?? null) !== 'while_owning_home',
@@ -258,18 +280,23 @@ final class ExpenseProfile
         // The guard reads the GROSS buckets, not what is left after the utilities are kept back:
         // a charge that is entirely utilities nets to nothing to remove, and returning $this there
         // would leave the sold home's marker (and its escalator) on a plan that has no home.
-        if (! $gross->isPositive() && count($oneOffs) === count($this->oneOffCosts)) {
+        if (! $gross->isPositive() && ! $linkedDiscretionary->isPositive() && count($oneOffs) === count($this->oneOffCosts)) {
             return $this;
         }
 
         $essentialPath = $this->essentialSpendPath->minusFlat($gross->minus($this->propertyCostsUtilities()));
+        $discretionaryPath = $this->discretionarySpendPath->minusFlat($linkedDiscretionary);
 
         return $this->copy([
             'essentialAnnualSpend' => $essentialPath->startAmount(),
             'essentialSpendPath' => $essentialPath,
+            'discretionaryAnnualSpend' => $discretionaryPath->startAmount(),
+            'discretionarySpendPath' => $discretionaryPath,
             'oneOffCosts' => $oneOffs,
             'propertyCosts' => null,
             'mortgageCosts' => null,
+            'mortgageLinkedEssential' => null,
+            'mortgageLinkedDiscretionary' => null,
             // The utilities part is now ordinary essential spend inside the path above, so its
             // marker must go: nothing may strip it a second time, and no service-charge escalator
             // belongs on an energy bill. The escalation RATE is carried through instead: it is inert
@@ -341,6 +368,8 @@ final class ExpenseProfile
             propertyCostsRealGrowth: $take('propertyCostsRealGrowth'),
             propertyCostsUtilities: $take('propertyCostsUtilities'),
             spendingGuardrail: $take('spendingGuardrail'),
+            mortgageLinkedEssential: $take('mortgageLinkedEssential'),
+            mortgageLinkedDiscretionary: $take('mortgageLinkedDiscretionary'),
         );
     }
 

@@ -120,6 +120,25 @@ final class ContingentCostsTest extends TestCase
         $this->assertSame(0, $sold->mortgageCosts()->pence);
     }
 
+    public function test_without_property_costs_takes_each_mortgage_linked_line_from_its_own_tier(): void
+    {
+        // A sold home has no mortgage, so its protection premium and its overpayment go too, each
+        // out of the tier it sat in: the essential floor never pays for a discretionary line.
+        $sold = (new ExpenseProfile(
+            essentialAnnualSpend: Money::fromPounds(30_000),
+            discretionaryAnnualSpend: Money::fromPounds(5_000),
+            survivorSpendFactor: Percent::fromPercent(70),
+            mortgageCosts: Money::fromPounds(12_000),
+            mortgageLinkedEssential: Money::fromPounds(1_200),
+            mortgageLinkedDiscretionary: Money::fromPounds(2_000),
+        ))->withoutPropertyCosts();
+
+        $this->assertSame(Money::fromPounds(16_800)->pence, $sold->essentialAnnualSpend->pence);
+        $this->assertSame(Money::fromPounds(3_000)->pence, $sold->discretionaryAnnualSpend->pence);
+        $this->assertSame(0, $sold->mortgageLinkedEssential()->pence);
+        $this->assertSame(0, $sold->mortgageLinkedDiscretionary()->pence);
+    }
+
     public function test_the_mortgage_payment_stops_when_the_mortgage_is_repaid_from_capital(): void
     {
         // Stay-put couple, mortgage redeemed from capital in 2030. The ongoing payment (a

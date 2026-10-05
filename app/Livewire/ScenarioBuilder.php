@@ -1644,7 +1644,16 @@ class ScenarioBuilder extends Component
 
         $hints = [];
         foreach ($this->expenseLines as $i => $line) {
-            $hints[$i] = $labels[HouseholdAssembler::autoCondition($line)] ?? '';
+            $condition = HouseholdAssembler::autoCondition($line);
+            $hints[$i] = $labels[$condition] ?? '';
+            // The payment is held flat in cash and charged to a survivor whole; any other line that
+            // stops with the mortgage still rises with prices (board card 0024). Same rule the
+            // assembler charges by, so the hint cannot disagree with the forecast.
+            if ($condition === 'while_mortgaged') {
+                $hints[$i] .= HouseholdAssembler::tierOf($line) === 'essential' && HouseholdAssembler::isMortgagePayment($line)
+                    ? '; fixed in cash terms, so it does not rise with inflation or fall if one of you dies'
+                    : '; rises with inflation like the rest of your spending';
+            }
         }
 
         return $hints;

@@ -2552,6 +2552,21 @@ final class ResultPresenter
                 .'unaffordable. Lender fees and any early-repayment charge are not included here.'];
         }
 
+        // (c3b) Every other mortgage shape (interest-only, retirement interest-only, buy-to-let, a
+        // serviced lifetime mortgage) is charged off the "Mortgage" spend line, with the same two
+        // counter-intuitive properties the repayment note states (board card 0024). Without this
+        // the line is held flat in cash and charged to a survivor whole with nothing on screen
+        // saying so (factual, not advice).
+        $mortgagePayment = $household->expenseProfile->mortgageCosts();
+        if ($repaymentTerms === null && $mortgagePayment->isPositive()) {
+            $notes[] = ['kind' => 'mortgage_payment', 'text' => "Your mortgage payment of {$mortgagePayment->format()} a year is "
+                .'charged as an essential cost for as long as the mortgage runs, and stops if it is repaid or the home is sold. '
+                .'Two things to read carefully: the payment is fixed in cash terms, so it costs a little less in today’s money '
+                .'every year; and it does NOT fall if one of you dies, because the survivor owes the lender the same amount. '
+                .'Other lines that run only while the mortgage does (a protection premium, a fee) are not the payment, so they '
+                .'still rise with prices like the rest of your spending.'];
+        }
+
         // (c4) A home that LOSES value. A bought home can carry a negative real growth rate (a park
         // home depreciates), and a reader's whole mental model of a home is that it appreciates — so
         // state it, with what the home is worth by the end. Without this the wealth line quietly
@@ -3199,6 +3214,8 @@ final class ResultPresenter
         $spend = $household->expenseProfile->targetAnnualSpend()
             ->minus($household->expenseProfile->propertyCosts())
             ->minus($household->expenseProfile->mortgageCosts())
+            ->minus($household->expenseProfile->mortgageLinkedEssential())
+            ->minus($household->expenseProfile->mortgageLinkedDiscretionary())
             ->minZero();
         $runningCosts = $household->primaryResidence?->runningCosts;
         if ($runningCosts !== null) {

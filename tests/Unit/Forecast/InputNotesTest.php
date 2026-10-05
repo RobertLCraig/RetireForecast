@@ -526,6 +526,36 @@ final class InputNotesTest extends TestCase
         $this->assertSame([], array_values(array_filter($notes, fn (array $n): bool => $n['kind'] === 'repayment_mortgage')));
     }
 
+    public function test_an_interest_only_mortgage_payment_is_stated_as_fixed_in_cash_terms(): void
+    {
+        // Board card 0024. Every mortgage shape that is not a repayment schedule is charged off the
+        // "Mortgage" line, held flat in cash and charged to a survivor whole. The repayment note
+        // already says so for its shape; the others must say it too, or the figure is invisible.
+        $state = [
+            'householdName' => 'Interest only', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'name' => 'Pat', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'accounts' => [['id' => 'a1', 'ownerId' => 'p1', 'type' => 'cash', 'balance' => '300000']],
+            'expenseLines' => [
+                ['id' => 'e1', 'amount' => '15000', 'category' => 'essential'],
+                ['id' => 'e2', 'label' => 'Mortgage', 'amount' => '6000', 'category' => 'essential'],
+            ],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => ['currentValue' => '350000', 'ownership' => 'mortgaged', 'outstandingMortgage' => '118000'],
+        ];
+
+        $flag = array_values(array_filter($this->notes($state), fn (array $n): bool => $n['kind'] === 'mortgage_payment'));
+        $this->assertCount(1, $flag);
+        $this->assertStringContainsString('£6,000', $flag[0]['text']);
+        $this->assertStringContainsString('fixed in cash terms', $flag[0]['text']);
+        $this->assertStringContainsString('does NOT fall if one of you dies', $flag[0]['text']);
+
+        // No mortgage line, no note.
+        $state['expenseLines'] = [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']];
+        $this->assertSame([], array_values(array_filter($this->notes($state), fn (array $n): bool => $n['kind'] === 'mortgage_payment')));
+    }
+
     public function test_a_static_mortgage_raises_no_roll_up_note(): void
     {
         // No roll-up rate ⇒ a repayment/serviced mortgage ⇒ no roll-up note (no noise).

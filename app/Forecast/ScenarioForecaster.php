@@ -61,7 +61,15 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-05 (rent-arm-keeps-the-readers-settings): the rent arm of a housing comparison
+     * Bumped 2026-10-05 (only-the-mortgage-payment-is-flat): every line that runs only while the
+     * mortgage does was held flat in cash, charged to a survivor whole and taken out of the
+     * ESSENTIAL floor, whatever it was. Only the payment is now; a protection premium or a fee
+     * rides CPI and the survivor factor, and a discretionary line stays discretionary
+     * ({@see HouseholdAssembler::isMortgagePayment}). A plan stored under an earlier stamp with
+     * such a line has too little real spend in later years, and one with a discretionary
+     * mortgage line has the wrong essential floor; every other plan is byte-identical. See board
+     * card 0024.
+     * Previous bump 2026-10-05 (rent-arm-keeps-the-readers-settings): the rent arm of a housing comparison
      * rebuilt its settings field by field and dropped every choice it did not name: the ISA
      * allowance switch, IHT modelling, home to descendants, the State Pension uprating, the
      * beneficiary's tax rate and the planning horizon. It now copies the reader's settings and
@@ -440,7 +448,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/rent-arm-keeps-the-readers-settings';
+    public const ENGINE_VERSION = 'finance-engine/only-the-mortgage-payment-is-flat';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
