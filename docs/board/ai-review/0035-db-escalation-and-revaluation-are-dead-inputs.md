@@ -30,7 +30,7 @@ Annuity escalation, which is already honoured.
 - [x] #1 WHEN a defined-benefit pension is set to no escalation in payment, THE APP SHALL hold it flat in nominal terms for the whole projection.
 - [x] #2 WHEN a capped escalation basis is chosen, THE APP SHALL apply inflation up to the cap and no more.
 - [x] #3 WHEN a pension is deferred, THE APP SHALL revalue it on its revaluation basis until normal retirement age, then escalate it on its in-payment basis.
-- [ ] #4 WHEN a member dies before normal retirement age and a survivor's pension is paid, THE APP SHALL escalate that pension on its in-payment basis from the death, and a test SHALL set different revaluation and in-payment bases to prove it.
+- [x] #4 WHEN a member dies before normal retirement age and a survivor's pension is paid, THE APP SHALL escalate that pension on its in-payment basis from the death, and a test SHALL set different revaluation and in-payment bases to prove it.
 <!-- AC:END -->
 
 ## Tasks
@@ -176,3 +176,26 @@ VERDICT: defect
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #4 because the breakage finding still holds on master. `PathProjector::escalateDbPensions()` picks the phase from the member's age whether alive or dead, while `survivorDbIncomeNominal()` pays from the death, so a widow's pension in payment escalates on the revaluation basis until the member's notional retirement age. Same pass: `PensionEscalationBasis::increase()` floors only the capped cases at zero, so in a deflation year a capped pension pays more than plain CPI; and one `fixedEscalationRate` still serves both phases, which the build did not declare.
+
+**2026-10-06** RESULT: done
+TESTS: +1 new, all green
+TOUCHED:
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Forecast/DbEscalationTest.php
+app/Forecast/ScenarioForecaster.php
+docs/HANDOVER.md
+docs/board/todo/0170-uncapped-db-escalation-cuts-a-pension-in-deflation.md
+docs/board/todo/0171-one-fixed-db-rate-serves-both-phases.md
+OUT-OF-SCOPE: 0170, 0171
+
+Criterion 4 only; 1 to 3 were met by the earlier take and nothing here touches them.
+
+The fault: `PathProjector::escalateDbPensions()` chose the phase from the member's age alone, so a member who died deferred left a survivor's pension that is in payment from the death but kept revaluing until the member's notional retirement age. The fix passes `$draws` in and starts payment at `min(normalRetirementAge, deathAge + 1)`, the first year `survivorDbIncomeNominal()` pays. The bump landing on that first survivor year is still revaluation, the same boundary the normal-retirement-age case already used. The stale docblock on `survivorDbIncomeNominal()` is corrected.
+
+Test: `DbEscalationTest::test_a_survivor_pension_escalates_on_its_in_payment_basis_from_the_death`. Member 55 in 2026, NRA 65, dies at 58, 50% spouse fraction, 5% inflation. It sets the two bases apart both ways: revaluation CPI with in-payment None must be flat from 2030 to 2040; the mirror must rise at 5% over the same years. Watched failing first for the stated reason: the frozen case paid 12,155.07 in 2030 and 16,288.95 in 2040, i.e. CPI was still added until 2036.
+
+`ENGINE_VERSION` is now `finance-engine/survivor-db-escalates-in-payment-from-death`. The stored-scenario re-run is owed for plans whose two DB bases differ and whose member dies deferred (Monte Carlo and the EarlyDeathStress path). GoldenMasterTest did not redden. No screen changed, so no browser check is owed for this take.
+
+The two other findings from the 2026-09-05 review and the 2026-09-28 manager pass are outside criterion 4 and are now carded rather than left in prose: 0170 (CPI and RPI are not floored at zero in a deflation year, so a capped pension can pay more than plain CPI; the rule needs a source before the floor is added) and 0171 (one fixed rate serves both phases). The two open tasks (RPI wedge, five different year-20 incomes) still sit with card 0095.
+
+Full suite run with `php artisan test` (there is no pest.bat here, see HANDOVER): passed, one skip which is the compliance partition test in personal-use mode. Pint clean.
