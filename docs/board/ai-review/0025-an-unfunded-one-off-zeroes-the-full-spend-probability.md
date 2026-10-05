@@ -30,7 +30,7 @@ Whether a particular purchase gap should be funded. That is a scenario input que
 - [x] #1 WHEN a plan misses its full spending target in some years, THE APP SHALL report the fraction of years met, not only an all-or-nothing flag.
 - [x] #2 WHEN a one-off capital cost cannot be funded, THE APP SHALL raise a distinct warning naming that cost, rather than only depressing a spending probability.
 - [x] #3 WHEN the essentials and full-spend probabilities are reported together, THE APP SHALL not let them diverge by more than the years actually unfunded.
-- [ ] #4 WHEN a plan carries an unfunded one-off cost, THE APP SHALL NOT call it fully funded anywhere: the `/afford` card and verdict (`AffordabilityAssessment::card()` / `verdict()`), `Interpretation::outcome()` and `SustainableSpend::forScenario()` all see the unfunded cost, and a keep-the-home plan that cannot redeem its mortgage is still flagged unaffordable.
+- [x] #4 WHEN a plan carries an unfunded one-off cost, THE APP SHALL NOT call it fully funded anywhere: the `/afford` card and verdict (`AffordabilityAssessment::card()` / `verdict()`), `Interpretation::outcome()` and `SustainableSpend::forScenario()` all see the unfunded cost, and a keep-the-home plan that cannot redeem its mortgage is still flagged unaffordable.
 <!-- AC:END -->
 
 ## Tasks
@@ -151,3 +151,29 @@ VERDICT: defect
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #4 because the breakage finding still holds on master. Excluding an unfunded lump from `fullSpendMet()` flipped `fullSpendAlwaysMet` to true for such a plan, and the replacement warning reaches only `ResultPresenter::inputNotes()`. Commit `a6088ce` made the results page read the sell plan's own notes, but `AffordabilityAssessment`, `Interpretation` and `SustainableSpend` still read the flag only, so `/afford` can answer "Yes, this covers your full budget" over a GBP 125,000 unfunded purchase. The scope finding also stands: "Mortgage redemption" is now in the exempt one-off list, which quietly removed the keep-the-home shortfall signal.
+
+**2026-10-05** RESULT: done
+TESTS: +5 new, all green
+TOUCHED: app/Compliance/Interpretation.php
+app/DecisionSupport/SustainableSpend.php
+app/Forecast/AffordabilityAssessment.php
+app/Forecast/ScenarioForecaster.php
+docs/HANDOVER.md
+packages/finance-engine/src/Forecast/ForecastResult.php
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/src/Forecast/YearResult.php
+packages/finance-engine/tests/Forecast/PathProjectorTest.php
+packages/finance-engine/tests/Housing/UnfundedPurchaseTest.php
+tests/Feature/DecisionSupport/SustainableSpendTest.php
+tests/Feature/Forecast/UnfundedOneOffReadersTest.php
+OUT-OF-SCOPE: none
+
+AC #4, built on the reviewer's two findings.
+
+**Readers.** `ForecastResult::fullyFunded()` (fullSpendAlwaysMet AND no unfunded one-off) and `unfundedOneOffSpend()` (summed real across years) are derived methods, not stored. `AffordabilityAssessment::card()` tiers on `fullyFunded()`, so a plan with an unfunded lump is `essentials_only`, never `comfortable`; `verdict()` names the unfunded sum, and when the yearly budget held every year it says so instead of the misleading 'years the budget can't stretch'. `Interpretation::outcome()` says the yearly spending is funded but names the one-off sum. `SustainableSpend::forScenario()` holds only when `fullyFunded()`, so it returns null over a lump no restraint can fund (the pre-0025 answer); its docblock and the test's mirrored `holds()` bar were updated to match (the test helper drifted with the deliberate change, not loosened).
+
+**Mortgage redemption.** Taken back out of the judged-apart list: it is charged into spend as before but an unaffordable redemption fails the year's full spend again, so `fullSpendAlwaysMet`, the Monte Carlo probabilities and every other reader flag the keep-the-home plan. It no longer raises UNFUNDED_ONE_OFF_COST. The deprivation warning still sees it (via `$allOneOffs`), so card 0049's open false-positive finding is unchanged, not fixed in passing. The stale PathProjector comment is true again. ENGINE_VERSION bumped to `finance-engine/unredeemed-mortgage-fails-full-spend`; GoldenMasterTest did not redden.
+
+**Watched fail.** PathProjectorTest::test_a_redemption_the_household_cannot_afford_fails_the_full_spend_measure (redemption year read as met), UnfundedPurchaseTest::test_a_plan_with_an_unfunded_one_off_is_never_fully_funded (against a stub that returned the old flag), UnfundedOneOffReadersTest: afford card tiered 'comfortable', interpretation said 'full spending is funded every year', sustainable spend returned GBP 21,619/yr over a GBP 50m unfunded one-off. The sustainable-spend test first passed for the wrong reason (the lump drained savings and essentials failed); I lowered the essential floor so the lump is the only unfunded thing, then watched it fail.
+
+**Not settled.** The re-run is owed for stored keep-the-home plans with an unaffordable redemption. The new /afford verdict wording has not been seen in a browser (this worktree is not what Herd serves). The orient hook reports HANDOVER.md at 79 KB, over budget; folding a block out was not this card's scope, and I added one short bullet.
