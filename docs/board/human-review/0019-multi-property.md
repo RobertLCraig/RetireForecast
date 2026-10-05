@@ -148,3 +148,30 @@ The scheduler moved the card back to in-progress without either gate changing, s
 No criterion named met. #1 was ticked by the 2026-08-29 take and I did not touch it. Nothing to look at in a browser.
 
 **2026-10-05** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 7 of 8 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-05 manager (m20261005211123-a996)
+
+**outcome: question**
+
+The plan and DECISIONS both say the card is built or deleted on this one fact, and only Rob knows it.
+
+**The question:** Does the household own a second property (for example a buy-to-let or an inherited flat that is let out), or expect to own one, that the forecast must include?
+
+**what the session said**
+
+Nobody has written down the answer the card needs.
+
+- The plan file says this. `docs/build/PLAN-multi-property.md`, the "Two gates before anyone starts building" box, gate 2: "Somebody confirms there is a second property to model."
+- `docs/DECISIONS.md` (2026-08-29) says the same. It says this question "is not an agent's to settle."
+- The card is not finished. Criteria #2 to #8 are open, and nothing is wrong with them. But the plan says no code until gate 2 is answered. So the builder cannot go on.
+- The only data in the project shows one household with one flat. The private files that could show a second property are gitignored.
+- Cards 0029 and 0030 are still waiting for review. That only changes when the build starts. It does not change whether the card gets built.
+
+If Rob says yes, put the card back in `todo/` after 0029 and 0030 pass review. If Rob says no, delete the card. The plan file stays as the record.
+
+QUESTION: Does the household own a second property (for example a buy-to-let or an inherited flat that is let out), or expect to own one, that the forecast must include?
+
+WHY: The plan and DECISIONS both say the card is built or deleted on this one fact, and only Rob knows it.
+
+OUTCOME: question
+
