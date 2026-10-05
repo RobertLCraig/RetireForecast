@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Forecast;
 
+use App\Enums\ScenarioVariant;
 use App\Forecast\HouseholdAssembler;
 use App\Forecast\ResultPresenter;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Benefits\DisabilityBenefitInCare;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
+use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
@@ -130,6 +132,67 @@ final class InputNotesTest extends TestCase
         $text = $notes[array_search('property_costs_growth', $kinds, true)]['text'];
         $this->assertStringContainsString('1.5% a year above inflation', $text);
         $this->assertStringContainsString('£6,000.00', $text);
+    }
+
+    /** A one-person leaseholder with a £6,000 service charge, and the growth rate given (null = blank). */
+    private function leaseholder(?string $growthPct): Household
+    {
+        $expense = ['survivorFactor' => '70'];
+        if ($growthPct !== null) {
+            $expense['propertyCostsGrowthPct'] = $growthPct;
+        }
+
+        return (new HouseholdAssembler)->household([
+            'householdName' => 'Leaseholder', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'name' => 'Alex', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired']],
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'expenseLines' => [
+                ['id' => 'e1', 'amount' => '15000', 'category' => 'essential'],
+                ['id' => 'sc', 'label' => 'Service Charge', 'amount' => '6000', 'category' => 'essential'],
+            ],
+            'expense' => $expense,
+        ]);
+    }
+
+    /** The property-cost growth note for a household on a plan, or null when there is none. */
+    private function propertyCostsGrowthNote(Household $household, ?string $variant = null): ?string
+    {
+        $notes = ResultPresenter::inputNotes($household, $this->forecastFor($household), null, $variant);
+        $i = array_search('property_costs_growth', array_column($notes, 'kind'), true);
+
+        return $i === false ? null : $notes[$i]['text'];
+    }
+
+    public function test_the_property_cost_growth_in_force_is_shown_whether_assumed_or_chosen(): void
+    {
+        // Board card 0028 #4. A stated 0% used to raise no note at all, so the one choice that most
+        // flatters a plan was the one the results never showed. Each note says whose figure it is.
+        $zero = $this->propertyCostsGrowthNote($this->leaseholder('0'));
+        $this->assertNotNull($zero, 'a stated 0% is shown');
+        $this->assertStringContainsString('0% a year above inflation', $zero);
+        $this->assertStringContainsString('the rate you entered', $zero);
+
+        $chosen = $this->propertyCostsGrowthNote($this->leaseholder('1.5'));
+        $this->assertStringContainsString('1.5% a year above inflation', $chosen);
+        $this->assertStringContainsString('the rate you entered', $chosen);
+
+        $assumed = $this->propertyCostsGrowthNote($this->leaseholder(null));
+        $this->assertStringContainsString(
+            (ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS / 100).'% a year above inflation',
+            $assumed,
+        );
+        $this->assertStringContainsString('our assumed rate', $assumed);
+    }
+
+    public function test_the_property_cost_growth_note_is_shown_only_on_a_plan_that_keeps_the_home(): void
+    {
+        // Board card 0028 #4. The sell plans strip the service charge with the flat, so telling their
+        // reader how fast it rises asserts a cost the projection never charges.
+        $household = $this->leaseholder('1.5');
+
+        $this->assertNotNull($this->propertyCostsGrowthNote($household, ScenarioVariant::StayPut->value));
+        $this->assertNull($this->propertyCostsGrowthNote($household, ScenarioVariant::BuyOutright->value));
+        $this->assertNull($this->propertyCostsGrowthNote($household, ScenarioVariant::Rent->value));
     }
 
     public function test_a_flat_plan_raises_no_spending_smile_note(): void

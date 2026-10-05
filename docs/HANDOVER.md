@@ -9,9 +9,14 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **The spend levers keep the reader's property-cost growth rate.** Card 0028 #4. `ENGINE_VERSION`
+  is `finance-engine/spend-levers-keep-property-cost-growth`; thresholds and sustainable-spend
+  answers are owed a re-run for plans with a stated rate. The results note now shows the rate in
+  force (a stated 0% too), only on a stay-put plan. Not seen in a browser.
+
 - **"Fully funded" now includes the one-off lumps.** Card 0025. Readers that say a plan is fully
   funded ask `ForecastResult::fullyFunded()`, not `$fullSpendAlwaysMet`; an unaffordable mortgage
-  redemption fails full spend again. `ENGINE_VERSION` is `finance-engine/unredeemed-mortgage-fails-full-spend`;
+  redemption fails full spend again. `ENGINE_VERSION` was `finance-engine/unredeemed-mortgage-fails-full-spend`;
   the **re-run is owed** for keep-the-home plans that cannot redeem. The new `/afford` verdict is
   not seen in a browser.
 

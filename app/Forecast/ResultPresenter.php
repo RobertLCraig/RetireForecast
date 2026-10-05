@@ -2940,12 +2940,13 @@ final class ResultPresenter
             }
         }
 
-        // Above-CPI growth on the home-ownership cost lines: surface that those costs climb in
-        // real terms year on year (the later-year squeeze reads as intended, not as a bug).
-        $propertyGrowth = $profile->propertyCostsRealGrowth();
-        if ($propertyGrowth->asFraction() > 0.0 && $profile->propertyCosts()->isPositive()) {
-            $rate = rtrim(rtrim(number_format($propertyGrowth->asPercent(), 2), '0'), '.');
-            $notes[] = ['kind' => 'property_costs_growth', 'text' => "Home-ownership costs (service charge, ground rent, levies — {$profile->propertyCosts()->format()} a year today) are modelled rising {$rate}% a year above inflation while you own the home, so they climb in real terms over the projection."];
+        // The growth rate in force on the home-ownership cost lines, whoever set it (card 0028):
+        // a stated 0% is shown too, since it is the choice that most flatters a plan. Only on a plan
+        // that keeps the home: the sell plans strip these costs with the flat.
+        if (self::keepsCurrentHome($variant) && $profile->propertyCosts()->isPositive()) {
+            $rate = rtrim(rtrim(number_format($profile->propertyCostsRealGrowth()->asPercent(), 2), '0'), '.');
+            $whose = $profile->propertyCostsGrowthIsAssumed() ? 'our assumed rate, as you left it blank' : 'the rate you entered';
+            $notes[] = ['kind' => 'property_costs_growth', 'text' => "Home-ownership costs (service charge, ground rent, levies — {$profile->propertyCosts()->format()} a year today) are modelled rising {$rate}% a year above inflation while you own the home ({$whose})."];
         }
 
         return $notes;

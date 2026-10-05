@@ -30,6 +30,7 @@ use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\Sweep\Lever\BuyPriceLever;
+use RetireForecast\FinanceEngine\Sweep\Lever\DiscretionarySpendLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\EssentialSpendLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\PersonLongevityLever;
 use RetireForecast\FinanceEngine\Sweep\Lever\RetirementAgeLever;
@@ -88,6 +89,27 @@ final class SweepLeversTest extends TestCase
             'discretionary spend is preserved',
         );
         $this->assertSame(LeverDirection::Decreasing, (new EssentialSpendLever)->direction());
+    }
+
+    public function test_the_spend_levers_carry_the_stated_property_cost_growth(): void
+    {
+        // Board card 0028 #4. A null rate means "take the CPI + 3% default", so a lever that rebuilds
+        // the profile and forgets the rate silently turns a reader's stated 0% into 3%: the base run
+        // charges one rate and the sustainable-spend answer another.
+        $household = $this->workingCouple();
+        $household = $household->withExpenseProfile(new ExpenseProfile(
+            Money::fromPounds(34_000),
+            Money::fromPounds(2_000),
+            Percent::fromPercent(70),
+            propertyCosts: Money::fromPounds(6_000),
+            propertyCostsRealGrowth: Percent::zero(),
+        ));
+
+        foreach ([new EssentialSpendLever, new DiscretionarySpendLever] as $lever) {
+            $profile = $lever->apply($household, $this->settings(), 20_000)->household->expenseProfile;
+            $this->assertSame(0, $profile->propertyCostsRealGrowth()->basisPoints, $lever->name().' keeps the stated 0%');
+            $this->assertFalse($profile->propertyCostsGrowthIsAssumed(), $lever->name().' does not turn a stated rate into an assumed one');
+        }
     }
 
     public function test_retiring_later_raises_the_success_curve(): void

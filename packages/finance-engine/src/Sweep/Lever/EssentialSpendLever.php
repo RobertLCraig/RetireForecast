@@ -35,6 +35,7 @@ final class EssentialSpendLever implements SweepLever
             $e->employmentCosts,
             $e->mortgageCosts,
             discretionarySpendPath: $e->discretionarySpendPath,
+            propertyCostsRealGrowth: $e->propertyCostsRealGrowth,
             propertyCostsUtilities: $e->propertyCostsUtilities,
             mortgageLinkedEssential: $e->mortgageLinkedEssential,
             mortgageLinkedDiscretionary: $e->mortgageLinkedDiscretionary,

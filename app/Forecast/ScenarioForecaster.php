@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-05 (unredeemed-mortgage-fails-full-spend): a mortgage repaid from capital
+     * Bumped 2026-10-05 (spend-levers-keep-property-cost-growth): the essential and discretionary
+     * spend levers dropped the reader's property-cost growth rate, so a stated rate (0% included)
+     * was swept at the CPI + 3% default. A threshold or sustainable-spend answer stored earlier for
+     * a plan with a stated rate and a service charge used the wrong rate. See board card 0028.
+     * Previous bump 2026-10-05 (unredeemed-mortgage-fails-full-spend): a mortgage repaid from capital
      * that the household cannot afford was judged apart from the recurring budget like a purchase
      * lump, so the keep-the-home plan read as fully funded with only a warning. It now fails the
      * year's full spend again, and carries no unfunded-one-off warning. A plan stored under an
@@ -454,7 +458,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/unredeemed-mortgage-fails-full-spend';
+    public const ENGINE_VERSION = 'finance-engine/spend-levers-keep-property-cost-growth';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
