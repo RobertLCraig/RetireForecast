@@ -15,7 +15,7 @@ Single-scenario export, which has plenty of headroom.
       export via a queued or batched job rather than one request.
 - [x] #2 THE APP SHALL complete a 30-scenario export without exceeding the memory limit or the
       gateway timeout.
-- [ ] #3 THE APP SHALL serve `/scenarios/pdf/archive` only for the latest successful build that is under 24 hours old, SHALL delete older archives, and SHALL let a user retry a build that is stuck in `building`.
+- [x] #3 THE APP SHALL serve `/scenarios/pdf/archive` only for the latest successful build that is under 24 hours old, SHALL delete older archives, and SHALL let a user retry a build that is stuck in `building`.
 <!-- AC:END -->
 
 ## Tasks
@@ -115,3 +115,32 @@ VERDICT: defect
 **2026-08-29** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 2 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 2 of 2 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #3 because the scope finding still holds on master. `ScenarioPdfController::downloadArchive()` checks only `ScenarioExport::exists()`, never the state or the age, so a months-old or failed-build archive is served, and nothing but `GdprService::erase()` ever deletes one. The `retry_after` finding is already fixed: `config/queue.php` now sets the database connection to 3900 (commit `fa90346`). The memory docblock in `ScenarioExport` is still wrong (`ZipArchive::addFromString` holds every PDF until `close()`); fix the claim or add each PDF from a temp file on the same pass.
+
+**2026-10-05** RESULT: done
+TESTS: +5 new, all green
+TOUCHED:
+app/Export/ScenarioExport.php
+app/Http/Controllers/ScenarioPdfController.php
+app/Livewire/Dashboard.php
+resources/views/livewire/dashboard.blade.php
+routes/console.php
+tests/Feature/Export/ScenarioExportBatchTest.php
+docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+Only #3 was open; #1 and #2 were already met and nothing in this pass changed them.
+
+Built for #3. `ScenarioExport::servable()` is true only when the latest status is `ready`, its `at` is under 24 hours old, and the file exists. `downloadArchive()` now checks that, not `exists()`, and the dashboard's download link uses it too. `queue()` deletes the previous zip, and `fail()` deletes whatever is on disk, so a failed or superseded build is never served. `exports:prune` (closure command in routes/console.php, scheduled hourly) deletes any zip under exports/ older than a day by file mtime, for every user. `ScenarioExport::stuck()` is a `building` state with no progress write for `STUCK_AFTER_MINUTES` (15). On a stuck build `downloadAll()` queues again, and the dashboard stops polling and shows 'seems to be stuck' with a 'Start it again' link.
+
+Watched red first, for the right reasons: the archive returned 200 (not 404) when a day old, after a failed build and after a new queue; the sweep left the old zip (it was run as an empty command first so it failed on behaviour, not on 'command does not exist'); the dashboard did not say stuck.
+
+Also fixed the docblock the 2026-09-28 manager note named: ScenarioExport no longer claims memory stops growing with the count. It now says ZipArchive holds each rendered PDF until close(). Wording only, no change in behaviour.
+
+Assumed, worth a look:
+- 15 minutes with no progress means stuck. One forecast renders in seconds, so this is generous, but it is my number, not a measured one.
+- The hourly sweep runs only where `php artisan schedule:work` or a cron `schedule:run` runs. Nothing in the repo shows a scheduler running on this machine. Without one, old zips are still never served, and a new or failed build still deletes the old zip, but an abandoned zip stays on disk.
+- A retry after a stuck build does not cancel the first job. If a worker later picks up both, the two builds run one after the other and write the same output. They could race only with more than one worker. I left that alone.
+
+Could not settle here: the dashboard's stuck message and its retry link have not been seen in a browser. Herd does not serve this worktree. Add them to the 0001 browser sign-off.
+
+The suite ran with `php artisan test` (there is no pest.bat; see card 0150). Pint is clean.
