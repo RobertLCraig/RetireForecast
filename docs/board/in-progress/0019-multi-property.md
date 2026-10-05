@@ -132,3 +132,17 @@ Stopped before building. The settled plan (docs/build/PLAN-multi-property.md lin
 To unblock: Rob answers the question on this card. Yes: re-queue it once 0029 and 0030 pass review, and the plan is ready to build as written. No: discard the card; the plan file stays as the record.
 
 I named no criterion met. #1 was already ticked on the card by the 2026-08-29 take and I did not touch it. Nothing to look at in a browser.
+
+**2026-10-05** RESULT: blocked
+TESTS: +0 new, none run (no code written)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, same block as the 2026-10-05 entry above. Nothing in the repository has changed since that take: the last commit on this branch is the scheduler writing that report.
+
+1. **Rob's question is still unanswered: is there a second property to model, now or expected?** The plan's gate 2 (docs/build/PLAN-multi-property.md lines 24-29) and DECISIONS 2026-08-29 both say it is not an agent's to settle, and that the answer decides build or discard. No reply is recorded on the card, in DECISIONS or in the plan.
+2. **Gate 1 is still half open.** Cards 0029 and 0030 are in ai-review, not done.
+
+The scheduler moved the card back to in-progress without either gate changing, so a third take will stop here too. To unblock: Rob answers the question on this card. Yes: re-queue it after 0029 and 0030 pass review. No: discard it; the plan file stays as the record. Until then the card should not be re-queued unattended.
+
+No criterion named met. #1 was ticked by the 2026-08-29 take and I did not touch it. Nothing to look at in a browser.
