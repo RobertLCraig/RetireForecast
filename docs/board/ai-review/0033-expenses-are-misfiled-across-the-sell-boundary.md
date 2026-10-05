@@ -35,7 +35,7 @@ Major works and the service-charge escalator, which is card 0028.
 - [x] #1 WHEN a home whose service charge includes utilities is sold, THE APP SHALL add a replacement utilities cost to the new housing situation.
 - [x] #2 THE APP SHALL treat buildings and contents insurance as essential spend wherever cover is required.
 - [x] #3 WHEN a purchase running cost is derived rather than entered, THE APP SHALL disclose it as a computed figure with the rule that produced it.
-- [ ] #4 THE APP SHALL grow the utilities inside a service charge the same way on keep and sell plans (never on the service-charge escalator while owned and flat after the sale), and the results spend slider SHALL scale a line's `utilities` with its `amount`.
+- [x] #4 THE APP SHALL grow the utilities inside a service charge the same way on keep and sell plans (never on the service-charge escalator while owned and flat after the sale), and the results spend slider SHALL scale a line's `utilities` with its `amount`.
 <!-- AC:END -->
 
 ## Tasks
@@ -184,3 +184,30 @@ VERDICT: defect
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #4 because the breakage and scope findings still hold on master. `PathProjector::projectYear` grows the whole `propertyCosts` bucket, utilities included, at CPI+3% while the home is owned and keeps only base-level utilities after a sale, so selling looks about 1.8x cheaper on energy over 20 years. `ScenarioResults::applySliders` still scales only `amount`. `ResultPresenter::plsaBenchmark()` still subtracts the utilities along with the rest of the charge.
+
+**2026-10-05** RESULT: done
+TESTS: +2 new, all green
+TOUCHED:
+packages/finance-engine/src/Dto/ExpenseProfile.php
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Forecast/ServiceChargeUtilitiesTest.php
+app/Livewire/ScenarioResults.php
+app/Forecast/ScenarioForecaster.php
+tests/Feature/Livewire/ScenarioResultsTest.php
+docs/DATA-MODEL.md
+docs/board/todo/0169-the-plsa-benchmark-drops-the-utilities-inside-a-service-charge.md
+OUT-OF-SCOPE: 0169
+
+Only #4 was open; #1 to #3 stand from the 2026-09-05 build and were not touched.
+
+**#4, the escalator.** New `ExpenseProfile::escalatingPropertyCosts()` = the bucket less its utilities. `PathProjector::projectYear` now escalates only that while the home is owned, so the utilities ride CPI before the sale and after it. The stale comment the breakage review named ("the escalation follows the bucket for free") is rewritten. `propertyCostsNominal()`, the letting-expense mirror of the same bucket, uses the same split so the two cannot disagree; that mirror has no test of its own.
+
+**#4, the slider.** `ScenarioResults::applySliders()` scales `utilities` with `amount` on every line.
+
+**Test-first.** `ServiceChargeUtilitiesTest::test_the_utilities_in_a_service_charge_never_ride_its_escalator` was watched failing on the arithmetic: owned-year spend 2063050 pence where 2039406 was expected (the whole £4,000 escalated at 5% instead of the £2,500 non-utility part). `ScenarioResultsTest::test_the_spend_slider_scales_the_utilities_inside_a_line_with_its_amount` was watched failing with utilities '1500' where 750 was expected after a -50% slide.
+
+**ENGINE_VERSION bumped** to `finance-engine/service-charge-utilities-on-cpi`. Only plans whose charge carries a utilities figure AND an escalator move: their owned years spent too much, so keep and let plans read too pessimistic beside the sell plans. The Monte Carlo golden master did not move (its fixture has no utilities figure).
+
+**Raised 0169.** The scope review's third point (`ResultPresenter::plsaBenchmark()` subtracts the utilities with the rest of the charge) is outside #4's wording, so it is a card, not a fix.
+
+**Still open from the card's Tasks:** task 3 is card 0094; task 4 (re-run every stored scenario, then `scenarios:audit`) writes to the live database and cannot run from a worktree. Not seen in a browser; the slider change needs one check on the results page.
