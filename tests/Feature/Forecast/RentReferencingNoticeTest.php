@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Forecast;
 
+use App\Forecast\QuickWhatIf;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
+use App\Forecast\WhatIfWriter;
 use App\Livewire\ScenarioResults;
 use App\Models\Scenario;
 use App\Models\User;
@@ -82,6 +84,27 @@ final class RentReferencingNoticeTest extends TestCase
             $message,
         );
         $this->assertMatchesRegularExpression('/£[\d,]+\.\d\d of capital locked up/', $message);
+    }
+
+    /**
+     * AC #1, the other rent plan. "Let out & rent elsewhere" keeps the home, so it pays its rent
+     * as a spend line rather than through the sell-and-rent leg, and the reference was never
+     * asked of it. A landlord asks it all the same.
+     */
+    public function test_the_let_out_and_rent_plan_flags_the_years_that_would_fail_a_reference(): void
+    {
+        $base = ScenarioFixture::rich($this->user);
+        $built = QuickWhatIf::build($base, 'let_out_and_rent');
+        $child = WhatIfWriter::create($base, $built['name'], $built['overrides']);
+
+        $forecast = app(ScenarioForecaster::class)->deterministic($child);
+        $ladder = ResultPresenter::ladder($forecast);
+
+        $this->assertNotNull($ladder['rentReferencing'], 'a let-out-and-rent plan short of the referencing bar must be flagged');
+
+        // The bar is the rent the household pays as a tenant, in the engine's own words.
+        $rent = Money::fromPounds(18_000);
+        $this->assertStringContainsString(Tenancy::monthlyRent($rent)->format().' a month', $ladder['rentReferencing']['message']);
     }
 
     /** A plan that keeps the home pays no rent, so neither notice applies to it. */

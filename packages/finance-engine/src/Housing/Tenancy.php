@@ -98,11 +98,15 @@ final class Tenancy
     /** The deposit a landlord may hold, at the Tenant Fees Act cap for this rent. */
     public static function deposit(Money $annualRent): Money
     {
-        $weeks = $annualRent->pence >= self::HIGH_RENT_THRESHOLD_PENCE
+        return $annualRent->times(self::depositWeeks($annualRent))->dividedBy(52);
+    }
+
+    /** The weeks' rent the deposit cap allows at this rent: the one rule the charge and its sentence share. */
+    public static function depositWeeks(Money $annualRent): int
+    {
+        return $annualRent->pence >= self::HIGH_RENT_THRESHOLD_PENCE
             ? self::DEPOSIT_WEEKS_HIGH_RENT
             : self::DEPOSIT_WEEKS;
-
-        return $annualRent->times($weeks)->dividedBy(52);
     }
 
     /** The cash a household must produce before it gets the keys: deposit + first month. */

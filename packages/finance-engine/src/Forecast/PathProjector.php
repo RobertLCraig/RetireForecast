@@ -2032,7 +2032,13 @@ final class PathProjector
                 ...$this->allowanceChargeWarnings($state, $aaCharges, $m),
                 ...$this->unfundedOneOffWarnings($oneOffs, $unmetOneOffNominal, $m),
                 ...$this->tenancyUpFrontWarnings($oneOffs, $rentChargedNominal, $m),
-                ...$this->rentReferencingWarnings($rentChargedNominal, $grossIncomeNominal, $m),
+                // The sell-and-rent leg's rent, else a rent paid as a spend line (the let-out-and-rent
+                // plan keeps its home), which rides CPI like the rest of spend.
+                ...$this->rentReferencingWarnings(
+                    $rentChargedNominal > 0 ? $rentChargedNominal : (int) round($household->expenseProfile->tenantRent()->pence * $cumInflation),
+                    $grossIncomeNominal,
+                    $m,
+                ),
                 ...$this->deprivationWarnings(
                     $allOneOffs,
                     $src,
@@ -4210,11 +4216,13 @@ final class PathProjector
             }
             $deposit = $m($cost['amount']);
             $monthly = Tenancy::monthlyRent($m($rentChargedNominal));
+            // The deposit was sized on this year's NOMINAL rent, so the cap is read off the same figure.
+            $weeks = Tenancy::depositWeeks(Money::fromPence($rentChargedNominal));
 
             return [new Warning(
                 WarningCode::TENANCY_UP_FRONT_COST,
                 'Starting a tenancy costs money before you get the keys: a deposit of '
-                .$deposit->format().' ('.Tenancy::DEPOSIT_WEEKS.' weeks\' rent, the most a landlord may hold '
+                .$deposit->format().' ('.$weeks.' weeks\' rent, the most a landlord may hold '
                 .'under the Tenant Fees Act 2019) plus the first month\'s rent of '.$monthly->format().' in '
                 .'advance — '.$deposit->plus($monthly)->format().' you have to produce on day one. The deposit '
                 .'is charged here as a cost of the plan: it is held for as long as you rent, re-lodged every '

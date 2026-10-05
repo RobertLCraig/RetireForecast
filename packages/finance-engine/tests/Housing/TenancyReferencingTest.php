@@ -244,6 +244,20 @@ final class TenancyReferencingTest extends TestCase
         $this->assertSame([], $this->warningsOfCode($this->forecast($household, $settings), WarningCode::TENANCY_UP_FRONT_COST));
     }
 
+    /**
+     * AC #4. At £60,000 a year the deposit is charged at the six-week cap, so the sentence that
+     * discloses it must say six weeks: the words and the pounds come from the same rule.
+     */
+    public function test_the_deposit_sentence_names_the_six_week_cap_it_charged_at_a_high_rent(): void
+    {
+        [$household, $settings] = $this->rentPlan(incomePounds: 14_000, annualRentPounds: 60_000);
+        $message = $this->warningsOfCode($this->forecast($household, $settings), WarningCode::TENANCY_UP_FRONT_COST)[0]->message;
+
+        $this->assertStringContainsString(Tenancy::deposit(Money::fromPounds(60_000))->format(), $message);
+        $this->assertStringContainsString(Tenancy::DEPOSIT_WEEKS_HIGH_RENT." weeks' rent", $message);
+        $this->assertStringNotContainsString(Tenancy::DEPOSIT_WEEKS." weeks' rent", $message);
+    }
+
     /** The Tenant Fees Act cap steps to six weeks once the annual rent reaches £50,000. */
     public function test_the_deposit_cap_steps_to_six_weeks_above_the_statutory_rent_threshold(): void
     {

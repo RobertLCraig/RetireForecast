@@ -289,6 +289,8 @@ final class HouseholdAssembler
         $mortgageLinkedEssential = $this->sumLines($lines, fn (array $l): bool => $whileMortgaged($l) && self::tierOf($l) === 'essential' && ! self::isMortgagePayment($l));
         $mortgageLinkedDiscretionary = $this->sumLines($lines, fn (array $l): bool => $whileMortgaged($l) && self::tierOf($l) !== 'essential');
         $employmentCosts = $this->sumLines($lines, fn (array $l): bool => $isSpend($l) && $this->lineCondition($l) === 'while_working');
+        // The let-out-and-rent plan's own rent, so the engine asks a landlord's question of it too.
+        $tenantRent = $this->sumLines($lines, fn (array $l): bool => $isSpend($l) && ($l['label'] ?? null) === QuickWhatIf::RENT_LINE_LABEL);
 
         return new ExpenseProfile(
             essentialAnnualSpend: $essentialPath->startAmount(),
@@ -315,6 +317,7 @@ final class HouseholdAssembler
             mortgageCosts: $mortgageCosts->isPositive() ? $mortgageCosts : null,
             mortgageLinkedEssential: $mortgageLinkedEssential->isPositive() ? $mortgageLinkedEssential : null,
             mortgageLinkedDiscretionary: $mortgageLinkedDiscretionary->isPositive() ? $mortgageLinkedDiscretionary : null,
+            tenantRent: $tenantRent->isPositive() ? $tenantRent : null,
             essentialSpendPath: $essentialPath,
             discretionarySpendPath: $discretionaryPath,
             // Above-CPI growth for the while-owning-home lines (service charge / ground rent /

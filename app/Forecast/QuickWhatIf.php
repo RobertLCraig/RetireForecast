@@ -30,6 +30,13 @@ final class QuickWhatIf
      */
     public const ATTENDANCE_ALLOWANCE_FROM_AGE = 80;
 
+    /**
+     * The label of the rent line "Let out & rent elsewhere" adds. One home, because
+     * {@see HouseholdAssembler} reads it back to tell the engine that line is rent paid to a
+     * landlord, which a referencing test must be asked of (board card 0031).
+     */
+    public const RENT_LINE_LABEL = 'Rent (our home)';
+
     /** Preset key => the button label and the what-if's name. */
     public const PRESETS = [
         'retire_2_years_later' => 'Retire 2 years later',
@@ -224,7 +231,7 @@ final class QuickWhatIf
         ]]);
         $edited['expenseLines'] = array_merge($state['expenseLines'] ?? [], [[
             'id' => (string) Str::uuid(),
-            'label' => 'Rent (our home)',
+            'label' => self::RENT_LINE_LABEL,
             'amount' => $rent,
             'category' => 'essential',
             'savedAsAsset' => false,

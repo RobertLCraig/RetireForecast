@@ -232,7 +232,8 @@ cash **−0.5%**.
    an ARLA/Propertymark void statistic, and a landlord repairs-cost series).
    **Confirm you are happy with 12% / 8% / 5% until that lands.**
 15. **A tenancy has to be GRANTED as well as afforded (added 2026-09-05; lives in
-   `Housing\Tenancy`).** Four figures, all applying to a sell-and-rent plan only:
+   `Housing\Tenancy`).** Four figures, applying to any plan that pays a landlord rent: sell and
+   rent, a forced sale, and the referencing flag on "Let out & rent elsewhere" (card 0031):
    **30x the monthly rent** is the gross ANNUAL income a standard tenant reference asks for
    (`REFERENCING_INCOME_MULTIPLE`); **36x** is the higher bar a homeowner guarantor is referenced at
    (`GUARANTOR_INCOME_MULTIPLE`); **6 to 12 months** is the rent in advance a landlord asks of an

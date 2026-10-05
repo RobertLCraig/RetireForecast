@@ -148,6 +148,13 @@ final class ExpenseProfile
         public readonly ?SpendingGuardrail $spendingGuardrail = null,
         public readonly ?Money $mortgageLinkedEssential = null,
         public readonly ?Money $mortgageLinkedDiscretionary = null,
+        /**
+         * The part of essential spend that is RENT paid to a landlord — a marked subset, never an
+         * addition. "Let out & rent elsewhere" keeps the home and pays its own rent as a spend line,
+         * so this is how the projector knows to ask the referencing question of that plan too
+         * (board card 0031). It charges nothing: the line is already in the essential path.
+         */
+        public readonly ?Money $tenantRent = null,
     ) {
         $this->essentialSpendPath = $this->resolvePath($essentialSpendPath, $essentialAnnualSpend, 'essential');
         $this->discretionarySpendPath = $this->resolvePath($discretionarySpendPath, $discretionaryAnnualSpend, 'discretionary');
@@ -217,6 +224,12 @@ final class ExpenseProfile
         $utilities = $this->propertyCostsUtilities ?? Money::zero();
 
         return $utilities->greaterThan($this->propertyCosts()) ? $this->propertyCosts() : $utilities;
+    }
+
+    /** The rent paid to a landlord out of essential spend (zero if none). */
+    public function tenantRent(): Money
+    {
+        return $this->tenantRent ?? Money::zero();
     }
 
     /** The employment-linked contingent costs (zero if none). */
@@ -370,6 +383,7 @@ final class ExpenseProfile
             spendingGuardrail: $take('spendingGuardrail'),
             mortgageLinkedEssential: $take('mortgageLinkedEssential'),
             mortgageLinkedDiscretionary: $take('mortgageLinkedDiscretionary'),
+            tenantRent: $take('tenantRent'),
         );
     }
 
