@@ -140,3 +140,16 @@ Only #4 was open. No production code changed, so no test was written: #4 is a pr
 #4 is NOT met. `php artisan scenarios:audit` (read-only, run from this worktree against the app Postgres DB) exits 1 on two problem classes, and none is about #51's figures or disclosure. #51's five lines are all integrity-stamp lines. (a) 120 runs 'carry no integrity stamp', as on 2026-08-29. (b) NEW since then: all 3 stored assumption sets miss inflationPersistence, inflationAssetCorrelations and economicSourcing, because they were not re-seeded after cards 0062, 0064 and 0065. Clearing both rewrites Rob's app database and moves the ranked report, which this card's 'Not this card' rules out. It also cannot be undone by deleting a file. So I raised it as card 0161 (not_for_the_loop), with the order: migrate, re-seed AssumptionSetSeeder, Re-run all, audit. #4 should pass once 0161 is done. Consider giving this card needs: 0161.
 
 Not checked in a browser: no screen changed.
+
+**2026-10-05** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Only #4 is open, and it is still blocked on card 0161, which is still in todo/ and is not_for_the_loop. No code changed, so I wrote no test and made no commit.
+
+Re-checked today, read-only, from this worktree against the app Postgres DB: `php artisan scenarios:audit` exits 1 on 123 problems. They are the same two classes as the last entry: 120 runs with no integrity stamp, and the 3 assumption sets missing inflationPersistence, inflationAssetCorrelations and economicSourcing. None is about #51. `2026_08_29_100000_add_hashes_to_simulation_runs_table` is still Pending. #51 still reads 'never' runs short in the audit table.
+
+#1 to #3 are unchanged since the last entry. To finish: Rob works card 0161 (migrate, re-seed AssumptionSetSeeder, re-run all scenarios), then a re-run of the audit settles #4. This card should carry needs: 0161 so the loop stops picking it up first.
+
+Not checked in a browser: no screen changed.
