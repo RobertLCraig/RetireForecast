@@ -17,7 +17,7 @@ The wealth chart's terminal p25/p75, also still open from slice #3.
 - [x] #1 THE APP SHALL offer a nominal-versus-real toggle on the results figures.
 - [x] #2 THE APP SHALL take nominal figures from the engine's own pre-deflation values, never
       by re-inflating a deflated figure in the presenter.
-- [ ] #3 THE APP SHALL prove the nominal toggle through the component (`ScenarioResultsTest` sets `nominalPounds` and sees nominal figures), and every doc that describes the charts SHALL say they can be nominal: the `ResultPresenter::timeSeriesCharts()` docblock, the `YearResult::mortgageBalance()` docblock, and DECISIONS "Money over time" item 3, which still says real terms only and the toggle is deferred.
+- [x] #3 THE APP SHALL prove the nominal toggle through the component (`ScenarioResultsTest` sets `nominalPounds` and sees nominal figures), and every doc that describes the charts SHALL say they can be nominal: the `ResultPresenter::timeSeriesCharts()` docblock, the `YearResult::mortgageBalance()` docblock, and DECISIONS "Money over time" item 3, which still says real terms only and the toggle is deferred.
 <!-- AC:END -->
 
 ## Tasks
@@ -116,3 +116,19 @@ VERDICT: defect
 **2026-08-29** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 2 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 2 of 2 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #3 because the breakage finding still holds on master. No test sets `nominalPounds`, the `timeSeriesCharts()` docblock still claims the charts read the same years as the ladder, and DECISIONS.md still records the toggle as deferred. None of these breaks #1 or #2, so they are a new criterion.
+
+**2026-10-05** RESULT: done
+TESTS: +1 new, all green
+TOUCHED: tests/Feature/Livewire/ScenarioResultsTest.php
+TOUCHED: app/Forecast/ResultPresenter.php
+TOUCHED: packages/finance-engine/src/Forecast/YearResult.php
+TOUCHED: docs/DECISIONS.md
+OUT-OF-SCOPE: none
+
+Criterion 3. New test `test_the_nominal_pounds_toggle_shows_the_engines_own_pre_deflation_figures` drives the component: it takes the last projected year's `YearResult::$nominal->totalWealth` straight from `ScenarioForecaster::deterministicVariants()`, guards that it differs from the real figure, asserts the page does not show it with the box unticked, sets `nominalPounds` true, and asserts the 'cash pounds' caption and that nominal figure both appear.
+
+The toggle already existed (criteria 1 and 2), so the test was green on first run. I watched it fail by breaking the wiring (`ScenarioResults::render()` passing `false` instead of `$this->nominalPounds`): red on the 'Wealth by type (cash pounds)' caption, and, with that assertion removed, red again on the nominal figure itself. Both restored; the test is now a real guard on the checkbox -> property -> presenter path.
+
+Docs: `ResultPresenter::timeSeriesCharts()` docblock now says only the real view reads the ladder's years and the nominal view reads the twin (agreement by deflation, NominalTwinTest). `YearResult::mortgageBalance()` docblock says real on a reported year, nominal on the twin. DECISIONS 2026-07-19 item 3 carries a 'Superseded 2026-08-22 (card 0013)' note pointing at the 2026-08-22 nominal entry; the original text is kept, as the log is append-only.
+
+Not covered: the chart `wire:key` swap and the Alpine re-render are JS-side and the Livewire harness cannot see them. Still needs a browser look and `npm run a11y:auth` on the merged tree; Herd serves C:\Dev\RetireForecast, not this worktree. Suite: `php artisan test` (no pest.bat here) and `vendor\bin\pint.bat --dirty` clean.
