@@ -29,10 +29,10 @@ Housing Benefit for a pension-age renter, which is card 0048.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a rent plan is modelled, THE APP SHALL flag any year in which household gross income falls below the standard referencing multiple of the rent.
+- [x] #1 WHEN a rent plan is modelled, THE APP SHALL flag any year in which household gross income falls below the standard referencing multiple of the rent.
 - [x] #2 THE APP SHALL state the two normal alternatives to a failed reference, and the capital that rent in advance would tie up.
 - [x] #3 THE APP SHALL include the deposit and first month up front as a cost at the start of a rent plan.
-- [ ] #4 WHEN the deposit is charged at the high-rent cap, THE APP SHALL say six weeks, not five: the sentence in `PathProjector::tenancyUpFrontWarnings` reads the weeks `Tenancy::deposit()` actually used.
+- [x] #4 WHEN the deposit is charged at the high-rent cap, THE APP SHALL say six weeks, not five: the sentence in `PathProjector::tenancyUpFrontWarnings` reads the weeks `Tenancy::deposit()` actually used.
 <!-- AC:END -->
 
 ## Tasks
@@ -158,3 +158,28 @@ VERDICT: defect
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #1 and added #4 because both breakage findings still hold on master. #1: `QuickWhatIf::letOutAndRent` models rent as an expense line on a stay-put variant, and both warnings are gated on `$settings->annualRent`, so that rent plan gets no referencing flag. #4: `tenancyUpFrontWarnings` still writes `Tenancy::DEPOSIT_WEEKS` (5) into the sentence while `Tenancy::deposit()` charges `DEPOSIT_WEEKS_HIGH_RENT` (6) at GBP 50,000 a year or more. The forced-sale deposit half of the scope finding is done (commit `ff190e5`). The unread `failsReference` row key is still open.
+
+**2026-10-05** RESULT: done
+TESTS: +2 new, all green
+TOUCHED:
+packages/finance-engine/src/Housing/Tenancy.php
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/src/Dto/ExpenseProfile.php
+packages/finance-engine/tests/Housing/TenancyReferencingTest.php
+app/Forecast/QuickWhatIf.php
+app/Forecast/HouseholdAssembler.php
+tests/Feature/Forecast/RentReferencingNoticeTest.php
+docs/spec/ASSUMPTIONS.md
+docs/board/todo/0165-let-out-and-rent-is-charged-no-tenancy-deposit.md (new)
+docs/board/todo/0166-the-ladder-marks-failing-reference-rows-and-nothing-shows-it.md (new)
+OUT-OF-SCOPE: 0165, 0166
+
+#4: new `Tenancy::depositWeeks()` is the one rule `deposit()` charges by and `tenancyUpFrontWarnings` now writes into the sentence, read off the same nominal rent the deposit was sized on. `test_the_deposit_sentence_names_the_six_week_cap_it_charged_at_a_high_rent` was watched fail on the sentence saying "5 weeks' rent" over a GBP 60,000 rent.
+
+#1: the let-out-and-rent rent line's label is now one constant, `QuickWhatIf::RENT_LINE_LABEL`. `HouseholdAssembler` sums lines with that label into a new `ExpenseProfile::tenantRent` (a marked subset of essential spend, charges nothing extra, carried by `copy()`). `PathProjector` asks the referencing question of the sell-and-rent rent if there is one, else of `tenantRent` at this year's CPI (the line rides CPI like all spend). Matching the label catches let-out what-ifs already stored, with no data change. `test_the_let_out_and_rent_plan_flags_the_years_that_would_fail_a_reference` was watched fail on `rentReferencing` being null for a let-out child of the rich fixture.
+
+No `ENGINE_VERSION` bump: no figure moves, only a warning is added, and the tenancy-deposit stamp's own note says the referencing flag changes no figure. A stored let-out result shows the flag after its next run.
+
+Not done, raised instead: the let-out plan is still charged no tenancy deposit (card 0165). The `failsReference` row key that no template reads (2026-09-28 manager pass, in no criterion) is now card 0166.
+
+Built in a worktree: the banner on a let-out plan has NOT been seen in a browser.
