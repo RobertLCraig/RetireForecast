@@ -633,6 +633,25 @@ final class ScenarioForecaster
         return $this->historicalBacktest($scenario, PlanningHorizon::P90);
     }
 
+    /**
+     * The stress-test panel both the screen and the PDF render, from the one place that decides
+     * whether this build may show it. The Jorda-Schularick-Taylor dataset is CC BY-NC-SA, so a
+     * public build (`compliance.personal_use` false) never runs it and gets `['withheld' => true]`
+     * for the views to say so in its place (card 0012). Null when no start year was testable.
+     */
+    public function historicalStressTestPanel(Scenario $scenario): ?array
+    {
+        if (! config('compliance.personal_use')) {
+            return ['withheld' => true];
+        }
+
+        return ResultPresenter::historicalStressTest(
+            $this->historicalBacktest($scenario),
+            $this->settings($scenario)->baseYear,
+            $this->longLifeHistoricalBacktest($scenario),
+        );
+    }
+
     /** One variant's Monte Carlo run (the scenario's household as it stands). */
     public function simulate(Scenario $scenario, int $nPaths, int $seed): SimulationResult
     {

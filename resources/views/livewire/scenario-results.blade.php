@@ -1275,7 +1275,12 @@
     {{-- Historical stress test: replay real past return + inflation sequences over this exact
          plan, so "will it last" is tested against the worst starts in living memory, not just
          the average. Deterministic; shows before any Monte Carlo run. --}}
-    @if ($stressTest)
+    @if ($stressTest['withheld'] ?? false)
+        <section id="sec-stress" {{ $panel('sec-stress') }} aria-labelledby="stress-heading" class="{{ $card }} scroll-mt-6">
+            <h2 id="stress-heading" class="text-xl font-semibold text-gray-900">Stress test: past crises</h2>
+            <p class="mt-1 text-sm text-gray-600">Historical stress testing is not available in this build.</p>
+        </section>
+    @elseif ($stressTest)
         <section id="sec-stress" {{ $panel('sec-stress') }} aria-labelledby="stress-heading" class="{{ $card }} scroll-mt-6">
             <h2 id="stress-heading" class="text-xl font-semibold text-gray-900">Stress test: how it would have handled past crises</h2>
             <p class="mt-1 text-sm text-gray-600">We replayed this plan through every year from {{ $stressTest['fromYear'] }} to {{ $stressTest['toYear'] }} as if you had started then, using the <strong>actual</strong> returns and inflation that followed. This is <strong>sequence-of-returns risk</strong>: a bad first decade while you are drawing an income does far more damage than the same slump later.</p>

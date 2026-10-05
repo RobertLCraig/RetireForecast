@@ -171,13 +171,56 @@ class ScenarioResultsTest extends TestCase
 
     public function test_the_results_page_shows_the_historical_stress_test_before_any_run(): void
     {
-        // The backtest is deterministic, so it renders immediately (no Monte Carlo needed).
+        // The backtest is deterministic, so it renders immediately (no Monte Carlo needed). The
+        // private build: a public one withholds it (card 0012).
+        config()->set('compliance.personal_use', true);
         $this->get(route('scenarios.results', $this->scenario()))
             ->assertOk()
             ->assertSee('Stress test: how it would have handled past crises')
             ->assertSee('Historical starts survived')
             ->assertSee('Oil crisis & UK crash (1973–74)')
             ->assertSee('Rate of Return on Everything');
+    }
+
+    /**
+     * The stress test replays the Jorda-Schularick-Taylor dataset, which is CC BY-NC-SA and cannot
+     * ship publicly (card 0012). A public build withholds the panel on screen and in the PDF and
+     * says so in its place; the private build keeps both.
+     */
+    public function test_a_public_build_withholds_the_historical_stress_test_on_screen_and_in_the_pdf(): void
+    {
+        config()->set('compliance.personal_use', false);
+        $scenario = $this->scenario();
+        $withheld = 'Historical stress testing is not available in this build.';
+
+        $this->get(route('scenarios.results', $scenario))
+            ->assertOk()
+            ->assertSee($withheld)
+            ->assertDontSee('Historical starts survived')
+            ->assertDontSee('Rate of Return on Everything');
+
+        $pdf = view('pdf.results', ['reports' => [(new ScenarioReport)->data($scenario)]])->render();
+        $this->assertStringContainsString($withheld, $pdf);
+        $this->assertStringNotContainsString('Historical starts survived', $pdf);
+        $this->assertStringNotContainsString('Rate of Return on Everything', $pdf);
+    }
+
+    public function test_a_private_build_shows_the_historical_stress_test_on_screen_and_in_the_pdf(): void
+    {
+        config()->set('compliance.personal_use', true);
+        $scenario = $this->scenario();
+        $withheld = 'Historical stress testing is not available in this build.';
+
+        $this->get(route('scenarios.results', $scenario))
+            ->assertOk()
+            ->assertSee('Historical starts survived')
+            ->assertSee('Rate of Return on Everything')
+            ->assertDontSee($withheld);
+
+        $pdf = view('pdf.results', ['reports' => [(new ScenarioReport)->data($scenario)]])->render();
+        $this->assertStringContainsString('Historical starts survived', $pdf);
+        $this->assertStringContainsString('Rate of Return on Everything', $pdf);
+        $this->assertStringNotContainsString($withheld, $pdf);
     }
 
     public function test_the_care_cost_panel_shows_after_a_run_when_care_is_modelled(): void
@@ -359,7 +402,9 @@ class ScenarioResultsTest extends TestCase
     public function test_detail_tables_are_behind_a_disclosure(): void
     {
         // B3: the long raw tables render inside <details> so the page skims. <details> is
-        // native HTML, so the figures are still there with JavaScript off.
+        // native HTML, so the figures are still there with JavaScript off. The private build, which
+        // keeps the stress test's crisis table (card 0012).
+        config()->set('compliance.personal_use', true);
         $this->get(route('scenarios.results', $this->scenario()))
             ->assertOk()
             ->assertSee('Show the year-by-year numbers')

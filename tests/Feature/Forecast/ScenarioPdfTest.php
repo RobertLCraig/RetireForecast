@@ -107,6 +107,8 @@ class ScenarioPdfTest extends TestCase
     /** Each of those sections has to actually appear in the rendered report, not merely be passed to it. */
     public function test_the_report_renders_every_section_heading(): void
     {
+        // The private build: a public one withholds the stress test (card 0012, tested in ScenarioResultsTest).
+        config()->set('compliance.personal_use', true);
         $scenario = ScenarioFixture::rich($this->user, ['ihtModelled' => true]);
         (new SimulationRunner(new ScenarioForecaster))->preview($scenario, paths: 20);
 

@@ -942,7 +942,12 @@
     </div>
 @endif
 
-@if ($stressTest)
+@if ($stressTest['withheld'] ?? false)
+    <div class="card">
+        <h2>Stress test: past crises</h2>
+        <p class="lede">Historical stress testing is not available in this build.</p>
+    </div>
+@elseif ($stressTest)
     <div class="card">
         <h2>Stress test: how it would have handled past crises</h2>
         <p class="lede">We replayed this plan through every year from {{ $stressTest['fromYear'] }} to

@@ -213,11 +213,8 @@ class ScenarioReport
             'withdrawal' => $withdrawal,
             // Historical sequence-of-returns stress test: how the plan would have fared starting
             // into each past year. Deterministic, so it prints without a run.
-            'stressTest' => ResultPresenter::historicalStressTest(
-                $forecaster->historicalBacktest($scenario),
-                $forecaster->settings($scenario)->baseYear,
-                $forecaster->longLifeHistoricalBacktest($scenario),
-            ),
+            // Withheld in a public build: its dataset is non-commercial (card 0012).
+            'stressTest' => $forecaster->historicalStressTestPanel($scenario),
             // Show-your-working: the assumptions every figure in this report rests on.
             'assumptions' => ResultPresenter::assumptionsPanel(
                 $assumptions,

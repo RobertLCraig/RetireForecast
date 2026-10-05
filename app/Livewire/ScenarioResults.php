@@ -487,11 +487,8 @@ class ScenarioResults extends Component
             'incomeFloor' => ResultPresenter::incomeFloor($forecast),
             // Historical sequence-of-returns stress test: how the plan would have fared starting
             // into each past year (1929 / 1973-74 / 2000 / 2007). Deterministic, shows pre-run.
-            'stressTest' => ResultPresenter::historicalStressTest(
-                $forecaster->historicalBacktest($this->scenario),
-                $forecaster->settings($this->scenario)->baseYear,
-                $forecaster->longLifeHistoricalBacktest($this->scenario),
-            ),
+            // Withheld in a public build: its dataset is non-commercial (card 0012).
+            'stressTest' => $forecaster->historicalStressTestPanel($this->scenario),
             // How to claim the Pension Credit the forecast models (only when it credits any) —
             // it is means-tested, so it has to be applied for, and is heavily under-claimed.
             'pensionCredit' => ResultPresenter::pensionCreditGuidance($forecast),
