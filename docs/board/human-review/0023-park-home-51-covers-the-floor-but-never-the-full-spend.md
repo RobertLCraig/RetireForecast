@@ -158,3 +158,33 @@ Not checked in a browser: no screen changed.
 <!-- The card's thread, appended by ProgressBoard. Append-only: entries are added, never edited or removed. An entry beginning **Decided:** is an answer, and that is what a decision card exits on. -->
 
 **2026-10-05** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 4 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-05 manager (m20261005150923-a98d)
+
+**outcome: rob**
+
+The only open item waits on card 0161, which rewrites your database, so only you can do it.
+
+**what the session said**
+
+Only criterion #4 is still open. The builder cannot close it.
+
+#4 asks for `php artisan scenarios:audit` to exit 0. It exits 1 because the app database is behind the code. There are two causes:
+
+- 120 stored runs have no integrity stamp.
+- 3 assumption sets are missing new fields.
+
+No problem in the audit is about scenario 51. Criteria #1 to #3 still hold, and no review finding disproves them.
+
+The fix is card 0161: `docs/board/todo/0161-the-app-database-is-behind-the-code-so-the-audit-cannot-pass.md`. That card is marked not_for_the_loop. Its steps are migrate, re-seed `AssumptionSetSeeder`, re-run all scenarios, then audit. Those steps rewrite your database and change the ranked report. Only you can approve that.
+
+What you do now:
+
+1. Work card 0161.
+2. Run `php artisan scenarios:audit` again to settle #4.
+3. Add `needs: 0161` to card 0023, so the loop stops picking it up first.
+
+WHY: The only open item waits on card 0161, which rewrites your database, so only you can do it.
+
+OUTCOME: rob
+
