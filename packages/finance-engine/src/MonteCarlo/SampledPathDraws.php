@@ -13,8 +13,10 @@ use RetireForecast\FinanceEngine\Forecast\PathDraws;
  * One Monte Carlo path's draws: pre-generated correlated return, inflation, house-price
  * and salary-growth sequences plus sampled death ages (and any sampled late-life care
  * spells), fed to the same {@see PathProjector} the deterministic forecast uses.
- * House-price and salary growth each follow their sampled per-year path (a constant equal
- * to the mean when the set carries no volatility for that factor).
+ * Salary growth follows its sampled per-year path (a constant equal to the mean when the set
+ * carries no salary volatility). House-price growth does not: the sampled path is an index, so
+ * {@see self::propertyGrowthReal()} re-centres each year's shock on the home's own mean and widens
+ * it to single-property scale.
  */
 final class SampledPathDraws implements PathDraws
 {

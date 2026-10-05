@@ -4917,6 +4917,14 @@ final class PathProjector
         return false;
     }
 
+    /** A home's value after a year's nominal growth, floored at a penny for a home that had any. */
+    private static function grownHomeValue(int $value, float $nominalGrowth): int
+    {
+        $grown = (int) round($value * (1.0 + $nominalGrowth));
+
+        return $value > 0 ? max(1, $grown) : $grown;
+    }
+
     /**
      * Grow nominal balances and income factors to the start of the next year.
      *
@@ -5008,10 +5016,14 @@ final class PathProjector
         // home is unusual, so the least predictable homes were the ones being flattened.
         $propertyReal = $draws->propertyGrowthReal($yearIndex, $state['propertyGrowthReal']);
         $propertyNominal = (1.0 + $propertyReal) * (1.0 + $infl) - 1.0;
-        $state['property'] = (int) round($state['property'] * (1.0 + $propertyNominal));
+        // A home can lose everything but never more than everything. The single-property shock is
+        // linear, so a wide enough multiple turns an ordinary bad draw into a fall past -100%, and
+        // the value went negative and compounded from there (card 0029 #4). A home that had value
+        // keeps at least a penny: worthless, but still a home, since 0 here means "sold".
+        $state['property'] = self::grownHomeValue($state['property'], $propertyNominal);
         // The whole-property value tracks the same growth, so a forced sale reads the grown
         // whole figure for its CGT gain (share value / share, without the rounding drift).
-        $state['propertyWhole'] = (int) round($state['propertyWhole'] * (1.0 + $propertyNominal));
+        $state['propertyWhole'] = self::grownHomeValue($state['propertyWhole'], $propertyNominal);
 
         // A lifetime mortgage (equity release) rolls up: with no payments the balance compounds
         // at its fixed nominal rate each year. It is repaid from the estate on death/sale, capped

@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-05 (spend-levers-keep-property-cost-growth): the essential and discretionary
+     * Bumped 2026-10-05 (home-value-never-below-nothing): a Monte Carlo tail draw at a wide
+     * single-property multiple took a home's value negative, where it compounded and could clear a
+     * lifetime mortgage through the no-negative-equity cap. A home now keeps at least a penny. Only
+     * sampled runs with such a tail path move; the central projection does not. Board card 0029 #4.
+     * Previous bump 2026-10-05 (spend-levers-keep-property-cost-growth): the essential and discretionary
      * spend levers dropped the reader's property-cost growth rate, so a stated rate (0% included)
      * was swept at the CPI + 3% default. A threshold or sustainable-spend answer stored earlier for
      * a plan with a stated rate and a service charge used the wrong rate. See board card 0028.
@@ -458,7 +462,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/spend-levers-keep-property-cost-growth';
+    public const ENGINE_VERSION = 'finance-engine/home-value-never-below-nothing';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

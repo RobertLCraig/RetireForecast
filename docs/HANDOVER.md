@@ -9,8 +9,13 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A sampled home never falls to or below nothing.** Card 0029 #4. `PathProjector::grownHomeValue`
+  keeps a home that had value at a penny or more. `ENGINE_VERSION` is
+  `finance-engine/home-value-never-below-nothing`; only Monte Carlo runs with a tail path move.
+  The card's park-home re-run (task 4) is still owed on the live database.
+
 - **The spend levers keep the reader's property-cost growth rate.** Card 0028 #4. `ENGINE_VERSION`
-  is `finance-engine/spend-levers-keep-property-cost-growth`; thresholds and sustainable-spend
+  was `finance-engine/spend-levers-keep-property-cost-growth`; thresholds and sustainable-spend
   answers are owed a re-run for plans with a stated rate. The results note now shows the rate in
   force (a stated 0% too), only on a stay-put plan. Not seen in a browser.
 

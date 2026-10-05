@@ -19,8 +19,10 @@ use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Forecast\PathProjector;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\MonteCarlo\SampledPathDraws;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\MonteCarlo\Simulator;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -185,6 +187,38 @@ final class SinglePropertyVolatilityTest extends TestCase
             $rising->terminalWealthPercentiles['p50']->pence,
             $asShipped->terminalWealthPercentiles['p50']->pence,
         );
+    }
+
+    public function test_a_tail_draw_never_takes_a_home_to_or_below_nothing(): void
+    {
+        // The widened shock is linear, so at a wide enough multiple an ordinary bad year crosses
+        // -100% growth. 60% is the most the builder accepts; over a 9% index that is a multiple of
+        // 6.67, and an index draw 20 points under its mean (about z = -2.2, one year in seventy)
+        // becomes a 132% fall. Inflation is drawn flat so the real and nominal figures agree.
+        $set = $this->set(Percent::fromPercent(9), propertyVol: Percent::fromPercent(60));
+        $years = 40;
+        $draws = new SampledPathDraws(
+            [
+                'investment' => array_fill(0, $years, 0.03),
+                'cash' => array_fill(0, $years, 0.0),
+                'inflation' => array_fill(0, $years, 0.0),
+                'house' => [0.01 - 0.20, ...array_fill(0, $years - 1, 0.01)],
+                'salary' => array_fill(0, $years, 0.01),
+            ],
+            $set,
+            ['p1' => 92, 'p2' => 94],
+        );
+
+        $result = (new PathProjector(TaxYearRegistry::for('2026-27')))
+            ->project($this->homeowner(null), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'), $draws);
+
+        foreach ($result->years as $year) {
+            $this->assertGreaterThan(
+                0,
+                $year->propertyWealth->pence,
+                "year {$year->calendarYear}: a home can lose everything, never more than everything",
+            );
+        }
     }
 
     public function test_the_uplift_scales_the_index_figure_rather_than_replacing_it(): void
