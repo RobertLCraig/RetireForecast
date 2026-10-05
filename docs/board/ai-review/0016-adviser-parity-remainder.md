@@ -20,7 +20,7 @@ B5 capacity for loss, which is card 0011 and comes first in the plan's order.
       longer understated by the absence of bed-and-ISA.
 - [x] #2 THE APP SHALL model the GBP 3,600 non-earner relief route.
 - [x] #3 THE APP SHALL cap relievable contributions by the annual allowance and the MPAA.
-- [ ] #4 THE APP SHALL let the reader turn bed-and-ISA off in the builder, and SHALL honour that choice on every housing arm, including rent (`HousingComparison::rentSettings` carries `useIsaAllowance`).
+- [x] #4 THE APP SHALL let the reader turn bed-and-ISA off in the builder, and SHALL honour that choice on every housing arm, including rent (`HousingComparison::rentSettings` carries `useIsaAllowance`).
 <!-- AC:END -->
 
 ## Tasks
@@ -148,3 +148,30 @@ VERDICT: defect
 **2026-08-29** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #4 because both findings still hold on master. Nothing in `ScenarioBuilder` writes `useIsaAllowance`, yet `ResultPresenter::assumedFigures()` tells the reader to "say so". And `HousingComparison::rentSettings` rebuilds `ForecastSettings` without `useIsaAllowance`, so the rent arm always shelters its sale proceeds while stay-put and buy obey the switch. The same method also drops `modelIht`, `homeToDescendants` and `sellingCosts`; rebuild it from the incoming settings rather than field by field.
+
+**2026-10-05** RESULT: done
+TESTS: +2 new, all green
+TOUCHED: packages/finance-engine/src/Forecast/ForecastSettings.php
+packages/finance-engine/src/Housing/HousingComparison.php
+packages/finance-engine/tests/Housing/HousingComparisonTest.php
+app/Livewire/ScenarioBuilder.php
+resources/views/livewire/scenario-builder.blade.php
+app/Forecast/WhatIfChanges.php
+app/Forecast/ResultPresenter.php
+app/Forecast/ScenarioForecaster.php
+tests/Feature/Livewire/ScenarioBuilderTest.php
+docs/DECISIONS.md
+docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+#4 built test-first. Both new tests were watched failing for the reason the criterion names before any code: `test_the_rent_arm_honours_every_setting_the_reader_chose` failed on `true is false` (rent arm useIsaAllowance), and `test_the_isa_allowance_toggle_is_on_the_form_and_reaches_the_forecast` failed on the missing `wire:model="useIsaAllowance"`.
+
+Engine: `HousingComparison::rentSettings` no longer rebuilds field by field. It calls a new `ForecastSettings::withRent()`, which copies every setting and changes only the rent, as the 2026-09-28 manager note asked. So the rent arm now also keeps `modelIht`, `homeToDescendants`, `sellingCosts`, State Pension uprating, beneficiary rate, planning horizon and a null allocation. The test loops over every ForecastSettings property, so a field added later and missed in `withRent` fails it.
+
+App: builder checkbox "Use your ISA allowance on money held outside one" on step 1, default on, stored only when off (same sparse pattern as homeToDescendants, so no loadState backfill and no BuilderStateFixture::full change is needed). What-if label added. The results note now names the box instead of "say so".
+
+ENGINE_VERSION bumped to `finance-engine/rent-arm-keeps-the-readers-settings`: rent plans stored with any of those settings away from default owe a re-run. DECISIONS 2026-10-05 records it. #1 to #3 were already met and nothing here changes them.
+
+Checks: `php artisan test` green (there is no pest.bat here), `vendor\bin\pint.bat --dirty` clean. scenarios:audit not run. NOT seen in a browser: this worktree is not what Herd serves, so the new checkbox and the reworded results note still need a look at C:\Dev\RetireForecast.
+
+Tasks A4, B3, B4 remain open with no acceptance criteria on this card; not built.
