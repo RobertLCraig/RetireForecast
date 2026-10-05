@@ -20,7 +20,7 @@ panel is a separate card, raised only if a release is ever scheduled.
 - [x] #1 WHEN `config('compliance.personal_use')` is false, THE APP SHALL re-apply the
       guidance-only partition, and `php artisan compliance:advice-audit` SHALL report no
       advice spots outside it. proves: `test_personal_use_mode_opens_the_capability_to_everyone`
-- [ ] #2 WHEN `config('compliance.personal_use')` is false, THE APP SHALL render neither the
+- [x] #2 WHEN `config('compliance.personal_use')` is false, THE APP SHALL render neither the
       historical sequence panel nor its PDF twin, and SHALL say in its place that historical stress
       testing is not available in this build; WHEN it is true, both SHALL render as they do today.
       proves: `<write the test name before the code>`
@@ -84,3 +84,22 @@ rather buy the licence now, say so here and #2 goes back to sourcing the dataset
 a11y checks in #4 are folded into card 0001's browser pass, where every other hand check on this
 project already sits. Acceptance #2 was rewritten to the gate this decision asks for, and #1 and
 #3 now name the tests that prove them. Card moves to `todo/` for the build.
+
+**2026-10-05** RESULT: partial
+TESTS: +2 new, all green
+TOUCHED: app/Forecast/ScenarioForecaster.php
+app/Livewire/ScenarioResults.php
+app/Export/ScenarioReport.php
+resources/views/livewire/scenario-results.blade.php
+resources/views/pdf/partials/report.blade.php
+tests/Feature/Livewire/ScenarioResultsTest.php
+tests/Feature/Forecast/ScenarioPdfTest.php
+OUT-OF-SCOPE: none
+
+#2 built. `ScenarioForecaster::historicalStressTestPanel()` is now the one place that reads `compliance.personal_use` for the stress test. Both the screen and the PDF call it, so the two copies of the panel-building code are gone. When the flag is false, the panel returns `['withheld' => true]` and the backtester never runs. Both views then show a short 'Stress test: past crises' card that says 'Historical stress testing is not available in this build.' The results-page nav keeps its 'Stress test: past crises' link, which now points at that notice. When the flag is true, nothing changes. Proved by `test_a_public_build_withholds_the_historical_stress_test_on_screen_and_in_the_pdf` and `test_a_private_build_shows_the_historical_stress_test_on_screen_and_in_the_pdf`. I watched the public test fail first because the notice was missing. The private test was green from the start, because it pins today's behaviour. Three older tests expect the panel and reddened in the public posture: `test_the_results_page_shows_the_historical_stress_test_before_any_run`, `test_detail_tables_are_behind_a_disclosure` and `test_the_report_renders_every_section_heading`. That was legitimate drift, so I pinned each of them to `personal_use=true`, the way `InterpretationTest` pins its posture. No assertion was loosened. The whole suite is green in both postures (default, and `COMPLIANCE_PERSONAL_USE=false`). pint is clean. No `ENGINE_VERSION` bump, because no money figure moves.
+
+#4 not met: it is a manual check that rides on card 0001's browser pass, which this session cannot do.
+
+Not checked in a browser: Herd serves C:\Dev\RetireForecast, not this worktree, so the notice card still needs one look in each posture.
+
+I did not fold a block out of HANDOVER.md even though the orient hook asked for it (78 KB). That is outside this card.
