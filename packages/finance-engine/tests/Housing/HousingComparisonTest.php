@@ -140,6 +140,38 @@ final class HousingComparisonTest extends TestCase
         $this->assertSame(Money::fromPounds(2_500)->pence, $buy->primaryResidence->runningCosts->pence);
     }
 
+    /**
+     * Board card 0016 #4. The rent arm rebuilt its settings field by field and dropped every choice
+     * it did not name, so a reader who turned bed-and-ISA off had it switched off on stay-put and
+     * buy but left running on rent, which holds the whole sale proceeds in a GIA. Every setting
+     * but the rent itself must reach the rent arm unchanged.
+     */
+    public function test_the_rent_arm_honours_every_setting_the_reader_chose(): void
+    {
+        $settings = new ForecastSettings(
+            baseYear: 2026,
+            baseTaxYear: '2026-27',
+            modelCareCost: true,
+            modelIht: true,
+            homeToDescendants: false,
+            useIsaAllowance: false,
+            tripleLockUntilYear: 2035,
+            beneficiaryMarginalRate: Percent::fromPercent(20),
+        );
+
+        $inputs = $this->comparison()->variantInputs($this->houseRichCashPoor(), $settings, AssumptionSetLibrary::default(), $this->action());
+        $rent = $inputs['rent']['settings'];
+
+        $this->assertFalse($rent->useIsaAllowance);
+        $this->assertSame(Money::fromPounds(14_000)->pence, $rent->annualRent->pence);
+        $this->assertSame(Percent::fromPercent(0.5)->basisPoints, $rent->rentInflationReal->basisPoints);
+        foreach (get_object_vars($settings) as $field => $value) {
+            if (! in_array($field, ['annualRent', 'rentInflationReal'], true)) {
+                $this->assertEquals($value, $rent->{$field}, "the rent arm dropped {$field}");
+            }
+        }
+    }
+
     public function test_comparison_is_reproducible_on_the_same_seed(): void
     {
         $a = $this->comparison()->compare($this->houseRichCashPoor(), new ForecastSettings(baseYear: 2026), AssumptionSetLibrary::default(), $this->action(), 80, seed: 9);

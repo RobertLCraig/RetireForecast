@@ -188,4 +188,19 @@ final class ForecastSettings
             $this->planningHorizon, $this->taxableIncomeTargetPence,
         );
     }
+
+    /**
+     * A copy that pays this rent. Every other setting is preserved, so the rent arm of a housing
+     * comparison runs on the reader's own choices and differs from the other arms only in its rent.
+     */
+    public function withRent(Money $annualRent, Percent $rentInflationReal): self
+    {
+        return new self(
+            $this->baseYear, $this->baseTaxYear, $this->drawdownStrategy, $this->allocation,
+            $this->freezeEndYear, $annualRent, $rentInflationReal, $this->modelCareCost,
+            $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
+            $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
+            $this->planningHorizon, $this->taxableIncomeTargetPence,
+        );
+    }
 }

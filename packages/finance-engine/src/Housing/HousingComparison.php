@@ -381,16 +381,9 @@ final class HousingComparison
 
     private function rentSettings(ForecastSettings $settings, AssumptionSet $assumptions, HousingAction $action): ForecastSettings
     {
-        return new ForecastSettings(
-            baseYear: $settings->baseYear,
-            baseTaxYear: $settings->baseTaxYear,
-            drawdownStrategy: $settings->drawdownStrategy,
-            allocation: $settings->allocation(),
-            freezeEndYear: $settings->freezeEndYear,
-            annualRent: $action->annualRent ?? Money::zero(),
-            rentInflationReal: $action->rentInflationReal ?? $assumptions->rentInflation,
-            modelCareCost: $settings->modelCareCost,
-            taxableIncomeTargetPence: $settings->taxableIncomeTargetPence,
+        return $settings->withRent(
+            $action->annualRent ?? Money::zero(),
+            $action->rentInflationReal ?? $assumptions->rentInflation,
         );
     }
 

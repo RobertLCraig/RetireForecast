@@ -99,7 +99,7 @@ class ScenarioBuilder extends Component
     private const STEP_OF_FIELD = [
         'name' => 1, 'householdName' => 1, 'region' => 1, 'baseTaxYear' => 1,
         'variant' => 1, 'assumptionSetId' => 1, 'assumptionOverrides' => 1, 'adviceFeePct' => 1, 'ihtModelled' => 1,
-        'homeToDescendants' => 1, 'relationshipStatus' => 1, 'people' => 1,
+        'homeToDescendants' => 1, 'useIsaAllowance' => 1, 'relationshipStatus' => 1, 'people' => 1,
         'pensions' => 2, 'incomeStreams' => 2,
         'accounts' => 3, 'property' => 3, 'hasProperty' => 3, 'capitalReceipts' => 3,
         'expense' => 4, 'expenseLines' => 4, 'oneOffCosts' => 4,
@@ -126,6 +126,13 @@ class ScenarioBuilder extends Component
      * a homeowner); only relevant when IHT is modelled and there is a home.
      */
     public bool $homeToDescendants = true;
+
+    /**
+     * Whether the forecast uses each person's unused ISA allowance on money already held in a
+     * general investment account ("bed and ISA"). Default on, as the engine's is; the results
+     * page discloses what it moved and points here to turn it off.
+     */
+    public bool $useIsaAllowance = true;
 
     /**
      * The income-tax rate the person who INHERITS an unused pension pot is assumed to pay on
@@ -300,6 +307,7 @@ class ScenarioBuilder extends Component
             ],
             'marriageDate' => ['nullable', 'date', 'before_or_equal:today'],
             'homeToDescendants' => ['boolean'],
+            'useIsaAllowance' => ['boolean'],
             // The four UK marginal rates an inheriting beneficiary can be on, plus blank for the
             // engine's disclosed default. A free box would invite a rate that is not a rate.
             'beneficiaryTaxRate' => ['nullable', Rule::in(['', '0', '20', '40', '45'])],
@@ -1302,6 +1310,11 @@ class ScenarioBuilder extends Component
         // spurious delta. Mirrors modelCareCost, inverted for a default-on flag.
         if (! $this->homeToDescendants) {
             $state['homeToDescendants'] = false;
+        }
+
+        // The ISA-allowance toggle, stored only when OFF (sparse), like homeToDescendants above.
+        if (! $this->useIsaAllowance) {
+            $state['useIsaAllowance'] = false;
         }
 
         // The beneficiary's assumed tax rate, stored only when chosen (sparse). Blank keeps the

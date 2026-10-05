@@ -170,6 +170,35 @@ class ScenarioBuilderTest extends TestCase
     }
 
     /**
+     * Board card 0016 #4. The results page tells the reader they can stop the forecast using their
+     * ISA allowance, and nothing on the form wrote the key the forecaster reads. The control must
+     * be on the page, store sparsely (absent = on), and reach the forecast settings when off.
+     */
+    public function test_the_isa_allowance_toggle_is_on_the_form_and_reaches_the_forecast(): void
+    {
+        Livewire::test(ScenarioBuilder::class)->assertSeeHtml('wire:model="useIsaAllowance"');
+
+        $save = function (callable $mutate) {
+            $component = Livewire::test(ScenarioBuilder::class);
+            foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+                $component->set($key, $value);
+            }
+            $mutate($component);
+            $component->call('save')->assertHasNoErrors();
+
+            return Scenario::latest('id')->firstOrFail();
+        };
+
+        $on = $save(fn ($c) => $c);
+        $this->assertArrayNotHasKey('useIsaAllowance', $on->effectiveBuilderState());
+        $this->assertTrue(app(ScenarioForecaster::class)->settings($on)->useIsaAllowance);
+
+        $off = $save(fn ($c) => $c->set('useIsaAllowance', false));
+        $this->assertFalse($off->effectiveBuilderState()['useIsaAllowance']);
+        $this->assertFalse(app(ScenarioForecaster::class)->settings($off)->useIsaAllowance);
+    }
+
+    /**
      * Board card 0057. An unused pension pot left on a death at or after 75 is taxed twice, and
      * both halves of the second charge were unreachable from the form: the beneficiary's assumed
      * tax rate, and who each pot is actually nominated to (which decides the spouse exemption on

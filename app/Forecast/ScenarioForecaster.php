@@ -61,7 +61,14 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-04 (let-home-running-costs-are-a-letting-expense): a LET home's running costs
+     * Bumped 2026-10-05 (rent-arm-keeps-the-readers-settings): the rent arm of a housing comparison
+     * rebuilt its settings field by field and dropped every choice it did not name: the ISA
+     * allowance switch, IHT modelling, home to descendants, the State Pension uprating, the
+     * beneficiary's tax rate and the planning horizon. It now copies the reader's settings and
+     * changes only the rent ({@see ForecastSettings::withRent}). A rent plan stored under an
+     * earlier stamp with any of those set away from the default ran on the wrong settings; one
+     * on every default is byte-identical. See board card 0016.
+     * Previous bump 2026-10-04 (let-home-running-costs-are-a-letting-expense): a LET home's running costs
      * are now deducted from rental profit as a landlord's expense (where its council tax is held
      * apart from them), and where it carries running costs the repairs-and-checks rate yields to
      * them, so its repairs are charged once. Any stored let plan with running costs was taxed on
@@ -433,7 +440,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/let-home-running-costs-are-a-letting-expense';
+    public const ENGINE_VERSION = 'finance-engine/rent-arm-keeps-the-readers-settings';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

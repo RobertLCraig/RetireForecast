@@ -3,6 +3,25 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-05: the rent arm runs on the reader's own settings, and bed-and-ISA has a switch
+
+**Context:** card 0016 #4. `HousingComparison::rentSettings` built a fresh `ForecastSettings` field
+by field, so the rent arm lost `useIsaAllowance`, `modelIht`, `homeToDescendants`, the State
+Pension uprating, the beneficiary's rate and the planning horizon. A reader who turned bed-and-ISA
+off had it off on stay-put and buy and still on for rent, which holds the whole sale proceeds in a
+GIA. And the results page told the reader to "say so" with no control on the form to say it with.
+
+**Decision: copy the incoming settings and change only the rent** (`ForecastSettings::withRent`).
+The arms then differ in housing alone, which is what the comparison claims. `sellingCosts` is
+carried too; the rent arm has no home to sell, so it reads nothing there. To reverse one field,
+override it in `rentSettings` after the copy, never by rebuilding the list.
+
+**Decision: the builder gets a "Use your ISA allowance" checkbox on step 1, default on, stored
+only when off.** The default stays the 2026-08-22 decision. The results note now names the box.
+
+`ENGINE_VERSION` is `finance-engine/rent-arm-keeps-the-readers-settings`; stored rent plans with any
+of those settings away from the default owe a re-run.
+
 ## 2026-10-04: a let home's council tax stays charged, and its running costs carry the repairs
 
 **Context:** card 0088. A let home's `runningCosts` were charged as household spend and never taken

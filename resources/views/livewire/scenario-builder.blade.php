@@ -270,6 +270,13 @@
                     @endif
                     <div class="sm:col-span-2">
                         <label class="flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" wire:model="useIsaAllowance" class="rounded border-gray-300">
+                            Use your ISA allowance on money held outside one
+                        </label>
+                        <p class="mt-1 pl-6 text-xs text-gray-500">Each year the forecast moves what it can from a general investment account into an ISA, keeping the gain inside your capital-gains allowance. Untick if you would leave the money where it is.</p>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="flex items-center gap-2 text-sm text-gray-700">
                             <input type="checkbox" wire:model="ihtModelled" class="rounded border-gray-300">
                             Model inheritance tax (estate &amp; legacy)
                         </label>

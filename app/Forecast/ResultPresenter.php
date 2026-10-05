@@ -1401,8 +1401,8 @@ final class ResultPresenter
                     ."and {$lifetime} across the plan. Nobody entered this: it is what a "
                     .'household holding money outside an ISA would normally do, and leaving it out would show you paying '
                     .'tax you would not really pay. Each move is a sale, so it is kept small enough that the gain stays '
-                    .'inside your capital-gains allowance and costs nothing. If you would not do it, say so and we will '
-                    .'model the money staying where it is.';
+                    .'inside your capital-gains allowance and costs nothing. If you would not do it, untick '
+                    .'"Use your ISA allowance" on the first step of the scenario and the money stays where it is.';
             }
 
             // The Money Purchase Annual Allowance. Not a blank input filled in either: a statutory
