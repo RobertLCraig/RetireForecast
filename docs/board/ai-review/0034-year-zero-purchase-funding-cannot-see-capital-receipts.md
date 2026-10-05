@@ -28,7 +28,7 @@ Whether a particular receipt is realistic. That is a scenario input question.
 <!-- AC:BEGIN -->
 - [x] #1 WHEN a purchase is funded in a year that also carries a capital receipt, THE APP SHALL use the receipt before borrowing.
 - [x] #2 WHEN borrowing is still required after available funds are used, THE APP SHALL charge only the shortfall.
-- [ ] #3 THE APP SHALL build every housing variant's household through `Household::copy()` (or a guard that fails when a new `Household` field is not carried), and the `CapitalReceipt` docblock SHALL say that a buy plan spends the receipt on the purchase first.
+- [x] #3 THE APP SHALL build every housing variant's household through `Household::copy()` (or a guard that fails when a new `Household` field is not carried), and the `CapitalReceipt` docblock SHALL say that a buy plan spends the receipt on the purchase first.
 <!-- AC:END -->
 
 ## Tasks
@@ -158,3 +158,19 @@ VERDICT: defect
 **2026-09-29** The loop moved this card from todo/ to human-review/. 3 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 1 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
 
 **2026-09-29** Returned to todo/ by an attended session. The park above was not this card's: `Get-NoProgressCounts` in ProgressBoard's `bin/work-card.ps1` read another board's holds for the same card number out of the shared log, so it parked this card with no take of its own since it was sent back. Fixed in ProgressBoard `6d49915`, which reads each log line's board from its run id.
+
+**2026-10-05** RESULT: done
+TESTS: +1 new, all green
+TOUCHED:
+packages/finance-engine/src/Housing/HousingComparison.php
+packages/finance-engine/src/Dto/CapitalReceipt.php
+packages/finance-engine/tests/Dto/HouseholdWitherTest.php
+OUT-OF-SCOPE: none
+
+#3 took the guard route the criterion allows, not `Household::copy()`. `copy()` reads null as "unchanged", and `withHousing()` has to set a null home (rent) and a null disposal, so routing it through `copy()` needs a sentinel. The new `HouseholdWitherTest::test_the_housing_transform_names_every_household_field` reads `withHousing()`'s source and requires a named argument for every public `Household` property, found by reflection, so a new field is covered when it is declared. #1 and #2 were already met and reviewed sound; nothing changed there.
+
+Watched it fail on the real fault: `withHousing()` never passed `marriageDate`, so every buy and rent plan already dropped the marriage date. Fixed by passing it. No figure moves (the DTO says `marriageDate` is captured, not yet consumed), so `ENGINE_VERSION` is unchanged and no re-run is owed for this take.
+
+The `CapitalReceipt` docblock now says a buy plan spends a base-year receipt on the purchase first, before savings and any mortgage, and carries only the unspent remainder as cash and income. Pint hoisted its `{@see}` into a `use` of `HousingComparison`. That is engine-internal, so isolation holds.
+
+Not done, and not a criterion: the review's "two receipts dated the base year" test is still not written. Task 3 (re-run stored scenarios, `php artisan scenarios:audit`) still needs Rob's live database and cannot run from a worktree.
