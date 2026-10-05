@@ -145,6 +145,30 @@ final class AssumptionsPanelTest extends TestCase
         $this->assertStringContainsString('assumed', $value);
         // And the pounds it actually comes to, so the rate is not the only thing on the screen.
         $this->assertStringContainsString(Money::fromPounds(300_000)->applyRate($rate)->format(), $value);
+
+        // The review that reopened criterion #3: every scenario built in the app itemises (the
+        // builder ships six lines), so the rate above never reaches a real reader. An itemised
+        // sale must still say what its lines come to as a share of the price, and set that beside
+        // the sourced all-in rate (READ from the constant) with the reason the two differ, or a
+        // reader cannot tell that their lines total under 3% where the reviewer said nearer 4%.
+        $itemised = $this->panel(new HousingAction(
+            salePrice: Money::fromPounds(300_000),
+            sellingCosts: [
+                new SellingCostComponent('Estate agent', Percent::fromPercent(1.5)),
+                new SellingCostComponent('Legal / conveyancing', Money::fromPounds(2_000)),
+                new SellingCostComponent('Management pack (leasehold)', Money::fromPounds(500)),
+                new SellingCostComponent('Licence to assign, notices & deed of covenant (leasehold)', Money::fromPounds(700)),
+                new SellingCostComponent('Removals', Money::fromPounds(1_200)),
+                new SellingCostComponent('Energy certificate (EPC)', Money::fromPounds(80)),
+            ],
+        ));
+        $total = $this->value($itemised['housing'], 'Selling costs in total');
+
+        // £4,500 + £2,000 + £500 + £700 + £1,200 + £80 = £8,980, which is 2.99% of £300,000.
+        $this->assertStringContainsString(Money::fromPounds(8_980)->format(), $total);
+        $this->assertStringContainsString('2.99% of the sale price', $total);
+        $this->assertStringContainsString("{$pct}%", $total);
+        $this->assertStringContainsString('only when nothing is itemised', $total);
     }
 
     public function test_with_no_overrides_the_panel_is_not_customised_and_no_row_is_edited(): void

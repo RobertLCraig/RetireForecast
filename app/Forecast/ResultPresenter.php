@@ -41,6 +41,7 @@ use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\HousingPurchase;
+use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Iht\IhtOutcome;
 use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -3892,6 +3893,18 @@ final class ResultPresenter
                     ? self::ratePct($component->value->asPercent()).' of sale'
                     : 'flat fee';
                 $housing[] = ['label' => 'Selling cost — '.$component->label, 'value' => $component->amount($action->salePrice)->format().' ('.$basis.')'];
+            }
+            // Card 0032 #3. The builder always itemises, so the sourced all-in rate never reaches a
+            // real reader. Say what their lines come to as a share of the price and set the rate
+            // beside it, read from the constant, with the reason the two differ.
+            $total = array_reduce($action->sellingCosts, fn (Money $sum, SellingCostComponent $c): Money => $sum->plus($c->amount($action->salePrice)), Money::zero());
+            if ($action->salePrice->isPositive()) {
+                $housing[] = ['label' => 'Selling costs in total', 'value' => $total->format()
+                    .' ('.self::ratePct(100 * $total->pence / $action->salePrice->pence).' of the sale price, from your lines above). '
+                    .'The model\'s own all-in figure for a leasehold sale and a move is '
+                    .self::ratePct(Percent::fromBasisPoints(HousingProceeds::DEFAULT_SELLING_COST_RATE_BP)->asPercent())
+                    .', a cautious catch-all from the 2026-08-19 property review, charged only when nothing is itemised. '
+                    .'Your lines win over it. The lines a new forecast starts with are each inside a published range, and most are flat fees, so their share falls as the price rises'];
             }
         }
         if ($action->movingCosts !== null) {
