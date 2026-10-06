@@ -33,7 +33,7 @@ The history purge itself. Do the guard and the scrub first, then decide on histo
 ## Acceptance
 <!-- AC:BEGIN -->
 - [ ] #1 WHEN any tracked file under `docs/` or `tests/` contains a name or figure on the private denylist, THE APP SHALL fail the test suite.
-- [ ] #2 THE APP SHALL keep the private figures in the gitignored captures, with tracked docs referring to them by card number.
+- [x] #2 THE APP SHALL keep the private figures in the gitignored captures, with tracked docs referring to them by card number.
 <!-- AC:END -->
 
 ## Tasks
@@ -42,3 +42,25 @@ The history purge itself. Do the guard and the scrub first, then decide on histo
 - [ ] Encrypt or delete the plaintext scenario backups
 - [ ] Add data hygiene, and the history question, to card 0012
 
+## Comments
+
+**2026-10-06** RESULT: partial
+TESTS: +2 new, all green
+TOUCHED: tests/Feature/Docs/NoPrivateDataTest.php
+docs/DATA-MODEL.md
+docs/DECISIONS.md
+docs/HANDOVER-ARCHIVE.md
+docs/build/PLAN-park-home.md
+docs/build/SESSION-LOG-ARCHIVE.md
+docs/board/todo/0174-two-decision-cards-still-name-the-couples-lender-and-town.md
+docs/board/todo/0175-an-engine-test-names-the-couples-lender.md
+docs/board/todo/0176-park-home-site-names-survive-only-in-git-history.md
+OUT-OF-SCOPE: 0174, 0175, 0176
+
+Built `NoPrivateDataTest`. It reads `git ls-files -- docs tests` and fails on any denied term in a tracked file, with path, line and term. The denylist is sha256 hashes of lower-case terms of up to three words, matched as word n-grams, so a name wrapped over a line break is caught. The list holds the lender, broker and adviser names, the towns and park sites, the address, postcode and account number, both dates of birth, the salary and the estate figure the review named. A hashed list stops a reader but not a dictionary attack on a town name; the docblock says so, and whether that is enough before a public release is card 0012's call. I watched the guard fail on 48 hits in seven files, and watched the line-wrap canary test fail with the matcher cut to one-word terms.
+
+Scrubbed five docs: the names became neutral words ("the real lender ESIS", "the dearer end") with pointers to the gitignored captures, which already hold the lender, broker and towns. The park-home site table now says Site A to G. Two money figures I first listed (the old loan balance and an archived ranking total) I took off the list: they identify nobody, and scrubbing every couple figure in every format is wider than this card. So one test still uses the loan balance as its example.
+
+#1 not met. Cards 0022 and 0023 still carry denied names, and this session may not edit cards. The test exempts them by card-number prefix in `PENDING_SCRUB`, and fails if an exempt card goes clean, so the exemption cannot outlive the leak. Card 0174 scrubs both and deletes the exemption.
+
+Not done, and they need a person: the plaintext `docs/scenario-backup-*.local.json` files sit only in Rob's checkout, and deleting or encrypting them is his call. Adding data hygiene and the history question to card 0012 needs a card edit this session may not make. The park-home site names were not in any capture and are now only in git history (card 0176). The engine test docblock outside `tests/` names the lender (card 0175). Nothing on screen changed, so no browser check is owed. The suite ran from this worktree with `php artisan test`, because there is no `vendor/bin/pest.bat`.
