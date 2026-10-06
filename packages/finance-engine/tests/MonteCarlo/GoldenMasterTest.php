@@ -44,14 +44,17 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
  * and {@see CareCostSampler}. Care is modelled on here so all three sit in the stream.
  *
  * WHEN THIS TEST GOES RED. It is not a flake and it must not be re-pinned quietly. Something
- * moved the numbers, and it is one of three things:
+ * moved the numbers, and it is one of these:
  *   1. a draw was added, removed or reordered in any of the three samplers above,
- *   2. the projector's arithmetic changed (which is the ENGINE_VERSION bump conversation), or
- *   3. an economic figure moved in {@see AssumptionSetLibrary::default()}.
- * All three re-roll every stored result. If the change is deliberate, re-pin PINNED below, bump
- * {@see self::PIN_REVISION} to today, and append the matching entry to docs/DECISIONS.md.
- * The second test in this file will stay red until that entry exists, which is what makes the
- * decision log a requirement rather than a request.
+ *   2. the projector's arithmetic changed (which is the ENGINE_VERSION bump conversation),
+ *   3. an economic figure moved in {@see AssumptionSetLibrary::default()},
+ *   4. a tax figure moved in the 2026-27 year {@see TaxYearRegistry} returns,
+ *   5. a care figure moved in CareAssumptions::default(), or
+ *   6. the mortality data in {@see CohortLifeTable} changed.
+ * Every one re-rolls every stored result. If the change is deliberate, re-pin PINNED below, bump
+ * {@see self::PIN_REVISION} to today, and append an entry to docs/DECISIONS.md carrying the marker
+ * the second test prints. That marker ends in a hash of PINNED, so ANY edit to a pinned value
+ * keeps the second test red until the entry exists, whether or not the date was bumped.
  *
  * The pinned figures are integer pence and fixed-precision probability strings, so nothing here
  * turns on float formatting. They are still the product of floating-point maths on one machine:
@@ -154,13 +157,26 @@ final class GoldenMasterTest extends TestCase
         $log = dirname(__DIR__, 4).'/docs/DECISIONS.md';
         $this->assertFileExists($log, 'the golden master is only honest while the decision log is reachable from it');
 
+        $marker = self::requiredMarker();
+
         $this->assertStringContainsString(
-            self::MARKER.self::PIN_REVISION,
+            $marker,
             (string) file_get_contents($log),
-            'Nothing in docs/DECISIONS.md records the Monte Carlo pin at revision '.self::PIN_REVISION
-            .". Re-pinning the golden master moves every stored result, so it is a decision and not a\n"
-            .'tidy-up: append an entry containing "'.self::MARKER.self::PIN_REVISION.'" saying what moved and why.',
+            'Nothing in docs/DECISIONS.md records the Monte Carlo pin "'.$marker.'". The marker carries a '
+            ."hash of PINNED, so ANY edit to a pinned value lands here. Re-pinning the golden master moves\n"
+            .'every stored result, so it is a decision and not a tidy-up: append an entry containing "'
+            .$marker.'" saying what moved and why.',
         );
+    }
+
+    /**
+     * The phrase docs/DECISIONS.md must carry for the CURRENT pinned values. It is derived from
+     * PINNED itself, not only from the hand-typed PIN_REVISION, so editing a number and leaving the
+     * date alone still demands a new entry.
+     */
+    private static function requiredMarker(): string
+    {
+        return self::MARKER.self::PIN_REVISION.' (pin '.substr(hash('sha256', serialize(self::PINNED)), 0, 12).')';
     }
 
     /**

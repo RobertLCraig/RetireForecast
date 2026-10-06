@@ -3,6 +3,24 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-06: the golden master's log marker carries a hash of the pinned values
+
+**Context:** card 0039 #2, reopened by review. The 2026-09-05 entry below said the decision log
+check "removes the silent path". It did not. The marker was built from `PIN_REVISION`, a date typed
+by hand, so a session could paste new numbers into `PINNED`, leave the date alone, and stay green
+with no entry here.
+
+**Decision: the marker this file must carry ends in the first 12 hex characters of a SHA-256 of
+`PINNED`.** Any edit to a pinned value now changes the marker, so the log test reddens until a new
+entry names it. The date stays in the marker for the reader. What the check still cannot prove is
+that an entry is honest: the same commit writes both halves. This entry records no re-pin; the
+pinned numbers are the 2026-09-08 ones. Monte Carlo golden master pinned 2026-09-08 (pin e7d066f2793d).
+
+The test's docblock also listed three causes of a red. There are more: the tax year from
+`TaxYearRegistry`, `CareAssumptions::default()` and the `CohortLifeTable` mortality data feed the
+same run, so a change to any of them reddens it too.
+**Status:** active
+
 ## 2026-10-05: a let home's bills come off the rent and leave the spend
 
 **Context:** card 0030 #2, reopened by review. `PathProjector::lettingCostsPerOwner` took the let
