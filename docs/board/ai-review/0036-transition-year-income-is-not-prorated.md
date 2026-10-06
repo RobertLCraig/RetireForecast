@@ -25,10 +25,10 @@ The salary proration, which is already correct.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a State Pension starts part way through a year, THE APP SHALL pay only the part of the year after the entitlement date.
+- [x] #1 WHEN a State Pension starts part way through a year, THE APP SHALL pay only the part of the year after the entitlement date.
 - [x] #2 WHEN a defined-benefit pension starts at normal retirement age, THE APP SHALL pay only the part of the year after that birthday.
 - [x] #3 WHEN a person reaches State Pension age part way through a year, THE APP SHALL charge National Insurance on the earnings before that date.
-- [ ] #4 WHEN an annuity is bought or an income stream starts at a birthday part way through a year, THE APP SHALL pay only the part of that year after the start, by the same `startFraction` rule.
+- [x] #4 WHEN an annuity is bought or an income stream starts at a birthday part way through a year, THE APP SHALL pay only the part of that year after the start, by the same `startFraction` rule.
 <!-- AC:END -->
 
 ## Tasks
@@ -160,3 +160,30 @@ VERDICT: defect
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #1 and added #4 because both findings still hold on master. #1: `PathProjector::startFraction` returns `(12 - month) / 12`, so a November State Pension pays one month, while the code comment in `statePensionIncome` and METHODOLOGY.md both say two months, rounded to the nearest month. Settle one rule and make the code, comment and spec agree. #4: `annuityIncomeNominal` pays a full year in the purchase year, and `incomeStreamsNominal` does the same at `startAge`, which is the same asymmetry this card fixed for DB pensions. Card 0015 parks its annuitisation-month item behind this one for that reason.
+
+**2026-10-06** RESULT: done
+TESTS: +3 new, all green
+TOUCHED:
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Forecast/TransitionYearProrationTest.php
+packages/finance-engine/tests/Forecast/AnnuityTaxFreeLumpSumTest.php
+packages/finance-engine/tests/Forecast/PathProjectorTest.php
+packages/finance-engine/tests/Forecast/PurchasedLifeAnnuityTest.php
+app/Forecast/ScenarioForecaster.php
+docs/spec/METHODOLOGY.md
+docs/board/todo/0172-income-stream-end-year-stops-on-1-january.md
+OUT-OF-SCOPE: 0172
+
+**#1, one rule settled.** The code's rule stays: the year divides at the END of the month the date falls in, the exact complement of `workFraction`, so salary and the income replacing it never overlap or leave a gap, and a November State Pension pays one month (December). It is also the adverse of the two whole-month readings. The `statePensionIncome` comment and METHODOLOGY step 1 said "two months ... to the nearest whole month", which the engine never did; both now state the real rule. No code changed for #1, so there was nothing to watch fail: the existing `test_state_pension_is_prorated_in_the_year_the_entitlement_starts` already pins (12 - n)/12 for a November birthday. The defect was in the words.
+
+**#4.** `annuityIncomeNominal` applies `startFraction(birth month)` in the year the owner's age equals `incomeFromAge` (the purchase age, or the deferred start), to both the income and the exempt capital element of a purchased life annuity. `incomeStreamsNominal` and `rentalIncomePerOwner` share a new `streamStartFraction`, so the rent banked and the rent letting costs are taken off stay one figure. `test_annuity_is_prorated_in_the_year_its_income_starts` and `test_income_stream_is_prorated_in_the_year_it_starts` were watched failing first on the right numbers (720000 paid where 600000 was due; 1200000 where 1000000 was due).
+
+**One assumption, made from the repository.** A stream whose start age is already reached in the BASE year is NOT prorated: `ResultPresenter` labels such a stream "now", i.e. an income already being received (a DLA award entered at today's age is the real case), and prorating it would cut a whole year the household actually has. `test_income_stream_starting_at_the_base_year_age_is_already_in_payment` guards it; it was first seen green, because it pins the absence of a change. Annuities get no such exemption: no screen calls a purchase at today's age "now", the money is still in the pot in the base data, and DB pensions at normal retirement age are prorated in the base year too.
+
+**Drift.** Eight existing tests read an annuity's purchase year (all with a September-born annuitant) and were updated, none weakened: `AnnuityTaxFreeLumpSumTest` x2 and `PathProjectorTest` `test_an_annuity_purchase_converts...` take the 3/12 expectation; `test_a_level_annuity_erodes...` asserts 3/12 in the purchase year and measures erosion from the first whole year; `PurchasedLifeAnnuityTest` reads the tax split and the enhanced uplift in 2027, the first whole year, and the deferred case now also asserts 3/12 in 2030 and a whole 2031. The Monte Carlo golden master stayed green, so its frozen run has no annuity or future stream.
+
+`ENGINE_VERSION` is `finance-engine/annuity-and-stream-start-year-proration`. Built in a worktree, so the **stored-scenario re-run is still owed** (the card's unticked task), and so is `scenarios:audit` against the real DB. No new UI control ships; figures move on any plan with an annuity purchase or a future income stream, and that still needs a browser look from C:\Dev\RetireForecast.
+
+**0172:** a stream's END year still stops on 1 January after `endAge`. Before this card that cancelled the whole first year over the stream's life; now a stream with an end age pays birthMonth/12 of a year too little in total. Carded, not fixed.
+
+#2 and #3 were met by the earlier take and are untouched; the full suite still passes with them.
