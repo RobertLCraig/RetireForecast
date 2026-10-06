@@ -33,9 +33,9 @@ Exposing allocation as an input, which is card 0062.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 THE APP SHALL disclose the State Pension uprating floor, the portfolio allocation and every care assumption as assumed figures, each reading the constant that owns it.
-- [ ] #2 THE APP SHALL let a user choose between full triple lock, triple lock to a stated year then a lower basis, and inflation only.
-- [ ] #3 WHEN any of these defaults is used, THE APP SHALL show its value and why it applies.
+- [x] #1 THE APP SHALL disclose the State Pension uprating floor, the portfolio allocation and every care assumption as assumed figures, each reading the constant that owns it.
+- [x] #2 THE APP SHALL let a user choose between full triple lock, triple lock to a stated year then a lower basis, and inflation only.
+- [x] #3 WHEN any of these defaults is used, THE APP SHALL show its value and why it applies.
 <!-- AC:END -->
 
 ## Tasks
@@ -144,6 +144,19 @@ VERDICT: defect
 
 
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-10-06** RESULT: done
+TESTS: +4 new, all green
+TOUCHED: app/Forecast/ResultPresenter.php, packages/finance-engine/src/Forecast/ForecastSettings.php, packages/finance-engine/tests/Forecast/StatePensionUpratingTest.php, tests/Unit/Forecast/AssumedFiguresDisclosureTest.php
+OUT-OF-SCOPE: none
+
+This answers the three review findings and the 2026-09-28 manager pass.
+
+**Rent arm (#2, #3).** Already fixed on main by card 0016: `HousingComparison::rentSettings()` now calls `ForecastSettings::withRent()`, which copies `statePensionUprating` and `tripleLockUntilYear`. No source change was needed. The test the manager asked for is new: `StatePensionUpratingTest::test_the_rent_arm_uprates_on_the_basis_the_reader_chose` projects the rent leg from `variantInputs()` under prices-only and checks the State Pension rises at 1%, not 2.5%. Watched it fail by putting `rentSettings()` back to a field-by-field rebuild (got the 2.5% figure), then restored it.
+
+**Uprating note gate (#1, #3).** The note no longer needs a `StatePensionEntitlement`, because the same factor uprates the Pension Credit guarantee. It now fires on the new `ForecastSettings::statePensionFloorApplies()`, which reads `StatePensionUprating::floorApplies()` for the first uprated year (base year + 1). So it also shows under a lock to a stated year, with that year named, and is silent for prices-only or a lock that ends before the first uprating. The wording for the default case is unchanged except 'your State Pension' became 'the State Pension' and 'for life' became 'while it runs'. Three tests in `AssumedFiguresDisclosureTest`; the two positive ones failed first on 'exactly one disclosure should mention triple lock, got 0'.
+
+No figure moves, so no `ENGINE_VERSION` bump and no re-run owed. Built in a worktree: the new note text has not been seen in a browser.
 
 ## Scope review of card 0038
 
