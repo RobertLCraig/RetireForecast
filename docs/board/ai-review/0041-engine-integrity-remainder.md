@@ -42,7 +42,7 @@ Performance work, which is card 0042.
 - [x] #2 WHEN any expense-profile field is added, THE APP SHALL fail a test if a wither drops it.
 - [x] #3 WHEN a what-if adds the first row to a list that is empty in its base, THE APP SHALL keep that list positional.
 - [x] #4 WHEN an internal invariant is broken, THE APP SHALL throw or report with a stack trace rather than continuing silently.
-- [ ] #5 WHEN a forced sale is disclosed on screen, THE APP SHALL state the mortgage balance the engine redeems that year, not the balance as entered, proven for a repayment and a lifetime mortgage and for a part-owned home.
+- [x] #5 WHEN a forced sale is disclosed on screen, THE APP SHALL state the mortgage balance the engine redeems that year, not the balance as entered, proven for a repayment and a lifetime mortgage and for a part-owned home.
 <!-- AC:END -->
 
 ## Tasks
@@ -192,3 +192,20 @@ VERDICT: defect
 **2026-09-06** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened with new #5 because the breakage finding holds on main: the `MortgageMaturityAction::ForcedSale` arm of the `mortgage_redemption` note in `ResultPresenter::inputNotes()` still prints `$home->outstandingMortgage`, the figure as entered, while `PathProjector::projectYear()` now redeems the year's balance. On a rolled-up lifetime mortgage the note understates the debt. `ForcedSaleTest` also builds no part-owned home, so the new division by `ownershipShare` is untested.
+
+**2026-10-06** RESULT: done
+TESTS: +3 new, all green
+TOUCHED:
+app/Forecast/ResultPresenter.php
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/src/Forecast/YearResult.php
+tests/Unit/Forecast/InputNotesTest.php
+OUT-OF-SCOPE: none
+
+Criteria 1 to 4 were met by the 2026-09-06 take and still hold; this take built #5 only.
+
+**#5.** No year row carried the balance a forced sale clears: `mortgageBalance()` reads zero in the sale year (the home is gone) and the year before reports that year's opening balance (card 0103). So `YearResult` gained `mortgageRedeemed` (nullable, carried by `withInvestmentGrowth`), set in `PathProjector::projectYear()` from `HousingProceeds::$outstandingMortgage`, the household's share. The `ForcedSale` arm of the `mortgage_redemption` note in `ResultPresenter::inputNotes()` now states that figure in today's money and the sale year, and names the share for a part-owned home ('your 50% share of the loan'). Where no forced sale happens on or after the redemption year (for example a care-triggered sale earlier), it falls back to the entered figure as before. No forecast figure moves, so `ENGINE_VERSION` is unchanged and no stored re-run is owed.
+
+Tests, each watched failing first with the note printing £100,000.00 against the year's balance: `test_a_forced_sale_note_states_a_rolled_up_balance` (£116,633.36), `test_a_forced_sale_note_states_an_amortised_balance` (£84,160.05), `test_a_forced_sale_note_states_the_households_share_of_a_part_owned_homes_balance` (£58,316.68). The expected figure comes from a control run that refinances instead, so the test never replays the roll-up or amortisation arithmetic. The part-owned test also closes the reviewer's smaller point: with the `/ $share` division in the forced sale removed, it goes red, so that division is now under test.
+
+The copy changed on the results page and still needs a browser check from C:\Dev\RetireForecast; it was not seen from this worktree. The full suite ran via `php artisan test` (there is no pest.bat here); pint fixed import order only.
