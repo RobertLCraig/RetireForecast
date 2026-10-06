@@ -22,6 +22,7 @@ use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\IncomeStream;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
@@ -1112,13 +1113,13 @@ final class PathProjector
             // Guaranteed pension / other income, kept split by source.
             $db = $this->dbIncome($household, $person, $age, $state['dbFactors']);
             $sp = $this->statePensionIncome($household, $person->id, $calendarYear, $state['spClaimYear'][$person->id], $state['spaMonth'][$person->id], $state['spFactor']);
-            $otherTaxable = $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: true);
-            $taxFreeStream = $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: false);
+            $otherTaxable = $this->incomeStreamsNominal($household, $person, $age, $yearIndex, $cumInflation, taxable: true);
+            $taxFreeStream = $this->incomeStreamsNominal($household, $person, $age, $yearIndex, $cumInflation, taxable: false);
 
             // The care component is paid only for the statutory period of a funded placement, so
             // what it does NOT pay comes off the tax-free income the household banks. The mobility
             // component is untouched: it is inside $taxFreeStream and stays there.
-            $careComponent = $this->incomeStreamsNominal($household, $person->id, $age, $cumInflation, taxable: false, only: IncomeStreamType::DisabilityBenefit);
+            $careComponent = $this->incomeStreamsNominal($household, $person, $age, $yearIndex, $cumInflation, taxable: false, only: IncomeStreamType::DisabilityBenefit);
             if (isset($disabilityCareFraction[$person->id])) {
                 $paid = (int) round($careComponent * $disabilityCareFraction[$person->id]);
                 $taxFreeStream -= $careComponent - $paid;
@@ -1489,7 +1490,7 @@ final class PathProjector
                 : $household->expenseProfile->mortgageCosts()->pence)
             : 0;
         if (($household->primaryResidence?->isLet ?? false) && $financeCost > 0) {
-            $rentalProfit = max(0, array_sum($this->rentalIncomePerOwner($household, $alive, $ages, $cumInflation)) - array_sum($lettingCosts));
+            $rentalProfit = max(0, array_sum($this->rentalIncomePerOwner($household, $alive, $ages, $yearIndex, $cumInflation)) - array_sum($lettingCosts));
             $reducerBase = min($financeCost, $rentalProfit);
             $credit = min(
                 (int) round($reducerBase * $this->config->incomeTax->basicRate->asFraction()),
@@ -2663,8 +2664,9 @@ final class PathProjector
             return 0;
         }
         // The claim year is a PART year: entitlement begins on the State Pension age date (shifted
-        // whole years by any deferral, so the month is the same either way), and a pension starting
-        // in November pays two months, not twelve.
+        // whole years by any deferral, so the month is the same either way). The year divides at
+        // the END of that month, the complement of the salary's split, so a pension starting in
+        // November pays one month (December), not twelve.
         $fraction = $calendarYear === $spClaimYear ? self::startFraction($spaMonth) : 1.0;
         foreach ($household->pensions as $pension) {
             if ($pension instanceof StatePensionEntitlement && $pension->ownerId === $pid) {
@@ -2725,22 +2727,34 @@ final class PathProjector
      * $only narrows it to a single kind, which is how the disability CARE component is picked out
      * of the tax-free total without a second copy of the age-window rule.
      */
-    private function incomeStreamsNominal(Household $household, string $pid, int $age, float $cumInflation, bool $taxable, ?IncomeStreamType $only = null): int
+    private function incomeStreamsNominal(Household $household, Person $person, int $age, int $yearIndex, float $cumInflation, bool $taxable, ?IncomeStreamType $only = null): int
     {
         $total = 0;
         foreach ($household->incomeStreams as $stream) {
-            if ($stream->ownerId !== $pid || $stream->taxable !== $taxable || ($only !== null && $stream->type !== $only)) {
+            if ($stream->ownerId !== $person->id || $stream->taxable !== $taxable || ($only !== null && $stream->type !== $only)) {
                 continue;
             }
             if ($age < $stream->startAge || ($stream->endAge !== null && $age > $stream->endAge)) {
                 continue;
             }
-            $total += $stream->inflationLinked
-                ? (int) round($stream->grossAnnual->pence * $cumInflation)
-                : $stream->grossAnnual->pence;
+            $total += (int) round(($stream->inflationLinked ? $stream->grossAnnual->pence * $cumInflation : $stream->grossAnnual->pence)
+                * self::streamStartFraction($stream, $person, $age, $yearIndex));
         }
 
         return $total;
+    }
+
+    /**
+     * The share of this year an income stream pays. The year it starts is a part year, because it
+     * starts on the birthday the start age is reached ({@see startFraction}), EXCEPT in the base
+     * year: a start age already reached then reads as "now" on the results page, an income already
+     * being received, so it pays the whole year.
+     */
+    private static function streamStartFraction(IncomeStream $stream, Person $person, int $age, int $yearIndex): float
+    {
+        return $age === $stream->startAge && $yearIndex > 0
+            ? self::startFraction((int) $person->dob->format('n'))
+            : 1.0;
     }
 
     /**
@@ -2753,21 +2767,24 @@ final class PathProjector
      * @param  array<string, int>  $ages
      * @return array<string, int> ownerId => gross rent in nominal pence
      */
-    private function rentalIncomePerOwner(Household $household, array $alive, array $ages, float $cumInflation): array
+    private function rentalIncomePerOwner(Household $household, array $alive, array $ages, int $yearIndex, float $cumInflation): array
     {
         $gross = [];
         foreach ($household->incomeStreams as $stream) {
             // A tax-free rent never reaches taxable income, so it has no costs to take off there.
-            if ($stream->type !== IncomeStreamType::Rental || ! $stream->taxable || ! ($alive[$stream->ownerId] ?? false)) {
+            $owner = $household->person($stream->ownerId);
+            if ($stream->type !== IncomeStreamType::Rental || ! $stream->taxable || $owner === null || ! ($alive[$stream->ownerId] ?? false)) {
                 continue;
             }
             $age = $ages[$stream->ownerId] ?? 0;
             if ($age < $stream->startAge || ($stream->endAge !== null && $age > $stream->endAge)) {
                 continue;
             }
-            $gross[$stream->ownerId] = ($gross[$stream->ownerId] ?? 0) + ($stream->inflationLinked
-                ? (int) round($stream->grossAnnual->pence * $cumInflation)
-                : $stream->grossAnnual->pence);
+            // The same part-year rule as incomeStreamsNominal, so the rent banked and the rent the
+            // letting costs are taken off can never disagree.
+            $gross[$stream->ownerId] = ($gross[$stream->ownerId] ?? 0) + (int) round(
+                ($stream->inflationLinked ? $stream->grossAnnual->pence * $cumInflation : $stream->grossAnnual->pence)
+                * self::streamStartFraction($stream, $owner, $age, $yearIndex));
         }
 
         return $gross;
@@ -2813,7 +2830,7 @@ final class PathProjector
             return $none;
         }
 
-        $gross = $this->rentalIncomePerOwner($household, $alive, $ages, $cumInflation);
+        $gross = $this->rentalIncomePerOwner($household, $alive, $ages, $yearIndex, $cumInflation);
         $total = array_sum($gross);
         if ($total <= 0) {
             return $none;
@@ -3370,13 +3387,21 @@ final class PathProjector
             $factor = $annuity['escalation'] === PensionEscalationBasis::None
                 ? 1.0
                 : $cumInflation / $annuity['purchaseCumInflation'];
-            $amount = (int) round($annuity['baseIncomeNominal'] * $factor);
+            // The year the income starts is a part year: it starts on the birthday the purchase (or
+            // the deferred start) falls on, so it pays the months after it and no more, exactly as
+            // a DB pension does at normal retirement age ({@see startFraction}).
+            $owner = $household->person($annuity['ownerId']);
+            $fraction = $owner !== null && ($ages[$annuity['ownerId']] ?? 0) === $annuity['incomeFromAge']
+                ? self::startFraction((int) $owner->dob->format('n'))
+                : 1.0;
+            $amount = (int) round($annuity['baseIncomeNominal'] * $factor * $fraction);
             if ($amount <= 0) {
                 continue;
             }
-            // The exempt capital element is a fixed sum for the life of the annuity, so an
-            // escalating annuity's exempt PROPORTION falls as its payments grow.
-            $exempt = min($annuity['exemptNominal'], $amount);
+            // The exempt capital element is a fixed sum a year for the life of the annuity, so an
+            // escalating annuity's exempt PROPORTION falls as its payments grow. A part year
+            // returns that part of it.
+            $exempt = min((int) round($annuity['exemptNominal'] * $fraction), $amount);
 
             if ($alive[$annuity['ownerId']] ?? false) {
                 $add($annuity['ownerId'], $amount, $exempt);

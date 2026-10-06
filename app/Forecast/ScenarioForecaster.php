@@ -61,7 +61,13 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-06 (survivor-db-escalates-in-payment-from-death): a survivor's DB pension
+     * Bumped 2026-10-06 (annuity-and-stream-start-year-proration): an annuity pays only the months
+     * after the birthday its income starts on in that year, and so does an income stream in the
+     * year it reaches its start age (except a start age already reached in the base year, which is
+     * an income already in payment). Both paid a whole year before, so a plan with an annuity
+     * purchase or a future income stream inside its horizon banked too much in that one year.
+     * Board card 0036 #4.
+     * Previous bump 2026-10-06 (survivor-db-escalates-in-payment-from-death): a survivor's DB pension
      * left by a member who died deferred escalated on the scheme's REVALUATION basis until the
      * member's notional retirement age, though it is in payment from the death. It now uses the
      * in-payment basis. Only a plan whose two bases differ and whose member dies deferred moves.
@@ -477,7 +483,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/survivor-db-escalates-in-payment-from-death';
+    public const ENGINE_VERSION = 'finance-engine/annuity-and-stream-start-year-proration';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

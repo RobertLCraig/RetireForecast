@@ -8,12 +8,15 @@ use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
+use RetireForecast\FinanceEngine\Dto\AnnuityPurchase;
 use RetireForecast\FinanceEngine\Dto\AssetClassAssumption;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\IncomeStream;
+use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
@@ -159,6 +162,81 @@ final class TransitionYearProrationTest extends TestCase
             );
             $this->assertSame(1_200_000, $db[2031], "month $month: a whole year is paid from then on");
         }
+    }
+
+    /**
+     * A lone retired person's `other_taxable` income by calendar year, with one extra source handed
+     * in: an annuity bought from cash, or an income stream. Nothing else lands on that line.
+     *
+     * @param  list<IncomeStream>  $streams
+     * @return array<int, int> calendarYear => other_taxable pence
+     */
+    private function otherTaxableByYear(string $dob, ?AnnuityPurchase $annuity = null, array $streams = []): array
+    {
+        $household = new Household(
+            'Annuity and stream transition',
+            RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable($dob), Sex::Male, EmploymentStatus::Retired,
+                longevity: LongevityAdjustment::fixedAge(95))],
+            new ExpenseProfile(Money::fromPounds(10_000), Money::zero(), Percent::fromPercent(70)),
+            accounts: [
+                new Account('p1', AccountType::Cash, Money::fromPounds(300_000)),
+                new Account('p1', AccountType::Cash, Money::fromPounds(100_000), annuityPurchase: $annuity),
+            ],
+            incomeStreams: $streams,
+        );
+
+        $byYear = [];
+        foreach ($this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings())->years as $year) {
+            $byYear[$year->calendarYear] = $year->incomeBySource['other_taxable']->pence;
+        }
+
+        return $byYear;
+    }
+
+    public function test_annuity_is_prorated_in_the_year_its_income_starts(): void
+    {
+        // £100,000 at 7.2% is £7,200 a year, level, bought on the 65th birthday in 2030.
+        foreach (self::BIRTH_MONTHS as $month => $dob) {
+            $income = $this->otherTaxableByYear($dob, new AnnuityPurchase(65, Money::fromPounds(100_000), Percent::fromPercent(7.2)));
+
+            $this->assertSame(0, $income[2029], "month $month: nothing is paid before the purchase");
+            $this->assertSame(
+                (int) round(720_000 * (12 - $month) / 12),
+                $income[2030],
+                "month $month: only the part of 2030 after the purchase birthday is paid",
+            );
+            $this->assertSame(720_000, $income[2031], "month $month: a whole year is paid from then on");
+        }
+    }
+
+    public function test_income_stream_is_prorated_in_the_year_it_starts(): void
+    {
+        foreach (self::BIRTH_MONTHS as $month => $dob) {
+            $income = $this->otherTaxableByYear($dob, streams: [
+                new IncomeStream('p1', IncomeStreamType::Other, Money::fromPounds(12_000), taxable: true, inflationLinked: false, startAge: 65),
+            ]);
+
+            $this->assertSame(0, $income[2029], "month $month: nothing is paid before the start age");
+            $this->assertSame(
+                (int) round(1_200_000 * (12 - $month) / 12),
+                $income[2030],
+                "month $month: only the part of 2030 after the start birthday is paid",
+            );
+            $this->assertSame(1_200_000, $income[2031], "month $month: a whole year is paid from then on");
+        }
+    }
+
+    public function test_income_stream_starting_at_the_base_year_age_is_already_in_payment(): void
+    {
+        // A start age the person has already reached in the base year reads as "now" on the results
+        // page (ResultPresenter), so it is an income already being received, not one that begins
+        // part way through 2026. Prorating it would cut a whole-year income the household has.
+        $income = $this->otherTaxableByYear('1965-08-15', streams: [
+            new IncomeStream('p1', IncomeStreamType::Other, Money::fromPounds(12_000), taxable: true, inflationLinked: false, startAge: 61),
+        ]);
+
+        $this->assertSame(1_200_000, $income[2026]);
     }
 
     /**

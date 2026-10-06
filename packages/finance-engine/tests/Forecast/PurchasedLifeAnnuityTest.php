@@ -113,8 +113,9 @@ final class PurchasedLifeAnnuityTest extends TestCase
         $this->assertGreaterThanOrEqual(10_000_000, $control->liquidWealth->pence);
 
         // Bought: the cash is exchanged for £100,000 × 7.2% = £7,200 a year of income for life,
-        // and the £100,000 has demonstrably left the account.
-        $this->assertSame(720_000, $bought->incomeBySource['other_taxable']->pence);
+        // and the £100,000 has demonstrably left the account. Bought on p2's September birthday, so
+        // the purchase year pays 3/12 of it (board card 0036).
+        $this->assertSame((int) round(720_000 * 3 / 12), $bought->incomeBySource['other_taxable']->pence);
         $this->assertLessThan($control->liquidWealth->pence - 9_000_000, $bought->liquidWealth->pence);
     }
 
@@ -134,8 +135,10 @@ final class PurchasedLifeAnnuityTest extends TestCase
         )]);
         $fromCash = $this->couple([$this->cashAccount(new AnnuityPurchase(68, Money::fromPounds(100_000), Percent::fromPercent(7.2)))]);
 
-        $potYear = $this->forecaster()->forecast($fromPot, $this->flatAssumptions(), $this->settings())->years[0];
-        $cashYear = $this->forecaster()->forecast($fromCash, $this->flatAssumptions(), $this->settings())->years[0];
+        // Read in 2027, the first WHOLE year of income: the purchase year pays only the months after
+        // p2's September birthday (board card 0036).
+        $potYear = $this->forecaster()->forecast($fromPot, $this->flatAssumptions(), $this->settings())->years[1];
+        $cashYear = $this->forecaster()->forecast($fromCash, $this->flatAssumptions(), $this->settings())->years[1];
 
         // Both pay the same gross income...
         $this->assertSame(720_000, $potYear->incomeBySource['other_taxable']->pence);
@@ -167,10 +170,12 @@ final class PurchasedLifeAnnuityTest extends TestCase
         // The purchase itself happened in the base year: the whole £100,000 has left the account,
         // so all that is left liquid is the year's banked surplus...
         $this->assertLessThan(10_000_000, $years[0]->liquidWealth->pence);
-        // ...while the income pays nothing until p2 reaches 72 (born September 1958, so 2030).
+        // ...while the income pays nothing until p2 reaches 72 (born September 1958, so 2030), and
+        // then only the months after that birthday in 2030 (board card 0036).
         $this->assertSame(0, $income[2026]);
         $this->assertSame(0, $income[2029]);
-        $this->assertSame(720_000, $income[2030]);
+        $this->assertSame((int) round(720_000 * 3 / 12), $income[2030]);
+        $this->assertSame(720_000, $income[2031]);
     }
 
     public function test_an_enhanced_annuity_buys_more_income_at_a_disclosed_uplift(): void
@@ -178,8 +183,9 @@ final class PurchasedLifeAnnuityTest extends TestCase
         $ordinary = new AnnuityPurchase(68, Money::fromPounds(100_000), Percent::fromPercent(7.2));
         $enhanced = new AnnuityPurchase(68, Money::fromPounds(100_000), Percent::fromPercent(7.2), enhanced: true);
 
-        $plain = $this->forecaster()->forecast($this->couple([$this->cashAccount($ordinary)]), $this->flatAssumptions(), $this->settings())->years[0];
-        $impaired = $this->forecaster()->forecast($this->couple([$this->cashAccount($enhanced)]), $this->flatAssumptions(), $this->settings())->years[0];
+        // 2027, the first whole year of income (the purchase year is a part year, board card 0036).
+        $plain = $this->forecaster()->forecast($this->couple([$this->cashAccount($ordinary)]), $this->flatAssumptions(), $this->settings())->years[1];
+        $impaired = $this->forecaster()->forecast($this->couple([$this->cashAccount($enhanced)]), $this->flatAssumptions(), $this->settings())->years[1];
 
         // The uplift is READ from the constant that owns it, so re-sourcing it moves this too.
         $expected = (int) round(10_000_000 * $enhanced->effectiveRate()->asFraction());

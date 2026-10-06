@@ -406,9 +406,13 @@ Each projected year the engine:
 1. Adds up every living person's income by source — part-year earnings in a retirement year, DB
    pension, State Pension, income streams, planned pension withdrawals, annuities, survivor pensions.
    **The retirement year is split on both sides.** Pay stops on the birthday you retire, and the
-   income replacing it starts on its own date rather than on 1 January: a State Pension first paid in
-   November counts two months in that year, and a DB pension counts only the months after the normal
-   retirement age birthday. Each is counted to the nearest whole month.
+   income replacing it starts on its own date rather than on 1 January. The year is split in whole
+   months, at the end of the month the date falls in: pay counts up to and including that month, and
+   the new income counts only the months after it. So a State Pension first paid in November counts
+   one month (December) in that year. The same rule applies to a DB pension at its normal retirement
+   age, an annuity from the birthday it is bought on (or its deferred start), and an income stream
+   from its start age. An income stream whose start age you have already reached in the first
+   projected year is taken as already being paid, and counts the whole year.
 2. Taxes each person individually (income tax in the combined pass above, plus employee NI on
    earnings). **National Insurance stops at State Pension age**, so the earnings of the months before
    that date in the year you reach it are still charged. Unwrapped savings interest and GIA dividends

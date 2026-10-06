@@ -108,8 +108,9 @@ final class AnnuityTaxFreeLumpSumTest extends TestCase
 
         // £100,000 crystallised: £25,000 out as a tax-free lump sum...
         $this->assertSame(2_500_000, $year->incomeBySource['pension_lump_sum']->pence);
-        // ...and the remaining £75,000 buys the income, at £75,000 x 7.2% = £5,400 a year.
-        $this->assertSame(540_000, $year->incomeBySource['other_taxable']->pence);
+        // ...and the remaining £75,000 buys the income, at £75,000 x 7.2% = £5,400 a year. It is
+        // bought on p2's September birthday, so 2026 pays October to December: 3/12 of it.
+        $this->assertSame((int) round(540_000 * 3 / 12), $year->incomeBySource['other_taxable']->pence);
         // The whole pot has left the pension either way.
         $this->assertSame(0, $year->pensionWealth->pence);
     }
@@ -143,6 +144,7 @@ final class AnnuityTaxFreeLumpSumTest extends TestCase
         $year = $this->forecaster()->forecast($this->couple([], [$account]), $this->flatAssumptions(), $this->settings())->years[0];
 
         $this->assertSame(0, $year->incomeBySource['pension_lump_sum']->pence);
-        $this->assertSame(720_000, $year->incomeBySource['other_taxable']->pence);
+        // 3/12 of it in the purchase year, bought on p2's September birthday.
+        $this->assertSame((int) round(720_000 * 3 / 12), $year->incomeBySource['other_taxable']->pence);
     }
 }

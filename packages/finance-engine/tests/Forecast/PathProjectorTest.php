@@ -1479,9 +1479,10 @@ final class PathProjectorTest extends TestCase
         // With the annuity: the pot is converted (pension wealth gone). Since board card 0065 the
         // £100k is CRYSTALLISED first, so £25k comes out as a tax-free lump sum and £75k buys the
         // income: £75,000 x 7.2% = £5,400 a year taxable. Completeness: both halves of the purchase
-        // demonstrably reach the forecast.
+        // demonstrably reach the forecast. Bought on p2's September birthday, so the purchase year
+        // pays October to December, 3/12 of it (board card 0036).
         $this->assertSame(0, $withAnnuity->pensionWealth->pence, 'the pot is exchanged for the annuity, so holds no drawable value');
-        $this->assertSame(540_000, $withAnnuity->incomeBySource['other_taxable']->pence);
+        $this->assertSame((int) round(540_000 * 3 / 12), $withAnnuity->incomeBySource['other_taxable']->pence);
         $this->assertSame(2_500_000, $withAnnuity->incomeBySource['pension_lump_sum']->pence);
     }
 
@@ -1503,13 +1504,15 @@ final class PathProjectorTest extends TestCase
 
         $real = fn (array $years, int $i): int => $years[$i]->incomeBySource['other_taxable']->pence;
 
-        // Both start at the same £5,400 real in the purchase year (£75k of the £100k buys the
-        // income; the other £25k is the tax-free lump sum, board card 0065).
-        $this->assertSame(540_000, $real($level, 0));
-        $this->assertSame(540_000, $real($rpi, 0));
+        // Both start at the same £5,400 a year (£75k of the £100k buys the income; the other £25k
+        // is the tax-free lump sum, board card 0065), of which the purchase year pays 3/12: it is
+        // bought on p2's September birthday (board card 0036).
+        $this->assertSame((int) round(540_000 * 3 / 12), $real($level, 0));
+        $this->assertSame((int) round(540_000 * 3 / 12), $real($rpi, 0));
 
-        // A level annuity pays a flat NOMINAL income, so its REAL value falls with inflation...
-        $this->assertLessThan($real($level, 0), $real($level, 5));
+        // A level annuity pays a flat NOMINAL income, so its REAL value falls with inflation from
+        // the first whole year on...
+        $this->assertLessThan($real($level, 1), $real($level, 5));
         // ...while an RPI annuity escalates with inflation, holding its real value (± a rounding penny).
         $this->assertEqualsWithDelta(540_000, $real($rpi, 5), 5);
     }
