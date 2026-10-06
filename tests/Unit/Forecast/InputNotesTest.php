@@ -7,15 +7,28 @@ namespace Tests\Unit\Forecast;
 use App\Enums\ScenarioVariant;
 use App\Forecast\HouseholdAssembler;
 use App\Forecast\ResultPresenter;
+use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Benefits\DisabilityBenefitInCare;
 use RetireForecast\FinanceEngine\Benefits\SupportForMortgageInterest;
+use RetireForecast\FinanceEngine\Dto\Account;
+use RetireForecast\FinanceEngine\Dto\AccountType;
+use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
+use RetireForecast\FinanceEngine\Dto\MortgageRatePeriod;
+use RetireForecast\FinanceEngine\Dto\OwnershipType;
+use RetireForecast\FinanceEngine\Dto\Person;
+use RetireForecast\FinanceEngine\Dto\Property;
+use RetireForecast\FinanceEngine\Dto\RepaymentMortgageTerms;
+use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
@@ -361,6 +374,80 @@ final class InputNotesTest extends TestCase
         $this->assertCount(1, $flag);
         $this->assertStringContainsString('due for redemption in 2026', $flag[0]['text']);
         $this->assertStringContainsString('£208,000', $flag[0]['text']);
+    }
+
+    /**
+     * Card 0041 #5. A forced sale redeems the balance owed IN THE SALE YEAR, so the note has to
+     * state that balance and not the one typed in. They agree only for an interest-only loan
+     * redeemed at once, which is all the test above builds. The expected figure is read from a
+     * control run that keeps the home: its sale-year row reports the balance the projector holds
+     * that year, so this test never replays the roll-up or amortisation arithmetic.
+     */
+    public function test_a_forced_sale_note_states_a_rolled_up_balance(): void
+    {
+        $this->assertForcedSaleNoteStatesTheYearsBalance(rollUpRate: Percent::fromPercent(6));
+    }
+
+    public function test_a_forced_sale_note_states_an_amortised_balance(): void
+    {
+        $this->assertForcedSaleNoteStatesTheYearsBalance(repaymentTerms: new RepaymentMortgageTerms(
+            termMonths: 300,
+            firstPaymentYear: 2026,
+            firstPaymentMonth: 1,
+            ratePeriods: [new MortgageRatePeriod(Percent::fromPercent(5))],
+        ));
+    }
+
+    public function test_a_forced_sale_note_states_the_households_share_of_a_part_owned_homes_balance(): void
+    {
+        $text = $this->assertForcedSaleNoteStatesTheYearsBalance(
+            rollUpRate: Percent::fromPercent(6),
+            share: Percent::fromPercent(50),
+        );
+        $this->assertStringContainsString('50% share', $text);
+    }
+
+    private function assertForcedSaleNoteStatesTheYearsBalance(
+        ?Percent $rollUpRate = null,
+        ?RepaymentMortgageTerms $repaymentTerms = null,
+        ?Percent $share = null,
+    ): string {
+        $household = fn (MortgageMaturityAction $action): Household => new Household(
+            'ForcedSaleNote', RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1958-01-01'), Sex::Male, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(18_000), Money::zero(), Percent::fromPercent(70)),
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(400_000))],
+            primaryResidence: new Property(
+                currentValue: Money::fromPounds(400_000),
+                ownership: OwnershipType::Mortgaged,
+                outstandingMortgage: Money::fromPounds(100_000),
+                mortgageRedemptionYear: 2030,
+                mortgageMaturityAction: $action,
+                mortgageRollUpRate: $rollUpRate,
+                repaymentTerms: $repaymentTerms,
+                ownershipShare: $share,
+            ),
+        );
+
+        $kept = $this->forecastFor($household(MortgageMaturityAction::Refinance));
+        $owed = null;
+        foreach ($kept->years as $year) {
+            if ($year->calendarYear === 2030) {
+                $owed = $year->mortgageBalance();
+            }
+        }
+        $this->assertNotNull($owed);
+
+        $sold = $household(MortgageMaturityAction::ForcedSale);
+        $flag = array_values(array_filter(
+            ResultPresenter::inputNotes($sold, $this->forecastFor($sold)),
+            fn (array $n): bool => $n['kind'] === 'mortgage_redemption',
+        ));
+        $this->assertCount(1, $flag);
+        $this->assertStringContainsString($owed->format(), $flag[0]['text'], 'the note states the balance the sale redeems');
+        $this->assertStringNotContainsString('£100,000', $flag[0]['text'], 'not the balance as entered');
+
+        return $flag[0]['text'];
     }
 
     public function test_a_rolling_up_lifetime_mortgage_is_flagged_with_its_estate_effect(): void

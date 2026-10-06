@@ -140,6 +140,7 @@ final class YearResult
         public readonly ?Money $guardrailReduction = null,
         public readonly ?Money $pensionTaxableIfDrawn = null,
         public readonly ?Money $pensionTaxIfDrawn = null,
+        public readonly ?Money $mortgageRedeemed = null,
     ) {
         $this->totalWealth = $liquidWealth->plus($pensionWealth)->plus($this->homeEquity());
     }
@@ -204,6 +205,16 @@ final class YearResult
     public function mortgageBalance(): Money
     {
         return $this->mortgageBalance ?? Money::zero();
+    }
+
+    /**
+     * The household's share of the mortgage a forced sale cleared this year (zero in any other
+     * year). {@see mortgageBalance()} reads zero in the sale year because the home is gone, so this
+     * is the only place the redeemed balance is reported. Board card 0041.
+     */
+    public function mortgageRedeemed(): Money
+    {
+        return $this->mortgageRedeemed ?? Money::zero();
     }
 
     /**
@@ -331,6 +342,7 @@ final class YearResult
             $this->guardrailReduction,
             $this->pensionTaxableIfDrawn,
             $this->pensionTaxIfDrawn,
+            $this->mortgageRedeemed,
         );
     }
 }

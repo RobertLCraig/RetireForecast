@@ -2411,10 +2411,24 @@ final class ResultPresenter
         if ($home !== null && $home->mortgageRedemptionYear !== null && $mortgage !== null && $mortgage->isPositive()) {
             $year = $home->mortgageRedemptionYear;
             $amount = $mortgage->format();
+            // Card 0041 #5. A forced sale clears the balance owed IN THE SALE YEAR, which a
+            // repayment loan has paid down and a lifetime mortgage has rolled up, so the note reads
+            // that balance off the engine rather than restating the one typed in.
+            $sale = null;
+            foreach ($entered->years as $projected) {
+                if ($sale === null && $projected->calendarYear >= $year && $projected->mortgageRedeemed()->isPositive()) {
+                    $sale = $projected;
+                }
+            }
+            $shareText = $home->ownershipShare === null ? '' : ' (your '
+                .rtrim(rtrim(number_format($home->ownershipShare->asPercent(), 2), '0'), '.').'% share of the loan)';
+            $owedAtSale = $sale === null ? '' : " By then {$sale->mortgageRedeemed()->format()}{$shareText} is "
+                ."owed, in today's money, and that is the balance the sale in {$sale->calendarYear} clears.";
             $text = match ($home->mortgageMaturityAction) {
                 MortgageMaturityAction::Refinance => "This home's mortgage of {$amount} is due for redemption in {$year}; the forecast assumes it is refinanced (rolled into a new mortgage). If refinancing isn't available it would have to be repaid from savings or the home sold.",
                 MortgageMaturityAction::RepayFromCapital => "This home's mortgage of {$amount} is due for redemption in {$year}; the forecast repays it from savings that year (a {$amount} one-off). If that capital isn't there, the year shows a shortfall — keeping the home is unaffordable.",
-                MortgageMaturityAction::ForcedSale => "This home's mortgage of {$amount} is due for redemption in {$year} and is modelled as not refinanceable, so the home is sold that year: the equity left after the mortgage, selling costs and any CGT is freed into your investments, the mortgage and property costs stop, and rent begins (enter a rent so the sell-and-rent cost is modelled). You can still compare selling now, buying somewhere cheaper or letting it out as what-if scenarios on the Compare page.",
+                MortgageMaturityAction::ForcedSale => ($sale === null ? "This home's mortgage of {$amount} is due" : "This home's mortgage is due")
+                    ." for redemption in {$year} and is modelled as not refinanceable, so the home is sold that year.{$owedAtSale} On the sale, the equity left after the mortgage, selling costs and any CGT is freed into your investments, the mortgage and property costs stop, and rent begins (enter a rent so the sell-and-rent cost is modelled). You can still compare selling now, buying somewhere cheaper or letting it out as what-if scenarios on the Compare page.",
             };
             $notes[] = ['kind' => 'mortgage_redemption', 'text' => $text];
         }

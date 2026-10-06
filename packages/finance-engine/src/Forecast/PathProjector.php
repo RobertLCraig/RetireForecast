@@ -1375,6 +1375,7 @@ final class PathProjector
         // a one-year EVENT (board card 0049 warns on it) while $state['homeSold'] stays true for the
         // rest of the plan, so the flag alone would repeat the warning for ever.
         $homeSoldAtYearStart = $state['homeSold'];
+        $mortgageRedeemedNominal = 0;
         $saleForcedByMaturity = $home?->mortgageRedemptionYear !== null
             && $home->mortgageMaturityAction === MortgageMaturityAction::ForcedSale
             && $calendarYear >= $home->mortgageRedemptionYear;
@@ -1410,6 +1411,9 @@ final class PathProjector
                 $home->ownershipShare,
                 $this->config,
             );
+            // Reported on the year so a screen states the balance the sale cleared (card 0041 #5):
+            // the year's own mortgage balance reads zero once the home is gone.
+            $mortgageRedeemedNominal = $proceeds->outstandingMortgage->pence;
 
             // The net proceeds become investable liquid wealth, split equally between the living
             // OWNERS' GIAs (drawable now, invested per the run's assumptions and drawn per the
@@ -2058,6 +2062,7 @@ final class PathProjector
                 )] : []),
             ],
             mortgageBalance: $m($state['mortgageOutstanding']),
+            mortgageRedeemed: $m($mortgageRedeemedNominal),
             nominal: $nominal,
             isaSheltered: $m($isaShelteredNominal),
             smiBalance: $m($state['smiBalance']),
