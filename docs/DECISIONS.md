@@ -2244,7 +2244,7 @@ fallback to `StayPut` so the label agrees with the plan modelled. Rob's own scen
 explicit variant, so none were affected — but the trap was live.
 
 ## 2026-07-30 — A bought home can cost what it costs, and can LOSE value (the park-home option)
-**Context:** Rob asked to consider a park home between Wokingham and Tring. Research
+**Context:** Rob asked to consider a park home in the family corridor. Research
 ([docs/build/PLAN-park-home.md](build/PLAN-park-home.md)) established that the *holiday*-park version is
 not legally possible as a housing plan (a holiday home cannot be a main residence; the owner must be
 registered elsewhere) but the *residential* park-home version is squarely in budget — and that the
@@ -2274,9 +2274,9 @@ rate, with running costs derived as 1% of value.
    flat-real treatment is therefore already correct and the escalation limitation previously flagged
    **does not exist**.
 
-**Consequences.** The park home is the **strongest option in the V2 family**: £128k Wokingham + the
+**Consequences.** The park home is the **strongest option in the V2 family**: £128k cheaper-end + the
 £80k art sale supports **£1,235/mo** of free spending (vs sell-and-buy-cheaper's £865/mo), and the
-£128k version works **without** the art sale (£931/mo). £150k Tring cannot complete without it — **no
+£128k version works **without** the art sale (£931/mo). The £150k dearer-end home cannot complete without it — **no
 mortgage is available on a park home** (you own the structure, not the pitch), so the £46,412 gap has
 to be cash and exceeds their savings. The trade is the estate: -8%/yr plus up to 10% resale commission.
 
@@ -2324,7 +2324,7 @@ of the exercise. Spec: [docs/build/PLAN-spendable-view.md](build/PLAN-spendable-
 **Consequences (V2 family, deterministic path).** The affordable free-spending budget is the sharpest
 discriminator built so far: **sell & buy cheaper £865/mo**, **lifetime mortgage £652/mo**, **YCC to 72
 £212/mo**, **YCC to 71 £135/mo**, and **everything else fails even at zero discretionary spend** —
-including the LiveMore stay-put base and both £80k art-sale variants. So on these figures the LiveMore
+including the real-quote stay-put base and both £80k art-sale variants. So on these figures the real-quote
 mortgage leaves **no holiday budget at all**, which is the direct answer to the question the park-home
 exercise was raised to settle.
 
@@ -2334,8 +2334,9 @@ divergences"). The solved figure inherits the deterministic path's optimism, so 
 as "on the expected path" beside the Monte Carlo "how sure", never instead of it.
 
 ## 2026-07-29 — Repayment (capital & interest) mortgages amortise; the V2 Stay-put base moves onto a real quote
-**Context:** Rob produced a real indicative quote for the V2 couple — a LiveMore Capital ESIS dated 29 July 2026
-(via broker "When The Bank Says No"): **£160,000 over 16 years, capital & interest**, 6.23% fixed for 60 months
+**Context:** Rob produced a real indicative quote for the V2 couple — a real lender ESIS dated 29 July 2026
+(via a broker; both are named in the gitignored `docs/HOUSING-OFFERS.local.md`):
+**£160,000 over 16 years, capital & interest**, 6.23% fixed for 60 months
 (£1,318.54/mo) then 7.24% SVR for 132 (£1,384.65/mo), first payment September 2026, cleared August 2042. The
 Stay-put base modelled a **hypothetical** instead: ~£90k found from outside pays the £208k buy-to-let down to
 £118k, refinanced as a retirement interest-only loan at 6% = £7,080/yr, balance static for ever. The engine

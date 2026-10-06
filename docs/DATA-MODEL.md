@@ -733,7 +733,7 @@ from the original plan, flagged inline:
   survivor factor on a death, never stopped it at the end of the term, and understated net wealth and the IHT
   estate by every pound of capital repaid. `Property::$repaymentTerms` + `AmortisationSchedule` now model it
   properly (monthly amortisation, nominal-rate/12, payment recomputed at each rate tier, final instalment
-  trued up to land on zero). Pinned to a real lender illustration: the LiveMore ESIS of 29 July 2026 (£160,000
+  trued up to land on zero). Pinned to a real lender illustration: the real lender ESIS of 29 July 2026 (£160,000
   / 192 months / 6.23% for 60 then 7.24%) reproduces **to within 21p at any row over 16 years**, with both
   monthly instalments (£1,318.54, £1,384.65) exact — `AmortisationScheduleTest`, `RepaymentMortgageForecastTest`.
   Null terms = byte-identical to before. **Still open:** lender fees, early-repayment charges and the

@@ -284,8 +284,8 @@ in DATA-MODEL: `usableWealth` counts pre-tax pension as cash, which additionally
 warning fire late. Full suite green (967), pint clean. **Awaits browser sign-off** (visible UI on four
 surfaces).
 
-_2026-07-29 (real repayment mortgages; the V2 Stay-put base moved onto the LiveMore quote)_ —
-Rob supplied a real indicative quote (LiveMore Capital ESIS, 29 July 2026, via broker When The Bank Says No):
+_2026-07-29 (real repayment mortgages; the V2 Stay-put base moved onto the real lender quote)_ —
+Rob supplied a real indicative quote (a lender ESIS, 29 July 2026, via a broker; both named in docs/HOUSING-OFFERS.local.md):
 **£160,000 over 16 years, capital & interest**, 6.23% fixed for 60 months then 7.24% SVR. The engine could not
 represent it — a repayment mortgage's balance was **static**, and its payment was an ordinary expense line, so
 the model inflated a contractually fixed instalment with CPI, shrank it by the survivor factor on a death,
@@ -321,7 +321,7 @@ and sell-and-rent kept as comparators, which proved right: they are the only pla
 completeness rather than assuming: rental income reaches the forecast as taxable, both £80k receipts land, 47's
 spend is **exactly** £49,495 above 48's, and the salary really extends to 2029/2031/2032. **Findings: only the
 lifetime mortgage (estate consumed to £63,587) and sell-and-buy-cheaper (£303,506) never run short, and no
-lever rescues the LiveMore mortgage** — +5 working years moves the shortfall 2036 → 2042, the £80k sale buys
+lever rescues the real-quote mortgage** — +5 working years moves the shortfall 2036 → 2042, the £80k sale buys
 1–4 years. Two judgement calls flagged in the V2 doc: the **let-to-let BTL rate had no quote behind it** (set
 at 6.5% here on a later-life premium — **since disproved and repriced to 5.75%**, DECISIONS 2026-07-30),
 and a **£160k lifetime mortgage is likely unavailable** (max release is governed by the younger

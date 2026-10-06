@@ -507,9 +507,9 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   `AmortisationSchedule` now own **both** legs — the balance amortises to zero and the fixed-nominal
   instalment is charged as essential spend (added after the CPI/survivor multiplies), **replacing** the
   "Mortgage" expense line. Mutually exclusive with `mortgageRollUpRate` (throws). Pinned to a real lender
-  illustration — the LiveMore ESIS of 2026-07-29 reproduces **within 21p at any row over 16 years**, both
+  illustration — the real lender ESIS of 2026-07-29 reproduces **within 21p at any row over 16 years**, both
   monthly instalments exact. Null terms = byte-identical, no migration. Closes the DATA-MODEL divergence.
-- **Done 2026-07-29 — the V2 Stay-put base moved onto the real LiveMore quote:** the base's hypothetical
+- **Done 2026-07-29 — the V2 Stay-put base moved onto the real lender quote:** the base's hypothetical
   "£90k found → £118k RIO at £7,080/yr" is replaced by the actual quote (**£160k over 16 years, C&I**,
   £1,318.54/mo then £1,384.65/mo). **Finding: it does not work** — affordable while both live, but the
   survivor carries £16,616/yr on ~£11.7k/yr, so the plan runs short in **2036** (was 2043), ~£15k/yr short
@@ -523,7 +523,7 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   lifetime mortgage / let-to-let) plus levers and two sell comparators. The previous 24 scenarios are backed
   up in full at the gitignored `docs/scenario-backup-2026-07-29.local.json`. **Finding: only two plans never
   run short** — the lifetime mortgage (which survives by consuming the whole estate) and sell-and-buy-cheaper;
-  and **no lever rescues the LiveMore mortgage** (YCC working 5 more years moves the shortfall 2036 → 2042; an
+  and **no lever rescues the real-quote mortgage** (YCC working 5 more years moves the shortfall 2036 → 2042; an
   £80k art/jewellery sale buys 1–4 years). The let-to-let BTL rate was **repriced 6.5% → 5.75%** on
   2026-07-30 — the "later-life premium" behind 6.5% does not exist, since BTL is underwritten on rental
   income, not the borrower's age (DECISIONS 2026-07-30). Figures + sources in the private V2 doc.
@@ -549,17 +549,17 @@ The full per-feature build record is in **[docs/HANDOVER-ARCHIVE.md](HANDOVER-AR
   synchronous deterministic bisection on a new `DiscretionarySpendLever` — which **solves** "the most you
   could spend on treats and holidays every year", the one question a budget-bounded projection cannot
   answer. **V2 finding: sell & buy cheaper £865/mo, lifetime mortgage £652/mo, YCC-to-72 £212/mo, and
-  every other plan (incl. the LiveMore stay-put base and both £80k art-sale variants) fails at zero
+  every other plan (incl. the real-quote stay-put base and both £80k art-sale variants) fails at zero
   discretionary spend** — the stay-put mortgage leaves no holiday budget at all.
 - **Done 2026-07-30 — the park-home option: a bought home that costs what it costs and LOSES value
   (DECISIONS 2026-07-30, [docs/build/PLAN-park-home.md](build/PLAN-park-home.md)):** two optional
   `HousingAction` fields (`buyRunningCosts`, `buyGrowthOverride` — the latter accepting **negative**
-  rates), a `home_depreciates` honesty note, and four new scenarios (£150k Tring / £128k Wokingham,
+  rates), a `home_depreciates` honesty note, and four new scenarios (£150k dearer-end / £128k cheaper-end,
   each ± the £80k art sale). **Running costs raised £3,000 → £5,000/yr on 2026-07-30** once the home's
   own upkeep was researched (the pitch fee buys site maintenance only — DECISIONS 2026-07-30), which
-  narrows the advantage: £128k Wokingham + art sale **£994/mo** free spending vs sell-and-buy-cheaper's
+  narrows the advantage: £128k cheaper-end + art sale **£994/mo** free spending vs sell-and-buy-cheaper's
   £865/mo, but **£693/mo without the art sale**, so sell-and-buy wins on both spending and estate unless
-  the art is sold. £150k Tring can't complete at all — no mortgage is available on a park home and the
+  the art is sold. The £150k dearer-end home cannot complete at all — no mortgage is available on a park home and the
   £46,412 gap exceeds their savings. **A full scenario audit ran
   clean** (see Session log) — variant labels, orphaned overrides, the mortgage line, monthly-figure
   reconciliation, depreciation reaching the result, and unfunded purchases being charged.

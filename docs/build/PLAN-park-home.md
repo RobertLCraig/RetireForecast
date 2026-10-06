@@ -9,7 +9,7 @@
 
 > **Built as specified.** Both gaps closed by two optional `HousingAction` fields
 > (`buyRunningCosts`, `buyGrowthOverride`, the latter accepting NEGATIVE rates), a depreciation
-> honesty note, and four scenarios (£150k Tring / £128k Wokingham, each with and without the £80k art
+> honesty note, and four scenarios (£150k dearer-end / £128k cheaper-end, each with and without the £80k art
 > sale). Guarded by `DepreciatingHomePurchaseTest` (the home must actually lose value; an explicit
 > running cost must REPLACE the 1% default, not add to it; both-null is byte-identical).
 >
@@ -19,21 +19,22 @@
 >
 > | Plan | Free to spend |
 > |---|---|
-> | Park home £128k Wokingham + £80k art sale | **£994/mo** |
-> | Park home £150k Tring + £80k art sale | £930/mo |
+> | Park home £128k (cheaper end) + £80k art sale | **£994/mo** |
+> | Park home £150k (dearer end) + £80k art sale | £930/mo |
 > | *Sell & buy cheaper £165k* | *£865/mo* |
 > | Park home £128k, **no** art sale | £693/mo |
 >
 > So: **with** the art sale the park home wins on spending (though sell-and-buy still leaves the
-> larger estate, £303,506); **without** it, sell-and-buy-cheaper wins on both. £150k Tring cannot
+> larger estate, £303,506); **without** it, sell-and-buy-cheaper wins on both. The £150k dearer-end home cannot
 > complete at all without the art sale — no mortgage is available on a park home and the £46,412 gap
 > exceeds their savings.
 **Owner lane:** housing options (same family as `PLAN-in-place-forced-sale.md` / `PLAN-multi-property.md`).
 _Last updated: 2026-07-29 (scoped from research; no code changed)_
 
 ## Why this exists
-Rob asked to consider buying a **park / holiday home** between **Wokingham and Tring** (the corridor
-between two sets of family), funded from selling the flat, "and then going on a cruise / holiday every
+Rob asked to consider buying a **park / holiday home** in the **corridor between two sets of family**
+(the towns are in the gitignored `docs/SCENARIO-V2.local.md`, card 0043), funded from selling the
+flat, "and then going on a cruise / holiday every
 year to make up the time difference".
 
 The research below establishes that the idea splits into two very different things: one is **not legally
@@ -67,15 +68,16 @@ home, no second address, no closed season, **no cruise needed**. Budget from a s
 
 Asking prices in the corridor (verified_on 2026-07-29):
 
-| Wokingham end | | Tring end | |
+| Cheaper end | | Dearer end | |
 |---|---|---|---|
-| Windsor (retirement) | £115,000 | Coppice Farm Park, Tring | £150,000 |
-| California Country Park, Finchampstead | £125,000–£130,000 | Chesham Rd, Wigginton, Tring | £156,000 |
-| Peppard Rd, Emmer Green (over-45s) | £155,000 | Beech Park, Wigginton (over-50s) | £170,000 |
-| Strande Park, Cookham | £165,000 | | |
+| Site A (retirement) | £115,000 | Site E | £150,000 |
+| Site B | £125,000–£130,000 | Site F | £156,000 |
+| Site C (over-45s) | £155,000 | Site G (over-50s) | £170,000 |
+| Site D | £165,000 | | |
 
-Above budget but in-corridor, for context: Pine Copse, Crowthorne £280–290k; Warfield Park, Bracknell
-£300–310k; Iver Park Estate £395k. **Both partners clear every age restriction seen (45+/50+/55+).**
+Above budget but in-corridor, for context: three sites at £280–290k, £300–310k and £395k. **Both
+partners clear every age restriction seen (45+/50+/55+).** The site names would locate the household,
+so they are kept out of tracked docs (card 0043).
 
 > Sources: [OnTheMarket — park homes, Berkshire](https://www.onthemarket.com/for-sale/park-home/berkshire/) ·
 > [OnTheMarket — park homes, Buckinghamshire](https://www.onthemarket.com/for-sale/park-home/buckinghamshire/).
@@ -101,7 +103,7 @@ appreciating bricks (which is what it does today), the plan will look **strictly
 
 ### 5. The comparison this reframes
 `Sell & buy cheaper £165k` (scenario 49) is currently the strongest plan — solvent for life, ~£303k
-estate. But **£165k does not buy a house between Wokingham and Tring.** The park home is what that money
+estate. But **£165k does not buy a house in the family corridor.** The park home is what that money
 buys *near the family*. The decision is therefore not "park home vs £165k house" but **"is being near
 the kids worth the estate?"** — which is a question for Rob, and the model's job is to price it, not
 answer it.
@@ -336,8 +338,8 @@ Model **both** price points and compare (Rob's call — the extra capital may ma
 
 | Child | Price | Pitch fee | Depreciation | Note |
 |---|---|---|---|---|
-| Park home — Tring £150k | £150,000 | £3,000/yr | -8%/yr real | Coppice Farm Park, near the Berkhamsted family |
-| Park home — Wokingham £128k | £128,000 | £3,000/yr | -8%/yr real | California Country Park, Finchampstead; **£22k more stays invested** |
+| Park home — dearer end £150k | £150,000 | £3,000/yr | -8%/yr real | a named site near family (private capture) |
+| Park home — cheaper end £128k | £128,000 | £3,000/yr | -8%/yr real | a named site; **£22k more stays invested** |
 
 Both: `variant = buy_outright`, no mortgage (cash purchase — see risks), the £208k redeemed on sale,
 plus a **£10,000 one-off re-roofing cost in 2041**. Then run the depreciation sensitivities above.
