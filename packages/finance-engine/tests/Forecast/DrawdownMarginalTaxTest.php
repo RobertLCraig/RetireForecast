@@ -46,7 +46,7 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
  * Fixture notes, so the reconciliation is exact rather than approximately right:
  *  - one person, retired and past State Pension age, so no National Insurance;
  *  - no unrealised gain on any holding, so no Capital Gains Tax joins the year's tax;
- *  - {@see DrawdownStrategy::PensionAware}, whose pension draws are taxable in full, so
+ *  - {@see DrawdownStrategy::PensionAware} or the default TaxEfficient, whose pension draws are taxable in full, so
  *    the reported `pension_drawdown` IS the taxable pension income (under FillBands it is
  *    not — the tax-free quarter is filed there too, which is board card 0074);
  *  - the threshold freeze is pushed past the horizon, so the tax function the test
@@ -56,12 +56,12 @@ final class DrawdownMarginalTaxTest extends TestCase
 {
     private const HIGHER_RATE_THRESHOLD_PENCE = 5_027_000;
 
-    private function settings(): ForecastSettings
+    private function settings(DrawdownStrategy $strategy): ForecastSettings
     {
         return new ForecastSettings(
             baseYear: 2026,
             baseTaxYear: '2026-27',
-            drawdownStrategy: DrawdownStrategy::PensionAware,
+            drawdownStrategy: $strategy,
             freezeEndYear: 2200,
         );
     }
@@ -72,13 +72,13 @@ final class DrawdownMarginalTaxTest extends TestCase
      * is entirely savings (cash) or entirely dividends (GIA) and never a mix that the
      * reported `investment_income` total could not be split back into.
      */
-    private function retiree(AccountType $type, int $balancePounds): Household
+    private function retiree(AccountType $type, int $balancePounds, int $spendPounds = 60_000): Household
     {
         return new Household(
             'Drawdown',
             RegionProfile::EnglandWalesNi,
             [new Person('p1', new DateTimeImmutable('1955-04-01'), Sex::Female, EmploymentStatus::Retired)],
-            new ExpenseProfile(Money::fromPounds(60_000), Money::fromPounds(30_000), Percent::fromPercent(70)),
+            new ExpenseProfile(Money::fromPounds($spendPounds), Money::fromPounds(30_000), Percent::fromPercent(70)),
             pensions: [
                 new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
                 new DbPension('p1', Money::fromPounds(25_000), 60),
@@ -88,10 +88,10 @@ final class DrawdownMarginalTaxTest extends TestCase
         );
     }
 
-    private function forecast(AccountType $type, int $balancePounds): ForecastResult
+    private function forecast(AccountType $type, int $balancePounds, DrawdownStrategy $strategy = DrawdownStrategy::PensionAware, int $spendPounds = 60_000): ForecastResult
     {
         return (new DeterministicForecaster(TaxYearRegistry::for('2026-27'), new CohortLifeTable))
-            ->forecast($this->retiree($type, $balancePounds), AssumptionSetLibrary::default(), $this->settings());
+            ->forecast($this->retiree($type, $balancePounds, $spendPounds), AssumptionSetLibrary::default(), $this->settings($strategy));
     }
 
     /** The person's non-savings taxable income for the year, in nominal pence. */
@@ -163,7 +163,38 @@ final class DrawdownMarginalTaxTest extends TestCase
 
     public function test_each_years_total_tax_reconciles_to_a_full_recomputation(): void
     {
-        $result = $this->forecast(AccountType::Cash, 120_000);
+        $this->assertYearsReconcile($this->forecast(AccountType::Cash, 120_000));
+    }
+
+    /**
+     * The same reconciliation under the strategy every stored plan runs unless it names
+     * another. TaxEfficient spends the cash first and draws pension only when it is gone,
+     * so the years that both earn interest and draw pension are the ones the cash runs out
+     * in. The balance and the spend are sized so that year carries interest above the
+     * higher-rate Personal Savings Allowance AND a draw that crosses the higher-rate
+     * threshold, which is where pricing the draw without the interest goes wrong.
+     */
+    public function test_each_years_total_tax_reconciles_under_the_default_tax_efficient_strategy(): void
+    {
+        $this->assertSame(DrawdownStrategy::TaxEfficient, DrawdownStrategy::DEFAULT, 'this test must cover the default strategy');
+
+        $result = $this->forecast(AccountType::Cash, 130_000, DrawdownStrategy::TaxEfficient, spendPounds: 120_000);
+
+        $crossing = array_filter($result->years, function ($year): bool {
+            $src = $year->nominal?->incomeBySource ?? [];
+            $savings = ($src['investment_income'] ?? Money::zero())->pence;
+
+            return ($src['pension_drawdown'] ?? Money::zero())->pence > 0
+                && $savings > 50_000
+                && $this->nonSavings($year->nominal) + $savings > self::HIGHER_RATE_THRESHOLD_PENCE;
+        });
+        $this->assertNotEmpty($crossing, 'some year must earn interest above the higher-rate allowance and draw pension across the threshold');
+
+        $this->assertYearsReconcile($result);
+    }
+
+    private function assertYearsReconcile(ForecastResult $result): void
+    {
         $this->assertNotEmpty($result->years);
 
         $yearsWithADraw = 0;
