@@ -46,7 +46,7 @@ Persistent forecast caching. Request-scoped memoisation first; measure before bu
 <!-- AC:BEGIN -->
 - [x] #1 WHEN a full simulation is queued, THE APP SHALL allow it to run to completion without being killed by a worker timeout. proves: `test_a_long_run_is_not_killed_by_the_workers_default_timeout`
 - [x] #2 WHEN a worker restarts mid-run, THE APP SHALL NOT run the same simulation twice concurrently. proves: `test_a_restarted_worker_cannot_run_the_same_record_twice_at_once`
-- [ ] #3 WHEN the affordability screen re-renders, THE APP SHALL NOT recompute forecasts that have not changed. proves: `test_an_unchanged_scenario_is_not_projected_a_second_time`
+- [x] #3 WHEN the affordability screen re-renders, THE APP SHALL NOT recompute forecasts that have not changed. proves: `test_an_unchanged_scenario_is_not_projected_a_second_time`
 <!-- AC:END -->
 
 ## Tasks
@@ -274,3 +274,17 @@ which is PHPUnit and not Pest. The suite ran as `php artisan test` and style as
 **2026-09-29** The loop moved this card from todo/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
 
 **2026-09-29** Returned to todo/ by an attended session. The park above was not this card's: `Get-NoProgressCounts` in ProgressBoard's `bin/work-card.ps1` read another board's holds for the same card number out of the shared log, so it parked this card with no take of its own since it was sent back. Fixed in ProgressBoard `6d49915`, which reads each log line's board from its run id.
+
+**2026-10-06** RESULT: done
+TESTS: +0 new, all green
+TOUCHED:
+- docs/board/todo/0173-forecasts-are-recomputed-on-every-page-load.md (new)
+OUT-OF-SCOPE: 0173
+
+Acts on the 2026-09-29 decision B. #3 is met under the decided in-request reading (forecasts are not recomputed within one request). **The criterion's own wording on the card still says "re-renders" and was NOT reworded here, because a build session may not edit the card; the reword is owed by whoever merges this.**
+
+The proof was re-watched this take rather than taken from earlier entries: with the memo read in `ScenarioForecaster::remember()` disabled, `test_an_unchanged_scenario_is_not_projected_a_second_time` failed with "The same unchanged plan was projected all over again on the second ask"; with it restored, it passes. No code is changed by this take; the full suite is green (`php artisan test`, 1 skip is the compliance partition test).
+
+The persistent forecast cache is raised as 0173, carrying the measured 64 ms per plan (about 1.3 s on twenty plans) and the `ScenarioExport::build()` storage precedent. It is marked `not_for_the_loop:` because where decrypted personal forecasts may be kept, and for how long, is Rob's data-handling call.
+
+No screen changed, so no browser check is owed by this take.
