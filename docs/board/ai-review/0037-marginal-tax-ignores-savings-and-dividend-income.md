@@ -26,7 +26,7 @@ The combined income-tax pass itself, which is correct.
 <!-- AC:BEGIN -->
 - [x] #1 WHEN extra pension income is drawn, THE APP SHALL compute its tax against the person's full income including savings and dividends.
 - [x] #2 THE APP SHALL reconcile each year's total tax against a full recomputation from final taxable income, to the penny.
-- [ ] #3 WHEN the default `TaxEfficient` drawdown strategy is used, THE APP SHALL reconcile each year's total tax to a full recomputation to the penny, proven by a test that runs `TaxEfficient` and not only `PensionAware`.
+- [x] #3 WHEN the default `TaxEfficient` drawdown strategy is used, THE APP SHALL reconcile each year's total tax to a full recomputation to the penny, proven by a test that runs `TaxEfficient` and not only `PensionAware`.
 <!-- AC:END -->
 
 ## Tasks
@@ -150,3 +150,20 @@ VERDICT: sound
 **2026-09-05** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 2 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 2 of 2 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened with new #3 because the review's scope finding holds on main: `DrawdownMarginalTaxTest::settings()` still pins `PensionAware`, while `ScenarioForecaster::DEFAULT_DRAWDOWN_STRATEGY` is `TaxEfficient`, the strategy every stored plan runs, which draws pension in two passes. Run the reconciliation under `TaxEfficient` as well.
+
+**2026-10-06** RESULT: done
+TESTS: +1 new, all green
+TOUCHED: packages/finance-engine/tests/Forecast/DrawdownMarginalTaxTest.php
+OUT-OF-SCOPE: none
+
+#3 is a test only. No engine code changed: the 2026-09-05 fix already holds under TaxEfficient.
+
+New test: DrawdownMarginalTaxTest::test_each_years_total_tax_reconciles_under_the_default_tax_efficient_strategy. It runs DrawdownStrategy::TaxEfficient and asserts that DrawdownStrategy::DEFAULT is TaxEfficient, so it fails if the default ever moves away from what it covers. The year loop of the old test is now a shared assertYearsReconcile helper, and the old PensionAware test calls it unchanged.
+
+Fixture. On the old 120k cash household, TaxEfficient spends the cash first, and the one year that both earns interest and draws pension had interest under the PSA. So the first version passed with the savings fix broken. That run proved it was blind, so I re-sized it: 130k cash and 120k spend. The run-out year (2027) then earns 883 pounds interest and draws enough pension to cross the higher-rate threshold. The test now asserts that such a year exists, so it cannot go blind again without failing.
+
+Watched failing: with the draw closure's savings input zeroed in PathProjector::fundShortfall, it failed in 2027: reported 10,328.46 against a full recomputation of 10,481.90. The code was then restored. The diff touches only the test.
+
+Not covered: TaxEfficient's second pension pass, the one that funds CGT. It runs only when a GIA gain is realised, and YearResult does not report CGT apart from income tax. So a whole-year income-tax recomputation cannot be separated from totalTax in that year. The reviewer read 'two passes' from the code, but with no gain there is one pass. Covering the CGT pass needs a CGT figure on YearResult, which is wider than this card.
+
+Still owed from before: the stored-scenario re-run (task 4). This session made no engine change, so this card adds nothing to it. No browser check is needed, because nothing here has a screen.
