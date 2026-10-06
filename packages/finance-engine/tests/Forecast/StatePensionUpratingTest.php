@@ -11,12 +11,16 @@ use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
+use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Person;
+use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -75,6 +79,7 @@ final class StatePensionUpratingTest extends TestCase
         StatePensionUprating $uprating = StatePensionUprating::TripleLock,
         ?int $tripleLockUntilYear = null,
         float $inflationPercent = 1.0,
+        bool $rentArm = false,
     ): array {
         $household = new Household(
             'State Pension uprating',
@@ -88,19 +93,26 @@ final class StatePensionUpratingTest extends TestCase
                 new StatePensionEntitlement('p1', weeklyForecast: Money::of(self::WEEKLY, 0)),
                 new StatePensionEntitlement('p2', weeklyForecast: Money::of(self::WEEKLY, 0)),
             ],
+            primaryResidence: $rentArm ? new Property(currentValue: Money::fromPounds(300_000), ownership: OwnershipType::Outright) : null,
         );
+        $assumptions = $this->assumptionsWithInflation($inflationPercent);
+        $settings = new ForecastSettings(
+            baseYear: 2026,
+            baseTaxYear: '2026-27',
+            statePensionUprating: $uprating,
+            tripleLockUntilYear: $tripleLockUntilYear,
+        );
+        if ($rentArm) {
+            // The sell-and-rent leg of a housing comparison builds its OWN settings; project those.
+            $rent = (new HousingComparison(TaxYearRegistry::for('2026-27'), new CohortLifeTable))->variantInputs(
+                $household, $settings, $assumptions,
+                new HousingAction(salePrice: Money::fromPounds(300_000), annualRent: Money::fromPounds(12_000)),
+            )['rent'];
+            [$household, $settings] = [$rent['household'], $rent['settings']];
+        }
 
         $result = (new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
-            ->forecast(
-                $household,
-                $this->assumptionsWithInflation($inflationPercent),
-                new ForecastSettings(
-                    baseYear: 2026,
-                    baseTaxYear: '2026-27',
-                    statePensionUprating: $uprating,
-                    tripleLockUntilYear: $tripleLockUntilYear,
-                ),
-            );
+            ->forecast($household, $assumptions, $settings);
 
         $sp = [];
         foreach ($result->years as $y) {
@@ -188,5 +200,18 @@ final class StatePensionUpratingTest extends TestCase
             $this->statePensionByYear(StatePensionUprating::Inflation, inflationPercent: 1.0)[2046],
             $this->statePensionByYear(StatePensionUprating::TripleLockUntil, inflationPercent: 1.0)[2046],
         );
+    }
+
+    /**
+     * Card 0038 review. The rent leg of a housing comparison rebuilt its settings field by field
+     * and dropped the uprating choice, so a reader who chose prices alone had the full lock running
+     * on the sell-and-rent plan, which is the plan the results page shows for a rent scenario.
+     */
+    public function test_the_rent_arm_uprates_on_the_basis_the_reader_chose(): void
+    {
+        $sp = $this->statePensionByYear(StatePensionUprating::Inflation, inflationPercent: 1.0, rentArm: true);
+
+        $this->assertEqualsWithDelta($this->compounded($sp, 1.0, 20), $sp[2046], 200.0,
+            'the rent arm must rise with prices alone, as the reader chose, not on the 2.5% floor');
     }
 }

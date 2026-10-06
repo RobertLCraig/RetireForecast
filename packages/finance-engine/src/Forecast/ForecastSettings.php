@@ -174,6 +174,17 @@ final class ForecastSettings
     }
 
     /**
+     * Does the triple-lock floor lift the State Pension factor in any year of the plan? The first
+     * uprating carries the factor into the year after the base year, so a lock ending before then
+     * never lifts anything. This, not {@see statePensionUpratingIsAssumed}, is what a disclosure of
+     * the floor's VALUE is gated on: a lock the reader ended in a stated year still runs it to then.
+     */
+    public function statePensionFloorApplies(): bool
+    {
+        return $this->statePensionUprating->floorApplies($this->baseYear + 1, $this->tripleLockUntilYear);
+    }
+
+    /**
      * A copy with the late-life care-cost modelling toggled. Every other setting is preserved, so
      * the two states differ only in whether the Monte Carlo samples a care spell — the pin the
      * decision-support care lever compares off against on.

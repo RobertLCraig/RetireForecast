@@ -1147,19 +1147,22 @@ final class ResultPresenter
         // Pension Credit guarantee, uprated by the same running factor, rose with it. Assuming a
         // contested policy holds for forty years is the OPTIMISTIC branch, which is the reverse
         // of how every other default here is set. The floor is READ from the enum that owns it.
-        $hasStatePension = false;
-        foreach ($household->pensions as $pension) {
-            $hasStatePension = $hasStatePension || $pension instanceof StatePensionEntitlement;
-        }
-        if ($hasStatePension && $settings !== null && $settings->statePensionUpratingIsAssumed()) {
+        // Not gated on a State Pension being held: the same factor uprates the Pension Credit
+        // guarantee, which needs only State Pension age. Shown under a lock to a stated year too,
+        // because the reader chose the year there, not the floor it runs until then.
+        if ($settings !== null && $settings->statePensionFloorApplies()) {
             $floor = self::ratePct(StatePensionUprating::floor()->asPercent());
-            $out[] = "You didn't say how long the State Pension triple lock should be assumed to last, so we've "
-                ."assumed it lasts for the whole of this plan: your State Pension rises by at least {$floor} a year "
-                .'however low inflation goes. That is the cheerful assumption, and it is the one place we make one. '
+            $out[] = ($settings->statePensionUpratingIsAssumed()
+                ? "You didn't say how long the State Pension triple lock should be assumed to last, so we've "
+                    ."assumed it lasts for the whole of this plan: the State Pension rises by at least {$floor} a year "
+                    .'however low inflation goes. That is the cheerful assumption, and it is the one place we make one. '
+                : "You chose to keep the State Pension triple lock until {$settings->tripleLockUntilYear}, so until then "
+                    ."the State Pension rises by at least {$floor} a year however low inflation goes, and with prices "
+                    .'alone after it. ')
                 .'The floor is a government policy rather than a law, no government has promised it beyond the '
                 .'current Parliament, and the plan here runs for decades. Because we model inflation at around two '
-                ."percent, the {$floor} floor lifts your pension in most years, so it keeps growing in real terms "
-                .'for life, and the Pension Credit guarantee rises with it, because that is uprated by the same '
+                ."percent, the {$floor} floor lifts the pension in most years while it runs, so it grows in real "
+                .'terms, and the Pension Credit guarantee rises with it, because that is uprated by the same '
                 .'figure. If you would rather not plan on that, you can end the lock in a year of your choosing or '
                 .'have the State Pension rise with prices alone. One thing works the other way: the real lock is the '
                 .'highest of earnings, prices and the floor, and we do not model the earnings part, because we hold '

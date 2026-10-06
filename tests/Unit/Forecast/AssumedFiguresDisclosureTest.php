@@ -348,6 +348,47 @@ final class AssumedFiguresDisclosureTest extends TestCase
     }
 
     /**
+     * Card 0038 review. The floor also uprates the Pension Credit guarantee, which needs no State
+     * Pension held, only that everyone alive is past State Pension age. Gating the note on a State
+     * Pension entitlement left a household with none on an undisclosed 2.5% benefit floor.
+     */
+    public function test_the_uprating_floor_is_disclosed_to_a_household_with_no_state_pension(): void
+    {
+        $note = $this->only($this->disclosuresFor([], settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27')), 'triple lock');
+
+        $this->assertStringContainsString(self::pct(StatePensionUprating::floor()->asPercent()).'%', $note);
+        $this->assertStringContainsString('Pension Credit', $note);
+    }
+
+    /**
+     * Card 0038 review. A lock ended in a stated year still runs the floor up to that year, so the
+     * floor's value has to be on the page then too: the reader chose the year, not the 2.5%.
+     */
+    public function test_a_lock_ended_in_a_stated_year_still_discloses_the_floor_it_runs_until_then(): void
+    {
+        $note = $this->only($this->disclosuresFor([], settings: new ForecastSettings(
+            baseYear: 2026, baseTaxYear: '2026-27',
+            statePensionUprating: StatePensionUprating::TripleLockUntil,
+            tripleLockUntilYear: 2035,
+        )), 'triple lock');
+
+        $this->assertStringContainsString(self::pct(StatePensionUprating::floor()->asPercent()).'%', $note);
+        $this->assertStringContainsString('2035', $note);
+    }
+
+    /** A lock that ends before the first uprating never lifts anything, so nothing is claimed. */
+    public function test_nothing_is_disclosed_for_a_lock_that_ends_before_the_plan_uprates(): void
+    {
+        $disclosures = $this->disclosuresFor([], settings: new ForecastSettings(
+            baseYear: 2026, baseTaxYear: '2026-27',
+            statePensionUprating: StatePensionUprating::TripleLockUntil,
+            tripleLockUntilYear: 2026,
+        ));
+
+        $this->assertSame([], array_values(array_filter($disclosures, static fn (string $d): bool => str_contains($d, 'triple lock'))));
+    }
+
+    /**
      * Board card 0075. The order money is taken out is one of the biggest levers on lifetime tax
      * there is, and the results page prices three orders and names the cheapest — while every
      * forecast ran on one chosen in code, with nothing on any screen saying so.
