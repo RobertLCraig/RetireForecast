@@ -34,7 +34,7 @@ Awarding Housing Benefit, which is card 0048.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 THE APP SHALL report Pension Credit as a contingent income line, outside the guaranteed floor. proves: `test_pension_credit_is_reported_as_a_contingent_line_outside_the_secure_floor`
+- [x] #1 THE APP SHALL report Pension Credit as a contingent income line, outside the guaranteed floor. proves: `test_pension_credit_is_reported_as_a_contingent_line_outside_the_secure_floor`
 - [x] #2 WHEN a household comes within a small margin of the Pension Credit line in any year, THE APP SHALL prompt them to claim, and state the backdating limit. proves: `test_guidance_appears_when_a_year_only_just_misses_the_pension_credit_line`
 - [x] #3 WHEN assessable capital crosses the limit in any year, THE APP SHALL surface the capital-cliff warning on that year. proves: `test_the_capital_cliff_is_warned_on_the_year_capital_crosses_the_limit`
 - [x] #4 WHEN a household receives Guarantee Credit, THE APP SHALL NOT warn that capital ends their means-tested help. proves: `test_a_household_on_guarantee_credit_is_not_warned_that_capital_ends_its_help`
@@ -173,3 +173,26 @@ VERDICT: defect
 **2026-09-06** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #1 because the findings hold on main. Pension Credit left `secureIncome`, but `ResultPresenter::floorAt()` still sets `gap` to essentials minus secure income, and the "Met from savings / pension" tile on screen and in the PDF, plus `ScenarioContext::incomeFloorFacts()` ("must come from savings and investments"), now overstate the savings draw by the whole award. The survivor block in `scenario-results.blade.php` and `pdf/partials/report.blade.php` renders only `secureIncome`, so the survivor's Pension Credit is in no table or total. Also judge the scope finding: `PathProjector::benefitContingencyWarnings()` runs the capital cliff at every age, and `InputNotesTest::test_a_sensible_household_raises_no_notes` had its spending raised to silence it.
+
+**2026-10-07** RESULT: done
+TESTS: +1 new (1 extended), all green
+TOUCHED: app/Forecast/ResultPresenter.php
+TOUCHED: app/Assistant/ScenarioContext.php
+TOUCHED: resources/views/livewire/scenario-results.blade.php
+TOUCHED: resources/views/pdf/partials/report.blade.php
+TOUCHED: tests/Unit/Forecast/IncomeFloorTest.php
+TOUCHED: tests/Feature/Livewire/ScenarioResultsTest.php
+TOUCHED: docs/board/todo/0179-the-capital-cliff-note-fires-before-state-pension-age.md (new)
+OUT-OF-SCOPE: 0179
+
+This take answers the reopened #1 (the review's 'breakage' finding and 'left half done' items 1 and 2). #2 to #4 were not touched; their tests still pass in the full run.
+
+**What I built.** `ResultPresenter::floorAt()` gains `fromSavings` = essentials less secure income less the contingent income, floored at zero. `gap` keeps its meaning (what secure income leaves uncovered, which drives coverage) and now says in a comment that it is not the savings draw. Every reader that labelled the gap as savings now reads `fromSavings`: the 'Met from savings / pension' tile on screen and in the PDF (with a line naming the Pension Credit it is net of), the screen footnote, the survivor dumbbell captions, and `ScenarioContext::incomeFloorFacts()`, which now splits the shortfall into the credit (named as means-tested, only if claimed) and the savings draw. The survivor's credit now appears on both outputs: a sentence after the cliff percentages saying they leave out the survivor's Pension Credit and why, and a 'Pension Credit, if claimed' column in the PDF survivor table.
+
+**Watched failing.** `test_pension_credit_is_reported_as_a_contingent_line_outside_the_secure_floor` was extended (reconciliation: fromSavings == essentials - secure - credit; the survivor twin carries the credit) and went red on the missing figure. Its essentials were raised from 20,000 to 25,000 because at 20,000 the credit fills the whole gap and there is no savings draw to reconcile. New `test_every_reader_of_the_floor_nets_pension_credit_off_the_savings_draw` builds a couple on small State Pensions and checks the screen tile, the PDF tile and the assistant sentence. I watched it red with ONLY the presenter fix in place (so the key existed and the failure was the readers): the screen tile showed £11,570.19 against £4,673.53. Then with the views back but not the assistant, it went red on the assistant sentence. The tile is read by regex off the label, because a page-wide 'gap must not appear' check was blind: in a single-person fixture the gap equalled the essentials figure printed elsewhere.
+
+**Scope finding #3, judged: it holds, raised as 0179.** The cliff warning runs at every age, so a working household with over £16,000 is told Housing Benefit and Council Tax Support are not payable; before State Pension age that help is Universal Credit. It is about who the warning reaches, not how Pension Credit is reported, so I did not fix it here. 0179 also owns whether `test_a_sensible_household_raises_no_notes` gets its old spending back.
+
+**No ENGINE_VERSION bump, no stored re-run.** No projected figure moves; this is presentation only. No HANDOVER.md entry for the same reason.
+
+**Not seen in a browser** (built in a worktree): the tile's new second line, the new footnote branch, the survivor sentence and caption, and the PDF survivor column.
