@@ -63,3 +63,14 @@ assessable capital, and `PathProjector::meansTestAssessableCapital`, its only ca
 Run `php artisan test` and `php artisan scenarios:audit` after.
 
 ## Comments
+
+**2026-10-07** RESULT: blocked
+TESTS: +0 new, no code changed
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Blocked on Rob. Criterion #1 is a decision only he can make: is a gap between selling and buying worth modelling at all? docs/DECISIONS.md holds no answer (searched for 0116, sale proceeds, deferred purchase). Criteria #2 and #3 depend on a yes, so building them now would answer the question for him. No test was written and nothing was committed.
+
+What the call weighs (from the card): the 26-week disregard can only move a plan whose sale and purchase straddle a year boundary AND whose capital that year is near a means-test limit. A yes means a completion offset on HousingAction, HousingComparison::buyVariant split into a sale leg and a purchase leg fired in different years, the disregard sourced with a verified_on date beside the tariff in Benefits\CapitalAssessment, and an ENGINE_VERSION bump with a re-run of every stored scenario, because every buy-outright plan changes shape. A no closes this card, and card 0048 #2 with it.
+
+Next step: Rob records the answer in docs/DECISIONS.md, or answers on this card with **Decided:**. Then the loop can build #2 and #3.
