@@ -26,10 +26,10 @@ Modelling arrears, possession or a debt-management plan. This card is framing an
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a plan has unmet spend and a live mortgage, THE APP SHALL state that the shortfall is a secured-debt shortfall and what that means. proves: `test_a_shortfall_on_a_live_mortgage_is_named_a_secured_debt_shortfall`
+- [x] #1 WHEN a plan has unmet spend and a live mortgage, THE APP SHALL state that the shortfall is a secured-debt shortfall and what that means. proves: `test_a_shortfall_on_a_live_mortgage_is_named_a_secured_debt_shortfall`
 - [x] #2 THE APP SHALL show a benefits and debt column of contacts wherever a plan has unmet spend or a mortgage. proves: `test_the_benefits_and_debt_contacts_column_is_off_until_it_is_asked_for`, `test_the_results_page_frames_a_secured_shortfall_and_offers_the_debt_contacts`
 - [x] #3 THE APP SHALL name mortgage and council tax as priority debts when it reports a shortfall. proves: `test_a_shortfall_names_mortgage_and_council_tax_as_priority_debts`
-- [ ] #4 WHEN the app says which benefits a forecast counts, THE APP SHALL name every benefit the engine pays, including Housing Benefit, Council Tax Reduction and Support for Mortgage Interest, or say nothing about coverage.
+- [x] #4 WHEN the app says which benefits a forecast counts, THE APP SHALL name every benefit the engine pays, including Housing Benefit, Council Tax Reduction and Support for Mortgage Interest, or say nothing about coverage.
 <!-- AC:END -->
 
 ## Tasks
@@ -103,6 +103,21 @@ VERDICT: sound
 
 
 **2026-09-07** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-10-07** RESULT: done
+TESTS: +1 new, all green
+TOUCHED: app/Forecast/ResultPresenter.php, app/Livewire/ScenarioResults.php, app/Export/ScenarioReport.php, tests/Feature/Forecast/PriorityDebtSignpostingTest.php
+OUT-OF-SCOPE: none
+
+#1: `ResultPresenter::priorityDebtGuidance()` takes a `lifetimeMortgage` flag, passed through `ladder()`. A live balance on a roll-up loan is no longer `secured`: no arrears, possession, MCOB 13 or s.36 copy, and the headline says the lifetime mortgage is modelled with no instalments for the gap to leave unpaid. The flag comes from the new `ResultPresenter::rollsUpMortgage($household, $homeSold)` (the home's `mortgageRollUpRate`, and false on a sell variant, where any later balance is a bought home's loan). Results and the PDF pass it. `test_a_shortfall_on_a_lifetime_mortgage_is_not_framed_as_arrears_and_possession` was watched failing on `secured` true before the fix. The test drives the presenter, not the rendered page, so the two caller wirings are covered by reading, not by a test. Compare and the assistant only read whether the panel exists or the rows, so they keep the default.
+
+#4 (proves: none, so no test): the bullet that said the forecast counts entered benefits plus Pension Credit "and nothing else" now says nothing about coverage; it says a free benefits check can find unclaimed entitlement.
+
+#2 and #3 are unchanged and their tests still pass.
+
+Not done, and not asked by any criterion: the SMI loan and the deferred care charge still do not reach this framing. Both have no instalments either, so leaving them out invents no consequence.
+
+Not seen in a browser (worktree build).
 
 ## What I checked
 
