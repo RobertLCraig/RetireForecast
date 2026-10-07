@@ -612,7 +612,7 @@
                 a recommendation.</p>
         @endif
         @if ($pensionCredit)
-            <h3>How to claim Pension Credit</h3>
+            <h3>{{ $pensionCredit['howToClaim'] !== [] ? 'How to claim Pension Credit' : 'Why there is no Pension Credit' }}</h3>
             @if ($pensionCredit['awarded'])
                 <p>This forecast spends Pension Credit as contingent income, shown separately above rather than as
                     part of your secure income. It's <strong>means-tested, so it has to be claimed</strong> — it
@@ -633,13 +633,24 @@
             @foreach ($pensionCredit['mixedAge'] as $why)
                 <p class="note">{{ $why }}</p>
             @endforeach
-            <ul>
-                @foreach ($pensionCredit['howToClaim'] as $step)
-                    <li>{{ $step }}</li>
-                @endforeach
-            </ul>
-            <p>Even a small award is worth claiming because it can passport you to other help:
-                {{ implode(', ', $pensionCredit['passports']) }}.</p>
+            @if ($pensionCredit['instead'] !== [])
+                <ul>
+                    @foreach ($pensionCredit['instead'] as $step)
+                        <li>{{ $step }}</li>
+                    @endforeach
+                </ul>
+            @endif
+            @if ($pensionCredit['howToClaim'] !== [])
+                <ul>
+                    @foreach ($pensionCredit['howToClaim'] as $step)
+                        <li>{{ $step }}</li>
+                    @endforeach
+                </ul>
+            @endif
+            @if ($pensionCredit['passports'] !== [])
+                <p>Even a small award is worth claiming because it can passport you to other help:
+                    {{ implode(', ', $pensionCredit['passports']) }}.</p>
+            @endif
             <p class="note">{{ $pensionCredit['source'] }} · checked {{ $pensionCredit['verifiedOn'] }}. The exact
                 amount is means-tested — only the DWP can confirm what you'd get.</p>
         @endif

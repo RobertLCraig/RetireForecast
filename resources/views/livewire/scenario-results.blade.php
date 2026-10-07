@@ -950,7 +950,7 @@
 
             @if ($pensionCredit)
                 <div class="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm">
-                    <h3 class="font-semibold text-blue-900">How to claim Pension Credit</h3>
+                    <h3 class="font-semibold text-blue-900">{{ $pensionCredit['howToClaim'] !== [] ? 'How to claim Pension Credit' : 'Why there is no Pension Credit' }}</h3>
                     @if ($pensionCredit['awarded'])
                         <p class="mt-1 text-blue-800">This forecast spends Pension Credit as contingent income, shown separately above rather than as part of your secure income. It's <strong>means-tested, so it has to be claimed</strong> — it isn't paid automatically, and it's one of the most under-claimed benefits, so it's worth acting on.</p>
                     @elseif ($pensionCredit['nearMiss'] !== [])
@@ -964,12 +964,23 @@
                     @foreach ($pensionCredit['mixedAge'] as $why)
                         <p class="mt-2 text-xs text-blue-700">{{ $why }}</p>
                     @endforeach
-                    <ul class="mt-2 list-disc space-y-1 pl-5 text-blue-800">
-                        @foreach ($pensionCredit['howToClaim'] as $step)
-                            <li>{{ $step }}</li>
-                        @endforeach
-                    </ul>
-                    <p class="mt-2 text-blue-800">Even a small award is worth claiming because it can passport you to other help: {{ implode(', ', $pensionCredit['passports']) }}.</p>
+                    @if ($pensionCredit['instead'] !== [])
+                        <ul class="mt-2 list-disc space-y-1 pl-5 text-blue-800">
+                            @foreach ($pensionCredit['instead'] as $step)
+                                <li>{{ $step }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
+                    @if ($pensionCredit['howToClaim'] !== [])
+                        <ul class="mt-2 list-disc space-y-1 pl-5 text-blue-800">
+                            @foreach ($pensionCredit['howToClaim'] as $step)
+                                <li>{{ $step }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
+                    @if ($pensionCredit['passports'] !== [])
+                        <p class="mt-2 text-blue-800">Even a small award is worth claiming because it can passport you to other help: {{ implode(', ', $pensionCredit['passports']) }}.</p>
+                    @endif
                     <p class="mt-2 text-xs text-blue-700"><a href="{{ $pensionCredit['source'] }}" class="underline" rel="noopener">gov.uk/pension-credit</a> · checked {{ $pensionCredit['verifiedOn'] }}. The exact amount is means-tested — only the DWP can confirm what you'd get.</p>
                 </div>
             @endif

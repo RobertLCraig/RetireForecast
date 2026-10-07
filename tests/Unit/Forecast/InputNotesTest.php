@@ -798,6 +798,27 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('mobility', $text);
     }
 
+    public function test_a_care_row_beside_a_mobility_only_award_part_says_the_two_disagree(): void
+    {
+        // Card 0051 review. The note said the award is the care component whatever part the
+        // reader chose, and that the severe-disability addition stops with it, which a mobility-only
+        // award never had. The two homes of the fact disagree here, and the note has to say so.
+        $notes = $this->notes([
+            'householdName' => 'Claimant', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'name' => 'Robin', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired',
+                'receivesDisabilityBenefit' => true, 'disabilityAwardRate' => 'mobility_only']],
+            'incomeStreams' => [['id' => 'i1', 'ownerId' => 'p1', 'type' => 'disability_benefit', 'grossAnnual' => '5000', 'startAge' => '60']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]);
+
+        $kinds = array_column($notes, 'kind');
+        $text = $notes[array_search('disability_care_component_in_care', $kinds, true)]['text'];
+        $this->assertStringNotContainsString('severe-disability addition stops with it', $text);
+        $this->assertStringContainsString('mobility component only', $text, 'it names the part the reader chose');
+        $this->assertStringContainsString('disagree', $text);
+    }
+
     public function test_a_mobility_only_award_raises_no_care_component_note(): void
     {
         $notes = $this->notes([

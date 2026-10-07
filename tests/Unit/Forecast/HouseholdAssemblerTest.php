@@ -294,6 +294,32 @@ class HouseholdAssemblerTest extends TestCase
         $this->assertSame(400_660, $mobility->grossAnnual->pence);  // £77.05 × 52
     }
 
+    public function test_a_mobility_only_income_stream_with_the_award_part_left_blank_buys_no_severe_disability_addition(): void
+    {
+        // Board card 0051 #1, reopened on review. Card 0050 records the care/mobility split on the
+        // income stream, and card 0051 added a second home for the same fact on the person. A
+        // reader who entered their award as a mobility stream and left "which part of the award"
+        // blank was read as the qualifying care rate, and paid both Pension Credit additions.
+        $state = fn (array $streams): array => [
+            'householdName' => 'Mobility only', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired',
+                'receivesDisabilityBenefit' => true, 'disabilityAwardRate' => '']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '10000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'incomeStreams' => $streams,
+        ];
+        $mobility = ['id' => 'i2', 'ownerId' => 'p1', 'type' => 'disability_benefit_mobility', 'grossAnnual' => '77.05', 'frequency' => 'weekly', 'startAge' => '0'];
+        $care = ['id' => 'i1', 'ownerId' => 'p1', 'type' => 'disability_benefit', 'grossAnnual' => '110.40', 'frequency' => 'weekly', 'startAge' => '0'];
+
+        $person = (new HouseholdAssembler)->household($state([$mobility]))->persons[0];
+        $this->assertTrue($person->receivesDisabilityBenefitAt(70), 'the award is still in payment');
+        $this->assertFalse($person->qualifiesForSevereDisabilityAdditionAt(70), 'a mobility component is not a qualifying benefit');
+
+        // A care stream beside it is the qualifying part, so blank keeps its old reading.
+        $person = (new HouseholdAssembler)->household($state([$care, $mobility]))->persons[0];
+        $this->assertTrue($person->qualifiesForSevereDisabilityAdditionAt(70));
+    }
+
     public function test_the_disability_benefit_flag_is_carried_through_to_the_person(): void
     {
         $household = (new HouseholdAssembler)->household([

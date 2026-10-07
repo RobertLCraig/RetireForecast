@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-07 (disability-care-funding-sees-the-forced-sale): whether a care resident is
+     * Bumped 2026-10-07 (mobility-row-buys-no-pension-credit-addition): a person whose award part is
+     * left blank and whose only disability income rows are the mobility component now reads as a
+     * mobility-only award (`HouseholdAssembler::awardRateFromStreams`), so it buys neither Pension
+     * Credit addition. Such a plan was awarded too MUCH Pension Credit under an earlier stamp. Any
+     * other plan is byte-identical. Board card 0051 #1.
+     * Previous bump 2026-10-07 (disability-care-funding-sees-the-forced-sale): whether a care resident is
      * local-authority-funded, for stopping their disability care component, is now settled on the
      * capital a forced sale leaves that year, the same capital the care charge reads. A plan whose
      * home is sold in a care year, with a disability award, stopped the award while charging the
@@ -498,7 +503,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/disability-care-funding-sees-the-forced-sale';
+    public const ENGINE_VERSION = 'finance-engine/mobility-row-buys-no-pension-credit-addition';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

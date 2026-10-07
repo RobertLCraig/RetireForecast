@@ -85,7 +85,7 @@ final class HouseholdAssembler
         return new Household(
             name: (string) $state['householdName'],
             region: RegionProfile::from($state['region']),
-            persons: array_map($this->person(...), $state['people'] ?? []),
+            persons: array_map(fn (array $p): Person => $this->person($p, $state['incomeStreams'] ?? []), $state['people'] ?? []),
             expenseProfile: $this->expenseProfile($state),
             pensions: array_map($this->pension(...), $state['pensions'] ?? []),
             accounts: $this->accounts($state),
@@ -162,7 +162,8 @@ final class HouseholdAssembler
         return $rate === null ? null : [new SellingCostComponent('Estate agent', $rate)];
     }
 
-    private function person(array $p): Person
+    /** @param  list<array<string, mixed>>  $incomeStreams  the form's income rows, read for the award part */
+    private function person(array $p, array $incomeStreams = []): Person
     {
         return new Person(
             id: (string) $p['id'],
@@ -181,10 +182,8 @@ final class HouseholdAssembler
             // Blank or absent = in payment for the whole projection, which is how every scenario
             // saved before the start age existed behaved.
             disabilityBenefitFromAge: $this->intOrNull($p['disabilityBenefitFromAge'] ?? null),
-            // Blank or absent = the qualifying care rate, which is what the disability flag alone
-            // has always meant, so a scenario saved before this field existed keeps its answer.
             disabilityAwardRate: DisabilityAwardRate::tryFrom((string) ($p['disabilityAwardRate'] ?? ''))
-                ?? DisabilityAwardRate::QualifyingCare,
+                ?? $this->awardRateFromStreams((string) $p['id'], $incomeStreams),
             // Blank or absent = NO will, the adverse answer. A scenario saved before the question
             // existed was never asked, and a will that does not exist is what intestacy is for.
             hasWill: (bool) ($p['hasWill'] ?? false),
@@ -197,6 +196,31 @@ final class HouseholdAssembler
                 default => null,
             },
         );
+    }
+
+    /**
+     * The award part when the reader left "which part of the award" blank. The income rows are the
+     * other home of the same fact (card 0050 split care from mobility there), so they decide it:
+     * a person whose only disability rows are the mobility component holds a mobility-only award,
+     * which buys neither Pension Credit addition (board card 0051). Otherwise the qualifying care
+     * rate, which is what the disability flag alone has always meant, so a scenario saved before
+     * either field existed keeps its answer. A part the reader DID choose is never overridden.
+     *
+     * @param  list<array<string, mixed>>  $incomeStreams
+     */
+    private function awardRateFromStreams(string $personId, array $incomeStreams): DisabilityAwardRate
+    {
+        $types = [];
+        foreach ($incomeStreams as $s) {
+            $type = IncomeStreamType::tryFrom((string) ($s['type'] ?? ''));
+            if (($s['ownerId'] ?? null) === $personId && $type?->isTaxFreeBenefit()) {
+                $types[] = $type;
+            }
+        }
+
+        return $types !== [] && ! in_array(IncomeStreamType::DisabilityBenefit, $types, true)
+            ? DisabilityAwardRate::MobilityOnly
+            : DisabilityAwardRate::QualifyingCare;
     }
 
     /**

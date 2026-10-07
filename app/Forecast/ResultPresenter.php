@@ -22,6 +22,7 @@ use RetireForecast\FinanceEngine\Dto\AssetClassAssumption;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\DcPension;
+use RetireForecast\FinanceEngine\Dto\DisabilityAwardRate;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
@@ -2380,13 +2381,19 @@ final class ResultPresenter
             );
             if ($careAward !== []) {
                 $days = DisabilityBenefitInCare::PAYMENT_STOP_DAYS;
+                // The addition only stops if the award part ever bought it (card 0051), and a care
+                // row beside a non-qualifying award part is the two homes of one fact disagreeing.
+                $qualifying = $person->disabilityAwardRate->qualifiesForSevereDisabilityAddition();
                 $notes[] = ['kind' => 'disability_care_component_in_care', 'text' => "{$name}'s disability benefit is entered "
                     .'as the CARE (daily living) component, and a modelled care home spell treats it differently from the '
                     .'mobility component. While they pay for their own care it counts as income in the financial assessment, '
                     ."so it raises what they are charged. Once the local authority funds the placement it STOPS after {$days} "
-                    .'days, and the Pension Credit severe-disability addition stops with it; only the mobility component keeps '
-                    .'being paid. If part of this award is the mobility component, enter that part as a separate '
-                    .'"Disability benefit, mobility" income line or the forecast will stop money that would keep coming.'];
+                    .($qualifying ? 'days, and the Pension Credit severe-disability addition stops with it' : 'days')
+                    .'; only the mobility component keeps being paid. If part of this award is the mobility component, enter '
+                    .'that part as a separate "Disability benefit, mobility" income line or the forecast will stop money that '
+                    .'would keep coming.'
+                    .($person->disabilityAwardRate !== DisabilityAwardRate::MobilityOnly ? '' : " The part of the award chosen for {$name} is "
+                        ."\"{$person->disabilityAwardRate->label()}\", so the income line and that choice disagree. Correct whichever is wrong.")];
             }
         }
 
@@ -3139,7 +3146,7 @@ final class ResultPresenter
      * household falls under working-age support instead. The engine names the years and carries
      * the explanation; this quotes it rather than restating the rule.
      *
-     * @return array{awarded: bool, nearMiss: list<string>, mixedAge: list<string>, howToClaim: list<string>, passports: list<string>, source: string, verifiedOn: string}|null
+     * @return array{awarded: bool, nearMiss: list<string>, mixedAge: list<string>, instead: list<string>, howToClaim: list<string>, passports: list<string>, source: string, verifiedOn: string}|null
      */
     public static function pensionCreditGuidance(ForecastResult $forecast): ?array
     {
@@ -3170,16 +3177,35 @@ final class ResultPresenter
             return null;
         }
 
+        // A household that is ONLY shut out (card 0051 review) is given no claim steps for a
+        // benefit it cannot claim, and is told what to check instead and when the door opens.
+        $claimable = $received || $nearMiss !== [];
+        $instead = [];
+        $howToClaim = [];
+        if ($mixedAgeLastYear !== null) {
+            $opens = $mixedAgeLastYear + 1;
+            $instead[] = "Until {$opens}, check whether Universal Credit is payable instead: it is claimed on the couple's joint income "
+                .'and capital, and a free, independent benefits calculator will give you an estimate before you apply.';
+            $instead[] = "Pension Credit can be claimed from {$opens}, once the younger partner has reached State Pension age.";
+            if ($claimable) {
+                $howToClaim[] = "Do not claim before {$opens}: until then this household cannot get Pension Credit at all.";
+            }
+        }
+        if ($claimable) {
+            array_push($howToClaim,
+                'Apply online at gov.uk/pension-credit, or call the Pension Credit claim line on 0800 99 1234 (textphone 0800 169 0133), Monday to Friday, 8am to 6pm.',
+                'You can apply from 4 months before you reach State Pension age, and a claim can be backdated up to 3 months if you were already eligible — so claim as soon as you qualify.',
+                'Have your National Insurance number, details of income, savings and investments, and your bank details to hand.',
+            );
+        }
+
         return [
             'awarded' => $received,
             'nearMiss' => $nearMiss,
             'mixedAge' => $mixedAge,
-            'howToClaim' => [
-                'Apply online at gov.uk/pension-credit, or call the Pension Credit claim line on 0800 99 1234 (textphone 0800 169 0133), Monday to Friday, 8am to 6pm.',
-                'You can apply from 4 months before you reach State Pension age, and a claim can be backdated up to 3 months if you were already eligible — so claim as soon as you qualify.',
-                'Have your National Insurance number, details of income, savings and investments, and your bank details to hand.',
-            ],
-            'passports' => [
+            'instead' => $instead,
+            'howToClaim' => $howToClaim,
+            'passports' => ! $claimable ? [] : [
                 'Council Tax Reduction',
                 'Housing Benefit if you rent',
                 'a free TV licence if you are 75 or over',

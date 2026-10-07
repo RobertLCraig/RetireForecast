@@ -97,6 +97,45 @@ final class PensionCreditGuidanceTest extends TestCase
         $this->assertStringContainsString('2030', implode(' ', $guidance['mixedAge']));
     }
 
+    public function test_a_mixed_age_couple_is_not_told_to_apply_for_pension_credit_and_is_told_what_to_check_instead(): void
+    {
+        // Board card 0051 #4, reopened on review. The panel told a mixed-age couple the door was
+        // shut and then, in the same box, to apply online at gov.uk/pension-credit. The
+        // replacement was named and never actioned.
+        $guidance = ResultPresenter::pensionCreditGuidance($this->forecast($this->year(
+            Money::zero(),
+            [new Warning(WarningCode::MIXED_AGE_COUPLE, 'One partner is under State Pension age, so Universal Credit applies instead.')],
+        )));
+
+        $this->assertNotNull($guidance);
+        $this->assertSame([], $guidance['howToClaim'], 'no claim steps for a benefit the household cannot claim');
+        $this->assertSame([], $guidance['passports'], 'nor what an award it cannot get would passport');
+        $this->assertStringContainsString('Universal Credit', implode(' ', $guidance['instead']));
+        $this->assertStringContainsString('2031', implode(' ', $guidance['instead']), 'and it says when Pension Credit opens');
+    }
+
+    public function test_a_mixed_age_couple_awarded_pension_credit_later_is_told_when_to_claim(): void
+    {
+        // Mixed-age in 2030, both over State Pension age and awarded in 2031: the claim steps
+        // apply, but only from the year the door opens.
+        $later = new YearResult(
+            yearIndex: 1, calendarYear: 2031, ages: ['p1' => 71], aliveCount: 1,
+            grossIncome: Money::fromPounds(15_000), totalTax: Money::zero(), netIncome: Money::fromPounds(15_000),
+            spendTarget: Money::fromPounds(15_000), essentialSpend: Money::fromPounds(15_000),
+            shortfallFunded: Money::zero(), unmetSpend: Money::zero(), essentialsMet: true,
+            liquidWealth: Money::zero(), pensionWealth: Money::zero(), propertyWealth: Money::zero(),
+            incomeBySource: ['means_tested_benefit' => Money::fromPounds(1_000)],
+        );
+        $guidance = ResultPresenter::pensionCreditGuidance($this->forecast(
+            $this->year(Money::zero(), [new Warning(WarningCode::MIXED_AGE_COUPLE, 'Universal Credit applies instead.')]),
+            $later,
+        ));
+
+        $this->assertTrue($guidance['awarded']);
+        $this->assertStringContainsString('gov.uk/pension-credit', implode(' ', $guidance['howToClaim']));
+        $this->assertStringContainsString('2031', $guidance['howToClaim'][0], 'the first step says when the claim can start');
+    }
+
     public function test_no_guidance_when_no_year_receives_pension_credit(): void
     {
         // A household above the means test gets £0 Pension Credit and is nowhere near the line —
