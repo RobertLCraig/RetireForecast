@@ -1,110 +1,32 @@
-# Confirm the State Pension figure, then make three benefits calls
+# Confirm the working partner's State Pension, then three benefits calls
 
 ## What I need from you
+1. Check the working partner's State Pension forecast at gov.uk/check-state-pension, or read it off the award letter. Pass: the **weekly amount and the number of qualifying years**, from a document. A weekly figure without the years is a fail.
+2. In the same sitting: ask the council about the disabled band reduction on the flat; check the older partner's care and mobility rates on the award letter against `docs/SCENARIO-V2.local.md`; phone Age UK on 0800 678 1602 for a free benefits check. Pass: the council's answer, the two rates matching, an Age UK appointment date.
 
-**Check the working partner's State Pension forecast (weekly amount and qualifying years), and say whether you make the other three benefits calls at the same time. Reply 1 or 2.**
+**My recommendation:** do all four, in the order 1, council, award letter, Age UK. Only item 1 changes the forecast, but the council and Age UK run on their own clocks, so starting them now is nearly free.
+Paste to answer: `**2026-10-07** **Decided:** Forecast £___/wk, ___ qualifying years. Council: ___. Rates match: yes/no. Age UK: <date>.`
 
-1. **All four, in the order 1, 3, 4, 2.** Check the forecast at gov.uk/check-state-pension or on
-   the award letter; ask the council for the disabled band reduction; check the older partner's
-   care and mobility rates against the award letter; phone Age UK on 0800 678 1602 for a benefits
-   check. The two outside clocks (the council reassessment, the Age UK appointment) start now.
-2. **Item 1 only.** Check the forecast; the other three wait. The board unblocks just the same, but
-   the council tax reduction keeps not paying and the two outside clocks do not start.
+## What you need to know
+- The full new State Pension is £241.30 a week in 2026/27. Pension Credit tops a single person up to £238.00 a week. The gap is £3.30.
+- The model assumes the full rate, so the survivor gets no Pension Credit.
+- If the forecast is **under £238.00**, Pension Credit switches on, and with it Support for Mortgage Interest, Council Tax Reduction, Warm Home Discount and more: several thousand pounds a year. That is one of the two main arguments for keeping the flat. If so, also ask DWP whether voluntary National Insurance contributions are still open.
+- The disabled band reduction drops the council tax bill by one band. It is not means-tested. It needs a qualifying feature: an extra bathroom, a room used for the disabled person's needs, or space to use a wheelchair indoors. It is the only item that pays cash straight away.
+- Two corrections to the private benefits file: not claiming Attendance Allowance for the older partner is right. Carer's Allowance should be claimed from the day the working partner retires, not now, because of its earnings limit.
 
-I recommend **1**. Only item 1 blocks the board, but items 2 and 3 run on somebody else's clock, so
-waiting on them costs weeks, and item 3 is the only one that pays cash straight away.
+## See it
+- <https://www.gov.uk/check-state-pension>
+- <https://www.gov.uk/new-state-pension/what-youll-get>
+- <https://www.gov.uk/pension-credit/what-youll-get>
+- <https://www.gov.uk/council-tax-reductions-if-youre-disabled>
 
-**Pass:** the weekly amount **and** the qualifying years, from a printed or screenshotted forecast
-or the award letter, written here. On option 1 also: the council's answer on the band reduction,
-the letter's two rates matching those in `docs/SCENARIO-V2.local.md`, and an Age UK appointment date.
+---
+## For the agent (Rob can stop reading here)
+Write the forecast into the scenarios that model the working partner's State Pension and re-run them. If it is under £238.00, the Pension Credit and passported help appear on their own; check the keep-the-flat plans in card 0022 move. Item 4 (the care and mobility split) feeds card 0050. Source: expert panel 2026-08-19 (Citizens Advice findings 1, 2, 9; adviser finding 1), gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
 
-**Fail:** a weekly figure without the qualifying years, or one you cannot tie to a document. If the
-forecast is under £238.00 a week, say so here, because that switches Pension Credit and its
-passported help on, and ask DWP whether voluntary contributions are still open.
+## Comments
 
-Paste-ready: `**2026-MM-DD** **Decided:** Option 1, all four, in the order 1, 3, 4, 2. Forecast: £___/wk, ___ qualifying years.`
-
-**Why it needs you.** Every item is local knowledge nobody has written down, held by you or by a
-body only you can ask: your own DWP record, whether the flat has a feature that qualifies for the
-disabled band reduction, and what the award letter says. How much admin to do in one sitting is
-your cost to carry, not a modelling result.
-
-## Why
-
-From the expert panel, 2026-08-19 (Citizens Advice findings 1, 2, 9 and the closing list, plus
-adviser finding 1). Detail in the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
-
-### The four items are not one job
-
-| # | Item | What it blocks | Where the answer comes from | Repo already holds it? |
-|---|------|----------------|------------------------------|------------------------|
-| 1 | Working partner's State Pension: the exact **weekly amount** and the **qualifying years** | The ranking itself, plus every benefits card | `gov.uk/check-state-pension`, or the DWP award letter — the claim is already lodged, so the letter states it outright | **No.** Flagged as "the one number not verified" in the gitignored `docs/SCENARIO-V2.local.md` |
-| 2 | Free benefits check — Age UK **0800 678 1602** | Nothing in the model. It gets the claim, the carer's underlying entitlement and the council tax reductions **on file before they are needed** | Phone, then an appointment (often a home visit) | A desk check exists in the gitignored `docs/BENEFITS-CHECK-V2.local.md`. An adviser's check does not |
-| 3 | Council tax **disabled band reduction** on the flat | Nothing in the model. **The only item that pays cash immediately** | The council tax bill, then the council. Needs a qualifying feature: an extra bathroom, a room used for the disabled person's needs, or space to use a wheelchair indoors. **Not means-tested**. Drops the bill a whole band | Rule and source recorded. Whether the flat has a qualifying feature is not |
-| 4 | Older partner's disability award split into **care** and **mobility** rates | Card 0050 | The award letter | **Yes.** Both component rates are already recorded in `docs/SCENARIO-V2.local.md`. This is a five-minute confirmation, not research |
-
-### Why item 1 decides everything else
-
-The two rates are £3.30 a week apart, and the model uprates both with the same factor, so the gap
-never closes on its own.
-
-| If the working partner's forecast is… | Guarantee Credit | What follows |
-|---|---|---|
-| **the full new State Pension** (£241.30/wk, 2026/27) | **£0 for life** — above the £238.00/wk single Guarantee Credit line | No Support for Mortgage Interest, no Council Tax Reduction, no Warm Home Discount, no free TV licence at 75, no Cold Weather Payments, no help with NHS costs |
-| **short of the full rate** (under £238.00/wk) | A live award | The whole passported chain above switches on, worth several thousand a year |
-
-The tool currently carries the full-rate assumption, so it shows a Pension Credit award of zero and
-no passported help. That is one of the two pillars of the argument for keeping the flat — pointing
-the wrong way if the assumption is wrong. Pass for item 1 is a printed or screenshotted forecast
-with the weekly amount **and** the qualifying years. If the record is short of full, also ask
-whether voluntary contributions are still open: the payback is not the pension itself, it is that
-dropping below the line re-opens everything else.
-
-### Two corrections to the existing benefits file, while you are at it
-
-- The advice **not** to apply for Attendance Allowance for the older partner is right — the
-  protected award is kept.
-- The advice to claim Carer's Allowance for underlying entitlement is right but **mistimed**.
-  There is an earnings limit, so it fails while the working partner is still earning. The claim to
-  lodge is the one that starts the day they retire.
-
-## Links
-
-**Relates to**
-- `0050` - item 4, the care and mobility split of the older partner's award, is the input that card
-  models a care placement with.
-
-## Options
-
-1. **Item 1 only.** One login, or read the award letter that is already due. Everything else waits.
-   *Cost:* the two items with long external clocks (the Age UK appointment, a council tax
-   reassessment) do not start, so their wall-clock delay is added on later rather than run in
-   parallel. Item 3 keeps not paying.
-2. **All four, in one sitting.** Login plus one phone call plus reading two letters and a bill.
-   *Cost:* an afternoon of admin, and two of the four (items 2 and 3) move nothing on the board at
-   all — they pay in cash and in claim history, not in modelling.
-3. **None now — declare the assumption instead.** Leave the model on the full-rate assumption, add
-   it as a named, dated open assumption on every keep-the-flat result, and let the board carry on.
-   *Cost:* every plan then gets ranked on one unverified number sitting £3.30/wk from flipping a
-   multi-thousand-pound-a-year package on or off. If it flips, the ranking work done in the
-   meantime is wasted, and this is the sole item the panel said to do "before anything else".
-
-## Recommendation
-
-**Option 2 — all four, in one sitting.** Only item 1 blocks the board, and it is also the fastest
-of the four, because the claim is already lodged and the award letter states the figure outright.
-The other three cost minutes of your time each, but two of them run on someone else's clock (an
-Age UK appointment, a council reassessment), so starting them today is nearly free and waiting is
-not. Item 4 has stopped being research: the repo already holds both component rates, so it is now
-a check against the letter you are opening anyway.
-
-Do them in this order: **1, 3, 4, 2** — the blocker, then the one that pays, then the confirmation,
-then the slow appointment.
-
-Option 3 is the one to avoid. It is the only option that leaves a knife-edge assumption load-bearing
-under a ranking you are about to act on.
-
-## Direction
-<!-- Steering, appended by ProgressBoard. Append-only: entries are added, never edited or removed. -->
-
-**2026-08-21** bin/decision-prep.ps1 prepared this card unattended and wrote options and a recommendation. The agent returned no report of what it assumed, so what it read and what it could not determine is not recorded here. The run is in storage/logs/decision-prep.log.
+**2026-10-07** Rates re-checked: new State Pension £241.30/wk and Pension Credit single standard
+minimum guarantee £238.00/wk for 2026/27, both up 4.8% from April 2026
+(<https://comparedrawdown.co.uk/blog/state-pension-202627-how-much-will-you-get>,
+<https://wrexham.com/news/state-pension-and-pension-credit-both-rise-4-8-from-today-289069.html>).
