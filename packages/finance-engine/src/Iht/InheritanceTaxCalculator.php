@@ -315,6 +315,9 @@ final class InheritanceTaxCalculator
             $totalEstate->minus($homePassingToDescendants)->minZero(),
         );
         $rnrb = Money::min($rnrbAfterTaper, $homePassingToDescendants->plus($downsizingAddition));
+        // Report only the part of the band the addition actually supplies: the home fills the band
+        // first, so after a taper the addition is the band less the home's part, never more.
+        $downsizingAddition = $rnrb->minus($homePassingToDescendants)->minZero();
 
         $taxableEstate = $totalEstate->minus($nrb)->minus($rnrb)->minZero();
         $tax = $taxableEstate->applyRate($params->rate);

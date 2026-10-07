@@ -31,6 +31,7 @@ use RetireForecast\FinanceEngine\Iht\InheritanceTaxCalculator;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
+use RetireForecast\FinanceEngine\Support\WarningCode;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
@@ -161,7 +162,6 @@ final class RnrbDownsizingAdditionTest extends TestCase
     {
         $result = $this->compute(estate: 2_200_000, homeAtDeath: 0, disposal: 500_000);
 
-        $this->assertSame(self::MAX_RNRB * 100, $result->downsizingAddition->pence);
         $this->assertSame(75_000_00, $result->residenceNilRateBandUsed->pence, 'the tapered band is the ceiling on home + addition');
         $this->assertSame((2_200_000 - self::NRB - 75_000) * 100, $result->taxableEstate->pence);
     }
@@ -172,6 +172,45 @@ final class RnrbDownsizingAdditionTest extends TestCase
         $result = $this->compute(estate: 2_400_000, homeAtDeath: 0, disposal: 500_000);
 
         $this->assertSame(0, $result->residenceNilRateBandUsed->pence);
+    }
+
+    /**
+     * Criterion #4: the reported addition is only the part of the band it actually supplies after
+     * the taper. The £175,000 lost on the disposal is the addition BEFORE the taper; once the taper
+     * leaves a £75,000 band, or none, an addition of £175,000 beside it is a figure no reader can
+     * account for. The home at death fills the band first and the addition supplies the rest, so
+     * the addition is never more than the band less the home's part.
+     */
+    public function test_the_reported_addition_never_exceeds_the_band_it_supplies(): void
+    {
+        $tapered = $this->compute(estate: 2_200_000, homeAtDeath: 0, disposal: 500_000);
+        $this->assertSame(75_000_00, $tapered->downsizingAddition->pence, 'the whole £75,000 band comes from the addition');
+        $this->assertCount(1, $this->downsizingWarnings($tapered), 'a supplied addition is still disclosed');
+        $this->assertStringContainsString('£75,000', $this->downsizingWarnings($tapered)[0]);
+
+        $wiped = $this->compute(estate: 2_400_000, homeAtDeath: 0, disposal: 500_000);
+        $this->assertSame(0, $wiped->downsizingAddition->pence, 'no band, so nothing is added back');
+        $this->assertSame([], $this->downsizingWarnings($wiped), 'no addition beside a zero band');
+
+        // A cheaper home at death fills £50,000 of a £75,000 tapered band, so the addition
+        // supplies only the other £25,000, not the £125,000 the disposal lost.
+        $withHome = $this->compute(estate: 2_200_000, homeAtDeath: 50_000, disposal: 500_000);
+        $this->assertSame(75_000_00, $withHome->residenceNilRateBandUsed->pence);
+        $this->assertSame(25_000_00, $withHome->downsizingAddition->pence);
+
+        // Reconciliation: the home's part plus the addition is the band, whatever the taper did.
+        foreach ([$tapered, $wiped, $withHome] as $result) {
+            $this->assertLessThanOrEqual($result->residenceNilRateBandUsed->pence, $result->downsizingAddition->pence);
+        }
+    }
+
+    /** @return list<string> */
+    private function downsizingWarnings(IhtResult $result): array
+    {
+        return array_values(array_map(
+            static fn ($w) => $w->message,
+            array_filter($result->warnings, static fn ($w) => $w->code === WarningCode::IHT_DOWNSIZING_ADDITION),
+        ));
     }
 
     /**

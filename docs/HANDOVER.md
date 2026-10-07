@@ -545,8 +545,10 @@ inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded ou
   together. That last order is what leaves everything else alone: with no disposal the expression
   collapses to what the calculator already had, so a stay-put plan is byte-identical and
   `GoldenMasterTest` did not redden. **Every stored sell plan that models Inheritance Tax paid too
-  much**, by up to £70,000 a band, so its estate is understated. `ENGINE_VERSION` is
-  `finance-engine/rnrb-downsizing-addition` and the **stored-scenario re-run is owed**. The rule is
+  much**, by up to £70,000 a band, so its estate is understated. The reported addition is only
+  the part of the band it supplies after the taper (#4), so an estate over £2m never shows it
+  beside a smaller band. `ENGINE_VERSION` is `finance-engine/downsizing-addition-reported-after-taper`
+  and the **stored-scenario re-run is owed**. The rule is
   **STATED, not verified** (no web in this session): see [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md)
   (§26), carded as **0125**. Built in a worktree, so the new results copy and the PDF line **have
   not been seen in a browser**. Two gaps carded rather than fixed: **0124**,

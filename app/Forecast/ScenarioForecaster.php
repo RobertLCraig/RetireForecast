@@ -61,7 +61,13 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-07 (mobility-row-buys-no-pension-credit-addition): a person whose award part is
+     * Bumped 2026-10-07 (downsizing-addition-reported-after-taper): the reported downsizing addition
+     * is now only the part of the residence band it supplies after the taper
+     * (`InheritanceTaxCalculator::compute`), so an estate over the taper threshold no longer shows
+     * an addition beside a smaller or zero band. The tax is unchanged; only the reported addition,
+     * and its warning, move, and only for a plan that sells its home with an estate over £2m.
+     * Board card 0053 #4.
+     * Previous bump 2026-10-07 (mobility-row-buys-no-pension-credit-addition): a person whose award part is
      * left blank and whose only disability income rows are the mobility component now reads as a
      * mobility-only award (`HouseholdAssembler::awardRateFromStreams`), so it buys neither Pension
      * Credit addition. Such a plan was awarded too MUCH Pension Credit under an earlier stamp. Any
@@ -503,7 +509,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/mobility-row-buys-no-pension-credit-addition';
+    public const ENGINE_VERSION = 'finance-engine/downsizing-addition-reported-after-taper';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

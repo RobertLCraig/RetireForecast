@@ -786,7 +786,9 @@ from the original plan, flagged inline:
   set by the year-0 sell transforms in `HousingComparison` and by the in-projection forced sale in
   `PathProjector` (which keeps it on `state['residenceDisposal']`). The final death then claims the
   statutory **downsizing addition**, reported apart on `IhtResult::$downsizingAddition` so a
-  residence band shown beside no house can be accounted for. It is DERIVED, never entered: there is
+  residence band shown beside no house can be accounted for. The reported figure is only the part
+  of the band the addition supplies after the taper (the band less the home's part), so it is never
+  larger than the band it sits in (card 0053 #4). It is DERIVED, never entered: there is
   no builder field, so a disposal made before the base year is not modelled.
 - **Planned fields never materialised:**
   `StatePensionEntitlement` `spa_override` + `triple_lock_assumption` (SPA computes from DOB;
