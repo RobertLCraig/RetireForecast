@@ -85,3 +85,30 @@ Still blocked on Rob, same as the earlier 2026-10-07 run. Criterion #1 is a deci
 The loop should not retake this card until the answer exists. Next step: Rob writes the call into docs/DECISIONS.md, or answers on this card with **Decided:**. A no closes this card and card 0048 #2 with it. A yes makes #2 and #3 ordinary build work (completion offset on HousingAction, buyVariant split into sale and purchase legs, the disregard sourced beside the tariff in Benefits\CapitalAssessment, ENGINE_VERSION bump and a re-run of stored scenarios).
 
 **2026-10-07** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 3 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-07 manager (m20261007170501-151d)
+
+**outcome: question**
+
+Only Rob can decide if this rare case is worth a big change to the engine, and the builder has nothing to do until he answers.
+
+**The question:** Should the forecast model a gap between selling the old home and buying the new one, so that the 26-week rule that ignores sale money in the benefits means test can apply? Or should both stay in the same moment, as they do now?
+
+**what the session said**
+
+Nobody has answered this card's question yet. I searched `docs/DECISIONS.md` and found no decision on 0116. `docs/HANDOVER.md` only lists 0116 as an open gap. The card has no **Decided:** comment.
+
+Criterion #1 needs a call from Rob. The builder cannot make it. Criteria #2 and #3 only matter if the answer is yes. If the builder starts them now, it makes the choice for Rob.
+
+The question is about cost against benefit:
+- **Benefit:** the 26-week disregard (money from a home sale that the means test does not count) only helps a plan whose sale and purchase fall in different years, and whose savings that year are close to a benefit limit.
+- **Cost:** `HousingAction` would need a completion delay. `HousingComparison::buyVariant` would need to split into a sale step and a purchase step. Every stored buy-outright plan would also have to run again.
+
+**Recommendation:** answer no, unless a real plan you use sells and buys in different years. A no closes this card and card 0048 #2.
+
+QUESTION: Should the forecast model a gap between selling the old home and buying the new one, so that the 26-week rule that ignores sale money in the benefits means test can apply? Or should both stay in the same moment, as they do now?
+
+WHY: Only Rob can decide if this rare case is worth a big change to the engine, and the builder has nothing to do until he answers.
+
+OUTCOME: question
+
