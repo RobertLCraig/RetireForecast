@@ -1464,10 +1464,10 @@ final class ResultPresenter
                 $amount = $action->buyPrice->applyRate($rate);
                 $pct = rtrim(rtrim(number_format($rate->asPercent(), 2), '0'), '.');
                 $out[] = "You didn't give running costs for the home you'd buy, so we've assumed {$pct}% of its "
-                    ."value a year — {$amount->format()} a year for maintenance, insurance and council tax — and "
+                    ."value a year — {$amount->format()} a year for upkeep — and "
                     .'charged it as an essential cost for the whole plan. If you know the real figure (a service '
                     ."charge, or a park home's pitch fee) enter it: at this size, being out by half changes the "
-                    .'plan by hundreds of pounds a year.';
+                    .'plan by hundreds of pounds a year.'.self::councilTaxOnTop($household);
             }
         }
 
@@ -2843,9 +2843,9 @@ final class ResultPresenter
                 ."being told it: {$upkeep->format()} a year, charged as an essential cost for the whole plan. The rule is "
                 ."your current home's {$currentUpkeep->format()} a year scaled by the two prices ({$housingAction->buyPrice->format()} "
                 ."to buy against {$housingAction->salePrice->format()} to sell), on the reading that a cheaper home costs less "
-                .'to keep. That is a guess about a property you have not chosen: maintenance, insurance and council tax do not '
+                .'to keep. That is a guess about a property you have not chosen: running costs do not '
                 .'really track value, and a cheap flat can carry a service charge a costlier house never would. Enter the real '
-                .'figure once you know it.'];
+                .'figure once you know it.'.self::councilTaxOnTop($household)];
         }
 
         // (c6) A one-off CAPITAL lump the plan cannot fund in the year it falls: the unfunded part
@@ -3206,6 +3206,20 @@ final class ResultPresenter
     }
 
     /**
+     * The sentence a bought home's upkeep note ends on when the council tax is held apart: the
+     * bill is not inside the upkeep, it follows the household to the new home as its own line
+     * ({@see HousingComparison::buyVariant}), so saying the upkeep covers it reads as charging it
+     * twice (card 0047). Empty while the bill is still bundled into the running costs.
+     */
+    private static function councilTaxOnTop(Household $household): string
+    {
+        $bill = $household->primaryResidence?->annualCouncilTax;
+
+        return $bill === null ? '' : " Your council tax is charged on top of that, as its own line, at the {$bill->format()} a year "
+            .'you entered for your current home: we do not know the new home\'s band.';
+    }
+
+    /**
      * The PLSA Retirement Living Standards benchmark: where the household's annual
      * spending lands against the recognised Minimum / Moderate / Comfortable yardsticks
      * for its composition (single vs couple). A factual orientation — which standard the
@@ -3239,7 +3253,14 @@ final class ResultPresenter
             ->minus($household->expenseProfile->mortgageLinkedEssential())
             ->minus($household->expenseProfile->mortgageLinkedDiscretionary())
             ->minZero();
+        // Council tax held apart from the running costs (card 0047) is still a home running cost
+        // on the PLSA basis, so it is added back: moving the bill out of one box into the other
+        // must not move the benchmark. The gross bill, as the running costs were before the split.
         $runningCosts = $household->primaryResidence?->runningCosts;
+        $councilTax = $household->primaryResidence?->annualCouncilTax;
+        if ($councilTax !== null) {
+            $runningCosts = ($runningCosts ?? Money::zero())->plus($councilTax);
+        }
         if ($runningCosts !== null) {
             $spend = $spend->plus($runningCosts);
         }

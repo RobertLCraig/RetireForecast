@@ -133,4 +133,25 @@ final class PlsaBenchmarkTest extends TestCase
         $this->assertSame('2026-06-27', $plsa['verifiedOn']);
         $this->assertNotSame('', $plsa['edition']);
     }
+
+    public function test_a_council_tax_bill_held_apart_is_still_counted_in_comparable_spend(): void
+    {
+        // Card 0047. Council tax moved out of the running costs into a box of its own. PLSA's
+        // figures include council tax, so moving the bill must not move the benchmark: £3,000 of
+        // running costs bundled is the same £3,000 as £1,000 of upkeep and a £2,000 bill.
+        $state = fn (array $property): array => [
+            'householdName' => 'Owners', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '20000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => ['currentValue' => '400000', 'ownership' => 'outright'] + $property,
+        ];
+
+        $bundled = ResultPresenter::plsaBenchmark($this->household($state(['runningCosts' => '3000'])));
+        $split = ResultPresenter::plsaBenchmark($this->household($state(['runningCosts' => '1000', 'councilTax' => '2000'])));
+
+        $this->assertSame(Money::fromPounds(23_000)->format(), $bundled['comparableSpend'] ?? null);
+        $this->assertSame($bundled['comparableSpend'], $split['comparableSpend'] ?? null, 'moving the bill out of the running costs does not move the benchmark');
+    }
 }

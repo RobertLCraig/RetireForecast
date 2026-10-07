@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-07 (smi-occupied-home-and-care-equity): Support for Mortgage Interest is no
+     * Bumped 2026-10-07 (council-tax-single-occupant-beside-care): the single-person council tax
+     * discount turns on who lives in the home, not who is alive, so a partner in permanent care
+     * leaves the other a single occupant. A plan with its council tax held apart, two members and
+     * a care spell paid the couple's bill through it, so its spend was slightly too high and its
+     * odds slightly too pessimistic. Any other plan is byte-identical. Board card 0047 #2.
+     * Previous bump 2026-10-07 (smi-occupied-home-and-care-equity): Support for Mortgage Interest is no
      * longer met on a LET home the household does not live in, and the care financial assessment
      * values the home net of the SMI charge. A let plan on Guarantee Credit spent too little, and a
      * Guarantee Credit homeowner who reaches care was charged on equity DWP holds a charge over.
@@ -488,7 +493,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/smi-occupied-home-and-care-equity';
+    public const ENGINE_VERSION = 'finance-engine/council-tax-single-occupant-beside-care';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

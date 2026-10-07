@@ -1593,7 +1593,7 @@
                         <label for="housing-buyRunningCosts" class="{{ $label }}">New home's running costs (£/yr, optional)</label>
                         <input id="housing-buyRunningCosts" type="text" inputmode="decimal" placeholder="e.g. 3000" wire:model.blur="housing.buyRunningCosts" class="{{ $field }}" @error('housing.buyRunningCosts') aria-invalid="true" @enderror>
                         @error('housing.buyRunningCosts') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
-                        <p class="mt-1 text-xs text-gray-500">Maintenance, insurance, council tax — or a <strong>park home's pitch fee</strong>. Blank = we scale your current home's running costs by price, or assume 1% of value a year for upkeep.</p>
+                        <p class="mt-1 text-xs text-gray-500">Maintenance and insurance — or a <strong>park home's pitch fee</strong>. Not council tax if you gave it its own box on the home step: that carries across on its own. Blank = we scale your current home's running costs by price, or assume 1% of value a year for upkeep.</p>
                     </div>
                     <div>
                         <label for="housing-buyGrowthReal" class="{{ $label }}">New home's growth (real %/yr, optional)</label>

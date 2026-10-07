@@ -31,7 +31,7 @@ final class ComputedRunningCostsDisclosureTest extends TestCase
      * @param  array<string, mixed>  $housing
      * @return list<string> the computed-figure disclosures a reader would see
      */
-    private function computed(array $housing, string $currentRunningCosts = ''): array
+    private function computed(array $housing, string $currentRunningCosts = '', string $councilTax = '', string $kind = 'computed_figure'): array
     {
         $state = [
             'householdName' => 'Movers', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
@@ -41,7 +41,7 @@ final class ComputedRunningCostsDisclosureTest extends TestCase
             'expenseLines' => [['id' => 'e1', 'amount' => '18000', 'category' => 'essential']],
             'expense' => ['survivorFactor' => '70'],
             'hasProperty' => true,
-            'property' => ['currentValue' => '400000', 'ownership' => 'outright', 'runningCosts' => $currentRunningCosts],
+            'property' => ['currentValue' => '400000', 'ownership' => 'outright', 'runningCosts' => $currentRunningCosts, 'councilTax' => $councilTax],
             'housing' => $housing,
         ];
 
@@ -56,7 +56,7 @@ final class ComputedRunningCostsDisclosureTest extends TestCase
 
         return array_values(array_map(
             static fn (array $n): string => $n['text'],
-            array_filter($notes, static fn (array $n): bool => $n['kind'] === 'computed_figure'),
+            array_filter($notes, static fn (array $n): bool => $n['kind'] === $kind),
         ));
     }
 
@@ -100,5 +100,28 @@ final class ComputedRunningCostsDisclosureTest extends TestCase
             ['salePrice' => '400000', 'annualRent' => '18000'],
             currentRunningCosts: '8000',
         ));
+    }
+
+    public function test_the_upkeep_of_a_bought_home_never_claims_the_council_tax_charged_beside_it(): void
+    {
+        // Card 0047. A council tax bill held in its own box follows the household to the bought
+        // home as its own line, so the upkeep figure must not say it carries council tax too: read
+        // that way, the bill is charged twice. Both routes to the figure, assumed and computed.
+        $assumed = array_values(array_filter(
+            $this->computed(['salePrice' => '400000', 'buyPrice' => '150000', 'movingCosts' => '3000'], councilTax: '2000', kind: 'assumed_figure'),
+            static fn (string $t): bool => str_contains($t, 'running costs for the home'),
+        ));
+        $computed = $this->computed(
+            ['salePrice' => '400000', 'buyPrice' => '150000', 'movingCosts' => '3000'],
+            currentRunningCosts: '8000',
+            councilTax: '2000',
+        );
+
+        $this->assertCount(1, $assumed);
+        $this->assertCount(1, $computed);
+        foreach ([$assumed[0], $computed[0]] as $text) {
+            $this->assertStringNotContainsString('insurance and council tax', $text, 'the upkeep does not carry the council tax');
+            $this->assertStringContainsString('council tax is charged on top', $text, 'the bill is named as its own line');
+        }
     }
 }

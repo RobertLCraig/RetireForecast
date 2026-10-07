@@ -23,6 +23,8 @@ use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Forecast\PathDraws;
+use RetireForecast\FinanceEngine\Forecast\PathProjector;
 use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
@@ -182,6 +184,94 @@ final class CouncilTaxTest extends TestCase
             $survivor->spendTarget->pence,
             'the survivor is charged a single person\'s council tax, not a couple\'s',
         );
+
+        // A partner in permanent care is still alive, but a care home resident is a DISREGARDED
+        // person for council tax, so the partner left at home is a single occupant from the year
+        // care starts. Both live to 95; p2 enters care at 85 (2035).
+        $care = (new PathProjector(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi)))->project(
+            $this->household([400, 400]),
+            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+            $this->careDraws(['p1' => 95, 'p2' => 95], ['p2' => 85]),
+        );
+        $inCare = null;
+        foreach ($care->years as $year) {
+            if ($year->calendarYear === 2035) {
+                $inCare = $year;
+            }
+        }
+        $this->assertSame(2, $inCare?->aliveCount, 'both members are still alive');
+        $this->assertSame(self::BILL * 100, $care->years[0]->councilTax()->pence, 'the couple pay in full while both live at home');
+        $this->assertSame($discounted, $inCare->councilTax()->pence, 'the partner left at home is a single occupant');
+    }
+
+    /**
+     * Flat draws with a fixed care fee for each member from a given age to death.
+     *
+     * @param  array<string, int>  $deathAges
+     * @param  array<string, int>  $careFromAge
+     */
+    private function careDraws(array $deathAges, array $careFromAge): PathDraws
+    {
+        return new class($deathAges, $careFromAge) implements PathDraws
+        {
+            /**
+             * @param  array<string, int>  $deathAges
+             * @param  array<string, int>  $careFromAge
+             */
+            public function __construct(private readonly array $deathAges, private readonly array $careFromAge) {}
+
+            public function investmentRealReturn(int $yearIndex): float
+            {
+                return 0.0;
+            }
+
+            public function cashRealReturn(int $yearIndex): float
+            {
+                return 0.0;
+            }
+
+            public function investmentIncomeYield(): float
+            {
+                return 0.0;
+            }
+
+            public function investmentChargeRate(): float
+            {
+                return 0.0;
+            }
+
+            public function inflation(int $yearIndex): float
+            {
+                return 0.0;
+            }
+
+            public function propertyGrowthReal(int $yearIndex, ?float $meanReal = null): float
+            {
+                return $meanReal ?? 0.0;
+            }
+
+            public function salaryGrowthReal(int $yearIndex): float
+            {
+                return 0.0;
+            }
+
+            public function deathAge(string $personId): int
+            {
+                return $this->deathAges[$personId];
+            }
+
+            public function careAnnualCost(string $personId, int $age): int
+            {
+                $from = $this->careFromAge[$personId] ?? null;
+
+                return $from !== null && $age >= $from ? 6_000_000 : 0; // £60,000 a year
+            }
+
+            public function careCostRealGrowth(): float
+            {
+                return 0.0;
+            }
+        };
     }
 
     public function test_council_tax_reduction_is_awarded_on_the_pension_age_basis(): void

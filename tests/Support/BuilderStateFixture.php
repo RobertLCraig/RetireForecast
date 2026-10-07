@@ -83,7 +83,7 @@ final class BuilderStateFixture
                 'isLet' => false, 'lettingManagementRate' => '', 'lettingVoidRate' => '', 'lettingMaintenanceRate' => '',
                 'occupiedByQualifyingRelative' => false,
                 'isChattelDwelling' => '', 'beneficialShareYours' => '',
-                'outstandingMortgage' => '48000', 'runningCosts' => '6400', 'growthAssumptionOverride' => '1', 'ownershipShare' => '100',
+                'outstandingMortgage' => '48000', 'runningCosts' => '4300', 'growthAssumptionOverride' => '1', 'ownershipShare' => '100',
                 'councilTax' => '2100', 'councilTaxDisabledBand' => '',
                 'mortgageRedemptionYear' => '', 'mortgageMaturityAction' => 'refinance', 'mortgageRollUpRate' => '',
                 'mortgageOverpayment' => '',

@@ -9,10 +9,16 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A partner in care leaves the other a single council tax occupant.** Card 0047 #2.
+  `ENGINE_VERSION` is `finance-engine/council-tax-single-occupant-beside-care`; the **re-run is
+  owed** only for two-member plans with a split council tax bill and a care spell. The PLSA benchmark now
+  counts a split bill, and the demo's running costs dropped to £2,800 so its £2,200 bill is not
+  paid twice. A home left empty for care is card 0180. The new upkeep-note sentence and builder
+  hint are **not seen in a browser**.
+
 - **SMI is met only on a home the household lives in, and care nets its charge.** Card 0045 #1
-  and #4. `ENGINE_VERSION` is `finance-engine/smi-occupied-home-and-care-equity`; the **re-run is
-  owed** for let plans on Guarantee Credit and for SMI plans that reach care. The SMI rate and cap
-  are still unsourced (card 0109).
+  and #4. The **re-run is owed** for let plans on Guarantee Credit and for SMI plans that reach
+  care. The SMI rate and cap are still unsourced (card 0109).
 
 - **A survivor's DB pension escalates on its in-payment basis from the death.** Card 0035 #4.
   `PathProjector::escalateDbPensions` starts payment at the earlier of normal retirement age and

@@ -1747,7 +1747,14 @@ final class PathProjector
 
             // Council tax, held apart from the running costs above because it is the one that
             // SHRINKS — see councilTaxNominal for the three reliefs and the order they apply in.
-            $councilTaxNominal = $this->councilTaxNominal($household, $state, $pensionCreditAward, $aliveCount);
+            // The single-person discount turns on who LIVES there, not who is alive: a member in
+            // permanent care is a disregarded person, so the partner left at home is a single
+            // occupant. With nobody left at home it falls back to the living count, as before.
+            $atHome = count(array_filter(
+                $household->persons,
+                fn (Person $p): bool => ($alive[$p->id] ?? false) && $draws->careAnnualCost($p->id, $ages[$p->id]) <= 0,
+            ));
+            $councilTaxNominal = $this->councilTaxNominal($household, $state, $pensionCreditAward, $atHome ?: $aliveCount);
             $spendNominal += $councilTaxNominal;
             $essentialNominal += $councilTaxNominal;
 
@@ -2242,15 +2249,16 @@ final class PathProjector
      * @param  array<string, mixed>  $state
      * @param  ?PensionCreditResult  $award  null when the qualifying-age gate blocked the award,
      *                                       which is also what blocks the pension-age reduction
+     * @param  int  $occupants  members living in the home this year (a care resident is not)
      */
-    private function councilTaxNominal(Household $household, array $state, ?PensionCreditResult $award, int $aliveCount): int
+    private function councilTaxNominal(Household $household, array $state, ?PensionCreditResult $award, int $occupants): int
     {
         $home = $household->primaryResidence;
         if ($home?->annualCouncilTax === null || $state['homeSold']) {
             return 0;
         }
 
-        $liability = CouncilTax::liabilityAnnual($home->annualCouncilTax, $home->disabledBandReduction, $aliveCount === 1);
+        $liability = CouncilTax::liabilityAnnual($home->annualCouncilTax, $home->disabledBandReduction, $occupants === 1);
         $nominal = Money::fromPence((int) round($liability->pence * $state['spendFactor']));
 
         if ($award === null) {
