@@ -1604,9 +1604,12 @@ final class ResultPresenter
      * walk-through the sector leads with, and the visual guard that every income source
      * reaches the forecast (no silent drop, gotcha Q).
      *
+     * $lifetimeMortgage says the mortgage the years report is an equity-release roll-up with no
+     * instalments ({@see rollsUpMortgage()}); the forecast's balance alone cannot tell.
+     *
      * @return array{sources: list<string>, sourceLabels: array<string, string>, rows: list<array<string, mixed>>, finalYear: int}
      */
-    public static function ladder(ForecastResult $forecast, int $bufferMonths = 2): array
+    public static function ladder(ForecastResult $forecast, int $bufferMonths = 2, bool $lifetimeMortgage = false): array
     {
         $bufferMonths = max(0, $bufferMonths);
 
@@ -1742,7 +1745,7 @@ final class ResultPresenter
             'tenancyUpFront' => $tenancyUpFront,
             // What the unmet spend MEANS, rather than a bare number of pounds (board card 0052).
             // Null on a plan that funds its spending every year.
-            'priorityDebt' => self::priorityDebtGuidance($forecast),
+            'priorityDebt' => self::priorityDebtGuidance($forecast, $lifetimeMortgage),
         ];
     }
 
@@ -1763,7 +1766,7 @@ final class ResultPresenter
      *
      * @return array{firstYear: int, amount: string, secured: bool, mortgageBalance: ?string, headline: string, points: list<string>, sources: list<string>}|null
      */
-    public static function priorityDebtGuidance(ForecastResult $forecast): ?array
+    public static function priorityDebtGuidance(ForecastResult $forecast, bool $lifetimeMortgage = false): ?array
     {
         $first = null;
         foreach ($forecast->years as $year) {
@@ -1776,7 +1779,10 @@ final class ResultPresenter
             return null;
         }
 
-        $secured = $first->mortgageBalance()->isPositive();
+        // A lifetime mortgage rides the same balance but has no instalments, so the gap cannot
+        // leave it in arrears: framing it as possession would be the invented consequence above.
+        $rollUp = $lifetimeMortgage && $first->mortgageBalance()->isPositive();
+        $secured = ! $rollUp && $first->mortgageBalance()->isPositive();
         $amount = $first->unmetSpend->format();
 
         $headline = $secured
@@ -1787,16 +1793,17 @@ final class ResultPresenter
                 .'to repay the debt.'
             : "In {$first->calendarYear} this plan cannot fund {$amount} of that year's spending. The forecast shows "
                 .'that gap as a single number, but the bills behind it are not equal: some can be enforced in ways '
-                .'others cannot.';
+                .'others cannot.'
+                .($rollUp ? ' The lifetime mortgage on your home is modelled with no instalments, so there are none '
+                    .'for this gap to leave unpaid; its rolled-up balance is repaid when the home is sold.' : '');
 
         $points = [
             'Mortgage and council tax are priority debts. Missing them is not the same as missing a credit card, a '
                 .'catalogue or a shop bill: a mortgage can end in the home being repossessed, and unpaid council tax '
                 .'can bring a liability order, deductions straight from benefits, wages or a pension, and enforcement '
                 .'agents.',
-            'A shortfall is not only a spending problem. This forecast counts the benefits you entered plus Pension '
-                .'Credit, and nothing else, so money the household is entitled to can be missing from it. A free '
-                .'benefits check is the first thing a debt adviser does.',
+            'A shortfall is not only a spending problem. A free benefits check is the first thing a debt adviser '
+                .'does, and it can find money the household is entitled to but has not claimed.',
         ];
         if ($secured) {
             $points[] = 'A lender has to consider forbearance before it seeks possession — for example a payment '
@@ -1820,6 +1827,15 @@ final class ResultPresenter
                 ? ['https://www.handbook.fca.org.uk/handbook/MCOB/13/', 'https://www.legislation.gov.uk/ukpga/1970/31/section/36', 'https://www.gov.uk/council-tax-arrears']
                 : ['https://www.gov.uk/council-tax-arrears'],
         ];
+    }
+
+    /**
+     * Whether the mortgage a forecast reports is the home's equity-release roll-up. A sell variant
+     * redeems it at the sale, so any balance after that is a bought home's loan, not this one.
+     */
+    public static function rollsUpMortgage(Household $household, bool $homeSold): bool
+    {
+        return ! $homeSold && $household->primaryResidence?->mortgageRollUpRate !== null;
     }
 
     /** @param  list<YearResult>  $years */

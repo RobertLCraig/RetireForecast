@@ -447,7 +447,7 @@ class ScenarioResults extends Component
         // for the selected strategy — built from the SAME deterministic forecast the ladder
         // reads, so they can't drift from it. Overlay the same life-event verticals the ladder
         // milestones mark, so a step change (retirement, State Pension, a sale) is legible.
-        $ladder = ResultPresenter::ladder($ladderForecast, $this->scenario->safetyBufferMonths());
+        $ladder = ResultPresenter::ladder($ladderForecast, $this->scenario->safetyBufferMonths(), ResultPresenter::rollsUpMortgage($household, $homeSold));
         $ladderMilestones = ResultPresenter::milestones($household, $ladderForecast, homeSold: $homeSold);
         $timeSeries = ResultPresenter::timeSeriesCharts($ladderForecast, $this->nominalPounds);
         $milestoneAnnotations = ResultPresenter::milestoneAnnotations($ladderMilestones);

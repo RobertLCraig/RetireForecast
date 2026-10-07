@@ -110,7 +110,7 @@ class ScenarioReport
         $milestones = ResultPresenter::milestones($household, $ladderForecast, homeSold: $ladderContext->homeSold());
         $milestoneAnnotations = ResultPresenter::milestoneAnnotations($milestones);
 
-        $ladder = ResultPresenter::ladder($ladderForecast, $scenario->safetyBufferMonths());
+        $ladder = ResultPresenter::ladder($ladderForecast, $scenario->safetyBufferMonths(), ResultPresenter::rollsUpMortgage($household, $ladderContext->homeSold()));
         $hasMortgage = ($household->primaryResidence?->outstandingMortgage?->isPositive() ?? false)
             || $action->buyMortgageRate !== null;
 

@@ -80,6 +80,30 @@ class PriorityDebtSignpostingTest extends TestCase
         $this->assertStringContainsString('possession', $panel['headline']);
     }
 
+    public function test_a_shortfall_on_a_lifetime_mortgage_is_not_framed_as_arrears_and_possession(): void
+    {
+        // Equity release rolls up with no instalments, so there is nothing for the gap to leave in
+        // arrears and no possession route through missed payments (card 0052 review). The engine
+        // carries it in the same mortgageBalance() an instalment loan uses, so the balance alone
+        // cannot tell the two apart.
+        $state = $this->shortState(mortgaged: true);
+        $state['property']['mortgageRollUpRate'] = '6';
+        array_pop($state['expenseLines']);
+        $household = (new HouseholdAssembler)->household($state);
+        $forecast = $this->forecast($state);
+        $this->assertTrue($forecast->years[0]->mortgageBalance()->isPositive(), 'the roll-up balance is live in the shortfall year');
+
+        $panel = ResultPresenter::ladder($forecast, lifetimeMortgage: ResultPresenter::rollsUpMortgage($household, homeSold: false))['priorityDebt'];
+
+        $this->assertNotNull($panel);
+        $this->assertFalse($panel['secured']);
+        $text = $panel['headline'].' '.implode(' ', $panel['points']);
+        $this->assertStringNotContainsString('possession', $text);
+        $this->assertStringNotContainsString('arrears', $text);
+        $this->assertStringNotContainsString('MCOB 13', $text);
+        $this->assertStringContainsString('lifetime mortgage', $panel['headline']);
+    }
+
     public function test_a_shortfall_with_no_mortgage_is_not_called_a_secured_debt_shortfall(): void
     {
         // A renter or an outright owner has no home at stake for the same gap, and telling them
