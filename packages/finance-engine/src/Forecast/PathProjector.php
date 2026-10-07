@@ -1071,7 +1071,12 @@ final class PathProjector
         // before any income is assembled, because the answer has to reach the income streams
         // below, the Pension Credit severe-disability addition after them and the care charge
         // after that — one determination, three readers, no chance of them disagreeing.
-        $disabilityCareFraction = $this->disabilityCareComponentFractions($household, $draws, $state, $alive, $yearIndex);
+        // The capital is read off a copy of the state with this year's home settlement already
+        // applied, so a forced sale that banks proceeds this year funds the resident here exactly
+        // as it funds them for the care charge below.
+        $capitalState = $state;
+        $this->settleHomeThisYear($household, $settings, $draws, $capitalState, $alive, $yearIndex, $calendarYear);
+        $disabilityCareFraction = $this->disabilityCareComponentFractions($household, $draws, $state, $capitalState, $alive, $yearIndex);
 
         // The care component of each person's disability award actually received this year
         // (nominal pence, after any suspension above). Assessable income for the care financial
@@ -1343,125 +1348,17 @@ final class PathProjector
             $essentialPence = max(0, $essentialPence - $employment);
         }
 
-        // Mortgage redemption: when the current home's mortgage term ends and the chosen action
-        // is to repay it from capital, the outstanding balance is a one-off outflow that year
-        // (funded from assets, like any one-off). A fixed-£ debt, so it is already nominal. If the
-        // assets are not there the shortfall surfaces, flagging the keep-the-home option as
-        // unaffordable: it is NOT judged apart like a purchase lump below, so it fails full spend
-        // (board card 0025). Refinance rolls the loan over (no event); a forced sale is handled by the
-        // block just below. Once redeemed, the ongoing mortgage *payment* stops too (dropped just
-        // below), so a repay-and-stay path is not charged both the repayment and the payment.
-        $repayOneOff = 0;
-        $home = $household->primaryResidence;
-        if ($home?->mortgageRedemptionYear !== null
-            && $home->mortgageMaturityAction === MortgageMaturityAction::RepayFromCapital
-            && ! $state['mortgageRepaid']
-            && $state['mortgageOutstanding'] > 0
-            && $calendarYear >= $home->mortgageRedemptionYear) {
-            $repayOneOff = $state['mortgageOutstanding'];
-            $state['mortgageOutstanding'] = 0;
-            $state['mortgageRepaid'] = true;
-        }
-
-        // Forced sale: the mortgage is called for redemption and cannot be refinanced, so the home
-        // must be sold that year. Unlike the year-0 sell variants (which can only sell at the
-        // start), this sells mid-projection at the grown value: net proceeds are freed into liquid
-        // wealth, the debt is cleared, and from this year on the household rents and pays no
-        // property costs — the realistic path, not the impossible "keep the home for ever". The
-        // sale is decomposed by the shared HousingProceeds so it reconciles (parts sum to net); CGT
-        // is £0 for a home lived in throughout, partial-PRR for an ever-let one.
-        //
         // Read BEFORE the block so the sale can be told from an already-sold home: a forced sale is
         // a one-year EVENT (board card 0049 warns on it) while $state['homeSold'] stays true for the
         // rest of the plan, so the flag alone would repeat the warning for ever.
         $homeSoldAtYearStart = $state['homeSold'];
-        $mortgageRedeemedNominal = 0;
-        $saleForcedByMaturity = $home?->mortgageRedemptionYear !== null
-            && $home->mortgageMaturityAction === MortgageMaturityAction::ForcedSale
-            && $calendarYear >= $home->mortgageRedemptionYear;
-        // The SAME sale, on the other trigger every standard equity-release contract carries
-        // (board card 0056): permanent residential care for the last surviving borrower matures a
-        // lifetime mortgage exactly as death does. Run here, before the year's care charge and its
-        // financial assessment below, so the resident is charged on the position the sale leaves
-        // them in — the proceeds in hand and no home — rather than on a home they no longer have.
-        $saleForcedByCare = ! $saleForcedByMaturity
-            && $this->equityReleaseRedeemedByCare($household, $state, $draws, $alive, $yearIndex);
-        if ($home !== null && ! $state['homeSold'] && ($saleForcedByMaturity || $saleForcedByCare)) {
-            // The balance to redeem is the one owed in THIS year, never the one originally
-            // entered. The two agree only for an interest-only loan, which is why passing the
-            // entered figure survived: a lifetime mortgage has rolled up by now (so the sale was
-            // freeing equity the household no longer had) and a repayment mortgage has amortised
-            // down (so it was freeing less than it really keeps). Both shapes are live.
-            //
-            // `mortgageOutstanding` is the household's SHARE of the balance and HousingProceeds
-            // takes whole-property figures and applies the share itself, so scale back up. Derived
-            // rather than tracked as a second state key: the balance has ONE definition, it is read
-            // once here rather than compounded (unlike `propertyWhole`, whose drift would accumulate
-            // over a whole projection), and a mirrored key is a field to forget.
-            $share = $state['ownershipShare'];
-            $owedWhole = $share > 0
-                ? (int) round($state['mortgageOutstanding'] / $share)
-                : $state['mortgageOutstanding'];
 
-            $proceeds = HousingProceeds::compute(
-                Money::fromPence($state['propertyWhole']),
-                Money::fromPence($owedWhole),
-                $settings->sellingCosts,
-                $home->cgtHistory,
-                $home->ownershipShare,
-                $this->config,
-            );
-            // Reported on the year so a screen states the balance the sale cleared (card 0041 #5):
-            // the year's own mortgage balance reads zero once the home is gone.
-            $mortgageRedeemedNominal = $proceeds->outstandingMortgage->pence;
-
-            // The net proceeds become investable liquid wealth, split equally between the living
-            // OWNERS' GIAs (drawable now, invested per the run's assumptions and drawn per the
-            // strategy). Cost basis = proceeds, so no latent gain is taxed on a later disposal.
-            // Once in the GIA the freed equity is assessable capital for Pension Credit (it is no
-            // longer the exempt main residence), so a forced sale can erode the award / cross the
-            // £16k cliff. It is split rather than banked to the first living person (board card
-            // 0040) because the care means test assesses the individual: crediting one of them
-            // with the whole home sent the other into care owning nothing.
-            // A Support for Mortgage Interest charge is secured on this home, so the sale redeems
-            // it out of the proceeds before anything is banked — that is what "repaid on sale"
-            // means, and it is why the charge does not follow the household into a rented flat.
-            // Any shortfall against the proceeds is written off (DWP recovers only what the
-            // security bears), which is what the floor here does. It is redeemed SEPARATELY from
-            // the mortgage rather than added to the redeemed balance, because HousingProceeds
-            // decomposes the sale and a second, differently-owed debt inside its `mortgage` line
-            // would report a mortgage the household does not have.
-            // Record the disposal for the Inheritance Tax downsizing addition BEFORE the charges
-            // are cleared: the value that counts is the household's own interest in the home at
-            // the moment it was sold — its share of the price less everything secured on it, the
-            // same net basis the estate values a home on at death. A later disposal REPLACES an
-            // earlier one (a year-0 sale followed by a forced sale on the home bought with the
-            // proceeds): the statute allows one addition, computed from a single qualifying
-            // disposal, and the most recent one is the one the estate's own history ends on.
-            // A deferred care payment is secured on the same home and falls due on the same sale,
-            // so it is redeemed beside the SMI charge and on the same terms (board card 0055).
-            $securedCharges = $state['smiBalance'] + $state['deferredCareBalance'];
-            $state['residenceDisposal'] = new ResidenceDisposal(
-                Money::fromPence(max(0, $proceeds->salePrice->pence - $proceeds->outstandingMortgage->pence - $securedCharges)),
-                $calendarYear,
-            );
-
-            $netAfterCharge = max(0, $proceeds->netProceeds->pence - $securedCharges);
-            $state['smiBalance'] = 0;
-            $state['deferredCareBalance'] = 0;
-
-            foreach (PenceSplit::evenly($netAfterCharge, $this->livingIds($household, $alive)) as $ownerId => $share) {
-                $state['gia'][$ownerId] += $share;
-                $state['giaBasis'][$ownerId] += $share;
-            }
-
-            // Clear the home and its debt; flip onto a renting footing from here.
-            $state['property'] = 0;
-            $state['propertyWhole'] = 0;
-            $state['mortgageOutstanding'] = 0;
-            $state['mortgageRepaid'] = true; // stops the ongoing mortgage payment (dropped just below)
-            $state['homeSold'] = true;
-        }
+        // Board card 0050: the same settlement is also run on a COPY of the state before the
+        // year's income ({@see disabilityCareComponentFractions}), so the disability benefit's
+        // funding answer sees the capital a forced sale leaves, as the care charge does.
+        ['repayOneOff' => $repayOneOff, 'mortgageRedeemed' => $mortgageRedeemedNominal, 'saleForcedByMaturity' => $saleForcedByMaturity]
+            = $this->settleHomeThisYear($household, $settings, $draws, $state, $alive, $yearIndex, $calendarYear);
+        $home = $household->primaryResidence;
 
         // Buy-to-let finance-cost restriction (since April 2020): a landlord can no longer deduct
         // mortgage interest from rental profit, but gets a basic-rate (20%) tax reducer on the
@@ -2448,8 +2345,11 @@ final class PathProjector
      * A person absent from the returned map is not in a funded placement, so their award runs
      * whole: this year they are either not in care at all, or they are self-funding it.
      *
-     * Funding status is settled on the capital the year OPENS with, through the same
-     * {@see CareMeansTest::assess()} self-funder line the charge below is built on: a resident
+     * Funding status is settled on the capital the year OPENS with, after this year's home
+     * settlement ({@see settleHomeThisYear}) has been applied to `$capitalState`, a copy: a forced
+     * sale banks its proceeds before the care charge is assessed, so it must be seen here too, or
+     * one resident is funded for the benefit and a self-funder for the fee in the same year. The
+     * test is the same {@see CareMeansTest::assess()} self-funder line the charge is built on: a resident
      * whose own assessable capital is at or below the upper limit is one the authority funds.
      * The charge's crossing-year term (capital paid down to the limit) is deliberately not
      * consulted here — it is an annual-grid approximation of a mid-year switch, and reading it
@@ -2460,10 +2360,11 @@ final class PathProjector
      * residence and the wrong one for a short hospital stay, which this engine cannot see.
      *
      * @param  array<string, mixed>  $state
+     * @param  array<string, mixed>  $capitalState
      * @param  array<string, bool>  $alive
      * @return array<string, float> personId => fraction of the care component still paid this year
      */
-    private function disabilityCareComponentFractions(Household $household, PathDraws $draws, array &$state, array $alive, int $yearIndex): array
+    private function disabilityCareComponentFractions(Household $household, PathDraws $draws, array &$state, array $capitalState, array $alive, int $yearIndex): array
     {
         $aliveCount = count(array_filter($alive));
         $fractions = [];
@@ -2473,7 +2374,7 @@ final class PathProjector
             $inFundedPlacement = ($alive[$person->id] ?? false)
                 && $draws->careAnnualCost($person->id, $age) > 0
                 && ! $this->careMeans->assess(
-                    Money::fromPence($this->careAssessableCapital($household, $state, $person->id, $aliveCount)),
+                    Money::fromPence($this->careAssessableCapital($household, $capitalState, $person->id, $aliveCount)),
                 )->selfFunder;
 
             if (! $inFundedPlacement) {
@@ -2488,6 +2389,137 @@ final class PathProjector
         }
 
         return $fractions;
+    }
+
+    /**
+     * This year's mortgage redemption and any forced sale of the home, applied to `$state`.
+     * Lifted out of the year body so it can also be run on a copy before the year's income is
+     * assembled ({@see disabilityCareComponentFractions}): one rule, two readers.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     * @return array{repayOneOff: int, mortgageRedeemed: int, saleForcedByMaturity: bool}
+     */
+    private function settleHomeThisYear(Household $household, ForecastSettings $settings, PathDraws $draws, array &$state, array $alive, int $yearIndex, int $calendarYear): array
+    {
+        $home = $household->primaryResidence;
+
+        // Mortgage redemption: when the current home's mortgage term ends and the chosen action
+        // is to repay it from capital, the outstanding balance is a one-off outflow that year
+        // (funded from assets, like any one-off). A fixed-£ debt, so it is already nominal. If the
+        // assets are not there the shortfall surfaces, flagging the keep-the-home option as
+        // unaffordable: it is NOT judged apart like a purchase lump below, so it fails full spend
+        // (board card 0025). Refinance rolls the loan over (no event); a forced sale is handled by the
+        // block just below. Once redeemed, the ongoing mortgage *payment* stops too (dropped just
+        // below), so a repay-and-stay path is not charged both the repayment and the payment.
+        $repayOneOff = 0;
+        if ($home?->mortgageRedemptionYear !== null
+            && $home->mortgageMaturityAction === MortgageMaturityAction::RepayFromCapital
+            && ! $state['mortgageRepaid']
+            && $state['mortgageOutstanding'] > 0
+            && $calendarYear >= $home->mortgageRedemptionYear) {
+            $repayOneOff = $state['mortgageOutstanding'];
+            $state['mortgageOutstanding'] = 0;
+            $state['mortgageRepaid'] = true;
+        }
+
+        // Forced sale: the mortgage is called for redemption and cannot be refinanced, so the home
+        // must be sold that year. Unlike the year-0 sell variants (which can only sell at the
+        // start), this sells mid-projection at the grown value: net proceeds are freed into liquid
+        // wealth, the debt is cleared, and from this year on the household rents and pays no
+        // property costs — the realistic path, not the impossible "keep the home for ever". The
+        // sale is decomposed by the shared HousingProceeds so it reconciles (parts sum to net); CGT
+        // is £0 for a home lived in throughout, partial-PRR for an ever-let one.
+        //
+        $mortgageRedeemedNominal = 0;
+        $saleForcedByMaturity = $home?->mortgageRedemptionYear !== null
+            && $home->mortgageMaturityAction === MortgageMaturityAction::ForcedSale
+            && $calendarYear >= $home->mortgageRedemptionYear;
+        // The SAME sale, on the other trigger every standard equity-release contract carries
+        // (board card 0056): permanent residential care for the last surviving borrower matures a
+        // lifetime mortgage exactly as death does. Run here, before the year's care charge and its
+        // financial assessment below, so the resident is charged on the position the sale leaves
+        // them in — the proceeds in hand and no home — rather than on a home they no longer have.
+        $saleForcedByCare = ! $saleForcedByMaturity
+            && $this->equityReleaseRedeemedByCare($household, $state, $draws, $alive, $yearIndex);
+        if ($home !== null && ! $state['homeSold'] && ($saleForcedByMaturity || $saleForcedByCare)) {
+            // The balance to redeem is the one owed in THIS year, never the one originally
+            // entered. The two agree only for an interest-only loan, which is why passing the
+            // entered figure survived: a lifetime mortgage has rolled up by now (so the sale was
+            // freeing equity the household no longer had) and a repayment mortgage has amortised
+            // down (so it was freeing less than it really keeps). Both shapes are live.
+            //
+            // `mortgageOutstanding` is the household's SHARE of the balance and HousingProceeds
+            // takes whole-property figures and applies the share itself, so scale back up. Derived
+            // rather than tracked as a second state key: the balance has ONE definition, it is read
+            // once here rather than compounded (unlike `propertyWhole`, whose drift would accumulate
+            // over a whole projection), and a mirrored key is a field to forget.
+            $share = $state['ownershipShare'];
+            $owedWhole = $share > 0
+                ? (int) round($state['mortgageOutstanding'] / $share)
+                : $state['mortgageOutstanding'];
+
+            $proceeds = HousingProceeds::compute(
+                Money::fromPence($state['propertyWhole']),
+                Money::fromPence($owedWhole),
+                $settings->sellingCosts,
+                $home->cgtHistory,
+                $home->ownershipShare,
+                $this->config,
+            );
+            // Reported on the year so a screen states the balance the sale cleared (card 0041 #5):
+            // the year's own mortgage balance reads zero once the home is gone.
+            $mortgageRedeemedNominal = $proceeds->outstandingMortgage->pence;
+
+            // The net proceeds become investable liquid wealth, split equally between the living
+            // OWNERS' GIAs (drawable now, invested per the run's assumptions and drawn per the
+            // strategy). Cost basis = proceeds, so no latent gain is taxed on a later disposal.
+            // Once in the GIA the freed equity is assessable capital for Pension Credit (it is no
+            // longer the exempt main residence), so a forced sale can erode the award / cross the
+            // £16k cliff. It is split rather than banked to the first living person (board card
+            // 0040) because the care means test assesses the individual: crediting one of them
+            // with the whole home sent the other into care owning nothing.
+            // A Support for Mortgage Interest charge is secured on this home, so the sale redeems
+            // it out of the proceeds before anything is banked — that is what "repaid on sale"
+            // means, and it is why the charge does not follow the household into a rented flat.
+            // Any shortfall against the proceeds is written off (DWP recovers only what the
+            // security bears), which is what the floor here does. It is redeemed SEPARATELY from
+            // the mortgage rather than added to the redeemed balance, because HousingProceeds
+            // decomposes the sale and a second, differently-owed debt inside its `mortgage` line
+            // would report a mortgage the household does not have.
+            // Record the disposal for the Inheritance Tax downsizing addition BEFORE the charges
+            // are cleared: the value that counts is the household's own interest in the home at
+            // the moment it was sold — its share of the price less everything secured on it, the
+            // same net basis the estate values a home on at death. A later disposal REPLACES an
+            // earlier one (a year-0 sale followed by a forced sale on the home bought with the
+            // proceeds): the statute allows one addition, computed from a single qualifying
+            // disposal, and the most recent one is the one the estate's own history ends on.
+            // A deferred care payment is secured on the same home and falls due on the same sale,
+            // so it is redeemed beside the SMI charge and on the same terms (board card 0055).
+            $securedCharges = $state['smiBalance'] + $state['deferredCareBalance'];
+            $state['residenceDisposal'] = new ResidenceDisposal(
+                Money::fromPence(max(0, $proceeds->salePrice->pence - $proceeds->outstandingMortgage->pence - $securedCharges)),
+                $calendarYear,
+            );
+
+            $netAfterCharge = max(0, $proceeds->netProceeds->pence - $securedCharges);
+            $state['smiBalance'] = 0;
+            $state['deferredCareBalance'] = 0;
+
+            foreach (PenceSplit::evenly($netAfterCharge, $this->livingIds($household, $alive)) as $ownerId => $share) {
+                $state['gia'][$ownerId] += $share;
+                $state['giaBasis'][$ownerId] += $share;
+            }
+
+            // Clear the home and its debt; flip onto a renting footing from here.
+            $state['property'] = 0;
+            $state['propertyWhole'] = 0;
+            $state['mortgageOutstanding'] = 0;
+            $state['mortgageRepaid'] = true; // stops the ongoing mortgage payment (dropped just below)
+            $state['homeSold'] = true;
+        }
+
+        return ['repayOneOff' => $repayOneOff, 'mortgageRedeemed' => $mortgageRedeemedNominal, 'saleForcedByMaturity' => $saleForcedByMaturity];
     }
 
     /**

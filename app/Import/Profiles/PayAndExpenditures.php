@@ -10,6 +10,7 @@ use App\Import\ImportResult;
 use App\Import\MoneyText;
 use App\Import\ReconciliationLine;
 use App\Import\Spreadsheet;
+use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 
 /**
  * A personal "Pay and Expenditures" workbook. Each scenario lives on its own tab
@@ -190,9 +191,17 @@ final class PayAndExpenditures implements ImportProfile
                     $pensions[] = $this->statePensionRow($weekly);
                     $filled[] = "State Pension (£{$weekly}/wk)";
                 } else {
+                    // A disability award is two components the care means test treats apart
+                    // (board card 0050): a row naming mobility is that one, any other is read as
+                    // the care component, the adverse reading on both sides of the assessment.
                     $taxable = ! str_contains($label, 'dla') && ! str_contains($label, 'disability');
+                    $type = match (true) {
+                        $taxable => 'other',
+                        str_contains($label, 'mobility') => IncomeStreamType::DisabilityBenefitMobility->value,
+                        default => IncomeStreamType::DisabilityBenefit->value,
+                    };
                     $annual = MoneyText::fromPence(MoneyText::toPence($amount));
-                    $incomeStreams[] = $this->incomeStreamRow('other', $annual, $taxable);
+                    $incomeStreams[] = $this->incomeStreamRow($type, $annual, $taxable);
                     $filled[] = ($taxable ? 'Income' : 'Tax-free income')." (£{$annual}/yr)";
                 }
             }

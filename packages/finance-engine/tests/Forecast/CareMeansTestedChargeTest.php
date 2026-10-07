@@ -423,6 +423,54 @@ final class CareMeansTestedChargeTest extends TestCase
     }
 
     /**
+     * Board card 0050, criterion 3, in the year a forced sale lands inside the care spell. The
+     * funding answer was settled on the capital the year OPENED with, before the sale banked its
+     * proceeds, while the care charge read the capital again after it. So one resident could have
+     * the care component stopped as local-authority-funded AND be charged the self-funder's fee
+     * in the same year.
+     *
+     * A lone resident on £10,000 whose £300,000 home is disregarded (a qualifying relative lives
+     * there), carrying a zero-rate lifetime mortgage of £50,000. Care at 88 matures the mortgage,
+     * the home is sold and the proceeds make the resident a self-funder from that year, so the
+     * care component must run in full beside the full fee.
+     */
+    public function test_a_forced_sale_in_the_first_care_year_settles_funding_on_the_proceeds(): void
+    {
+        $household = new Household(
+            'SaleInCareOnDla', RegionProfile::EnglandWalesNi,
+            [$this->person('p1')],
+            $this->spend(33_514),
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(10_000))],
+            incomeStreams: [
+                $this->income('p1'),
+                $this->disability('p1', IncomeStreamType::DisabilityBenefit, 5_000),
+                $this->disability('p1', IncomeStreamType::DisabilityBenefitMobility, 2_000),
+            ],
+            primaryResidence: new Property(
+                currentValue: Money::fromPounds(300_000),
+                ownership: OwnershipType::Outright,
+                outstandingMortgage: Money::fromPounds(50_000),
+                mortgageRollUpRate: Percent::zero(),
+                occupiedByQualifyingRelative: true,
+            ),
+        );
+
+        $years = [];
+        foreach ($this->project($household, deathAges: ['p1' => 90], careFromAge: ['p1' => 88])->years as $year) {
+            $years[$year->calendarYear] = $year;
+        }
+
+        $this->assertGreaterThan(0, $years[2045]->propertyWealth->pence);
+        $this->assertSame(0, $years[2046]->propertyWealth->pence, 'the fixture sells the home in the first care year');
+        $this->assertSame(
+            self::FEE_REAL,
+            $years[2046]->spendTarget->pence - $years[2045]->spendTarget->pence,
+            'the proceeds make the resident a self-funder, charged the full fee',
+        );
+        $this->assertSame(700_000, $years[2046]->incomeBySource['tax_free_income']->pence, 'so the care component is not stopped');
+    }
+
+    /**
      * Board card 0055, criterion 1. The statutory property disregard is MANDATORY where the home
      * is occupied by the resident's spouse or civil partner, a relative aged 60 or over, an
      * incapacitated relative, or a child under 18. The engine disregarded it only while a partner

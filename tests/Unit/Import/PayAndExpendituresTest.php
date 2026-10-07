@@ -12,13 +12,14 @@ use Tests\TestCase;
 class PayAndExpendituresTest extends TestCase
 {
     /** A synthetic workbook in the shape of the personal one (no real figures). */
-    private function workbook(): Spreadsheet
+    private function workbook(array $extraIncomeRows = []): Spreadsheet
     {
         return new Spreadsheet([
             'Demo Mortgage Rates' => [['Max purchase price', 'Loan amount']], // a non-scenario tab to skip
             'Demo Test Gate' => [
                 ['', 'Yearly', 'Monthly'],
                 ['Person Pension DLA', '11772', '981'],                       // -> tax-free income stream
+                ...$extraIncomeRows,
                 ['Person Pension SP (State Pension)', '10400', '866'],        // -> state pension (10400/52 = 200/wk)
                 ['Person Yearly Salary', '30000', '2500', '', 'Partner Pension', '12000'], // salary (B) + a pension in a later column
                 ['Total Pay', '52172', '4347'],
@@ -79,6 +80,23 @@ class PayAndExpendituresTest extends TestCase
         $partner = $result->incomeStreams[1];
         $this->assertSame('12000.00', $partner['grossAnnual']);
         $this->assertSame('annuity', $partner['type']);
+    }
+
+    /**
+     * Board card 0050. A disability award is two components the care means test treats
+     * differently, so an imported row has to land on one of them: typed `other`, it was assessed
+     * for nobody and stopped for nobody. A row that says mobility is the mobility component; any
+     * other disability row reads as the care component, the adverse reading on both sides.
+     */
+    public function test_an_imported_disability_row_lands_on_the_care_or_mobility_component(): void
+    {
+        $result = (new PayAndExpenditures)->parse($this->workbook([
+            ['Person DLA Mobility', '2600', '216'],
+        ]));
+
+        $this->assertSame('disability_benefit', $result->incomeStreams[0]['type'], 'a plain DLA row is the care component');
+        $this->assertSame('disability_benefit_mobility', $result->incomeStreams[1]['type']);
+        $this->assertFalse($result->incomeStreams[1]['taxable']);
     }
 
     public function test_it_names_the_tab_it_used(): void

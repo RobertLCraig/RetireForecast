@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-07 (council-tax-single-occupant-beside-care): the single-person council tax
+     * Bumped 2026-10-07 (disability-care-funding-sees-the-forced-sale): whether a care resident is
+     * local-authority-funded, for stopping their disability care component, is now settled on the
+     * capital a forced sale leaves that year, the same capital the care charge reads. A plan whose
+     * home is sold in a care year, with a disability award, stopped the award while charging the
+     * full fee, so its income was too low. Any other plan is byte-identical. Board card 0050 #3.
+     * Previous bump 2026-10-07 (council-tax-single-occupant-beside-care): the single-person council tax
      * discount turns on who lives in the home, not who is alive, so a partner in permanent care
      * leaves the other a single occupant. A plan with its council tax held apart, two members and
      * a care spell paid the couple's bill through it, so its spend was slightly too high and its
@@ -493,7 +498,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/council-tax-single-occupant-beside-care';
+    public const ENGINE_VERSION = 'finance-engine/disability-care-funding-sees-the-forced-sale';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
