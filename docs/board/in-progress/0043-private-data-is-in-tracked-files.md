@@ -64,3 +64,14 @@ Scrubbed five docs: the names became neutral words ("the real lender ESIS", "the
 #1 not met. Cards 0022 and 0023 still carry denied names, and this session may not edit cards. The test exempts them by card-number prefix in `PENDING_SCRUB`, and fails if an exempt card goes clean, so the exemption cannot outlive the leak. Card 0174 scrubs both and deletes the exemption.
 
 Not done, and they need a person: the plaintext `docs/scenario-backup-*.local.json` files sit only in Rob's checkout, and deleting or encrypting them is his call. Adding data hygiene and the history question to card 0012 needs a card edit this session may not make. The park-home site names were not in any capture and are now only in git history (card 0176). The engine test docblock outside `tests/` names the lender (card 0175). Nothing on screen changed, so no browser check is owed. The suite ran from this worktree with `php artisan test`, because there is no `vendor/bin/pest.bat`.
+
+**2026-10-07** RESULT: partial
+TESTS: +0 new, all green
+TOUCHED: docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+Second take. The guard from the first take (NoPrivateDataTest) is in place and green. Its stale check still passes, which proves cards 0022 and 0023 still carry denied terms. #1 is still not met for the same reason as before: those two cards are exempt in PENDING_SCRUB, and only card 0174 (already in todo) may edit them. This session may not edit cards, so nothing new could be built toward #1. No new test: the guard and its failing-first proof already exist from the first take.
+
+The only change: HANDOVER.md said data hygiene was breached in eleven tracked files. That was stale. It now says the guard exists, and names the two exempt cards and card 0174. The HANDOVER Blockers section carries no estate value, probability or working-age decision now.
+
+Still needs a person, unchanged: the plaintext docs/scenario-backup-*.local.json files are only in Rob's checkout (delete or encrypt is his call), and adding data hygiene plus the history question to card 0012 is a card edit. Full suite ran with php artisan test from this worktree (there is no vendor/bin/pest.bat here); pint passed. Nothing on screen changed, so no browser check is owed.
