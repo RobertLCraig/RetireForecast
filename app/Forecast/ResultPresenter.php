@@ -3024,7 +3024,7 @@ final class ResultPresenter
      *
      * Returns null when the projection has no years to read.
      *
-     * @return array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, contingent: list<array{label: string, amount: string}>, contingentIncome: string, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool, survivor: array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, contingent: list<array{label: string, amount: string}>, contingentIncome: string, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool}|null, cliff: ?int}|null
+     * @return array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, contingent: list<array{label: string, amount: string}>, contingentIncome: string, coveragePct: int, surplus: ?string, gap: ?string, fromSavings: string, fullyCovered: bool, survivor: array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, contingent: list<array{label: string, amount: string}>, contingentIncome: string, coveragePct: int, surplus: ?string, gap: ?string, fromSavings: string, fullyCovered: bool}|null, cliff: ?int}|null
      */
     public static function incomeFloor(ForecastResult $forecast): ?array
     {
@@ -3052,7 +3052,7 @@ final class ResultPresenter
      * definition both the all-alive floor and the survivor-year twin read, so the two can only
      * differ by their year, never by how the figure is built.
      *
-     * @return array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, contingent: list<array{label: string, amount: string}>, contingentIncome: string, coveragePct: int, surplus: ?string, gap: ?string, fullyCovered: bool}
+     * @return array{year: int, ages: string, essentialSpend: string, secureIncome: string, sources: list<array{label: string, amount: string}>, contingent: list<array{label: string, amount: string}>, contingentIncome: string, coveragePct: int, surplus: ?string, gap: ?string, fromSavings: string, fullyCovered: bool}
      */
     private static function floorAt(YearResult $year): array
     {
@@ -3091,7 +3091,10 @@ final class ResultPresenter
             'contingentIncome' => $contingentTotal->format(),
             'coveragePct' => $coverage,
             'surplus' => $surplus->isPositive() ? $surplus->format() : null,
+            // What secure income leaves uncovered. NOT what savings pay: the forecast spends the
+            // contingent income first, so that is `fromSavings`.
             'gap' => $shortfall->isPositive() ? $shortfall->format() : null,
+            'fromSavings' => Money::max(Money::zero(), $shortfall->minus($contingentTotal))->format(),
             'fullyCovered' => ! $shortfall->isPositive(),
         ];
     }

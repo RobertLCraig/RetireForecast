@@ -154,10 +154,14 @@ final class ScenarioContext implements AssistantContext
             return [];
         }
 
+        // Pension Credit sits outside the guaranteed figure but inside the spending (board card
+        // 0046), so the shortfall is split: the credit first, then what savings must find.
         $describe = static fn (array $f): string => "Guaranteed-for-life income {$f['secureIncome']} covers {$f['coveragePct']}% of essential spending {$f['essentialSpend']}"
             .($f['fullyCovered']
                 ? ' — essentials fully covered by guaranteed income.'
-                : ($f['gap'] !== null ? " — the remaining {$f['gap']} must come from savings and investments." : '.'));
+                : ($f['contingent'] !== []
+                    ? " — the forecast meets the rest with {$f['contingentIncome']} of Pension Credit (means-tested, so only if it is claimed, and it can change) and {$f['fromSavings']} from savings and investments."
+                    : " — the remaining {$f['fromSavings']} must come from savings and investments."));
 
         $facts = [new AssistantFact(
             "Income floor — guaranteed income vs essentials ({$floor['year']}, both alive)",

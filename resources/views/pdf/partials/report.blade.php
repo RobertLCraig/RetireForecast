@@ -537,7 +537,7 @@
                 @if ($incomeFloor['fullyCovered'])
                     <td><div class="tile tile-green"><p class="tile-label">Secure surplus over essentials</p><p class="tile-value">{{ $incomeFloor['surplus'] ?? $incomeFloor['secureIncome'] }}</p></div></td>
                 @else
-                    <td><div class="tile tile-amber"><p class="tile-label">Met from savings / pension</p><p class="tile-value">{{ $incomeFloor['gap'] }}</p></div></td>
+                    <td><div class="tile tile-amber"><p class="tile-label">Met from savings / pension</p><p class="tile-value">{{ $incomeFloor['fromSavings'] }}</p>@if ($incomeFloor['contingent'])<p class="tile-label">after {{ $incomeFloor['contingentIncome'] }} of Pension Credit, if it is claimed</p>@endif</div></td>
                 @endif
             </tr>
         </table>
@@ -580,21 +580,27 @@
                 @else
                     <strong>holds at about {{ $sv['coveragePct'] }}%</strong>.
                 @endif
+                @if ($sv['contingent'])
+                    Those percentages leave out the {{ $sv['contingentIncome'] }} of Pension Credit the forecast pays
+                    the survivor, because it has to be claimed and can change.
+                @endif
             </p>
             <table>
                 <thead>
-                    <tr><th>Phase</th><th class="num">Secure income</th><th class="num">Essential spending</th><th class="num">Coverage</th></tr>
+                    <tr><th>Phase</th><th class="num">Secure income</th><th class="num">Pension Credit, if claimed</th><th class="num">Essential spending</th><th class="num">Coverage</th></tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td>While you are both alive ({{ $incomeFloor['year'] }})</td>
                         <td class="num">{{ $incomeFloor['secureIncome'] }}</td>
+                        <td class="num">{{ $incomeFloor['contingentIncome'] }}</td>
                         <td class="num">{{ $incomeFloor['essentialSpend'] }}</td>
                         <td class="num">{{ $incomeFloor['coveragePct'] }}%</td>
                     </tr>
                     <tr>
                         <td>After the first death ({{ $sv['year'] }})</td>
                         <td class="num">{{ $sv['secureIncome'] }}</td>
+                        <td class="num">{{ $sv['contingentIncome'] }}</td>
                         <td class="num">{{ $sv['essentialSpend'] }}</td>
                         <td class="num">{{ $sv['coveragePct'] }}%</td>
                     </tr>

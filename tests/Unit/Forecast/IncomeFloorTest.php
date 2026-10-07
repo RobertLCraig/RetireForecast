@@ -197,7 +197,9 @@ final class IncomeFloorTest extends TestCase
                 ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '120'],
                 ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '120'],
             ],
-            'expenseLines' => [['id' => 'e', 'amount' => '20000', 'category' => 'essential']],
+            // Above secure income plus the credit, so savings still pay part of essentials and the
+            // three-way split below has all three parts to reconcile.
+            'expenseLines' => [['id' => 'e', 'amount' => '25000', 'category' => 'essential']],
             'expense' => ['survivorFactor' => '70'],
         ]);
         $floor = ResultPresenter::incomeFloor($forecast);
@@ -227,6 +229,19 @@ final class IncomeFloorTest extends TestCase
             $secure = $secure->plus($mature->incomeBySource[$source] ?? Money::zero());
         }
         $this->assertSame($secure->format(), $floor['secureIncome']);
+
+        // Outside the floor is not outside the spending. What savings must find is essentials less
+        // the secure income AND the credit the forecast spends; reading it as essentials less secure
+        // income alone overstated the savings draw by the whole award.
+        $fromSavings = $mature->essentialSpend->minus($secure)->minus($credit);
+        $this->assertTrue($fromSavings->isPositive(), 'this household still draws on savings for essentials');
+        $this->assertSame($fromSavings->format(), $floor['fromSavings']);
+
+        // The survivor's twin carries its credit too: the single guarantee with one State Pension
+        // gone is the larger award, and it must not vanish from the survivor's readout.
+        $this->assertNotNull($floor['survivor']);
+        $this->assertContains('Pension Credit', array_column($floor['survivor']['contingent'], 'label'));
+        $this->assertArrayHasKey('fromSavings', $floor['survivor']);
     }
 
     public function test_tax_free_income_is_counted_in_the_secure_floor(): void

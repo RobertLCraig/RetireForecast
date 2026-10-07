@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Livewire;
 
+use App\Assistant\ScenarioContext;
 use App\DecisionSupport\CapacityForLoss;
 use App\Enums\ScenarioStatus;
 use App\Enums\SimulationStatus;
@@ -69,6 +70,58 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('Pension Credit')
             ->assertSee('How to claim Pension Credit')
             ->assertSee('backdated up to 3 months');
+    }
+
+    public function test_every_reader_of_the_floor_nets_pension_credit_off_the_savings_draw(): void
+    {
+        // Board card 0046 #1, the review's finding. Pension Credit left the secure floor, but the
+        // screen, the PDF and the assistant still told the household that the whole shortfall below
+        // secure income came from savings, overstating the draw by the award. And the survivor's
+        // credit, the larger one, was in no table and no total. A couple on small State Pensions,
+        // so both the both-alive year and the survivor's year are topped up by the credit and still
+        // draw on savings for the rest.
+        $state = BuilderStateFixture::minimalValid();
+        $state['people'][] = ['id' => 'p2', 'dob' => '1955-01-01', 'sex' => 'male', 'employmentStatus' => 'retired',
+            'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => ''];
+        $state['pensions'] = [
+            ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '120', 'qualifyingYears' => '', 'deferralWeeks' => '0', 'fixedEscalationRate' => '', 'crystallisedValue' => ''],
+            ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '120', 'qualifyingYears' => '', 'deferralWeeks' => '0', 'fixedEscalationRate' => '', 'crystallisedValue' => ''],
+        ];
+        $state['expenseLines'][0]['amount'] = '25000';
+        $scenario = ScenarioFixture::fromState($this->user, $state);
+        $floor = ResultPresenter::incomeFloor(app(ScenarioForecaster::class)->deterministic($scenario));
+
+        $this->assertNotNull($floor);
+        $this->assertNotNull($floor['gap'], 'precondition: secure income leaves essentials uncovered');
+        $this->assertNotSame([], $floor['contingent'], 'precondition: the forecast awards Pension Credit');
+        $this->assertNotSame($floor['gap'], $floor['fromSavings']);
+
+        $screen = Livewire::test(ScenarioResults::class, ['scenario' => $scenario])->html();
+        $pdf = view('pdf.results', ['reports' => [(new ScenarioReport)->data($scenario)]])->render();
+        $assistant = ScenarioContext::for($scenario, app(ScenarioForecaster::class))->promptBlock();
+
+        // The figure under the "Met from savings / pension" label, read off the tile itself: the
+        // pre-credit gap can equal a figure printed elsewhere (here it is the essentials), so a
+        // page-wide search for it proves nothing.
+        $tile = static function (string $html): ?string {
+            preg_match('~Met from savings / pension</p>\s*<p[^>]*>\s*([^<]+?)\s*</p>~', $html, $m);
+
+            return $m[1] ?? null;
+        };
+        $this->assertSame(e($floor['fromSavings']), $tile($screen), 'screen: the savings tile nets off the credit');
+        $this->assertSame(e($floor['fromSavings']), $tile($pdf), 'pdf: the savings tile nets off the credit');
+        $this->assertStringContainsString("{$floor['fromSavings']} from savings and investments", $assistant);
+        $this->assertStringNotContainsString("remaining {$floor['gap']} must come from savings", $assistant);
+
+        foreach (['screen' => $screen, 'pdf' => $pdf, 'assistant' => $assistant] as $where => $text) {
+            $this->assertStringContainsString(e($floor['contingentIncome']), $text, "{$where}: the credit itself");
+        }
+
+        $this->assertNotNull($floor['survivor'], 'precondition: a couple with a survivor phase');
+        $this->assertNotSame([], $floor['survivor']['contingent'], 'precondition: the survivor is awarded Pension Credit');
+        foreach (['screen' => $screen, 'pdf' => $pdf, 'assistant' => $assistant] as $where => $text) {
+            $this->assertStringContainsString(e($floor['survivor']['contingentIncome']), $text, "{$where}: the survivor's credit");
+        }
     }
 
     public function test_the_results_page_shows_the_withdrawal_sequencing_panel(): void

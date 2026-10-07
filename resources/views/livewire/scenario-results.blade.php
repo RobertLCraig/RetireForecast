@@ -822,7 +822,10 @@
                 @else
                     <div class="rounded-md bg-amber-50 p-3">
                         <p class="text-xs text-amber-800">Met from savings / pension</p>
-                        <p class="text-lg font-semibold text-amber-900">{{ $incomeFloor['gap'] }}</p>
+                        <p class="text-lg font-semibold text-amber-900">{{ $incomeFloor['fromSavings'] }}</p>
+                        @if ($incomeFloor['contingent'])
+                            <p class="text-xs text-amber-800">after {{ $incomeFloor['contingentIncome'] }} of Pension Credit, if it is claimed</p>
+                        @endif
                     </div>
                 @endif
             </div>
@@ -888,6 +891,8 @@
             <p class="mt-3 text-xs text-gray-500">
                 @if ($incomeFloor['fullyCovered'])
                     Essential spending here is fully met by income that does not rely on your savings lasting. Any discretionary spending on top draws on your pots, which the forecast tests.
+                @elseif ($incomeFloor['contingent'])
+                    The rest of essential spending is met first by the Pension Credit above, if it is claimed, and then by drawing on your savings and pensions, so it depends on both — which is what the forecast tests.
                 @else
                     The rest of essential spending is met by drawing on your savings and pensions, so it depends on those lasting — which is what the forecast tests.
                 @endif
@@ -912,6 +917,9 @@
                         @else
                             <strong>holds at about {{ $sv['coveragePct'] }}%</strong>.
                         @endif
+                        @if ($sv['contingent'])
+                            Those percentages leave out the {{ $sv['contingentIncome'] }} of Pension Credit the forecast pays the survivor, because it has to be claimed and can change.
+                        @endif
                     </p>
 
                     <div class="mt-4 space-y-4">
@@ -927,7 +935,7 @@
                                     <div class="h-full {{ $f['fullyCovered'] ? 'bg-emerald-500' : 'bg-amber-500' }}" style="width: {{ $barWidth }}%"></div>
                                 </div>
                                 <p class="mt-1 text-xs {{ $f['fullyCovered'] ? 'text-emerald-700' : 'text-amber-700' }}">
-                                    <span aria-hidden="true">{{ $f['fullyCovered'] ? '✓' : '⚠' }}</span> {{ $f['coveragePct'] }}% of essentials covered by secure income{{ $f['fullyCovered'] ? '' : ' — the rest relies on your savings lasting' }}.
+                                    <span aria-hidden="true">{{ $f['fullyCovered'] ? '✓' : '⚠' }}</span> {{ $f['coveragePct'] }}% of essentials covered by secure income{{ $f['fullyCovered'] ? '' : ($f['contingent'] ? ' — the rest relies on '.$f['contingentIncome'].' of Pension Credit, if it is claimed, and '.$f['fromSavings'].' from savings' : ' — the rest relies on your savings lasting') }}.
                                 </p>
                             </div>
                         @endforeach
