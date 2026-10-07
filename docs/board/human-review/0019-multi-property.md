@@ -62,3 +62,24 @@ overlap; stop at Phase 1. Nothing tracked records a second property; the private
 are gitignored.
 
 **2026-10-05** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 7 of 8 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-07 manager (m20261007033904-b3b7)
+
+**outcome: question**
+
+The card is a yes/no choice about the household's own assets, and the repository cannot answer it.
+
+**The question:** Does the household own, or expect to own, a second property, such as a buy-to-let or an inherited flat that is let out? If yes, what is it?
+
+**what the session said**
+
+The loop parked this card because it needs one fact from you. It cannot build until you answer.
+
+The only "BTL" (buy-to-let) notes I found are in `docs/REVIEW-PANEL-2026-08-19.local.md`. They seem to be about a mortgage on the flat you live in, not about a second property. No file shows a second property. Only you know if one exists, or if you expect to inherit one.
+
+QUESTION: Does the household own, or expect to own, a second property, such as a buy-to-let or an inherited flat that is let out? If yes, what is it?
+
+WHY: The card is a yes/no choice about the household's own assets, and the repository cannot answer it.
+
+OUTCOME: question
+
