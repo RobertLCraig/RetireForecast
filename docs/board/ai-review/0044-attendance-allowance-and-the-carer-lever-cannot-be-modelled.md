@@ -34,8 +34,8 @@ Support for Mortgage Interest itself, which is card 0045.
 - [x] #1 THE APP SHALL let a disability benefit start at a chosen age rather than being on or off for life. proves: `test_a_disability_benefit_can_start_at_a_chosen_age`, `test_a_disability_benefit_start_age_is_a_builder_input_and_reaches_the_household`
 - [x] #2 THE APP SHALL offer claiming Attendance Allowance later in life as a what-if, showing the benefit and everything it passports. proves: `test_the_attendance_allowance_preset_claims_it_later_in_life_with_its_own_money`, `test_a_disability_benefit_note_names_the_start_age_and_everything_it_passports`
 - [x] #3 THE APP SHALL expose whether a person cares for their partner as a builder input. proves: `test_caring_for_a_partner_is_a_builder_input_and_reaches_the_household`
-- [ ] #4 WHEN a lever extends working life, THE APP SHALL flag that earnings above the carer earnings limit block underlying entitlement to Carer's Allowance. proves: `test_the_working_longer_lever_shows_the_carer_earnings_limit_on_the_page`
-- [ ] #5 THE APP SHALL describe the carer flag in the builder only as the model applies it: while `PathProjector::meansTestedBenefitNominal()` awards the carer addition whatever the carer earns, the help text SHALL NOT say pay above the limit stops it counting.
+- [x] #4 WHEN a lever extends working life, THE APP SHALL flag that earnings above the carer earnings limit block underlying entitlement to Carer's Allowance. proves: `test_the_working_longer_lever_shows_the_carer_earnings_limit_on_the_page`
+- [x] #5 THE APP SHALL describe the carer flag in the builder only as the model applies it: while `PathProjector::meansTestedBenefitNominal()` awards the carer addition whatever the carer earns, the help text SHALL NOT say pay above the limit stops it counting.
 <!-- AC:END -->
 
 ## Tasks
@@ -188,3 +188,18 @@ VERDICT: defect
 **2026-09-06** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #4 and added #5 because both findings hold on main. `ThresholdPresenter::leverCaveat()` still tests only `caresForPartner` and employment, so it warns when the partner has no qualifying benefit or when `disabilityBenefitFromAge` is later than the lever's years, where no carer addition exists to postpone; test those two cases. The builder help text for "Cares for their partner" in `scenario-builder.blade.php` still says pay above the limit stops it counting, which the projector does not apply (card 0108). Also noted, not reopened: `QuickWhatIf::claimAttendanceAllowance()` can stack a second disability stream on a person whose flag is unticked.
+
+**2026-10-07** RESULT: done
+TESTS: +0 new (2 cases added to test_the_working_longer_lever_shows_the_carer_earnings_limit_on_the_page), all green
+TOUCHED: app/DecisionSupport/ThresholdPresenter.php, app/Livewire/ThresholdExplorer.php, resources/views/livewire/scenario-builder.blade.php, tests/Feature/DecisionSupport/ThresholdExplorerTest.php, tests/Feature/DecisionSupport/ThresholdPresenterTest.php, docs/board/todo/0177-attendance-allowance-preset-stacks-a-second-disability-stream.md, docs/board/todo/0178-the-retire-later-preset-carries-no-carer-warning.md
+OUT-OF-SCOPE: 0177, 0178
+
+#1 to #3 were already met and are unchanged.
+
+**#4.** The proves test gained the two cases the manager pass named: a carer whose partner has no qualifying benefit, and a partner whose claim starts at 80 (p2 born 1963 claims in 2043, when p1 born 1961 is 82, past the lever's top age of 75). Watched it fail first: 4 assertions passed, then the no-benefit case failed because the page showed "Carer's Allowance". `ThresholdPresenter::leverCaveat()` now also needs a partner who `qualifiesForSevereDisabilityAdditionAt()` their claim age, the same predicate the projector uses, and a claim that starts before the carer passes `$latestRetirementAge`. That is a new fourth parameter; `ThresholdExplorer::render()` passes the top of the slider grid. The carer's age at the claim is worked from birth years, which can be one year out from the projector's exact ages, so the boundary uses <= and warns rather than misses.
+
+**#5.** The builder help text for "Cares for their partner" now says the forecast does not apply the earnings limit and adds the top-up even in a year they earn above it. When card 0108 makes the projector apply the limit, this text must change back. proves: none, so no test.
+
+**Raised, not fixed.** 0177: the Attendance Allowance preset can stack a second disability stream (manager pass note). 0178: the "Retire 2 years later" quick what-if extends working life with no carer warning (scope review finding 3). I read #4's "a lever" as the threshold explorer's lever, as the proves name says.
+
+**Not seen in a browser.** Built in a worktree, so the warning and the new help text still need a look on screen. Full suite: 1661 tests, 1 long-standing skip, pint clean.
