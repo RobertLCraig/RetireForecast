@@ -33,9 +33,9 @@ The property disregard and deferred payments, which are card 0055.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 THE APP SHALL record a disability award as separate care and mobility components.
+- [x] #1 THE APP SHALL record a disability award as separate care and mobility components.
 - [x] #2 WHEN a resident self-funds their care, THE APP SHALL include the care component in assessable income and disregard the mobility component.
-- [ ] #3 WHEN a placement is funded by the local authority, THE APP SHALL stop the care component after the statutory period and keep the mobility component running.
+- [x] #3 WHEN a placement is funded by the local authority, THE APP SHALL stop the care component after the statutory period and keep the mobility component running.
 <!-- AC:END -->
 
 ## Tasks
@@ -158,3 +158,29 @@ VERDICT: defect
 **2026-09-07** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #1 and #3 because the breakage findings hold on main. #1: `PayAndExpenditures::incomeBlock()` still imports a DLA or disability row as type `other`, so an imported award has no care or mobility component and is assessed for nobody. #3: `PathProjector::disabilityCareComponentFractions()` settles funding from `careAssessableCapital()` before the year's forced sale banks the proceeds, and the care charge reads it again after, so one resident can be LA-funded for the care component and a self-funder for fees in the same year; add a test with a sale year inside a care spell. Also noted: the Pension Credit carer-addition change in `pensionCreditAward()` has no test of its own.
+
+**2026-10-07** RESULT: done
+TESTS: +2 new, all green
+TOUCHED:
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Forecast/CareMeansTestedChargeTest.php
+app/Import/Profiles/PayAndExpenditures.php
+tests/Unit/Import/PayAndExpendituresTest.php
+app/Forecast/ScenarioForecaster.php
+docs/board/todo/0181-the-pension-credit-carer-addition-in-a-funded-placement-is-untested.md (new)
+docs/board/todo/0182-an-imported-attendance-allowance-row-is-taxed.md (new)
+OUT-OF-SCOPE: 0181, 0182
+
+Both breakage findings from the 2026-09-07 review, as reopened by the 2026-09-28 manager pass.
+
+#3: the mortgage redemption and the forced sale moved, unchanged, out of the year body into `PathProjector::settleHomeThisYear()`. It runs on a COPY of the state before income is assembled, and `disabilityCareComponentFractions()` reads assessable capital off that copy, so a sale that banks proceeds this year funds the resident for the benefit exactly as it does for the care charge. It then runs on the real state where it always ran. Pension Credit still reads the year-opening state, as its own comment requires. `test_a_forced_sale_in_the_first_care_year_settles_funding_on_the_proceeds` was watched failing first: the full fee was charged while the care component was cut to 28 days (238356 vs 700000).
+
+#1: `PayAndExpenditures::incomeBlock()` now types a DLA/disability row as `disability_benefit` (care, the adverse reading, same as legacy awards) and a row naming mobility as `disability_benefit_mobility`. `test_an_imported_disability_row_lands_on_the_care_or_mobility_component` was watched failing first ('other'). The golden-fixture reconciliation test is unchanged and green. Assumed: the sheet's label is the only signal, so a combined DLA row is all care. An Attendance Allowance row is still imported as taxable `other` because its label matches neither keyword; that is card 0182.
+
+#2 is unchanged from the earlier build and still green.
+
+`ENGINE_VERSION` is `finance-engine/disability-care-funding-sees-the-forced-sale`. Only a plan with a disability award AND a forced sale in a care year moves; GoldenMasterTest stayed green, so no re-pin. The stored-scenario re-run and `scenarios:audit` are still owed, as is the earlier one.
+
+The manager's note on the carer addition is card 0181: it is untested and unsourced, and a fix needs the published rule, which this session cannot fetch (no web).
+
+Suite: `vendor\bin\pest.bat` does not exist in this tree, so it ran as `vendor\bin\phpunit.bat`, exit 0. Built in a worktree: not seen in a browser.
