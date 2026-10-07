@@ -31,7 +31,7 @@ Lifetime gifting, which is card 0059.
 - [x] #1 WHEN a household disposes of a qualifying residence and later dies owning a cheaper home or none, THE APP SHALL restore the lost residence nil-rate band as a downsizing addition.
 - [x] #2 THE APP SHALL cap the addition at the value of non-home assets passing to direct descendants.
 - [x] #3 THE APP SHALL apply the estate taper to the total band after the addition, not before.
-- [ ] #4 THE APP SHALL report as the downsizing addition only the part of the residence band it actually supplies after the taper, so no screen or PDF shows an addition beside a smaller or zero band.
+- [x] #4 THE APP SHALL report as the downsizing addition only the part of the residence band it actually supplies after the taper, so no screen or PDF shows an addition beside a smaller or zero band.
 <!-- AC:END -->
 
 ## Tasks
@@ -180,3 +180,25 @@ VERDICT: defect
 **2026-09-07** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: added #4 because the breakage finding holds on main. `InheritanceTaxCalculator::compute()` clips the band with `min($rnrbAfterTaper, home + addition)` but still returns `$downsizingAddition` unclipped, so the card's own taper tests leave an addition of 175,000 beside a band of 75,000 or 0, and `ResultPresenter::ihtPanel()` prints it. Also for the builder to judge: `PathProjector::recordFinalDeathIht()` drops the disposal when `homeToDescendants` is false, which may be wrong for a household that owns no home. The rent leg running no IHT at all is card 0124 (`HousingComparison::rentSettings()` drops `modelIht`).
+
+**2026-10-07** RESULT: done
+TESTS: +1 new, all green (2 existing taper tests drifted and were updated)
+TOUCHED:
+packages/finance-engine/src/Iht/InheritanceTaxCalculator.php
+packages/finance-engine/tests/Iht/RnrbDownsizingAdditionTest.php
+app/Forecast/ScenarioForecaster.php
+docs/DATA-MODEL.md
+docs/HANDOVER.md
+docs/board/todo/0183-iht-warnings-name-nominal-death-year-pounds.md (new)
+docs/board/todo/0184-a-renter-who-unticks-home-to-descendants-loses-the-downsizing-addition.md (new)
+OUT-OF-SCOPE: 0183, 0184
+
+#4: `InheritanceTaxCalculator::compute()` now reports the addition as `max(0, band - home at death)` after the band is clipped by the taper. The home fills the band first; the addition is what it supplies on top. Without a taper this is the same number as before, so only estates over the taper threshold with a disposal move. The tax itself does not change. The `IHT_DOWNSIZING_ADDITION` warning now names the supplied amount and is not raised when the taper leaves nothing, so the results page and PDF (which read the same field) cannot show an addition beside a smaller or zero band.
+
+Watched failing first: `test_the_reported_addition_never_exceeds_the_band_it_supplies` failed with 17500000 vs 7500000 (the reviewer's exact case). The two older taper tests asserted the raw 175,000 addition beside a 75,000 / 0 band; that assertion was the defect, so it was removed from them and the new test pins the corrected figure, plus a cheaper-home-under-taper case and a reconciliation check (addition <= band).
+
+`ENGINE_VERSION` is `finance-engine/downsizing-addition-reported-after-taper`; the stored-scenario re-run is owed only for sell plans with an estate over 2m.
+
+Not settled here, carded instead: 0183, the IHT warnings are built in nominal death-year pounds and carried unchanged through `PathProjector::deflateIht()`, so their amounts do not match the real figures beside them. 0184, the manager's open question: `recordFinalDeathIht()` drops the disposal when `homeToDescendants` is false, and the checkbox is labelled as being about the HOME, so a renter who unticks it loses the addition; the flag also stands for 'there are issue' at the first death, so the fix needs a call on what it means.
+
+Still open from before: the source/verified_on task (card 0125, no web here). Built in a worktree, so the results page and PDF still need a browser check.
