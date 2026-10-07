@@ -74,3 +74,12 @@ Blocked on Rob. Criterion #1 is a decision only he can make: is a gap between se
 What the call weighs (from the card): the 26-week disregard can only move a plan whose sale and purchase straddle a year boundary AND whose capital that year is near a means-test limit. A yes means a completion offset on HousingAction, HousingComparison::buyVariant split into a sale leg and a purchase leg fired in different years, the disregard sourced with a verified_on date beside the tariff in Benefits\CapitalAssessment, and an ENGINE_VERSION bump with a re-run of every stored scenario, because every buy-outright plan changes shape. A no closes this card, and card 0048 #2 with it.
 
 Next step: Rob records the answer in docs/DECISIONS.md, or answers on this card with **Decided:**. Then the loop can build #2 and #3.
+
+**2026-10-07** RESULT: blocked
+TESTS: +0 new, no code changed
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Still blocked on Rob, same as the earlier 2026-10-07 run. Criterion #1 is a decision only he can make: is a gap between selling and buying worth modelling at all? docs/DECISIONS.md still holds no answer (searched for 0116, deferred purchase, selling and buying, sale proceeds), and the card has no **Decided:** comment. #2 and #3 depend on a yes, so building them would answer the question for him. Nothing was written or committed.
+
+The loop should not retake this card until the answer exists. Next step: Rob writes the call into docs/DECISIONS.md, or answers on this card with **Decided:**. A no closes this card and card 0048 #2 with it. A yes makes #2 and #3 ordinary build work (completion offset on HousingAction, buyVariant split into sale and purchase legs, the disregard sourced beside the tariff in Benefits\CapitalAssessment, ENGINE_VERSION bump and a re-run of stored scenarios).
