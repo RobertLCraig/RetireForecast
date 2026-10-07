@@ -75,3 +75,12 @@ Second take. The guard from the first take (NoPrivateDataTest) is in place and g
 The only change: HANDOVER.md said data hygiene was breached in eleven tracked files. That was stale. It now says the guard exists, and names the two exempt cards and card 0174. The HANDOVER Blockers section carries no estate value, probability or working-age decision now.
 
 Still needs a person, unchanged: the plaintext docs/scenario-backup-*.local.json files are only in Rob's checkout (delete or encrypt is his call), and adding data hygiene plus the history question to card 0012 is a card edit. Full suite ran with php artisan test from this worktree (there is no vendor/bin/pest.bat here); pint passed. Nothing on screen changed, so no browser check is owed.
+
+**2026-10-07** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Third take. Nothing changed since the second take, so there was nothing to build. NoPrivateDataTest still passes, and its stale check still passes, which proves cards 0022 and 0023 (both in human-review) still carry denied terms. Card 0174, which scrubs them and deletes the PENDING_SCRUB exemption, is still in todo. #1 cannot be met until 0174 runs, because an unattended session may not edit cards. Re-running this card before 0174 is done will give the same result; the card's `needs:` should probably name 0174 as well as 0012.
+
+Still needs a person, unchanged: delete or encrypt the plaintext docs/scenario-backup-*.local.json files in Rob's checkout, and add data hygiene plus the history question to card 0012. Full suite ran with php artisan test from this worktree (no vendor/bin/pest.bat here). No commit: the tree was clean and nothing changed.
