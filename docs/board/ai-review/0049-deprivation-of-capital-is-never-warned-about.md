@@ -33,7 +33,7 @@ Modelling gifts out, PETs and the seven-year taper. That is card 0059.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a plan moves a large sum - a lump sum, a receipt, a gift, a one-off cost or a home sale - THE APP SHALL warn that it can be treated as still held for means-tested benefits and for care charging.
+- [x] #1 WHEN a plan moves a large sum - a lump sum, a receipt, a gift, a one-off cost or a home sale - THE APP SHALL warn that it can be treated as still held for means-tested benefits and for care charging.
 - [x] #2 WHEN equity release or transferring a home is discussed, THE APP SHALL warn about gift with reservation of benefit.
 - [x] #3 THE APP SHALL point the reader at a benefits check before they move the money.
 <!-- AC:END -->
@@ -155,3 +155,23 @@ VERDICT: defect
 **2026-09-07** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #1 because the finding holds on main. `ResultPresenter::housingActionFor()` still returns the action only for `buy_outright`, so on the sell-and-rent variant `inputNotes()` sees no year-0 sale and the engine cannot see one either; the largest capital move the tool compares raises no deprivation warning on screen or in the PDF. `DeprivationNoticeTest::test_selling_the_home_at_year_zero_is_warned_about` bypasses `housingActionFor`, so drive it through the real caller. Also fix, per the review: the year-0 branch in the `capital_deprivation` note hides later engine warnings, a `Mortgage redemption` one-off warns as if paying a debt were deprivation, and the care panel (`ResultPresenter::careImpactPanel`) still has no deprivation line (Task 2).
+
+**2026-10-07** RESULT: done
+TESTS: +3 new (1 rewritten), all green
+TOUCHED: app/Forecast/ResultPresenter.php
+packages/finance-engine/src/Benefits/Deprivation.php
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Benefits/DeprivationWarningTest.php
+resources/views/livewire/scenario-results.blade.php
+resources/views/pdf/partials/report.blade.php
+tests/Feature/Forecast/DeprivationNoticeTest.php
+OUT-OF-SCOPE: none
+
+Fixed the four review findings from the 2026-09-28 manager pass. Each new test was watched failing for the reason named first.
+
+1. Sell-and-rent was silent. `inputNotes` now reads the year-0 sale off the VARIANT (`! keepsCurrentHome($variant)` and a primary residence), not off the housing action, because `housingActionFor` gives the rent plan no action. `test_selling_the_home_at_year_zero_is_warned_about` now goes through `housingActionFor` the way every live caller does, for `rent` and `buy_outright`, and checks `stay_put` stays silent. Seen red on the rent case before the fix. On the rent plan the sale price is not known in the presenter, so the note says 'selling your home' with no figure; the buy plan still names the price.
+2. The year-0 sale hid later moves. The `else` is gone: the engine's first `CAPITAL_DEPRIVATION` warning is reported after the sale note. That gives two notes of the same kind on such a plan, each naming its own move. New `test_a_year_zero_sale_does_not_hide_a_later_large_move`, seen red.
+3. False alarms. `deprivationWarnings` now gets `$oneOffs`, not the old `$allOneOffs`, which had the 'Mortgage redemption' line added; that variable is deleted. A one-off labelled `Tenancy::UP_FRONT_LABEL` is skipped, because a deposit is still the household's money. New engine test `test_paying_off_a_debt_or_lodging_a_deposit_is_not_warned_as_deprivation`, seen red with both warnings raised. No figure moves, so `ENGINE_VERSION` is not bumped.
+4. Task 2, the care panel. `careImpactPanel` now carries a `deprivation` line from the new `Deprivation::careCharging()`, which keeps the copy in its one home. Both the results page and the PDF care section render it. New `test_the_care_panel_carries_the_deliberate_deprivation_warning`, seen red.
+
+Not seen in a browser: built in a worktree, so the new care-panel line and the rent-plan note still need a check in a browser. The two rules are still cited by name with no `verified_on` URL, as in the first build.
