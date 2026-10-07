@@ -1579,9 +1579,6 @@ final class PathProjector
             $oneOffs[] = ['label' => Tenancy::UP_FRONT_LABEL, 'amount' => Tenancy::deposit($rentThisYear)->pence];
         }
         $oneOffTotalNominal = array_sum(array_column($oneOffs, 'amount'));
-        // Every lump this year, the redemption included, for the warnings that ask what LEFT the
-        // household's hands rather than how the year is judged.
-        $allOneOffs = $repayOneOff > 0 ? [...$oneOffs, ['label' => 'Mortgage redemption', 'amount' => $repayOneOff]] : $oneOffs;
 
         // The spending guardrail (board card 0063). Everything above scores the year against a
         // FIXED real target, which no real household spends into insolvency: measured against the
@@ -2052,7 +2049,7 @@ final class PathProjector
                     $m,
                 ),
                 ...$this->deprivationWarnings(
-                    $allOneOffs,
+                    $oneOffs,
                     $src,
                     ! $homeSoldAtYearStart && $state['homeSold'],
                     (int) round($this->config->benefits->housingSupportUpperCapitalLimit->pence * $cumInflation),
@@ -4309,7 +4306,10 @@ final class PathProjector
             $events[] = 'receiving '.$m($src['capital_receipt'])->format().' of capital';
         }
         foreach ($oneOffs as $cost) {
-            if ($cost['amount'] >= $thresholdNominal) {
+            // A tenancy deposit is still the household's money, so it is not parting with capital.
+            // (The mortgage redemption is not in this list at all: paying a debt that is due is
+            // not deprivation either.)
+            if ($cost['amount'] >= $thresholdNominal && $cost['label'] !== Tenancy::UP_FRONT_LABEL) {
                 $events[] = $cost['label'].' of '.$m($cost['amount'])->format();
             }
         }

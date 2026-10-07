@@ -80,6 +80,18 @@ final class Deprivation
     }
 
     /**
+     * The short form for the care-cost panel, where the means test is the subject: the reader
+     * there is weighing the charge, which is when moving money out of the way looks attractive.
+     */
+    public static function careCharging(): string
+    {
+        return 'Giving away or spending money to get under the care means-test limits does not '
+            .'reliably work. Under the deliberate deprivation test in Annex E of the Care and Support '
+            .'Statutory Guidance a council can treat it as money you still hold, and can recover the '
+            .'charge from whoever received it. There is no time limit. '.self::benefitsCheckPointer();
+    }
+
+    /**
      * The one action the copy names. Kept apart so every surface points at the same thing.
      */
     public static function benefitsCheckPointer(): string

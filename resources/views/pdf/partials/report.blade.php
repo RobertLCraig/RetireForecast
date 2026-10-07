@@ -186,6 +186,7 @@
                 charging rules: full fees while the resident's own assets are above £23,250, then a contribution from
                 their income (keeping the Personal Expenses Allowance) with a local authority paying the balance. A
                 partner still living in the home shields it from the assessment.</p>
+            <p class="note">{{ $care['deprivation'] }}</p>
         </div>
     @endif
 

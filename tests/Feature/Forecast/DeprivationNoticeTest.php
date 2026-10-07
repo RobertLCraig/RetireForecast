@@ -12,6 +12,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\MonteCarlo\CareImpact;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
@@ -34,7 +36,7 @@ class DeprivationNoticeTest extends TestCase
      * @param  array<string, mixed>  $state
      * @return list<array{kind: string, text: string}>
      */
-    private function notes(array $state): array
+    private function notes(array $state, ?string $variant = null): array
     {
         $assembler = new HouseholdAssembler;
         $household = $assembler->household($state);
@@ -42,8 +44,52 @@ class DeprivationNoticeTest extends TestCase
             TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi),
             new CohortLifeTable,
         ))->forecast($household, AssumptionSetLibrary::default(), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'));
+        $action = $assembler->housingAction($state['housing'] ?? []);
 
-        return ResultPresenter::inputNotes($household, $forecast, $assembler->housingAction($state['housing'] ?? []));
+        // A variant is passed the way every live caller passes it: through housingActionFor, which
+        // hands the action on only to a plan that buys.
+        return $variant === null
+            ? ResultPresenter::inputNotes($household, $forecast, $action)
+            : ResultPresenter::inputNotes($household, $forecast, ResultPresenter::housingActionFor($action, $variant), $variant);
+    }
+
+    /**
+     * A household that owns its home outright, with the sale and buy prices the Compare page runs
+     * every variant against.
+     *
+     * @param  list<array<string, mixed>>  $withdrawals
+     * @return array<string, mixed>
+     */
+    private function sellingState(array $withdrawals = []): array
+    {
+        return [
+            'householdName' => 'Sellers', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'name' => 'Pat', 'dob' => '1953-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230'],
+                ...($withdrawals === [] ? [] : [[
+                    'id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000',
+                    'earliestAccessAge' => '55', 'withdrawals' => $withdrawals,
+                ]]),
+            ],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => ['currentValue' => '350000', 'ownership' => 'outright'],
+            'housing' => ['salePrice' => '350000', 'buyPrice' => '200000', 'annualRent' => '12000'],
+        ];
+    }
+
+    /**
+     * @param  list<array{kind: string, text: string}>  $notes
+     * @return list<string>
+     */
+    private static function deprivationTexts(array $notes): array
+    {
+        return array_values(array_map(
+            static fn (array $n): string => $n['text'],
+            array_filter($notes, static fn (array $n): bool => $n['kind'] === 'capital_deprivation'),
+        ));
     }
 
     /**
@@ -88,24 +134,37 @@ class DeprivationNoticeTest extends TestCase
     {
         // The year-0 sell variants sell BEFORE the projection starts, so the engine never sees the
         // sale and cannot raise its own warning — the presenter has to, or the single largest
-        // capital move this tool exists to compare goes unwarned.
-        $notes = $this->notes([
-            'householdName' => 'Sellers', 'region' => 'england_wales_ni',
-            'people' => [['id' => 'p1', 'name' => 'Pat', 'dob' => '1953-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
-            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
-            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
-            'expense' => ['survivorFactor' => '70'],
-            'hasProperty' => true,
-            'property' => ['currentValue' => '350000', 'ownership' => 'outright'],
-            'housing' => ['salePrice' => '350000', 'buyPrice' => '200000'],
-        ]);
+        // capital move this tool exists to compare goes unwarned. Driven through housingActionFor,
+        // as every live caller is, so the sell-and-rent plan (which gets no action) is covered.
+        foreach (['rent', 'buy_outright'] as $variant) {
+            $texts = self::deprivationTexts($this->notes($this->sellingState(), $variant));
+            $this->assertNotSame([], $texts, "the {$variant} plan sells the home and is warned");
+            $this->assertStringContainsString('selling your home', $texts[0], $variant);
+        }
 
-        $kinds = array_column($notes, 'kind');
-        $this->assertContains('capital_deprivation', $kinds);
-        $this->assertStringContainsString(
-            'selling your home',
-            $notes[array_search('capital_deprivation', $kinds, true)]['text'],
-        );
+        // Stay put sells nothing at year 0.
+        $this->assertSame([], self::deprivationTexts($this->notes($this->sellingState(), 'stay_put')));
+    }
+
+    public function test_a_year_zero_sale_does_not_hide_a_later_large_move(): void
+    {
+        $texts = self::deprivationTexts($this->notes(
+            $this->sellingState([['kind' => 'ufpls', 'amount' => '60000', 'atAge' => '78']]),
+            'rent',
+        ));
+
+        $joined = implode(' ', $texts);
+        $this->assertStringContainsString('selling your home', $joined, 'the sale is named');
+        $this->assertStringContainsString('out of a pension', $joined, 'the later pension withdrawal is named too');
+    }
+
+    public function test_the_care_panel_carries_the_deliberate_deprivation_warning(): void
+    {
+        $panel = ResultPresenter::careImpactPanel(new CareImpact(0.25, Money::fromPounds(80_000), Money::fromPounds(250_000)));
+
+        $this->assertNotNull($panel);
+        $this->assertStringContainsString('deliberate deprivation', $panel['deprivation']);
+        $this->assertStringContainsString('benefits check before you move the money', $panel['deprivation']);
     }
 
     public function test_the_equity_release_copy_warns_about_gift_with_reservation_of_benefit(): void

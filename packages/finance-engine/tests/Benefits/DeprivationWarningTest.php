@@ -6,6 +6,8 @@ namespace RetireForecast\FinanceEngine\Tests\Benefits;
 
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+use RetireForecast\FinanceEngine\Dto\Account;
+use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\AssetClassAssumption;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\CapitalReceipt;
@@ -15,7 +17,10 @@ use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\IncomeStream;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
+use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
+use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Person;
+use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\WithdrawalInstruction;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
@@ -152,6 +157,27 @@ final class DeprivationWarningTest extends TestCase
         $this->assertSame([], $this->deprivationMessages($this->forecast($this->household(
             receipts: [new CapitalReceipt('p1', 'Small gift', Money::fromPounds(2_000), 2028)],
         ))));
+    }
+
+    public function test_paying_off_a_debt_or_lodging_a_deposit_is_not_warned_as_deprivation(): void
+    {
+        // Redeeming the mortgage at maturity pays a debt that is due, and a tenancy deposit is still
+        // the household's money: neither is parting with capital, so neither may raise the warning.
+        $base = $this->household(oneOffs: [['atAge' => 70, 'amount' => Money::fromPounds(20_000), 'label' => 'Tenancy deposit']]);
+        $household = new Household(
+            $base->name, $base->region, $base->persons, $base->expenseProfile,
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(200_000))],
+            incomeStreams: $base->incomeStreams,
+            primaryResidence: new Property(
+                currentValue: Money::fromPounds(300_000),
+                ownership: OwnershipType::Mortgaged,
+                outstandingMortgage: Money::fromPounds(100_000),
+                mortgageRedemptionYear: 2030,
+                mortgageMaturityAction: MortgageMaturityAction::RepayFromCapital,
+            ),
+        );
+
+        $this->assertSame([], $this->deprivationMessages($this->forecast($household)));
     }
 
     public function test_the_warning_points_the_reader_at_a_benefits_check_before_they_move_the_money(): void

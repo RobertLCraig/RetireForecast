@@ -296,7 +296,7 @@ final class ResultPresenter
      * the typical and high-end lifetime bill. Descriptive, never a recommendation. Null when the
      * run did not model care.
      *
-     * @return array{sharePct: string, medianCost: int, p90Cost: int}|null
+     * @return array{sharePct: string, medianCost: int, p90Cost: int, deprivation: string}|null
      */
     public static function careImpactPanel(?CareImpact $c): ?array
     {
@@ -304,6 +304,9 @@ final class ResultPresenter
             'sharePct' => self::formatPercent($c->shareOfPathsWithCare),
             'medianCost' => self::pounds($c->medianCareCost),
             'p90Cost' => self::pounds($c->p90CareCost),
+            // Board card 0049: the panel that prices the means test is where moving money out of
+            // its reach looks attractive, so it carries the deliberate deprivation warning.
+            'deprivation' => Deprivation::careCharging(),
         ];
     }
 
@@ -2899,22 +2902,21 @@ final class ResultPresenter
         // per year is a note nobody reads.
         //
         // A YEAR-0 sale is invisible to the engine (HousingComparison hands the projector a
-        // household that already holds the proceeds), so it is raised here and takes precedence:
-        // it IS year 0, and selling the home is the largest move any of these plans makes.
-        $sellsAtYearZero = $housingAction !== null
-            && $housingAction->salePrice !== null
-            && $housingAction->salePrice->isPositive();
-        if ($sellsAtYearZero) {
+        // household that already holds the proceeds), so it is raised here. It is read off the
+        // VARIANT, not the housing action: housingActionFor hands the action only to a plan that
+        // buys, so the sell-and-rent plan arrives with none and its sale price is not known here.
+        // The engine's own first warning still follows: a later lump is a move of its own.
+        if (! self::keepsCurrentHome($variant) && $household->primaryResidence !== null) {
+            $price = $housingAction?->salePrice;
             $notes[] = ['kind' => 'capital_deprivation', 'text' => "From {$baseYear}: ".Deprivation::message(
-                ['selling your home for '.$housingAction->salePrice->format()],
+                ['selling your home'.($price?->isPositive() ? ' for '.$price->format() : '')],
             )];
-        } else {
-            foreach ($forecast->years as $year) {
-                $moved = self::firstWarning($year, WarningCode::CAPITAL_DEPRIVATION);
-                if ($moved !== null) {
-                    $notes[] = ['kind' => 'capital_deprivation', 'text' => "From {$year->calendarYear}: {$moved}"];
-                    break;
-                }
+        }
+        foreach ($forecast->years as $year) {
+            $moved = self::firstWarning($year, WarningCode::CAPITAL_DEPRIVATION);
+            if ($moved !== null) {
+                $notes[] = ['kind' => 'capital_deprivation', 'text' => "From {$year->calendarYear}: {$moved}"];
+                break;
             }
         }
 
