@@ -86,3 +86,29 @@ Third take. Nothing changed since the second take, so there was nothing to build
 Still needs a person, unchanged: delete or encrypt the plaintext docs/scenario-backup-*.local.json files in Rob's checkout, and add data hygiene plus the history question to card 0012. Full suite ran with php artisan test from this worktree (no vendor/bin/pest.bat here). No commit: the tree was clean and nothing changed.
 
 **2026-10-07** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-07 manager (m20261007060203-25fa)
+
+**outcome: rob**
+
+The builder can only meet #1 after card 0174 runs, and the other tasks need a person to delete files and edit cards.
+
+**what the session said**
+
+I checked the guard and the board. Card 0043 cannot go further yet, and no review finding disproves #2.
+
+- **#1 is blocked by card 0174.** The test `tests/Feature/Docs/NoPrivateDataTest.php` (the `PENDING_SCRUB` list) still exempts cards 0022 and 0023. Card 0174 removes that exemption, and it is still in `docs/board/todo/`. A builder session cannot edit cards, so reopening 0043 now gives the same "no progress" result again.
+- **Three plaintext backups are still in your checkout:**
+  - `docs/scenario-backup-2026-07-29.local.json`
+  - `docs/scenario-backup-2026-08-11-pre-repricing.local.json`
+  - `docs/scenario-backup-2026-08-18-pre-income-correction.local.json`
+
+What you do now:
+1. Delete or encrypt those three files.
+2. Add data hygiene and the git-history question to card 0012.
+3. Add `0174` to the `needs:` line of card 0043. Then move 0043 to `todo/`. The loop will hold it until 0174 is done.
+
+WHY: The builder can only meet #1 after card 0174 runs, and the other tasks need a person to delete files and edit cards.
+
+OUTCOME: rob
+
