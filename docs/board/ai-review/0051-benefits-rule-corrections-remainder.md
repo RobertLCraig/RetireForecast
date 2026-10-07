@@ -54,10 +54,10 @@ Housing Benefit and Council Tax Reduction, which are cards 0048 and 0047.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a person receives only a mobility component or a lowest-rate care component, THE APP SHALL NOT award the severe disability addition.
+- [x] #1 WHEN a person receives only a mobility component or a lowest-rate care component, THE APP SHALL NOT award the severe disability addition.
 - [x] #2 WHEN each member of a couple cares for the other, THE APP SHALL award two carer additions.
 - [x] #3 WHEN a claimant over State Pension age holds an undrawn money-purchase pot, THE APP SHALL treat it as notional income, or list the divergence.
-- [ ] #4 WHEN a couple is mixed-age, THE APP SHALL explain that Pension Credit is unavailable and what replaces it.
+- [x] #4 WHEN a couple is mixed-age, THE APP SHALL explain that Pension Credit is unavailable and what replaces it.
 <!-- AC:END -->
 
 ## Tasks
@@ -208,3 +208,29 @@ VERDICT: defect
 **2026-09-07** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #1 and #4 because the findings hold on main. #1: `Person::$disabilityAwardRate` still defaults to `QualifyingCare` and nothing reconciles it with an income stream of type `DisabilityBenefitMobility` (card 0050's home for the same fact), so a mobility-only award entered as that stream, with the new select left blank, still gets the severe-disability and carer additions in `PathProjector::pensionCreditAward()`. Make one field own the fact or cross-check them, and test that case. The `disability_care_component_in_care` note in `ResultPresenter::inputNotes()` still says the award is the care component whatever was chosen. #4: `ResultPresenter::pensionCreditGuidance()` still renders the Pension Credit `howToClaim` ("Apply online at gov.uk/pension-credit") to a mixed-age couple told they cannot claim it.
+
+**2026-10-07** RESULT: done
+TESTS: +4 new, all green
+TOUCHED:
+- app/Forecast/HouseholdAssembler.php
+- app/Forecast/ResultPresenter.php
+- app/Forecast/ScenarioForecaster.php
+- docs/HANDOVER.md
+- resources/views/livewire/scenario-results.blade.php
+- resources/views/pdf/partials/report.blade.php
+- tests/Unit/Forecast/HouseholdAssemblerTest.php
+- tests/Unit/Forecast/InputNotesTest.php
+- tests/Unit/Forecast/PensionCreditGuidanceTest.php
+OUT-OF-SCOPE: none
+
+This take works the two criteria the 2026-09-28 manager pass reopened. #2 and #3 were met before and are untouched.
+
+**#1, the two homes of one fact are cross-checked.** When "which part of the award" is blank, `HouseholdAssembler::awardRateFromStreams()` reads the person's own income rows: if their only disability rows are `disability_benefit_mobility`, the award is `MobilityOnly`, so it buys neither the severe-disability nor the carer addition. A care row, or no disability row at all, keeps the old `QualifyingCare` reading, so those plans are byte-identical. A part the reader DID choose is never overridden. The `disability_care_component_in_care` note no longer says the severe-disability addition stops with the award when the chosen part never bought it, and where a care row sits beside a chosen `MobilityOnly` part it now says the two disagree and asks the reader to correct one. `ENGINE_VERSION` is `finance-engine/mobility-row-buys-no-pension-credit-addition`; the **stored re-run is owed** for plans with the disability tick, only a mobility row and a blank part (they were awarded too much Pension Credit).
+
+**#4, a mixed-age couple is no longer told to apply.** `ResultPresenter::pensionCreditGuidance()` now returns an `instead` list (check Universal Credit until the year after the last mixed-age year, with a free benefits calculator; Pension Credit opens that year). A household that is ONLY shut out gets no claim steps and no passports line, and the panel heading reads "Why there is no Pension Credit" on the screen and in the PDF. A household that is mixed-age first and awarded later keeps the claim steps, led by "Do not claim before YEAR".
+
+**How each was watched fail.** #1: `test_a_mobility_only_income_stream_with_the_award_part_left_blank_buys_no_severe_disability_addition` red on "a mobility component is not a qualifying benefit, Failed asserting that true is false". Its note sibling `test_a_care_row_beside_a_mobility_only_award_part_says_the_two_disagree` red on the note still containing "severe-disability addition stops with it". #4: `test_a_mixed_age_couple_is_not_told_to_apply_for_pension_credit_and_is_told_what_to_check_instead` red on howToClaim still holding the gov.uk/pension-credit steps (the `instead` key was added empty first, so the failure was the criterion's, not an undefined index), and `test_a_mixed_age_couple_awarded_pension_credit_later_is_told_when_to_claim` red on the first step not naming 2031.
+
+**Limits, stated.** The #1 test proves the assembled Person no longer qualifies; that a non-qualifying Person gets no addition in `PathProjector::pensionCreditAward()` is the engine test card 0051 already watched red. An explicit `qualifying_care` choice beside only a mobility row is NOT flagged: a reader may hold Attendance Allowance without entering an amount, so the repository cannot tell a contradiction from a gap. The Universal Credit step names no URL and no calculator by name because no web was available to verify either.
+
+**Not seen in a browser.** Built in a worktree, so the new panel heading, the `instead` list and the reworded care note on the results page and the PDF still need a look.
