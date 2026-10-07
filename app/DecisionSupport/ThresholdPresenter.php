@@ -71,22 +71,38 @@ final class ThresholdPresenter
      * Credit carer addition in those years. The lever postpones the addition; the S-curve, which
      * only reads the household as entered, shows the gain and never the delay.
      *
-     * Raised only where it can bite: the person caring is one the lever would actually move, which
-     * is a still-earning member. The figure is read off the tax-year config that owns it, never
-     * restated here, so the two cannot drift.
+     * Raised only where it can bite, which is where the projector would award the addition at all
+     * ({@see PathProjector::meansTestedBenefitNominal()}): the person caring is one the lever would
+     * actually move, a still-earning member, AND their partner's qualifying benefit starts before
+     * the carer passes $latestRetirementAge, the top of the ages the lever explores. A partner with
+     * no qualifying benefit, or one whose claim starts after that, leaves nothing to postpone. The
+     * figure is read off the tax-year config that owns it, never restated here, so the two cannot
+     * drift.
      */
-    public static function leverCaveat(LeverKey $lever, Household $household, string $baseTaxYear): ?string
+    public static function leverCaveat(LeverKey $lever, Household $household, string $baseTaxYear, int $latestRetirementAge): ?string
     {
         if ($lever !== LeverKey::RetirementAge) {
             return null;
         }
 
         $earningCarer = false;
-        foreach ($household->persons as $person) {
-            if ($person->caresForPartner
-                && in_array($person->employmentStatus, [EmploymentStatus::Employed, EmploymentStatus::SelfEmployed], true)) {
-                $earningCarer = true;
-                break;
+        foreach ($household->persons as $carer) {
+            if (! $carer->caresForPartner
+                || ! in_array($carer->employmentStatus, [EmploymentStatus::Employed, EmploymentStatus::SelfEmployed], true)) {
+                continue;
+            }
+            foreach ($household->persons as $partner) {
+                $claimAge = $partner->disabilityBenefitFromAge ?? 0;
+                if ($partner->id === $carer->id || ! $partner->qualifiesForSevereDisabilityAdditionAt($claimAge)) {
+                    continue;
+                }
+                // The carer's age when the partner's claim starts, by birth year. That can be a year
+                // out from the projector's exact ages, so the boundary year is warned, not missed.
+                $carerAgeAtClaim = $claimAge + (int) $partner->dob->format('Y') - (int) $carer->dob->format('Y');
+                if ($carerAgeAtClaim <= $latestRetirementAge) {
+                    $earningCarer = true;
+                    break 2;
+                }
             }
         }
         if (! $earningCarer) {

@@ -184,7 +184,7 @@ class ThresholdExplorer extends Component
             'selectedLabel' => $choice['label'],
             'levers' => $this->leverOptions(),
             // What moving this lever does that its odds curve cannot show (null for most levers).
-            'leverCaveat' => ThresholdPresenter::leverCaveat($lever, $this->scenario->toHousehold(), $this->scenario->base_tax_year),
+            'leverCaveat' => ThresholdPresenter::leverCaveat($lever, $this->scenario->toHousehold(), $this->scenario->base_tax_year, (int) end($grid)),
             'slider' => $slider,
             'netPosition' => $netPosition,
             'threshold' => $threshold,

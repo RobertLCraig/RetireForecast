@@ -595,7 +595,7 @@
                                         <input type="checkbox" wire:model="people.{{ $i }}.caresForPartner" class="rounded border-gray-300">
                                         Cares for their partner (35+ hours a week)
                                     </label>
-                                    <p class="mt-1 text-xs text-gray-500">Tick this if they give their partner at least 35 hours of care a week and that partner gets a disability benefit. It adds the Pension Credit carer top-up. Carer's Allowance also has a weekly earnings limit, so pay above it stops this counting while they are still working.</p>
+                                    <p class="mt-1 text-xs text-gray-500">Tick this if they give their partner at least 35 hours of care a week and that partner gets a disability benefit. It adds the Pension Credit carer top-up. Carer's Allowance has a weekly earnings limit, but this forecast does not apply it: the top-up is added in every year they care, even a year they earn above the limit.</p>
                                 </div>
                             @endif
                             {{-- Estate paperwork. No will is the DEFAULT here on purpose: nobody was

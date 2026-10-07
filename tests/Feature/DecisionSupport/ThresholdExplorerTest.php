@@ -65,6 +65,22 @@ final class ThresholdExplorerTest extends TestCase
         Livewire::test(ThresholdExplorer::class, ['scenario' => ScenarioFixture::rich($this->user)])
             ->set('lever', LeverKey::RetirementAge->value)
             ->assertDontSee("Carer's Allowance");
+
+        // The projector awards the carer addition only while the partner holds a qualifying
+        // benefit, so with no benefit on the partner there is no addition for the lever to postpone.
+        $noBenefit = BuilderStateFixture::full();
+        $noBenefit['people'][0]['caresForPartner'] = true;
+        Livewire::test(ThresholdExplorer::class, ['scenario' => ScenarioFixture::fromState($this->user, $noBenefit)])
+            ->set('lever', LeverKey::RetirementAge->value)
+            ->assertDontSee("Carer's Allowance");
+
+        // Nor when the partner's claim starts after the carer is past every age the lever explores:
+        // p2 (born 1963) claims at 80 in 2043, when p1 (born 1961) is 82, beyond the lever's top age.
+        $lateClaim = $state;
+        $lateClaim['people'][1]['disabilityBenefitFromAge'] = '80';
+        Livewire::test(ThresholdExplorer::class, ['scenario' => ScenarioFixture::fromState($this->user, $lateClaim)])
+            ->set('lever', LeverKey::RetirementAge->value)
+            ->assertDontSee("Carer's Allowance");
     }
 
     public function test_it_offers_the_survivor_db_lever_for_a_couple_with_a_survivor_pension(): void
