@@ -31,8 +31,8 @@ Pension Credit itself, which is card 0046.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 THE APP SHALL hold council tax as its own cost line, separate from maintenance and insurance. proves: `test_council_tax_is_its_own_cost_line_beside_maintenance_and_insurance`
-- [ ] #2 WHEN only one person remains in a household, THE APP SHALL apply the single-person discount. proves: `test_the_single_person_discount_applies_once_one_member_remains`
+- [x] #1 THE APP SHALL hold council tax as its own cost line, separate from maintenance and insurance. proves: `test_council_tax_is_its_own_cost_line_beside_maintenance_and_insurance`
+- [x] #2 WHEN only one person remains in a household, THE APP SHALL apply the single-person discount. proves: `test_the_single_person_discount_applies_once_one_member_remains`
 - [x] #3 WHEN income and capital qualify, THE APP SHALL award Council Tax Reduction on the pension-age basis. proves: `test_council_tax_reduction_is_awarded_on_the_pension_age_basis`
 - [x] #4 THE APP SHALL let a user record a disabled band reduction and apply it. proves: `test_the_council_tax_bill_and_a_disabled_band_reduction_reach_the_property`
 <!-- AC:END -->
@@ -176,3 +176,23 @@ VERDICT: defect
 **2026-09-06** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #1 and #2 because the findings hold on main. #1: the bill is not yet separate from upkeep everywhere. `DemoScenario::baseState()` still has `runningCosts` 5000 beside the new `councilTax` 2200, so the demo pays council tax twice (same in `HouseholdFixture::household()` and `BuilderStateFixture::full()`); `HousingComparison::newHomeRunningCosts()` falls back to 1% of value described as including council tax, then copies `annualCouncilTax` as well; and `ResultPresenter::plsaBenchmark()` adds `runningCosts` but never the council tax line, so moving the bill out drops comparable spend. #2: `PathProjector::councilTaxNominal()` still applies the discount on `aliveCount === 1`, so a survivor at home whose partner is in permanent care (a disregarded person) pays the couple's rate.
+
+**2026-10-07** RESULT: done
+TESTS: +2 new, 1 extended, all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php, packages/finance-engine/tests/Forecast/CouncilTaxTest.php, app/Forecast/ResultPresenter.php, app/Forecast/ScenarioForecaster.php, app/Demo/DemoScenario.php, resources/views/livewire/scenario-builder.blade.php, tests/Support/HouseholdFixture.php, tests/Support/BuilderStateFixture.php, tests/Unit/Forecast/PlsaBenchmarkTest.php, tests/Unit/Forecast/ComputedRunningCostsDisclosureTest.php, docs/HANDOVER.md, docs/board/todo/0180-a-home-left-empty-for-care-is-charged-full-council-tax.md (new)
+OUT-OF-SCOPE: 0180
+
+This is the rework of the 2026-09-28 manager pass that reopened #1 and #2.
+
+#2, care is not occupancy. `test_the_single_person_discount_applies_once_one_member_remains` is extended with a couple whose second member enters care at 85, both alive, run through `PathProjector` with a care-draws stub. It was watched fail at 200000 against 150000 (the couple's bill charged while one partner was in care). `PathProjector::projectYear` now counts the members alive and NOT in care this year (`careAnnualCost` above zero is the engine's only 'in care' signal) and passes that to `councilTaxNominal`, renamed `$occupants`. With nobody at home it falls back to the living count, which is the old behaviour. A home left empty because everyone is in care is Class E exempt in England, but this session had no web to fetch the regulation, so it is card 0180 rather than built.
+
+#1, the bill is held apart everywhere. Three of the reviewer's findings:
+- PLSA: `ResultPresenter::plsaBenchmark` adds the gross `annualCouncilTax` back to the running costs. New test `test_a_council_tax_bill_held_apart_is_still_counted_in_comparable_spend`, watched fail at 21,000 against 23,000.
+- Bought home: the engine never charged twice. The 1% rate is a MAINTENANCE rate (Checkatrade), and the bill is copied across as its own line. What was false was the description. The assumed-figure note and the computed-figure note no longer say the upkeep covers council tax, and they now say the bill is charged on top at the current home's figure. The builder's buy-running-costs hint also stops asking for council tax there, because a bill typed into both boxes WOULD be charged twice. New test `test_the_upkeep_of_a_bought_home_never_claims_the_council_tax_charged_beside_it`, watched fail on the 'insurance and council tax' wording.
+- Demo double count: `DemoScenario` running costs go from 5000 to 2800, so running costs plus the 2200 bill equal the pre-split 5000. The two test fixtures got the same split (6400 to 4300). No test pins the demo figure. A test that asserted 2800 + 2200 = 5000 would only restate the edit, so none was written.
+
+The #1 `proves:` name is the engine test and is unchanged. It still proves the engine line. The app-side halves are the two new tests above.
+
+`ENGINE_VERSION` is bumped to `finance-engine/council-tax-single-occupant-beside-care`. The stored re-run is owed only for two-member plans with a split bill and a care spell.
+
+Still owed: a browser check of the changed upkeep notes and the builder hint, because this was built in a worktree. The four statutory figures are still unverified (card 0111). The orient hook asked again for a HANDOVER.md fold-out. That is outside this card, so it was not done.
