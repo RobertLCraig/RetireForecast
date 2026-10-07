@@ -1,42 +1,28 @@
-# TIME LIMITED: the park-home heat-pump grant
+# Is a park home still an option? A £1,500 grant top-up ends March 2027
 
 ## What I need from you
+Say whether a park home is still on the table. Reply 1 or 2.
+1. **Yes.** Then write to one named park and ask three things: (a) may a heat pump and solar panels go on the pitch; (b) does the home have its own electricity meter number (MPAN), or does the site owner resell power; (c) will the roof take panels. Pass: three written answers from that park.
+2. **No.** The card is discarded. Scenarios 51 to 54 stay as what-ifs only.
 
-**Say whether a park home is still a live option, and if it is, put three questions to one specific
-park before 31 March 2027**, when the £1,500 oil/LPG top-up on the heat-pump grant ends. Reply 1 or 2.
+**My recommendation:** decide by January 2027. Doing nothing forfeits the £1,500 top-up without warning.
+Paste to answer: `**2026-10-07** **Decided:** Option 2, park homes are not a live option.` or `**2026-10-07** **Decided:** Option 1, asked [park name]: (a) ___ (b) ___ (c) ___.`
 
-1. **Park homes are on the table.** Ask a named park, in writing: (a) is heat-pump and solar
-   installation permitted on the pitch; (b) does the home have its own MPAN, or does the site owner
-   resell electricity, which alone decides whether solar can earn export income; (c) will the roof
-   take panels? Then the grant gets modelled.
-2. **Park homes are not on the table.** The card is dropped and scenarios 51 to 54 stay exploratory.
+## What you need to know
+- The Boiler Upgrade Scheme (a government grant for heat pumps) pays £7,500. It runs to 2030.
+- A home heated by oil or LPG with no mains gas gets an extra £1,500, but only until March 2027.
+- Park homes qualify. Since 28 April 2026 no energy certificate (EPC) is needed.
+- Question (b) matters for money: if the site owner resells electricity, solar panels probably cannot earn export income.
+- The grant is not in any forecast yet.
 
-**Pass** is either three written answers from a named park, or "not a live option". Both are complete.
+## See it
+- Grant amounts: <https://www.gov.uk/apply-boiler-upgrade-scheme/what-you-can-get>
+- Who qualifies: <https://www.gov.uk/apply-boiler-upgrade-scheme/check-if-youre-eligible>
+- Park-home plan: `docs/build/PLAN-park-home.md`, section "Heat pumps and solar"
 
-**Fail** is leaving it past January 2027, which answers it by default: the £1,500 top-up is forgone
-and nothing will tell you it has gone. The base £7,500 does not expire with it.
-
-**Why it needs you** Whether a park home is still on the table is your call (rule 1), and the three
-questions have to be put to a particular site (rule 2). Everything else on this card is now sourced,
-below.
-
-Paste one:
-`**2026-MM-DD** **Decided:** Option 1, park [name] asked; answers: (a) ___ (b) ___ (c) ___.`
-`**2026-MM-DD** **Decided:** Option 2, park homes are not a live option.`
-
-## Why
-Only relevant if a park home is on the table, but part of the grant expires. Not modelled. See
-PLAN-park-home "Heat pumps and solar".
-
-## Options
-1. **Park homes are on the table.** Ask a specific park the three questions above and model the
-   grant.
-2. **Park homes are not on the table.** Drop this card; the four park-home scenarios stay
-   exploratory only.
-
-## Recommendation
-Decide which before March 2027, not because the modelling is hard but because the top-up has a
-deadline and the questions have to be asked of a specific site.
+---
+## For the agent (Rob can stop reading here)
+Option 1: model the grant on the park-home scenarios using the three answers. Option 2: `git mv` to `discarded/`.
 
 ## Comments
 
@@ -47,8 +33,7 @@ rather than remembered. All read 2026-09-30.
   the £9,000. <https://www.gov.uk/apply-boiler-upgrade-scheme/what-you-can-get>. The top-up
   started in July 2026 (<https://gasengineersoftware.co.uk/blog/boiler-upgrade-scheme-2026-changes/>).
 - **What expires is the £1,500, not the £9,000.** The scheme now runs to 2030 (Ofgem, summary of
-  updates to BUS installer guidance V5, 24 April 2026: "Scheme extended to 2030"). The card's
-  earlier "£9,000 is simply forgone" was wrong by £7,500 and is corrected above.
+  updates to BUS installer guidance V5, 24 April 2026: "Scheme extended to 2030").
 - **Park homes qualify and the EPC hurdle is gone.** The same Ofgem summary lists "second homes,
   holiday homes, park homes" among eligible property types (paras 3.08 to 3.11) and says that from
   28 April 2026 "properties are no longer required to have a valid EPC" (para 3.16).

@@ -4,55 +4,27 @@ waiting_on: the solicitor's section 42 valuation - recheck 2026-09-09
 # Get the lease extension properly valued
 
 ## What I need from you
+The recheck date (9 September) has passed.
+1. Instruct the section 42 valuation on the flat (the formal valuation of a statutory lease extension). Ask the valuer to state the years left on the lease and the date it drops below 80 years. Pass: a written premium (the price of the extension) plus both sides' costs.
+2. Ask the equity-release lender, in writing: is the offer conditional on the lease being extended? Pass: a written yes or no.
 
-**Two things.**
+**My recommendation:** do both now. If the solicitor cannot value it, ask who they instruct. Another estimate is a fail.
+Paste to answer: `**2026-10-07** **Decided:** Premium £___, costs £___, ___ years left. Lender condition: yes / no.`
 
-1. Instruct the section 42 valuation on the flat, and give me the premium and both sides' costs
-   when it lands.
-2. Confirm whether the equity-release lender's offer is conditional on the lease being extended,
-   in writing.
+## What you need to know
+- The flat is leasehold. The model treats it as if the lease never runs down.
+- The premium jumps once the lease falls below 80 years. That crossing falls inside the plan, after the older partner is modelled to have died, when the survivor is least able to pay.
+- Below about 75 years a flat becomes hard to mortgage and hard to sell.
+- Some equity-release lenders set a minimum lease length, so extending may be a condition of the loan the board currently favours.
+- The figure in the offers file looks like the solicitor's costs, not the premium. The premium is still unknown.
+- Waiting for the 2024 leasehold reform is a gamble: the cheaper valuation rules are not in force and may not be until 2027 or 2028 (see Comments).
+
+## See it
+- Leasehold guide: <https://www.gov.uk/leasehold-property>
 
 ---
-
-**Why it matters.** Three of the five reviewers found this independently, and none of them knew the
-others had. The flat is leasehold. The lease shortens every year of the plan, and the model has no
-concept of a lease at all - it treats the flat as a perpetual asset growing at the national rate.
-
-Three consequences, all of them money:
-
-- The premium steps up sharply once a lease drops below 80 years, and that crossing falls inside
-  the plan - after the older partner is modelled to have died, when the survivor is least able to
-  fund it.
-- Below roughly 75 years unexpired a flat becomes hard to mortgage and hard to sell, which
-  undermines both the term-end sale and the no-negative-equity backstop on a lifetime mortgage.
-- Several equity-release lenders set a minimum unexpired term, some measured at expected
-  redemption rather than at outset. So the extension may be a **precondition** of the product the
-  board is currently recommending, not an optional extra.
-
-The figure in the offers file reads like the solicitor's **costs**, not the premium. The premium is
-still a gap.
-
-**Pass** is a written premium plus costs, and a written answer on the lender condition.
-
-**Fail** is another estimate rather than a valuation. If the solicitor cannot value it, ask them
-who they instruct.
-
-**Why it needs you.** It is a fee and an instruction. Nothing in the repo can produce it, and card
-0026 cannot model the lease without a real number to anchor the cost.
-
-Worth asking the solicitor at the same time: how much of the 2024 leasehold reform has actually
-commenced. The valuation reforms are being brought in separately from the qualifying-period change,
-and that affects whether it is better to extend now or wait.
-
-## Why
-From the expert panel, 2026-08-19 (property finding 1, adviser finding 8, estate planner finding 9).
-Detail in the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
-
-## Links
-
-**Relates to**
-- `0026` - modelling the lease term needs a real premium to anchor the cost, and this is where that
-  number comes from.
+## For the agent (Rob can stop reading here)
+The premium and costs feed card 0026 (modelling the lease term). Source: expert panel 2026-08-19 (property finding 1, adviser finding 8, estate planner finding 9), gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
 
 ## Comments
 
