@@ -22,10 +22,10 @@ Whether the household qualifies. That depends on Pension Credit, which is a sepa
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a household receives Guarantee Credit and carries an eligible mortgage, THE APP SHALL meet the interest at the DWP standard rate up to the capital cap.
+- [x] #1 WHEN a household receives Guarantee Credit and carries an eligible mortgage, THE APP SHALL meet the interest at the DWP standard rate up to the capital cap.
 - [x] #2 THE APP SHALL accrue what is met as a separate charge against the property, repaid on sale or death.
 - [x] #3 THE APP SHALL include eligible service charges and ground rent in the pension-age housing costs it covers.
-- [ ] #4 WHEN care fees or a means test value the home, THE APP SHALL deduct the Support for Mortgage Interest charge from its equity, as the estate and forced-sale paths already do.
+- [x] #4 WHEN care fees or a means test value the home, THE APP SHALL deduct the Support for Mortgage Interest charge from its equity, as the estate and forced-sale paths already do.
 <!-- AC:END -->
 
 ## Tasks
@@ -162,3 +162,21 @@ VERDICT: defect
 **2026-09-06** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #1 and added #4 because both findings hold on main. `PathProjector::supportForMortgageInterestNominal()` still gates on `primaryResidence !== null` and `homeSold` only, never `Property::isLet`, so a let home the household does not live in gets its interest met; SMI is for the home you occupy. `PathProjector::careAssessableCapital()` still counts property less mortgage and ignores `smiBalance`, so a care year charges fees against equity DWP already holds a charge over; `meansTestedBenefitNominal()` has the same gap for a let home. The unsourced rate and cap remain card 0109's.
+
+**2026-10-07** RESULT: done
+TESTS: +2 new, all green
+TOUCHED:
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Forecast/SupportForMortgageInterestTest.php
+packages/finance-engine/tests/Forecast/CareMeansTestedChargeTest.php
+app/Forecast/ScenarioForecaster.php
+docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+#1: `PathProjector::supportForMortgageInterestNominal()` now refuses a let home (`Property::isLet`). `test_a_let_home_the_household_does_not_live_in_gets_no_support_for_mortgage_interest` was watched red first: a let home on Guarantee Credit got 4,490 pounds met in year 0. The fixture's let home is worth exactly the loan, so its equity is nil and Guarantee Credit is still in payment; the gate is reached, not skipped.
+
+#4: `careHomeEquity()` now nets `smiBalance`, and the FLAGGED docblock paragraph is gone. `test_the_care_assessment_nets_the_support_for_mortgage_interest_charge` was watched red first (care cost 84,160.89 against the no-equity twin's 57,410.89). The twin's home equals its mortgage, so its SMI charge is identical and it has no equity either way; after the fix the two are charged the same. This also closes card 0130 (same proves: name); that card is still in todo/ and I did not touch it.
+
+`meansTestAssessableCapital()` (the let-home Pension Credit test) also nets `smiBalance` now, for one definition of home equity. That term is UNREACHABLE today and has no failing test: after #1 a let home never accrues an SMI charge, and `isLet` is fixed for the whole plan, so the harness cannot build a let home carrying one. Say so plainly rather than claim a test for it.
+
+`ENGINE_VERSION` is `finance-engine/smi-occupied-home-and-care-equity`; the stored-scenario re-run is owed. The golden master did not redden. No screen changed, so no browser check is needed. The open Task (source the rate and cap) is still card 0109's. Suite run with php artisan test (no pest.bat here, card 0150); pint --dirty clean.
