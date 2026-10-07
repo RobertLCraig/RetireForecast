@@ -82,6 +82,8 @@ final class SupportForMortgageInterestTest extends TestCase
         int $serviceCharge = self::SERVICE_CHARGE,
         int $mortgageInterest = self::MORTGAGE_INTEREST,
         ?int $redemptionYear = null,
+        int $homeValue = self::HOME_VALUE,
+        bool $isLet = false,
     ): Household {
         return new Household(
             'SMI claimant',
@@ -104,13 +106,14 @@ final class SupportForMortgageInterestTest extends TestCase
                 new Account('p1', AccountType::Cash, Money::fromPounds(2_000)),
             ],
             primaryResidence: new Property(
-                Money::fromPounds(self::HOME_VALUE),
+                Money::fromPounds($homeValue),
                 OwnershipType::Outright,
                 outstandingMortgage: Money::fromPounds($mortgage),
                 mortgageRedemptionYear: $redemptionYear,
                 mortgageMaturityAction: $redemptionYear === null
                     ? MortgageMaturityAction::Refinance
                     : MortgageMaturityAction::ForcedSale,
+                isLet: $isLet,
             ),
         );
     }
@@ -151,6 +154,18 @@ final class SupportForMortgageInterestTest extends TestCase
             + self::SERVICE_CHARGE * 100;
         $this->assertSame(self::ESSENTIAL_SPEND * 100 - $met, $onCredit->years[0]->spendTarget->pence);
         $this->assertSame($met, $onCredit->years[0]->smiBalance()->pence);
+    }
+
+    public function test_a_let_home_the_household_does_not_live_in_gets_no_support_for_mortgage_interest(): void
+    {
+        // SMI meets the housing costs of the home the claimant OCCUPIES. A let property is somebody
+        // else's home, so its mortgage interest is a letting expense and DWP meets none of it. The
+        // home is worth no more than the loan, so its equity (assessable capital, because it is
+        // let) is nil and Guarantee Credit is still in payment: the gate is reached and refused.
+        $let = $this->forecast($this->claimant(weeklyStatePension: 150, homeValue: self::MORTGAGE, isLet: true));
+
+        $this->assertTrue($let->years[0]->incomeBySource['means_tested_benefit']->isPositive());
+        $this->assertSame(0, $let->years[0]->smiBalance()->pence);
     }
 
     public function test_the_interest_met_is_capped_at_the_eligible_capital_limit(): void

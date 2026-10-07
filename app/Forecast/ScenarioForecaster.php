@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-06 (annuity-and-stream-start-year-proration): an annuity pays only the months
+     * Bumped 2026-10-07 (smi-occupied-home-and-care-equity): Support for Mortgage Interest is no
+     * longer met on a LET home the household does not live in, and the care financial assessment
+     * values the home net of the SMI charge. A let plan on Guarantee Credit spent too little, and a
+     * Guarantee Credit homeowner who reaches care was charged on equity DWP holds a charge over.
+     * Board card 0045 #1 and #4.
+     * Previous bump 2026-10-06 (annuity-and-stream-start-year-proration): an annuity pays only the months
      * after the birthday its income starts on in that year, and so does an income stream in the
      * year it reaches its start age (except a start age already reached in the base year, which is
      * an income already in payment). Both paid a whole year before, so a plan with an annuity
@@ -483,7 +488,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/annuity-and-stream-start-year-proration';
+    public const ENGINE_VERSION = 'finance-engine/smi-occupied-home-and-care-equity';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

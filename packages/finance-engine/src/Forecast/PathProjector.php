@@ -2323,7 +2323,7 @@ final class PathProjector
             // closer than the rules do.
             $capitalPence += CapitalAssessment::propertyCapital(
                 Money::fromPence($state['property']),
-                Money::fromPence($state['mortgageOutstanding']),
+                Money::fromPence($state['mortgageOutstanding'] + $state['smiBalance']),
             )->pence;
         }
 
@@ -2393,7 +2393,7 @@ final class PathProjector
      * What Support for Mortgage Interest meets for the household this year, as annual nominal
      * pence — the amount that comes off this year's spending AND is added to the charge on the
      * home. Zero unless Guarantee Credit is actually in payment (the pension-age gate, with no
-     * waiting period) and the household still owns the home the charge would sit on.
+     * waiting period) and the household still owns AND lives in the home the charge would sit on.
      *
      * Two eligible costs, met on different rules. The MORTGAGE INTEREST is met at the DWP standard
      * rate on capital up to the pension-age cap, and never above the interest actually charged
@@ -2419,7 +2419,8 @@ final class PathProjector
         float $survivor,
         int $yearIndex,
     ): int {
-        if ($benefitNominal <= 0 || $household->primaryResidence === null || $state['homeSold']) {
+        // A let home is somebody else's: SMI meets the costs of the home the claimant occupies.
+        if ($benefitNominal <= 0 || $household->primaryResidence === null || $household->primaryResidence->isLet || $state['homeSold']) {
             return 0;
         }
 
@@ -2578,17 +2579,14 @@ final class PathProjector
      * EVERYTHING secured on it. The deferred payment balance is netted for the same reason the
      * mortgage is — money the authority has already lent against the bricks is not capital the
      * resident can spend a second time, and leaving it in would let a deferred year inflate the
-     * next year's charge.
-     *
-     * FLAGGED: the Support for Mortgage Interest charge is NOT netted here, although it is
-     * secured on the same home and the estate and the wealth line both net it. That is a
-     * pre-existing divergence, out of card 0055's scope, and is board card 0130.
+     * next year's charge. The Support for Mortgage Interest charge is netted too, as the estate
+     * and the wealth line net it (card 0045).
      *
      * @param  array<string, mixed>  $state
      */
     private function careHomeEquity(Household $household, array $state): int
     {
-        return max(0, $this->netHomeValue($household, $state)->pence - $state['mortgageOutstanding'] - $state['deferredCareBalance']);
+        return max(0, $this->netHomeValue($household, $state)->pence - $state['mortgageOutstanding'] - $state['smiBalance'] - $state['deferredCareBalance']);
     }
 
     /**

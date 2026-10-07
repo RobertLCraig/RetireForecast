@@ -19,6 +19,7 @@ use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
+use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\PathDraws;
@@ -141,6 +142,56 @@ final class CareMeansTestedChargeTest extends TestCase
     private function spend(int $netPounds): ExpenseProfile
     {
         return new ExpenseProfile(Money::fromPounds($netPounds), Money::zero(), Percent::fromPercent(100));
+    }
+
+    /**
+     * A lone pensioner on Guarantee Credit with an interest-only mortgage, so Support for
+     * Mortgage Interest builds a charge on the home every year from 2026 until care at 88.
+     */
+    private function smiClaimant(int $homeValue): Household
+    {
+        return new Household(
+            'SmiResident', RegionProfile::EnglandWalesNi,
+            [$this->person('p1')],
+            new ExpenseProfile(
+                essentialAnnualSpend: Money::fromPounds(30_000),
+                discretionaryAnnualSpend: Money::zero(),
+                survivorSpendFactor: Percent::fromPercent(100),
+                propertyCosts: Money::fromPounds(2_400),
+                mortgageCosts: Money::fromPounds(9_000),
+                propertyCostsRealGrowth: Percent::zero(),
+            ),
+            pensions: [new StatePensionEntitlement('p1', weeklyForecast: Money::fromPounds(150))],
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(2_000))],
+            primaryResidence: new Property(
+                Money::fromPounds($homeValue),
+                OwnershipType::Outright,
+                outstandingMortgage: Money::fromPounds(150_000),
+            ),
+        );
+    }
+
+    public function test_the_care_assessment_nets_the_support_for_mortgage_interest_charge(): void
+    {
+        // £200,000 home, £150,000 mortgage: up to £50,000 of equity before the SMI charge, which
+        // makes a lone resident a self-funder. Twenty years of SMI build a charge larger than that,
+        // so net of it there is no equity left to assess. The twin's home is worth exactly the
+        // mortgage, so it has no equity either way, and its SMI charge is the same to the penny
+        // (SMI reads the loan and the service charge, never the home's value). The two must
+        // therefore be charged the same for care.
+        $smi = $this->project($this->smiClaimant(200_000), deathAges: ['p1' => 90], careFromAge: ['p1' => 88]);
+        $noEquity = $this->project($this->smiClaimant(150_000), deathAges: ['p1' => 90], careFromAge: ['p1' => 88]);
+
+        $beforeCare = null;
+        foreach ($smi->years as $year) {
+            if ($year->calendarYear === 2045) {
+                $beforeCare = $year;
+            }
+        }
+        $this->assertNotNull($beforeCare);
+        $this->assertGreaterThan(50_000_00, $beforeCare->smiBalance()->pence, 'the charge outgrows the equity before care');
+        $this->assertTrue($smi->careCostReal()->isPositive());
+        $this->assertSame($noEquity->careCostReal()->pence, $smi->careCostReal()->pence);
     }
 
     public function test_a_funded_resident_is_charged_the_income_contribution_not_the_gross_fee(): void
