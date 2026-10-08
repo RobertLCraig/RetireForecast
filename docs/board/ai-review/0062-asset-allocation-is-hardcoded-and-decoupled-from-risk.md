@@ -38,7 +38,7 @@ Disclosing the current default, which is card 0038.
 - [x] #2 WHEN a user changes the expected return, THE APP SHALL change the volatility with it, or refuse the change.
 - [x] #3 THE APP SHALL offer a de-risking glidepath over the projection.
 - [x] #4 THE APP SHALL carry a source and a verified-on date for each asset class return and volatility.
-- [ ] #5 WHEN a reader chooses a mix or a glidepath, THE APP SHALL mark the figures that moved as edited in the assumptions panel, and SHALL still disclose a starting mix the engine supplied.
+- [x] #5 WHEN a reader chooses a mix or a glidepath, THE APP SHALL mark the figures that moved as edited in the assumptions panel, and SHALL still disclose a starting mix the engine supplied.
 <!-- AC:END -->
 
 ## Tasks
@@ -172,3 +172,27 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened, added #5, because both breakage findings still hold on `master` and neither breaks an existing criterion. (1) `AssumptionOverrides::changedKeys` still filters only `KEYS`, so a reader who picks Balanced or Growth sees their moved return and volatility in `ResultPresenter::assumptionsPanel` marked unedited, under the preset's name. (2) `AssumptionOverrides::allocation` returns a non-null mix as soon as `allocationGlideTo` is set, so `ForecastSettings::allocationIsAssumed` is false and the cautious starting mix, which the engine chose, goes undisclosed.
+
+**2026-10-08** RESULT: done
+TESTS: +3 new, all green
+TOUCHED:
+app/Forecast/AssumptionOverrides.php
+app/Forecast/ResultPresenter.php
+app/Forecast/ScenarioForecaster.php
+packages/finance-engine/src/Forecast/ForecastSettings.php
+tests/Feature/Livewire/ScenarioBuilderTest.php
+tests/Unit/Forecast/AssumedFiguresDisclosureTest.php
+tests/Unit/Forecast/AssumptionsPanelTest.php
+OUT-OF-SCOPE: none
+
+Criterion 5, both review findings. Each test was watched failing for the reason the finding names before the fix.
+
+(1) Panel. `ResultPresenter::assumptionsPanel` now compares the starting weights with `AllocationProfile::DEFAULT`. Where they moved (a chosen mix, or a growth target that re-weighted it), the `investmentGrowth` and `portfolioVolatility` rows are marked edited and the set reads customised. Naming the default mix moves nothing and marks nothing. A glidepath also sets customised, but marks no row, because those two rows show the starting mix's figures. `changedKeys` is unchanged. `test_a_chosen_mix_marks_the_growth_and_spread_rows_edited` failed first on `customised` being false.
+
+(2) Disclosure. New `ForecastSettings::$startingMixIsAssumed` (default false, so every other caller is unchanged). `allocationIsAssumed()` is now true when it is set. `ScenarioForecaster::settings` sets it from `AssumptionOverrides::startingMixIsAssumed()`: no `allocation` and no `investmentGrowth`, so a glidepath alone. The note now also says where the glidepath goes and over how many years, read from the allocation's end weights. `test_a_glidepath_from_the_engines_starting_mix_still_discloses_it` (through the builder save) failed first on `allocationIsAssumed()` being false; `test_an_assumed_starting_mix_under_a_glidepath_is_disclosed_as_moving` failed first on no note.
+
+No projection moves: the flag only gates a note, so no ENGINE_VERSION bump and no re-run owed.
+
+Task 4 (re-source the gilt real return) stays unticked and is still card 0137.
+
+Built in a worktree, so the panel marks and the reworded note are NOT seen in a browser.
