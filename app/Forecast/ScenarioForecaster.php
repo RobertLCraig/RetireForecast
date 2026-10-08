@@ -912,6 +912,8 @@ final class ScenarioForecaster
             // de-risks along (board card 0062). Null = the reader said nothing, which keeps the
             // engine's cautious 40/60 AND keeps it disclosed as a figure that is ours, not theirs.
             allocation: AssumptionOverrides::allocation($overrides, $this->presetAssumptions($scenario)),
+            // A glidepath alone still starts from our mix, so that mix stays disclosed (card 0062 #5).
+            startingMixIsAssumed: AssumptionOverrides::startingMixIsAssumed($overrides),
             annualRent: $action?->annualRent,
             rentInflationReal: $action?->rentInflationReal ?? ($forcedSale ? $scenario->assumptionSet?->toDto()?->rentInflation : null),
             modelCareCost: (bool) ($scenario->effectiveBuilderState()['modelCareCost'] ?? false),

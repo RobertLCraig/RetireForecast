@@ -33,6 +33,7 @@ use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
+use RetireForecast\FinanceEngine\Forecast\AllocationProfile;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestOutcome;
@@ -1334,8 +1335,18 @@ final class ResultPresenter
                 $parts[] = self::ratePct($weight * 100).' '.mb_strtolower($name);
             }
             $blended = self::ratePct($allocation->blendedRealReturn($set) * 100);
+            // A glidepath the reader chose starts from this mix (card 0062 #5), so say where it goes.
+            $glide = '';
+            if ($allocation->glides()) {
+                $end = [];
+                foreach ($allocation->endWeights as $i => $weight) {
+                    $end[] = self::ratePct($weight * 100).' '.mb_strtolower($set->assetClasses[$i]->name ?? 'other');
+                }
+                $glide = ' as the starting point of the glidepath you chose, moving to '.implode(', ', $end)
+                    .' over '.$allocation->glideYears.' years';
+            }
             $out[] = "You didn't say how your invested money is split between shares, bonds and cash, so we've "
-                .'assumed a cautious mix of '.implode(', ', $parts).', and applied it to every pension, ISA and '
+                .'assumed a cautious mix of '.implode(', ', $parts).$glide.', and applied it to every pension, ISA and '
                 .'investment account in the plan. On this assumption set that blends to a real return of '
                 ."{$blended} a year above inflation, which is the figure your pots grow at. This is the single "
                 .'biggest thing driving whether the money lasts, so it is worth knowing it is ours and not yours: '
@@ -3962,6 +3973,18 @@ final class ResultPresenter
             ]]);
         }
 
+        // A mix the reader chose, or a growth target that re-weighted it, moves the blended return and
+        // the spread without either having an override key of its own (card 0062 #5). Compared with
+        // the engine's default mix, so naming that same mix moves nothing and marks nothing.
+        $default = AllocationProfile::DEFAULT->allocation()->weights;
+        $mixMoved = count($allocation->weights) !== count($default);
+        foreach ($allocation->weights as $i => $weight) {
+            $mixMoved = $mixMoved || abs($weight - ($default[$i] ?? 0.0)) > 1e-9;
+        }
+        if ($mixMoved) {
+            $changed = array_values(array_unique([...$changed, 'investmentGrowth', 'portfolioVolatility']));
+        }
+
         $economic = array_map(
             fn (array $row): array => [...$row, 'edited' => in_array($row['key'], $changed, true)],
             $economic,
@@ -4028,7 +4051,7 @@ final class ResultPresenter
         return [
             'setName' => $set->name,
             'sourceNote' => $set->sourceNote,
-            'customised' => $changed !== [],
+            'customised' => $changed !== [] || $allocation->glides(),
             'mix' => $mix,
             // Where each asset-class figure came from and when it was last checked (board card
             // 0062). Read off the classes themselves, so a re-sourced figure moves its own

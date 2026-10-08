@@ -249,6 +249,18 @@ final class AssumptionOverrides
     }
 
     /**
+     * Does the mix the plan STARTS on come from the engine rather than the reader? It does unless
+     * they named a mix or a growth target (which re-weights the mix); a glidepath alone sets only
+     * where the mix ends, so it starts from {@see AllocationProfile::DEFAULT} (board card 0062 #5).
+     *
+     * @param  array<string, mixed>  $overrides
+     */
+    public static function startingMixIsAssumed(array $overrides): bool
+    {
+        return ! self::filled($overrides, 'allocation') && ! self::filled($overrides, 'investmentGrowth');
+    }
+
+    /**
      * The blended real return the reader asked for where no mix of the set's asset classes can
      * produce it, with the range that can: the refusal the builder shows, and the disclosure a
      * scenario stored before board card 0062 carries. Null when there is nothing to refuse.

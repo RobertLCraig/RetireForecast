@@ -13,6 +13,7 @@ use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Property;
+use RetireForecast\FinanceEngine\Forecast\AllocationProfile;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
@@ -453,6 +454,27 @@ final class AssumedFiguresDisclosureTest extends TestCase
             $note,
             'and the blended real return those weights buy',
         );
+    }
+
+    /**
+     * Card 0062 #5. A glidepath chosen from the engine's starting mix keeps that mix disclosed,
+     * and the note says the mix then moves, so it is not read as a fixed mix for life.
+     */
+    public function test_an_assumed_starting_mix_under_a_glidepath_is_disclosed_as_moving(): void
+    {
+        $set = AssumptionSetLibrary::default();
+        $settings = new ForecastSettings(
+            baseYear: 2026, baseTaxYear: '2026-27',
+            allocation: PortfolioAllocation::cautious40_60()->glidingTo(AllocationProfile::Defensive->allocation(), 10),
+            startingMixIsAssumed: true,
+        );
+        $note = $this->only($this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            set: $set, variant: 'rent', settings: $settings,
+        ), 'split');
+
+        $this->assertStringContainsString('40% global equities', $note);
+        $this->assertStringContainsString('over 10 years', $note);
     }
 
     public function test_nothing_is_assumed_about_an_allocation_the_caller_supplied(): void

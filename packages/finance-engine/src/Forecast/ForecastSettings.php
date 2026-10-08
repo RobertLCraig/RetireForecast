@@ -118,6 +118,12 @@ final class ForecastSettings
          * It is its own question, not $homeToDescendants, which is about the HOME at the last death.
          */
         public readonly bool $hasDescendants = true,
+        /**
+         * The allocation passed above STARTS from the engine's own mix: the reader chose only where
+         * it glides to (board card 0062 #5), so the starting weights are still a figure they never
+         * chose and {@see allocationIsAssumed} keeps disclosing them.
+         */
+        public readonly bool $startingMixIsAssumed = false,
     ) {}
 
     /**
@@ -163,11 +169,12 @@ final class ForecastSettings
 
     /**
      * Is the allocation in play one the ENGINE supplied? True whenever the caller passed none,
-     * which is the condition the no-invisible-figures disclosure is gated on.
+     * or passed only a glidepath away from the engine's starting mix, which is the condition the
+     * no-invisible-figures disclosure is gated on.
      */
     public function allocationIsAssumed(): bool
     {
-        return $this->allocation === null;
+        return $this->allocation === null || $this->startingMixIsAssumed;
     }
 
     /**
@@ -204,6 +211,7 @@ final class ForecastSettings
             $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
             $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
             $this->planningHorizon, $this->taxableIncomeTargetPence, $this->hasDescendants,
+            $this->startingMixIsAssumed,
         );
     }
 
@@ -219,6 +227,7 @@ final class ForecastSettings
             $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
             $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
             $this->planningHorizon, $this->taxableIncomeTargetPence, $this->hasDescendants,
+            $this->startingMixIsAssumed,
         );
     }
 }

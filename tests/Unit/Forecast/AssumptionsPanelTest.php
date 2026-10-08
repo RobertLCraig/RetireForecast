@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Forecast;
 
+use App\Forecast\AssumptionOverrides;
 use App\Forecast\ResultPresenter;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
+use RetireForecast\FinanceEngine\Forecast\AllocationProfile;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
 use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
@@ -201,5 +203,46 @@ final class AssumptionsPanelTest extends TestCase
 
         // Only the figure the user filled is the user's; a blank stays the preset's.
         $this->assertSame(['investmentGrowth'], $edited);
+    }
+
+    /**
+     * Card 0062 #5. A chosen mix moves the blended return AND the spread, but neither has an
+     * override key of its own, so the panel used to show the reader's own figures unmarked under
+     * the preset's name. A growth target re-weights the mix, so it moves the spread too.
+     */
+    public function test_a_chosen_mix_marks_the_growth_and_spread_rows_edited(): void
+    {
+        $set = AssumptionSetLibrary::default();
+        $edited = static fn (array $panel): array => array_values(array_column(
+            array_filter($panel['economic'], static fn (array $row): bool => $row['edited']),
+            'key',
+        ));
+
+        $balanced = ResultPresenter::assumptionsPanel(
+            $set,
+            new HousingAction(salePrice: Money::zero()),
+            AllocationProfile::Balanced->allocation(),
+            ['allocation' => 'balanced'],
+        );
+        $this->assertTrue($balanced['customised']);
+        $this->assertSame(['investmentGrowth', 'portfolioVolatility'], $edited($balanced));
+
+        $target = ['investmentGrowth' => '3'];
+        $reweighted = ResultPresenter::assumptionsPanel(
+            $set,
+            new HousingAction(salePrice: Money::zero()),
+            AssumptionOverrides::allocation($target, $set),
+            $target,
+        );
+        $this->assertSame(['investmentGrowth', 'portfolioVolatility'], $edited($reweighted));
+
+        // Choosing the default mix by name moves nothing, so nothing is marked.
+        $cautious = ResultPresenter::assumptionsPanel(
+            $set,
+            new HousingAction(salePrice: Money::zero()),
+            AllocationProfile::Cautious->allocation(),
+            ['allocation' => 'cautious'],
+        );
+        $this->assertSame([], $edited($cautious));
     }
 }

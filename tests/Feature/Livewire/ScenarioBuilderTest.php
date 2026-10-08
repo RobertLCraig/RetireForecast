@@ -554,6 +554,27 @@ class ScenarioBuilderTest extends TestCase
     }
 
     /**
+     * Card 0062 #5. A glidepath with no starting mix runs from the engine's cautious mix, so that
+     * mix is still ours and still has to be disclosed; the glidepath alone used to switch it off.
+     */
+    public function test_a_glidepath_from_the_engines_starting_mix_still_discloses_it(): void
+    {
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component->set('assumptionOverrides.allocationGlideTo', 'defensive')
+            ->set('assumptionOverrides.allocationGlideYears', '10')
+            ->call('save')->assertHasNoErrors();
+
+        $settings = app(ScenarioForecaster::class)->settings(Scenario::latest('id')->firstOrFail());
+
+        $this->assertTrue($settings->allocation()->glides());
+        $this->assertSame(PortfolioAllocation::cautious40_60()->weights, $settings->allocation()->weights);
+        $this->assertTrue($settings->allocationIsAssumed());
+    }
+
+    /**
      * Board card 0062, criterion 2. Raising "investment growth" used to shift every asset class's
      * expected return and leave the volatilities and correlations exactly where they were, so a
      * reader could buy an equity return at a cautious portfolio's risk. A target no mix of these
