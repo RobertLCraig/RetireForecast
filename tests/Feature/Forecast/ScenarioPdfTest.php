@@ -480,6 +480,26 @@ class ScenarioPdfTest extends TestCase
         $this->get(route('scenarios.pdf'))->assertNotFound();
     }
 
+    /**
+     * Board card 0061, criterion 3. The printed advice-cost block said "the money would still
+     * last for life" about a single path run to a median lifespan.
+     */
+    public function test_the_printed_advice_cost_never_says_a_median_path_lasts_for_life(): void
+    {
+        $scenario = ScenarioFixture::rich($this->user, [
+            'assumptionOverrides' => ['planningHorizon' => 'p50'],
+        ]);
+        $report = app(ScenarioPdfController::class)->data($scenario);
+        $this->assertNotNull($report['adviceCost']);
+        $this->assertNull($report['adviceCost']['diy']['depletionYear']);
+        $this->assertNull($report['adviceCost']['advised']['depletionYear']);
+
+        $html = $this->renderReport($scenario);
+
+        $this->assertStringNotContainsString('last for life', $html);
+        $this->assertStringContainsString('The money would still last to the end of the plan', $html);
+    }
+
     /** The exact data the export produces, rendered through the exact template it uses. */
     private function renderReport(Scenario $scenario): string
     {

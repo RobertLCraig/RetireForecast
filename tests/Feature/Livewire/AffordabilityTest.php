@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
+use RetireForecast\FinanceEngine\Mortality\PlanningHorizon;
 use Tests\Support\ScenarioFixture;
 use Tests\TestCase;
 
@@ -89,6 +90,29 @@ class AffordabilityTest extends TestCase
             ->assertViewHas('bottomLine', fn (array $b): bool => ! empty($b['careCaveat']) && str_contains($b['careCaveat'], 'long-term care'))
             // ...and the care line is visible to the reader.
             ->assertSee('nursing care');
+    }
+
+    /**
+     * Board card 0061, criterion 3. The "on the expected path" verdicts are the single
+     * deterministic path; at the 50th percentile that path ends at a coin-flip lifespan, and
+     * this page told the reader the plan kept the essentials paid "for life".
+     */
+    public function test_a_median_lifespan_plan_is_labelled_as_even_odds_not_as_lasting_for_life(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $base = ScenarioFixture::rich($user, [
+            'variant' => 'stay_put',
+            'name' => 'Keep the home',
+            'assumptionOverrides' => ['planningHorizon' => 'p50'],
+        ]);
+
+        Livewire::test(Affordability::class, ['scenario' => $base])
+            ->assertOk()
+            ->assertViewHas('working', fn (array $w): bool => $w !== [])
+            ->assertSee(PlanningHorizon::P50->oddsPhrase())
+            ->assertDontSee('for life')
+            ->assertDontSee('rest of your life');
     }
 
     public function test_working_plans_are_ordered_strongest_first(): void

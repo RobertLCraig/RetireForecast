@@ -100,13 +100,13 @@ final class AffordabilityAssessment
                 'total' => count($cards),
                 'best' => null,
                 'lead' => $lead,
-                'headline' => 'On the figures entered, none of these plans keep the essentials paid for life. '
+                'headline' => 'On the figures entered, none of these plans keep the essentials paid to the end of the plan. '
                     .'The options below each show the year the money would run short — the least-bad ones are first.',
             ];
         }
 
         $rent = $best['monthlyRentLabel'] !== null ? " at {$best['monthlyRentLabel']} a month" : '';
-        $headline = "{$best['title']}{$rent} keeps the essentials paid for the rest of your life and leaves "
+        $headline = "{$best['title']}{$rent} keeps the essentials paid to the end of the plan and leaves "
             ."the most money behind ({$best['moneyLeftRough']}). It is the strongest of the plans you entered.";
 
         // Honesty: this verdict is the expected, care-free path. If even the strongest plan cannot absorb
@@ -292,11 +292,11 @@ final class AffordabilityAssessment
         $oneOff = $unfundedOneOff->isZero() ? '' : ' One-off costs of '.$unfundedOneOff->format().' have nothing to fund them in the year they fall.';
 
         return match (true) {
-            $tier === 'comfortable' => 'Yes — on the expected path this covers your full budget for the rest of your life, and still leaves money behind ('
+            $tier === 'comfortable' => 'Yes — on the expected path this covers your full budget to the end of the plan, and still leaves money behind ('
                 .self::roughPounds($moneyLeft).').',
-            $tier === 'essentials_only' && $met === $planYears => 'Mostly: your yearly budget stays covered for life and the money does not run out, but not every one-off cost can be paid.'
+            $tier === 'essentials_only' && $met === $planYears => 'Mostly: your yearly budget stays covered to the end of the plan and the money does not run out, but not every one-off cost can be paid.'
                 .$oneOff,
-            $tier === 'essentials_only' => 'Mostly — the essentials (your must-pay costs) stay covered for life, but there are years the full budget can’t stretch to every extra. The money does not run out.'
+            $tier === 'essentials_only' => 'Mostly — the essentials (your must-pay costs) stay covered to the end of the plan, but there are years the full budget can’t stretch to every extra. The money does not run out.'
                 .$howMany.$oneOff,
             default => self::failVerdict($runsOutYear, $runsOutAges, $yearsFromNow).$howMany.$oneOff,
         };

@@ -409,8 +409,9 @@ inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded ou
   the reader stated is never extended** (see DECISIONS 2026-09-08 for both calls). The setting
   rides `ForecastSettings` through the sparse `assumptionOverrides` choice-key route, so a scenario
   stored earlier carries no key and reads as the default. `ResultPresenter::planningHorizonBasis()`
-  is the one home of the sentence that states the odds, read by the results page, Compare and the
-  PDF, so no surface can describe a path the projection did not run. `ENGINE_VERSION` is
+  is the one home of the sentence that states the odds, read by the results page, Compare, the
+  Affordability page and the PDF; deterministic copy says "to the end of the plan", never "for
+  life". So no surface can describe a path the projection did not run. `ENGINE_VERSION` is
   `finance-engine/last-survivor-planning-horizon` and the **stored-scenario re-run is owed**: every
   stored plan funds more years now, so its wealth and estate are too high and its depletion year
   too late. `MonteCarlo\GoldenMasterTest` did not redden (the simulation samples lifespans and is

@@ -797,7 +797,7 @@
             @elseif ($adviceCost['diy']['depletionYear'] !== null)
                 The year the money runs short ({{ $adviceCost['diy']['depletionYear'] }}) would not move.
             @else
-                The money would still last for life.
+                The money would still last to the end of the plan: {{ $planningHorizonBasis }}
             @endif
         </p>
         <p><strong>This is a cost, not a verdict.</strong> Advice costing

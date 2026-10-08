@@ -9,6 +9,7 @@ use App\DecisionSupport\SustainableSpend;
 use App\Enums\SimulationMode;
 use App\Enums\SimulationStatus;
 use App\Forecast\AffordabilityAssessment;
+use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\SimulationRunner;
 use App\Models\Result;
@@ -120,6 +121,9 @@ class Affordability extends Component
             'working' => array_values(array_filter($cards, fn (array $c): bool => $c['works'])),
             'failing' => array_values(array_filter($cards, fn (array $c): bool => ! $c['works'])),
             'bottomLine' => $bottomLine,
+            // How long the "on the expected path" verdicts run, with the odds that leaves (card
+            // 0061 #3), read from the base plan's settings exactly as Compare does.
+            'planningHorizonBasis' => ResultPresenter::planningHorizonBasis(app(ScenarioForecaster::class)->settings($this->base)),
             // Whether any plan still lacks a full Monte Carlo result, so the view can offer to run it.
             'anyUnchecked' => array_any($rows, fn (array $row): bool => $row['mc'] === null),
             // Directive guidance only behind the walled-off ability (personal-use mode), never public.

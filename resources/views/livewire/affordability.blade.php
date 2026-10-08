@@ -56,9 +56,11 @@
     <div class="mt-6 rounded-xl border-2 {{ $best ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50' }} p-5">
         <p class="text-sm font-semibold tracking-wide uppercase {{ $best ? 'text-green-800' : 'text-red-800' }}">On the expected path</p>
         <p class="mt-2 text-xl leading-relaxed text-gray-900">{{ $bottomLine['headline'] }}</p>
+        {{-- Card 0061 #3: "to the end of the plan" is a lifespan, never "for life", so say which one. --}}
+        <p class="mt-2 text-sm text-gray-600">The end of the plan here is {{ $planningHorizonBasis }}</p>
         @if ($best)
             <p class="mt-2 text-base text-gray-700">
-                {{ $bottomLine['workCount'] }} of your {{ $bottomLine['total'] }} plans keep the essentials paid for life.
+                {{ $bottomLine['workCount'] }} of your {{ $bottomLine['total'] }} plans keep the essentials paid to the end of the plan.
             </p>
             {{-- The verdict above is the expected, care-free path; this qualifies it with the care risk (A2). --}}
             <p class="mt-2 text-base font-medium text-gray-700">🏥 {{ $bottomLine['careCaveat'] }}</p>
@@ -69,14 +71,14 @@
             <p class="mt-3 rounded-lg bg-white/70 px-4 py-3 text-base text-gray-800">
                 <span class="font-semibold">If keeping a roof over you and the bills paid is the priority,</span>
                 the plan to lean towards is <span class="font-semibold">{{ $best['title'] }}</span>{{ $best['monthlyRentLabel'] ? ' at '.$best['monthlyRentLabel'].' a month' : '' }} —
-                it is the safest of your plans that still lasts for life.
+                it is the safest of your plans that still lasts to the end of the plan.
             </p>
         @endif
     </div>
 
     {{-- The plans that work --}}
     <h2 class="mt-10 text-2xl font-bold text-gray-900">✅ Plans that work</h2>
-    <p class="mt-1 text-base text-gray-600">These keep your essential bills paid for the rest of your life.</p>
+    <p class="mt-1 text-base text-gray-600">These keep your essential bills paid to the end of the plan.</p>
 
     @if (empty($working))
         <div class="mt-4 rounded-lg border border-dashed border-gray-300 bg-white px-5 py-8 text-center text-gray-700">
@@ -103,7 +105,7 @@
                     <p class="mt-3 text-lg leading-relaxed text-gray-900">{{ $card['verdict'] }}</p>
 
                     {{-- The care-stress companion (A2): the SAME expected path with an adverse ~4-year
-                         nursing spell, so "works for life" is never shown against a care-free path. --}}
+                         nursing spell, so "it works" is never shown against a care-free path. --}}
                     <p class="mt-3 rounded-lg px-4 py-3 text-base leading-relaxed {{ $card['careStress']['holds'] ? 'bg-green-50 text-green-900' : 'bg-amber-50 text-amber-900' }}">
                         🏥 {{ $card['careStress']['verdict'] }}
                     </p>

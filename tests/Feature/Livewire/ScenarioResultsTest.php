@@ -736,6 +736,23 @@ class ScenarioResultsTest extends TestCase
     }
 
     /**
+     * Board card 0061, criterion 3. The advice-cost block said "the money would still last for
+     * life" about the same single path, run to a median lifespan when the lever is at the 50th.
+     */
+    public function test_the_advice_cost_block_never_says_a_median_path_lasts_for_life(): void
+    {
+        $scenario = ScenarioFixture::rich($this->user, [
+            'assumptionOverrides' => ['planningHorizon' => 'p50'],
+        ]);
+
+        Livewire::test(ScenarioResults::class, ['scenario' => $scenario])
+            ->assertViewHas('adviceCost', fn (?array $a): bool => $a !== null
+                && $a['diy']['depletionYear'] === null && $a['advised']['depletionYear'] === null)
+            ->assertDontSee('last for life')
+            ->assertSee(PlanningHorizon::P50->oddsPhrase());
+    }
+
+    /**
      * Board card 0089. A buy plan whose price dwarfs the sale proceeds and the savings, with no
      * buy mortgage, so the engine charges an unfunded purchase gap on the buy path and nowhere
      * else.
