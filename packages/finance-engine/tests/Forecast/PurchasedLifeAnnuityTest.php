@@ -119,6 +119,36 @@ final class PurchasedLifeAnnuityTest extends TestCase
         $this->assertLessThan($control->liquidWealth->pence - 9_000_000, $bought->liquidWealth->pence);
     }
 
+    public function test_an_annuity_is_capped_at_its_named_account_not_the_owners_other_accounts_of_that_type(): void
+    {
+        // p2 holds £5,000 in one cash account, which carries a £100,000 annuity, and £200,000 in
+        // premium bonds, which share the cash wrapper. Only the named £5,000 may buy the annuity:
+        // the premium bonds are not the account the purchase hangs off.
+        $small = new Account('p2', AccountType::Cash, Money::fromPounds(5_000),
+            annuityPurchase: new AnnuityPurchase(68, Money::fromPounds(100_000), Percent::fromPercent(7.2)));
+        $bonds = new Account('p2', AccountType::PremiumBonds, Money::fromPounds(200_000));
+
+        $year = $this->forecaster()->forecast($this->couple([$small, $bonds]), $this->flatAssumptions(), $this->settings())->years[1];
+
+        // £5,000 × 7.2% = £360 a year, not the £7,200 the pooled cash could have paid for.
+        $this->assertSame(36_000, $year->incomeBySource['other_taxable']->pence);
+    }
+
+    public function test_two_annuities_on_two_accounts_of_one_type_each_buy_from_their_own_account(): void
+    {
+        // Two cash accounts of p2's, each carrying its own annuity. The first purchase must not eat
+        // into the second account's money, nor the second into what the first left behind.
+        $a = new Account('p2', AccountType::Cash, Money::fromPounds(40_000),
+            annuityPurchase: new AnnuityPurchase(68, Money::fromPounds(30_000), Percent::fromPercent(10)));
+        $b = new Account('p2', AccountType::Cash, Money::fromPounds(20_000),
+            annuityPurchase: new AnnuityPurchase(68, Money::fromPounds(50_000), Percent::fromPercent(10)));
+
+        $year = $this->forecaster()->forecast($this->couple([$a, $b]), $this->flatAssumptions(), $this->settings())->years[1];
+
+        // A buys its full £30,000; B is capped at its own £20,000: £50,000 × 10% = £5,000 a year.
+        $this->assertSame(500_000, $year->incomeBySource['other_taxable']->pence);
+    }
+
     public function test_only_the_interest_element_of_a_purchased_life_annuity_is_taxed(): void
     {
         // The same £7,200 a year, bought two ways: from a DC pot (taxable in full) and from cash

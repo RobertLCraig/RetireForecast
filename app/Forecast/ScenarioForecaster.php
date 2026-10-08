@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-08 (park-home-sale-pays-commission): a park home or similar chattel that is SOLD
+     * Bumped 2026-10-08 (annuity-capped-at-its-named-account): a purchased life annuity now buys only
+     * with the money in the account it hangs off. It used to draw on the owner's pooled balance in
+     * that wrapper, so a small cash account beside other cash or premium bonds bought the whole
+     * price and overstated the secured income. A plan with no account annuity, or one whose owner
+     * holds no other account of that wrapper, is byte-identical. Board card 0060 #1.
+     * Previous bump 2026-10-08 (park-home-sale-pays-commission): a park home or similar chattel that is SOLD
      * in the plan, at year 0 by a sell variant or later by a forced sale, now pays the site owner's
      * commission ({@see Property::MAX_SITE_COMMISSION_BPS}) out of the proceeds. Only the estate and
      * the care means test took it before, so a plan that sells a park home banked a tenth of the
@@ -533,7 +538,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/park-home-sale-pays-commission';
+    public const ENGINE_VERSION = 'finance-engine/annuity-capped-at-its-named-account';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

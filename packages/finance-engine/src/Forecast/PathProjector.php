@@ -667,10 +667,12 @@ final class PathProjector
         // The same again for a PURCHASED LIFE ANNUITY: one bought with money that is not pension
         // money, from the named account it hangs off (board card 0060). Its source wrapper is
         // carried so the purchase draws on THAT account and its income is taxed on the interest
-        // element only ({@see processAnnuityPurchases}).
+        // element only ({@see processAnnuityPurchases}). The state holds one pooled balance per
+        // person per wrapper, so the named account's own balance is carried beside it as the cap
+        // on what the purchase may draw: a £5,000 cash account must not buy with its owner's other cash.
         foreach ($household->accounts as $account) {
             if ($account->annuityPurchase !== null) {
-                $annuities[] = self::annuityState($account->ownerId, $account->annuityPurchase, $account->type);
+                $annuities[] = self::annuityState($account->ownerId, $account->annuityPurchase, $account->type, $account->balance->pence);
             }
         }
 
@@ -3198,11 +3200,12 @@ final class PathProjector
      * One planned annuity, flattened for the hot loop. $source is the wrapper the money comes out
      * of: NULL for a pension annuity (the owner's DC pots) or the account type for a purchased life
      * annuity. The rate is the EFFECTIVE one, so the enhanced uplift is applied in the DTO that
-     * owns it and never restated here.
+     * owns it and never restated here. $inAccount is the named account's own balance, which caps
+     * what a purchased life annuity may draw ({@see drawAnnuityPriceFromAccount}).
      *
      * @return array<string, mixed>
      */
-    private static function annuityState(string $ownerId, AnnuityPurchase $a, ?AccountType $source): array
+    private static function annuityState(string $ownerId, AnnuityPurchase $a, ?AccountType $source, int $inAccount = 0): array
     {
         return [
             'ownerId' => $ownerId,
@@ -3213,6 +3216,8 @@ final class PathProjector
             'escalation' => $a->escalation,
             'survivorFraction' => $a->survivorFraction?->asFraction(),
             'source' => $source,
+            // Nominal pence, grown with its wrapper each year ({@see growState}).
+            'inAccount' => $inAccount,
             'purchased' => false,
             'active' => false,
             'baseIncomeNominal' => 0,
@@ -3273,7 +3278,7 @@ final class PathProjector
                     $taxFreeCash[$pid] = ($taxFreeCash[$pid] ?? 0) + $draw['taxFree'];
                 }
             } else {
-                $bought = $this->drawAnnuityPriceFromAccount($state, $pid, $annuity['source'], $annuity['amount'], $realisedGains);
+                $bought = $this->drawAnnuityPriceFromAccount($state, $pid, $annuity['source'], $annuity['inAccount'], $annuity['amount'], $realisedGains);
             }
 
             $annuity['purchased'] = true;
@@ -3355,21 +3360,21 @@ final class PathProjector
 
     /**
      * Draw an annuity's purchase price out of ONE named non-pension wrapper — the account the
-     * purchase hangs off. Capped at what is in it: an account that cannot fund the whole price
-     * buys a smaller annuity rather than conjuring money. A GIA sale realises its share of the
-     * unrealised gain, accumulated into $realisedGains so the year's CGT charge sees it.
+     * purchase hangs off. Capped at what is in it ($inAccount): an account that cannot fund the
+     * whole price buys a smaller annuity rather than conjuring money, and never reaches into the
+     * owner's other accounts of the same wrapper. The state pools those accounts, so $inAccount is
+     * the named account's own balance, grown with its wrapper ({@see growState}) and RING-FENCED:
+     * spending is read as coming out of the owner's other money in the wrapper first, as a planned
+     * purchase would be, and reaches this account only once the pool has fallen below it. A GIA
+     * sale realises its share of the unrealised gain, accumulated into $realisedGains so the year's
+     * CGT charge sees it.
      *
      * @param  array<string, int>  $realisedGains
      */
-    private function drawAnnuityPriceFromAccount(array &$state, string $pid, AccountType $source, int $needed, array &$realisedGains): int
+    private function drawAnnuityPriceFromAccount(array &$state, string $pid, AccountType $source, int $inAccount, int $needed, array &$realisedGains): int
     {
-        $key = match ($source) {
-            AccountType::Cash, AccountType::PremiumBonds => 'cash',
-            AccountType::Gia => 'gia',
-            AccountType::Isa => 'isa',
-        };
-
-        $take = min($needed, $state[$key][$pid] ?? 0);
+        $key = self::accountBucket($source);
+        $take = min($needed, $inAccount, $state[$key][$pid] ?? 0);
         if ($take <= 0) {
             return 0;
         }
@@ -3382,6 +3387,16 @@ final class PathProjector
         $state[$key][$pid] -= $take;
 
         return $take;
+    }
+
+    /** The pooled state balance a non-pension account lives in. */
+    private static function accountBucket(AccountType $type): string
+    {
+        return match ($type) {
+            AccountType::Cash, AccountType::PremiumBonds => 'cash',
+            AccountType::Gia => 'gia',
+            AccountType::Isa => 'isa',
+        };
     }
 
     /** The mortality table behind the purchased-life-annuity capital element, built once per path. */
@@ -5081,9 +5096,20 @@ final class PathProjector
             $cashGrown = (int) round($v * (1.0 + $cashCapital));
             $giaGrown = (int) round($state['gia'][$pid] * (1.0 + $giaCapital));
             $isaGrown = (int) round($state['isa'][$pid] * (1.0 + $investNominal));
+            $wrapperBefore = ['cash' => $v, 'gia' => $state['gia'][$pid], 'isa' => $state['isa'][$pid]];
             $state['cash'][$pid] = $cashGrown; // cash bears no ongoing charge
             $state['gia'][$pid] = $charged($giaGrown);
             $state['isa'][$pid] = $charged($isaGrown);
+            // A named account waiting to buy an annuity grows as its wrapper did, net of charges.
+            foreach ($state['annuities'] as &$annuity) {
+                if ($annuity['source'] !== null && ! $annuity['purchased'] && $annuity['ownerId'] === $pid) {
+                    $key = self::accountBucket($annuity['source']);
+                    $annuity['inAccount'] = $wrapperBefore[$key] > 0
+                        ? (int) round($annuity['inAccount'] * $state[$key][$pid] / $wrapperBefore[$key])
+                        : $annuity['inAccount'];
+                }
+            }
+            unset($annuity);
             $grown = $cashGrown + $giaGrown + $isaGrown;
             foreach ($state['pots'][$pid] as &$pot) {
                 // A per-pot growth override grows that pot at its own real rate; otherwise the

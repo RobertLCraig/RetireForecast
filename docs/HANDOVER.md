@@ -9,6 +9,12 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A purchased life annuity buys only with its own account's money.** Card 0060 #1. The named
+  account's balance is ring-fenced beside the pooled wrapper and grown with it; spending takes the
+  owner's other money in that wrapper first. `ENGINE_VERSION` is
+  `finance-engine/annuity-capped-at-its-named-account`; the **re-run is owed** for plans with an
+  account annuity beside another account of the same wrapper.
+
 - **A park home that is sold pays the site owner's commission.** Card 0059 #2. Year-0 and forced
   sales now take it, itemised. `ENGINE_VERSION` is `finance-engine/park-home-sale-pays-commission`;
   the **re-run is owed** for plans that sell a park home.
