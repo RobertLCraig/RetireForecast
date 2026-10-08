@@ -991,19 +991,29 @@ final class ResultPresenter
         // neither (board card 0063). Both move the answer: the trigger decides how often the
         // household is modelled cutting back and the cut decides by how much, so a plan's odds
         // rest on them. Read from the constants that own them, so re-sourcing one moves this
-        // sentence with it.
+        // sentence with it. Only the figure the reader left blank is ours: one they typed is never
+        // restated as an assumption.
         $guardrail = $profile->spendingGuardrail;
         if ($guardrail !== null && ($guardrail->triggerIsAssumed() || $guardrail->cutIsAssumed())) {
             $trigger = self::ratePct($guardrail->triggerFundedRatio()->asFraction());
             $cut = self::ratePct($guardrail->discretionaryCut()->asPercent());
-            $out[] = "You turned on the spending guardrail without saying where it should bite or how hard, so we've "
-                .'assumed you cut back whenever your savings and pensions are worth less than the essential spending '
-                ."the plan still has to fund (a funded ratio of {$trigger}), and that what you cut is {$cut}% of your "
-                .'discretionary spending. These are the cautious end of the published rules: a '
-                .'funded ratio of 1 is simply assets equal to the spending they have to meet, so this waits until the '
-                .'plan is genuinely short rather than trimming early, and a tenth off discretionary spending is a '
-                .'change a household could really make and keep. A guardrail only ever makes a plan look better, so '
-                .'set your own figures if you know what you would actually cut, and by how much.';
+            $triggerClause = 'you cut back whenever your savings and pensions are worth less than the essential spending '
+                ."the plan still has to fund (a funded ratio of {$trigger})";
+            $cutClause = "what you cut is {$cut}% of your discretionary spending";
+            $triggerWhy = 'a funded ratio of 1 is simply assets equal to the spending they have to meet, so this waits '
+                .'until the plan is genuinely short rather than trimming early';
+            $cutWhy = 'a tenth off discretionary spending is a change a household could really make and keep';
+            $out[] = match (true) {
+                $guardrail->triggerIsAssumed() && $guardrail->cutIsAssumed() => 'You turned on the spending guardrail '
+                    ."without saying where it should bite or how hard, so we've assumed {$triggerClause}, and that "
+                    ."{$cutClause}. These are the cautious end of the published rules: {$triggerWhy}, and {$cutWhy}.",
+                $guardrail->triggerIsAssumed() => 'You set how hard your spending guardrail cuts but not where it '
+                    ."should bite, so we've assumed {$triggerClause}. That is the cautious end of the published rules: "
+                    ."{$triggerWhy}.",
+                default => 'You set where your spending guardrail bites but not how hard it cuts, so we\'ve assumed '
+                    ."that {$cutClause}. That is the cautious end of the published rules: {$cutWhy}.",
+            }.' A guardrail only ever makes a plan look better, so set your own figures if you know what you would '
+                .'actually cut, and by how much.';
         }
 
         // The rate the pension part of SPENDABLE wealth was netted at (board card 0076). A pot is

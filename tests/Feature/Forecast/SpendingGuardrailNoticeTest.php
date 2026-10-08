@@ -134,6 +134,29 @@ class SpendingGuardrailNoticeTest extends TestCase
         $this->assertSame([], $assumed);
     }
 
+    public function test_a_half_specified_guardrail_discloses_only_the_figure_we_assumed(): void
+    {
+        // A reader who typed one figure and left the other blank is running ONE engine figure.
+        // Only that one is ours to disclose: the one they typed must not be presented as assumed.
+        $assumedText = fn (array $guardrail): string => implode(' ', array_column(array_filter(
+            $this->notes($this->state(true, guardrail: $guardrail)),
+            static fn (array $n): bool => $n['kind'] === 'assumed_figure' && str_contains($n['text'], 'guardrail'),
+        ), 'text'));
+
+        $cut = rtrim(rtrim(number_format(Percent::fromBasisPoints(SpendingGuardrail::DEFAULT_DISCRETIONARY_CUT_BPS)->asPercent(), 2), '0'), '.').'%';
+        $trigger = 'funded ratio of '.rtrim(rtrim(number_format(Percent::fromBasisPoints(SpendingGuardrail::DEFAULT_TRIGGER_FUNDED_RATIO_BPS)->asFraction(), 2), '0'), '.');
+
+        $triggerTyped = $assumedText(['guardrailTriggerRatio' => '1.25']);
+        $this->assertStringContainsString($cut, $triggerTyped, 'the blank cut is ours, so it is disclosed');
+        $this->assertStringNotContainsString('1.25', $triggerTyped, 'the typed trigger is the reader\'s, not ours');
+        $this->assertStringNotContainsString('without saying where it should bite', $triggerTyped);
+
+        $cutTyped = $assumedText(['guardrailCutPct' => '20']);
+        $this->assertStringContainsString($trigger, $cutTyped, 'the blank trigger is ours, so it is disclosed');
+        $this->assertStringNotContainsString('20%', $cutTyped, 'the typed cut is the reader\'s, not ours');
+        $this->assertStringNotContainsString('without saying where it should bite', $cutTyped);
+    }
+
     public function test_the_readers_own_trigger_and_cut_reach_the_household(): void
     {
         // The editable half of the criterion: what the builder stores is what the engine runs.

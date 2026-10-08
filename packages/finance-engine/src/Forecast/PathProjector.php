@@ -1497,29 +1497,22 @@ final class PathProjector
         // is read at the year's OPEN: the drawdown that funds this year has not run yet, and a ratio
         // taken after it would describe a household that had already spent the money the rule is
         // deciding about.
+        //
+        // Only the wealth and the size of the cut are settled here. WHETHER it bites is decided
+        // inside the pass below, once the year's essential floor is whole: the mortgage payment,
+        // rent, running costs, council tax and care are all added to it there, and a ratio read
+        // before them counted a renter's or a borrower's floor without its biggest bill.
         $guardrailCutNominal = 0;
         $guardrailNoFlexibility = false;
         $guardrail = $household->expenseProfile->spendingGuardrail;
         if ($guardrail !== null) {
-            $essentialThisYearNominal = (int) round($essentialPence * $state['spendFactor'] * $survivor);
-            $usable = $this->sum($state['cash']) + $this->sum($state['gia']) + $this->sum($state['isa']) + $this->totalPots($state);
-            $bites = $guardrail->bites(
-                Money::fromPence($usable),
-                Money::fromPence($essentialThisYearNominal * $this->yearsRemaining($household, $draws, $alive, $ages)),
-            );
-            if ($bites) {
-                $discretionaryPence = max(0, $targetPence - $essentialPence);
-                // A household whose whole spend is its essential floor has nothing to cut, so the
-                // guardrail cannot help it. That is the finding, not a no-op: it is raised as a
-                // warning rather than left as a silent zero.
-                $guardrailNoFlexibility = $discretionaryPence === 0;
-                $targetBeforeCut = $targetPence;
-                $targetPence -= $guardrail->cutFrom(Money::fromPence($discretionaryPence))->pence;
-                // Both sides of the cut are taken through the SAME nominal expression the spend
-                // below is, so what the year reports having trimmed is exactly what it trimmed.
-                $guardrailCutNominal = (int) round($targetBeforeCut * $state['spendFactor'] * $survivor)
-                    - (int) round($targetPence * $state['spendFactor'] * $survivor);
-            }
+            $guardrailUsable = $this->sum($state['cash']) + $this->sum($state['gia']) + $this->sum($state['isa']) + $this->totalPots($state);
+            $guardrailYearsLeft = $this->yearsRemaining($household, $draws, $alive, $ages);
+            $discretionaryPence = max(0, $targetPence - $essentialPence);
+            // Both sides of the cut are taken through the SAME nominal expression the spend
+            // below is, so what the year reports having trimmed is exactly what it trimmed.
+            $guardrailCutIfBites = (int) round($targetPence * $state['spendFactor'] * $survivor)
+                - (int) round(($targetPence - $guardrail->cutFrom(Money::fromPence($discretionaryPence))->pence) * $state['spendFactor'] * $survivor);
         }
 
         $spendNominal = (int) round($targetPence * $state['spendFactor'] * $survivor) + $oneOffTotalNominal + $repayOneOff;
@@ -1720,6 +1713,23 @@ final class PathProjector
                 $spendNominal += $careChargedNominal;
                 $essentialNominal += $careChargedNominal;
                 $state['careRealTotal'] += (int) round($careChargedNominal / $state['spendFactor']);
+            }
+
+            // The spending guardrail's test (see above), against the essential floor the year
+            // reports. Re-decided every pass, because the floor carries the rent and council tax
+            // the pass's award relieves.
+            $guardrailCutNominal = 0;
+            $guardrailNoFlexibility = false;
+            if ($guardrail !== null && $guardrail->bites(
+                Money::fromPence($guardrailUsable),
+                Money::fromPence($essentialNominal * $guardrailYearsLeft),
+            )) {
+                // A household whose whole spend is its essential floor has nothing to cut, so the
+                // guardrail cannot help it. That is the finding, not a no-op: it is raised as a
+                // warning rather than left as a silent zero.
+                $guardrailNoFlexibility = $discretionaryPence === 0;
+                $guardrailCutNominal = $guardrailCutIfBites;
+                $spendNominal -= $guardrailCutNominal;
             }
 
             // CGT on GIA gains realised AT the base date ({@see Household::$realisedGainsAtStart} —

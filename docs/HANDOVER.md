@@ -9,6 +9,11 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **The spending guardrail counts the whole essential floor.** Card 0063 #1. Its bite test now
+  runs inside the Pension Credit pass, after rent, the mortgage payment, running costs, council tax
+  and care join the floor. `ENGINE_VERSION` is `finance-engine/guardrail-counts-the-whole-essential-floor`;
+  the **re-run is owed** for guardrail plans with any of those costs.
+
 - **A purchased life annuity buys only with its own account's money.** Card 0060 #1. The named
   account's balance is ring-fenced beside the pooled wrapper and grown with it; spending takes the
   owner's other money in that wrapper first. `ENGINE_VERSION` is

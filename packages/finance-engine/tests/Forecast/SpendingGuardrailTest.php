@@ -71,12 +71,14 @@ final class SpendingGuardrailTest extends TestCase
         int $cash = 100_000,
         int $discretionary = self::DISCRETIONARY,
         array $incomeStreams = [],
+        int $essential = self::ESSENTIAL,
+        ?int $rent = null,
     ): array {
         $household = new Household(
             'Guardrail', RegionProfile::EnglandWalesNi,
             [new Person('p1', new DateTimeImmutable('1958-01-01'), Sex::Female, EmploymentStatus::Retired)],
             new ExpenseProfile(
-                Money::fromPounds(self::ESSENTIAL),
+                Money::fromPounds($essential),
                 Money::fromPounds($discretionary),
                 // 100%, so a single-person household's survivor factor never scales anything.
                 Percent::fromPercent(100),
@@ -87,8 +89,24 @@ final class SpendingGuardrailTest extends TestCase
         );
 
         return (new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
-            ->forecast($household, $this->flat(), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'))
+            ->forecast($household, $this->flat(), new ForecastSettings(
+                baseYear: 2026, baseTaxYear: '2026-27',
+                annualRent: $rent === null ? null : Money::fromPounds($rent),
+            ))
             ->years;
+    }
+
+    public function test_a_renters_rent_counts_as_essential_spend_still_to_fund(): void
+    {
+        // The rent is an essential cost the year reports as essential, so the funded ratio must
+        // count it. £300,000 against £6,000 a year of essentials alone is funded for life; against
+        // the £18,000 the year really has to meet (the £12,000 rent included) it is short, so the
+        // guardrail bites. Counting only the expense-profile floor left a renter's ratio inflated
+        // threefold and the rule asleep.
+        $years = $this->years(new SpendingGuardrail, cash: 300_000, essential: 6_000, rent: 12_000);
+
+        $this->assertSame(Money::fromPounds(18_000)->pence, $years[0]->essentialSpend->pence, 'the year reports the rent as essential');
+        $this->assertSame(Money::fromPounds(600)->pence, $years[0]->guardrailReduction()->pence, 'so the ratio counts it and the cut bites');
     }
 
     public function test_no_guardrail_spends_the_same_in_real_terms_whatever_happens(): void

@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-08 (annuity-capped-at-its-named-account): a purchased life annuity now buys only
+     * Bumped 2026-10-08 (guardrail-counts-the-whole-essential-floor): the spending guardrail's
+     * funded ratio now counts the year's whole essential floor, the mortgage payment, rent, running
+     * costs, council tax and care included. It counted only the expense-profile floor, so a renting
+     * or mortgaged household's ratio was inflated and the guardrail barely bit. A plan with no
+     * guardrail is byte-identical. Board card 0063 #1.
+     * Previous bump 2026-10-08 (annuity-capped-at-its-named-account): a purchased life annuity now buys only
      * with the money in the account it hangs off. It used to draw on the owner's pooled balance in
      * that wrapper, so a small cash account beside other cash or premium bonds bought the whole
      * price and overstated the secured income. A plan with no account annuity, or one whose owner
@@ -538,7 +543,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/annuity-capped-at-its-named-account';
+    public const ENGINE_VERSION = 'finance-engine/guardrail-counts-the-whole-essential-floor';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
