@@ -32,8 +32,8 @@ Withdrawal sequencing across wrappers, which is card 0007.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 THE APP SHALL offer a spending guardrail that reduces discretionary spend when wealth falls below a trigger, and restores it on recovery.
-- [ ] #2 THE APP SHALL expose the trigger and the reduction as editable inputs with a sourced default.
+- [x] #1 THE APP SHALL offer a spending guardrail that reduces discretionary spend when wealth falls below a trigger, and restores it on recovery.
+- [x] #2 THE APP SHALL expose the trigger and the reduction as editable inputs with a sourced default.
 - [x] #3 WHEN a guardrail is in use, THE APP SHALL report how many years it bit and by how much.
 - [x] #4 WHEN a household has no discretionary spend left to cut, THE APP SHALL say so.
 <!-- AC:END -->
@@ -161,3 +161,25 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #1 and #2 because both breakage findings still hold on `master`. #2: `ResultPresenter::assumedFigures` fires on `triggerIsAssumed() || cutIsAssumed()` but tells the reader they gave neither figure and states both, so a trigger the reader typed is presented as ours. #1: in `PathProjector::projectYear` the guardrail's essential spend is read from `$essentialPence` after the mortgage payment and property costs have been taken out of it, so a mortgaged or renting household's funded ratio is inflated and the guardrail barely bites. No test builds a mixed-blank guardrail or a mortgaged or renting household with one.
+
+**2026-10-08** RESULT: done
+TESTS: +2 new, all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php
+TOUCHED: packages/finance-engine/tests/Forecast/SpendingGuardrailTest.php
+TOUCHED: app/Forecast/ResultPresenter.php
+TOUCHED: app/Forecast/ScenarioForecaster.php
+TOUCHED: tests/Feature/Forecast/SpendingGuardrailNoticeTest.php
+TOUCHED: docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+Fixed both reopened breakage findings, in commit dbe373c.
+
+#1: `PathProjector::projectYear` now settles the wealth, the years left and the size of the cut before the Pension Credit pass, but decides WHETHER the guardrail bites inside the pass, after care, against `$essentialNominal`: the same essential floor the year reports, with the mortgage payment, rent (net of Housing Benefit), running costs, council tax and care in it, and SMI met taken out. Re-decided every pass, because the award moves rent and council tax. `test_a_renters_rent_counts_as_essential_spend_still_to_fund` (a renter on 6,000 essentials plus 12,000 rent, 300,000 cash) was watched failing with a 0 cut where 600 was due, then passing; a second take re-ran it against the pre-fix projector and saw the same 0-vs-60000 failure. Only the rent case is built; the mortgage, council tax and care cases ride the same `$essentialNominal`, so no separate fixture was written for each. Care in the floor is multiplied by the years left like the rest of it, so a care year bites hard; that follows the docblock's 'this year's essential floor' definition and is the reviewer's own reading.
+
+#2: `ResultPresenter::assumedFigures` now writes one of three sentences: both blank (unchanged words), trigger blank only, cut blank only. A figure the reader typed is never restated. `test_a_half_specified_guardrail_discloses_only_the_figure_we_assumed` was watched failing on the typed 1.25 appearing in the assumed note, then passing.
+
+`ENGINE_VERSION` bumped to `finance-engine/guardrail-counts-the-whole-essential-floor`; a plan with no guardrail is byte-identical, and the re-run is owed only for guardrail plans with rent, a mortgage, running costs, council tax or care. Golden master did not move (the guardrail is opt-in). #3 and #4 were already met and are unchanged.
+
+Second take: the worktree opened with uncommitted edits that reverted the fix and deleted the rent test (the resumed-worktree pattern). Restored both from HEAD; no new commit was needed. Full suite and pint green on this take.
+
+The two new note sentences are not seen in a browser: built in a worktree, so that check is still owed. The default figures are still stated, not verified (card 0138).
