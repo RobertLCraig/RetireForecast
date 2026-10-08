@@ -34,8 +34,8 @@ The care means test itself, which is card 0055.
 <!-- AC:BEGIN -->
 - [x] #1 WHEN the last surviving borrower enters permanent residential care and the home carries a roll-up balance, THE APP SHALL sell the home and repay the balance in that year.
 - [x] #2 WHEN that happens, THE APP SHALL reassess the household on its new capital position with no home.
-- [ ] #3 THE APP SHALL state this redemption trigger wherever an equity-release plan is displayed.
-- [ ] #4 WHEN the home is sold because every living person has entered care, THE APP SHALL NOT charge rent for those years.
+- [x] #3 THE APP SHALL state this redemption trigger wherever an equity-release plan is displayed.
+- [x] #4 WHEN the home is sold because every living person has entered care, THE APP SHALL NOT charge rent for those years.
 <!-- AC:END -->
 
 ## Tasks
@@ -151,3 +151,24 @@ VERDICT: defect
 **2026-09-07** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #3 and added #4 because both findings hold on main. #3: the help text under `property-mortgageRollUpRate` in `scenario-builder.blade.php` still says the balance is repaid "when the home is eventually sold", with no mention of care, on the one screen where an equity-release plan is entered. #4: `PathProjector::projectYear()` charges rent whenever `annualRent !== null && ! $ownsHome`, so a household all in care after the care-triggered sale pays rent and the full care fee; `LifetimeMortgageCareRedemptionTest` never sets `annualRent`. Also for the builder: the roll-up note's new last-year-with-property loop in `ResultPresenter::inputNotes()` changes the figures for a maturity forced sale and is untested.
+
+**2026-10-08** RESULT: done
+TESTS: +2 new, all green
+TOUCHED:
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Forecast/LifetimeMortgageCareRedemptionTest.php
+resources/views/livewire/scenario-builder.blade.php
+tests/Feature/Livewire/ScenarioBuilderTest.php
+app/Forecast/ScenarioForecaster.php
+docs/HANDOVER.md
+docs/board/todo/0185-a-renter-everyone-in-care-still-pays-rent.md
+docs/board/todo/0186-the-roll-up-note-on-a-maturity-forced-sale-is-untested.md
+OUT-OF-SCOPE: 0185, 0186
+
+#1 and #2 were built on 2026-09-07 and their tests still pass; nothing changed there.
+
+#4: `test_no_rent_is_charged_once_the_home_is_sold_for_care` runs the property-rich lone resident with and without a GBP 12,000 post-sale rent and asserts equal essential spend in every care year. Watched red first: 2028 was GBP 12,000 higher with rent. Fix in `PathProjector::projectYear()`: the at-home count (already used for council tax) moved above the rent, and rent is skipped when the household had a home and nobody living is at home. That also covers a maturity forced sale followed by everyone entering care, which is the same situation. A household that rents from year 0 is NOT covered, because the criterion says 'the home is sold'; raised as 0185. `ENGINE_VERSION` is now `finance-engine/no-rent-while-everyone-is-in-care`, with its paragraph in the stamp log; the stored-scenario re-run is owed for plans with a rent figure, a sale and a care spell.
+
+#3: `test_the_roll_up_field_states_the_care_redemption_trigger` opens builder step 3 and asserts the roll-up help text names the care trigger. Watched red first on the missing sentence (the field rendered). The help text now says the balance is repaid on sale, at the last borrower's death, or when the last surviving borrower moves permanently into residential care, and that the forecast sells the home in the first year everyone still living is in care. It makes no claim about the twelve-week disregard or deferred payments (the review's over-the-fence finding). The results note and PDF already carried the trigger. The new help text has NOT been seen in a browser (worktree).
+
+The manager pass also flagged the untested last-year-with-property loop in `ResultPresenter::inputNotes()` for a maturity forced sale. It is not a criterion of this card, so it is raised as 0186 rather than tested here.
