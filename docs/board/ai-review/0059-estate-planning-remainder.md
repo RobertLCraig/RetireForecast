@@ -41,7 +41,7 @@ Gift with reservation of benefit and deprivation warnings, which are card 0049.
 ## Acceptance
 <!-- AC:BEGIN -->
 - [x] #1 WHEN a home is a park home or similar chattel, THE APP SHALL NOT claim the residence nil-rate band against it.
-- [ ] #2 WHEN a park home is valued at the end of a plan, THE APP SHALL deduct the site owner's commission and say it cannot be left to a non-resident.
+- [x] #2 WHEN a park home is valued at the end of a plan, THE APP SHALL deduct the site owner's commission and say it cannot be left to a non-resident.
 - [x] #3 WHEN nursing care is charged, THE APP SHALL deduct the NHS funded nursing care contribution, sourced and dated.
 - [x] #4 THE APP SHALL explain that Continuing Healthcare, if awarded, removes the care charge entirely.
 - [x] #5 THE APP SHALL record beneficial shares in a property, defaulting to equal shares and disclosing that default.
@@ -189,3 +189,29 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 5 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 5 of 5 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #2 because the finding holds on main. `Property::netOfSaleCommission()` is still called only from `PathProjector::netHomeValue()` (estate and care means test). A park home actually sold in the plan goes through `HousingProceeds::compute()` from `PathProjector::sellHome()` and `HousingComparison::saleProceeds()`, which know nothing of the site owner's commission, so proceeds, later wealth and the estate are overstated by it. Deduct it on every sale and test a chattel home plus a sale. Also for the builder: the park-home fallback in `Property::isChattelDwelling()` is disclosed as an `inputNotes()` `chattel_dwelling` note, not an `assumedFigures()` entry, so `scenarios:audit` does not count it.
+
+**2026-10-08** RESULT: done
+TESTS: +2 new, all green
+TOUCHED:
+- packages/finance-engine/src/Housing/HousingProceeds.php
+- packages/finance-engine/src/Housing/HousingComparison.php
+- packages/finance-engine/src/Forecast/PathProjector.php
+- packages/finance-engine/src/Dto/Property.php
+- packages/finance-engine/tests/Housing/ChattelDwellingSaleTest.php (new)
+- app/Forecast/ResultPresenter.php
+- app/Forecast/ScenarioForecaster.php
+- docs/HANDOVER.md
+- docs/board/todo/0187-the-park-home-guess-is-not-an-assumed-figure.md (new)
+OUT-OF-SCOPE: 0187
+
+**#2 reopened finding fixed at the shared function, not per caller.** `HousingProceeds::compute()` takes a new optional `$siteCommission` and appends it as an itemised selling-cost line (`SITE_COMMISSION_LABEL`), on top of entered or defaulted costs. Both sale paths pass `Property::saleCommissionRate()`: `HousingComparison::saleProceeds()` (year-0 sell and rent/downsize variants) and the forced sale in `PathProjector` (maturity or care-triggered). Because it is a selling cost, the waterfall still reconciles to the sale price, and it also comes off the CGT gain, which is right for an incidental cost of disposal.
+
+**Watched failing first.** With only the label constant added, both new tests failed on the money: `0 is identical to 4000000` (no commission taken) for the year-0 sale and for the forced sale. Green after the fix. The forced-sale test runs on a flat economy with no income, so the liquid-wealth gap after the sale is exactly the 10% commission.
+
+**Left alone on purpose.** The downsizing-addition disposal value (`ResidenceDisposal`) stays gross of the commission: it measures the interest disposed of, not the cash kept. The wealth line stays gross while the home is held, as the first build decided.
+
+**Consequences.** `ENGINE_VERSION` is `finance-engine/park-home-sale-pays-commission`; the stored-scenario re-run is owed for plans that sell a park home. The Monte Carlo golden master did not move. The `chattel_dwelling` note now says the commission comes off any sale the plan makes. Two docblocks that claimed `netOfSaleCommission()` was the one home of the arithmetic were corrected.
+
+**The reviewer's second finding is carded, not fixed here.** The derived park-home reading is disclosed inside the `chattel_dwelling` note, not as an `assumedFigures()` entry, so `scenarios:audit` does not count it. That is about criterion #1's fallback, not #2's arithmetic, so it is card 0187.
+
+**Not seen in a browser** (built in a worktree). The new itemised commission line in any sale breakdown and the reworded note need a look. The 10% rate itself is still STATED, not verified; card 0135 carries that.
