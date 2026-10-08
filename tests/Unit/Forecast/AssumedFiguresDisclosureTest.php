@@ -530,7 +530,7 @@ final class AssumedFiguresDisclosureTest extends TestCase
      * @param  list<array<string, mixed>>  $pensions
      * @return list<string>
      */
-    private function disclosuresFor(array $pensions, string $dob = '1966-01-01', ?ForecastSettings $settings = null, bool $couple = false): array
+    private function disclosuresFor(array $pensions, string $dob = '1966-01-01', ?ForecastSettings $settings = null, bool $couple = false, string $relationship = 'married_or_civil_partnership'): array
     {
         $people = [['id' => 'p1', 'dob' => $dob, 'sex' => 'female', 'employmentStatus' => 'retired']];
         if ($couple) {
@@ -539,7 +539,7 @@ final class AssumedFiguresDisclosureTest extends TestCase
 
         $state = [
             'householdName' => 'Savers', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
-            'relationshipStatus' => 'married_or_civil_partnership',
+            'relationshipStatus' => $relationship,
             'people' => $people,
             'pensions' => $pensions,
             'accounts' => [['id' => 'a1', 'ownerId' => 'p1', 'type' => 'isa', 'balance' => '50000']],
@@ -630,6 +630,24 @@ final class AssumedFiguresDisclosureTest extends TestCase
             [['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000', 'earliestAccessAge' => '57']],
             settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelIht: true),
             couple: true,
+        );
+
+        $note = $this->only($disclosures, 'nominated');
+        $this->assertStringContainsString('expression of wish', $note);
+    }
+
+    /**
+     * A cohabiting couple can nominate each other too, and whether a pot stays in the household
+     * decides the beneficiary's income tax at the first death, so the unanswered nomination is an
+     * assumed figure for them as well.
+     */
+    public function test_an_unanswered_pension_nomination_is_disclosed_to_a_cohabiting_couple(): void
+    {
+        $disclosures = $this->disclosuresFor(
+            [['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '200000', 'earliestAccessAge' => '57']],
+            settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', modelIht: true),
+            couple: true,
+            relationship: 'cohabiting',
         );
 
         $note = $this->only($disclosures, 'nominated');

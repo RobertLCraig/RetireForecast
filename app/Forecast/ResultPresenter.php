@@ -1286,6 +1286,15 @@ final class ResultPresenter
                 .'pass to them is taxed on the first death instead of the second. We have assumed the more '
                 .'expensive answer rather than give you an allowance on a form we have never seen. Check the '
                 .'nomination with each provider and enter it: it is the single easiest thing on this page to fix.';
+        } elseif ($nominationUnasked && count($household->persons) === 2 && $settings?->modelIht === true) {
+            // Cohabiting: no spouse exemption either way, but a pot nominated to the partner stays in
+            // the household and is not charged the beneficiary's income tax at the first death.
+            $out[] = "You didn't tell us who your pensions are nominated to, so we have assumed they are NOT left "
+                .'to your partner. A pension is not covered by your will: the scheme pays whoever your expression '
+                .'of wish form names, at its own discretion. Because you are not married or in a civil partnership, '
+                .'a pot is taxed on the first death whoever it goes to, but one that goes to somebody outside your '
+                .'household is also taxed again as their income when they draw it. We have assumed the more '
+                .'expensive answer. Check the nomination with each provider and enter it.';
         }
 
         // HOW MUCH OF EACH POT IS ALREADY IN DRAWDOWN (board card 0080). A pot that has had its

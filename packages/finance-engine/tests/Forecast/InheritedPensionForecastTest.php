@@ -39,7 +39,7 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 final class InheritedPensionForecastTest extends TestCase
 {
     /** Both deaths are past 75 and past April 2027, so both charges are in play. */
-    private function couple(?PensionBeneficiary $nomination): Household
+    private function couple(?PensionBeneficiary $nomination, RelationshipStatus $status = RelationshipStatus::MarriedOrCivilPartnership): Household
     {
         return new Household(
             'Estate',
@@ -60,7 +60,7 @@ final class InheritedPensionForecastTest extends TestCase
                 new Account('p2', AccountType::Cash, Money::fromPounds(500_000)),
             ],
             primaryResidence: new Property(Money::fromPounds(600_000), OwnershipType::Outright),
-            relationshipStatus: RelationshipStatus::MarriedOrCivilPartnership,
+            relationshipStatus: $status,
         );
     }
 
@@ -128,5 +128,27 @@ final class InheritedPensionForecastTest extends TestCase
         $elsewhere = $this->forecast($this->couple(PensionBeneficiary::SomeoneElse))->iht;
 
         $this->assertSame($elsewhere->firstDeath->tax->pence, $unasked->firstDeath->tax->pence);
+    }
+
+    public function test_a_pot_nominated_to_a_cohabiting_partner_is_not_charged_the_beneficiarys_income_tax_at_the_first_death(): void
+    {
+        // A cohabiting partner gets no spouse exemption, so the pot is chargeable to Inheritance
+        // Tax at the first death whatever the nomination. But a pot nominated to them stays in the
+        // household, where the projector taxes every withdrawal the survivor makes from it, so it
+        // must not ALSO be charged the beneficiary's income tax here. Marital status must not
+        // decide that; the nomination does.
+        $toPartner = $this->forecast($this->couple(PensionBeneficiary::SpouseOrCivilPartner, RelationshipStatus::Cohabiting))->iht;
+        $elsewhere = $this->forecast($this->couple(PensionBeneficiary::SomeoneElse, RelationshipStatus::Cohabiting))->iht;
+
+        $this->assertTrue($toPartner->firstDeath->tax->isPositive(), 'a cohabiting partner has no spouse exemption');
+        $this->assertSame(
+            0,
+            $toPartner->firstDeath->beneficiaryIncomeTax->pence,
+            'a pot nominated to the surviving cohabiting partner stays in the household and is taxed as they draw it',
+        );
+        $this->assertTrue(
+            $elsewhere->firstDeath->beneficiaryIncomeTax->isPositive(),
+            'a pot nominated away from the household is still charged the beneficiary\'s income tax',
+        );
     }
 }

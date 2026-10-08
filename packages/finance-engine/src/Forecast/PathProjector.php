@@ -365,6 +365,9 @@ final class PathProjector
             pensionNominatedToSpouse: Money::fromPence($this->personPotsNominatedToSpouse($state, $deceased->id)),
             deceasedDiedAtOrAfter75: $draws->deathAge($deceased->id) >= InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE,
             beneficiaryMarginalRate: $settings->beneficiaryMarginalRate(),
+            // A cohabiting partner can be nominated too: settleEstates hands them the pot either
+            // way, so the nomination, not the marriage, decides whether it leaves the household.
+            partnerSurvives: $survivor !== null,
         );
 
         // The band this death CONSUMED, kept in NOMINAL pounds because that is the unit the frozen

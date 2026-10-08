@@ -145,6 +145,7 @@ final class InheritanceTaxCalculator
         ?Money $pensionNominatedToSpouse = null,
         bool $deceasedDiedAtOrAfter75 = false,
         ?Percent $beneficiaryMarginalRate = null,
+        ?bool $partnerSurvives = null,
     ): IhtResult {
         $params = $this->config->iht;
 
@@ -153,13 +154,15 @@ final class InheritanceTaxCalculator
 
         // A pension death benefit passes under the SCHEME's discretion, following the member's
         // expression of wish — not under the will and not under the intestacy rules. So the pot is
-        // held out of the will/intestacy split entirely and exempted only to the extent it is
-        // nominated to the surviving spouse or civil partner. Null (nobody was asked) means none of
-        // it is, which is the adverse answer and the one this engine defaults to.
-        $nominatedToSpouse = $spouseSurvives
+        // held out of the will/intestacy split entirely, and what is nominated to the surviving
+        // partner is decided by the nomination alone. Null (nobody was asked) means none of it is,
+        // which is the adverse answer and the one this engine defaults to. A cohabiting partner
+        // can be nominated too ($partnerSurvives without $spouseSurvives): the pot stays in the
+        // household, but only a spouse or civil partner can take it exempt.
+        $nominatedToSpouse = ($partnerSurvives ?? $spouseSurvives)
             ? Money::min($pensionNominatedToSpouse ?? Money::zero(), $unusedPensionValue)
             : Money::zero();
-        $pensionToSpouse = Money::min($nominatedToSpouse, $pensionsInEstate);
+        $pensionToSpouse = $spouseSurvives ? Money::min($nominatedToSpouse, $pensionsInEstate) : Money::zero();
 
         $intestate = $spouseSurvives && ! $deceasedLeftAWill && $issueTakeUnderIntestacy;
         $nonPensionEstate = $estateExcludingPensions;
@@ -224,7 +227,7 @@ final class InheritanceTaxCalculator
         $beneficiaryRate = $beneficiaryMarginalRate
             ?? Percent::fromBasisPoints(self::DEFAULT_BENEFICIARY_MARGINAL_RATE_BPS);
         // Only the part LEAVING the household is charged here. A pot nominated to the surviving
-        // spouse is inherited by somebody the projector goes on modelling, and it taxes every
+        // partner, married or not, is inherited by somebody the projector goes on modelling, and it taxes every
         // withdrawal they make from it year by year, so restating that here would count the same
         // income tax twice.
         $leavingTheHousehold = $unusedPensionValue->minus($nominatedToSpouse)->minZero();

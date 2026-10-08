@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-08 (no-rent-while-everyone-is-in-care): a household that owned a home and has
+     * Bumped 2026-10-08 (cohabiting-partner-nomination): a pot nominated to a COHABITING partner is
+     * no longer charged the beneficiary's income tax at a post-75 first death, because it stays in
+     * the household and the survivor's withdrawals are taxed as they draw it. Only a cohabiting
+     * couple modelling Inheritance Tax with a partner-nominated pot moves; it was taxed twice. The
+     * Inheritance Tax itself is unchanged: a cohabitee has no spouse exemption. Board card 0057 #3.
+     * Previous bump 2026-10-08 (no-rent-while-everyone-is-in-care): a household that owned a home and has
      * sold it is no longer charged its post-sale rent while every living member is in care, because
      * the care fee is their housing. Only a plan with a rent figure set, a sale and a care spell
      * covering everyone left alive moves; it paid rent on top of the fee. Board card 0056 #4.
@@ -523,7 +528,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/no-rent-while-everyone-is-in-care';
+    public const ENGINE_VERSION = 'finance-engine/cohabiting-partner-nomination';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

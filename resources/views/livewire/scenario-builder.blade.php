@@ -723,10 +723,10 @@
                                     <label for="pensions-{{ $i }}-nominatedBeneficiary" class="{{ $label }}">Nominated to (expression of wish)</label>
                                     <select id="pensions-{{ $i }}-nominatedBeneficiary" wire:model="pensions.{{ $i }}.nominatedBeneficiary" class="{{ $field }}">
                                         <option value="">Not sure yet</option>
-                                        <option value="spouse_or_civil_partner">My husband, wife or civil partner</option>
+                                        <option value="spouse_or_civil_partner">My partner (husband, wife, civil partner, or the partner I live with)</option>
                                         <option value="someone_else">Somebody else (a child, for example)</option>
                                     </select>
-                                    <p class="mt-1 text-xs text-gray-500">A pension is not covered by your will. The scheme pays whoever your expression of wish form names, at its own discretion, so a pot can go to a child even where everything else goes to your partner. From April 2027 that matters for Inheritance Tax: a pot left to your partner is exempt on the first death, one left to anybody else is not. Leave it unset and we assume the more expensive answer, and say so on your results.</p>
+                                    <p class="mt-1 text-xs text-gray-500">A pension is not covered by your will. The scheme pays whoever your expression of wish form names, at its own discretion, so a pot can go to a child even where everything else goes to your partner. From April 2027 that matters for Inheritance Tax: a pot left to your husband, wife or civil partner is exempt on the first death, one left to anybody else is not. A partner you live with but are not married to gets no exemption, but a pot left to them stays in your household rather than being taxed again as somebody else's income. Leave it unset and we assume the more expensive answer, and say so on your results.</p>
                                     @error('pensions.'.$i.'.nominatedBeneficiary') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                                 </div>
                                 <div>

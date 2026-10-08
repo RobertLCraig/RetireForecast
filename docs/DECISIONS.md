@@ -3,6 +3,21 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-08: a pension nominated to "my partner" covers a cohabiting partner
+
+**Context:** card 0057 #3, reopened by review. The beneficiary's income tax at a first death is
+charged only on the part of a pot leaving the household, but "nominated to the partner" was zeroed
+whenever the couple was not married. A cohabiting couple's whole pot was charged it while
+`settleEstates` still handed the pot to the survivor, whose withdrawals are taxed again.
+**Decision:** the existing `PensionBeneficiary::SpouseOrCivilPartner` answer now means the
+surviving partner, married or not; the stored value keeps its name so no saved plan moves.
+`computeFirstDeath` takes a separate `partnerSurvives`: the nomination alone decides what stays in
+the household, and the spouse exemption still needs `spouseSurvives` (a cohabitee has none). An
+unanswered nomination is disclosed to a cohabiting couple too.
+**Why:** one answer for "my partner" is what a reader means; a second enum case would let a married
+couple pick "cohabiting partner" and get no exemption by accident.
+**Status:** active
+
 ## 2026-10-08: whether there are children is its own question, defaulting to yes
 
 **Context:** card 0054 #3, reopened by review. The intestacy split asked "are there issue?" by
