@@ -34,7 +34,7 @@ Annuity rate sourcing and the tax-free lump sum interaction, which are in card 0
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 THE APP SHALL let an annuity be bought from a named non-pension account.
+- [x] #1 THE APP SHALL let an annuity be bought from a named non-pension account.
 - [x] #2 WHEN an annuity is bought with non-pension money, THE APP SHALL tax only the interest element, using the exempt proportion for the buyer's age.
 - [x] #3 THE APP SHALL let an annuity purchase be deferred to a chosen age, with income starting later.
 - [x] #4 THE APP SHALL let an annuity be marked as enhanced for impaired health, at a disclosed uplift.
@@ -164,3 +164,21 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #1 because the 2026-09-08 breakage finding still holds on `master`. `PathProjector::drawAnnuityPriceFromAccount` takes the price from `$state[$key][$pid]`, the person's pooled total for that account TYPE, and never reads the named account's own balance, so a £5,000 cash account can buy a £100,000 annuity when the same person holds other cash. Cap the draw at the named account and add the two-accounts-of-one-type case to `PurchasedLifeAnnuityTest`. The scope finding also stands: the partly-annuitised what-if (Task 4) has no card of its own yet.
+
+**2026-10-08** RESULT: done
+TESTS: +2 new, all green
+TOUCHED:
+- packages/finance-engine/src/Forecast/PathProjector.php
+- packages/finance-engine/tests/Forecast/PurchasedLifeAnnuityTest.php
+- app/Forecast/ScenarioForecaster.php
+- docs/HANDOVER.md
+- docs/board/todo/0188-no-partly-annuitised-what-if-to-compare.md
+OUT-OF-SCOPE: 0188
+
+Fixed the 2026-09-08 breakage finding behind the reopened #1. The state pools each person's accounts per wrapper, so the named account's own balance now rides on the pending annuity (`inAccount`), is grown in `growState` at its wrapper's rate net of charges, and caps `drawAnnuityPriceFromAccount` together with the pool. Watched both new tests fail for the stated reason first: `test_an_annuity_is_capped_at_its_named_account_not_the_owners_other_accounts_of_that_type` (720000 vs 36000: a GBP 5,000 cash account bought GBP 100,000 beside GBP 200,000 of premium bonds) and `test_two_annuities_on_two_accounts_of_one_type_each_buy_from_their_own_account` (600000 vs 500000).
+
+One modelling call, made because the first version broke an existing test honestly: I first capped at the account's pro-rata share of the pool, and `TransitionYearProrationTest::test_annuity_is_prorated_in_the_year_its_income_starts` went red because four years of spending drained the named account pro rata and the planned GBP 100,000 purchase bought GBP 93,000. I changed the code, not the test: the named account is now RING-FENCED, so spending is read as coming from the owner's other money in that wrapper first and reaches the named account only once the pool falls below it. That matches a planned purchase; the reverse reading (spend pro rata) is the alternative if a reviewer prefers it. With two annuities in one drained pool the first to fall due takes what is left.
+
+`ENGINE_VERSION` bumped to `finance-engine/annuity-capped-at-its-named-account`; the re-run is owed only for plans with an account annuity beside another account of the same wrapper. Engine-only change, no UI touched, so no browser check is owed for this pass.
+
+The scope finding (Task 4, the partly-annuitised what-if, had no card) is now card 0188, marked not_for_the_loop because how much to annuitise and at what age is Rob's call. #2 to #4 were already met and reviewed sound; nothing here changed them.
