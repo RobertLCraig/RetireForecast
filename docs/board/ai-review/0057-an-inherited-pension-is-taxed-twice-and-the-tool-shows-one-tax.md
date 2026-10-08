@@ -35,7 +35,7 @@ Whether to spend the pot. That is a decumulation question, cards 0060 and 0063.
 <!-- AC:BEGIN -->
 - [x] #1 WHEN an unused pension passes on a death at or after 75, THE APP SHALL show the beneficiary's income tax alongside the inheritance tax.
 - [x] #2 THE APP SHALL let the assumed beneficiary tax rate be edited, defaulting to the adverse rate and disclosed as an assumed figure.
-- [ ] #3 THE APP SHALL record who each pension is nominated to, and use that rather than marital status when applying the spouse exemption.
+- [x] #3 THE APP SHALL record who each pension is nominated to, and use that rather than marital status when applying the spouse exemption.
 <!-- AC:END -->
 
 ## Tasks
@@ -178,3 +178,30 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #3 because the breakage finding holds on main. `InheritanceTaxCalculator::computeFirstDeath()` still sets `$nominatedToSpouse` to zero whenever `$spouseSurvives` is false, which `PathProjector::recordFirstDeathIht` makes true only for `MarriedOrCivilPartnership`, and `PensionBeneficiary` offers only `SpouseOrCivilPartner` or `SomeoneElse`. So for a cohabiting couple marital status, not the nomination, still decides: the whole pot is charged beneficiary income tax at a post-75 first death, while `PathProjector::settleEstates` hands it to the surviving partner, whose withdrawals are taxed again. Let a pot be nominated to a cohabiting partner and test that case. The child-nominated pot staying in the household is card 0133.
+
+**2026-10-08** RESULT: done
+TESTS: +2 new, all green
+TOUCHED:
+app/Forecast/ResultPresenter.php
+app/Forecast/ScenarioForecaster.php
+docs/DECISIONS.md
+docs/HANDOVER.md
+packages/finance-engine/src/Dto/PensionBeneficiary.php
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/src/Iht/InheritanceTaxCalculator.php
+packages/finance-engine/tests/Forecast/InheritedPensionForecastTest.php
+resources/views/livewire/scenario-builder.blade.php
+tests/Unit/Forecast/AssumedFiguresDisclosureTest.php
+OUT-OF-SCOPE: none
+
+This take worked only #3, the one the manager pass reopened. #1 and #2 were already met and still hold; the whole suite ran green after this change.
+
+The fault: `computeFirstDeath` zeroed "nominated to the partner" whenever the couple was not married, so a cohabiting couple's whole pot was charged the beneficiary's income tax at a post-75 first death while `settleEstates` handed it to the survivor. Fix: `computeFirstDeath` takes a new `partnerSurvives` (PathProjector passes `$survivor !== null`). The nomination alone now decides what stays in the household; the spouse exemption still needs `spouseSurvives`, because a cohabitee has none, so the Inheritance Tax a cohabiting couple pays is unchanged.
+
+Assumed: the existing `spouse_or_civil_partner` answer now means "my partner", married or not. I did not add a second enum case, because it would let a married couple pick "cohabiting partner" and lose the exemption by accident. The stored value keeps its name, so no saved plan moves. The builder option is relabelled to say it covers a partner you live with. DECISIONS 2026-10-08 records this; Rob can reverse it.
+
+An unanswered nomination is now disclosed to a cohabiting couple too (it decides the first-death income tax for them), with its own wording, because the married wording about the exemption is false for them.
+
+Tests watched failing first: `test_a_pot_nominated_to_a_cohabiting_partner_is_not_charged_the_beneficiarys_income_tax_at_the_first_death` failed with 12399038 pence charged where 0 was expected; `test_an_unanswered_pension_nomination_is_disclosed_to_a_cohabiting_couple` failed with no disclosure.
+
+`ENGINE_VERSION` is `finance-engine/cohabiting-partner-nomination`; the stored-scenario re-run is owed for cohabiting plans that model Inheritance Tax. GoldenMasterTest did not redden. The relabelled builder select and the new disclosure text have NOT been seen in a browser (built in a worktree). A pot nominated AWAY from the household that still stays in it is card 0133, untouched.
