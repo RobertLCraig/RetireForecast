@@ -9,10 +9,13 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A park home that is sold pays the site owner's commission.** Card 0059 #2. Year-0 and forced
+  sales now take it, itemised. `ENGINE_VERSION` is `finance-engine/park-home-sale-pays-commission`;
+  the **re-run is owed** for plans that sell a park home.
+
 - **A pension can be nominated to a cohabiting partner.** Card 0057 #3. Such a pot is no longer
-  charged the beneficiary's income tax at the first death. `ENGINE_VERSION` is
-  `finance-engine/cohabiting-partner-nomination`; the **re-run is owed** for cohabiting plans that
-  model Inheritance Tax. The relabelled nomination select is **not seen in a browser**.
+  charged the beneficiary's income tax at the first death. The **re-run is owed** for cohabiting
+  plans that model Inheritance Tax. The relabelled nomination select is **not seen in a browser**.
 
 - **No rent is charged once a sold home's household is all in care.** Card 0056 #4.
   `ENGINE_VERSION` is `finance-engine/no-rent-while-everyone-is-in-care`; the **re-run is owed**

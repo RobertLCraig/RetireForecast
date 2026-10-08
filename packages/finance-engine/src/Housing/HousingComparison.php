@@ -151,6 +151,7 @@ final class HousingComparison
             $household->primaryResidence?->cgtHistory,
             $household->primaryResidence?->ownershipShare,
             $this->config,
+            $household->primaryResidence?->saleCommissionRate(),
         );
     }
 

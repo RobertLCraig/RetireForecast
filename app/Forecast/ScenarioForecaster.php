@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-08 (cohabiting-partner-nomination): a pot nominated to a COHABITING partner is
+     * Bumped 2026-10-08 (park-home-sale-pays-commission): a park home or similar chattel that is SOLD
+     * in the plan, at year 0 by a sell variant or later by a forced sale, now pays the site owner's
+     * commission ({@see Property::MAX_SITE_COMMISSION_BPS}) out of the proceeds. Only the estate and
+     * the care means test took it before, so a plan that sells a park home banked a tenth of the
+     * price it never sees. A plan that sells no chattel home is byte-identical. Board card 0059 #2.
+     * Previous bump 2026-10-08 (cohabiting-partner-nomination): a pot nominated to a COHABITING partner is
      * no longer charged the beneficiary's income tax at a post-75 first death, because it stays in
      * the household and the survivor's withdrawals are taxed as they draw it. Only a cohabiting
      * couple modelling Inheritance Tax with a partner-nominated pot moves; it was taxed twice. The
@@ -528,7 +533,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/cohabiting-partner-nomination';
+    public const ENGINE_VERSION = 'finance-engine/park-home-sale-pays-commission';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

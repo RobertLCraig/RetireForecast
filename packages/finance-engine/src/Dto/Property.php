@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Dto;
 
 use RetireForecast\FinanceEngine\Benefits\CouncilTax;
+use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 
@@ -276,9 +277,10 @@ final class Property
     }
 
     /**
-     * A gross value of this home less the commission the site owner takes when it is sold. The one
-     * home of that arithmetic, so the estate and the care means test cannot value the same bricks
-     * two different ways. An ordinary house is returned untouched.
+     * A gross value of this home less the commission the site owner takes when it is sold, for a
+     * home that is VALUED rather than sold: the estate and the care means test. An ordinary house is
+     * returned untouched. A modelled sale charges the same {@see saleCommissionRate} as an itemised
+     * selling cost inside {@see HousingProceeds::compute()}.
      */
     public function netOfSaleCommission(Money $gross): Money
     {

@@ -441,10 +441,10 @@ final class PathProjector
 
     /**
      * The home's value NET of the site owner's commission on a resale
-     * ({@see Property::netOfSaleCommission}), which is the one home of that arithmetic. An ordinary
-     * house pays no commission and is untouched; a park home's value was overstated by the whole
-     * tenth the site owner takes, and the exit is not optional, so both the estate and the care
-     * means test read it through here (board card 0059).
+     * ({@see Property::netOfSaleCommission}). An ordinary house pays no commission and is
+     * untouched; a park home's value was overstated by the whole tenth the site owner takes, and the
+     * exit is not optional, so both the estate and the care means test read it through here (board
+     * card 0059). A home actually SOLD pays the same rate inside {@see HousingProceeds::compute()}.
      *
      * @param  array<string, mixed>  $state
      */
@@ -2474,6 +2474,7 @@ final class PathProjector
                 $home->cgtHistory,
                 $home->ownershipShare,
                 $this->config,
+                $home->saleCommissionRate(),
             );
             // Reported on the year so a screen states the balance the sale cleared (card 0041 #5):
             // the year's own mortgage balance reads zero once the home is gone.

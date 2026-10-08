@@ -2650,8 +2650,9 @@ final class ResultPresenter
                 .'things follow for what you leave behind. There is no residence nil-rate band on it, because that allowance '
                 .'needs an interest in a dwelling-house, so we do not claim it here, and the estate can pay Inheritance '
                 .'Tax where the same money in a brick house would have been sheltered. And the site owner '
-                ."takes up to {$pct}% of the price on any resale, which we have taken off the value in the estate and in "
-                .'the care means test, because the sale happens sooner or later whatever the plan. One more thing the '
+                ."takes up to {$pct}% of the price on any resale, which we have taken off any sale the plan makes and off "
+                .'the value in the estate and in the care means test, because the sale happens sooner or later whatever '
+                .'the plan. One more thing the '
                 .'figures cannot show: it cannot simply be left to a non-resident. A park home is sold or assigned '
                 .'under the pitch agreement, the site owner has a say in who takes it on, and most sites are for '
                 .'people over 50 who will live there, so somebody inheriting it who will not live there is selling it '

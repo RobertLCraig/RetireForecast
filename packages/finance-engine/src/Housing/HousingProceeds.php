@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Housing;
 
 use RetireForecast\FinanceEngine\Dto\CgtHistory;
+use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Forecast\PathProjector;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
@@ -66,6 +67,9 @@ final class HousingProceeds
     /** The label the 60-day capital-gains return is itemised under, so no caller restates it. */
     public const CGT_RETURN_LABEL = 'Capital gains return (60-day)';
 
+    /** The label the site owner's commission on a park-home sale is itemised under (card 0059). */
+    public const SITE_COMMISSION_LABEL = "Site owner's commission";
+
     /**
      * What preparing the 60-day UK property capital-gains return costs: **£750**, charged only on
      * a disposal that actually owes CGT.
@@ -123,6 +127,11 @@ final class HousingProceeds
      * $cgtHistory is given); a $cgtHistory drives a partial-PRR charge on the household's share
      * of the gain, split across its owners.
      *
+     * $siteCommission is what the site owner takes when a park home changes hands
+     * ({@see Property::saleCommissionRate}, card 0059). It is ON TOP
+     * of the selling costs, entered or defaulted, because the reader's own quotes are the agent and
+     * the solicitor, never the site owner.
+     *
      * @param  list<SellingCostComponent>|null  $components  null → the engine default rate
      */
     public static function compute(
@@ -132,11 +141,15 @@ final class HousingProceeds
         ?CgtHistory $cgtHistory,
         ?Percent $ownershipShare,
         TaxYearConfig $config,
+        ?Percent $siteCommission = null,
     ): self {
         // Each selling-cost component resolves to £ against the sale price (a % of it, or a flat
         // fee). The total is their sum; the breakdown is carried so a UI can show it and it
         // reconciles to the total by construction. No components → the engine default rate.
         $components ??= [new SellingCostComponent('Selling costs', Percent::fromBasisPoints(self::DEFAULT_SELLING_COST_RATE_BP))];
+        if ($siteCommission !== null && $siteCommission->basisPoints > 0) {
+            $components[] = new SellingCostComponent(self::SITE_COMMISSION_LABEL, $siteCommission);
+        }
 
         $sellingCostsWhole = Money::zero();
         $breakdownWhole = [];
