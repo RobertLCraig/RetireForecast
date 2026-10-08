@@ -1607,10 +1607,18 @@ final class PathProjector
             // once the household no longer owns a home: always for a year-0 rent variant (no
             // primaryResidence), or from the sale year for a forced sale. An owner still in the home
             // pays no rent (even where a post-sale rent figure is set for the forced-sale years).
+            //
+            // A home sold because everyone living has gone into care (card 0056) leaves nobody to
+            // house: the care fee is their housing, so the post-sale rent is not charged on top.
             $ownsHome = $home !== null && ! $state['homeSold'];
+            $atHome = count(array_filter(
+                $household->persons,
+                fn (Person $p): bool => ($alive[$p->id] ?? false) && $draws->careAnnualCost($p->id, $ages[$p->id]) <= 0,
+            ));
+            $soldForCare = $home !== null && $atHome === 0;
             $rentChargedNominal = 0;
             $housingBenefitNominal = 0;
-            if ($settings->annualRent !== null && ! $ownsHome) {
+            if ($settings->annualRent !== null && ! $ownsHome && ! $soldForCare) {
                 $rentChargedNominal = (int) round($settings->annualRent->pence * $state['rentFactor']);
 
                 // Housing Benefit meets some or all of that rent for a pension-age renter whose income
@@ -1644,10 +1652,7 @@ final class PathProjector
             // The single-person discount turns on who LIVES there, not who is alive: a member in
             // permanent care is a disregarded person, so the partner left at home is a single
             // occupant. With nobody left at home it falls back to the living count, as before.
-            $atHome = count(array_filter(
-                $household->persons,
-                fn (Person $p): bool => ($alive[$p->id] ?? false) && $draws->careAnnualCost($p->id, $ages[$p->id]) <= 0,
-            ));
+            // $atHome is counted above, beside the rent.
             $councilTaxNominal = $this->councilTaxNominal($household, $state, $pensionCreditAward, $atHome ?: $aliveCount);
             $spendNominal += $councilTaxNominal;
             $essentialNominal += $councilTaxNominal;

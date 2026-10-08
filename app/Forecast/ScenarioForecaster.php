@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-08 (buy-variant-keeps-relative-disregard): a buy or move variant now carries
+     * Bumped 2026-10-08 (no-rent-while-everyone-is-in-care): a household that owned a home and has
+     * sold it is no longer charged its post-sale rent while every living member is in care, because
+     * the care fee is their housing. Only a plan with a rent figure set, a sale and a care spell
+     * covering everyone left alive moves; it paid rent on top of the fee. Board card 0056 #4.
+     * Previous bump 2026-10-08 (buy-variant-keeps-relative-disregard): a buy or move variant now carries
      * "a qualifying relative lives here" onto the bought home, so the care means test disregards
      * it as the base plan does. A plan with that box ticked and a care spell was charged against
      * the new home in every buy variant. Board card 0055 #1.
@@ -519,7 +523,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/buy-variant-keeps-relative-disregard';
+    public const ENGINE_VERSION = 'finance-engine/no-rent-while-everyone-is-in-care';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

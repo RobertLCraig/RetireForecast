@@ -9,6 +9,11 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **No rent is charged once a sold home's household is all in care.** Card 0056 #4.
+  `ENGINE_VERSION` is `finance-engine/no-rent-while-everyone-is-in-care`; the **re-run is owed**
+  for plans with a rent figure, a sale and a care spell. The builder's roll-up help text now names
+  the care trigger (#3) and is **not seen in a browser**.
+
 - **A buy variant keeps the "qualifying relative lives here" care disregard.** Card 0055 #1.
   `ENGINE_VERSION` is `finance-engine/buy-variant-keeps-relative-disregard`; the **re-run is
   owed** for plans with that box ticked and a care spell.

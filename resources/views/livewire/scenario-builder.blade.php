@@ -1210,8 +1210,10 @@
                             @error('property.mortgageRollUpRate') <p id="property-mortgageRollUpRate-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                             <p class="mt-1 text-xs text-gray-500">
                                 For an <span class="font-medium">equity-release lifetime mortgage with no monthly payments</span>: the
-                                outstanding balance above rolls up (compounds) at this fixed rate and is repaid from your estate when
-                                the home is eventually sold — capped at the home's value (the No-Negative-Equity Guarantee). Leave blank
+                                outstanding balance above rolls up (compounds) at this fixed rate and is repaid when the home is sold,
+                                at the last borrower's death or when
+                                the last surviving borrower moves permanently into residential care — capped at the home's value (the No-Negative-Equity Guarantee). The forecast sells the home and
+                                clears the balance in the first year everyone still living is in care. Leave blank
                                 for a repayment or interest-serviced mortgage (where the balance stays level and any interest is a spending
                                 line). Try it with and without payments as separate what-ifs to see the effect on what you leave behind.
                             </p>

@@ -197,6 +197,19 @@ class ScenarioBuilderTest extends TestCase
     }
 
     /**
+     * Board card 0056 #3. The forecast sells a home under a lifetime mortgage when the last
+     * borrower moves into permanent care, so the field where the plan is entered must say so too,
+     * not only that the balance is repaid when the home is eventually sold.
+     */
+    public function test_the_roll_up_field_states_the_care_redemption_trigger(): void
+    {
+        Livewire::test(ScenarioBuilder::class)
+            ->set('step', 3)
+            ->assertSeeHtml('id="property-mortgageRollUpRate"')
+            ->assertSee('the last surviving borrower moves permanently into residential care');
+    }
+
+    /**
      * Board card 0016 #4. The results page tells the reader they can stop the forecast using their
      * ISA allowance, and nothing on the form wrote the key the forecaster reads. The control must
      * be on the page, store sparsely (absent = on), and reach the forecast settings when off.

@@ -142,6 +142,32 @@ final class LifetimeMortgageCareRedemptionTest extends TestCase
         $this->assertTrue($year->mortgageBalance()->isPositive(), 'so the balance is still owed');
     }
 
+    /**
+     * #4 — a home sold because everyone living has gone into care leaves nobody to house. A rent
+     * figure set for the forced-sale years must not be charged on top of the care fee.
+     */
+    public function test_no_rent_is_charged_once_the_home_is_sold_for_care(): void
+    {
+        $household = $this->lonePropertyRich();
+        $noRent = $this->withCare($household);
+        $withRent = $this->forecaster()->forecastWithCareStress(
+            $household,
+            $this->flatEconomy(),
+            $this->settings()->withRent(Money::fromPounds(12_000), Percent::fromPercent(0)),
+            CareStressScenario::adverseDefault(),
+        );
+        $care = $this->firstCareYear($noRent);
+
+        foreach (array_slice($withRent->years, $care, null, true) as $i => $year) {
+            $this->assertSame(0, $year->propertyWealth->pence, "year {$year->calendarYear}: the home has been sold");
+            $this->assertSame(
+                $noRent->years[$i]->essentialSpend->pence,
+                $year->essentialSpend->pence,
+                "year {$year->calendarYear}: no rent is charged while everyone living is in care",
+            );
+        }
+    }
+
     /** An ordinary serviced mortgage is not an equity-release plan, so care does not call it in. */
     public function test_a_mortgage_with_no_roll_up_rate_is_not_redeemed_on_entry_to_care(): void
     {
