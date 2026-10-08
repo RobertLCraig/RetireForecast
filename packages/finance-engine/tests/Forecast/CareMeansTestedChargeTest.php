@@ -6,6 +6,7 @@ namespace RetireForecast\FinanceEngine\Tests\Forecast;
 
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Benefits\DisabilityBenefitInCare;
 use RetireForecast\FinanceEngine\Care\DeferredPaymentAgreement;
 use RetireForecast\FinanceEngine\Dto\Account;
@@ -13,6 +14,7 @@ use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\IncomeStream;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
@@ -24,8 +26,10 @@ use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\PathDraws;
 use RetireForecast\FinanceEngine\Forecast\PathProjector;
+use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
@@ -509,6 +513,45 @@ final class CareMeansTestedChargeTest extends TestCase
         // With a qualifying relative living there the home drops out of the assessment entirely,
         // so the resident is charged what any funded resident is: income less the PEA.
         $this->assertSame(3 * self::CONTRIBUTION, $charge(true));
+    }
+
+    /**
+     * Board card 0055, criterion 1, in a buy variant. `HousingComparison::buyVariant()` builds the
+     * new home by name, so the flag fell back to false: the base plan disregarded the home and
+     * every buy or move variant assessed it, for the same relative. The relative lives with the
+     * household, not with the building, so the flag has to move with them.
+     *
+     * The lone-owner fixture sells its £300,000 home for a £150,000 one. With the flag carried the
+     * bought home is disregarded and the invested surplus drains below the upper limit, so the
+     * charge falls under the full fee; assessed, the home keeps the resident a self-funder.
+     */
+    public function test_a_buy_variant_keeps_the_qualifying_relative_disregard(): void
+    {
+        $variant = fn (bool $relative): Household => (new HousingComparison(TaxYearRegistry::for('2026-27'), new CohortLifeTable))
+            ->variantInputs(
+                new Household(
+                    'RelativeMovesToo', RegionProfile::EnglandWalesNi,
+                    [$this->person('p1')],
+                    $this->spend(26_514),
+                    accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(10_000))],
+                    incomeStreams: [$this->income('p1')],
+                    primaryResidence: new Property(
+                        currentValue: Money::fromPounds(300_000),
+                        ownership: OwnershipType::Outright,
+                        occupiedByQualifyingRelative: $relative,
+                    ),
+                ),
+                new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+                AssumptionSetLibrary::default(),
+                new HousingAction(salePrice: Money::fromPounds(300_000), buyPrice: Money::fromPounds(150_000), annualRent: Money::fromPounds(12_000)),
+            )['buy_outright']['household'];
+
+        $charge = fn (bool $relative): int => $this->project($variant($relative), deathAges: ['p1' => 90], careFromAge: ['p1' => 88])
+            ->careCostReal()->pence;
+
+        $this->assertSame(3 * self::FEE_REAL, $charge(false), 'assessed, the bought home keeps them a self-funder');
+        $this->assertLessThan(3 * self::FEE_REAL, $charge(true), 'disregarded, the bought home is not charged against');
+        $this->assertTrue($variant(true)->primaryResidence->occupiedByQualifyingRelative, 'the flag moves with the household');
     }
 
     /**

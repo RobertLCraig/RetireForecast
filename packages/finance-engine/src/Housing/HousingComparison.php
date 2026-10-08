@@ -310,6 +310,9 @@ final class HousingComparison
             // household because the qualifying feature is the resident's, not the building's.
             annualCouncilTax: $household->primaryResidence?->annualCouncilTax,
             disabledBandReduction: $household->primaryResidence?->disabledBandReduction,
+            // The relative who keeps the home out of the care means test moves with the household
+            // for the same reason: the disregard is about who lives there, not the building.
+            occupiedByQualifyingRelative: $household->primaryResidence?->occupiedByQualifyingRelative ?? false,
         );
 
         // A mortgaged purchase carries an ongoing interest-only (RIO) payment for life; charge it

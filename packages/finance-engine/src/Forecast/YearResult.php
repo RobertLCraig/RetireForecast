@@ -95,7 +95,8 @@ final class YearResult
 
     /**
      * Total wealth: liquid + pension + home EQUITY (property net of everything secured on it,
-     * the mortgage and any {@see smiBalance()} charge, NNEG-floored) — the figure every
+     * the mortgage, any {@see smiBalance()} charge and any {@see deferredCareBalance()},
+     * NNEG-floored; derived from {@see homeEquity()}) — the figure every
      * "includes the home" surface shows. Derived in the
      * constructor from the reported legs, so it can never drift from them and never
      * counts bricks a lender already owns: an unpaid lifetime-mortgage roll-up visibly

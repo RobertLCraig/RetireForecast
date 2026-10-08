@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-08 (intestacy-asks-about-descendants): whether children take a share of an
+     * Bumped 2026-10-08 (buy-variant-keeps-relative-disregard): a buy or move variant now carries
+     * "a qualifying relative lives here" onto the bought home, so the care means test disregards
+     * it as the base plan does. A plan with that box ticked and a care spell was charged against
+     * the new home in every buy variant. Board card 0055 #1.
+     * Previous bump 2026-10-08 (intestacy-asks-about-descendants): whether children take a share of an
      * intestate first estate is now its own input (`ForecastSettings::$hasDescendants`, default
      * yes) instead of riding on "leave the home to descendants". An intestate married plan that had
      * unticked that box was wholly spouse-exempt at the first death and is now taxed on the
@@ -515,7 +519,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/intestacy-asks-about-descendants';
+    public const ENGINE_VERSION = 'finance-engine/buy-variant-keeps-relative-disregard';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

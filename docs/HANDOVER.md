@@ -9,6 +9,10 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A buy variant keeps the "qualifying relative lives here" care disregard.** Card 0055 #1.
+  `ENGINE_VERSION` is `finance-engine/buy-variant-keeps-relative-disregard`; the **re-run is
+  owed** for plans with that box ticked and a care spell.
+
 - **Intestacy asks "are there children?" on its own.** Card 0054 #3. `ForecastSettings::$hasDescendants`
   (default yes) replaces the old read of "leave the home to descendants". `ENGINE_VERSION` is
   `finance-engine/intestacy-asks-about-descendants`; the **re-run is owed** for intestate married
