@@ -31,10 +31,10 @@ Leading the results page with the probability, which is card 0010.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a terminal estate is reported, THE APP SHALL show it as a range across the simulated paths, not a single figure. proves: `test_the_estate_is_reported_as_a_range_across_the_simulated_paths`
+- [x] #1 WHEN a terminal estate is reported, THE APP SHALL show it as a range across the simulated paths, not a single figure. proves: `test_the_estate_is_reported_as_a_range_across_the_simulated_paths`
 - [x] #2 WHEN a comparison table mixes measures, THE APP SHALL label which are single-path and which are simulated. proves: `test_the_comparison_labels_which_figures_are_one_path_and_which_are_simulated`
 - [x] #3 WHEN a plan's property is consumed by a rolled-up loan, THE APP SHALL say in plain words that the lender takes the property and the beneficiaries inherit the remaining liquid assets. proves: `test_a_rolled_up_loan_that_eats_the_home_says_the_lender_takes_the_property`
-- [ ] #4 THE APP SHALL caveat the estate figure for probate cost and delay, beneficiary income tax and any care debt. proves: `test_the_estate_figure_is_caveated_for_probate_beneficiary_tax_and_care_debt`
+- [x] #4 THE APP SHALL caveat the estate figure for probate cost and delay, beneficiary income tax and any care debt. proves: `test_the_estate_figure_is_caveated_for_probate_beneficiary_tax_and_care_debt`
 <!-- AC:END -->
 
 ## Tasks
@@ -135,3 +135,19 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #1 and #4 because the findings hold on main. #1: `ScenarioCompare::planRow` still prints `terminalTotalWealth` as one figure; only the results page and PDF got the p10/p50/p90 band, though the card's Why names the comparison table and its Task says use it in `ScenarioCompare`. #4: `ResultPresenter::estateCaveats()` still picks the last year with a positive `deferredCareBalance()`, so a plan whose forced sale later cleared the debt is told a care debt is still secured on the home and taken off the estate, all false. Read the final year's balance, and test a sale after a deferred debt in `EstatePointEstimateTest`.
+
+**2026-10-08** RESULT: done
+TESTS: +0 new (2 existing tests extended), all green
+TOUCHED: app/Forecast/ResultPresenter.php
+app/Livewire/ScenarioCompare.php
+resources/views/livewire/scenario-compare.blade.php
+tests/Feature/Forecast/EstatePointEstimateTest.php
+OUT-OF-SCOPE: none
+
+This take closes the two findings the 2026-09-28 manager pass reopened. #2 and #3 were met by the first take and nothing here touches them.
+
+#1: `ScenarioCompare` now gives each plan row `totalWealthRange` from `ResultPresenter::estateRange()` on that plan's latest completed Monte Carlo result (the same one home of the band the results page and PDF use). The "Total wealth left" cell shows the one-path figure with a "simulated: £p10 to £p90 (1 in 10 to 9 in 10, N paths)" line under it once the plan has a run; with no run the cell is unchanged and the "Single path" note still governs. That note and the table caption now say the simulated range is the one exception, so they no longer claim every figure in the table is single-path. The test extension stores a completed run with a known band and asserts the Compare page shows it; watched it fail first (no band on the page).
+
+#4: `estateCaveats()` reads the FINAL year's `deferredCareBalance()`, not the last positive one, so a debt a forced sale redeemed during life falls through to the "paid care fees out of its own money" line. The test extension builds a two-year ForecastResult directly (debt in year 0, home sold and balance zero in year 1); watched it fail first on the false "secured on your home" line. A full engine fixture reaching that state was not built: the direct construction is what the presenter reads, so it covers the fault exactly.
+
+No projected figure moves, so no ENGINE_VERSION bump. Built in a worktree: the new Compare line is NOT seen in a browser and still needs one.
