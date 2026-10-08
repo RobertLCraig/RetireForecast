@@ -33,7 +33,7 @@ Leading the page with the probability, which is card 0010.
 <!-- AC:BEGIN -->
 - [x] #1 THE APP SHALL set the deterministic planning horizon on a household last-survivor basis, not on each person's own median.
 - [x] #2 THE APP SHALL default that horizon to a stated high percentile, and offer 50th, 75th and 90th as named settings on the age-of-death lever.
-- [ ] #3 WHEN a median-lifespan figure is shown, THE APP SHALL label it as roughly even odds rather than as a plan lasting for life.
+- [x] #3 WHEN a median-lifespan figure is shown, THE APP SHALL label it as roughly even odds rather than as a plan lasting for life.
 <!-- AC:END -->
 
 ## Tasks
@@ -182,3 +182,29 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #3 because the Affordability page still prints a median-lifespan result as lasting for life with no odds phrase. `resources/views/livewire/affordability.blade.php` still says "keep the essentials paid for life", "still lasts for life" and "for the rest of your life", and `App\Livewire\Affordability` never passes `planningHorizonBasis`. The advice-cost block in `scenario-results.blade.php` and in `pdf/partials/report.blade.php` still says "The money would still last for life." Two other findings from the same review also still hold. `HousingComparison::rentSettings` still drops `planningHorizon`, so a rent leg runs at the default; that belongs on card 0124, whose field list does not name it yet. And a stored run with an older engine version still shows the new horizon caption.
+
+**2026-10-08** RESULT: done
+TESTS: +3 new, all green
+TOUCHED:
+app/Forecast/AffordabilityAssessment.php
+app/Livewire/Affordability.php
+resources/views/livewire/affordability.blade.php
+resources/views/livewire/scenario-results.blade.php
+resources/views/pdf/partials/report.blade.php
+tests/Feature/Livewire/AffordabilityTest.php
+tests/Feature/Livewire/ScenarioResultsTest.php
+tests/Feature/Forecast/ScenarioPdfTest.php
+docs/HANDOVER.md
+docs/board/todo/0189-a-run-from-an-older-engine-is-shown-as-current.md
+docs/board/todo/0190-scenario-fixture-ignores-dotted-override-keys.md
+OUT-OF-SCOPE: 0189, 0190
+
+Reopened #3 only; #1 and #2 were traced sound by the review and are untouched.
+
+The Affordability page now receives `planningHorizonBasis` (read from the base plan's settings, as Compare does) and prints it under the "On the expected path" headline. Every deterministic "for life" / "for the rest of your life" on that page (view copy and the `AffordabilityAssessment` headline and card verdicts) now says "to the end of the plan". The advice-cost block on the results page and in the PDF now says "The money would still last to the end of the plan:" followed by the same odds sentence. Monte Carlo "covered for life" copy (ThresholdFacts, assistant facts) is left alone: it is a probability over sampled lifespans, not a median path.
+
+Tests, each watched red on the old code by parking the src diff and checking out HEAD: `test_a_median_lifespan_plan_is_labelled_as_even_odds_not_as_lasting_for_life` (Affordability at P50: no odds phrase rendered), `test_the_advice_cost_block_never_says_a_median_path_lasts_for_life` and `test_the_printed_advice_cost_never_says_a_median_path_lasts_for_life` (both rendered "last for life" at P50). The first drafts used dotted override keys that `ScenarioFixture::rich` silently ignores (it is `array_replace`, so `'expenseLines.ess1.amount'` is a dead key in several existing tests too, raised as card 0190); fixed to a nested `assumptionOverrides` before re-watching red.
+
+The other two review findings: `HousingComparison::rentSettings` dropping the horizon is already fixed by card 0016 (`ForecastSettings::withRent`). A stored run from an older engine showing the new caption is raised as card 0189.
+
+Still owed: the stored-scenario re-run (task 4) needs the app database, not a worktree. Built in a worktree, so the new Affordability caption and changed copy have NOT been seen in a browser.
