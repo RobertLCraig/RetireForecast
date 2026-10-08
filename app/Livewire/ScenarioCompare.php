@@ -142,7 +142,9 @@ class ScenarioCompare extends Component
 
         $forecasts = collect($plansData);
 
-        $plans = $forecasts->map(fn (array $pf): array => $this->summarise($pf['scenario'], $pf['forecast'], $forecaster));
+        $plans = $forecasts->map(fn (array $pf): array => $this->summarise($pf['scenario'], $pf['forecast'], $forecaster)
+            // The one-path total beside the band across the simulated paths (board card 0058).
+            + ['totalWealthRange' => ResultPresenter::estateRange($pf['mc'])]);
 
         // Mark the big life events on the comparison chart, from the base plan's timeline (deaths,
         // retirements, State Pension starts are shared across the compared plans; the home sale is

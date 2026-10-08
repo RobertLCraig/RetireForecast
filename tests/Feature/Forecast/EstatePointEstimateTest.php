@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Forecast;
 
+use App\Enums\SimulationMode;
+use App\Enums\SimulationStatus;
 use App\Forecast\HouseholdAssembler;
 use App\Forecast\ResultPresenter;
 use App\Livewire\ScenarioCompare;
 use App\Livewire\ScenarioResults;
 use App\Models\Result;
+use App\Models\Scenario;
+use App\Models\SimulationRun;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -16,6 +20,7 @@ use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -61,6 +66,13 @@ class EstatePointEstimateTest extends TestCase
             ->set('previewPaths', 30)
             ->call('preview')
             ->assertSee('Across your simulated futures the wealth you leave ranges from');
+
+        // And on the Compare page, where the one-path estate sat beside the ten-thousand-path
+        // probability in the first place: the total-wealth column carries the same band.
+        $plan = ScenarioFixture::rich($user);
+        $this->completedRun($plan, $user, $this->resultWithTerminalBand(300_000)->simulationResult());
+        Livewire::test(ScenarioCompare::class, ['scenario' => $plan])
+            ->assertSee('simulated: £250,000 to £350,000');
     }
 
     /**
@@ -108,6 +120,12 @@ class EstatePointEstimateTest extends TestCase
         $this->assertStringContainsString('their own income tax on every pound they draw', $caveats);
         $this->assertStringContainsString('care', $caveats);
 
+        // A care debt cleared during life by selling the home is no longer on the estate, so the
+        // caveat must not say it is; it reads the final year's balance, not the last positive one.
+        $soldAfterDebt = implode(' ', ResultPresenter::estateCaveats($this->careDebtThenSale()));
+        $this->assertStringNotContainsString('secured on your home', $soldAfterDebt);
+        $this->assertStringContainsString('of care fees out of its own money', $soldAfterDebt);
+
         $user = User::factory()->create();
         $this->actingAs($user);
         Livewire::test(ScenarioResults::class, ['scenario' => ScenarioFixture::rich($user, ['ihtModelled' => true])])
@@ -139,6 +157,43 @@ class EstatePointEstimateTest extends TestCase
         );
 
         return (new Result(['variant' => 'stay_put']))->setSimulationResult($sim);
+    }
+
+    /**
+     * Two years: a care debt of £20,000 secured on the home, then the home sold and the debt
+     * redeemed out of the proceeds, as PathProjector's forced sale does.
+     */
+    private function careDebtThenSale(): ForecastResult
+    {
+        $year = fn (int $i, int $deferred, int $home): YearResult => new YearResult(
+            yearIndex: $i, calendarYear: 2026 + $i, ages: ['p1' => 88 + $i], aliveCount: 1,
+            grossIncome: Money::fromPounds(20_000), totalTax: Money::zero(), netIncome: Money::fromPounds(20_000),
+            spendTarget: Money::fromPounds(60_000), essentialSpend: Money::fromPounds(60_000),
+            shortfallFunded: Money::zero(), unmetSpend: Money::zero(), essentialsMet: true,
+            liquidWealth: Money::fromPounds(150_000), pensionWealth: Money::zero(), propertyWealth: Money::fromPounds($home),
+            deferredCareBalance: Money::fromPounds($deferred),
+        );
+
+        return new ForecastResult(
+            years: [$year(0, 20_000, 200_000), $year(1, 0, 0)], essentialsAlwaysMet: true, fullSpendAlwaysMet: true,
+            depletionCalendarYear: null, terminalTotalWealth: Money::fromPounds(150_000),
+            terminalUsableWealth: Money::fromPounds(150_000), finalCalendarYear: 2027,
+            careCostRealValue: Money::fromPounds(80_000),
+        );
+    }
+
+    private function completedRun(Scenario $plan, User $user, SimulationResult $mc): void
+    {
+        $run = SimulationRun::create([
+            'scenario_id' => $plan->id, 'user_id' => $user->id, 'mode' => SimulationMode::Full,
+            'n_paths' => $mc->nPaths, 'seed' => $mc->seed, 'status' => SimulationStatus::Done,
+            'progress_pct' => 100, 'engine_version' => 'test', 'taxyear_config_version' => 'test',
+            'assumption_snapshot' => [],
+        ]);
+
+        $result = new Result(['simulation_run_id' => $run->id, 'variant' => $plan->variant]);
+        $result->setSimulationResult($mc);
+        $result->save();
     }
 
     /**

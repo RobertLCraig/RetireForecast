@@ -242,12 +242,10 @@ final class ResultPresenter
      */
     public static function estateCaveats(ForecastResult $forecast): array
     {
-        $deferred = Money::zero();
-        foreach ($forecast->years as $year) {
-            if ($year->deferredCareBalance()->isPositive()) {
-                $deferred = $year->deferredCareBalance();
-            }
-        }
+        // The FINAL year's balance: a forced sale redeems the debt during life, and a debt that
+        // was cleared is not on the estate.
+        $last = $forecast->years === [] ? null : $forecast->years[array_key_last($forecast->years)];
+        $deferred = $last?->deferredCareBalance() ?? Money::zero();
 
         $caveats = [
             'Nothing is inherited straight away. An estate has to go through probate, which commonly '

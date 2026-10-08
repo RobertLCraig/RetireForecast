@@ -105,14 +105,15 @@
          beside a probability with the whole simulation behind it. Each surface now says what it is. --}}
     <p class="mt-6 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700" role="note">
         <strong>Single path:</strong> every figure in this table comes from one central projection, not from
-        the simulation: {{ $planningHorizonBasis }} One set of returns, no care costs. Two plans within a few
+        the simulation, except the range marked "simulated" under a plan's total wealth once it has been run:
+        {{ $planningHorizonBasis }} One set of returns, no care costs. Two plans within a few
         thousand pounds of each other here are not meaningfully apart. The simulated view is further down the page.
     </p>
 
     <div class="mt-3 overflow-x-auto rounded-lg border border-gray-200 bg-white" tabindex="0">
         @php $showIht = collect($plans)->contains(fn ($p) => $p['ihtDue'] !== null); @endphp
         <table class="min-w-full divide-y divide-gray-200 text-sm">
-            <caption class="sr-only">Your base plan and its what-ifs compared on their central projection. Every figure is a single path.</caption>
+            <caption class="sr-only">Your base plan and its what-ifs compared on their central projection. Every figure is a single path except the simulated range under total wealth.</caption>
             <thead class="bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                 <tr>
                     <th scope="col" class="px-4 py-3">Plan</th>
@@ -183,7 +184,12 @@
                             <span class="mt-1 block text-xs font-normal text-gray-600">+ {{ $plan['spendable']['now']['pensionCapital'] }} pension (taxable)</span>
                         </td>
                         <td class="px-4 py-3 tabular-nums text-gray-900">{{ $plan['usableWealth'] }}</td>
-                        <td class="px-4 py-3 tabular-nums text-gray-900">{{ $plan['totalWealth'] }}</td>
+                        <td class="px-4 py-3 tabular-nums text-gray-900">
+                            {{ $plan['totalWealth'] }}
+                            @if ($plan['totalWealthRange'])
+                                <span class="mt-1 block text-xs font-normal text-gray-600">simulated: £{{ number_format($plan['totalWealthRange']['p10']) }} to £{{ number_format($plan['totalWealthRange']['p90']) }} (1 in 10 to 9 in 10, {{ number_format($plan['totalWealthRange']['paths']) }} paths)</span>
+                            @endif
+                        </td>
                         @if ($showIht)<td class="px-4 py-3 tabular-nums text-gray-900">{{ $plan['ihtDue'] ?? '— not modelled' }}</td>@endif
                         <td class="px-4 py-3 text-right">
                             <a href="{{ $plan['resultsUrl'] }}" class="font-medium text-blue-600 hover:text-blue-700">Results</a>
