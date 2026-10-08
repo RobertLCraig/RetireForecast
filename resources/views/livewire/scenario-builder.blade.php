@@ -286,6 +286,11 @@
                             Leaving your home to your children / direct descendants
                         </label>
                         <p class="mt-1 pl-6 text-xs text-gray-500">Unlocks the £175,000 residence nil-rate band per person (only when the home passes to direct descendants). Untick if it will not.</p>
+                        <label class="mt-2 flex items-center gap-2 pl-6 text-sm text-gray-700">
+                            <input type="checkbox" wire:model="hasDescendants" class="rounded border-gray-300">
+                            There are children or other direct descendants
+                        </label>
+                        <p class="mt-1 pl-6 text-xs text-gray-500">Without a will, children take a share of the estate, and a husband, wife or civil partner does not inherit everything. Untick only if there are no children, grandchildren or other descendants.</p>
                         <div class="mt-3 pl-6">
                             <label for="beneficiaryTaxRate" class="{{ $label }}">Tax rate of whoever inherits your pension</label>
                             <select id="beneficiaryTaxRate" wire:model="beneficiaryTaxRate" class="{{ $field }}">

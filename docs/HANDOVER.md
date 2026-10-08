@@ -9,6 +9,11 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **Intestacy asks "are there children?" on its own.** Card 0054 #3. `ForecastSettings::$hasDescendants`
+  (default yes) replaces the old read of "leave the home to descendants". `ENGINE_VERSION` is
+  `finance-engine/intestacy-asks-about-descendants`; the **re-run is owed** for intestate married
+  plans that unticked the home box. The new checkbox is **not seen in a browser**.
+
 - **A mobility-only income row buys no Pension Credit addition, and a mixed-age couple is not told
   to claim.** Card 0051 #1 and #4. With "which part of the award" blank,
   `HouseholdAssembler::awardRateFromStreams` reads the income rows; a part the reader chose still

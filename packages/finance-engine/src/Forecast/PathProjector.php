@@ -316,10 +316,10 @@ final class PathProjector
      *
      * WHAT the survivor actually takes is the calculator's question, not this one's: it needs the
      * deceased's will, the survivor's residence position, and whether there are children to take a
-     * share under intestacy. The engine holds no list of children, so `homeToDescendants` — the
-     * reader's own statement that the home is left to direct descendants — is what says there are
-     * issue to inherit. A plan that leaves nothing to descendants has a spouse who takes the whole
-     * intestate estate, which is the statutory answer where there is no issue.
+     * share under intestacy. The engine holds no list of children, so `hasDescendants` is the
+     * reader's yes or no to that, defaulting to yes (the adverse answer). It is deliberately NOT
+     * `homeToDescendants`, which is about the home at the last death: unticking that once handed
+     * an intestate estate back to the spouse in full (board card 0054).
      *
      * @param  array<string, mixed>  $state
      */
@@ -358,7 +358,7 @@ final class PathProjector
             $deathYear >= self::PENSIONS_IN_ESTATE_FROM_YEAR,
             spouseSurvives: $married && $survivor !== null,
             deceasedLeftAWill: $deceased->hasWill,
-            issueTakeUnderIntestacy: $settings->homeToDescendants,
+            issueTakeUnderIntestacy: $settings->hasDescendants,
             survivorIsUkLongTermResident: $survivor?->isUkLongTermResident() ?? true,
             // A pension death benefit follows the member's expression of wish, not the will, so
             // the exemption on it is decided pot by pot rather than by marital status.

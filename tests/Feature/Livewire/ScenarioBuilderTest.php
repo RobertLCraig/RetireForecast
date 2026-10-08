@@ -170,6 +170,33 @@ class ScenarioBuilderTest extends TestCase
     }
 
     /**
+     * Board card 0054 #3. Whether there are children to take a share of an intestate estate is
+     * its own question, defaulting to yes; it once rode on "leave the home to descendants".
+     */
+    public function test_whether_there_are_descendants_is_its_own_builder_input(): void
+    {
+        $save = function (callable $mutate) {
+            $component = Livewire::test(ScenarioBuilder::class);
+            foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+                $component->set($key, $value);
+            }
+            $mutate($component);
+            $component->call('save')->assertHasNoErrors();
+
+            return Scenario::latest('id')->firstOrFail();
+        };
+
+        // Untouched: yes, stored sparsely, and unticking the HOME question leaves it at yes.
+        $homeOff = $save(fn ($c) => $c->set('ihtModelled', true)->set('homeToDescendants', false));
+        $this->assertTrue(app(ScenarioForecaster::class)->settings($homeOff)->hasDescendants);
+        $this->assertArrayNotHasKey('hasDescendants', $homeOff->effectiveBuilderState());
+
+        $none = $save(fn ($c) => $c->set('ihtModelled', true)->set('hasDescendants', false));
+        $this->assertFalse($none->effectiveBuilderState()['hasDescendants']);
+        $this->assertFalse(app(ScenarioForecaster::class)->settings($none)->hasDescendants);
+    }
+
+    /**
      * Board card 0016 #4. The results page tells the reader they can stop the forecast using their
      * ISA allowance, and nothing on the form wrote the key the forecaster reads. The control must
      * be on the page, store sparsely (absent = on), and reach the forecast settings when off.

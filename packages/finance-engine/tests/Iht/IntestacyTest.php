@@ -81,6 +81,11 @@ final class IntestacyTest extends TestCase
 
         $this->assertSame(0, $result->tax->pence);
         $this->assertSame(0, $result->nilRateBandUsed->pence);
+        // The page must say what happened: spouse-exempt in full, and NOT "the children take the
+        // other half", which would contradict it on an estate the children take nothing from.
+        $codes = array_map(static fn ($w) => $w->code, $result->warnings);
+        $this->assertContains(WarningCode::IHT_SPOUSE_EXEMPTION, $codes);
+        $this->assertNotContains(WarningCode::IHT_INTESTACY, $codes);
     }
 
     public function test_no_children_means_the_spouse_takes_the_whole_intestate_estate(): void

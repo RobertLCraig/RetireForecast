@@ -164,6 +164,7 @@ final class WhatIfChanges
             'variant' => 'Primary option', 'region' => 'Tax region', 'baseTaxYear' => 'Base tax year',
             'ihtModelled' => 'Model inheritance tax', 'householdName' => 'Household name',
             'relationshipStatus' => 'Relationship status', 'homeToDescendants' => 'Leave home to descendants',
+            'hasDescendants' => 'Children or other descendants',
             'useIsaAllowance' => 'Use ISA allowance',
             'assumptionSetId' => 'Assumption set', 'hasProperty' => 'Owns a property',
             'marriageDate' => 'Date of marriage or civil partnership',

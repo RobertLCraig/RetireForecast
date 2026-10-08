@@ -61,7 +61,13 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-07 (downsizing-addition-reported-after-taper): the reported downsizing addition
+     * Bumped 2026-10-08 (intestacy-asks-about-descendants): whether children take a share of an
+     * intestate first estate is now its own input (`ForecastSettings::$hasDescendants`, default
+     * yes) instead of riding on "leave the home to descendants". An intestate married plan that had
+     * unticked that box was wholly spouse-exempt at the first death and is now taxed on the
+     * children's share. The intestacy warning also no longer shows on an estate below the
+     * statutory legacy, where the children take nothing. Board card 0054 #3.
+     * Previous bump 2026-10-07 (downsizing-addition-reported-after-taper): the reported downsizing addition
      * is now only the part of the residence band it supplies after the taper
      * (`InheritanceTaxCalculator::compute`), so an estate over the taper threshold no longer shows
      * an addition beside a smaller or zero band. The tax is unchanged; only the reported addition,
@@ -509,7 +515,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/downsizing-addition-reported-after-taper';
+    public const ENGINE_VERSION = 'finance-engine/intestacy-asks-about-descendants';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
@@ -892,6 +898,9 @@ final class ScenarioForecaster
             // overridable in the builder (slice 4).
             modelIht: (bool) ($scenario->effectiveBuilderState()['ihtModelled'] ?? false),
             homeToDescendants: (bool) ($scenario->effectiveBuilderState()['homeToDescendants'] ?? true),
+            // Whether there are children to take a share of an intestate estate (card 0054).
+            // Absent = yes, the adverse answer.
+            hasDescendants: (bool) ($scenario->effectiveBuilderState()['hasDescendants'] ?? true),
             // Use each person's unused ISA allowance on money already held in a taxable account
             // ("bed and ISA"). On unless the scenario says otherwise, because leaving it out
             // understates every plan that sells a home and invests the proceeds; disclosed on the

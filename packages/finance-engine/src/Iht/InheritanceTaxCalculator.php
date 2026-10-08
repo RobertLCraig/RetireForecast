@@ -163,11 +163,14 @@ final class InheritanceTaxCalculator
 
         $intestate = $spouseSurvives && ! $deceasedLeftAWill && $issueTakeUnderIntestacy;
         $nonPensionEstate = $estateExcludingPensions;
-        $passingToSpouse = match (true) {
-            ! $spouseSurvives => Money::zero(),
-            $intestate => $this->intestacySpouseShare($nonPensionEstate)->plus($pensionToSpouse),
-            default => $nonPensionEstate->plus($pensionToSpouse),
-        };
+        // What the children take under intestacy. Nil below the statutory legacy, where the spouse
+        // takes everything, so the intestacy warning is gated on this and not on $intestate alone.
+        $childrenTake = $intestate
+            ? $nonPensionEstate->minus($this->intestacySpouseShare($nonPensionEstate))
+            : Money::zero();
+        $passingToSpouse = $spouseSurvives
+            ? $nonPensionEstate->minus($childrenTake)->plus($pensionToSpouse)
+            : Money::zero();
 
         $capped = ! $survivorIsUkLongTermResident && $passingToSpouse->greaterThan($params->nilRateBand);
         $exempt = $capped ? $params->nilRateBand : $passingToSpouse;
@@ -184,15 +187,15 @@ final class InheritanceTaxCalculator
                 .'is due on the first death (the spouse exemption); their unused allowances carry over.',
             );
         }
-        if ($intestate) {
+        if ($childrenTake->isPositive()) {
             $warnings[] = new Warning(
                 WarningCode::IHT_INTESTACY,
-                'We have assumed there is NO will, because you have not told us there is one. Without a '
-                .'will the estate passes under the intestacy rules, and a husband, wife or civil partner '
-                .'does not inherit everything: they take the personal belongings, the first '
+                'We have assumed there is NO will, because you have not told us there is one, and that '
+                .'there are children or other descendants, because you have not told us there are none. '
+                .'Without a will the estate passes under the intestacy rules, and a husband, wife or civil '
+                .'partner does not inherit everything: they take the personal belongings, the first '
                 .Money::fromPence(self::STATUTORY_LEGACY_PENCE)->format().' and half of what is left, and '
-                .'the children take the other half — '
-                .$nonPensionEstate->minus($this->intestacySpouseShare($nonPensionEstate))->format().' here. '
+                .'the children take the other half — '.$childrenTake->format().' here. '
                 .'That half is not covered by the spouse exemption, so it is taxed and it uses up part of '
                 .'the allowance that would otherwise have passed to the survivor. Making a will is the one '
                 .'change that undoes this.',

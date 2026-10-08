@@ -111,6 +111,13 @@ final class ForecastSettings
          * every run a reader can ask for, so no stored scenario moves.
          */
         public readonly ?int $taxableIncomeTargetPence = null,
+        /**
+         * Are there children or other direct descendants to take a share of an intestate estate
+         * (board card 0054)? Default true, the adverse answer: with issue, a spouse with no will
+         * takes only the statutory legacy and half the rest, and the children's half is chargeable.
+         * It is its own question, not $homeToDescendants, which is about the HOME at the last death.
+         */
+        public readonly bool $hasDescendants = true,
     ) {}
 
     /**
@@ -196,7 +203,7 @@ final class ForecastSettings
             $this->freezeEndYear, $this->annualRent, $this->rentInflationReal, $on,
             $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
             $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
-            $this->planningHorizon, $this->taxableIncomeTargetPence,
+            $this->planningHorizon, $this->taxableIncomeTargetPence, $this->hasDescendants,
         );
     }
 
@@ -211,7 +218,7 @@ final class ForecastSettings
             $this->freezeEndYear, $annualRent, $rentInflationReal, $this->modelCareCost,
             $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
             $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
-            $this->planningHorizon, $this->taxableIncomeTargetPence,
+            $this->planningHorizon, $this->taxableIncomeTargetPence, $this->hasDescendants,
         );
     }
 }

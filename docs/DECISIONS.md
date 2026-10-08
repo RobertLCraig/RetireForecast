@@ -3,6 +3,21 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-08: whether there are children is its own question, defaulting to yes
+
+**Context:** card 0054 #3, reopened by review. The intestacy split asked "are there issue?" by
+reading "leave the home to descendants". That box is about the home at the last death. A couple
+with no will who unticked it got the whole first estate spouse-exempt again, with no intestacy
+warning.
+
+**Decision: `ForecastSettings::$hasDescendants`, a builder checkbox, default yes.** Yes is the
+adverse answer: with children, a spouse with no will takes only the statutory legacy and half the
+rest. The reader can untick it. The intestacy warning now says children are assumed, and it shows
+only when the children actually take something, so an estate under the statutory legacy no longer
+shows it beside "no Inheritance Tax is due". Card 0184 (the same box gating the downsizing
+addition) is untouched.
+**Status:** active
+
 ## 2026-10-06: the golden master's log marker carries a hash of the pinned values
 
 **Context:** card 0039 #2, reopened by review. The 2026-09-05 entry below said the decision log

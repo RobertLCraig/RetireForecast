@@ -99,7 +99,7 @@ class ScenarioBuilder extends Component
     private const STEP_OF_FIELD = [
         'name' => 1, 'householdName' => 1, 'region' => 1, 'baseTaxYear' => 1,
         'variant' => 1, 'assumptionSetId' => 1, 'assumptionOverrides' => 1, 'adviceFeePct' => 1, 'ihtModelled' => 1,
-        'homeToDescendants' => 1, 'useIsaAllowance' => 1, 'relationshipStatus' => 1, 'people' => 1,
+        'homeToDescendants' => 1, 'hasDescendants' => 1, 'useIsaAllowance' => 1, 'relationshipStatus' => 1, 'people' => 1,
         'pensions' => 2, 'incomeStreams' => 2,
         'accounts' => 3, 'property' => 3, 'hasProperty' => 3, 'capitalReceipts' => 3,
         'expense' => 4, 'expenseLines' => 4, 'oneOffCosts' => 4,
@@ -126,6 +126,13 @@ class ScenarioBuilder extends Component
      * a homeowner); only relevant when IHT is modelled and there is a home.
      */
     public bool $homeToDescendants = true;
+
+    /**
+     * Whether there are children or other direct descendants, which decides who takes an
+     * intestate estate (card 0054). Default on, the adverse answer; its own question, not
+     * $homeToDescendants. Only relevant when IHT is modelled.
+     */
+    public bool $hasDescendants = true;
 
     /**
      * Whether the forecast uses each person's unused ISA allowance on money already held in a
@@ -307,6 +314,7 @@ class ScenarioBuilder extends Component
             ],
             'marriageDate' => ['nullable', 'date', 'before_or_equal:today'],
             'homeToDescendants' => ['boolean'],
+            'hasDescendants' => ['boolean'],
             'useIsaAllowance' => ['boolean'],
             // The four UK marginal rates an inheriting beneficiary can be on, plus blank for the
             // engine's disclosed default. A free box would invite a rate that is not a rate.
@@ -1310,6 +1318,11 @@ class ScenarioBuilder extends Component
         // spurious delta. Mirrors modelCareCost, inverted for a default-on flag.
         if (! $this->homeToDescendants) {
             $state['homeToDescendants'] = false;
+        }
+
+        // The descendants answer, stored only when OFF (sparse), like homeToDescendants above.
+        if (! $this->hasDescendants) {
+            $state['hasDescendants'] = false;
         }
 
         // The ISA-allowance toggle, stored only when OFF (sparse), like homeToDescendants above.

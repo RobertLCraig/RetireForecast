@@ -187,6 +187,41 @@ final class InheritanceTaxForecastTest extends TestCase
             $iht->firstDeath->tax->isPositive(),
             'with no will, the children\'s half of the residue is chargeable, so the first death is not nil',
         );
+
+        // "Leave the home to descendants" is a question about the HOME at the final death, not
+        // about whether there are children. Unticking it must not hand the intestate estate back
+        // to the spouse in full, and it must not drop the warning that says a will was assumed away.
+        $homeNotToChildren = $this->forecast($this->couple(RelationshipStatus::MarriedOrCivilPartnership), true, homeToDescendants: false)->iht;
+
+        $this->assertNotNull($homeNotToChildren);
+        $this->assertTrue(
+            $homeNotToChildren->firstDeath->tax->isPositive(),
+            'unticking "leave the home to descendants" does not make an intestate first death spouse-exempt',
+        );
+        $this->assertContains(
+            WarningCode::IHT_INTESTACY,
+            array_map(static fn ($w) => $w->code, $homeNotToChildren->firstDeath->warnings),
+        );
+    }
+
+    public function test_a_household_with_no_descendants_leaves_the_intestate_estate_to_the_spouse(): void
+    {
+        // The reader says there are no children or other descendants: under intestacy the spouse
+        // then takes the whole estate, so the first death is nil and no intestacy split is shown.
+        $iht = (new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
+            ->forecast($this->couple(RelationshipStatus::MarriedOrCivilPartnership), AssumptionSetLibrary::default(), new ForecastSettings(
+                baseYear: 2026,
+                baseTaxYear: '2026-27',
+                modelIht: true,
+                hasDescendants: false,
+            ))->iht;
+
+        $this->assertNotNull($iht);
+        $this->assertSame(0, $iht->firstDeath->tax->pence);
+        $this->assertNotContains(
+            WarningCode::IHT_INTESTACY,
+            array_map(static fn ($w) => $w->code, $iht->firstDeath->warnings),
+        );
     }
 
     public function test_a_will_is_never_assumed_and_costs_the_estate_when_there_is_none(): void
