@@ -39,7 +39,7 @@ is card 0079.
 ## Acceptance
 <!-- AC:BEGIN -->
 - [x] #1 THE APP SHALL let the reader say how much of a pension pot is already in drawdown. proves: `test_a_pot_can_be_entered_as_partly_crystallised`
-- [ ] #2 WHEN a pot is entered as already in drawdown, THE APP SHALL charge full income tax on that part of it and give no tax-free quarter. proves: `test_a_draw_from_an_already_crystallised_pot_takes_no_tax_free_quarter`
+- [x] #2 WHEN a pot is entered as already in drawdown, THE APP SHALL charge full income tax on that part of it and give no tax-free quarter. proves: `test_a_draw_from_an_already_crystallised_pot_takes_no_tax_free_quarter`
 - [x] #3 WHERE the reader does not say, THE APP SHALL disclose which answer it assumed and what that answer costs them. proves: `test_the_assumed_crystallised_share_is_disclosed`
 <!-- AC:END -->
 
@@ -168,3 +168,17 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #2 because `App\Forecast\LumpSumTaxShock::alreadyCrystallised` still builds the crystallised part only from earlier `pcls` plan rows and never reads `DcPension::crystallisedValue()`. So for a pot entered as already in drawdown, the tax-shock panel shows a tax-free quarter on money `PathProjector` taxes in full: one withdrawal, two answers. `LumpSumTaxShockTest` has no case with a starting `crystallisedValue`. The scope finding also stands: `crystallisedValue` is backfilled and validated on DB and State Pension rows, where it means nothing.
+
+**2026-10-10** RESULT: partial
+TESTS: +2 new, all green
+TOUCHED: app/Forecast/LumpSumTaxShock.php
+TOUCHED: tests/Feature/Forecast/LumpSumTaxShockTest.php
+OUT-OF-SCOPE: none
+
+The reopened #2 is fixed. `LumpSumTaxShock::alreadyCrystallised()` now starts from `DcPension::crystallisedValue()`, the same seed `PathProjector` uses. It then steps each earlier lump sum the way the projector does: the cash comes only out of uncrystallised money, the slice is crystallised, and the cash is paid out of crystallised money first. Now the panel and the forecast give one answer for one withdrawal.
+
+I watched both new tests fail for the reason the reviewer gave. `test_a_draw_from_an_already_crystallised_pot_takes_no_tax_free_quarter` (in `LumpSumTaxShockTest`; the engine test with the same name already covered the projector) failed with a tax-free part of GBP 10,000 on GBP 40,000 drawn out of money stated as in drawdown. It has a control: the same pot with no drawdown part still gets its quarter. `test_a_lump_sum_before_the_draw_adds_to_the_stated_drawdown_part` failed with GBP 15,000 tax-free where the stated part plus the lump sum's residue leaves GBP 2,500. The existing lump-sum-then-UFPLS test still passes, so the case with no stated part did not change.
+
+The scope finding (the field on DB and State Pension rows) is not changed, and I do not agree it is a defect. `blankPension()` gives every row the keys of every subtype (`pclsTakenToDate`, `weeklyForecast`, `accruedAnnualPension`, and so on), and `loadState()` already backfills the DB-only `fixedEscalationRate` onto every row. `crystallisedValue` follows that house pattern. Only `HouseholdAssembler::pension()` reads it, and only for a DC pot. If Rob wants it limited to DC rows, the siblings need the same change, and that is a card of its own.
+
+Still open, as before: Task 4 (Rob's call on whether a pot with no answer should infer a crystallised share from `pclsTakenToDate`) and Task 5 (re-run the stored scenarios and audit). This fix moves no stored forecast figure, only the panel, so it adds no ENGINE_VERSION bump. The panel and the builder input have not been checked in a browser. The site is served from C:\Dev\RetireForecast, not from this worktree.
