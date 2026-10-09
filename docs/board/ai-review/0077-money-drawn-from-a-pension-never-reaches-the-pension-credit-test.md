@@ -34,7 +34,7 @@ How secure Pension Credit is treated as being, and the missing claim prompt, whi
 - [x] #1 WHEN a household on Pension Credit draws taxable pension money to cover a shortfall, THE APP SHALL reduce that year's award by what the means test would take. proves: `test_an_ad_hoc_pension_draw_reduces_the_pension_credit_award`
 - [x] #2 THE APP SHALL leave the tax-free part of a draw out of the assessment, because it is capital and not income. proves: `test_the_tax_free_part_of_a_draw_is_not_assessed_as_income`
 - [x] #3 THE APP SHALL settle to a single consistent figure for the year, with the award, the shortfall and the draw agreeing. proves: `test_the_award_and_the_draw_reconcile_in_the_same_year`
-- [ ] #4 WHEN a household on no Guarantee Credit draws taxable pension money, THE APP SHALL re-assess its Housing Benefit and Council Tax Reduction on that draw in the same year. proves: `test_a_pension_draw_reduces_housing_benefit_when_the_guarantee_credit_is_nil`
+- [x] #4 WHEN a household on no Guarantee Credit draws taxable pension money, THE APP SHALL re-assess its Housing Benefit and Council Tax Reduction on that draw in the same year. proves: `test_a_pension_draw_reduces_housing_benefit_when_the_guarantee_credit_is_nil`
 <!-- AC:END -->
 
 ## Tasks
@@ -180,3 +180,23 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened, added #4, because the breakage finding still holds on `master`. The fixed-point loop in `PathProjector::projectYear` still stops as soon as `$benefitNominal === 0` ("settled by definition"). But `housingBenefitNominal` and `councilTaxNominal` taper off the same award's `assessableIncomeWeekly`, and both can still be positive, so a renter just above the guarantee who draws taxable pension money keeps their Housing Benefit and Council Tax Reduction as if the draw never happened.
+
+**2026-10-09** RESULT: done
+TESTS: +1 new, all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php
+TOUCHED: packages/finance-engine/tests/Forecast/PensionCreditDrawAssessedTest.php
+TOUCHED: packages/finance-engine/tests/Forecast/PathProjectorTest.php
+TOUCHED: app/Forecast/ScenarioForecaster.php
+TOUCHED: docs/DECISIONS.md
+TOUCHED: docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+#1 to #3 were met by the earlier take and are unchanged. This take is #4 only.
+
+The settle test in `PathProjector::projectYear` no longer breaks on a nil Guarantee Credit. A pass now settles when re-assessing the means test on its own taxable draw leaves three figures where the pass had them: the Guarantee Credit, the Housing Benefit and the council tax after reduction. These are read through the existing `housingBenefitNominal` and `councilTaxNominal`, on the state as it stood when the pass assessed them. Only a household the means test never ran for (a null award, under State Pension age) skips the check. The secant step is unchanged; the Housing Benefit taper is still a straight line in the assessed draw.
+
+`test_a_pension_draw_reduces_housing_benefit_when_the_guarantee_credit_is_nil` was watched failing first for the reason the criterion names: it reported 459,440p, the Housing Benefit on the State Pension alone, against 373,900p on the State Pension plus the taxable draw.
+
+One test moved, re-examined, not loosened: `PathProjectorTest::test_essential_spend_includes_rent_on_the_renting_leg` asserted its couple qualifies for part of the rent. That held only on the State Pension alone. The couple draws 6,125.40 pounds of taxable pension money, which lifts the taper past the 8,000 pound rent, so the settled award is nil (probed outside the repo: unique fixed point, the taper times the tax gross-up is under one). The assertion now states that, and the reconciliation assertions are untouched.
+
+`ENGINE_VERSION` is `finance-engine/pension-draw-reassesses-housing-support`; the stored re-run is owed for pension-age renters and CTR claimants who draw taxable pension money. DECISIONS 2026-10-09 has the entry. The Monte Carlo golden master did not move. Council Tax Reduction rides the same check but has no test of its own here; the card's proves name is the Housing Benefit case. `scenarios:audit` was not re-run in this take. No screen changed, so no browser check is owed.
