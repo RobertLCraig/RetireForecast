@@ -46,7 +46,7 @@ the plan rules it out by name.
 - [x] #1 THE APP SHALL try at least one draw order that is not one of the three named ones.
 - [x] #2 THE APP SHALL keep the number of forecasts a results page runs within the bound the plan
       sets (4 to 6 candidates in total).
-- [ ] #3 WHEN a generated order wins, THE APP SHALL name it to the reader in terms they can act on,
+- [x] #3 WHEN a generated order wins, THE APP SHALL name it to the reader in terms they can act on,
       not as an internal setting.
 <!-- AC:END -->
 
@@ -106,6 +106,24 @@ hook flags on every session; this entry adds to it and nothing was folded out, b
 pass of its own and not this card's scope.
 
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
+
+**2026-10-09** RESULT: done
+TESTS: +2 new, all green
+TOUCHED: app/Forecast/DrawCandidate.php
+TOUCHED: app/Forecast/ResultPresenter.php
+TOUCHED: resources/views/livewire/scenario-builder.blade.php
+TOUCHED: tests/Feature/Forecast/ScenarioForecasterTest.php
+OUT-OF-SCOPE: none
+
+This take works the reopened #3 and both findings of the 2026-09-08 review. #1 and #2 are unchanged from the first build and their tests still pass.
+
+**Finding 2, the name overstated the engine.** `DrawCandidate::label()` now reads "drawing each person's pension until their taxable income reaches £X a year (not counting interest or dividends), then your savings and investments, and more pension only once those run out". That is the order `PathProjector::fundShortfall` actually runs: the cap is on non-savings income, and the last-resort pass has no cap. No engine change. `test_a_generated_orders_name_says_what_the_engine_does_not_a_ceiling_it_breaches` failed first on the old label ("under £12,570.00").
+
+**Finding 1, the false sentence.** The assumed draw-order note in `ResultPresenter::inputNotes` now says the results price the three named orders plus a few variations, and that the variations cannot be picked in the builder yet. `test_the_draw_order_note_does_not_promise_the_reader_can_pick_every_order_priced` failed first on "you can pick the one you want", on a household where a generated order wins. The builder hint in `scenario-builder.blade.php` got the same correction; that one is copy with no test of its own.
+
+**Limits, said plainly.** Both new tests check wording. They do not prove from forecast output that a breach of £X happens, because `ForecastResult` reports household totals and not each person's taxable income. The Guarantee Credit exception (no first pension pass) is not in the name, the same as for the named fill-the-bands order. The label is longer now; it renders inside the panel sentence and the Interpretation steer, and nobody has looked at either in a browser: this worktree is not what Herd serves, so it still needs a browser check. Making the variations pickable stays card 0144.
+
+Suite: `php artisan test` (pest.bat does not exist in this repo), 1703 passed, 1 skipped (the advice-mode banned-phrasing skip). Pint clean.
 
 ## Tasks
 - [x] Rob's call was not available (unattended). Both questions answered from the repository instead,
