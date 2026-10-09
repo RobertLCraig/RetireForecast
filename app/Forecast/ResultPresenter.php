@@ -1019,19 +1019,20 @@ final class ResultPresenter
         // The rate the pension part of SPENDABLE wealth was netted at (board card 0076). A pot is
         // not spendable at face value, so the figure the safety buffer is measured against and the
         // plans are ranked on now takes the tax off it — and the rate that came out of is one
-        // nobody entered. Every figure in the sentence is READ off the year the headline is taken
-        // from, so the disclosure cannot describe a netting that was not done.
-        $years = $forecast?->years ?? [];
-        $terminal = $years === [] ? null : $years[array_key_last($years)];
-        if ($terminal !== null && $terminal->pensionTaxIfDrawn()->isPositive()) {
+        // nobody entered. Every year is netted (the ladder and the safety-buffer year read it), so
+        // the note shows whenever ANY year was, and every figure in it is READ off the last year
+        // that was: a plan that empties its pot before the end is still told the rate.
+        $netted = array_filter($forecast?->years ?? [], static fn (YearResult $y): bool => $y->pensionTaxIfDrawn()->isPositive());
+        $lastNetted = $netted === [] ? null : $netted[array_key_last($netted)];
+        if ($lastNetted !== null) {
             $rate = self::ratePct(
-                $terminal->pensionTaxIfDrawn()->pence / $terminal->pensionTaxableIfDrawn()->pence * 100
+                $lastNetted->pensionTaxIfDrawn()->pence / $lastNetted->pensionTaxableIfDrawn()->pence * 100
             );
             $out[] = 'A pension pot is not spendable money at face value, so the spendable-wealth figure is net of '
-                ."the tax that would be due on it. Of the {$terminal->pensionWealth->format()} of pension money left "
-                ."in {$terminal->calendarYear}, {$terminal->pensionTaxableIfDrawn()->format()} would be taxable when "
+                ."the tax that would be due on it. Of the {$lastNetted->pensionWealth->format()} of pension money left "
+                ."in {$lastNetted->calendarYear}, {$lastNetted->pensionTaxableIfDrawn()->format()} would be taxable when "
                 .'it is drawn (the tax-free cash comes off first, as far as what is left of your Lump Sum Allowance '
-                ."stretches), and we have taken {$terminal->pensionTaxIfDrawn()->format()} off for the tax on it, "
+                ."stretches), and we have taken {$lastNetted->pensionTaxIfDrawn()->format()} off for the tax on it, "
                 ."which is {$rate} of the taxable part. That is the marginal rate your projected income puts you in, "
                 .'not the rate you would pay for cashing the whole pot in one go: draw it faster than this plan draws '
                 .'it and the tax is higher, and a year in which your other income is small enough to be covered by '
