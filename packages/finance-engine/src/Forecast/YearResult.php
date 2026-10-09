@@ -72,7 +72,8 @@ final class YearResult
      * investment income (GIA dividends + cash interest paid out, A5); tax-free
      * income (e.g. DLA); means-tested benefit (Pension Credit Guarantee Credit);
      * pension tax-free lump sums; taxable pension drawdown (planned + drawn to meet a
-     * shortfall); capital drawn from savings/ISA/GIA; and documented one-off capital
+     * shortfall); tax-free drawdown from a pension inherited from a death under 75 (board
+     * card 0079: income with no 25% quarter, so neither of the two lines before it); capital drawn from savings/ISA/GIA; and documented one-off capital
      * receipts (a family gift / inheritance / outside-asset sale — tax-free, one-off,
      * so never part of the secure-income floor); and an employer death-in-service lump
      * sum paid to the survivor (likewise one-off, and shown GROSS — any tax on it is in
@@ -88,6 +89,7 @@ final class YearResult
         'means_tested_benefit',
         'pension_lump_sum',
         'pension_drawdown',
+        'inherited_pension',
         'asset_drawdown',
         'capital_receipt',
         'death_in_service',

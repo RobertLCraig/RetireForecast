@@ -3,6 +3,19 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-09: a tax-free inherited pension draw has its own income line
+
+**Context:** card 0079 #4, reopened by the manager pass. Supersedes the 2026-09-08 choice to
+report the tax-free inherited draw on the `fromPensionTaxFree` channel. That put beneficiary
+drawdown under "Pension tax-free cash", which it is not: it is income with no 25% quarter.
+**Decision:** `fundShortfall` returns `fromInheritedTaxFree` beside `fromPensionTaxFree`, and
+`projectYear` files it on a new `inherited_pension` source, labelled "Inherited pension
+(tax-free)". The deprivation check and the ladder's drawing status count it as pension money.
+**Consequence:** no total, tax or wealth figure moves. `ENGINE_VERSION` is
+`finance-engine/inherited-pension-has-its-own-line`; a stored result shows the money under the
+old heading until re-run. The means test still leaves the draw out; that gap stays on card 0145.
+**Status:** active
+
 ## 2026-10-09: the Pension Credit pass settles on every award that reads the means test
 
 **Context:** card 0077 #4, reopened by review. The fixed-point pass that lets a pension draw

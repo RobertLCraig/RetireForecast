@@ -8,7 +8,9 @@ use App\Forecast\HouseholdAssembler;
 use App\Forecast\ResultPresenter;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
+use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
@@ -24,6 +26,14 @@ final class InheritedPensionTreatmentNoticeTest extends TestCase
 {
     /** @return list<array{kind: string, text: string}> */
     private function notes(int $deceasedAgeAtDeath): array
+    {
+        [$household, $forecast, $assembler, $run] = $this->scenario($deceasedAgeAtDeath);
+
+        return ResultPresenter::inputNotes($household, $forecast, $assembler->housingAction([]), null, null, $run);
+    }
+
+    /** @return array{0: Household, 1: ForecastResult, 2: HouseholdAssembler, 3: ForecastSettings} */
+    private function scenario(int $deceasedAgeAtDeath): array
     {
         $deceasedBirthYear = 2026 - $deceasedAgeAtDeath;
         $state = [
@@ -50,7 +60,7 @@ final class InheritedPensionTreatmentNoticeTest extends TestCase
             new CohortLifeTable,
         ))->forecast($household, AssumptionSetLibrary::default(), $run);
 
-        return ResultPresenter::inputNotes($household, $forecast, $assembler->housingAction([]), null, null, $run);
+        return [$household, $forecast, $assembler, $run];
     }
 
     private function treatmentText(int $deceasedAgeAtDeath): string
@@ -74,6 +84,13 @@ final class InheritedPensionTreatmentNoticeTest extends TestCase
         $over = $this->treatmentText(76);
         $this->assertStringContainsString('TAXED', $over);
         $this->assertStringContainsString('76', $over);
+
+        // The ladder says what the tax-free money IS. Beneficiary drawdown is not tax-free cash and
+        // has no 25% quarter, so it gets a line naming it, never the "Pension tax-free cash" one.
+        $ladder = ResultPresenter::ladder($this->scenario(72)[1]);
+        $this->assertContains('inherited_pension', $ladder['sources'], 'the tax-free inherited draw has a ladder line of its own');
+        $this->assertStringContainsString('nherited', $ladder['sourceLabels']['inherited_pension']);
+        $this->assertNotContains('pension_lump_sum', $ladder['sources'], 'and none of it is shown as tax-free cash');
     }
 
     /** A household with nothing inherited says none of it: a disclosure that always fires is noise. */

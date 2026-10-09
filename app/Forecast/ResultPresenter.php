@@ -91,6 +91,8 @@ final class ResultPresenter
         'means_tested_benefit' => 'Pension Credit',
         'pension_lump_sum' => 'Pension tax-free cash',
         'pension_drawdown' => 'Pension drawdown',
+        // Beneficiary drawdown from a pot inherited under 75: tax-free, but not tax-free cash.
+        'inherited_pension' => 'Inherited pension (tax-free)',
         'asset_drawdown' => 'Savings drawn',
         // One-off, so deliberately NOT in SECURE_SOURCES: a gift never inflates the income floor.
         'capital_receipt' => 'One-off receipt',
@@ -1690,6 +1692,7 @@ final class ResultPresenter
             // a shortfall is spend that wasn't met even after drawing everything available.
             $savingsDraw = ($year->incomeBySource['pension_lump_sum'] ?? Money::zero())
                 ->plus($year->incomeBySource['pension_drawdown'] ?? Money::zero())
+                ->plus($year->incomeBySource['inherited_pension'] ?? Money::zero())
                 ->plus($year->incomeBySource['asset_drawdown'] ?? Money::zero());
             $status = ! $year->unmetSpend->isZero() ? 'shortfall'
                 : ($savingsDraw->isPositive() ? 'drawing' : 'surplus');

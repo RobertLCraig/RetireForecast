@@ -127,7 +127,7 @@ final class InheritedPensionDrawTaxTest extends TestCase
         $under = $this->drawYear(72, $strategy);
         $over = $this->drawYear(76, $strategy);
 
-        $drawn = $under->incomeBySource['pension_lump_sum'] ?? Money::zero();
+        $drawn = $under->incomeBySource['inherited_pension'] ?? Money::zero();
         $this->assertTrue($drawn->isPositive(), 'the survivor has to draw the inherited pot to live, so there is a draw to tax');
         $this->assertSame(
             0,
@@ -180,6 +180,22 @@ final class InheritedPensionDrawTaxTest extends TestCase
 
             $this->assertNotNull($message, "the year a pot is inherited from a death at {$age} must say how it will be taxed");
             $this->assertStringContainsString((string) $age, $message, 'the age at death is the fact the treatment turns on, so it is named');
+        }
+
+        // And the money itself is filed under what it is. A tax-free inherited draw is beneficiary
+        // drawdown, not tax-free cash: it has no 25% quarter, so it may not sit on the line the
+        // ladder labels "Pension tax-free cash" (the manager pass on card 0079).
+        foreach (self::strategies() as [$strategy]) {
+            $under = $this->drawYear(72, $strategy);
+            $this->assertTrue(
+                ($under->incomeBySource['inherited_pension'] ?? Money::zero())->isPositive(),
+                "{$strategy->value}: a tax-free inherited draw is reported on a line of its own",
+            );
+            $this->assertSame(
+                0,
+                ($under->incomeBySource['pension_lump_sum'] ?? Money::zero())->pence,
+                "{$strategy->value}: and none of it is filed as tax-free cash",
+            );
         }
     }
 }

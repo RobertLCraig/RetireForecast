@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-09 (pension-draw-reassesses-housing-support): a taxable pension draw now
+     * Bumped 2026-10-09 (inherited-pension-has-its-own-line): a tax-free draw from a pension
+     * inherited from a death under 75 is reported on its own `inherited_pension` income line, not
+     * on the "Pension tax-free cash" line. No total, tax or wealth figure moves; a stored result
+     * shows that money under the wrong heading until it is re-run. Board card 0079 #4.
+     * Previous bump 2026-10-09 (pension-draw-reassesses-housing-support): a taxable pension draw now
      * re-assesses Housing Benefit and Council Tax Reduction in the same year even when Guarantee
      * Credit is nil. The settle test stopped at a nil credit, so a renter just above the guarantee
      * kept both as if the draw never happened. Board card 0077 #4.
@@ -557,7 +561,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/pension-draw-reassesses-housing-support';
+    public const ENGINE_VERSION = 'finance-engine/inherited-pension-has-its-own-line';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

@@ -1775,14 +1775,20 @@ final class PathProjector
                 // only the balance on the drawdown line, which the ladder labels as taxable pension
                 // income (board card 0074). The two are one gross split in two, never two sums, so the
                 // year still reconciles to the money that left the pots.
+                // A draw from a pot inherited under 75 is tax-free too, but it is beneficiary
+                // drawdown with no 25% quarter, so it has a line of its own (board card 0079).
+                $taxableDrawn = $funded['fromPension'] - $funded['fromPensionTaxFree'] - $funded['fromInheritedTaxFree'];
                 $src['pension_lump_sum'] += $funded['fromPensionTaxFree'];
-                $src['pension_drawdown'] += $funded['fromPension'] - $funded['fromPensionTaxFree'];
+                $src['inherited_pension'] += $funded['fromInheritedTaxFree'];
+                $src['pension_drawdown'] += $taxableDrawn;
                 $src['asset_drawdown'] += $funded['fromAssets'];
                 // What the means test can see of that draw: the TAXABLE part alone. The tax-free
                 // quarter is capital in the claimant's hands, not income, so it is left out here
-                // and the capital it becomes is assessed the way any other capital is — by the
-                // tariff, at the open of the year after it was drawn.
-                $taxablePensionDrawn = $funded['fromPension'] - $funded['fromPensionTaxFree'];
+                // and the capital it becomes is assessed the way any other capital is: by the
+                // tariff, at the open of the year after it was drawn. The tax-free inherited draw
+                // is NOT capital (it is income for Pension Credit), and leaving it out here too is
+                // a known gap owned by board card 0145.
+                $taxablePensionDrawn = $taxableDrawn;
                 // The disposals that funded the year already counted against each person's CGT
                 // annual exempt amount (they include $seedGains, shared once), so bed-and-ISA below
                 // reads them rather than re-claiming an allowance that is already spent.
@@ -3624,13 +3630,16 @@ final class PathProjector
      * `fromPension`, never a second sum, so the caller files it on the tax-free cash line and only
      * the balance on the taxable drawdown line, which is what lets a reader add up taxable income
      * off the cashflow ladder and get the figure the year's tax was computed on (board card 0074).
+     * `fromInheritedTaxFree` is a second, separate subset: what a pot inherited from a death under
+     * 75 paid out free of tax. It is beneficiary drawdown, not tax-free cash, so it has its own
+     * line (board card 0079).
      *
      * @param  array<string, mixed>  $state
      * @param  array<string, bool>  $alive
      * @param  array<string, int>  $taxablePerPerson  nominal NON-SAVINGS taxable income per person
      * @param  array<string, int>  $savingsPerPerson  nominal savings income (interest) per person
      * @param  array<string, int>  $dividendsPerPerson  nominal dividend income per person
-     * @return array{funded: int, extraTax: int, fromPension: int, fromPensionTaxFree: int, fromAssets: int}
+     * @return array{funded: int, extraTax: int, fromPension: int, fromPensionTaxFree: int, fromInheritedTaxFree: int, fromAssets: int}
      */
     private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $ages, array $taxablePerPerson, array $savingsPerPerson, array $dividendsPerPerson, int $shortfall, float $thresholdFactor = 1.0, bool $onGuaranteeCredit = false, array $seedGains = []): array
     {
@@ -3639,6 +3648,7 @@ final class PathProjector
         $extraTax = 0;
         $fromPension = 0; // gross pension withdrawn to meet the shortfall
         $fromPensionTaxFree = 0; // the part of that gross which was tax-free cash (subset)
+        $fromInheritedTaxFree = 0; // the part drawn tax-free from a pot inherited under 75 (subset)
         $fromAssets = 0;  // capital drawn from cash/GIA/ISA
         // GIA gains realised this year by disposals, per person (feeds CGT below). Seeded with
         // any gains a year-0 purchase draw already realised ($seedGains, pence), so the AEA
@@ -3761,14 +3771,15 @@ final class PathProjector
         // Take money out of a pot every pound of which is tax-free: one inherited from a member
         // who died under 75 ({@see drawIsTaxFree}). There is no gross-up and no band to fill,
         // because none of it is income for tax: the cash raised IS the amount drawn, so a taxable
-        // limit does not bind it and it consumes no allowance. Reported on the tax-free pension
-        // line beside the tax-free quarter of an ordinary draw (board card 0074), because the
-        // drawdown line beside it is the taxable one and a reader adds that up.
+        // limit does not bind it and it consumes no allowance. Reported on a line of its own
+        // (`fromInheritedTaxFree`): not the drawdown line, which is the taxable one a reader adds
+        // up (board card 0074), and not the tax-free cash line either, because beneficiary
+        // drawdown is income with no 25% quarter, not a lump sum.
         //
         // Written once and called from BOTH ad-hoc draw closures below, so the treatment cannot
         // depend on which drawdown order is running: the fault this replaces charged full income
         // tax on every route (board card 0079).
-        $takeTaxFreeInherited = function (array &$pot) use (&$remaining, &$funded, &$fromPension, &$fromPensionTaxFree): void {
+        $takeTaxFreeInherited = function (array &$pot) use (&$remaining, &$funded, &$fromPension, &$fromInheritedTaxFree): void {
             $gross = min($remaining, $pot['value']);
             if ($gross <= 0) {
                 return;
@@ -3777,7 +3788,7 @@ final class PathProjector
             $remaining -= $gross;
             $funded += $gross;
             $fromPension += $gross;
-            $fromPensionTaxFree += $gross;
+            $fromInheritedTaxFree += $gross;
         };
 
         // Draw taxable pension income, per person, capped so the person's taxable income does
@@ -4003,7 +4014,7 @@ final class PathProjector
             $funded = $fundedBeforeCgt;
         }
 
-        return ['funded' => $funded, 'extraTax' => $extraTax, 'fromPension' => $fromPension, 'fromPensionTaxFree' => $fromPensionTaxFree, 'fromAssets' => $fromAssets, 'realisedGain' => $realisedGain];
+        return ['funded' => $funded, 'extraTax' => $extraTax, 'fromPension' => $fromPension, 'fromPensionTaxFree' => $fromPensionTaxFree, 'fromInheritedTaxFree' => $fromInheritedTaxFree, 'fromAssets' => $fromAssets, 'realisedGain' => $realisedGain];
     }
 
     /**
@@ -4375,7 +4386,7 @@ final class PathProjector
     {
         $events = [];
 
-        $fromPension = ($src['pension_lump_sum'] ?? 0) + ($src['pension_drawdown'] ?? 0);
+        $fromPension = ($src['pension_lump_sum'] ?? 0) + ($src['pension_drawdown'] ?? 0) + ($src['inherited_pension'] ?? 0);
         if ($fromPension >= $thresholdNominal) {
             $events[] = 'taking '.$m($fromPension)->format().' out of a pension';
         }
