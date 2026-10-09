@@ -121,21 +121,28 @@ final class LumpSumTaxShock
      * Without this the panel showed a quarter of it tax-free while the forecast charged the lot —
      * two figures for one withdrawal, from the same engine.
      *
+     * It starts from the part the reader says is already in drawdown (card 0080), which is where
+     * {@see PathProjector} seeds the pot too; starting from nil gave that money a quarter here. Each
+     * lump sum then mirrors the projector's own step: cash only out of uncrystallised money, the
+     * slice crystallised, the cash paid out of crystallised money first.
+     *
      * Capped at the pot, so an oversized instruction cannot crystallise money that is not there.
      * Like the rest of this panel it reads the entered pot value and ignores growth between now
      * and the withdrawal age; the full forecast is the place that models the balance year by year.
      */
     private function alreadyCrystallised(DcPension $pension, int $atAge, float $pclsRate): Money
     {
-        $cash = 0;
-        foreach ($pension->withdrawalPlan as $earlier) {
-            if ($earlier->kind === WithdrawalKind::Pcls && $earlier->atAge <= $atAge) {
-                $cash += $earlier->amount->pence;
-            }
+        $value = $pension->currentValue->pence;
+        $crystallised = $pension->crystallisedValue()->pence;
+        $earlier = array_filter($pension->withdrawalPlan, fn ($w) => $w->kind === WithdrawalKind::Pcls && $w->atAge <= $atAge);
+        usort($earlier, fn ($a, $b) => $a->atAge <=> $b->atAge);
+        foreach ($earlier as $lumpSum) {
+            $cash = min($lumpSum->amount->pence, max(0, $value - $crystallised));
+            $crystallised = min($value, $crystallised + (int) round($cash / $pclsRate)) - $cash;
+            $value -= $cash;
         }
-        $cash = min($cash, $pension->currentValue->pence);
 
-        return Money::fromPence(max(0, min($pension->currentValue->pence, (int) round($cash / $pclsRate)) - $cash));
+        return Money::fromPence(max(0, $crystallised));
     }
 
     private function otherIncome(?Person $owner, int $atAge): TaxableIncome

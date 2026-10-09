@@ -124,6 +124,72 @@ class LumpSumTaxShockTest extends TestCase
         $this->assertSame(6_000_000, $shock['raw']['taxablePence']);
     }
 
+    public function test_a_draw_from_an_already_crystallised_pot_takes_no_tax_free_quarter(): void
+    {
+        // Card 0080: the reader says £150,000 of the £200,000 pot is already in drawdown. The
+        // forecast draws that first and taxes it in full, so a £40,000 UFPLS has no tax-free part.
+        // A later £10,000 of tax-free cash can only come out of the £50,000 left uncrystallised.
+        $state = $this->retiredWithPot('200000', '150000', [
+            ['kind' => 'ufpls', 'amount' => '40000', 'atAge' => '61'],
+        ]);
+
+        $shock = (new LumpSumTaxShock)->assess($this->scenarioWith($state));
+
+        $this->assertNotNull($shock);
+        $this->assertSame(0, $shock['raw']['taxFreePence'], 'the stated drawdown part covers the whole £40,000 draw');
+        $this->assertSame(4_000_000, $shock['raw']['taxablePence']);
+
+        // Control: the same pot with nothing stated still gets its quarter, so the zero above is
+        // the stated drawdown part at work and not a panel that never pays tax-free cash.
+        $control = (new LumpSumTaxShock)->assess($this->scenarioWith($this->retiredWithPot('200000', '', [
+            ['kind' => 'ufpls', 'amount' => '40000', 'atAge' => '61'],
+        ])));
+        $this->assertSame(1_000_000, $control['raw']['taxFreePence']);
+    }
+
+    public function test_a_lump_sum_before_the_draw_adds_to_the_stated_drawdown_part(): void
+    {
+        // £50,000 of the £200,000 pot is stated as in drawdown. £20,000 of tax-free cash at 60
+        // crystallises £80,000 of the uncrystallised £150,000: £60,000 more joins drawdown. So
+        // £110,000 is in drawdown by 61 and a £120,000 UFPLS has a quarter of only £10,000 tax-free.
+        $state = $this->retiredWithPot('200000', '50000', [
+            ['kind' => 'pcls', 'amount' => '20000', 'atAge' => '60'],
+            ['kind' => 'ufpls', 'amount' => '120000', 'atAge' => '61'],
+        ]);
+
+        $shock = (new LumpSumTaxShock)->assess($this->scenarioWith($state));
+
+        $this->assertSame(250_000, $shock['raw']['taxFreePence']);
+    }
+
+    /**
+     * @param  list<array<string, string>>  $withdrawals
+     * @return array<string, mixed>
+     */
+    private function retiredWithPot(string $value, string $crystallised, array $withdrawals): array
+    {
+        return [
+            'name' => 'Stated drawdown part',
+            'householdName' => 'Stated drawdown part',
+            'region' => 'england_wales_ni',
+            'baseTaxYear' => '2025-26',
+            'variant' => 'rent',
+            'ihtModelled' => false,
+            'people' => [
+                ['id' => 'p1', 'name' => '', 'dob' => '1965-01-01', 'sex' => 'male', 'employmentStatus' => 'retired',
+                    'grossSalary' => '', 'salaryGrowth' => '', 'plannedRetirementAge' => '', 'niCategory' => ''],
+            ],
+            'expense' => ['essential' => '18000', 'discretionary' => '6000', 'survivorFactor' => '70'],
+            'pensions' => [
+                ['ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => $value, 'ongoingContribution' => '',
+                    'employerContribution' => '', 'earliestAccessAge' => '55', 'pclsTakenToDate' => '0',
+                    'crystallisedValue' => $crystallised, 'growthAssumptionOverride' => '', 'withdrawals' => $withdrawals],
+            ],
+            'hasProperty' => false,
+            'housing' => ['salePrice' => '0'],
+        ];
+    }
+
     public function test_it_returns_null_when_no_flexible_withdrawal_is_planned(): void
     {
         $state = [
