@@ -1484,6 +1484,10 @@ them.
    what `PathProjector::contributionHeadroom` and the reader-facing sentence in
    `PathProjector::mpaaWarnings` say. Pinned by
    `PathProjectorTest::test_an_employer_contribution_the_mpaa_blocks_is_not_paid_anywhere_else`.
+   **Superseded by card 0073:** the allowance is no longer a cap. Every contribution is paid in and
+   the excess is charged (`PathProjector::annualAllowanceCharges`), so nothing is blocked and no
+   employer money is lost. The test named above became
+   `test_an_employer_contribution_over_the_mpaa_is_paid_in_and_charged`.
    *Not built, deliberately:* the high-income taper, because it needs adjusted and threshold
    income which the year's own contributions move, and `AnnualAllowanceCalculator` already prices it
    separately; and carry-forward, whose absence is the cautious side of the rule.
@@ -1651,6 +1655,12 @@ other asset and so biased every housing comparison towards realising property eq
    adverse side of the hard cap (in life it would be paid and charged), and it is what the docblock and the
    reader-facing warning now say, having both previously promised the money landed somewhere. Pinned by
    `PathProjectorTest::test_an_employer_contribution_the_mpaa_blocks_is_not_paid_anywhere_else`.
+   **Superseded by card 0073:** the hard cap and the route-dependent timing are both gone. The
+   allowance is settled once at the end of the year (`PathProjector::annualAllowanceCharges`), so all
+   three routes get the same answer, and the excess is charged rather than refused. The trigger year is
+   NOT split at the draw: the model has no date inside a year, so the whole of that year's input is
+   measured against the MPAA. That is the cautious side, it is declared on
+   `PathProjector::applicableAllowance`, and the reader is told in that year's charge note.
 4. **The trigger belongs to the draw, not to the draw ORDER — so `$drawPension` had to change after all.**
    The plan's #5 fenced `$drawPension` off to keep `TaxEfficient` / `PensionAware` byte-identical, and slice
    #5 honoured that. It was wrong: taxable drawdown out of an uncrystallised pot is flexible access whichever

@@ -718,7 +718,7 @@ final class PathProjector
             'lsaUsed' => $lsaUsed,
             // Flexible access (a UFPLS or drawdown income, planned or ad-hoc) permanently caps
             // that member's money-purchase contributions at the MPAA; mpContributed counts what
-            // has gone in THIS year and is reset each year. {@see contributionHeadroom}.
+            // has gone in THIS year and is reset each year. {@see applicableAllowance}.
             'mpaaTriggered' => array_fill_keys(array_keys($lsaUsed), false),
             'mpContributed' => array_fill_keys(array_keys($lsaUsed), 0),
             // The ISA subscription allowance a person has used THIS year, across money paid in
@@ -883,7 +883,7 @@ final class PathProjector
                 // it grows at the blended assumption rate (the deceased's per-pot override is not carried).
                 // Marked inherited because drawing it is NOT a flexible-access trigger for the heir:
                 // beneficiary drawdown is not a member trigger event, so it must not cap the heir's own
-                // money-purchase allowance ({@see contributionHeadroom}).
+                // money-purchase allowance ({@see applicableAllowance}).
                 // Wholly CRYSTALLISED: a beneficiary drawdown fund has already been through the
                 // deceased's regime, so no draw from it has a tax-free quarter. Today that agrees
                 // with {@see lsaHeadroom} returning nil for an inherited pot, but the two answer
@@ -1955,7 +1955,7 @@ final class PathProjector
             incomeBySource: array_map($m, $src),
             warnings: [
                 ...$this->mpaaWarnings($state, $mpaaAtYearStart),
-                ...$this->allowanceChargeWarnings($state, $aaCharges, $m),
+                ...$this->allowanceChargeWarnings($state, $mpaaAtYearStart, $aaCharges, $m),
                 ...$this->unfundedOneOffWarnings($oneOffs, $unmetOneOffNominal, $m),
                 ...$this->tenancyUpFrontWarnings($oneOffs, $rentChargedNominal, $m),
                 // The sell-and-rent leg's rent, else a rent paid as a spend line (the let-out-and-rent
@@ -2991,7 +2991,7 @@ final class PathProjector
                     // capped at the MPAA. The three sites that can trigger it (here and the two
                     // ad-hoc draw closures in fundShortfall) all set it through one helper, so a
                     // planned instruction and an ad-hoc draw cannot apply the rule differently.
-                    // {@see triggerFlexibleAccess}, {@see contributionHeadroom}.
+                    // {@see triggerFlexibleAccess}, {@see applicableAllowance}.
                     $this->triggerFlexibleAccess($state, $pid, $pot);
                 }
 
@@ -3815,7 +3815,7 @@ final class PathProjector
                     $this->drawFromPot($pot, $gross);
                     // Taxable pension income out of the member's OWN money-purchase pot is flexible
                     // access, the same event {@see WithdrawalKind::DrawdownIncome} triggers on: it
-                    // caps their future contributions at the MPAA ({@see contributionHeadroom}).
+                    // caps their future contributions at the MPAA ({@see applicableAllowance}).
                     // Set here as well as in $drawPensionUfpls so the restriction does not depend
                     // on which drawdown strategy is running — otherwise the optimiser compared its
                     // candidates on unequal terms, only FillBands carrying the cap.
@@ -3913,7 +3913,7 @@ final class PathProjector
                     $this->drawFromPot($pot, $gross);
                     $state['lsaUsed'][$person->id] += $taxFree;
                     // A UFPLS from the member's own pot is flexible access: it caps their future
-                    // money-purchase contributions at the MPAA ({@see contributionHeadroom}).
+                    // money-purchase contributions at the MPAA ({@see applicableAllowance}).
                     $this->triggerFlexibleAccess($state, $person->id, $pot);
                     $remaining -= $net;
                     $funded += $net;
@@ -4426,7 +4426,7 @@ final class PathProjector
 
     /**
      * Record that $pid has flexibly accessed a pension, which permanently caps their later
-     * money-purchase contributions at the MPAA ({@see contributionHeadroom}). THE one place the
+     * money-purchase contributions at the MPAA ({@see applicableAllowance}). THE one place the
      * trigger is set, so the planned route and the two ad-hoc draw closures cannot apply the rule
      * differently — and so the one pot that must NOT set it is excluded once rather than three times.
      *
@@ -4462,10 +4462,16 @@ final class PathProjector
      *
      * The allowance is a BILL, not a wall: input above it is paid in and charged
      * ({@see annualAllowanceCharges}, board card 0073). It is settled once, at the end of the
-     * year, so which of the two figures applies turns on the trigger DATE rather than on which
+     * year, so which of the two figures applies turns on the trigger YEAR rather than on which
      * of the three contribution routes the money took — the employer, net-pay and surplus routes
      * used to get three different answers in the trigger year, purely as an artefact of the year
      * order. Pinned by PathProjectorTest::test_the_mpaa_binds_in_the_year_of_the_trigger.
+     *
+     * Declared simplification: it does NOT split the trigger year at the draw. The forecast has no
+     * date inside a year, so the whole of that year's money-purchase input is measured against the
+     * MPAA, including what in life went in before the draw and would be measured against the
+     * ordinary allowance. That is the cautious side of the rule (it can only overstate the charge),
+     * and the reader is told so in that year ({@see allowanceChargeWarnings}).
      *
      * Still absent, both flagged and both outside card 0073: carry-forward of unused allowance
      * from the previous three years, and the high-income taper (which needs adjusted and threshold
@@ -4484,38 +4490,6 @@ final class PathProjector
             : $params->annualAllowance->pence;
     }
 
-    /**
-     * The annual-allowance charge each living member owes on this year's pension input, in nominal
-     * pence, keyed by person id — empty where nobody went over.
-     *
-     * Board card 0073. The allowance used to be a hard cap: a contribution above it simply never
-     * reached the pot, so an overpayment vanished instead of appearing as tax, and the plan showed
-     * a household that had neither the money nor the pension. In life the contribution IS paid and
-     * the excess is charged at the member's marginal rate, which is what takes back the relief it
-     * received on the way in.
-     *
-     * Settled here, after every contribution route AND after the withdrawals that set the MPAA
-     * trigger, so the allowance measured against is the one in force at the end of the year.
-     * {@see AnnualAllowanceCalculator} owns which allowance applies to what, so the rule has one
-     * home; the charge itself is {@see marginalTax} on the excess, the same income-tax pass every
-     * other figure in this year uses. Carry-forward and the taper are passed as nil — neither is
-     * modelled ({@see applicableAllowance}) — so the calculator is asked only the question this
-     * projector can answer, and it is asked at all only for a member who actually paid something
-     * in, which is rare enough to keep the hot loop cheap.
-     *
-     * $taxablePerPerson is the year's non-savings income BEFORE any ad-hoc draw made to fund a
-     * shortfall, so a member whose shortfall draw pushed them into a higher band is charged at the
-     * band they were in without it. That understates the charge in that one case; the alternative
-     * is to price the charge before the draw exists, which cannot see the MPAA trigger the draw
-     * itself sets.
-     *
-     * @param  array<string, mixed>  $state
-     * @param  array<string, bool>  $alive
-     * @param  array<string, int>  $taxablePerPerson
-     * @param  array<string, int>  $savingsPerPerson
-     * @param  array<string, int>  $dividendsPerPerson
-     * @return array<string, int>
-     */
     /**
      * What the pension money still in the pots at the end of this year would cost in income tax if
      * it were drawn — the difference between a pot's face value and what it is worth to spend.
@@ -4594,6 +4568,39 @@ final class PathProjector
         return ['taxable' => $taxableTotal, 'tax' => $tax];
     }
 
+    /**
+     * The annual-allowance charge each living member owes on this year's pension input, in nominal
+     * pence, keyed by person id — empty where nobody went over.
+     *
+     * Board card 0073. The allowance used to be a hard cap: a contribution above it simply never
+     * reached the pot, so an overpayment vanished instead of appearing as tax, and the plan showed
+     * a household that had neither the money nor the pension. In life the contribution IS paid and
+     * the excess is charged at the member's marginal rate, which is what takes back the relief it
+     * received on the way in.
+     *
+     * Settled here, after every contribution route AND after the withdrawals that set the MPAA
+     * trigger, so the allowance measured against is the one in force at the end of the year, and
+     * it is measured against the whole year's input (the simplification {@see applicableAllowance}
+     * declares). {@see AnnualAllowanceCalculator} owns which allowance applies to what, so the rule
+     * has one home; the charge itself is {@see marginalTax} on the excess, the same income-tax pass
+     * every other figure in this year uses. Carry-forward and the taper are passed as nil — neither
+     * is modelled ({@see applicableAllowance}) — so the calculator is asked only the question this
+     * projector can answer, and it is asked at all only for a member who actually paid something
+     * in, which is rare enough to keep the hot loop cheap.
+     *
+     * $taxablePerPerson is the year's non-savings income BEFORE any ad-hoc draw made to fund a
+     * shortfall, so a member whose shortfall draw pushed them into a higher band is charged at the
+     * band they were in without it. That understates the charge in that one case; the alternative
+     * is to price the charge before the draw exists, which cannot see the MPAA trigger the draw
+     * itself sets.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     * @param  array<string, int>  $taxablePerPerson
+     * @param  array<string, int>  $savingsPerPerson
+     * @param  array<string, int>  $dividendsPerPerson
+     * @return array<string, int>
+     */
     private function annualAllowanceCharges(array $state, array $alive, array $taxablePerPerson, array $savingsPerPerson, array $dividendsPerPerson, float $thresholdFactor): array
     {
         $charges = [];
@@ -4636,15 +4643,20 @@ final class PathProjector
      * link: an engine file must not carry a fully-qualified app class, which Pint has previously
      * promoted into a real import.)
      *
+     * In the year the MPAA is first triggered the note also says that the WHOLE year's input was
+     * measured against it, which is the simplification {@see applicableAllowance} declares.
+     *
      * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $before  who had already triggered the MPAA when the year opened
      * @param  array<string, int>  $charges
      * @return list<Warning>
      */
-    private function allowanceChargeWarnings(array $state, array $charges, callable $m): array
+    private function allowanceChargeWarnings(array $state, array $before, array $charges, callable $m): array
     {
         $out = [];
         foreach ($charges as $pid => $charge) {
             $allowance = Money::fromPence($this->applicableAllowance($state, $pid));
+            $firstYear = ($state['mpaaTriggered'][$pid] ?? false) && ! ($before[$pid] ?? false);
             $out[] = new Warning(
                 WarningCode::ANNUAL_ALLOWANCE_EXCEEDED,
                 'Pension input of '.$m($state['mpContributed'][$pid])->format().' this year — everything paid in, '
@@ -4655,7 +4667,13 @@ final class PathProjector
                     : '')
                 .'. The contribution is not refused: it is paid in, and an annual allowance charge of '
                 .$m($charge)->format().' falls on the excess at the marginal rate, which takes back the tax '
-                .'relief the excess received.',
+                .'relief the excess received.'
+                .($firstYear
+                    ? ' This is the year the money was first taken, and the forecast has no date inside a year, so it '
+                    .'measures the whole of the year\'s input against that allowance. In life only what is paid in '
+                    .'after the draw is; anything paid in before the money was taken is measured against the '
+                    .'ordinary allowance, so the charge shown here may be higher than the one that would fall.'
+                    : ''),
             );
         }
 

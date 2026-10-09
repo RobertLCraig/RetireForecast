@@ -626,6 +626,10 @@ from the original plan, flagged inline:
   of the rule); the high-income **taper** is not applied in the projector, because it needs adjusted
   and threshold income which the year's own contributions move; and `ReliefAtSource` still throws, so
   a higher-rate taxpayer wanting relief above the basic amount must use net pay.
+  **Card 0073 closed the first three:** `contributionHeadroom()` is gone, nothing is refused, and the
+  excess is charged in `PathProjector::annualAllowanceCharges()` at year end, so every route and
+  employer money are treated alike. The trigger year is measured whole against the MPAA (no date
+  inside a year), declared on `PathProjector::applicableAllowance()`.
 - **CLOSED 2026-08-23: a fill-the-bands pension draw is a UFPLS, and tax-free cash crystallises what
   it leaves behind** (card 0007, DECISIONS 2026-08-19). An ad-hoc draw to meet a shortfall under
   `DrawdownStrategy::FillBands` used to be taxed on 100% of the gross; it is now split 25/75 while the

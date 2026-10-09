@@ -829,6 +829,18 @@ final class PathProjectorTest extends TestCase
         $this->assertStringContainsString($pension->moneyPurchaseAnnualAllowance->format(), $note);
         $this->assertStringNotContainsString($pension->annualAllowance->format(), $note);
 
+        // The forecast has no date inside a year, so it measures the WHOLE trigger year's input
+        // against the MPAA, including money that in life went in before the draw and would be
+        // tested against the ordinary allowance. That is the cautious side of the rule, and the
+        // reader is told so in the year it applies rather than left to assume the split was made.
+        $this->assertStringContainsString('the whole of the year', $note);
+        $this->assertStringContainsString('before the money was taken', $note);
+        // Only the trigger year carries that caveat: from the next year on every pound is
+        // post-trigger, so the whole-year measure is simply the rule.
+        $later = $this->warningMessage($a->years[3], WarningCode::ANNUAL_ALLOWANCE_EXCEEDED);
+        $this->assertNotNull($later);
+        $this->assertStringNotContainsString('before the money was taken', $later);
+
         // ...and it is the trigger that does it: the same plan without the withdrawal is charged
         // nothing in the same year.
         $this->assertNull($this->warningMessage($b->years[2], WarningCode::ANNUAL_ALLOWANCE_EXCEEDED));

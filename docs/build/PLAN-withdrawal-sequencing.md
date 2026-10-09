@@ -174,7 +174,7 @@ before each engine edit, and claim the lane in HANDOVER.
    `plannedWithdrawals`) and one LSA ledger, so an ad-hoc draw and a planned instruction cannot double-count
    the allowance. Which pot's allowance a draw may spend has one home too (`lsaHeadroom`), so an
    inherited pot cannot be excluded on one route and not the other. Flexible access now caps later
-   money-purchase contributions at the MPAA (`PathProjector::contributionHeadroom`), and the cap is
+   money-purchase contributions at the MPAA (`PathProjector::applicableAllowance`; a charge on the excess since card 0073, not a cap), and the cap is
    disclosed to the reader in the year it starts (`PathProjector::mpaaWarnings`).
 5. ✅ **Search-optimiser — BUILT (2026-08-19, card 0007).** `WithdrawalStrategyComparison` runs every candidate
    in its bounded `CANDIDATES` set (the three named strategies) and reports the cheapest plus its £ saving

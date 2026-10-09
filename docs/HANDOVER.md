@@ -316,6 +316,9 @@ inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded ou
   excluded both), and the charge is priced on the year's income BEFORE any ad-hoc draw made to fund
   a shortfall, so a member pushed into a higher band by that draw is charged at the band they were
   in without it. Built in a worktree, so the new results note **has not been seen in a browser**.
+  The trigger year is NOT split at the draw (no date inside a year): its whole input is measured
+  against the MPAA, the cautious side, declared on `applicableAllowance` and told to the reader in
+  that year's charge note. Splitting it properly is card 0192.
 
 - **An annuity is priced now, it takes its tax-free cash first, and every economic assumption
   carries its own source.** Card 0065. `Pension\AnnuityRateTable` is the one home of what an annuity

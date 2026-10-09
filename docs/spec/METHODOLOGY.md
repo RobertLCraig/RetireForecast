@@ -494,11 +494,14 @@ An honest list of the current limits (each is flagged in the code):
   savings and the provider adds £720, until you turn 75); general **relief at source is not modelled
   yet** and is refused rather than quietly treated as no relief, and **salary sacrifice** is not
   modelled at all. If a pension's relief method is left unset we model no relief, and say so on your
-  results. Contributions are capped at the **annual allowance** (£60,000 a year, counting your
-  employer's payments too), or the **£10,000 MPAA** once you have flexibly accessed a pension. We
-  model those as a limit on what can go in rather than as a tax charge on the excess, we do not carry
-  forward unused allowance from earlier years, and we do not taper the allowance for very high
-  earners.
+  results. Contributions are measured against the **annual allowance** (£60,000 a year, counting
+  your employer's payments too), or the **£10,000 MPAA** once you have flexibly accessed a pension.
+  Nothing above the allowance is refused: it is paid in, and an **annual allowance charge** falls on
+  the excess at your marginal rate, shown on your results in the year it falls. In the year you first
+  take money flexibly we measure the whole of that year's payments against the MPAA, because the
+  forecast has no date inside a year; in life only what goes in after the draw is, so the charge we
+  show for that one year can be higher than the real one. We do not carry forward unused allowance
+  from earlier years, and we do not taper the allowance for very high earners.
 - **Investment charges:** one household-wide rate covers the platform/administration fee and the funds'
   ongoing charges together, taken from pensions, ISAs and investment accounts each year (cash deposits
   bear none). There is no per-account or per-pot rate, so a cheap ISA and an expensive old pension are
