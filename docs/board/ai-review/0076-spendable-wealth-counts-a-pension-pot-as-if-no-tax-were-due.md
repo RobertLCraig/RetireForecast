@@ -22,7 +22,7 @@ Total wealth on the wealth chart, which is a stock of assets and is correct gros
 ## Acceptance
 <!-- AC:BEGIN -->
 - [x] #1 THE APP SHALL report spendable wealth net of the tax that would be due on the pension part. proves: `test_spendable_wealth_is_net_of_tax_on_the_pension_part`
-- [ ] #2 THE APP SHALL state the rate it netted at and where it came from. proves: `test_the_netting_rate_is_disclosed`
+- [x] #2 THE APP SHALL state the rate it netted at and where it came from. proves: `test_the_netting_rate_is_disclosed`
 - [x] #3 THE APP SHALL keep the tax-free part of a pension pot unnetted, up to what is left of the lump sum allowance. proves: `test_the_tax_free_quarter_is_not_netted`
 <!-- AC:END -->
 
@@ -150,3 +150,18 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #2 because `ResultPresenter::assumedFigures` still shows the netting-rate note only when the TERMINAL year's `pensionTaxIfDrawn()` is positive. `ResultPresenter::ladder` nets every year, so a plan that empties its pots before the end has its mid-plan usable wealth and "money is getting thin" year set by a rate the reader never sees. Show the note whenever any year was netted. `AuditScenarios::auditOne` cannot catch this, because it reads the same gate.
+
+**2026-10-09** RESULT: done
+TESTS: +0 new (test_the_netting_rate_is_disclosed extended with the emptied-pot case), all green
+TOUCHED:
+app/Forecast/ResultPresenter.php
+tests/Unit/Forecast/SpendableWealthNettingDisclosureTest.php
+OUT-OF-SCOPE: none
+
+This take answers the reopened #2 only. `ResultPresenter::assumedFigures` now shows the netting note whenever ANY year has a positive `pensionTaxIfDrawn()`, and reads every figure in it (pot, taxable part, tax, rate, calendar year) off the LAST year that was netted, not the terminal year. #1 and #3 were already met and are untouched.
+
+Watched fail first, for the reviewer's reason: a single person with a GBP 30,000 pot, no ISA and a spend above income + State Pension draws the pot to nil by 2034; the test first asserts the fixture really builds that state (terminal tax zero, earlier years netted), then failed on 'a netting in any year must be disclosed' with 0 notes against 1. After the fix it passes and the note states 20%.
+
+`AuditScenarios::auditOne` counts `assumedFigures` against the stored notes, so it now follows the same any-year gate without a change. Not run against the stored scenarios here: stored results disclosed under the old gate will show as a disclosure mismatch until re-run, which is the stored-scenario re-run the earlier entry already says is owed.
+
+Built in a worktree: the note has not been seen in a browser.
