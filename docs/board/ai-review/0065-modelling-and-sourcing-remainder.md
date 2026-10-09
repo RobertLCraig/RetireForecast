@@ -40,10 +40,10 @@ Buying an annuity with non-pension money, which is card 0060.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN an annuity's age, escalation basis or joint-life setting changes, THE APP SHALL recalculate the rate from a sourced table rather than leaving a typed figure standing.
+- [x] #1 WHEN an annuity's age, escalation basis or joint-life setting changes, THE APP SHALL recalculate the rate from a sourced table rather than leaving a typed figure standing.
 - [x] #2 WHEN an annuity is bought from a pension pot, THE APP SHALL take the tax-free lump sum first and annuitise the balance.
 - [x] #3 WHEN personal possessions are sold above the chargeable threshold, THE APP SHALL compute the capital gains tax.
-- [ ] #4 THE APP SHALL carry a source URL and a verified-on date for every economic assumption, checked by the freshness command.
+- [x] #4 THE APP SHALL carry a source URL and a verified-on date for every economic assumption, checked by the freshness command.
 <!-- AC:END -->
 
 ## Tasks
@@ -195,3 +195,28 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #1 and #4 because both findings still hold on `master`. #4: `CheckFigureFreshness::handle` still loops only `AssumptionSet::economicSourcing()`, and `EconomicAssumptionSourcingTest::NOT_A_FIGURE` still exempts `assetClasses`, so the asset-class return and volatility dates are never checked. #1: `SurvivorAnnuityFractionLever::apply` calls `AnnuityPurchase::withSurvivorFraction`, which copies `$this->rate` unchanged, so the sweep moves a joint-life annuity from 50% to 100% survivor and still pays the 50% quote. The `AnnuityPurchase` class docblock is also out of date: it still says the rate is only ever typed in and that the whole amount is annuitised.
+
+**2026-10-09** RESULT: done
+TESTS: +2 new, all green
+TOUCHED:
+app/Console/Commands/CheckFigureFreshness.php
+app/Forecast/ScenarioForecaster.php
+docs/DECISIONS.md
+docs/HANDOVER.md
+docs/board/todo/0191-survivor-annuity-lever-may-not-be-monotone.md
+packages/finance-engine/src/Dto/AnnuityPurchase.php
+packages/finance-engine/src/Pension/AnnuityRateTable.php
+packages/finance-engine/src/Sweep/Lever/SurvivorAnnuityFractionLever.php
+packages/finance-engine/tests/Sweep/SweepLeversTest.php
+tests/Feature/Console/CheckFigureFreshnessTest.php
+OUT-OF-SCOPE: 0191
+
+Both review findings fixed. #2 and #3 were already met and are untouched.
+
+**#1.** `AnnuityPurchase::withSurvivorFraction` no longer copies the rate. It calls the new `AnnuityRateTable::requoteForSurvivor`, which scales the rate by the ratio of the table's survivor adjustments for the new and old fraction. Fixed in the DTO, so every caller gets it, not only `SurvivorAnnuityFractionLever`. Scaling rather than a fresh table quote keeps a reader's own quote exact at the fraction they chose (DECISIONS 2026-10-09). `test_the_survivor_annuity_fraction_lever_reprices_the_joint_life_quote` was watched failing (600 kept where 533 is due) before the fix. The lever's and the DTO's docblocks (review finding 2) now say what the code does. `ENGINE_VERSION` is `finance-engine/survivor-annuity-sweep-reprices`: stored thresholds for that lever are owed a re-run; forecasts are byte-identical.
+
+**#4.** `figures:freshness` now also sweeps every asset class's `returnVerifiedOn` and `volatilityVerifiedOn` on every shipped set. A missing date reads 'never' and counts as STALE. `test_it_reports_every_asset_class_return_and_volatility` was watched failing (no asset-class row in the output) before the fix. HARNESS GAP: the command reads `AssumptionSetLibrary::all()` statically, so no test can build a set where ONLY an asset-class date is stale; the stale-exit test (`--months=0`) cannot tell an asset-class date from the other economic dates, which share `AssumptionSetLibrary::VERIFIED_ON`.
+
+0191: with the survivor's pension now priced, the lever's `LeverDirection::Increasing` is no longer guaranteed, and the threshold search trusts it. The existing sweep test still passes on its fixture.
+
+No UI changed, so no browser check is owed for this pass.
