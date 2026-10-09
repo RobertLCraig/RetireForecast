@@ -27,7 +27,7 @@ and both flagged in `PathProjector::contributionHeadroom`.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a member flexibly accesses a pension, THE APP SHALL cap their money-purchase contributions at the MPAA from that point in the same year, not from the year after. proves: `test_the_mpaa_binds_in_the_year_of_the_trigger`
+- [x] #1 WHEN a member flexibly accesses a pension, THE APP SHALL cap their money-purchase contributions at the MPAA from that point in the same year, not from the year after. proves: `test_the_mpaa_binds_in_the_year_of_the_trigger`
 - [x] #2 WHEN total pension input exceeds the allowance that applies, THE APP SHALL charge the excess as tax rather than refusing the contribution. proves: `test_a_contribution_above_the_allowance_is_charged_not_blocked`
 - [x] #3 THE APP SHALL show the reader the allowance that applied and the charge, if any. proves: `test_the_allowance_and_any_charge_are_shown`
 <!-- AC:END -->
@@ -144,3 +144,25 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #1 because the MPAA still does not apply "from that point in the same year". `PathProjector::annualAllowanceCharges` reads one year-end flag, `$state['mpaaTriggered']`, and tests the WHOLE year's input against £10,000, including money paid in before the trigger. Either split the year's input at the trigger, or declare the simplification where `PathProjector::applicableAllowance` says it turns on the trigger DATE. The breakage findings also still hold: six `{@see contributionHeadroom}` references point at a method that no longer exists; `docs/spec/METHODOLOGY.md` still says excess contributions are modelled as a limit, not a tax charge; and DECISIONS 2 and 3 still describe the hard cap.
+
+**2026-10-09** RESULT: done
+TESTS: +0 new (1 extended), all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php
+TOUCHED: packages/finance-engine/tests/Forecast/PathProjectorTest.php
+TOUCHED: docs/spec/METHODOLOGY.md
+TOUCHED: docs/DECISIONS.md
+TOUCHED: docs/DATA-MODEL.md
+TOUCHED: docs/build/PLAN-withdrawal-sequencing.md
+TOUCHED: docs/HANDOVER.md
+TOUCHED: docs/board/todo/0192-the-mpaa-trigger-year-is-not-split-at-the-draw.md
+OUT-OF-SCOPE: 0192
+
+The 2026-09-28 manager pass offered two ways to close #1: split the year's input at the trigger, or declare the simplification. I took the second, because the split needs a point inside the year and the model has none for an ad-hoc shortfall draw. Choosing one is a figure the reader cannot see, so it is Rob's call; card 0192 carries the real split and the decision it needs. If the reviewer reads #1 as requiring the split itself, untick it and send 0192 first.
+
+What changed for #1: `applicableAllowance` no longer claims the answer turns on the trigger DATE. It now declares that the whole trigger year is measured against the MPAA, the cautious side (it can only overstate the charge). The reader is told too: in the year the MPAA first applies, the annual-allowance charge note says the whole year was measured and that money paid in before the draw would in life be measured against the ordinary allowance. Later years do not carry that caveat.
+
+Watched fail: `test_the_mpaa_binds_in_the_year_of_the_trigger` was extended to require that caveat in the trigger year and its absence in the year after. It went red on the missing sentence, then green.
+
+Breakage findings, all fixed: the six `{@see contributionHeadroom}` links now point at `applicableAllowance`; the `annualAllowanceCharges` docblock had drifted above `pensionTaxIfDrawn` and is back on its method; METHODOLOGY now says excess is charged, not refused, and states the trigger-year caveat; DECISIONS 2 and 3 carry a 'Superseded by card 0073' note rather than a rewrite; DATA-MODEL and PLAN-withdrawal-sequencing no longer describe a hard cap.
+
+Not bumped: `ENGINE_VERSION`. No figure moves, only the wording of one note, so a stored result's numbers stay right; a stored run just lacks the new caveat sentence until it is re-run. Built in a worktree, so the note still needs a browser check.
