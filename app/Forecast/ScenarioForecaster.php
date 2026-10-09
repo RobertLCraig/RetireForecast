@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-08 (guardrail-counts-the-whole-essential-floor): the spending guardrail's
+     * Bumped 2026-10-09 (inflation-correlation-is-the-one-stated): the inflation/asset correlation
+     * the assumptions panel shows is now the one each year's inflation has with that year's real
+     * returns. It was applied to the AR(1) innovation only, so after the first year the model ran
+     * at sqrt(1 - phi^2) of it (about -0.39 where -0.55 was shown). A persistent set draws one
+     * pre-plan inflation year, so every Monte Carlo run on a shipped set re-rolls. Board card 0064 #2.
+     * Previous bump 2026-10-08 (guardrail-counts-the-whole-essential-floor): the spending guardrail's
      * funded ratio now counts the year's whole essential floor, the mortgage payment, rent, running
      * costs, council tax and care included. It counted only the expense-profile floor, so a renting
      * or mortgaged household's ratio was inflated and the guardrail barely bit. A plan with no
@@ -543,7 +548,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/guardrail-counts-the-whole-essential-floor';
+    public const ENGINE_VERSION = 'finance-engine/inflation-correlation-is-the-one-stated';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

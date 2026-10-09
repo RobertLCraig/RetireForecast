@@ -186,6 +186,41 @@ final class InflationPersistenceTest extends TestCase
         );
     }
 
+    public function test_the_stated_correlation_is_the_one_realised_in_every_year_when_inflation_is_sticky(): void
+    {
+        // Persistence and correlation both on, as every shipped set has them. The panel shows the
+        // reader -0.55 against cash, so that is the correlation a year's inflation must have with
+        // that year's real cash return: in the first year and in every later one alike. Cash is a
+        // single asset, so its correlation with inflation IS the stated figure, with no blending.
+        $model = $this->model($this->set(persistence: 0.7, inflationAssetCorrelations: [-0.30, -0.50, -0.55]));
+
+        $inflation = [[], [], []];
+        $cash = [[], [], []];
+        for ($p = 0; $p < 6_000; $p++) {
+            $path = $model->generatePath(10, new Randomizer(new Mt19937(50_000 + $p)));
+            foreach ([0 => 0, 1 => 1, 2 => 9] as $slot => $year) {
+                $inflation[$slot][] = $path['inflation'][$year];
+                $cash[$slot][] = $path['cash'][$year];
+            }
+        }
+
+        foreach ([0 => 'the first year', 1 => 'the second year', 2 => 'the tenth year'] as $slot => $label) {
+            $this->assertEqualsWithDelta(-0.55, $this->correlation($inflation[$slot], $cash[$slot]), 0.04, "{$label}: the realised correlation must be the stated one");
+            $this->assertEqualsWithDelta(0.015, $this->sd($inflation[$slot]), 0.0015, "{$label}: a single year's spread must stay the stated volatility");
+        }
+    }
+
+    public function test_a_correlation_the_persistence_cannot_carry_is_refused_rather_than_quietly_weakened(): void
+    {
+        // Only the fresh part of a year's inflation can move with that year's returns, and at 0.95
+        // persistence that part is under a third of it. A stated -0.55 is then a world this model
+        // cannot produce, and running it at some weaker figure the reader never sees is the fault.
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('persistence');
+
+        $this->model($this->set(persistence: 0.95, inflationAssetCorrelations: [-0.30, -0.50, -0.55]));
+    }
+
     public function test_inflation_is_independent_of_returns_when_the_set_states_no_correlations(): void
     {
         $path = $this->model($this->set())->generatePath(5_000, new Randomizer(new Mt19937(23)));

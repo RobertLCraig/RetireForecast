@@ -749,6 +749,12 @@ cash **−0.5%**.
    describes a correlation structure that cannot exist at all (the augmented matrix stops being
    positive-definite and the decomposition refuses it).
 
+   Each figure is the correlation of a YEAR'S inflation with that year's real return, in every
+   year of the plan, which is how a published series reports it. Only the fresh innovation can
+   move with this year's returns, so the model applies the figure divided by sqrt(1 - phi^2) to
+   it: -0.55 becomes about -0.77 on the innovation at 0.70 persistence. A figure the persistence
+   cannot carry (beyond -1 or +1 once divided) is refused by name, not clamped.
+
    Every plan's Monte Carlo tail is wider under these, so the `ENGINE_VERSION` bump owes a
    stored-scenario re-run. Sourcing both against a series is board card **0139**.
 

@@ -59,8 +59,10 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * $inflationVolatility and persistence buys cumulative spread rather than quietly raising the
  * volatility the reader stated. Read through {@see inflationPersistence()}, which clamps it.
  *
- * $inflationAssetCorrelations is the correlation of the inflation shock with each asset class's
- * REAL return, in $assetClasses order (null = all zeros, the independent draw). In a real-return
+ * $inflationAssetCorrelations is the correlation of a year's inflation with that year's REAL return
+ * on each asset class, in $assetClasses order (null = all zeros, the independent draw). It is the
+ * realised figure, persistence or not: ReturnModel scales the innovation's correlation up so the
+ * year's inflation carries exactly this one, and refuses a figure the persistence cannot carry. In a real-return
  * framework a 2022-style shock is high inflation AND deeply negative real gilt returns AND
  * negative real equity returns at once; drawn independently, the model can never produce the
  * single worst year a bond-heavy retiree has actually lived through. This is a genuine extra ROW
@@ -186,7 +188,7 @@ final class AssumptionSet
     }
 
     /**
-     * The correlation of the inflation shock with each asset class's REAL return, in
+     * The correlation of a year's inflation with each asset class's REAL return that year, in
      * {@see $assetClasses} order and always the same length as it: the stated figures where the
      * set carries them, else all zeros, which is the independent draw the engine made before
      * board card 0064. A set carrying the wrong number of figures is padded with zeros rather

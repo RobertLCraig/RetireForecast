@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\MonteCarlo;
 
+use InvalidArgumentException;
 use Random\Randomizer;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
@@ -135,11 +136,14 @@ final class ReturnModel
         // spread of any single year stays exactly the stated volatility. Persistence therefore buys
         // cumulative spread over a retirement — which is the point, the model running against
         // nominal thresholds frozen for years — without silently raising the volatility the reader
-        // typed. Year 0 is drawn from that same stationary distribution, so no year is special.
+        // typed. Year 0 runs the same recursion from a pre-plan year drawn from the stationary
+        // distribution and independent of this plan's returns, so year 0 realises the same spread
+        // AND the same correlation with returns as every later year. A memoryless set draws no
+        // pre-plan year, so its stream is byte-identical to before.
         $phi = $this->set->inflationPersistence();
         $innovationScale = sqrt(max(0.0, 1.0 - $phi ** 2));
         $inflationIndex = count($this->means);
-        $deviation = 0.0;
+        $deviation = $phi > 0.0 ? $inflVol * $this->standardNormal($rng) : 0.0;
 
         for ($y = 0; $y < $years; $y++) {
             $u = [];
@@ -160,9 +164,7 @@ final class ReturnModel
 
             $investment[] = $blended;
             $cash[] = $this->means[$this->cashIndex] + $this->vols[$this->cashIndex] * $z[$this->cashIndex];
-            $deviation = $y === 0
-                ? $inflVol * $z[$inflationIndex]
-                : $phi * $deviation + $innovationScale * $inflVol * $z[$inflationIndex];
+            $deviation = $phi * $deviation + $innovationScale * $inflVol * $z[$inflationIndex];
             $inflation[] = $inflMean + $deviation;
 
             // House-price shock, correlated to the equity shock (z[0]) by rho: a fresh normal
@@ -196,11 +198,31 @@ final class ReturnModel
      * diagonal, which is the contract {@see Cholesky::decompose} needs; it still throws where the
      * stated correlations describe a world that cannot exist, rather than quietly producing one.
      *
+     * The stated figures are the correlation of a YEAR'S inflation with that year's real return,
+     * which is what the panel shows and what a published series measures. Only the fresh
+     * innovation can move with this year's returns, and it carries sqrt(1 - phi^2) of the year's
+     * spread, so the row decomposed here is the stated row divided by that. Past -1 or +1 the
+     * persistence cannot carry the stated correlation at all, and that is refused by name rather
+     * than clamped into a weaker figure the reader never sees.
+     *
      * @return list<list<float>>
      */
     private static function withInflationRow(AssumptionSet $set): array
     {
-        $row = $set->inflationAssetCorrelations();
+        $innovationShare = sqrt(1.0 - $set->inflationPersistence() ** 2);
+        $row = [];
+        foreach ($set->inflationAssetCorrelations() as $i => $stated) {
+            $row[$i] = $stated / $innovationShare;
+            if (abs($row[$i]) > 1.0) {
+                throw new InvalidArgumentException(sprintf(
+                    'An inflation persistence of %.2f cannot carry an inflation correlation of %.2f with %s: only %.2f of a year\'s inflation is fresh enough to move with that year\'s returns.',
+                    $set->inflationPersistence(),
+                    $stated,
+                    $set->assetClasses[$i]->name,
+                    $innovationShare,
+                ));
+            }
+        }
         $matrix = [];
         foreach ($set->correlationMatrix as $i => $assetRow) {
             $matrix[] = [...array_map(static fn ($v): float => (float) $v, $assetRow), $row[$i] ?? 0.0];

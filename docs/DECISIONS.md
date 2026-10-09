@@ -3,6 +3,32 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-09: the inflation correlation the reader sees is the one the model runs
+
+**Context:** card 0064 #2, reopened by review. Supersedes the "inflation is a ROW" decision of
+2026-09-08 only in how the row is applied. The correlated shock reached inflation only through the
+AR(1) innovation, which carries sqrt(1 - phi^2) of a year's spread, so after the first year the
+realised inflation/asset correlation was that share of the stated one: about -0.39 at the shipped
+0.70 persistence where the panel showed -0.55. Year 0 took a different branch and realised the full
+figure, so one path ran two correlations.
+**Decision:** the stated figures mean the correlation of a YEAR'S inflation with that year's real
+return, which is what the panel shows and what a published series measures. `ReturnModel` divides
+the row by sqrt(1 - phi^2) before decomposing, and year 0 runs the same recursion from a pre-plan
+year drawn from the stationary spread, independent of the plan's returns. A stated figure the
+persistence cannot carry (past -1 or +1 once divided) throws by name rather than being clamped
+into a weaker one nobody sees. The other fix the review offered, relabelling the panel as the
+correlation of the annual surprise, was not taken: a published correlation is of the levels, so
+card 0139 would source a figure the model then misapplied.
+**Consequence:** `ENGINE_VERSION` is `finance-engine/inflation-correlation-is-the-one-stated` and
+the stored re-run is owed for every Monte Carlo result on a shipped set. The pre-plan draw adds
+one normal per path when persistence is on, which re-rolls the whole seeded stream, so the change
+in the frozen run is mostly a re-roll and only partly the stronger correlation.
+Monte Carlo golden master pinned 2026-10-09 (pin 6416fc3bbb40): essentials success 0.5050 to 0.4500, full
+spend 0.0600 to 0.0700, terminal wealth lower at every percentile, the fan one band longer (to
+2064, where a single path is left, so its three percentiles are one figure). A memoryless set draws
+nothing extra and is byte-identical.
+**Status:** active
+
 ## 2026-10-08: a pension nominated to "my partner" covers a cohabiting partner
 
 **Context:** card 0057 #3, reopened by review. The beneficiary's income tax at a first death is
