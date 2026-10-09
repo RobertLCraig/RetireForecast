@@ -502,6 +502,26 @@ class ScenarioBuilderTest extends TestCase
     }
 
     /**
+     * Board card 0075 #4. The default order used to be offered as the blank option, so a reader who
+     * deliberately picked "spending your savings first" was stored exactly like one who never
+     * touched the control, and was then told nobody had chosen an order for them.
+     */
+    public function test_a_reader_who_picks_the_default_draw_order_is_not_told_they_did_not_choose(): void
+    {
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component->set('step', 1)->assertSeeHtml('value="'.DrawdownStrategy::DEFAULT->value.'"');
+        $component->set('assumptionOverrides.drawdownStrategy', DrawdownStrategy::DEFAULT->value)
+            ->call('save')->assertHasNoErrors();
+
+        $settings = app(ScenarioForecaster::class)->settings(Scenario::latest('id')->firstOrFail());
+        $this->assertSame(DrawdownStrategy::DEFAULT, $settings->drawdownStrategy);
+        $this->assertFalse($settings->drawdownStrategyIsAssumed());
+    }
+
+    /**
      * Board card 0062, criteria 1 and 3. The asset mix was hardcoded: the engine fell back to a
      * cautious 40/60 and no caller ever passed anything else, so the single largest determinant
      * of the answer was the one thing the household could not say. It has to be on the screen,

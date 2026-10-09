@@ -124,6 +124,11 @@ final class ForecastSettings
          * chose and {@see allocationIsAssumed} keeps disclosing them.
          */
         public readonly bool $startingMixIsAssumed = false,
+        /**
+         * The reader picked the draw order above, even where it is the default one (board card
+         * 0075 #4). Without this a reader who chose spend-savings-first was told nobody chose it.
+         */
+        public readonly bool $drawdownStrategyIsChosen = false,
     ) {}
 
     /**
@@ -133,7 +138,7 @@ final class ForecastSettings
      */
     public function drawdownStrategyIsAssumed(): bool
     {
-        return $this->drawdownStrategy === DrawdownStrategy::DEFAULT;
+        return ! $this->drawdownStrategyIsChosen && $this->drawdownStrategy === DrawdownStrategy::DEFAULT;
     }
 
     /**
@@ -211,7 +216,7 @@ final class ForecastSettings
             $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
             $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
             $this->planningHorizon, $this->taxableIncomeTargetPence, $this->hasDescendants,
-            $this->startingMixIsAssumed,
+            $this->startingMixIsAssumed, $this->drawdownStrategyIsChosen,
         );
     }
 
@@ -227,7 +232,7 @@ final class ForecastSettings
             $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
             $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
             $this->planningHorizon, $this->taxableIncomeTargetPence, $this->hasDescendants,
-            $this->startingMixIsAssumed,
+            $this->startingMixIsAssumed, $this->drawdownStrategyIsChosen,
         );
     }
 }

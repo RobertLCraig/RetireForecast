@@ -14,9 +14,9 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
 
 /**
  * Prices the household's withdrawal (drawdown) sequencing: the total tax paid across the
- * whole plan under the current strategy (tax-efficient: spend non-pension assets first) vs
- * the "fill the bands" strategy, on the SAME household + assumptions + deterministic basis,
- * so the reader can see what re-ordering the draw is worth over a lifetime.
+ * whole plan under the reader's own order (or the default, where they chose none) vs its
+ * alternative ({@see alternativeTo}), on the SAME household + assumptions + deterministic
+ * basis, so the reader can see what re-ordering the draw is worth over a lifetime.
  *
  * It is also the bounded SEARCH OPTIMISER (PLAN-withdrawal-sequencing #6): it runs every
  * candidate order in {@see CANDIDATES} and reports the cheapest. The set is deliberately a
@@ -116,8 +116,8 @@ final class WithdrawalStrategyComparison
         public readonly DrawdownStrategy $current,
         public readonly DrawdownStrategy $alternative,
         public readonly int $baselineTaxPence,
-        public readonly int $fillBandsTaxPence,
-        public readonly int $savingPence, // baselineTax - fillBandsTax; positive = fill-the-bands pays less
+        public readonly int $fillBandsTaxPence, // the ALTERNATIVE's tax, which is fill-the-bands only when the reader draws otherwise
+        public readonly int $savingPence, // baselineTax - alternativeTax; positive = the alternative pays less
         public readonly DrawCandidate $cheapest,
         public readonly int $cheapestTaxPence,
         public readonly int $optimiserSavingPence, // baselineTax - cheapestTax; never negative
@@ -164,14 +164,14 @@ final class WithdrawalStrategyComparison
         }
 
         $baseline = $tax[DrawCandidate::order($current)->key()];
-        $fillBands = $tax[DrawCandidate::order($alternative)->key()];
+        $alternativeTax = $tax[DrawCandidate::order($alternative)->key()];
 
         return new self(
             current: $current,
             alternative: $alternative,
             baselineTaxPence: $baseline,
-            fillBandsTaxPence: $fillBands,
-            savingPence: $baseline - $fillBands,
+            fillBandsTaxPence: $alternativeTax,
+            savingPence: $baseline - $alternativeTax,
             cheapest: $cheapest,
             cheapestTaxPence: $tax[$cheapest->key()],
             optimiserSavingPence: $baseline - $tax[$cheapest->key()],
@@ -262,7 +262,7 @@ final class WithdrawalStrategyComparison
         return $total;
     }
 
-    /** True when "fill the bands" pays strictly less lifetime tax than the current strategy. */
+    /** True when the alternative order pays strictly less lifetime tax than the reader's own. */
     public function fillBandsSaves(): bool
     {
         return $this->savingPence > 0;

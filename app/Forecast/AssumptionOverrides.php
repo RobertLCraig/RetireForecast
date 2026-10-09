@@ -191,16 +191,17 @@ final class AssumptionOverrides
 
     /**
      * The order money is taken out to meet a shortfall: savings first, pension first, or filling
-     * the tax-free bands. A blank or unknown choice is the engine's own default, so a scenario
-     * stored before board card 0075 reproduces byte-identically.
+     * the tax-free bands. Null when the reader chose none (blank or unknown), which the caller
+     * reads as the engine's own default, so a scenario stored before board card 0075 reproduces
+     * byte-identically. A reader who picked the default order gets it back, not null (card 0075 #4).
      *
      * @param  array<string, mixed>  $overrides  the sparse `assumptionOverrides` map
      */
-    public static function drawdownStrategy(array $overrides): DrawdownStrategy
+    public static function drawdownStrategy(array $overrides): ?DrawdownStrategy
     {
-        return (self::filled($overrides, 'drawdownStrategy')
+        return self::filled($overrides, 'drawdownStrategy')
             ? DrawdownStrategy::tryFrom((string) $overrides['drawdownStrategy'])
-            : null) ?? DrawdownStrategy::DEFAULT;
+            : null;
     }
 
     /**

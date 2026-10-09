@@ -915,6 +915,7 @@ final class ScenarioForecaster
 
         $overrides = $scenario->effectiveBuilderState()['assumptionOverrides'] ?? [];
         [$upratingBasis, $upratingUntilYear] = AssumptionOverrides::statePensionUprating($overrides);
+        $chosenOrder = $strategy ?? AssumptionOverrides::drawdownStrategy($overrides);
 
         return new ForecastSettings(
             baseYear: (int) substr($scenario->base_tax_year, 0, 4),
@@ -922,7 +923,9 @@ final class ScenarioForecaster
             // The order money is taken out (board card 0075). An explicit $strategy is the
             // comparison optimiser pricing one candidate; otherwise it is the reader's own choice,
             // falling back to the default above, which discloses itself as an assumed figure.
-            drawdownStrategy: $strategy ?? AssumptionOverrides::drawdownStrategy($overrides),
+            // A reader who picked the default order chose it, and is not told otherwise (#4).
+            drawdownStrategy: $chosenOrder ?? self::DEFAULT_DRAWDOWN_STRATEGY,
+            drawdownStrategyIsChosen: $chosenOrder !== null,
             // How the invested money is split across shares, bonds and cash, and the glidepath it
             // de-risks along (board card 0062). Null = the reader said nothing, which keeps the
             // engine's cautious 40/60 AND keeps it disclosed as a figure that is ours, not theirs.

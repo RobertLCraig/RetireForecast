@@ -1997,10 +1997,12 @@ class ScenarioBuilder extends Component
             // The order money is taken out to meet a shortfall (board card 0075). It is one of the
             // biggest levers on lifetime tax the tool has, and the results page prices all three
             // and names the cheapest, so a reader who wants that one has to be able to run it. The
-            // blank option is the engine's own order; the names are READ from the enum that owns
-            // them, so the order picked here is the order the results page names back.
+            // blank option is "not chosen" and every order, the default too, has its own value, so a
+            // reader who picks the default is not told they chose nothing (card 0075 #4). The names
+            // are READ from the enum that owns them, so the results page names back the same order.
+            'drawdownStrategyDefaultLabel' => DrawdownStrategy::DEFAULT->label(),
             'drawdownStrategyOptions' => array_map(static fn (DrawdownStrategy $s): array => [
-                'value' => $s === DrawdownStrategy::DEFAULT ? '' : $s->value,
+                'value' => $s->value,
                 'label' => ucfirst($s->label()),
                 'note' => $s->description(),
             ], DrawdownStrategy::cases()),
