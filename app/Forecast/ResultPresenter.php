@@ -1208,8 +1208,9 @@ final class ResultPresenter
                 .'simply the order this tool has always used. It matters because the order you take money out in '
                 .'is one of the biggest levers there is on the tax you pay over a whole lifetime, and from April '
                 .'2027 an unspent pension counts towards Inheritance Tax, so leaving the pension until last is no '
-                .'longer the safe answer for an estate near the threshold. Your results price every order we can '
-                .'run and name the cheapest; you can pick the one you want in the builder.';
+                .'longer the safe answer for an estate near the threshold. Your results price the three named orders, '
+                .'and a few variations on filling your allowances, and name the cheapest. You can pick any of the three '
+                .'named orders in the builder; the variations cannot be picked in the builder yet.';
         }
 
         // WHETHER THE TWO PEOPLE ARE MARRIED. Board card 0054: this defaulted to married in the

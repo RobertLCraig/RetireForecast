@@ -65,6 +65,10 @@ final class DrawCandidate
      * setting that carries it (board card 0078, criterion 3): "the target" or a strategy key tells
      * a reader nothing they can act on, while the amount of taxable income to stay under is the
      * whole instruction.
+     *
+     * It must also say no more than the engine does. PathProjector::fundShortfall caps only
+     * NON-SAVINGS income at the figure, and its last-resort pension pass has no cap, so "under £X"
+     * was a ceiling the forecast breaches once capital runs out. The name describes the order.
      */
     public function label(): string
     {
@@ -72,8 +76,9 @@ final class DrawCandidate
             return $this->strategy->label();
         }
 
-        return 'keeping each person\'s taxable income under '
+        return 'drawing each person\'s pension until their taxable income reaches '
             .Money::fromPence($this->taxableIncomeTargetPence)->format()
-            .' a year';
+            .' a year (not counting interest or dividends), then your savings and investments, and more pension'
+            .' only once those run out';
     }
 }

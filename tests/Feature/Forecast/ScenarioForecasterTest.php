@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Forecast;
 
 use App\Forecast\DrawCandidate;
+use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\WithdrawalStrategyComparison;
 use App\Models\Scenario;
@@ -197,6 +198,56 @@ class ScenarioForecasterTest extends TestCase
                     "\"{$label}\" names the internal setting \"{$internal}\" rather than what the reader would do.");
             }
         }
+    }
+
+    /**
+     * Board card 0078, criterion 3, as reopened on review. The name said "keeping each person's
+     * taxable income under £X a year", which is a promise the engine does not keep: the cap in
+     * PathProjector::fundShortfall is on NON-SAVINGS income only (interest and dividends sit outside
+     * it), and once savings and investments are spent the last-resort pension pass draws with no cap
+     * at all. A reader acting on the name would plan to a ceiling the forecast breaches.
+     */
+    public function test_a_generated_orders_name_says_what_the_engine_does_not_a_ceiling_it_breaches(): void
+    {
+        $generated = array_values(array_filter($this->candidates(), fn (DrawCandidate $c): bool => $c->isGenerated()));
+        $this->assertNotEmpty($generated);
+
+        foreach ($generated as $candidate) {
+            $label = $candidate->label();
+            $amount = Money::fromPence($candidate->taxableIncomeTargetPence)->format();
+
+            $this->assertStringNotContainsString("under {$amount}", $label,
+                "\"{$label}\" promises a ceiling the last-resort pension draw does not respect.");
+            $this->assertStringContainsString('not counting interest or dividends', $label,
+                "\"{$label}\" hides that savings income sits outside the figure.");
+            $this->assertStringContainsString('only once those run out', $label,
+                "\"{$label}\" hides that the pension is drawn past the figure once capital is gone.");
+        }
+    }
+
+    /**
+     * Board card 0078, criterion 3, the review's other finding. The draw-order note told the reader
+     * "your results price every order we can run and name the cheapest; you can pick the one you want
+     * in the builder". A generated order can be the cheapest and has no builder control (card 0144),
+     * so that sentence was false the moment the search widened.
+     */
+    public function test_the_draw_order_note_does_not_promise_the_reader_can_pick_every_order_priced(): void
+    {
+        $forecaster = new ScenarioForecaster;
+        $scenario = $this->drawsOnItsCapital();
+        $this->assertTrue(WithdrawalStrategyComparison::for($forecaster, $scenario)->cheapest->isGenerated());
+
+        $settings = $forecaster->settings($scenario);
+        $this->assertTrue($settings->drawdownStrategyIsAssumed(), 'the note only shows when no order was chosen');
+        $notes = ResultPresenter::inputNotes($scenario->toHousehold(), $forecaster->deterministic($scenario), settings: $settings);
+        $note = implode(' ', array_filter(array_map(
+            fn ($n): string => is_array($n) ? (string) ($n['text'] ?? '') : (string) $n,
+            $notes,
+        ), fn (string $t): bool => str_contains($t, 'draw order')));
+
+        $this->assertNotSame('', $note, 'the draw-order note is missing, so this test proves nothing');
+        $this->assertStringNotContainsString('pick the one you want', $note);
+        $this->assertStringContainsString('cannot be picked in the builder yet', $note);
     }
 
     /**
