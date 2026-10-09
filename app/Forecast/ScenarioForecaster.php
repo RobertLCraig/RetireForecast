@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-09 (survivor-annuity-sweep-reprices): the "annuity survivor income" sweep now
+     * Bumped 2026-10-09 (pension-draw-reassesses-housing-support): a taxable pension draw now
+     * re-assesses Housing Benefit and Council Tax Reduction in the same year even when Guarantee
+     * Credit is nil. The settle test stopped at a nil credit, so a renter just above the guarantee
+     * kept both as if the draw never happened. Board card 0077 #4.
+     * Previous bump 2026-10-09 (survivor-annuity-sweep-reprices): the "annuity survivor income" sweep now
      * re-quotes a joint-life annuity's rate for each swept fraction (AnnuityRateTable's survivor
      * adjustment). It kept the reader's rate, so a bigger survivor's pension was free and the stored
      * threshold for that lever is too favourable. Every forecast and every other lever is
@@ -553,7 +557,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/survivor-annuity-sweep-reprices';
+    public const ENGINE_VERSION = 'finance-engine/pension-draw-reassesses-housing-support';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

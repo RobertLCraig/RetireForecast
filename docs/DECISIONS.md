@@ -3,6 +3,21 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-09: the Pension Credit pass settles on every award that reads the means test
+
+**Context:** card 0077 #4, reopened by review. The fixed-point pass that lets a pension draw
+claw back Guarantee Credit stopped at once when the credit was nil. Housing Benefit and Council
+Tax Reduction taper off the same assessable income, so a renter just above the guarantee kept
+both as if the draw never happened.
+**Decision:** a pass settles when re-assessing on its own draw leaves the Guarantee Credit, the
+Housing Benefit and the council tax after reduction all where the pass had them. Only a household
+the means test never ran for (under State Pension age) skips the check.
+**Consequence:** `ENGINE_VERSION` is `finance-engine/pension-draw-reassesses-housing-support`;
+the re-run is owed for pension-age renters and CTR claimants who draw taxable pension money.
+`PathProjectorTest::test_essential_spend_includes_rent_on_the_renting_leg` moved: its couple
+qualified for part of the rent only on the State Pension alone, and its draw tapers that to nil.
+**Status:** active
+
 ## 2026-10-09: a swept survivor's fraction re-prices the annuity by scaling, not re-quoting
 
 **Context:** card 0065 #1, reopened by review. The "annuity survivor income" sweep moved a

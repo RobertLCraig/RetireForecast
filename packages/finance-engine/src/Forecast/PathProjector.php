@@ -1608,6 +1608,9 @@ final class PathProjector
             //
             // A home sold because everyone living has gone into care (card 0056) leaves nobody to
             // house: the care fee is their housing, so the post-sale rent is not charged on top.
+            // The state Housing Benefit and Council Tax Reduction are assessed on, kept so the
+            // settle test below can re-assess them on the same household.
+            $supportState = $state;
             $ownsHome = $home !== null && ! $state['homeSold'];
             $atHome = count(array_filter(
                 $household->persons,
@@ -1799,13 +1802,21 @@ final class PathProjector
                 }
             }
 
-            // Has the pass settled? It has when re-assessing the award on the income this pass
-            // actually produced leaves the award where the pass had it. A household with no award
-            // is settled by definition: no further income can claw back a credit of nil.
-            $reassessed = $benefitNominal === 0 ? null : $awardAssessedOn($taxablePensionDrawn);
-            if ($benefitNominal === 0
+            // Has the pass settled? It has when re-assessing the means test on the income this pass
+            // actually produced leaves every award that reads it where the pass had it: the
+            // Guarantee Credit, and the Housing Benefit and Council Tax Reduction that taper off
+            // the same assessable income. A nil Guarantee Credit is NOT settled by itself, because
+            // a renter just above the guarantee still has Housing Benefit for a draw to take away.
+            // Only a household the means test never ran for (under State Pension age) has nothing
+            // a draw can move.
+            $supportFrom = fn (?PensionCreditResult $award): array => [
+                $award?->guaranteeCreditWeekly->pence ?? 0,
+                $this->housingBenefitNominal($household, $supportState, $award, $rentChargedNominal),
+                $this->councilTaxNominal($household, $supportState, $award, $atHome ?: $aliveCount),
+            ];
+            if ($pensionCreditAward === null
                 || $taxablePensionDrawn === $assessedDrawNominal
-                || ($reassessed?->guaranteeCreditWeekly->pence ?? 0) === $pensionCreditAward?->guaranteeCreditWeekly->pence) {
+                || $supportFrom($awardAssessedOn($taxablePensionDrawn)) === $supportFrom($pensionCreditAward)) {
                 break;
             }
             if ($pass >= self::MAX_PENSION_CREDIT_PASSES) {

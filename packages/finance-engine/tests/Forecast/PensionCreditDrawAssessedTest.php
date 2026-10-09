@@ -6,6 +6,7 @@ namespace RetireForecast\FinanceEngine\Tests\Forecast;
 
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+use RetireForecast\FinanceEngine\Benefits\HousingBenefit;
 use RetireForecast\FinanceEngine\Dto\AssetClassAssumption;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DcPension;
@@ -183,5 +184,50 @@ final class PensionCreditDrawAssessedTest extends TestCase
             $year->spendTarget->pence,
             self::STATE_PENSION_ANNUAL_PENCE + $award + $taxable + $taxFree,
         );
+    }
+
+    /**
+     * A renter just ABOVE the guarantee has no Guarantee Credit to claw back, but Housing Benefit
+     * tapers off the same assessable income, so a taxable draw must reach it too. State Pension
+     * £250 a week is £12 a week over the £238 guarantee; with £14,000 of spending and £5,000 of
+     * rent, the pot has to fund the gap, and the draw it makes is income for the Housing Benefit
+     * taper in the year it is drawn.
+     */
+    public function test_a_pension_draw_reduces_housing_benefit_when_the_guarantee_credit_is_nil(): void
+    {
+        $statePensionAnnual = 25_000 * 52;
+        $household = new Household(
+            'Test', RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(14_000), Money::zero(), Percent::fromPercent(100)),
+            [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(250, 0)),
+                new DcPension('p1', Money::fromPounds(200_000), Money::zero(), Money::zero(), 55),
+            ],
+        );
+        $year = $this->forecaster()->forecast(
+            $household,
+            $this->flatAssumptions(),
+            new ForecastSettings(
+                baseYear: 2026, baseTaxYear: '2026-27', drawdownStrategy: DrawdownStrategy::FillBands,
+                annualRent: Money::fromPounds(5_000), rentInflationReal: Percent::zero(),
+            ),
+        )->years[0];
+
+        $taxable = $year->incomeBySource['pension_drawdown']->pence;
+
+        // Premise: no Guarantee Credit, some Housing Benefit, and a taxable draw for it to see.
+        $this->assertSame(0, $year->incomeBySource['means_tested_benefit']->pence);
+        $this->assertGreaterThan(0, $taxable);
+        $this->assertTrue($year->housingBenefit()->isPositive());
+
+        // The Housing Benefit the year met is the taper on the State Pension PLUS the draw.
+        $hbOn = function (int $assessableAnnual): int {
+            $excessWeekly = Money::fromPence(max(0, (int) round($assessableAnnual / 52) - intdiv(self::APPLICABLE_ANNUAL_PENCE, 52)));
+
+            return max(0, 500_000 - $excessWeekly->applyRate(HousingBenefit::taper())->times(52)->pence);
+        };
+        $this->assertNotSame($hbOn($statePensionAnnual), $hbOn($statePensionAnnual + $taxable), 'the draw must move the taper');
+        $this->assertSame($hbOn($statePensionAnnual + $taxable), $year->housingBenefit()->pence);
     }
 }

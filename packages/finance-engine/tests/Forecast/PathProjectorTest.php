@@ -1292,8 +1292,14 @@ final class PathProjectorTest extends TestCase
         // rent. Read as a reconciliation rather than as a pinned figure: the point of the test is
         // that rent reaches the essential floor at all, and a pinned total would only re-pin every
         // time the award moves.
+        //
+        // Since board card 0077 that award is assessed on the pension money the couple draws to
+        // pay the rent, too. On the State Pension alone they qualified for part of it; the
+        // taxable draw lifts their income past where the taper leaves anything, so the whole
+        // rent reaches the floor.
         $rentPaid = 800_000 - $year0->housingBenefit()->pence;
-        $this->assertGreaterThan(0, $year0->housingBenefit()->pence, 'this couple qualifies for part of the rent');
+        $this->assertTrue($year0->incomeBySource['pension_drawdown']->isPositive(), 'the rent is part-funded from the pension');
+        $this->assertSame(0, $year0->housingBenefit()->pence, 'the draw tapers the Housing Benefit away');
         $this->assertGreaterThan(1_800_000, $year0->essentialSpend->pence, 'rent lifts the essential floor above the £18k entered');
         $this->assertSame(1_800_000 + $rentPaid, $year0->essentialSpend->pence, 'by exactly the rent left after Housing Benefit');
     }
