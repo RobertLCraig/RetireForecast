@@ -36,6 +36,21 @@ class CheckFigureFreshnessTest extends TestCase
             ->assertExitCode(0);
     }
 
+    /**
+     * The asset-class return and volatility are the two figures that decide the answer most, and
+     * they carry their own verified-on dates on AssetClassAssumption rather than in the set's
+     * economic sourcing, so the first sweep missed them (review of card 0065, finding #4).
+     */
+    public function test_it_reports_every_asset_class_return_and_volatility(): void
+    {
+        $this->artisan('figures:freshness --months=1200')
+            ->expectsOutputToContain('Global equities: expected real return')
+            ->expectsOutputToContain('Global equities: volatility')
+            ->expectsOutputToContain('Gilts/bonds: expected real return')
+            ->expectsOutputToContain('Cash: volatility')
+            ->assertExitCode(0);
+    }
+
     /** A stale economic assumption must fail the command, or it is a report and not a guardrail. */
     public function test_a_stale_economic_assumption_fails_the_command(): void
     {

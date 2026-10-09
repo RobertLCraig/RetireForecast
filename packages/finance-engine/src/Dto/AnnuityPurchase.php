@@ -6,10 +6,13 @@ namespace RetireForecast\FinanceEngine\Dto;
 
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\Pension\AnnuityRateTable;
 
 /**
  * A plan to buy a lifetime annuity: at $atAge, $amount is taken from the asset this purchase
- * hangs off and buys an annuity paying $amount × the effective rate a year, for life.
+ * hangs off and buys an annuity at the effective rate, for life. From a pension pot, $amount is
+ * the money COMMITTED: its tax-free quarter comes out as cash first and only the balance is
+ * annuitised (board card 0065). From an account, the whole $amount buys the income.
  *
  * It hangs off EITHER a {@see DcPension} (a pension annuity, funded from that member's pots) or
  * an {@see Account} (a PURCHASED LIFE ANNUITY, funded from cash, an ISA or a general investment
@@ -30,8 +33,9 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * $survivorFraction (null = single life) is the fraction of the income that continues to
  * the surviving partner after the annuitant dies — a joint-life annuity.
  *
- * $rate is a user input (defaulted from a sourced market quote in the UI), so no fabricated
- * age/rate table is baked into the engine — the engine only multiplies the pot by the rate.
+ * $rate is the reader's own quote where they have one. Where they do not, it is priced by
+ * {@see AnnuityRateTable} on age, escalation and survivor's fraction, and the builder re-quotes it
+ * whenever one of those changes, as {@see withSurvivorFraction()} does here.
  */
 final class AnnuityPurchase
 {
@@ -84,14 +88,16 @@ final class AnnuityPurchase
 
     /**
      * The same annuity with a different survivor's fraction (immutable; e.g. a sweep lever exploring
-     * how much of the income should carry on to the surviving partner). Everything else is preserved.
+     * how much of the income should carry on to the surviving partner). The rate is re-quoted for the
+     * new fraction, because a bigger survivor's pension buys a smaller income for the annuitant;
+     * keeping the old rate handed the survivor that income for free (review of card 0065).
      */
     public function withSurvivorFraction(?Percent $survivorFraction): self
     {
         return new self(
             $this->atAge,
             $this->amount,
-            $this->rate,
+            AnnuityRateTable::requoteForSurvivor($this->rate, $this->survivorFraction, $survivorFraction),
             $this->escalation,
             $survivorFraction,
             $this->incomeFromAge,

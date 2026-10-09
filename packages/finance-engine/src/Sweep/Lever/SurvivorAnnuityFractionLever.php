@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Sweep\Lever;
 
+use RetireForecast\FinanceEngine\Dto\AnnuityPurchase;
 use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
@@ -21,8 +22,10 @@ use RetireForecast\FinanceEngine\Sweep\SweepLever;
  * It varies only annuities that are ALREADY joint-life (a non-null survivor fraction). A single-life
  * annuity is priced on a single-life quote — turning it joint-life at the same rate would model
  * survivor income the quote never paid for — so those are left untouched, and non-annuitised pots
- * pass through unchanged. This holds the annuitant's own income fixed and asks only "how much of it
- * should carry on to the survivor".
+ * pass through unchanged. The same money is committed at every point, and the rate is re-quoted for
+ * the swept fraction ({@see AnnuityPurchase::withSurvivorFraction()}), so a bigger survivor's pension
+ * costs the annuitant income exactly as a real quote would. The question is "how much of the income
+ * should carry on to the survivor, given what that costs while both are alive".
  */
 final class SurvivorAnnuityFractionLever implements SweepLever
 {

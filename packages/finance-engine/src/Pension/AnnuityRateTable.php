@@ -115,6 +115,20 @@ final class AnnuityRateTable
     }
 
     /**
+     * A quote moved to a different survivor's fraction: the same age and escalation basis, so only
+     * the survivor adjustment changes. Scaling the quote rather than re-pricing it from scratch keeps
+     * a reader's own quote standing at the fraction they quoted it for, and moves it by exactly what
+     * this table says the survivor's pension costs.
+     */
+    public static function requoteForSurvivor(Percent $rate, ?Percent $fromFraction, ?Percent $toFraction): Percent
+    {
+        $factor = static fn (?Percent $fraction): float => 1.0
+            - self::FULL_SURVIVOR_REDUCTION * max(0.0, min(1.0, $fraction?->asFraction() ?? 0.0));
+
+        return Percent::fromBasisPoints((int) round($rate->basisPoints * $factor($toFraction) / $factor($fromFraction)));
+    }
+
+    /**
      * The base rate at an age: the anchor where there is one, a straight line between the two
      * nearest anchors in between, and the nearest anchor outside the table. Clamping rather than
      * extrapolating is deliberate: below 55 no pension annuity can be bought at all, and above 85

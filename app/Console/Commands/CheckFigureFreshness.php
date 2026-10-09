@@ -22,7 +22,8 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
  * {@see AssumptionSetLibrary} set joined it with board card 0065: they move the answer far more
  * than the statutory figures do, and until then they sat behind one prose note per set with no
  * date any command could read, so nothing could tell whether they had been looked at this year or
- * four years ago.
+ * four years ago. That includes each asset class's expected return and volatility, which are dated
+ * on the class itself rather than in the set's economic sourcing.
  */
 class CheckFigureFreshness extends Command
 {
@@ -49,11 +50,20 @@ class CheckFigureFreshness extends Command
 
         $economicRows = [];
         foreach (AssumptionSetLibrary::all() as $set) {
-            foreach ($set->economicSourcing() as $source) {
-                $months = FigureFreshness::monthsOld($source->verifiedOn, $asOf);
-                $stale = $months > $threshold;
+            // The asset-class return and volatility carry their own dates on AssetClassAssumption,
+            // not in economicSourcing(), and they are the figures that move the answer most.
+            $dated = array_map(fn ($source) => [$source->label, $source->verifiedOn], $set->economicSourcing());
+            foreach ($set->assetClasses as $class) {
+                $dated[] = ["{$class->name}: expected real return", $class->returnVerifiedOn];
+                $dated[] = ["{$class->name}: volatility", $class->volatilityVerifiedOn];
+            }
+
+            foreach ($dated as [$label, $verifiedOn]) {
+                // A figure with no date has never been verified, which is stale by definition.
+                $months = $verifiedOn === null ? null : FigureFreshness::monthsOld($verifiedOn, $asOf);
+                $stale = $months === null || $months > $threshold;
                 $anyStale = $anyStale || $stale;
-                $economicRows[] = [$set->name, $source->label, $source->verifiedOn, "{$months} mo", $stale ? 'STALE' : 'fresh'];
+                $economicRows[] = [$set->name, $label, $verifiedOn ?? 'never', $months === null ? '-' : "{$months} mo", $stale ? 'STALE' : 'fresh'];
             }
         }
 

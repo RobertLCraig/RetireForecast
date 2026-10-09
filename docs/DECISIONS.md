@@ -3,6 +3,20 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-09: a swept survivor's fraction re-prices the annuity by scaling, not re-quoting
+
+**Context:** card 0065 #1, reopened by review. The "annuity survivor income" sweep moved a
+joint-life annuity's survivor fraction and kept its rate, so a bigger survivor's pension cost the
+annuitant nothing.
+**Decision:** `AnnuityPurchase::withSurvivorFraction` scales the rate by the ratio of
+`AnnuityRateTable`'s survivor adjustments for the new and old fractions. It does not re-quote from
+the table outright: that would throw away a reader's own quote, so the sweep's point at the fraction
+they chose would not be their plan. Scaling keeps their quote exact there and moves it by what the
+table says the survivor's pension costs.
+**Consequence:** `ENGINE_VERSION` is `finance-engine/survivor-annuity-sweep-reprices`; stored
+thresholds for that lever are owed a re-run. Forecasts and every other lever are byte-identical.
+**Status:** active
+
 ## 2026-10-09: the inflation correlation the reader sees is the one the model runs
 
 **Context:** card 0064 #2, reopened by review. Supersedes the "inflation is a ROW" decision of

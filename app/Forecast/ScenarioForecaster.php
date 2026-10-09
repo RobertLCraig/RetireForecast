@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-09 (inflation-correlation-is-the-one-stated): the inflation/asset correlation
+     * Bumped 2026-10-09 (survivor-annuity-sweep-reprices): the "annuity survivor income" sweep now
+     * re-quotes a joint-life annuity's rate for each swept fraction (AnnuityRateTable's survivor
+     * adjustment). It kept the reader's rate, so a bigger survivor's pension was free and the stored
+     * threshold for that lever is too favourable. Every forecast and every other lever is
+     * byte-identical. Board card 0065 #1.
+     * Previous bump 2026-10-09 (inflation-correlation-is-the-one-stated): the inflation/asset correlation
      * the assumptions panel shows is now the one each year's inflation has with that year's real
      * returns. It was applied to the AR(1) innovation only, so after the first year the model ran
      * at sqrt(1 - phi^2) of it (about -0.39 where -0.55 was shown). A persistent set draws one
@@ -548,7 +553,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/inflation-correlation-is-the-one-stated';
+    public const ENGINE_VERSION = 'finance-engine/survivor-annuity-sweep-reprices';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

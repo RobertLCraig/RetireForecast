@@ -385,7 +385,7 @@ final class SweepLeversTest extends TestCase
         $this->assertSame(100.0, $lever->apply($household, $this->settings(), 130)->household->pensions[0]->annuityPurchase->survivorFraction->asPercent());
         $this->assertSame(0.0, $lever->apply($household, $this->settings(), -20)->household->pensions[0]->annuityPurchase->survivorFraction->asPercent());
 
-        // The annuitant's own income is held fixed (same purchase amount + rate).
+        // The same money is committed at every point (the rate re-quotes: see the test below).
         $this->assertSame(
             $household->pensions[0]->annuityPurchase->amount->pence,
             $at75->pensions[0]->annuityPurchase->amount->pence,
@@ -393,6 +393,20 @@ final class SweepLeversTest extends TestCase
         );
 
         $this->assertSame(LeverDirection::Increasing, $lever->direction());
+    }
+
+    public function test_the_survivor_annuity_fraction_lever_reprices_the_joint_life_quote(): void
+    {
+        $household = $this->annuityCouple(); // the joint-life row is a 6% quote for a 50% survivor
+        $lever = new SurvivorAnnuityFractionLever;
+
+        // A survivor's pension costs the annuitant income: moving 50% -> 100% gives up the second
+        // half of AnnuityRateTable::FULL_SURVIVOR_REDUCTION, 6% x (1 - 0.20) / (1 - 0.10) = 5.33%.
+        $this->assertSame(533, $lever->apply($household, $this->settings(), 100)->household->pensions[0]->annuityPurchase->rate->basisPoints);
+        // ...and 50% -> 0% hands it back: 6% / 0.90 = 6.67%.
+        $this->assertSame(667, $lever->apply($household, $this->settings(), 0)->household->pensions[0]->annuityPurchase->rate->basisPoints);
+        // The point the reader already chose keeps their own quote exactly.
+        $this->assertSame(600, $lever->apply($household, $this->settings(), 50)->household->pensions[0]->annuityPurchase->rate->basisPoints);
     }
 
     public function test_a_bigger_annuity_survivor_income_does_not_lower_success(): void
