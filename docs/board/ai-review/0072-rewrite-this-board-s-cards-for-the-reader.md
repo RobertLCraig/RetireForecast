@@ -59,7 +59,7 @@ everything the card knows and changes only how it is ordered and said. `## Direc
       exactly, in both directions. proves: none - as #2
 - [x] #5 THE REWRITE SHALL preserve every measurement, date and decision the card already carried,
       and SHALL NOT edit `## Direction` or `## Decided`. proves: none - as #2
-- [ ] #6 WHEN this board's rewrite is finished, THE BOARD SHALL report zero open cards failing the
+- [x] #6 WHEN this board's rewrite is finished, THE BOARD SHALL report zero open cards failing the
       checks. proves: none - as #2
 <!-- AC:END -->
 
@@ -334,3 +334,50 @@ VERDICT: sound
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 6 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 6 of 6 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #6 because `php C:\Dev\ProgressBoard\artisan board:convention --path=C:\Dev\RetireForecast --cards` now reports 4 open cards failing, not 0: 0142 (unexplained link 0076), 0151 (a proves: line the loop cannot read), 0042 (unexplained link 0001) and 0078 (unexplained links 0081, 0144). This same pass has fixed 0078's links, so re-run the command and fix what is left. The 2026-09-08 scope finding does not break a criterion. Card 0141 was declared out of scope. The Tasks-versus-Plan mismatch is settled by editing the Plan line to say `## Comments`, because #5 forbids writing to `## Direction`.
+
+**2026-10-09** RESULT: done
+TESTS: +0 new, all green
+TOUCHED:
+docs/board/ai-review/0012-public-release-blockers.md
+docs/board/ai-review/0042-queue-and-performance-remainder.md
+docs/board/human-review/0004-where-the-v2-bases-remortgage-money-comes-from.md
+docs/board/human-review/0019-multi-property.md
+docs/board/human-review/0022-interest-only-and-rio-indications-change-the-keep-the-flat-routes.md
+docs/board/human-review/0066-lasting-powers-of-attorney-before-any-deed.md
+docs/board/human-review/0067-get-the-lease-extension-valued.md
+docs/board/human-review/0068-confirm-the-state-pension-figure-and-take-the-benefits-actions.md
+docs/board/human-review/0069-settle-the-sale-price-basis-and-what-happens-if-it-does-not-sell.md
+docs/board/human-review/0070-get-the-managing-agents-accounts-and-planned-works.md
+docs/board/human-review/0071-get-the-buy-side-mortgage-rate-quoted.md
+docs/board/human-review/0157-the-working-partners-payslip-pension-rates-and-stop-date.md
+docs/board/todo/0009-restart-the-stale-queue-worker.md
+docs/board/todo/0015-optional-refinements-to-built-features.md
+docs/board/todo/0023-park-home-51-covers-the-floor-but-never-the-full-spend.md
+docs/board/todo/0086-source-the-single-property-volatility-multiple.md
+docs/board/todo/0087-source-the-letting-cost-rates.md
+docs/board/todo/0091-pin-the-tenant-referencing-multiples-to-a-published-source.md
+docs/board/todo/0129-pin-the-deferred-payment-rate-and-the-care-disregard-list.md
+docs/board/todo/0142-the-usable-wealth-labels-do-not-say-the-pension-tax-has-been-taken-off.md
+docs/board/todo/0151-the-handover-is-too-big-for-the-session-it-is-written-for.md
+docs/board/todo/0155-a-let-and-rent-plan-has-no-council-tax-of-its-own.md
+docs/board/todo/0160-repayment-instalment-can-land-on-a-protection-premium-line.md
+docs/board/todo/0161-the-app-database-is-behind-the-code-so-the-audit-cannot-pass.md
+docs/board/todo/0167-a-readers-own-cgt-return-quote-is-charged-on-top-of-the-default.md
+docs/board/todo/0168-the-assumptions-panel-has-no-row-for-the-cgt-return-fee.md
+docs/board/todo/0172-income-stream-end-year-stops-on-1-january.md
+docs/board/todo/0174-two-decision-cards-still-name-the-couples-lender-and-town.md
+docs/board/todo/0181-the-pension-credit-carer-addition-in-a-funded-placement-is-untested.md
+docs/board/todo/0189-a-run-from-an-older-engine-is-shown-as-current.md
+docs/board/todo/0190-scenario-fixture-ignores-dotted-override-keys.md
+docs/board/todo/0191-survivor-annuity-lever-may-not-be-monotone.md
+OUT-OF-SCOPE: none
+
+**The count before: 32 open cards failing, of 181. After: 0 of 181.** By rule, before and after: unexplained link 29 to 0; `Blocked by` disagreeing with `needs:` 5 to 0 (0019, 0022, 0023, 0155, 0174); unreadable `proves:` 3 to 0 (0151 #2, 0189 #1, 0190 #1); outward effect with no `not_for_the_loop:` 1 to 0 (0181). All 32 are cards written or changed since the last pass reached 0 on 2026-09-08, so the board drifted rather than the earlier pass being wrong.
+
+**What changed on each card is additive.** A `## Links` section or a line in an existing one, one line of why per card named. On 0155 and 0174 the existing `0112` and `0043` lines moved from `Relates to` to `Blocked by`, their text kept, because `needs:` already said they block. Every blocker named in a `needs:` is still open (checked by lane), so no `needs:` was changed. The three `proves:` fixes only put backticks round the test name already written, or (0151 #2) named `HandoverHygieneTest` where the criterion said "the same test". 0181 gained `no_outward_effect:` because its "published rule" is the government's, read and cited; it is as available to the loop as before. No `## Direction`, `## Decided` or `## Comments` text was touched; the diff removes only the six lines it re-adds in their new place or shape.
+
+**On the short `human-review/` shape** (What I need / What you need to know / See it / For the agent), `## Links` is placed inside the agent part, just above `## Comments`, so the part Rob reads is unchanged. No earlier card set a precedent for this shape.
+
+**The Plan's command does not run in a build worktree.** `board:convention --path=$PWD` refuses any path under `ProgressBoard\worktrees` ("a git worktree of another repository"). The count above was taken on a copy of `docs/board` in `%TEMP%`, made fresh before and after the edits. That refusal is ProgressBoard's code, not this repository's, so no card is raised here for it; it belongs on ProgressBoard's board, which this session may not write to.
+
+**Not checked in a browser.** Nothing here needs a screen, but the new link edges will only render from `C:\Dev\RetireForecast` after the merge. Pint was not run on purpose: no PHP file changed.
