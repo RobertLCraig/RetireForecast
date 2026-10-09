@@ -41,7 +41,7 @@ The choice of default inflation rate, which is already sourced and signed off.
 ## Acceptance
 <!-- AC:BEGIN -->
 - [x] #1 THE APP SHALL model inflation with year-to-year persistence, using a sourced parameter.
-- [ ] #2 THE APP SHALL correlate inflation with real asset returns, so a high-inflation year can coincide with negative real returns.
+- [x] #2 THE APP SHALL correlate inflation with real asset returns, so a high-inflation year can coincide with negative real returns.
 - [x] #3 THE APP SHALL let the historical backtest run at a long-life horizon as well as the representative one.
 <!-- AC:END -->
 
@@ -186,3 +186,26 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #2 because the correlation the reader sees is still not the one the model uses. `ReturnModel::generatePath` puts the correlated shock only on the AR(1) innovation, scaled by `sqrt(1 - phi^2)`, so after year 0 the realised inflation/asset correlation is about 0.71 times the stated figure at the shipped `phi = 0.7`. The assumptions panel shows -0.55 while the model moves at about -0.39. Either scale the correlation so the stated figure is the realised one, or relabel it as the correlation of the annual surprise. Add a test with persistence and correlation both on. The scope finding also stands: the backtest runs only at P90, and Task 3 asked for P75 as well.
+
+**2026-10-09** RESULT: done
+TESTS: +2 new, all green
+TOUCHED:
+packages/finance-engine/src/MonteCarlo/ReturnModel.php
+packages/finance-engine/src/Dto/AssumptionSet.php
+packages/finance-engine/tests/MonteCarlo/InflationPersistenceTest.php
+packages/finance-engine/tests/MonteCarlo/GoldenMasterTest.php
+app/Forecast/ScenarioForecaster.php
+docs/DECISIONS.md
+docs/spec/ASSUMPTIONS.md
+docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+**#2: the stated correlation is now the realised one, in every year.** Took the review's first option (scale), not the relabel: a published inflation/return correlation is of the yearly levels, so card 0139 would otherwise source a figure the model then misapplied. `ReturnModel::withInflationRow` divides the stated row by sqrt(1 - phi^2) before the Cholesky decomposition, so the innovation carries -0.77 and the year's inflation carries -0.55. Year 0 no longer takes its own branch: it runs the same recursion from a pre-plan year drawn from the stationary spread, independent of the plan's returns, so year 0 realises the same spread and correlation as every later one. A figure the persistence cannot carry (beyond -1 or +1 once divided) throws by name instead of being clamped into a weaker one nobody sees. The AssumptionSet docblock and ASSUMPTIONS §35 now say the figure is the correlation of a year's inflation with that year's real return. The panel note already said "in a high-inflation year" and is now true, so it is unchanged.
+
+**Watched failing.** `test_the_stated_correlation_is_the_one_realised_in_every_year_when_inflation_is_sticky` (persistence 0.7 and correlations both on, 6,000 paths, cross-section at years 1, 2 and 10) failed on the measured number: year 2 realised -0.384 against the stated -0.55. `test_a_correlation_the_persistence_cannot_carry_is_refused_rather_than_quietly_weakened` (phi 0.95 with -0.55) failed because nothing was thrown.
+
+**Golden master re-pinned, ENGINE_VERSION bumped** to `finance-engine/inflation-correlation-is-the-one-stated`. The pre-plan draw adds one normal per path on a persistent set, which re-rolls the whole seeded stream, so most of the move is a re-roll: essentials success 0.5050 to 0.4500, terminal wealth lower at every percentile, the fan one band longer (to 2064, where one path is left, so its three percentiles are one figure). DECISIONS 2026-10-09 records it. A memoryless set draws nothing extra and is byte-identical. The stored-scenario re-run is owed for every Monte Carlo result on a shipped set.
+
+**The P75 scope finding, not built.** The representative backtest already runs at the plan's own horizon, which defaults to P75 (`PlanningHorizon::DEFAULT`), and the long-life run sits beside it at P90. So a default plan already shows both the 75th and the 90th. Only a plan whose reader picked a shorter horizon lacks a P75 run. #3's acceptance line asks for "a long-life horizon" and is met; whether that narrower case needs a third run is Rob's call, so I left it. The unused `$longLifeHorizon` parameter on `ResultPresenter::historicalStressTest` is also left as it was.
+
+**Not seen in a browser** (built in a worktree), though no screen text changed in this take.
