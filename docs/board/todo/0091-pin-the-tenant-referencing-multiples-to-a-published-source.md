@@ -39,6 +39,8 @@ built card 0031 could ship the mechanism and disclose the figures but could not 
 - `0031` - built the flag, the copy and the deposit charge that read these constants.
 - `0085`, `0086`, `0087` - the same shape of gap, from the same review and the same missing web
   access. Whoever picks one up can settle all four in one research pass.
+- `0084` - asked whether the unattended loop may use the web; Rob's ruling there is the
+  research-only session this card's `waiting_on:` names.
 
 ## Not this card
 Changing the mechanism, the copy or the deposit charge. All three are card 0031's and are built.

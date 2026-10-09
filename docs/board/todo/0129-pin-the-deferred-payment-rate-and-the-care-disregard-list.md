@@ -42,6 +42,8 @@ this one needs a person at a browser or a session that has the web.
 **Relates to**
 - `0055` - built both figures and flagged them; this card is the sourcing it could not do.
 - `0113` - the same shape of gap on the Housing Benefit figures, still open.
+- `0084` - asked whether the unattended loop may use the web; Rob's ruling there is the
+  research-only session this card's `waiting_on:` names.
 
 ## Not this card
 Whether the rate should be adverse at all, which is settled: Rob's standing rule. If the pinned

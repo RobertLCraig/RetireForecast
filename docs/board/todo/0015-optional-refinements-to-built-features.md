@@ -17,6 +17,11 @@ If you already hold any of the three figures with a source, write them here and 
 All flagged v1 limits, recorded in DATA-MODEL "Known divergences" and docs/build/PLAN.md. None
 is a correctness gap; each is a known simplification to pick off by value.
 
+## Links
+
+**Relates to**
+- `0036` - carries the annuitisation-month item as its criterion #4, so that item is built there.
+
 ## Not this card
 Anything that is a correctness gap. There is no OPEN correctness gap from the adviser-parity
 sweep remaining.

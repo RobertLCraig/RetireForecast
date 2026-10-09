@@ -9,8 +9,11 @@ cards 0022 and 0023. Card 0043 was not allowed to edit other cards, so it exempt
 `PENDING_SCRUB` and points at this card. Run the test with both entries removed to see each hit.
 
 ## Links
+
+**Blocked by**
+- `0043` - built the guard and scrubbed every other tracked doc; it is still awaiting review.
+
 **Relates to**
-- `0043` - built the guard and scrubbed every other tracked doc.
 - `0022`, `0023` - the two cards to scrub.
 
 ## Acceptance

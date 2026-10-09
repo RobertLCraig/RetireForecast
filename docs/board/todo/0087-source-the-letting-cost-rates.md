@@ -36,6 +36,8 @@ could not go and check them.
 - `0086` - likewise, on the single-property volatility multiple.
 - `0030` - built the mechanism, disclosed all three figures and exposed them as inputs, but had no
   web access to check them.
+- `0084` - asked whether the unattended loop may use the web; Rob's ruling there is the
+  research-only session this card's `waiting_on:` names.
 
 ## Not this card
 Changing the mechanism. How the deduction is applied, disclosed and edited is card 0030's and is

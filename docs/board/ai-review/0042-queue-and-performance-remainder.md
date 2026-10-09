@@ -38,6 +38,8 @@ times per year index, three times over for the three fan charts. Sort once, inde
 **Relates to**
 - `0009` - a stale queue worker is that card, and it is the same symptom seen from the other side:
   two workers writing results for one run.
+- `0001` - the browser sign-off has not happened, which is why a one-second saving on screen is
+  weighed so lightly in the ask.
 
 ## Not this card
 Persistent forecast caching. Request-scoped memoisation first; measure before building more.

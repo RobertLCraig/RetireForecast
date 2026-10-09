@@ -14,6 +14,7 @@ CGT is due.
 **Relates to**
 - `0032` - added the fee, and the panel's selling-cost rows and total.
 - `0167` - a reader's own quote for the same fee is charged on top of it.
+- `0092` - sourced the £750 figure, which this card leaves as it is.
 
 ## Not this card
 - The £750 figure itself, which card 0092 sourced.

@@ -17,6 +17,11 @@ assumed-figure note on the results page and in the PDF, so this is a signposting
 invisible figure. It is small and it is nowhere near the arithmetic, which is why card 0076 left it
 rather than growing.
 
+## Links
+
+**Relates to**
+- `0076` - netted the pension tax out of usable wealth and disclosed it; this card fixes only the labels it left.
+
 ## Not this card
 **The netting itself**, and the disclosure note, both of which card 0076 built and tested.
 

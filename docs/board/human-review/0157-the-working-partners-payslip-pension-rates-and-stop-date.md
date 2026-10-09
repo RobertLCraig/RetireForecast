@@ -23,4 +23,11 @@ Paste to answer: `**2026-10-07** **Decided:** Member pays __%, employer pays __%
 ## For the agent (Rob can stop reading here)
 Rates given: enter them on the pension at builder step 3, relief method "net pay" (decided, `docs/build/PLAN-adviser-parity.md`, "Decisions resolved" #2), set the retirement age in the still-earning scenarios, re-run. Confirmed nil: set only the stop date; silencing card 0156's flag needs a small new card (the app cannot tell a confirmed nil from a blank). Copy the stop-date answer to card 0022. Related: card 0002 (which found the zero), card 0156 (the on-screen flag).
 
+## Links
+
+**Relates to**
+- `0022` - the keep-or-sell plans there assume working to 72, so question 2 answers that card too.
+- `0156` - the on-screen flag for a salary with no pension contribution; a confirmed nil needs it silenced.
+- `0002` - found the zero contribution this card asks about.
+
 ## Comments

@@ -26,6 +26,11 @@ Paste to answer: `**2026-10-07** **Decided:** Premium £___, costs £___, ___ ye
 ## For the agent (Rob can stop reading here)
 The premium and costs feed card 0026 (modelling the lease term). Source: expert panel 2026-08-19 (property finding 1, adviser finding 8, estate planner finding 9), gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
 
+## Links
+
+**Relates to**
+- `0026` - models the lease term; the valued premium and costs are the figures it needs.
+
 ## Comments
 
 **2026-09-30** The aside about the 2024 reform is answered here, so it need not go to the

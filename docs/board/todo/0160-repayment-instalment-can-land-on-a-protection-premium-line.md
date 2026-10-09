@@ -13,6 +13,11 @@ instalment printed against the premium, the premium's own amount gone from the p
 Card 0024 added `HouseholdAssembler::isMortgagePayment()`, the one rule for which line is the
 payment. `isMortgageLine()` is a second definition of the same thing and disagrees with it.
 
+## Links
+
+**Relates to**
+- `0024` - where this was found; it added `isMortgagePayment()`, the rule `isMortgageLine()` disagrees with.
+
 ## Not this card
 How the projection charges the premium or the payment. That is card 0024 and is correct.
 

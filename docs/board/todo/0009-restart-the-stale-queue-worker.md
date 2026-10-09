@@ -6,6 +6,12 @@ nothing restarts it. While it is down, "Re-run all" on Compare queues jobs that 
 thresholds, the trade-off map, assistant answers and "Check how sure" sit on spinners. It also
 gates the browser sign-off (card 0001) and the database catch-up (card 0161).
 
+## Links
+
+**Relates to**
+- `0001` - its browser sign-off needs queued forecasts to finish, so it waits on a running worker.
+- `0161` - its re-run of every stored scenario is queued work, so it needs the worker up too.
+
 ## Not this card
 Making the worker resilient, supervising it, or moving it off the database driver.
 

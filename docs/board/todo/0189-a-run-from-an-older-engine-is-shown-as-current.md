@@ -18,6 +18,7 @@ HANDOVER lists many). The reader cannot tell a stale run from a fresh one.
 **Relates to**
 - `0161` - re-running every stored scenario clears today's stale runs; this card makes the next
   stale run visible instead of silent.
+- `0061` - its review found this; it changed the horizon caption that now sits over older runs.
 
 ## Not this card
 - Re-running stored scenarios (0161).
@@ -25,7 +26,7 @@ HANDOVER lists many). The reader cannot tell a stale run from a fresh one.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a stored run's engine version differs from the current engine version, THE APP SHALL say on the results page that its figures came from an older version of the model and need a re-run. proves: test_a_run_from_an_older_engine_is_flagged_for_a_re_run
+- [ ] #1 WHEN a stored run's engine version differs from the current engine version, THE APP SHALL say on the results page that its figures came from an older version of the model and need a re-run. proves: `test_a_run_from_an_older_engine_is_flagged_for_a_re_run`
 <!-- AC:END -->
 
 ## Comments

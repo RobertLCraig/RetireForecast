@@ -25,6 +25,12 @@ Paste to answer: `**2026-10-07** **Decided:** No second property. Discard.` or `
 ## For the agent (Rob can stop reading here)
 Yes: re-queue to `todo/` after 0029 and 0030 pass review, then build to the plan (read it in full first; its "What changed since the draft" table matters). Run `php artisan test` and `php artisan scenarios:audit` from PowerShell before and after. No: `git mv` to `discarded/`; the plan file stays as the record.
 
+## Links
+
+**Blocked by**
+- `0029` - house-price risk on a property; each extra property reuses it, so it must pass review first.
+- `0030` - letting costs on net rent; a let second property reuses it, so it must pass review first.
+
 <!-- AC:BEGIN -->
 - [x] #1 THE PLAN at docs/build/PLAN-multi-property.md SHALL leave DRAFT status with its open
       scope questions answered, before any code is written against it.

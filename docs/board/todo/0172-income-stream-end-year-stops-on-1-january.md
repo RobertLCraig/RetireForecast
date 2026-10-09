@@ -15,6 +15,11 @@ which is the cautious way, but it is still a wrong figure.
 `rentalIncomePerOwner` has the same window and must move with it, so the rent banked and the rent
 the letting costs are taken off stay the same figure.
 
+## Links
+
+**Relates to**
+- `0036` - made the start year a part year, which is what stopped the two errors cancelling.
+
 ## Not this card
 The start side. Card 0036 owns it and it is built.
 

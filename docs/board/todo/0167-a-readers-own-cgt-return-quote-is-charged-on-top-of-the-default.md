@@ -12,6 +12,7 @@ A sell plan is then too pessimistic by £750, and the docblock promises an edit 
 **Relates to**
 - `0032` - added the fee and the docblock.
 - `0168` - the same fee is missing from the assumptions panel.
+- `0092` - sourced the £750 figure, which this card leaves as it is.
 
 ## Not this card
 - The £750 figure itself, which card 0092 sourced.

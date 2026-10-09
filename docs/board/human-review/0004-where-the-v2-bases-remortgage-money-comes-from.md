@@ -20,4 +20,9 @@ Paste to answer: `**2026-10-07** **Decided:** The £49,495 comes from <source>.`
 ## For the agent (Rob can stop reading here)
 After the answer: at builder step 3 on scenario 9, add a one-off capital receipt in 2026 labelled with the real source, plus a matching one-off cost the same year (the money goes straight to the lender). Never the receipt alone. Then run `php artisan scenarios:audit`; it must not report a new problem. If the answer is "wait for 0022", add `needs: 0022` and move this card to `todo/`.
 
+## Links
+
+**Relates to**
+- `0022` - picks the mortgage route; its interest-only loan would cut this gap to about £9,000.
+
 ## Comments

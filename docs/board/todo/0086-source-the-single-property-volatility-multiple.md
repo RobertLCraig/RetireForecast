@@ -34,6 +34,8 @@ built card 0029 could ship the mechanism and disclose the figure but could not g
   property-cost escalator. Whoever picks one up can settle both in one research pass.
 - `0029` - built the mechanism and disclosed this figure, but had no web access to check it, which
   is why the gap is a card of its own.
+- `0084` - asked whether the unattended loop may use the web; Rob's ruling there is the
+  research-only session this card's `waiting_on:` names.
 
 ## Not this card
 Changing the mechanism. How the uplift is applied, disclosed and edited is card 0029's and is built.

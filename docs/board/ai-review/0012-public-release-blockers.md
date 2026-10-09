@@ -10,6 +10,11 @@ guidance-only partition, #3 CSP nonces). One is a build (#2: the historical stre
 on the Jorda-Schularick-Taylor dataset, which is CC BY-NC-SA and cannot ship publicly). One is a
 browser pass (#4) that card 0001 now carries.
 
+## Links
+
+**Relates to**
+- `0001` - its browser pass carries the four hand accessibility checks that #4 needs.
+
 ## Not this card
 Deciding whether to release publicly at all. This card is the work that decision would require.
 Licensing a paid dataset (DMS or the Barclays Equity Gilt Study) so a public build keeps the stress

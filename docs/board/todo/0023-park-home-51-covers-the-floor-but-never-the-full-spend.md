@@ -9,6 +9,12 @@ The 2026-08-12 Monte Carlo put scenario 51 "Park home Tring GBP 150k" at 76.4% o
 failed every path's all-or-nothing full-spend test. Card 0025 fixed the engine; fresh 500-path runs
 read 79.8% / 78.6%. Only #4 is open, and it waits on card 0161.
 
+## Links
+
+**Blocked by**
+- `0025` - its engine fix is what moved the full-spend figure; it is still in review.
+- `0161` - #4 is the audit exiting 0, which needs the app database re-seeded and re-run first.
+
 ## Not this card
 Re-pricing the park homes, the other park-home scenarios, or the ranked report.
 

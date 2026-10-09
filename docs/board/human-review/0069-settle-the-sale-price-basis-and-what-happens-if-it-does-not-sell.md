@@ -26,4 +26,9 @@ Paste to answer: `**2026-10-07** **Decided:** RICS valuation £___ on <date>. Le
 ## For the agent (Rob can stop reading here)
 Set the base scenario's sale price to the answer and anchor card 0027's forced-sale discount to the valuation. Source: expert panel 2026-08-19 (property findings 3 and 7, adviser finding 9), gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
 
+## Links
+
+**Relates to**
+- `0027` - models a slow or forced sale; its forced-sale discount is anchored to the valuation this card settles.
+
 ## Comments

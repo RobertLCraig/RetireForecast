@@ -32,6 +32,21 @@ When every `needs:` card is done: re-run scenarios 64 and 66, then rewrite the a
 `**2026-MM-DD** **Decided:** Option 4, sell and buy cheaper, scenario 66 is the base.`
 Card 0004 (the £49,495 base-plan gap) follows whichever is chosen.
 
+## Links
+
+**Blocked by**
+- `0024` - an interest-only payment that grows with inflation and shrinks at a death misprices the keep-the-flat routes.
+- `0027` - a sale that is instant and free flatters the sell-and-buy plan.
+- `0058` - the estate figures compared here are one-path point estimates.
+- `0067` - the lease extension's premium and costs are not yet in the keep-the-flat plan.
+- `0068` - the corrected State Pension figure may remove the Pension Credit the keep-the-flat case leans on.
+- `0069` - the sale price both plans start from is not settled.
+- `0070` - the managing agent's accounts and planned works change the cost of keeping the flat.
+
+**Relates to**
+- `0157` - its question 2 (when the working partner stops work) also answers this card's working-to-72 question.
+- `0004` - the base plan's £49,495 gap follows whichever route is chosen here.
+
 ## Comments
 
 **2026-08-19** The expert panel: do not answer this card yet. Three reviewers separately found the

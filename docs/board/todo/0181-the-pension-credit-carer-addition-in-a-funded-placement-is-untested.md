@@ -1,3 +1,6 @@
+---
+no_outward_effect: "published" is the government's own rule, read and cited; nothing here is released
+---
 # The Pension Credit carer addition in a funded care placement has no test and no source
 
 ## Why

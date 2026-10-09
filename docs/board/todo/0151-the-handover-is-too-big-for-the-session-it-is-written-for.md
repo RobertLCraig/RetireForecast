@@ -52,8 +52,8 @@ few cards.
       `HandoverHygieneTest` - a new case asserting the budget; watch it fail against today's 78,981
       bytes before anything is folded.
 - [ ] THE APP SHALL bring `docs/HANDOVER.md` under that budget by folding stale blocks into
-      `docs/HANDOVER-ARCHIVE.md`, losing no fact that is still true. proves: the same test, green
-      once the fold is done.
+      `docs/HANDOVER-ARCHIVE.md`, losing no fact that is still true. proves: `HandoverHygieneTest` -
+      the same case as above, green once the fold is done.
 - [ ] THE APP SHALL state, in the handover itself, the rule that keeps the exception list bounded,
       so the next session folds by a rule rather than by taste. proves: none - what the rule should
       be (a bullet cap, an age cut-off, or "archive when the card reaches done/") is a call for Rob.

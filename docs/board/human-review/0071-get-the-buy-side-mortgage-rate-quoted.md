@@ -24,4 +24,10 @@ Paste to answer: `**2026-10-07** **Decided:** Broker quotes ___% on £___; survi
 ## For the agent (Rob can stop reading here)
 Put the quoted rate on the buy-side mortgage of the sell-and-buy scenarios (66 among them) and re-run. If it fails survivor affordability, say so on card 0022. Source: expert panel 2026-08-19 (property finding 8), gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
 
+## Links
+
+**Relates to**
+- `0022` - the broker email there is where this question goes, and the sell-and-buy plan it weighs uses this rate.
+- `0034` - its engine fix may cut how much the purchase must borrow, so the quoted amount could fall.
+
 ## Comments

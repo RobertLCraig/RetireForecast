@@ -17,12 +17,17 @@ fixture's default household, not the case its name and comments describe. Exampl
 `AffordabilityTest::test_working_plans_are_ordered_strongest_first` means its base to spend
 £6,000 a year on essentials; it spends the fixture default.
 
+## Links
+
+**Relates to**
+- `0061` - found this while building its #3, whose test relied on a dotted override reaching a base.
+
 ## Not this card
 - Changing what any test asserts, beyond making its override reach the forecast.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a test passes a dotted override key to `ScenarioFixture::rich`, THE FIXTURE SHALL either apply it as a path into the builder state or fail loudly, never store it as a dead top-level key. proves: test_a_dotted_override_reaches_the_base_scenarios_builder_state
+- [ ] #1 WHEN a test passes a dotted override key to `ScenarioFixture::rich`, THE FIXTURE SHALL either apply it as a path into the builder state or fail loudly, never store it as a dead top-level key. proves: `test_a_dotted_override_reaches_the_base_scenarios_builder_state`
 - [ ] #2 WHEN the fixture is fixed, THE SUITE SHALL stay green with every existing dotted-key test now running the case it describes, or the drifted test is corrected and named in the comment. proves: none
 <!-- AC:END -->
 

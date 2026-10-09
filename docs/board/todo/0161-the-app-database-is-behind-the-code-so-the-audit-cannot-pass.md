@@ -22,6 +22,10 @@ audit is the release gate, so it is red for a reason no engine card can fix.
 **Blocks**
 - `0023` - its #4 is the audit exiting 0.
 
+**Relates to**
+- `0062` - one of the cards that added figures to the shipped assumption sets which the stored rows lack.
+- `0018` - added the integrity-stamp hash column that `php artisan migrate` brings into the database.
+
 ## Not this card
 - Any engine or audit change. Both checks are right; the data is stale.
 

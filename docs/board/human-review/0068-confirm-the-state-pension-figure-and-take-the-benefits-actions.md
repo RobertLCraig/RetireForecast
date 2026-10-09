@@ -24,6 +24,12 @@ Paste to answer: `**2026-10-07** **Decided:** Forecast £___/wk, ___ qualifying 
 ## For the agent (Rob can stop reading here)
 Write the forecast into the scenarios that model the working partner's State Pension and re-run them. If it is under £238.00, the Pension Credit and passported help appear on their own; check the keep-the-flat plans in card 0022 move. Item 4 (the care and mobility split) feeds card 0050. Source: expert panel 2026-08-19 (Citizens Advice findings 1, 2, 9; adviser finding 1), gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
 
+## Links
+
+**Relates to**
+- `0022` - the keep-the-flat plans there lean on Pension Credit, which this figure decides.
+- `0050` - handles disability benefits in care; item 4's care and mobility split is its input.
+
 ## Comments
 
 **2026-10-07** Rates re-checked: new State Pension £241.30/wk and Pension Credit single standard

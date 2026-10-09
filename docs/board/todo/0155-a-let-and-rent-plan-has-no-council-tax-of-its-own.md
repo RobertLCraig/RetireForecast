@@ -18,10 +18,13 @@ the same figure: the council tax on the home the household rents.
 
 ## Links
 
-**Relates to**
+**Blocked by**
 - `0112` - the same missing figure on the sell-and-rent plan. Settle where a renter's bill comes
   from once, for both.
+
+**Relates to**
 - `0088` - kept the let home's bill as the stand-in and said so on the result.
+- `0047` - owns the owner's council tax and its reductions, which this card leaves alone.
 
 ## Not this card
 The owner's council tax and its reductions (card 0047). The let home's running costs and repairs

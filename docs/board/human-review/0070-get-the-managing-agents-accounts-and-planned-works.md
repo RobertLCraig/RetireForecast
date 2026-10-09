@@ -30,4 +30,10 @@ Paste to answer: `**2026-10-07** **Decided:** Emailed the managing agent on <dat
 ## For the agent (Rob can stop reading here)
 Feed the accounts and programme into cards 0028 (major works and service charge) and 0029 (house-price risk). Source: expert panel 2026-08-19 (property findings 2, 10, 15), gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
 
+## Links
+
+**Relates to**
+- `0028` - models major works and the service charge, which the accounts and works programme feed.
+- `0029` - models house-price risk, which the planned works also feed.
+
 ## Comments

@@ -27,4 +27,9 @@ Paste to answer: `**2026-10-07** **Decided:** LPAs: <registered / applied on dat
 ## For the agent (Rob can stop reading here)
 If a deed is already in motion before the LPAs are registered, flag it on the affected scenarios. This does not wait on card 0022. Source: expert panel 2026-08-19, estate planner finding 11, in the gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`.
 
+## Links
+
+**Relates to**
+- `0022` - the keep-or-sell choice; the attorneys are needed whichever way it goes, so this does not wait for it.
+
 ## Comments
