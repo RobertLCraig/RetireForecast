@@ -43,7 +43,7 @@ card 0007 (it does neither).
 - [x] #1 THE APP SHALL record the deceased's age at death on the pot the heir inherits. proves: `test_an_inherited_pot_carries_the_age_at_which_its_owner_died`
 - [x] #2 WHEN the member died under 75, THE APP SHALL treat a draw from the inherited pot as tax-free income. proves: `test_a_draw_from_a_pot_inherited_from_someone_who_died_under_75_is_tax_free`
 - [x] #3 WHEN the member died at 75 or over, THE APP SHALL tax the draw as the heir's income, as now. proves: `test_a_draw_from_a_pot_inherited_from_someone_who_died_at_75_or_over_is_taxed`
-- [ ] #4 THE APP SHALL tell the reader which treatment applied and why. proves: `test_the_inherited_pension_tax_treatment_is_disclosed`
+- [x] #4 THE APP SHALL tell the reader which treatment applied and why. proves: `test_the_inherited_pension_tax_treatment_is_disclosed`
 <!-- AC:END -->
 
 ## Tasks
@@ -176,3 +176,20 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 4 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 4 of 4 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #4 because the reader is still told the wrong thing about which treatment applied. `PathProjector::projectYear` still adds the tax-free inherited draw to `$src['pension_lump_sum']`, which `ResultPresenter` labels "Pension tax-free cash". Beneficiary drawdown is not tax-free cash and has no 25% quarter. The comment beside that line, which calls it capital rather than income, is the cause of the Pension Credit hole now on card 0145. Put the draw on its own line, or on one that says what it is.
+
+**2026-10-09** RESULT: done
+TESTS: +0 new (2 extended), all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php
+TOUCHED: packages/finance-engine/src/Forecast/YearResult.php
+TOUCHED: app/Forecast/ResultPresenter.php
+TOUCHED: app/Forecast/ScenarioForecaster.php
+TOUCHED: packages/finance-engine/tests/Forecast/InheritedPensionDrawTaxTest.php
+TOUCHED: tests/Unit/Forecast/InheritedPensionTreatmentNoticeTest.php
+TOUCHED: docs/DECISIONS.md
+OUT-OF-SCOPE: none
+
+Acts on the 2026-09-28 manager pass that reopened #4. `fundShortfall` now returns `fromInheritedTaxFree` as a second subset of `fromPension`, kept apart from `fromPensionTaxFree`. `projectYear` puts it on a new `inherited_pension` source (in `YearResult::INCOME_SOURCES`), and `ResultPresenter` labels that line "Inherited pension (tax-free)". So the draw is no longer filed under "Pension tax-free cash". The comment that called it capital is corrected, and it now names the Pension Credit gap as card 0145's. The means test is unchanged, because 0145 owns that fix. Two readers that sum the pension lines now include the new one: the ladder's drawing/surplus status and `deprivationWarnings`. The other readers loop over `INCOME_SOURCES` and pick it up without a change.
+
+Watched fail first: both `test_the_inherited_pension_tax_treatment_is_disclosed` tests (engine and app) were extended. They went red because the draw sat on `pension_lump_sum` and the ladder had no `inherited_pension` column. They pass now. #2's test read the drawn amount off `pension_lump_sum`, so it moved to `inherited_pension`. That is a legitimate drift from the deliberate change, and the assertion is not loosened.
+
+No total, tax or wealth figure moves. `ENGINE_VERSION` is `finance-engine/inherited-pension-has-its-own-line`, so a stored result shows the money under the old heading until it is re-run. Not re-run from here: the worktree shares the live database. The new ladder line has NOT been seen in a browser. Ran with `php artisan test` (1703 passed, 1 skipped), because `vendor\bin\pest.bat` does not exist in this repo. Ran `pint --dirty` too. The earlier review's minor point about `plannedWithdrawals` never asking `drawIsTaxFree` is left alone: it is still unreachable, and #4 does not cover it.
