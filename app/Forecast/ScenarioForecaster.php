@@ -61,7 +61,13 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-10 (part-year-ni-thresholds): a part year of work (the retirement year, or the
+     * Bumped 2026-10-10 (pension-credit-from-the-qualifying-date): in the year the last member
+     * reaches State Pension age, Pension Credit is paid only for the part of the year after that
+     * date, and the State Pension starting on it is assessed over those weeks, not spread over 52.
+     * A deferring claimant's notional pension in that year counts only from the date too. A plan
+     * that draws Pension Credit and has a member reach State Pension age inside its horizon banked
+     * too MUCH in that year under an earlier stamp. Every other year is byte-identical. Board card 0097.
+     * Previous bump 2026-10-10 (part-year-ni-thresholds): a part year of work (the retirement year, or the
      * State Pension age year) is now charged National Insurance against the matching part of the
      * annual primary threshold and upper earnings limit, as per-pay-period payroll charges it. It was
      * charged against the whole year's threshold, so any plan with a working member who retires or
@@ -568,7 +574,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/part-year-ni-thresholds';
+    public const ENGINE_VERSION = 'finance-engine/pension-credit-from-the-qualifying-date';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

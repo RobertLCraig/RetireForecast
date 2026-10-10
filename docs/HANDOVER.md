@@ -9,6 +9,10 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **Pension Credit is paid only from the qualifying date.** Card 0097. `ENGINE_VERSION` is
+  `finance-engine/pension-credit-from-the-qualifying-date`; the **re-run is owed** for Pension
+  Credit plans with a member reaching State Pension age in the horizon. Reasons in DECISIONS 2026-10-10.
+
 - **A pension draw re-assesses Housing Benefit and Council Tax Reduction at a nil credit.** Card
   0077 #4. `ENGINE_VERSION` is `finance-engine/pension-draw-reassesses-housing-support`; the
   **re-run is owed** for pension-age renters or CTR claimants who draw taxable pension money.

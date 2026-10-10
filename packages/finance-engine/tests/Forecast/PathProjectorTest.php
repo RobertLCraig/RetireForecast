@@ -1702,4 +1702,53 @@ final class PathProjectorTest extends TestCase
         // the means test runs for real and the warning stops.
         $this->assertNotContains(WarningCode::MIXED_AGE_COUPLE, $codes(2032));
     }
+
+    /**
+     * A lone pensioner's Pension Credit in 2028. Born 1961-09-15, State Pension age is 67 and falls
+     * on 2028-09-15, so 2028 is the qualifying year and three twelfths of it are after the date
+     * (the house convention, {@see PathProjector} startFraction). Born 1957, it was reached years
+     * ago and 2028 is a whole year, at the same uprating.
+     *
+     * @param  list<Pension>  $pensions
+     */
+    private function pensionCredit2028(string $dob, array $pensions): int
+    {
+        $household = new Household('Solo', RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable($dob), Sex::Male, EmploymentStatus::Retired)],
+            // Spend above any award, so no surplus is banked to earn tariff income against it.
+            new ExpenseProfile(Money::fromPounds(20_000), Money::zero(), Percent::fromPercent(70)),
+            $pensions,
+        );
+
+        foreach ($this->forecaster()->forecast($household, $this->flatAssumptions(), $this->settings())->years as $y) {
+            if ($y->calendarYear === 2028) {
+                return $y->incomeBySource['means_tested_benefit']->pence;
+            }
+        }
+        $this->fail('2028 is inside the horizon');
+    }
+
+    public function test_pension_credit_is_awarded_only_from_the_qualifying_age_date(): void
+    {
+        // Card 0097 #1. No income at all, so the award is the whole guarantee: a whole year of it
+        // for the long-qualified pensioner, and only the 13 weeks after the date for the one who
+        // qualifies in September. It was paid for all 52.
+        $wholeYear = $this->pensionCredit2028('1957-06-15', []);
+
+        $this->assertGreaterThan(0, $wholeYear);
+        $this->assertSame(intdiv($wholeYear, 4), $this->pensionCredit2028('1961-09-15', []));
+    }
+
+    public function test_the_qualifying_year_is_means_tested_on_the_weeks_it_covers(): void
+    {
+        // Card 0097 #2. The State Pension starts on the same date, so 2028 pays only its last
+        // quarter. Spread over 52 weeks that reads as a quarter of the weekly pension, and the
+        // award topped the rest up; over the 13 weeks it was paid in it is the whole weekly rate,
+        // the same weekly award as the long-qualified twin, for a quarter of the weeks.
+        $sp = [new StatePensionEntitlement('p1', weeklyForecast: Money::of(100, 0))];
+        $wholeYear = $this->pensionCredit2028('1957-06-15', $sp);
+
+        $this->assertGreaterThan(0, $wholeYear);
+        $this->assertSame(intdiv($wholeYear, 4), $this->pensionCredit2028('1961-09-15', $sp));
+    }
 }

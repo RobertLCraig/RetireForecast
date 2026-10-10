@@ -3,6 +3,22 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-10: Pension Credit runs from the qualifying date, on a shorter award period
+
+**Context:** card 0097. In the year the last member reached State Pension age, Pension Credit was
+paid for 52 weeks, and the State Pension starting on that date was spread over all 52 too.
+**Decision:** the qualifying year is a shorter award period, not a whole-year figure scaled at the
+end, because the period is what the law pays and the weekly figure stays honest if it reaches a
+screen. `pensionCreditAwardPeriod` is the part of the year after the LATEST living member's date,
+on `startFraction`. The State Pension (paid or notional) is read over that period and divided by
+it into a weekly rate; other income keeps its annual rate over 52 weeks, the same weekly figure
+for income paid evenly. The award is paid for the period's weeks.
+**Consequence:** `ENGINE_VERSION` is `finance-engine/pension-credit-from-the-qualifying-date`; the
+re-run is owed for Pension Credit plans with a member reaching State Pension age in the horizon.
+Every other year is byte-identical. Housing Benefit and Council Tax Reduction still pay the whole
+qualifying year (card 0194), and a deferred claim year counts no notional pension (card 0195).
+**Status:** active
+
 ## 2026-10-09: a tax-free inherited pension draw has its own income line
 
 **Context:** card 0079 #4, reopened by the manager pass. Supersedes the 2026-09-08 choice to

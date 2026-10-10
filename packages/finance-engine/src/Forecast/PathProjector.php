@@ -1327,9 +1327,10 @@ final class PathProjector
         // surplus all move assets, and an award assessed on a later state would be assessed on a
         // household this one is not. {@see pensionCreditAward} for what the extra income is.
         $stateAtAward = $state;
+        $awardPeriod = $this->pensionCreditAwardPeriod($household, $state, $alive, $calendarYear);
         $awardAssessedOn = fn (int $extraAssessableAnnual): ?PensionCreditResult => $this->pensionCreditAward(
             $household, $stateAtAward, $alive, $calendarYear, $ages, $taxablePerPerson, $aliveCount,
-            $meansTestExcluded, array_keys($disabilityCareFraction), $extraAssessableAnnual,
+            $meansTestExcluded, array_keys($disabilityCareFraction), $extraAssessableAnnual, $awardPeriod,
         );
         $pensionCreditAward = $awardAssessedOn(0);
 
@@ -1578,9 +1579,10 @@ final class PathProjector
         $previousAssessedDraw = null;
         $previousGap = null;
         for ($pass = 0; ; $pass++) {
+            // Paid only for the weeks of the award period: the qualifying year starts on the date.
             $benefitNominal = $pensionCreditAward === null
                 ? 0
-                : $pensionCreditAward->guaranteeCreditWeekly->pence * $this->config->statePension->weeksPerYear;
+                : (int) round($pensionCreditAward->guaranteeCreditWeekly->pence * $this->config->statePension->weeksPerYear * $awardPeriod);
             $netCashNominal += $benefitNominal;
             $grossIncomeNominal += $benefitNominal;
             $src['means_tested_benefit'] += $benefitNominal;
@@ -2084,13 +2086,21 @@ final class PathProjector
      *                                      against each other. Household-level: Guarantee Credit
      *                                      is assessed on the household's income, so which member
      *                                      drew it does not change the award.
+     * @param  float  $awardPeriod  the part of the year the award is for ({@see pensionCreditAwardPeriod}).
+     *                              The State Pension is read over that period and turned into a weekly
+     *                              rate over its weeks, because in the qualifying year it starts on
+     *                              the same date: spread over 52 weeks, a part year of it read as a
+     *                              fraction of the weekly pension and the award topped up the rest
+     *                              (board card 0097). Other income stays at its annual rate over 52
+     *                              weeks, which is the same weekly figure for income paid evenly.
      */
-    private function pensionCreditAward(Household $household, array $state, array $alive, int $calendarYear, array $ages, array $taxablePerPerson, int $aliveCount, array $excludedFromAssessable = [], array $inFundedCarePlacement = [], int $extraAssessableAnnual = 0): ?PensionCreditResult
+    private function pensionCreditAward(Household $household, array $state, array $alive, int $calendarYear, array $ages, array $taxablePerPerson, int $aliveCount, array $excludedFromAssessable = [], array $inFundedCarePlacement = [], int $extraAssessableAnnual = 0, float $awardPeriod = 1.0): ?PensionCreditResult
     {
         $weeksPerYear = $this->config->statePension->weeksPerYear;
 
         // Qualifying-age gate: every living member must be at/over State Pension age.
         $assessableAnnual = 0;
+        $statePensionInPeriod = 0.0;
         $living = [];
         foreach ($household->persons as $person) {
             if (! ($alive[$person->id] ?? false)) {
@@ -2100,15 +2110,28 @@ final class PathProjector
                 return null;
             }
             $assessableAnnual += $taxablePerPerson[$person->id] - ($excludedFromAssessable[$person->id] ?? 0);
+            if ($awardPeriod < 1.0) {
+                // Swap the State Pension paid this year for the part of it paid inside the period.
+                $claimYear = $state['spClaimYear'][$person->id];
+                $assessableAnnual -= $this->statePensionIncome($household, $person->id, $calendarYear, $claimYear, $state['spaMonth'][$person->id], $state['spFactor']);
+                if ($calendarYear >= $claimYear) {
+                    $paidFrom = $calendarYear === $claimYear ? self::startFraction($state['spaMonth'][$person->id]) : 1.0;
+                    $statePensionInPeriod += $this->statePensionIncome($household, $person->id, $calendarYear, $claimYear, $state['spaMonth'][$person->id], $state['spFactor'], wholeYear: true)
+                        * min($awardPeriod, $paidFrom);
+                }
+            }
             // A paused (deferred) State Pension is still assessable income for Pension Credit — count
             // the notional undeferred amount during the deferral window, since the paid figure is 0
             // there (deferring must not conjure Pension Credit it wouldn't otherwise get).
-            $assessableAnnual += $this->notionalDeferredStatePensionNominal(
+            $statePensionInPeriod += $this->notionalDeferredStatePensionNominal(
                 $household, $person->id, $calendarYear,
-                $state['spaYear'][$person->id], $state['spClaimYear'][$person->id], $state['spFactor'],
+                $state['spaYear'][$person->id], $state['spClaimYear'][$person->id], $state['spFactor'], $awardPeriod,
             );
             $living[$person->id] = $person;
         }
+        // A whole-year rate, so it sits beside the other income: the period's pension over the period.
+        // A December date leaves no period at all, and nothing in it.
+        $assessableAnnual += $awardPeriod > 0.0 ? $statePensionInPeriod / $awardPeriod : 0.0;
 
         // Severe-disability addition: a single disabled pensioner qualifies on their own
         // benefit (single rate); a COUPLE qualifies only when BOTH partners receive a
@@ -2159,6 +2182,28 @@ final class PathProjector
         $applicableWeekly = Money::fromPence((int) round($applicableBase->pence * $state['spFactor']));
 
         return $this->pensionCredit->award($applicableWeekly, $assessableIncomeWeekly, $this->meansTestAssessableCapital($household, $state));
+    }
+
+    /**
+     * The part of this calendar year a Pension Credit award can cover: all of it, except in the year
+     * the LAST living member reaches State Pension age, when the gate opens on that date and the
+     * award runs from there (board card 0097). The fraction comes from that same person, the
+     * latest date, on the State Pension's own month convention ({@see startFraction}). A year the
+     * gate is still shut is answered 1.0; {@see pensionCreditAward} returns null for it anyway.
+     *
+     * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
+     */
+    private function pensionCreditAwardPeriod(Household $household, array $state, array $alive, int $calendarYear): float
+    {
+        $period = 1.0;
+        foreach ($household->persons as $person) {
+            if (($alive[$person->id] ?? false) && $state['spaYear'][$person->id] === $calendarYear) {
+                $period = min($period, self::startFraction($state['spaMonth'][$person->id]));
+            }
+        }
+
+        return $period;
     }
 
     /**
@@ -2733,7 +2778,8 @@ final class PathProjector
         return $total;
     }
 
-    private function statePensionIncome(Household $household, string $pid, int $calendarYear, int $spClaimYear, int $spaMonth, float $spFactor): int
+    /** $wholeYear reads the claim year at its annual rate, as the Pension Credit award period needs it. */
+    private function statePensionIncome(Household $household, string $pid, int $calendarYear, int $spClaimYear, int $spaMonth, float $spFactor, bool $wholeYear = false): int
     {
         // Nothing is paid before the claim year: at State Pension age if undeferred, later by the
         // deferral period if deferring — the forgone income is what makes deferral a genuine
@@ -2745,7 +2791,7 @@ final class PathProjector
         // whole years by any deferral, so the month is the same either way). The year divides at
         // the END of that month, the complement of the salary's split, so a pension starting in
         // November pays one month (December), not twelve.
-        $fraction = $calendarYear === $spClaimYear ? self::startFraction($spaMonth) : 1.0;
+        $fraction = $calendarYear === $spClaimYear && ! $wholeYear ? self::startFraction($spaMonth) : 1.0;
         foreach ($household->pensions as $pension) {
             if ($pension instanceof StatePensionEntitlement && $pension->ownerId === $pid) {
                 $base = $pension->weeklyForecast !== null
@@ -2781,8 +2827,12 @@ final class PathProjector
      * outside that window. DWP treats a deferred State Pension as income you could be receiving, so
      * deferring must not silently boost Pension Credit while the claim is paused. Uprated by the
      * running triple-lock factor, like the paid figure.
+     *
+     * Only the $awardPeriod part of the year is counted: in the year State Pension age is reached,
+     * the notional pension is income only from that date, which is where the period starts
+     * (board card 0097). The claim year itself still counts none of it, as before.
      */
-    private function notionalDeferredStatePensionNominal(Household $household, string $pid, int $calendarYear, int $spaYear, int $spClaimYear, float $spFactor): int
+    private function notionalDeferredStatePensionNominal(Household $household, string $pid, int $calendarYear, int $spaYear, int $spClaimYear, float $spFactor, float $awardPeriod = 1.0): int
     {
         if ($calendarYear < $spaYear || $calendarYear >= $spClaimYear) {
             return 0;
@@ -2793,7 +2843,7 @@ final class PathProjector
                     ? $this->statePension->fromWeeklyForecast($pension->weeklyForecast)
                     : $this->statePension->fromQualifyingYears($pension->qualifyingYears ?? 0);
 
-                return (int) round($base->annual->pence * $spFactor);
+                return (int) round($base->annual->pence * $spFactor * $awardPeriod);
             }
         }
 

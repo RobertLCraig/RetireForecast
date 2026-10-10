@@ -124,4 +124,38 @@ final class StatePensionDeferralTest extends TestCase
 
         $this->assertGreaterThan($deferred, $undeferred, 'deferring then dying early collects less lifetime State Pension');
     }
+
+    /** A lone pensioner on £100/wk of State Pension and nothing else: their Pension Credit in 2028. */
+    private function pensionCredit2028(string $dob, int $deferralWeeks): int
+    {
+        $household = new Household('Deferral', RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable($dob), Sex::Male, EmploymentStatus::Retired)],
+            // Spend above any award, so no surplus is banked to earn tariff income against it.
+            new ExpenseProfile(Money::fromPounds(20_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [(new StatePensionEntitlement('p1', weeklyForecast: Money::of(100, 0)))->withDeferralWeeks($deferralWeeks)],
+        );
+
+        $result = (new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
+            ->forecast($household, $this->flatAssumptions(), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'));
+        foreach ($result->years as $y) {
+            if ($y->calendarYear === 2028) {
+                return $y->incomeBySource['means_tested_benefit']->pence;
+            }
+        }
+        $this->fail('2028 is inside the horizon');
+    }
+
+    public function test_the_notional_deferred_pension_is_prorated_in_the_year_it_would_have_started(): void
+    {
+        // Card 0097 #3. Born 1961-09-15, State Pension age falls on 2028-09-15 and the claim is
+        // deferred two years, so 2028 pays nothing and is assessed on the notional pension instead.
+        // Only the quarter of 2028 after the date is pension they could have been receiving, and it
+        // is assessed over those 13 weeks: the same weekly award as a twin who claimed on time long
+        // ago (the notional figure IS the undeferred rate), for a quarter of the weeks. It counted a
+        // whole year of notional pension, against a whole year of award.
+        $onTime = $this->pensionCredit2028('1957-06-15', deferralWeeks: 0);
+
+        $this->assertGreaterThan(0, $onTime);
+        $this->assertSame(intdiv($onTime, 4), $this->pensionCredit2028('1961-09-15', deferralWeeks: 104));
+    }
 }
