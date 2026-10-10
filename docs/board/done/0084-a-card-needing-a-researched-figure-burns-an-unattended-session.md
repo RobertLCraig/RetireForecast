@@ -56,3 +56,7 @@ is yours. Paste into `## Comments`:
 ## Comments
 
 **2026-09-28** **Decided:** Option 2, in a narrower form. The unattended loop gets the web ONLY in a separate research session that can write notes under `docs/research/` and nothing else: no shell, no code, no agents, no MCP. A later build session, which keeps no web, builds from the note. Rob: "sessions that do web loops/research are just that, just research" and "they cannot execute other code". Built by `progressboard#0211`; the five cards waiting on this (0084, 0086, 0087, 0091, 0129) get a `research:` key once it lands.
+
+**2026-10-10** RESULT: done
+TOUCHED: 0193 - once progressboard#0211 lands, say in the board README that build sessions have no web, and mark every open card that needs a looked-up figure (0086, 0087, 0091, 0129 and the rest of the sweep) with research:, dropping their waiting_on and A/B questions.
+No decision card: the answer settles the open questions, and the key's format is read from progressboard#0211.
