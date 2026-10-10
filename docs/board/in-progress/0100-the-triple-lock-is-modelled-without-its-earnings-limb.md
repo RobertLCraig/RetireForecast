@@ -70,3 +70,24 @@ choice at 1% and 5% inflation and can take an earnings rate the same way.
 loop does not have. Run it attended.
 
 ## Comments
+
+**2026-10-10** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+The card's Plan says it needs a session with web access, and this unattended session has none: WebSearch was refused ("requested permissions... you haven't granted it yet"), as the project memory unattended-sessions-have-no-web predicts. All three criteria rest on one sourced figure, a national average-weekly-earnings real-growth default with a source and verified_on, so none can be met honestly here. I did not build the plumbing with a placeholder or null default: that would change no result and would put an unsourced number (or an empty control) in front of the reader, against the no-invisible-figures and no-magic-numbers rules.
+
+What the repo already has, checked so the attended run need not re-read it:
+- No national earnings series exists. AssumptionSetLibrary's set-level salaryGrowth (1.0% Base and Low, 1.5% Historical) is cited to OBR_MACRO_SOURCE (OBR EFO March 2026) and labelled 'Real salary growth'; the card rules it out as the household's own pay. Copying its value under a new key would restate an unverified figure, so I did not.
+- CARE_COST_SOURCE (PSSRU/LSE) escalates care on earnings at about 2% real. That is a care-cost assumption, not an earnings series.
+- Under the adverse-default rule, the cautious default for this limb is the LOWEST plausible real earnings growth, because a higher figure raises the State Pension. The attended run should state the sourced alternatives (ONS AWE regular-pay history, the OBR medium-term earnings forecast) and pick the most adverse one as the editable default.
+
+Where the change goes once the figure exists:
+- packages/finance-engine/src/StatePension/StatePensionUprating.php:65 increase(float $inflation, int $calendarYear, ?int $untilYear): add the earnings argument; the docblock at lines 12-27 names the gap.
+- packages/finance-engine/src/Forecast/PathProjector.php:5318 (growState) is the only caller; line 790 also describes the uprating.
+- PathDraws seam: packages/finance-engine/src/Forecast/PathDraws.php:85 careCostRealGrowth() is the pattern to copy, implemented in DeterministicPathDraws.php:133, HistoricalSequenceDraws.php:138 and MonteCarlo/SampledPathDraws.php:111.
+- AssumptionSet.php:217 careCostRealGrowth() is the accessor pattern; AssumptionSetLibrary::economicSourcing() (around line 345) needs a new FigureSource row; AssumptionOverrides::KEYS needs the key.
+- ResultPresenter::assumedFigures() disclosure sentence, docs/spec/ASSUMPTIONS.md around line 360-369, and ScenarioForecaster::ENGINE_VERSION, as the card's Tasks list.
+
+This card wants Rob or an attended session with web access. Handing it to the unattended loop again will hit the same wall.
