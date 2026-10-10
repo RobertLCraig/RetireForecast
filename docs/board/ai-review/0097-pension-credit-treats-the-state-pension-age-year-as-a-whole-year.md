@@ -35,9 +35,9 @@ built.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] WHEN a household reaches Pension Credit qualifying age part way through a year, THE APP SHALL award only the part of the year after that date. proves: `test_pension_credit_is_awarded_only_from_the_qualifying_age_date`
-- [ ] WHEN the assessable income of that year is a part year of State Pension, THE APP SHALL test it against the matching part of the year, not against fifty-two weeks. proves: `test_the_qualifying_year_is_means_tested_on_the_weeks_it_covers`
-- [ ] WHEN a deferred claimant reaches State Pension age part way through a year, THE APP SHALL count only the notional pension of the part after that date. proves: `test_the_notional_deferred_pension_is_prorated_in_the_year_it_would_have_started`
+- [x] WHEN a household reaches Pension Credit qualifying age part way through a year, THE APP SHALL award only the part of the year after that date. proves: `test_pension_credit_is_awarded_only_from_the_qualifying_age_date`
+- [x] WHEN the assessable income of that year is a part year of State Pension, THE APP SHALL test it against the matching part of the year, not against fifty-two weeks. proves: `test_the_qualifying_year_is_means_tested_on_the_weeks_it_covers`
+- [x] WHEN a deferred claimant reaches State Pension age part way through a year, THE APP SHALL count only the notional pension of the part after that date. proves: `test_the_notional_deferred_pension_is_prorated_in_the_year_it_would_have_started`
 <!-- AC:END -->
 
 ## Tasks
@@ -60,3 +60,21 @@ are `packages/finance-engine/tests/Forecast/PathProjectorTest.php` (the Pension 
 `StatePensionDeferralTest.php`. Run `php artisan test --testsuite=Engine`, then the full suite.
 
 ## Comments
+
+**2026-10-10** RESULT: done
+TESTS: +3 new, all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Forecast/PathProjectorTest.php
+packages/finance-engine/tests/Forecast/StatePensionDeferralTest.php
+app/Forecast/ScenarioForecaster.php
+docs/DECISIONS.md
+docs/HANDOVER.md
+docs/board/todo/0194-housing-support-is-awarded-for-the-whole-qualifying-year.md
+docs/board/todo/0195-the-deferred-claim-year-counts-no-notional-pension.md
+OUT-OF-SCOPE: 0194, 0195
+
+Shape (task 1): a shorter award period, not a whole-year figure scaled at the end. New `pensionCreditAwardPeriod` is the part of the year after the LATEST living member's State Pension age date, on `startFraction` (task 3: the fraction comes from the same person the gate does). In that year the State Pension, paid or notional, is read over the period and divided by it into a weekly rate; other income keeps its annual rate over 52 weeks. The award is paid for weeksPerYear x period. With period 1 (every other year) the arithmetic is the old one, so those years are byte-identical; GoldenMasterTest did not move. `ENGINE_VERSION` is `finance-engine/pension-credit-from-the-qualifying-date` (task 4). DECISIONS 2026-10-10 and a HANDOVER line record it.
+
+Each test was watched failing first: #1 paid 4x the expected (a whole year where a quarter is due), #2 paid 1,163,656 where 188,487 is due (part-year pension spread over 52 weeks), #3 paid exactly the whole-year twin's award (a whole year of notional pension against a whole year). #3 also fails if only #1 is built, but its exact figure is what pins the notional to the part after the date: prorating the notional AND keeping it over 52 weeks would over-award and fail it too. A December date gives a nil period and a nil award, by the house month convention.
+
+Assumed: income other than the State Pension is spread evenly through the qualifying year. Left as it was, raised instead: Housing Benefit and Council Tax Reduction still pay the whole qualifying year (0194); the year a deferred claim starts still counts no notional pension (0195). Engine only, nothing on a screen moved, so no browser check is owed beyond the stored-scenario re-run.
