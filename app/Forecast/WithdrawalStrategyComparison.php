@@ -124,6 +124,7 @@ final class WithdrawalStrategyComparison
         public readonly bool $includesIht, // the totals carry the death tax as well as the yearly tax
         public readonly int $candidateCount, // how many whole forecasts the search actually ran
         public readonly bool $fundingDiffers, // the candidates do not all fund the same spending
+        public readonly bool $tilesFundAlike, // the two tiles' orders fund the same spending, so $savingPence is a saving
     ) {}
 
     public static function for(ScenarioForecaster $forecaster, Scenario $scenario): self
@@ -165,6 +166,8 @@ final class WithdrawalStrategyComparison
 
         $baseline = $tax[DrawCandidate::order($current)->key()];
         $alternativeTax = $tax[DrawCandidate::order($alternative)->key()];
+        $currentFunding = $funding[DrawCandidate::order($current)->key()];
+        $alternativeFunding = $funding[DrawCandidate::order($alternative)->key()];
 
         return new self(
             current: $current,
@@ -181,6 +184,10 @@ final class WithdrawalStrategyComparison
                 static fn (array $f): string => implode('|', $f),
                 $funding,
             ))) > 1,
+            // Either way round: the tile that funds less pays less for that reason, so the gap is
+            // not a saving whichever of the two it favours (board card 0081, criterion 2).
+            tilesFundAlike: self::fundsAtLeastAsMuchAs($alternativeFunding, $currentFunding)
+                && self::fundsAtLeastAsMuchAs($currentFunding, $alternativeFunding),
         );
     }
 
@@ -314,6 +321,9 @@ final class WithdrawalStrategyComparison
             // it pays is lower BECAUSE it funds less, so the reader has to be told the comparison
             // is not one of equals (board card 0081).
             'fundingDiffers' => $this->fundingDiffers,
+            // Whether the two tiles' gap may be read as a saving at all. Where it may not, both
+            // templates say so instead of naming one tile as paying less (board card 0081).
+            'tilesFundAlike' => $this->tilesFundAlike,
         ];
     }
 

@@ -219,6 +219,13 @@ sentence. The winner is still named, because it is now guaranteed to fund at lea
 reader's own order. **Whether the shortfall itself should be printed beside it is Rob's**, and is not
 built.
 
+**Decision (2026-10-10, on review): the two-tile sentence goes the same way.** The tiles still show
+both totals, because each is the engine's own figure. But where the two orders do not fund the same
+spending (`panel()['tilesFundAlike']`, the same `fundsAtLeastAsMuchAs()` test run both ways), the
+sentence under them says the gap is not a saving either way instead of naming one as paying less. Both
+ways, because the order in place can be the one that funds less, and then "less tax by keeping your
+current order" is the same fault.
+
 No figure moves, no `ENGINE_VERSION` bump, no stored re-run owed: the comparison is computed on the
 page and nothing is stored from it.
 

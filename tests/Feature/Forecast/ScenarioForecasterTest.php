@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Forecast;
 
+use App\Export\ScenarioReport;
 use App\Forecast\DrawCandidate;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\WithdrawalStrategyComparison;
+use App\Livewire\ScenarioResults;
 use App\Models\Scenario;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -325,6 +328,53 @@ class ScenarioForecasterTest extends TestCase
         $this->assertNotNull($comfortable);
         $this->assertFalse($comfortable['fundingDiffers'],
             'every order funds this household in full, so there is nothing to warn about');
+    }
+
+    /**
+     * Board card 0081, criterion 2, as reopened on review. The optimiser's sentence was filtered on
+     * funding but the two-tile sentence above it was not: it still said "£X less tax over the plan
+     * by <alternative>" for an alternative that pays less only because it funds less. Rendered on
+     * the screen and in the PDF, because both print that sentence from the same panel figures.
+     */
+    public function test_the_two_tile_sentence_does_not_call_an_underfunding_order_cheaper(): void
+    {
+        $forecaster = new ScenarioForecaster;
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        // Find the order in place whose second tile is the trap: the alternative pays strictly less
+        // tax AND funds strictly fewer of the plan's years.
+        $trap = null;
+        foreach (WithdrawalStrategyComparison::CANDIDATES as $order) {
+            $state = BuilderStateFixture::full();
+            $state['expenseLines'][0]['amount'] = '40000';
+            $state['expenseLines'][1]['amount'] = '5000';
+            $state['assumptionOverrides'] = ['drawdownStrategy' => $order->value];
+            $scenario = ScenarioFixture::rich($user, $state);
+            $comparison = WithdrawalStrategyComparison::for($forecaster, $scenario);
+            $current = $forecaster->deterministicUnderStrategy($scenario, $comparison->current);
+            $alternative = $forecaster->deterministicUnderStrategy($scenario, $comparison->alternative);
+            if ($comparison->fillBandsSaves()
+                && $alternative->fullSpendYearsMetFraction() < $current->fullSpendYearsMetFraction()) {
+                $trap = [$scenario, $comparison];
+                break;
+            }
+        }
+        $this->assertNotNull($trap, 'no order in place has a cheaper-but-underfunding second tile, so this proves nothing');
+        [$scenario, $comparison] = $trap;
+
+        $claim = 'less tax over the plan by '.WithdrawalStrategyComparison::label($comparison->alternative);
+        $screen = Livewire::test(ScenarioResults::class, ['scenario' => $scenario])->html();
+        $pdf = view('pdf.results', ['reports' => [(new ScenarioReport)->data($scenario)]])->render();
+
+        foreach (['screen' => $screen, 'pdf' => $pdf] as $where => $html) {
+            $text = preg_replace('/\s+/', ' ', strip_tags($html));
+            $this->assertStringContainsString('How you draw your money down', $text, "{$where}: the panel is not on the page");
+            $this->assertStringNotContainsString($claim, $text,
+                "{$where}: the second tile is called cheaper while it funds less of the household's spending");
+            $this->assertStringContainsString('do not fund the same spending, so the gap between their tax is not a saving', $text,
+                "{$where}: the two tiles are compared without saying they are not like for like");
+        }
     }
 
     /** The candidate set for a scenario that is not the stock fixture. */

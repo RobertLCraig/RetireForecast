@@ -22,7 +22,10 @@
     </div>
 
     <p class="mt-3 text-sm text-gray-700">
-        @if ($withdrawal['differs'])
+        @if (! $withdrawal['tilesFundAlike'])
+            These two orders do not fund the same spending, so the gap between their tax is not a saving either way:
+            the order that funds less pays less tax because it draws less money.
+        @elseif ($withdrawal['differs'])
             That is <span class="font-semibold">{{ $withdrawal['difference'] }}</span>
             {{ $withdrawal['fillBandsSaves'] ? 'less tax over the plan by '.$withdrawal['alternativeLabel'] : 'less tax over the plan by keeping your current order' }}.
         @else

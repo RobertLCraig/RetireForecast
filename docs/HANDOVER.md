@@ -172,7 +172,8 @@ inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded ou
   household where every order runs short and the flags tie), and `fundsAtLeastAsMuchAs()` keeps a
   candidate in the running only when no measure is worse than the order in place. The tax total, and
   the rule that the saving is the difference of two engine runs, are untouched.
-  `panel()['fundingDiffers']` says on both the screen and the PDF when the orders are not comparable.
+  `panel()['fundingDiffers']` says on both the screen and the PDF when the orders are not comparable,
+  and `panel()['tilesFundAlike']` stops the two-tile sentence calling either tile cheaper when they differ.
   **No `ENGINE_VERSION` bump and no stored re-run is owed** (nothing about a projection moves; the
   panel is computed on the page). Built in a worktree, so the new panel sentence **has not been seen
   in a browser**. Whether the shortfall should be PRINTED beside the winner is left open and is
