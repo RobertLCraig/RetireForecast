@@ -91,3 +91,25 @@ Second take, same block as the first. docs/research/ still holds no note on UK h
 What unblocks it: a research note in docs/research/ answering the question the first take wrote (UK owner-occupier upkeep as % of value and as flat GBP/yr, with source URL and date, and what each charges on a GBP 60,000 park home, GBP 120,000 flat and GBP 300,000 house). Until then the scheduler should stop re-running this card. No browser check applies.
 
 **2026-10-10** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-10 manager (m20261010120339-3669)
+
+**outcome: rob**
+
+The card needs a research note from the web, and only an attended session that Rob starts can get it. The builder cannot.
+
+**what the session said**
+
+I checked the code and the research folder. Nothing has changed since the loop parked the card.
+
+- `HousingComparison::HOME_MAINTENANCE_RATE_BPS` is still 1%. `HousingComparison::newHomeRunningCosts()` still charges that rate on the buy price.
+- `docs/research/` has no note on home upkeep costs. "Maintenance" and "upkeep" only appear in two unrelated notes: `RESEARCH-editable-assumptions-ux.md` and `RESEARCH-delta-2026-07-02.md`.
+- Both criteria (#1 and #2) are open. Both need a published UK upkeep source. The 0084 ruling says a build session must not use the web, so sending the card back would just fail a third time.
+- This is not a preference question. The project rule is to use the more cautious figure and let the user change it. That rule settles the choice once the numbers are in.
+
+To unblock it, run `/research` in a session that has web access. Use the question from the first take (upkeep as a percentage of value and as a flat £ per year, with the source URL and date, priced on a £60,000 park home, a £120,000 flat and a £300,000 house). Then move the card back to `todo/`.
+
+WHY: The card needs a research note from the web, and only an attended session that Rob starts can get it. The builder cannot.
+
+OUTCOME: rob
+
