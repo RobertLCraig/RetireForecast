@@ -3,6 +3,20 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-10: a gain is banded on the whole income the year's drawing leaves
+
+**Context:** card 0098. The CGT band split read the person's non-savings income from before the
+shortfall was funded, so savings, dividends and the year's own pension draws left band room that
+was not really there, and too much of the gain paid 18%.
+**Decision:** `capitalGainsTax` takes non-savings, savings and dividends and bands on their sum. The
+in-year call reads `$drawnTaxable`, the income after this year's draws. The CGT top-up draw is
+not fed back into the band, the same rule as its own small gain: re-banding would need a loop for
+a second-order sum. The up-front seed CGT stays on the pre-drawdown income, and the in-year call
+takes back exactly that figure, so the year's total is the combined gain on the post-draw income.
+**Consequence:** `ENGINE_VERSION` is `finance-engine/cgt-banded-on-the-whole-post-drawdown-income`;
+the re-run is owed for plans that realise a gain beside savings, dividends or a pension draw.
+**Status:** active
+
 ## 2026-10-10: Pension Credit runs from the qualifying date, on a shorter award period
 
 **Context:** card 0097. In the year the last member reached State Pension age, Pension Credit was

@@ -1757,7 +1757,7 @@ final class PathProjector
                 }
             }
             if ($seedGains !== []) {
-                $seedCgt = $this->capitalGainsTax($seedGains, $taxablePerPerson, $alive);
+                $seedCgt = $this->capitalGainsTax($seedGains, $taxablePerPerson, $savingsPerPerson, $dividendsPerPerson, $alive);
                 if ($seedCgt > 0) {
                     $totalTaxNominal += $seedCgt;
                     $netCashNominal -= $seedCgt;
@@ -3721,7 +3721,7 @@ final class PathProjector
         // finished. Restarting each from the pre-drawdown figure priced every later draw in a
         // band the person had already left, which is the same fault as costing it without their
         // savings (board card 0037). Held apart from $taxablePerPerson, which stays the
-        // PRE-drawdown income the CGT band split and the means test were assessed on.
+        // PRE-drawdown income the means test and the up-front seed CGT were assessed on.
         $drawnTaxable = $taxablePerPerson;
 
         // One person's whole taxable income, given where their NON-SAVINGS income has reached.
@@ -4046,12 +4046,18 @@ final class PathProjector
         // + met spend). Only $funded (spend actually met) excludes it, so it differs from the
         // drawdown sources by exactly the tax in a disposal year — pinned by a reconciliation
         // test. Do not "restore" the source totals here or the cashflow ladder stops balancing.
-        $cgt = $this->capitalGainsTax($realisedGain, $taxablePerPerson, $alive);
+        // The gains are banded on the income this year's drawing has left the person on
+        // ($drawnTaxable), not the pre-drawdown figure: the pension draws that fund the shortfall
+        // are taken in the same pass that sells the holdings (board card 0098). The CGT top-up
+        // draw below follows the rule its gain already does: it is not fed back, so the pension
+        // it may draw does not re-band the gain that it pays the tax on.
+        $cgt = $this->capitalGainsTax($realisedGain, $drawnTaxable, $savingsPerPerson, $dividendsPerPerson, $alive);
         if ($seedGains !== []) {
-            // The seed's own CGT was already charged up-front in projectYear; charge only the
-            // increment the in-year disposals add on top of it (the AEA and the rate bands are
-            // judged on the combined gain, so the increment is exact, never double-counted).
-            $cgt -= $this->capitalGainsTax($seedGains, $taxablePerPerson, $alive);
+            // The seed's own CGT was already charged up-front in projectYear, on the PRE-drawdown
+            // income; take back exactly that, so the year's total is the combined gain banded on
+            // the post-drawdown income (the AEA and the bands are judged on the combined gain, so
+            // the increment is exact, never double-counted).
+            $cgt -= $this->capitalGainsTax($seedGains, $taxablePerPerson, $savingsPerPerson, $dividendsPerPerson, $alive);
         }
         if ($cgt > 0) {
             $extraTax += $cgt;
@@ -4108,14 +4114,17 @@ final class PathProjector
      * annual exempt amount. Gains stack on top of income: the basic-rate band left after the
      * person's income is taxed at the lower CGT rate, the rest at the higher rate. The
      * residential CGT rates are reused — since the October 2024 Budget they equal the rates
-     * for gains on shares (18% / 24%). v1 simplifications (flagged): the band is judged on
-     * non-savings income only, and capital losses are not relieved.
+     * for gains on shares (18% / 24%). The band is judged on the person's whole income,
+     * savings and dividends included, because all three fill it before a gain does (board
+     * card 0098). v1 simplification (flagged): capital losses are not relieved.
      *
      * @param  array<string, int>  $realisedGain  personId => gain realised (nominal pence)
-     * @param  array<string, int>  $taxablePerPerson
+     * @param  array<string, int>  $nonSavingsPerPerson
+     * @param  array<string, int>  $savingsPerPerson
+     * @param  array<string, int>  $dividendsPerPerson
      * @param  array<string, bool>  $alive
      */
-    private function capitalGainsTax(array $realisedGain, array $taxablePerPerson, array $alive): int
+    private function capitalGainsTax(array $realisedGain, array $nonSavingsPerPerson, array $savingsPerPerson, array $dividendsPerPerson, array $alive): int
     {
         $cgt = $this->config->cgt;
         $aea = $cgt->annualExemptAmount->pence;
@@ -4128,7 +4137,9 @@ final class PathProjector
                 continue;
             }
             $total += self::cgtOnGain(
-                $gain, $taxablePerPerson[$pid] ?? 0, $aea, $personalAllowance,
+                $gain,
+                ($nonSavingsPerPerson[$pid] ?? 0) + ($savingsPerPerson[$pid] ?? 0) + ($dividendsPerPerson[$pid] ?? 0),
+                $aea, $personalAllowance,
                 $basicRateBand, $cgt->residentialBasicRate, $cgt->residentialHigherRate,
             );
         }

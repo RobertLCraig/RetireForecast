@@ -10,6 +10,8 @@ use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
 use RetireForecast\FinanceEngine\Dto\Account;
 use RetireForecast\FinanceEngine\Dto\AccountType;
+use RetireForecast\FinanceEngine\Dto\DbPension;
+use RetireForecast\FinanceEngine\Dto\DcPension;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
@@ -17,11 +19,14 @@ use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
+use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\PathProjector;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
+use RetireForecast\FinanceEngine\Tax\IncomeTaxCalculator;
+use RetireForecast\FinanceEngine\Tax\TaxableIncome;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
@@ -114,6 +119,95 @@ final class GiaCapitalGainsTaxTest extends TestCase
         $noGain = $this->forecaster()->forecast($this->household(Money::zero()), AssumptionSetLibrary::default(), $this->settings());
 
         $this->assertLessThanOrEqual($noGain->terminalTotalWealth->pence, $withGain->terminalTotalWealth->pence);
+    }
+
+    /**
+     * Board card 0098, criterion 1. Gains stack above the person's WHOLE income, so interest and
+     * dividends use up basic-rate band before the gain arrives. The gain here is a known seed
+     * (a year-0 disposal), spend sits below guaranteed income so nothing else is sold, and the
+     * gain's own tax is read as the difference it makes to the year's tax bill.
+     */
+    public function test_a_gain_is_banded_against_savings_and_dividend_income_too(): void
+    {
+        $gain = Money::fromPounds(20_000);
+        $retiree = fn (array $seed): Household => new Household(
+            'Gain beside interest and dividends',
+            RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1955-04-01'), Sex::Female, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(10_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new DbPension('p1', Money::fromPounds(30_000), 60),
+            ],
+            accounts: [
+                new Account('p1', AccountType::Cash, Money::fromPounds(100_000)),
+                new Account('p1', AccountType::Gia, Money::fromPounds(100_000)),
+            ],
+            realisedGainsAtStart: $seed,
+        );
+        $settings = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', freezeEndYear: 2200);
+
+        $with = $this->forecaster()->forecast($retiree(['p1' => $gain]), AssumptionSetLibrary::default(), $settings)->years[0]->nominal;
+        $without = $this->forecaster()->forecast($retiree([]), AssumptionSetLibrary::default(), $settings)->years[0]->nominal;
+        $this->assertNotNull($with);
+        $this->assertNotNull($without);
+
+        $src = $with->incomeBySource;
+        $this->assertSame(0, $src['pension_drawdown']->pence + $src['asset_drawdown']->pence, 'nothing but the seed may be sold, or its gain is not the only one');
+        $investment = $src['investment_income']->pence;
+        $this->assertGreaterThan(Money::fromPounds(3_000)->pence, $investment, 'the fixture must earn enough interest and dividends to move the band');
+        $nonSavings = $src['defined_benefit']->pence + $src['state_pension']->pence;
+
+        $this->assertSame(
+            PathProjector::cgtOnGain($gain->pence, $nonSavings + $investment, 300_000, 1_257_000, 3_770_000, Percent::fromPercent(18), Percent::fromPercent(24)),
+            $with->totalTax->pence - $without->totalTax->pence,
+            'the gain must be banded above the interest and dividends as well as the pensions',
+        );
+    }
+
+    /**
+     * Board card 0098, criterion 2. The gain is realised inside the same funding pass that draws
+     * pension: PensionAware fills the basic-rate band with pension FIRST, then sells the whole
+     * GIA. That draw has used up the band, so every pound of the gain is charged at 24%. The year's
+     * CGT is what is left of its tax after a full income-tax recomputation on the final income.
+     */
+    public function test_a_gain_realised_beside_a_pension_draw_is_banded_above_it(): void
+    {
+        $household = new Household(
+            'Gain beside a pension draw',
+            RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1955-04-01'), Sex::Female, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(120_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30)),
+                new DbPension('p1', Money::fromPounds(25_000), 60),
+                new DcPension('p1', Money::fromPounds(700_000), Money::zero(), Money::zero(), 55),
+            ],
+            // £15k holding, £12k of it gain: small enough that the shortfall sells all of it, so
+            // the realised gain is the whole embedded gain.
+            accounts: [new Account('p1', AccountType::Gia, Money::fromPounds(15_000), unrealisedGain: Money::fromPounds(12_000))],
+        );
+        $settings = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', drawdownStrategy: DrawdownStrategy::PensionAware, freezeEndYear: 2200);
+
+        $year = $this->forecaster()->forecast($household, AssumptionSetLibrary::default(), $settings)->years[0]->nominal;
+        $this->assertNotNull($year);
+
+        $src = $year->incomeBySource;
+        $guaranteed = $src['defined_benefit']->pence + $src['state_pension']->pence;
+        $nonSavings = $guaranteed + $src['pension_drawdown']->pence;
+        $dividends = $src['investment_income']->pence;
+        // The case the card describes: basic-rate before the draw, past the band after it.
+        $this->assertLessThan(5_027_000, $guaranteed + $dividends, 'before the draw the person must have basic-rate band left for the gain');
+        $this->assertGreaterThan(5_027_000, $nonSavings, 'the pension draw must use up the basic-rate band');
+        $this->assertGreaterThanOrEqual(Money::fromPounds(15_000)->pence, $src['asset_drawdown']->pence, 'the whole holding must be sold');
+
+        $incomeTax = (new IncomeTaxCalculator(TaxYearRegistry::for('2026-27')))->totalPence(new TaxableIncome(
+            Money::fromPence($nonSavings), Money::zero(), Money::fromPence($dividends),
+        ));
+
+        // (£12,000 - £3,000 exempt) all at 24% = £2,160. Banded on the pre-draw income instead,
+        // all £9,000 fitted under the band at 18% = £1,620.
+        $this->assertSame(Money::fromPounds(2_160)->pence, $year->totalTax->pence - $incomeTax, 'the gain must be banded above the pension the same year draws');
     }
 
     public function test_partial_gia_disposals_conserve_cost_basis_with_no_drift(): void

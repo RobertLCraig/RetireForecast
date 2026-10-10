@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-10 (pension-credit-from-the-qualifying-date): in the year the last member
+     * Bumped 2026-10-10 (cgt-banded-on-the-whole-post-drawdown-income): a realised gain is now
+     * rate-banded above the person's savings and dividend income and above the pension the same
+     * year draws, not above their pre-drawdown non-savings income alone. A plan realising a gain
+     * beside other income paid too LITTLE CGT under an earlier stamp. Board card 0098.
+     * Previous bump 2026-10-10 (pension-credit-from-the-qualifying-date): in the year the last member
      * reaches State Pension age, Pension Credit is paid only for the part of the year after that
      * date, and the State Pension starting on it is assessed over those weeks, not spread over 52.
      * A deferring claimant's notional pension in that year counts only from the date too. A plan
@@ -574,7 +578,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/pension-credit-from-the-qualifying-date';
+    public const ENGINE_VERSION = 'finance-engine/cgt-banded-on-the-whole-post-drawdown-income';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
