@@ -33,8 +33,8 @@ before ISA), which is a deliberate drawdown-strategy choice and is not what is w
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a shortfall is funded from a bucket two living people both hold, THE APP SHALL draw from them in proportion to what each holds rather than exhausting one first. proves: `test_a_shortfall_draws_from_both_holders_in_proportion`
-- [ ] #2 WHEN the order two people were entered in is swapped, THE APP SHALL produce the same care charge over a whole care spell funded by drawdown. proves: `test_swapping_the_order_leaves_a_drawdown_funded_care_spell_unchanged`
+- [x] #1 WHEN a shortfall is funded from a bucket two living people both hold, THE APP SHALL draw from them in proportion to what each holds rather than exhausting one first. proves: `test_a_shortfall_draws_from_both_holders_in_proportion`
+- [x] #2 WHEN the order two people were entered in is swapped, THE APP SHALL produce the same care charge over a whole care spell funded by drawdown. proves: `test_swapping_the_order_leaves_a_drawdown_funded_care_spell_unchanged`
 <!-- AC:END -->
 
 ## Tasks
@@ -55,3 +55,26 @@ its tests carry a comment naming this card and assert on the FIRST care year onl
 the part that no longer moves; widening them to `careCostReal()` is the red test this card starts
 from. `packages/finance-engine/src/Money/PenceSplit.php` already owns the order-independent split
 rule (`byWeight` takes balances as weights), so the draw is a call to it rather than new arithmetic.
+
+## Comments
+
+**2026-10-10** RESULT: done
+TESTS: +2 new, all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Forecast/OwnerAttributionTest.php
+app/Forecast/ScenarioForecaster.php
+docs/DECISIONS.md
+docs/board/todo/0196-pension-and-free-gains-draws-still-favour-the-first-person.md
+OUT-OF-SCOPE: 0196
+
+Built: one `$drawBucket` closure in `fundShortfall` splits a bucket's draw across the living holders pro rata to balance through `PenceSplit::byWeight`, looping for any share a balance could not fill (only the rounding penny can). Both `$drawNonPension` and `$drawTaxFreeCapital` now call it. The second one is the FillBands cash + ISA pass, which had the same declaration-order walk; criterion 1 covers it, so I fixed it too rather than leave FillBands order-dependent.
+
+Watched red: both new tests failed on the old code (first-declared holder charged 0 instead of the fee; whole spell 39,988.26 vs 122,923.40). The widened unattributable-surplus test reproduced the card's own figures exactly (24000000 vs 12413178), then passed. Checked by parking the src diff and running against HEAD.
+
+Task answers: the two narrowed tests in OwnerAttributionTest now compare `careCostReal()` over the whole spell, and the class docblock no longer says 0101 is open. ENGINE_VERSION bumped to `finance-engine/shortfall-drawn-pro-rata-across-holders`, with a DECISIONS entry. `MonteCarlo\GoldenMasterTest` did NOT redden, so no re-pin.
+
+Pension and drawGiaToAea passes: yes, all three (`$drawPension`, `$drawPensionUfpls`, `$drawGiaToAea`) still walk in declaration order. Their fix needs a different rule (splitting one need across two people's band or allowance headroom, not pro rata to balance), so it is card 0196.
+
+Assumed: pro rata to balance, not even shares, as the card's task says. A fixture note: the engine charges a self-funder only down to the upper capital limit within a year, so the proportion test holds enough capital for a full year's fee.
+
+Still needed: re-run stored two-person scenarios and `php artisan scenarios:audit` in C:\Dev\RetireForecast after merge. No browser check was possible from the worktree.
