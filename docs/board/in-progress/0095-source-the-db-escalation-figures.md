@@ -88,3 +88,18 @@ Why no criterion is met:
 I did not route around the refusal with a browser MCP tool, because the refusal is the permission decision.
 
 Next step: run this card in an attended session with web access (or grant WebSearch/WebFetch to card sessions). Cards 0085, 0086, 0087, 0091 and 0092 have the same block and can share one research pass, e.g. via the /research skill.
+
+**2026-10-10** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, same block. WebSearch and WebFetch were both refused at the permission prompt again in this unattended session, so no source could be read. The card's own Plan says it needs a session with web access.
+
+Why no criterion is met:
+- #1 allows 'record that the search found none', but no search ran. Writing that line would be false.
+- #2 needs a sourced figure. With none, RPI_OVER_CPI_WEDGE_BPS = 0 and DEFAULT_FIXED_ESCALATION_BPS = 300 stand, and there is no failing case to write.
+
+I did not route around the refusal with a browser MCP tool, because the refusal is the permission decision.
+
+This card should not go back to the unattended loop: two takes have now failed on the same missing permission. Run it in an attended session with web access (for example with the /research skill), or grant WebSearch/WebFetch to card sessions. Cards 0085, 0086, 0087, 0091 and 0092 share the block and can share one research pass.
