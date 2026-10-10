@@ -61,7 +61,13 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-10 (cgt-banded-on-the-whole-post-drawdown-income): a realised gain is now
+     * Bumped 2026-10-10 (shortfall-drawn-pro-rata-across-holders): a year funded by selling assets
+     * now takes each cash, GIA and ISA draw from every living holder in proportion to what each
+     * holds, instead of spending the first-declared person's balance to zero first. A two-person
+     * plan that draws down moves wherever a per-person assessment or allowance reads the balance
+     * left: care charges, Pension Credit and the CGT annual exempt amount. A one-person household
+     * is byte-identical. Board card 0101.
+     * Previous bump 2026-10-10 (cgt-banded-on-the-whole-post-drawdown-income): a realised gain is now
      * rate-banded above the person's savings and dividend income and above the pension the same
      * year draws, not above their pre-drawdown non-savings income alone. A plan realising a gain
      * beside other income paid too LITTLE CGT under an earlier stamp. Board card 0098.
@@ -578,7 +584,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/cgt-banded-on-the-whole-post-drawdown-income';
+    public const ENGINE_VERSION = 'finance-engine/shortfall-drawn-pro-rata-across-holders';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

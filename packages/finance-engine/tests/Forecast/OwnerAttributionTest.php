@@ -44,15 +44,14 @@ use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
  * went into care with an empty balance sheet and was funded by the local authority years before
  * they would be in life. The model's answer therefore depended on typing order.
  *
- * The care charge is the instrument in four of these five tests because it is the only
- * per-person figure a ForecastResult exposes: a resident with capital of their own is a
- * self-funder charged the gross fee, and a resident with nothing is charged only their income
- * above the Personal Expenses Allowance (or nothing at all).
+ * The care charge is the instrument in most of these tests because it is the only per-person
+ * figure a ForecastResult exposes: a resident with capital of their own is a self-funder charged
+ * the gross fee, and a resident with nothing is charged only their income above the Personal
+ * Expenses Allowance (or nothing at all).
  *
- * WHAT THESE DO NOT PROVE. Where the assessment reads capital as the CARE YEAR OPENED, they
- * assert on the first care year and not the whole spell. The fee is funded by a drawdown that
- * still empties the first-declared person's accounts before the second's, so a later care year
- * moves with typing order for a reason this card did not reach. That is board card 0101.
+ * A fourth site, whose assets PAY for shared spending, is board card 0101: the funding waterfall
+ * used to empty the first-declared person's accounts before the second's, which moved every care
+ * year after the first. The tests under its heading pin the pro-rata draw that replaced it.
  *
  * Fixture arithmetic reuses {@see CareMeansTestedChargeTest}: zero growth and zero inflation, so
  * nominal == real; the care fee is that file's FEE_REAL a year.
@@ -270,35 +269,32 @@ final class OwnerAttributionTest extends TestCase
         // HOUSEHOLD award. With no way to attribute it, it splits evenly, so the two members hold
         // the same capital and the care assessment cannot depend on which of them needs the care.
         //
-        // The FIRST care year is the honest instrument. It is assessed on capital as the year
-        // opened, which is what this criterion is about. Later care years are not comparable,
-        // because the fee is funded by a drawdown that still empties the first-declared person's
-        // accounts first (board card 0101), and that moves the resident's own balance.
-        $firstCareYear = function (string $residentId, string $otherId): int {
+        // The whole spell is compared, not just the first care year: the fee is funded by a
+        // drawdown that takes from both members in proportion (board card 0101), so neither
+        // member's balance is spent first.
+        $careSpell = function (string $residentId, string $otherId): int {
             $household = new Household(
                 'CreditSurplus', RegionProfile::EnglandWalesNi,
                 [$this->person('p1'), $this->person('p2')],
                 new ExpenseProfile(Money::zero(), Money::zero(), Percent::fromPercent(100)),
             );
 
-            $years = $this->byYear($this->project(
+            $result = $this->project(
                 $household,
                 deathAges: [$residentId => 90, $otherId => 95],
                 careFromAge: [$residentId => 88],
-            ));
+            );
+            $years = $this->byYear($result);
+            $this->assertSame(
+                CareMeansTestedChargeTest::FEE_REAL,
+                $years[2046]->spendTarget->pence - $years[2045]->spendTarget->pence,
+                'the banked credit gives each member capital of their own, so either of them self-funds',
+            );
 
-            return $years[2046]->spendTarget->pence - $years[2045]->spendTarget->pence;
+            return $result->careCostReal()->pence;
         };
 
-        $first = $firstCareYear('p1', 'p2');
-        $second = $firstCareYear('p2', 'p1');
-
-        $this->assertSame(
-            CareMeansTestedChargeTest::FEE_REAL,
-            $first,
-            'the banked credit gives each member capital of their own, so either of them self-funds',
-        );
-        $this->assertSame($first, $second, 'an unattributable surplus is shared, so either resident is assessed alike');
+        $this->assertSame($careSpell('p1', 'p2'), $careSpell('p2', 'p1'), 'an unattributable surplus is shared, so either resident is assessed alike');
     }
 
     // ---------------------------------------------------------------- criterion 3
@@ -308,13 +304,8 @@ final class OwnerAttributionTest extends TestCase
         // A household that exercises both sale paths and the surplus at once: a jointly owned home
         // sold mid-projection, an annual surplus banked from two equal incomes, and one member in
         // care at the end. Typing the two people the other way round no longer changes what the
-        // resident owns, so it no longer changes what she is assessed on.
-        //
-        // This is the FIRST care year only, and the criterion it comes from is NOT fully met. The
-        // whole spell still moves with typing order on a plan that funds the fee by drawing down,
-        // because the funding waterfall empties the first-declared person's accounts first. That is
-        // a fourth site of the same fault and it is board card 0101, not this one: it decides whose
-        // assets pay for shared spending, which is a modelling change in its own right.
+        // resident owns, so it no longer changes what she is assessed on, over the whole spell:
+        // the drawdown that funds the fee takes from both of them in proportion (board card 0101).
         $charge = function (bool $swapped): int {
             $p1 = $this->person('p1');
             $p2 = $this->person('p2');
@@ -331,17 +322,74 @@ final class OwnerAttributionTest extends TestCase
                 ),
             );
 
-            $years = $this->byYear($this->project(
+            return $this->project(
                 $household,
                 deathAges: ['p1' => 95, 'p2' => 90],
                 careFromAge: ['p2' => 88],
-            ));
-
-            return $years[2046]->spendTarget->pence - $years[2045]->spendTarget->pence;
+            )->careCostReal()->pence;
         };
 
         $this->assertGreaterThan(0, $charge(false), 'the fixture bears a real care cost');
         $this->assertSame($charge(false), $charge(true), 'the care assessment does not depend on typing order');
+    }
+
+    // ---------------------------------------------------------------- card 0101
+
+    private function cash(string $ownerId, int $pounds): Account
+    {
+        return new Account($ownerId, AccountType::Cash, Money::fromPounds($pounds));
+    }
+
+    public function test_a_shortfall_draws_from_both_holders_in_proportion(): void
+    {
+        // No income at all, so three years of £80,000 spending (£240,000) are funded from cash. p1
+        // holds a sixth of it and is declared FIRST. In proportion she pays a sixth of the draw and
+        // opens her care year with £110,000, enough to pay a whole year's fee and still sit above
+        // the upper capital limit, so she is charged the full fee. Drained first she would hold
+        // nothing; split evenly she would hold £30,000 and be charged only down to the limit.
+        $household = new Household(
+            'Proportion', RegionProfile::EnglandWalesNi,
+            [$this->person('p1'), $this->person('p2')],
+            new ExpenseProfile(Money::fromPounds(80_000), Money::zero(), Percent::fromPercent(100)),
+            accounts: [$this->cash('p1', 150_000), $this->cash('p2', 750_000)],
+        );
+
+        $years = $this->byYear($this->project(
+            $household,
+            deathAges: ['p1' => 90, 'p2' => 95],
+            careFromAge: ['p1' => 71],
+        ));
+
+        $this->assertSame(
+            CareMeansTestedChargeTest::FEE_REAL,
+            $years[2029]->spendTarget->pence - $years[2028]->spendTarget->pence,
+            'the first-declared holder kept her share of the cash, so she self-funds',
+        );
+    }
+
+    public function test_swapping_the_order_leaves_a_drawdown_funded_care_spell_unchanged(): void
+    {
+        // Equal capital, no income, and one of them in care for three years with every fee paid by
+        // drawing down. Whose cash pays for the shared spending decides when the resident falls
+        // below the capital limits, so before card 0101 the order they were typed in moved the
+        // whole bill.
+        $charge = function (bool $swapped): int {
+            $household = new Household(
+                'SpellOrder', RegionProfile::EnglandWalesNi,
+                $swapped ? [$this->person('p2'), $this->person('p1')] : [$this->person('p1'), $this->person('p2')],
+                new ExpenseProfile(Money::fromPounds(20_000), Money::zero(), Percent::fromPercent(100)),
+                accounts: [$this->cash('p1', 150_000), $this->cash('p2', 150_000)],
+            );
+
+            return $this->project(
+                $household,
+                deathAges: ['p1' => 95, 'p2' => 90],
+                careFromAge: ['p2' => 87],
+            )->careCostReal()->pence;
+        };
+
+        $this->assertGreaterThan(0, $charge(false), 'the fixture bears a real care cost');
+        $this->assertSame($charge(false), $charge(true), 'the whole care spell does not depend on typing order');
     }
 
     /** Zero growth and zero inflation, so a sale price is the entered value. */

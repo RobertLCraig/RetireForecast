@@ -3735,55 +3735,52 @@ final class PathProjector
             Money::fromPence($dividendsPerPerson[$pid] ?? 0),
         );
 
-        $drawNonPension = function () use (&$state, &$remaining, &$funded, &$fromAssets, &$realisedGain, $alive, $household): void {
-            foreach (['cash', 'gia', 'isa'] as $bucket) {
-                foreach ($household->persons as $person) {
-                    if ($remaining <= 0) {
-                        return;
-                    }
-                    if (! $alive[$person->id]) {
+        // Fund the shortfall from one bucket, taking from every living holder IN PROPORTION to
+        // what each holds (board card 0101). Walking the people in declaration order spent the
+        // first-declared person's money to zero before the second's was touched, and the care
+        // means test and the CGT annual exempt amount are both per person, so the order two
+        // people were typed in moved the answer. {@see PenceSplit::byWeight} owns the split; a
+        // share it cannot fill (only its rounding penny can exceed a balance) goes round again.
+        $drawBucket = function (string $bucket) use (&$state, &$remaining, &$funded, &$fromAssets, &$realisedGain, $alive, $household): void {
+            $balances = [];
+            foreach ($household->persons as $person) {
+                if ($alive[$person->id] && $state[$bucket][$person->id] > 0) {
+                    $balances[$person->id] = $state[$bucket][$person->id];
+                }
+            }
+            while ($remaining > 0 && $balances !== []) {
+                foreach (PenceSplit::byWeight(min($remaining, array_sum($balances)), $balances) as $pid => $share) {
+                    $take = min($share, $balances[$pid]);
+                    if ($take <= 0) {
                         continue;
                     }
-                    $take = min($remaining, $state[$bucket][$person->id]);
-                    if ($take > 0) {
-                        // Selling a GIA holding realises the pro-rata gain and consumes the
-                        // matching slice of cost basis, so a later disposal is not taxed twice.
-                        if ($bucket === 'gia') {
-                            [$gainSlice, $basisConsumed] = self::disposeGiaSlice(
-                                $state['gia'][$person->id],
-                                $state['giaBasis'][$person->id],
-                                $take,
-                            );
-                            $realisedGain[$person->id] += $gainSlice;
-                            $state['giaBasis'][$person->id] -= $basisConsumed;
-                        }
-                        $state[$bucket][$person->id] -= $take;
-                        $remaining -= $take;
-                        $funded += $take;
-                        $fromAssets += $take;
+                    // Selling a GIA holding realises the pro-rata gain and consumes the
+                    // matching slice of cost basis, so a later disposal is not taxed twice.
+                    if ($bucket === 'gia') {
+                        [$gainSlice, $basisConsumed] = self::disposeGiaSlice($state['gia'][$pid], $state['giaBasis'][$pid], $take);
+                        $realisedGain[$pid] += $gainSlice;
+                        $state['giaBasis'][$pid] -= $basisConsumed;
                     }
+                    $state[$bucket][$pid] -= $take;
+                    $balances[$pid] -= $take;
+                    $remaining -= $take;
+                    $funded += $take;
+                    $fromAssets += $take;
                 }
+                $balances = array_filter($balances, static fn (int $balance): bool => $balance > 0);
+            }
+        };
+
+        $drawNonPension = function () use ($drawBucket): void {
+            foreach (['cash', 'gia', 'isa'] as $bucket) {
+                $drawBucket($bucket);
             }
         };
 
         // Draw cash + ISA only (tax-free capital), skipping the GIA (which can realise CGT).
-        $drawTaxFreeCapital = function () use (&$state, &$remaining, &$funded, &$fromAssets, $alive, $household): void {
+        $drawTaxFreeCapital = function () use ($drawBucket): void {
             foreach (['cash', 'isa'] as $bucket) {
-                foreach ($household->persons as $person) {
-                    if ($remaining <= 0) {
-                        return;
-                    }
-                    if (! $alive[$person->id]) {
-                        continue;
-                    }
-                    $take = min($remaining, $state[$bucket][$person->id]);
-                    if ($take > 0) {
-                        $state[$bucket][$person->id] -= $take;
-                        $remaining -= $take;
-                        $funded += $take;
-                        $fromAssets += $take;
-                    }
-                }
+                $drawBucket($bucket);
             }
         };
 

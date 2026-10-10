@@ -3,6 +3,20 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-10: shared spending draws each bucket from both holders in proportion
+
+**Context:** card 0101. The shortfall waterfall walked each bucket (cash, GIA, ISA) person by person
+in declaration order, so the first-declared person's balance was spent to zero before the second's.
+The care means test and the CGT annual exempt amount are per person, so typing order moved the
+answer: one equal-capital couple's care bill went from £240,000 to £124,131.78.
+**Decision:** each bucket's draw is split across the living holders pro rata to balance, through
+`PenceSplit::byWeight`, with a further pass for any share a balance could not fill. The bucket ORDER
+is unchanged. Pro rata, not even shares, because an even split still empties the smaller holder first.
+**Consequence:** `ENGINE_VERSION` is `finance-engine/shortfall-drawn-pro-rata-across-holders`; the
+re-run is owed for two-person plans that draw down. The pension and `drawGiaToAea` passes still walk
+in declaration order; that is a card of its own.
+**Status:** active
+
 ## 2026-10-10: a gain is banded on the whole income the year's drawing leaves
 
 **Context:** card 0098. The CGT band split read the person's non-savings income from before the
