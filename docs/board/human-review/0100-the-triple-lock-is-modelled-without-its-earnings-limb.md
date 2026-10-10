@@ -102,3 +102,5 @@ Second unattended take, same wall. WebSearch and WebFetch were both refused agai
 One new check: the repo holds no sourced national earnings MEAN either. docs/spec/ASSUMPTIONS.md cites the ONS AWE bulletin (line 826) only to sanity-check the 2.0% real-earnings VOLATILITY of the salary-growth shock (item 7, around line 89), not a growth rate. So the figure cannot be borrowed from the existing docs.
 
 The first take's map of where the change goes is still accurate. This card needs an attended session with web access, or Rob supplying the figure and its source. Re-queuing it to the unattended loop will fail a third time; mark it not_for_the_loop.
+
+**2026-10-10** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 3 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
