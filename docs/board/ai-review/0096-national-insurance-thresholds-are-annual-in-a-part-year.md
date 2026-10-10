@@ -34,8 +34,8 @@ the convention to keep.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] WHEN a person works only part of a year, THE APP SHALL charge National Insurance against the matching part of the annual thresholds. proves: `test_a_part_year_of_work_is_charged_against_a_part_year_of_thresholds`
-- [ ] WHEN a person works a whole year, THE APP SHALL charge exactly the National Insurance it charges today. proves: `test_a_whole_year_of_work_is_unchanged`
+- [x] WHEN a person works only part of a year, THE APP SHALL charge National Insurance against the matching part of the annual thresholds. proves: `test_a_part_year_of_work_is_charged_against_a_part_year_of_thresholds`
+- [x] WHEN a person works a whole year, THE APP SHALL charge exactly the National Insurance it charges today. proves: `test_a_whole_year_of_work_is_unchanged`
 <!-- AC:END -->
 
 ## Tasks
@@ -57,3 +57,24 @@ sourced annual figures, which should not move. The fixtures are
 `NiCategoryForecastTest.php`. Run `php artisan test --testsuite=Engine`, then the full suite.
 
 ## Comments
+
+**2026-10-10** RESULT: done
+TESTS: +2 new, all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php
+TOUCHED: packages/finance-engine/tests/Forecast/TransitionYearProrationTest.php
+TOUCHED: app/Forecast/ScenarioForecaster.php
+OUT-OF-SCOPE: none
+
+niForPerson now charges the liable fraction of the NI due on the annual rate of pay. That is the same as prorating both the primary threshold and the upper earnings limit, and the calculator API is unchanged. I removed the v1-limit note that pointed at this card. ENGINE_VERSION is now finance-engine/part-year-ni-thresholds.
+
+The new part-year test failed first for the reason the card gives: it got 19440 (GBP 194.40, the annual threshold) where it expected 80265. It checks both part years: the State Pension age year and the retirement year.
+
+Correction to the card's figure: GBP 60,000 for 3 months is GBP 802.65, not about GBP 948. The card prorated only the primary threshold. Per-period payroll prorates the upper earnings limit too, so the GBP 15,000 is (12,567.50 - 3,142.50) x 8% + (15,000 - 12,567.50) x 2%. The test pins 802.65, worked by hand from the 2026-27 figures.
+
+The whole-year test passed before the fix and after it. It is a regression guard: the criterion is 'unchanged', so there was no failing case to watch.
+
+The existing test_national_insurance_is_charged_on_the_earnings_before_state_pension_age expected the old annual-threshold figure for 2032. I updated that expectation to the per-period figure because the change was deliberate. I did not loosen it.
+
+Task 2: PathProjector has no employer (secondary) NI and no self-employment NI. Its only NI call is the primary Class 1 call in niForPerson, so the change covers every NI path. MonteCarlo GoldenMasterTest stayed green: its fixture has no working member in a part year, so I did not re-pin it.
+
+Not done: a browser check (Herd serves C:\Dev\RetireForecast, not this worktree). After the merge, re-run the stored scenarios and php artisan scenarios:audit, because the engine version changed.
