@@ -71,3 +71,20 @@ re-run of every stored scenario, because these figures change projected income. 
 `php artisan test` and `php artisan scenarios:audit` after.
 
 ## Comments
+
+**2026-10-10** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+This card is research and needs the web. In this unattended session WebSearch and WebFetch were both refused at the permission prompt, so no source could be read. The card's own Plan says it 'needs a session with web access'.
+
+I checked the repository for an existing citation first: docs/ holds no source for the RPI-to-CPIH alignment date, the RPI-over-CPI wedge, or a distribution of fixed DB escalation rates. The only mentions are the unsourced claim itself (ASSUMPTIONS.md, the 0035 card, HANDOVER-ARCHIVE).
+
+Why no criterion is met:
+- #1 allows 'record that the search found none', but no search ran. Writing that line would be false, so I did not.
+- #2 depends on a sourced figure. With none, the shipped constants (RPI_OVER_CPI_WEDGE_BPS = 0, DEFAULT_FIXED_ESCALATION_BPS = 300) stand unchanged, and there is no failing case to write a test for.
+
+I did not route around the refusal with a browser MCP tool, because the refusal is the permission decision.
+
+Next step: run this card in an attended session with web access (or grant WebSearch/WebFetch to card sessions). Cards 0085, 0086, 0087, 0091 and 0092 have the same block and can share one research pass, e.g. via the /research skill.
