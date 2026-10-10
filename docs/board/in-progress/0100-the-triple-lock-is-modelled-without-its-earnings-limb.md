@@ -91,3 +91,14 @@ Where the change goes once the figure exists:
 - ResultPresenter::assumedFigures() disclosure sentence, docs/spec/ASSUMPTIONS.md around line 360-369, and ScenarioForecaster::ENGINE_VERSION, as the card's Tasks list.
 
 This card wants Rob or an attended session with web access. Handing it to the unattended loop again will hit the same wall.
+
+**2026-10-10** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second unattended take, same wall. WebSearch and WebFetch were both refused again ("requested permissions... you haven't granted it yet"). All three criteria rest on one sourced national average-weekly-earnings real-growth default with a source and verified_on, so none can be met honestly here. I did not build the plumbing behind a placeholder or null default, for the reasons the first take gave.
+
+One new check: the repo holds no sourced national earnings MEAN either. docs/spec/ASSUMPTIONS.md cites the ONS AWE bulletin (line 826) only to sanity-check the 2.0% real-earnings VOLATILITY of the salary-growth shock (item 7, around line 89), not a growth rate. So the figure cannot be borrowed from the existing docs.
+
+The first take's map of where the change goes is still accurate. This card needs an attended session with web access, or Rob supplying the figure and its source. Re-queuing it to the unattended loop will fail a third time; mark it not_for_the_loop.
