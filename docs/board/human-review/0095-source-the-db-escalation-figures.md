@@ -105,3 +105,30 @@ I did not route around the refusal with a browser MCP tool, because the refusal 
 This card should not go back to the unattended loop: two takes have now failed on the same missing permission. Run it in an attended session with web access (for example with the /research skill), or grant WebSearch/WebFetch to card sessions. Cards 0085, 0086, 0087, 0091 and 0092 share the block and can share one research pass.
 
 **2026-10-10** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-10 manager (m20261010154313-7639)
+
+**outcome: rob**
+
+The work left is web research, and only an attended session (or a permission change that only you can make) can do it.
+
+**what the session said**
+
+The card is stuck on web access. It is not stuck on code.
+
+Both figures are still the old, unsourced ones:
+- `PensionEscalationBasis::RPI_OVER_CPI_WEDGE_BPS` is still 0.
+- `DbPension::DEFAULT_FIXED_ESCALATION_BPS` is still 300.
+
+Both criteria are still open. No review finding is involved.
+
+The job is research only. The unattended loop cannot do it, because WebSearch and WebFetch are refused there. If I reopen the card, the loop starts it again and stops on the same refusal a third time.
+
+What you do now (pick one):
+1. Run card 0095 in a normal session with web access. You can use the `/research` skill. Do 0085, 0086, 0087, 0091 and 0092 in the same pass, because they have the same block. **I recommend this one.**
+2. Give WebSearch and WebFetch to card sessions. Then move the card back to `todo/`.
+
+WHY: The work left is web research, and only an attended session (or a permission change that only you can make) can do it.
+
+OUTCOME: rob
+
