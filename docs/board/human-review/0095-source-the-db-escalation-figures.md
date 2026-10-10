@@ -103,3 +103,5 @@ Why no criterion is met:
 I did not route around the refusal with a browser MCP tool, because the refusal is the permission decision.
 
 This card should not go back to the unattended loop: two takes have now failed on the same missing permission. Run it in an attended session with web access (for example with the /research skill), or grant WebSearch/WebFetch to card sessions. Cards 0085, 0086, 0087, 0091 and 0092 share the block and can share one research pass.
+
+**2026-10-10** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
