@@ -34,7 +34,7 @@ about the number the winner is picked by, whatever the candidates are.
 <!-- AC:BEGIN -->
 - [x] #1 THE APP SHALL NOT report a draw order as cheapest when it leaves more of the household's
       spending unfunded than the order in place does.
-- [ ] #2 WHEN candidate orders do not all fund the same spending, THE APP SHALL say so on the panel
+- [x] #2 WHEN candidate orders do not all fund the same spending, THE APP SHALL say so on the panel
       rather than comparing their tax silently.
 - [x] #3 THE APP SHALL keep the reported saving the difference of two of the engine's own runs
       (card 0007 acceptance #5 must not regress).
@@ -153,3 +153,19 @@ VERDICT: defect
 **2026-09-08** The reviewer returned this card and its finding is the last review entry at the bottom of ## Direction. The loop moved it from todo/ to human-review/ because it has bounced 1 time between todo and ai-review, all 3 criteria ticked. THE BUILDER COULD NOT ACT ON THAT FINDING. A reviewer never unticks a criterion - it is forbidden from editing acceptance at all - so the card came back with 3 of 3 criteria still ticked, every session found nothing open to do, and the loop promoted it again on the boxes. Untick what the reviewer disproved and move it back to todo/, or say here why the finding is wrong.
 
 **2026-09-28** Manager pass: reopened #2 because the panel's second tile still compares tax silently. `WithdrawalStrategyComparison::for` filters funding only when choosing `$cheapest`. `savingPence` and `fillBandsSaves()` are still a raw tax difference against `alternativeTo($current)`, so `withdrawal-sequencing.blade.php` and the PDF can still say "£X less tax by spending your savings first" for an order that funds less. Gate or caveat `differs` and `fillBandsSaves` on the same `fundsAtLeastAsMuchAs` test, and add a test where the alternative underfunds.
+
+**2026-10-10** RESULT: done
+TESTS: +1 new, all green
+TOUCHED: app/Forecast/WithdrawalStrategyComparison.php
+TOUCHED: resources/views/livewire/partials/withdrawal-sequencing.blade.php
+TOUCHED: resources/views/pdf/partials/report.blade.php
+TOUCHED: tests/Feature/Forecast/ScenarioForecasterTest.php
+TOUCHED: docs/DECISIONS.md
+TOUCHED: docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+Fixes the reopened #2: the two-tile sentence was still a raw tax difference with no funding check. New `test_the_two_tile_sentence_does_not_call_an_underfunding_order_cheaper` first finds an order in place whose second tile pays strictly less tax AND funds fewer years (asserted as a precondition, so it cannot pass around the gap), then renders the screen (Livewire ScenarioResults) and the PDF (pdf.results). Watched it fail on the screen saying "less tax over the plan by <alternative>" before the fix.
+
+Fix: `tilesFundAlike` runs the same `fundsAtLeastAsMuchAs()` both ways between the two tiles' orders and rides `panel()`. Where false, both templates replace the directional sentence with "These two orders do not fund the same spending, so the gap between their tax is not a saving either way". Both ways because the order in place can be the one funding less, and then "less tax by keeping your current order" is the same fault. The tiles still print both totals (each is the engine's own figure). `savingPence`, `fillBandsSaves()` and `lifetimeTax()` are unchanged, so #3 still holds (`test_the_optimiser_returns_the_cheapest_candidate_and_reconciles_to_two_engine_runs` untouched, green).
+
+The Task "decide with Rob: hide the winner or show the shortfall beside it" is still Rob's and not built; #2 needs only that the panel say so. Built in a worktree: the new sentence has NOT been seen in a browser. scenarios:audit not re-run this pass (nothing stored moves; the panel is computed on the page).
