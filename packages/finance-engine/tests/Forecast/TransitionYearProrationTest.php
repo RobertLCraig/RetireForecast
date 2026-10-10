@@ -240,21 +240,21 @@ final class TransitionYearProrationTest extends TestCase
     }
 
     /**
-     * The National Insurance charged on a £120,000 salary, by calendar year: the difference between
-     * an ordinary earner's total tax and the same earner in category X (no primary liability), so
-     * income tax cancels and only NI is left. Flat assumptions mean no investment income, so nothing
-     * else can differ between the two runs.
+     * The National Insurance charged on a salary (£120,000 unless given), by calendar year: the
+     * difference between an ordinary earner's total tax and the same earner in category X (no primary
+     * liability), so income tax cancels and only NI is left. Flat assumptions mean no investment
+     * income, so nothing else can differ between the two runs.
      *
      * @return array<int, int> calendarYear => employee NI pence
      */
-    private function niByYear(string $dob): array
+    private function niByYear(string $dob, int $salaryPounds = 120_000, int $retirementAge = 70): array
     {
-        $run = function (?string $category) use ($dob): array {
+        $run = function (?string $category) use ($dob, $salaryPounds, $retirementAge): array {
             $household = new Household(
                 'NI transition',
                 RegionProfile::EnglandWalesNi,
                 [new Person('p1', new DateTimeImmutable($dob), Sex::Male, EmploymentStatus::Employed,
-                    grossSalary: Money::fromPounds(120_000), niCategory: $category, plannedRetirementAge: 70,
+                    grossSalary: Money::fromPounds($salaryPounds), niCategory: $category, plannedRetirementAge: $retirementAge,
                     longevity: LongevityAdjustment::fixedAge(95))],
                 new ExpenseProfile(Money::fromPounds(20_000), Money::zero(), Percent::fromPercent(70)),
                 pensions: [new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30))],
@@ -289,11 +289,38 @@ final class TransitionYearProrationTest extends TestCase
 
             $this->assertSame($fullYear, $charged[2031], "month $month: a full year of NI before State Pension age");
             $this->assertSame(
-                $ni->onEmploymentEarnings(Money::fromPence((int) round(12_000_000 * $month / 12)))->total->pence,
+                (int) round($fullYear * $month / 12), // part-year thresholds too, board card 0096
                 $charged[2032],
                 "month $month: NI is still due on the earnings before the State Pension age date",
             );
             $this->assertSame(0, $charged[2033], "month $month: no NI once State Pension age is behind them");
         }
+    }
+
+    /**
+     * NI is assessed per pay period, so a part year carries only the matching part of BOTH annual
+     * thresholds (board card 0096). £60,000 a year for three months is £15,000, charged against a
+     * quarter of each 2026-27 limit, worked by hand: (£12,567.50 − £3,142.50) × 8% = £754.00, plus
+     * (£15,000 − £12,567.50) × 2% = £48.65, so £802.65. The annual-threshold charge it replaces was
+     * (£15,000 − £12,570) × 8% = £194.40. Both part years the projection has are checked.
+     */
+    public function test_a_part_year_of_work_is_charged_against_a_part_year_of_thresholds(): void
+    {
+        // State Pension age (67) falls in March 2032 while still working to 70.
+        $this->assertSame(80_265, $this->niByYear('1965-03-15', 60_000)[2032], 'the State Pension age year');
+
+        // Retires at 60 in March 2030, long before State Pension age in 2037.
+        $this->assertSame(80_265, $this->niByYear('1970-03-15', 60_000, 60)[2030], 'the retirement year');
+    }
+
+    public function test_a_whole_year_of_work_is_unchanged(): void
+    {
+        $ni = new NationalInsuranceCalculator(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi));
+        $charged = $this->niByYear('1970-03-15', 60_000, 60);
+
+        // (£50,270 − £12,570) × 8% + (£60,000 − £50,270) × 2% = £3,210.60, the annual calculator's own figure.
+        $this->assertSame(321_060, $ni->onEmploymentEarnings(Money::fromPounds(60_000))->total->pence);
+        $this->assertSame(321_060, $charged[2026]);
+        $this->assertSame(321_060, $charged[2029]);
     }
 }

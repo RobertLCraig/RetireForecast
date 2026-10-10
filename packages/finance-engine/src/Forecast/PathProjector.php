@@ -3581,11 +3581,13 @@ final class PathProjector
         }
 
         // The slice already excludes everything after State Pension age, so the calculator is asked
-        // about a still-liable earner. (v1 limit: thresholds are annual, where real NI is assessed
-        // per pay period, so a part year is charged against a whole year's threshold, board card 0096.)
-        $earnings = (int) round($person->grossSalary->pence * $state['salaryFactor'][$person->id] * $liable);
+        // about a still-liable earner. NI is assessed per pay period, so a part year carries only the
+        // matching part of both annual thresholds: the liable slice of the NI due on the annual rate
+        // of pay is that same arithmetic, with no part-year calculator API (board card 0096).
+        $annualPay = (int) round($person->grossSalary->pence * $state['salaryFactor'][$person->id]);
+        $annualNi = $this->ni->onEmploymentEarnings(Money::fromPence($annualPay), hasReachedStatePensionAge: false, category: $person->niCategory)->total->pence;
 
-        return $this->ni->onEmploymentEarnings(Money::fromPence($earnings), hasReachedStatePensionAge: false, category: $person->niCategory)->total->pence;
+        return (int) round($annualNi * $liable);
     }
 
     /**

@@ -61,7 +61,14 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-09 (inherited-pension-has-its-own-line): a tax-free draw from a pension
+     * Bumped 2026-10-10 (part-year-ni-thresholds): a part year of work (the retirement year, or the
+     * State Pension age year) is now charged National Insurance against the matching part of the
+     * annual primary threshold and upper earnings limit, as per-pay-period payroll charges it. It was
+     * charged against the whole year's threshold, so any plan with a working member who retires or
+     * reaches State Pension age inside its horizon paid too LITTLE NI in that year under an earlier
+     * stamp: its wealth, depletion year and success odds are too FAVOURABLE. A whole year of work is
+     * byte-identical. Board card 0096.
+     * Previous bump 2026-10-09 (inherited-pension-has-its-own-line): a tax-free draw from a pension
      * inherited from a death under 75 is reported on its own `inherited_pension` income line, not
      * on the "Pension tax-free cash" line. No total, tax or wealth figure moves; a stored result
      * shows that money under the wrong heading until it is re-run. Board card 0079 #4.
@@ -561,7 +568,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/inherited-pension-has-its-own-line';
+    public const ENGINE_VERSION = 'finance-engine/part-year-ni-thresholds';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
