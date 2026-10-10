@@ -104,3 +104,24 @@ One new check: the repo holds no sourced national earnings MEAN either. docs/spe
 The first take's map of where the change goes is still accurate. This card needs an attended session with web access, or Rob supplying the figure and its source. Re-queuing it to the unattended loop will fail a third time; mark it not_for_the_loop.
 
 **2026-10-10** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 3 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-11 manager (m20261011002627-495d)
+
+**outcome: rob**
+
+Every box on the card needs one earnings figure that someone looks up on the web, and the unattended loop cannot do that, so only an attended session can move this card.
+
+**what the session said**
+
+The card is not done. It needs a session that can use the web, and the unattended loop cannot use the web.
+
+I checked the code. `StatePensionUprating::increase()` still only looks at inflation and the 2.5% floor. Its own comment still says the earnings part is missing. All 3 boxes on the card are still empty.
+
+Sending it back to the loop does not help. Both loop runs stopped because they could not look up a national earnings growth figure, which the card needs with a source and a "checked on" date. Nobody needs to make a choice first. The project rule already says: use the most cautious figure, and let the user change it.
+
+**What you do:** Start an attended session (you are there to approve it) in `C:\Dev\RetireForecast`, with web search allowed. Give it this card. It can look up the earnings figure and then build the change.
+
+WHY: Every box on the card needs one earnings figure that someone looks up on the web, and the unattended loop cannot do that, so only an attended session can move this card.
+
+OUTCOME: rob
+
