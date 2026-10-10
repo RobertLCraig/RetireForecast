@@ -71,3 +71,12 @@ saying "% of its value". Both are small, but they are two edits, not one.
 **2026-09-05** WRITTEN BY THE AGENT THAT WORKED CARD 0033, which found this while meeting its own
 third criterion. Nothing here has been fixed, and no figure has moved: 1% of value is still what the
 model charges.
+
+**2026-10-10** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Both criteria turn on a published UK maintenance-cost source (a percentage-of-value series and a flat-annual series, per the Tasks). No note for either exists under docs/research/ (grepped for maintenance/upkeep/repair: only unrelated hits). The 0084 ruling (2026-09-28) says a build session keeps no web and builds only from a research note, so I did not look the figures up here, even though the web tool loaded. Without a source, #1 cannot name one and #2 cannot state what the alternative basis would charge. No code, constant, test or ASSUMPTIONS.md row was changed; HOME_MAINTENANCE_RATE_BPS is still 1%.
+
+What unblocks it: 0193's sweep should mark this card with research: once progressboard#0211 lands. Suggested question: 'UK annual home maintenance/repair cost for owner-occupiers, as (a) % of property value and (b) a flat GBP/yr figure, with source URL and date, ideally split by property age/type (English Housing Survey, RICS/BCIS, a large insurer or Checkatrade survey); land it in docs/research/ and say what each basis charges on a GBP 60,000 park home, a GBP 120,000 flat and a GBP 300,000 house.' 0193 already covers marking open cards, so no new card was raised. No browser check applies.
