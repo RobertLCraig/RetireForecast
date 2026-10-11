@@ -302,6 +302,27 @@ final class Property
         return Percent::fromBasisPoints((int) round(10_000 / max(1, $ownerCount)));
     }
 
+    /**
+     * Each of $ids' claim on this home, as weights in basis points for {@see PenceSplit::byWeight}
+     * (board card 0102): the sale proceeds and the care assessment divide the home by these. Only
+     * the owners passed in are weighed, so a dead owner's share falls to the living one, who
+     * inherited it. Equal where nobody said, so an unstated split reproduces the old even one, and
+     * equal too where the living owners' stated shares are all nil (a survivor who owned none of
+     * it before the death owns all of it after).
+     *
+     * @param  list<string>  $ids
+     * @return array<string, int> id => basis points
+     */
+    public function shareWeights(array $ids): array
+    {
+        $weights = [];
+        foreach ($ids as $id) {
+            $weights[$id] = $this->beneficialShare($id, count($ids))->basisPoints;
+        }
+
+        return array_sum($weights) > 0 ? $weights : array_fill_keys($ids, 1);
+    }
+
     /** Is the home modelled as LOSING value in real terms? */
     private function depreciates(): bool
     {

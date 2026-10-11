@@ -333,6 +333,89 @@ final class OwnerAttributionTest extends TestCase
         $this->assertSame($charge(false), $charge(true), 'the care assessment does not depend on typing order');
     }
 
+    // ---------------------------------------------------------------- card 0102
+
+    /**
+     * A £200,000 home owned 70/30. Against an £80,000 fee and £30,000 of income, a resident needs
+     * about £75,000 of capital to pay the whole fee: half the home is enough, 30% of it is not.
+     */
+    private function seventyThirtyHome(bool $isLet = false, ?int $forcedSaleYear = null): Property
+    {
+        return new Property(
+            currentValue: Money::fromPounds(200_000),
+            ownership: OwnershipType::Outright,
+            mortgageRedemptionYear: $forcedSaleYear,
+            mortgageMaturityAction: $forcedSaleYear !== null ? MortgageMaturityAction::ForcedSale : MortgageMaturityAction::Refinance,
+            isLet: $isLet,
+            beneficialShares: ['p1' => Percent::fromPercent(70), 'p2' => Percent::fromPercent(30)],
+        );
+    }
+
+    public function test_a_seventy_thirty_home_pays_each_owner_their_own_share(): void
+    {
+        // The year-0 sale: the rent plan credits each owner their own share of the net proceeds.
+        $household = new Household(
+            'SeventyThirty', RegionProfile::EnglandWalesNi,
+            [$this->person('p1'), $this->person('p2')],
+            new ExpenseProfile(Money::fromPounds(20_000), Money::zero(), Percent::fromPercent(100)),
+            primaryResidence: $this->seventyThirtyHome(),
+        );
+        $action = new HousingAction(salePrice: Money::fromPounds(200_000));
+        $comparison = new HousingComparison($this->config(), new CohortLifeTable);
+        $net = $comparison->saleProceeds($household, $action)->netProceeds->pence;
+
+        $rented = $comparison->variantInputs(
+            $household,
+            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+            $this->flat(),
+            $action,
+        )['rent']['household'];
+
+        $this->assertSame(
+            ['p1' => intdiv($net * 7, 10), 'p2' => intdiv($net * 3, 10)],
+            $this->giaByOwner($rented),
+            'each owner is credited their own share of the year-0 sale',
+        );
+
+        // The forced sale: p2 owns 30% of £192,000 (£57,600), too little to pay the whole fee. An
+        // equal split would give her £96,000 and charge her the gross fee.
+        $forced = new Household(
+            'SeventyThirtyForced', RegionProfile::EnglandWalesNi,
+            [$this->person('p1'), $this->person('p2')],
+            new ExpenseProfile(Money::fromPounds(2 * 26_514), Money::zero(), Percent::fromPercent(100)),
+            incomeStreams: [$this->income('p1', 30_000), $this->income('p2', 30_000)],
+            primaryResidence: $this->seventyThirtyHome(forcedSaleYear: 2030),
+        );
+        $years = $this->byYear($this->project($forced, deathAges: ['p1' => 95, 'p2' => 90], careFromAge: ['p2' => 88]));
+
+        $this->assertLessThan(
+            CareMeansTestedChargeTest::FEE_REAL,
+            $years[2046]->spendTarget->pence - $years[2045]->spendTarget->pence,
+            'the 30% owner holds only her own share of the forced sale, so she does not self-fund',
+        );
+    }
+
+    public function test_care_assesses_the_residents_own_share_of_the_home(): void
+    {
+        // A let home is assessable while both are alive (nobody lives in it, so no disregard).
+        // p2 owns 30% of £200,000 (£60,000), too little to pay the whole fee; half of it (£100,000)
+        // would charge her the gross fee.
+        $household = new Household(
+            'LetSeventyThirty', RegionProfile::EnglandWalesNi,
+            [$this->person('p1'), $this->person('p2')],
+            new ExpenseProfile(Money::fromPounds(2 * 26_514), Money::zero(), Percent::fromPercent(100)),
+            incomeStreams: [$this->income('p1', 30_000), $this->income('p2', 30_000)],
+            primaryResidence: $this->seventyThirtyHome(isLet: true),
+        );
+        $years = $this->byYear($this->project($household, deathAges: ['p1' => 95, 'p2' => 90], careFromAge: ['p2' => 88]));
+
+        $this->assertLessThan(
+            CareMeansTestedChargeTest::FEE_REAL,
+            $years[2046]->spendTarget->pence - $years[2045]->spendTarget->pence,
+            'the resident is assessed on her own 30% of the home, not on half of it',
+        );
+    }
+
     // ---------------------------------------------------------------- card 0101
 
     private function cash(string $ownerId, int $pounds): Account

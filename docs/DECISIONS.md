@@ -3,6 +3,23 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-11: each member enters a share of the whole home, and the sale and care follow it
+
+**Context:** card 0102. `Property::$beneficialShares` already existed (card 0059), but only the first
+death read it. The sale proceeds in both sale paths and the care assessment of a let home still split
+the home equally, and the builder asked only the first member's share.
+**Decision:** the builder asks both shares, each as a percentage of the WHOLE property, and refuses a
+pair that does not add up to `ownershipShare` (100 when blank). The assembler divides each by their sum,
+so the engine keeps holding shares of the household's own part. `Property::shareWeights()` is the one
+home of the weights; the two sales split through `PenceSplit::byWeight`, the care test takes the
+resident's weight over the LIVING owners'. A stored single share keeps its old meaning (the other
+member takes the rest of the household's part) until it is re-entered.
+**Consequence:** no `ENGINE_VERSION` bump: an unstated split gives byte-identical figures, and none of
+the 27 stored scenarios stated a share on 2026-10-11. The card's "resident living alone" case does not
+move: a lone survivor inherits the whole home in this engine, so their own share is all of it. The
+case the equal split did bite is a let home with both members alive.
+**Status:** active
+
 ## 2026-10-10: shared spending draws each bucket from both holders in proportion
 
 **Context:** card 0101. The shortfall waterfall walked each bucket (cash, GIA, ISA) person by person

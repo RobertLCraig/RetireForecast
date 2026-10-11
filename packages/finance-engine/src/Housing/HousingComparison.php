@@ -455,11 +455,12 @@ final class HousingComparison
             // The proceeds of a jointly owned home belong to its OWNERS, one account each, not to
             // whoever was declared first (board card 0040). The care means test assesses the
             // individual, so crediting the whole sale to one of them sent the other into care with
-            // an empty balance sheet. There is no per-person share on the DTO, so a jointly held
-            // home splits equally, the same rule the care assessment already applies to the equity
-            // it does not disregard.
+            // an empty balance sheet. Each owner takes their own beneficial share of the home sold
+            // (board card 0102), equal where nobody said, the same rule the care assessment
+            // applies to the equity it does not disregard.
             $owners = array_map(static fn ($person): string => $person->id, $household->persons);
-            foreach (PenceSplit::evenly($investedCash->pence, $owners) as $ownerId => $share) {
+            $weights = $household->primaryResidence?->shareWeights($owners) ?? array_fill_keys($owners, 1);
+            foreach (PenceSplit::byWeight($investedCash->pence, $weights) as $ownerId => $share) {
                 if ($share > 0) {
                     $accounts[] = new Account($ownerId, AccountType::Gia, Money::fromPence($share));
                 }

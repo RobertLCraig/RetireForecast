@@ -583,7 +583,14 @@ class ScenarioBuilder extends Component
             // A park home or similar chattel, and the reader's own beneficial share of the home
             // (card 0059). Blank is a real answer in both: "nobody was asked".
             $rules['property.isChattelDwelling'] = ['nullable', Rule::in(['yes', 'no'])];
-            $rules['property.beneficialShareYours'] = ['nullable', 'numeric', 'min:0', 'max:100'];
+            // Each member's share of the home, as a percentage of the WHOLE property (card 0102).
+            // One without the other is half an answer, and the two must add up to what the
+            // household owns, so a split cannot claim more or less of the home than is theirs.
+            $rules['property.beneficialShareYours'] = ['nullable', 'numeric', 'min:0', 'max:100',
+                Rule::requiredIf(fn (): bool => count($this->people) > 1 && ($this->property['beneficialSharePartner'] ?? '') !== '')];
+            $rules['property.beneficialSharePartner'] = ['nullable', 'numeric', 'min:0', 'max:100',
+                Rule::requiredIf(fn (): bool => count($this->people) > 1 && ($this->property['beneficialShareYours'] ?? '') !== ''),
+                $this->homeSharesAddUp(...)];
             $rules['property.lettingManagementRate'] = ['nullable', 'numeric', 'min:0', 'max:100'];
             $rules['property.lettingVoidRate'] = ['nullable', 'numeric', 'min:0', 'max:100'];
             $rules['property.lettingMaintenanceRate'] = ['nullable', 'numeric', 'min:0', 'max:100'];
@@ -644,6 +651,25 @@ class ScenarioBuilder extends Component
 
         if ($start !== '' && (int) $value < (int) $start) {
             $fail('The end age must be the same as or after the start age.');
+        }
+    }
+
+    /** The two members' shares of the home must add up to the household's own share of it (card 0102). */
+    public function homeSharesAddUp(string $attribute, mixed $value, callable $fail): void
+    {
+        $yours = $this->property['beneficialShareYours'] ?? '';
+        if (! is_numeric($value) || ! is_numeric($yours)) {
+            return;
+        }
+
+        $household = is_numeric($this->property['ownershipShare'] ?? '') ? (float) $this->property['ownershipShare'] : 100.0;
+        if (abs((float) $yours + (float) $value - $household) > 0.005) {
+            $fail(sprintf(
+                'Your two shares add up to %s%%, but the household owns %s%% of the home. They must add up to %s%%.',
+                rtrim(rtrim(number_format((float) $yours + (float) $value, 2), '0'), '.'),
+                rtrim(rtrim(number_format($household, 2), '0'), '.'),
+                rtrim(rtrim(number_format($household, 2), '0'), '.'),
+            ));
         }
     }
 
@@ -900,6 +926,9 @@ class ScenarioBuilder extends Component
             // unanswered, which is exactly the old behaviour (a brick house split in half).
             $this->property['isChattelDwelling'] ??= '';
             $this->property['beneficialShareYours'] ??= '';
+            // A property saved before card 0102 has no partner share: blank, so a stored first
+            // share keeps its old meaning (the other member takes the rest) until it is re-entered.
+            $this->property['beneficialSharePartner'] ??= '';
             $this->property['lettingManagementRate'] ??= '';
             $this->property['lettingVoidRate'] ??= '';
             $this->property['lettingMaintenanceRate'] ??= '';
@@ -2196,7 +2225,7 @@ class ScenarioBuilder extends Component
             // Both BLANK by default: blank chattel means nobody was asked (the engine reads a
             // depreciating home as a park home), and a blank share means equal shares. Empty
             // defaults, so a what-if child's delta is unaffected.
-            'isChattelDwelling' => '', 'beneficialShareYours' => '',
+            'isChattelDwelling' => '', 'beneficialShareYours' => '', 'beneficialSharePartner' => '',
             'outstandingMortgage' => '', 'runningCosts' => '', 'growthAssumptionOverride' => '', 'ownershipShare' => '',
             // Council tax, split out of the running costs so the discounts can reach it. Both
             // blank by default: blank council tax means it is still inside the running costs

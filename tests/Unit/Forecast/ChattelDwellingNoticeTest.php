@@ -131,6 +131,35 @@ final class ChattelDwellingNoticeTest extends TestCase
         $this->assertStringNotContainsString('equal shares', $assumed);
     }
 
+    /**
+     * Card 0102 #4: with no shares entered the engine splits the home equally, and the note says
+     * so for every rule the split now reaches, with the share READ from the code that owns it.
+     */
+    public function test_an_unstated_split_is_equal_and_disclosed(): void
+    {
+        $couple = [
+            ['id' => 'p1', 'dob' => '1950-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+            ['id' => 'p2', 'dob' => '1952-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+        ];
+        $home = (new HouseholdAssembler)->household([
+            'householdName' => 'Shares', 'region' => 'england_wales_ni', 'people' => $couple, 'hasProperty' => true,
+            'property' => ['currentValue' => '150000', 'ownership' => 'outright'],
+        ])->primaryResidence;
+
+        $this->assertNull($home->beneficialShares, 'nothing entered, nothing stated');
+        $this->assertEquals($home->beneficialShare('p1', 2), $home->beneficialShare('p2', 2), 'an unstated split is equal');
+
+        $shareNotes = array_filter(
+            array_column($this->notes(people: $couple), 'text'),
+            static fn (string $t): bool => str_contains($t, 'equal shares'),
+        );
+        $this->assertCount(1, $shareNotes, 'one note names the equal split');
+        $text = (string) reset($shareNotes);
+        $this->assertStringContainsString(ResultPresenter::formatPercent($home->beneficialShare('p1', 2)->asFraction()).' each', $text);
+        $this->assertStringContainsString('when the home is sold', $text, 'the note says the sale proceeds are split equally');
+        $this->assertStringContainsString('care assessment', $text, 'the note says the care assessment uses the equal share');
+    }
+
     /** A sole owner has no split to assume, so nothing is disclosed. */
     public function test_a_single_person_is_told_nothing_about_shares(): void
     {

@@ -1372,6 +1372,36 @@ class ScenarioBuilderTest extends TestCase
         $this->assertTrue($person->ukLongTermResidenceIsAssumed(), 'the residence position was never asked');
     }
 
+    /**
+     * Card 0102 #1: each member enters their own share of the home, as a percentage of the whole
+     * property, and the two must add up to the household's own share of it.
+     */
+    public function test_per_person_home_shares_must_sum_to_the_household_share(): void
+    {
+        $component = $this->fill(BuilderStateFixture::minimalValid())
+            ->call('addPerson')
+            ->set('people.1.dob', '1957-01-01')
+            ->set('people.1.sex', 'male')
+            ->set('people.1.employmentStatus', 'retired')
+            ->set('relationshipStatus', 'cohabiting')
+            ->set('hasProperty', true)
+            ->set('property.currentValue', '300000')
+            // The household owns 60%; somebody outside it owns the rest.
+            ->set('property.ownershipShare', '60')
+            ->set('property.beneficialShareYours', '40')
+            ->set('property.beneficialSharePartner', '30')
+            ->call('save')
+            ->assertHasErrors(['property.beneficialSharePartner']);
+        $this->assertSame(0, Scenario::count(), '40 + 30 is not the household\'s 60, so nothing is saved');
+
+        $component->set('property.beneficialSharePartner', '20')->call('save')->assertHasNoErrors();
+
+        // 40 and 20 of the household's 60 are two thirds and one third of what the household owns.
+        $home = Scenario::firstOrFail()->toHousehold()->primaryResidence;
+        $this->assertSame(6_667, $home->beneficialShares['p1']->basisPoints);
+        $this->assertSame(3_333, $home->beneficialShares['p2']->basisPoints);
+    }
+
     /** @param array<string, mixed> $state */
     private function fill(array $state): Testable
     {

@@ -1126,16 +1126,22 @@
                                 home, and tell you we did.
                             </p>
                         </div>
-                        <div>
-                            <label for="property-beneficialShareYours" class="{{ $label }}">Your share of the home (%, optional)</label>
-                            <input id="property-beneficialShareYours" type="text" inputmode="decimal" placeholder="50" wire:model="property.beneficialShareYours" class="{{ $field }}">
-                            <p class="mt-1 text-xs text-gray-500">
+                        @if (count($people) > 1)
+                            @foreach (['beneficialShareYours' => 'First', 'beneficialSharePartner' => 'Second'] as $shareKey => $ordinal)
+                                <div>
+                                    <label for="property-{{ $shareKey }}" class="{{ $label }}">{{ $ordinal }} person's share of the home (%, optional)</label>
+                                    <input id="property-{{ $shareKey }}" type="text" inputmode="decimal" placeholder="50" wire:model="property.{{ $shareKey }}" class="{{ $field }}" @error('property.'.$shareKey) aria-invalid="true" aria-describedby="property-{{ $shareKey }}-error" @enderror>
+                                    @error('property.'.$shareKey) <p id="property-{{ $shareKey }}-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                </div>
+                            @endforeach
+                            <p class="text-xs text-gray-500 sm:col-span-2">
                                 How the home is split between the two of you on the deeds, if it is not down the middle.
-                                This is the first person listed above; the rest goes to the other. It decides how much of
-                                the home is in the first estate when one of you dies, which changes no tax while you are
-                                married and can change it a lot if you are not. Blank = equal shares.
+                                Each share is a percentage of the whole home, so together they must add up to the
+                                household's ownership share above (100% if nobody else owns part of it). The split decides
+                                what each of you is paid when the home is sold, how much of it a care assessment counts as
+                                yours, and how much of it is in the first estate when one of you dies. Blank = equal shares.
                             </p>
-                        </div>
+                        @endif
                     </div>
 
                     {{-- What letting costs. Gross rent is the one figure a landlord never receives:

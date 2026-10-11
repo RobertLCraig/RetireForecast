@@ -37,7 +37,7 @@ final class WhatIfChanges
     /** Leaf field names whose value is a rate — shown with a % suffix. */
     private const RATE = [
         'salaryGrowth', 'growthAssumptionOverride', 'yield', 'sellingCostRate', 'rentInflationReal',
-        'spousePensionFraction', 'survivorFactor', 'ownershipShare', 'beneficialShareYours',
+        'spousePensionFraction', 'survivorFactor', 'ownershipShare', 'beneficialShareYours', 'beneficialSharePartner',
         'investmentGrowth', 'inflation', 'houseGrowth', 'rentGrowth', 'incomeYield',
     ];
 
@@ -197,7 +197,8 @@ final class WhatIfChanges
                 'currentValue' => 'Home value', 'ownership' => 'Home ownership', 'outstandingMortgage' => 'Mortgage owed',
                 'runningCosts' => 'Home running costs', 'growthAssumptionOverride' => 'Home growth', 'ownershipShare' => 'Ownership share',
                 'councilTax' => 'Council tax', 'councilTaxDisabledBand' => 'Disabled band reduction',
-                'isChattelDwelling' => 'Park home or similar', 'beneficialShareYours' => 'Your share of the home',
+                'isChattelDwelling' => 'Park home or similar', 'beneficialShareYours' => 'First person\'s share of the home',
+                'beneficialSharePartner' => 'Second person\'s share of the home',
             ],
         ];
         if (isset($sectionLabels[$head])) {

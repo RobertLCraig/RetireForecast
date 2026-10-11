@@ -1705,7 +1705,7 @@ final class PathProjector
                 $feeReal = (int) round($feeReal * $careEscalation);
                 $careChargedNominal += $this->careMeans->annualCharge(
                     grossAnnualFee: Money::fromPence((int) round($feeReal * $state['spendFactor'])),
-                    capital: Money::fromPence($this->careAssessableCapital($household, $state, $person->id, $aliveCount)),
+                    capital: Money::fromPence($this->careAssessableCapital($household, $state, $person->id, $alive)),
                     // Plus the CARE component of any disability award still in payment (board card
                     // 0050). A financial assessment takes Attendance Allowance and the DLA care
                     // component into account like any other undisregarded income; only the mobility
@@ -2448,7 +2448,6 @@ final class PathProjector
      */
     private function disabilityCareComponentFractions(Household $household, PathDraws $draws, array &$state, array $capitalState, array $alive, int $yearIndex): array
     {
-        $aliveCount = count(array_filter($alive));
         $fractions = [];
 
         foreach ($household->persons as $person) {
@@ -2456,7 +2455,7 @@ final class PathProjector
             $inFundedPlacement = ($alive[$person->id] ?? false)
                 && $draws->careAnnualCost($person->id, $age) > 0
                 && ! $this->careMeans->assess(
-                    Money::fromPence($this->careAssessableCapital($household, $capitalState, $person->id, $aliveCount)),
+                    Money::fromPence($this->careAssessableCapital($household, $capitalState, $person->id, $alive)),
                 )->selfFunder;
 
             if (! $inFundedPlacement) {
@@ -2589,7 +2588,9 @@ final class PathProjector
             $state['smiBalance'] = 0;
             $state['deferredCareBalance'] = 0;
 
-            foreach (PenceSplit::evenly($netAfterCharge, $this->livingIds($household, $alive)) as $ownerId => $share) {
+            // Each living owner takes their own beneficial share (board card 0102), equal where
+            // nobody said; a dead owner's share went to the survivor with the rest of the estate.
+            foreach (PenceSplit::byWeight($netAfterCharge, $home->shareWeights($this->livingIds($household, $alive))) as $ownerId => $share) {
                 $state['gia'][$ownerId] += $share;
                 $state['giaBasis'][$ownerId] += $share;
             }
@@ -2610,17 +2611,22 @@ final class PathProjector
      * assesses the individual: the resident's own accounts (cash / GIA / ISA — the engine's
      * accounts are individually owned; pension pots are disregarded as capital, matching the
      * Pension Credit treatment, while drawdown income is assessed as income instead), plus their
-     * share of the home where it is assessable at all ({@see careHomeAssessable}). A couple's
-     * jointly held home splits equally between them, the individual assessment.
+     * share of the home where it is assessable at all ({@see careHomeAssessable}). That share is
+     * the resident's own beneficial share among the living owners (board card 0102), equal where
+     * nobody said; a lone survivor inherited the rest, so holds it all.
      *
      * @param  array<string, mixed>  $state
+     * @param  array<string, bool>  $alive
      */
-    private function careAssessableCapital(Household $household, array $state, string $personId, int $aliveCount): int
+    private function careAssessableCapital(Household $household, array $state, string $personId, array $alive): int
     {
         $capital = ($state['cash'][$personId] ?? 0) + ($state['gia'][$personId] ?? 0) + ($state['isa'][$personId] ?? 0);
 
-        if ($this->careHomeAssessable($household, $state, $aliveCount)) {
-            $capital += intdiv($this->careHomeEquity($household, $state), max(1, $aliveCount));
+        if ($this->careHomeAssessable($household, $state, count(array_filter($alive)))) {
+            // A share of an assessment, not a split that must reconcile, so it rounds down: with
+            // equal weights that is exactly the old intdiv by the number alive.
+            $weights = $household->primaryResidence->shareWeights($this->livingIds($household, $alive));
+            $capital += intdiv($this->careHomeEquity($household, $state) * ($weights[$personId] ?? 0), max(1, array_sum($weights)));
         }
 
         return $capital;

@@ -835,10 +835,13 @@ final class HouseholdAssembler
     }
 
     /**
-     * Who owns how much of the home, keyed by person id. The builder asks ONE question, the first
-     * member's share, and the rest of the household takes what is left in equal parts, because a
-     * share and its complement are the same fact and storing both invites them to disagree. Blank
-     * means nobody said, and the engine then splits the home equally and discloses that it did.
+     * Who owns how much of the home, keyed by person id, as shares of what the HOUSEHOLD owns.
+     * The builder asks each member's share of the whole property (card 0102), and validation holds
+     * the two to the household's own share of it, so each is divided by their sum. Blank means
+     * nobody said, and the engine then splits the home equally and discloses that it did.
+     *
+     * A scenario stored before card 0102 carries only the first share, which then meant a share
+     * of the household's part with the rest going to the other member; it keeps that meaning.
      *
      * @param  array<string, mixed>  $p
      * @param  list<array<string, mixed>>  $people
@@ -849,6 +852,17 @@ final class HouseholdAssembler
         $yours = $this->percent($p['beneficialShareYours'] ?? null);
         if ($yours === null || count($people) < 2) {
             return null;
+        }
+
+        $partner = $this->percent($p['beneficialSharePartner'] ?? null);
+        $together = $yours->basisPoints + ($partner?->basisPoints ?? 0);
+        if ($partner !== null && count($people) === 2 && $together > 0) {
+            $first = (int) round($yours->basisPoints * 10_000 / $together);
+
+            return [
+                (string) $people[0]['id'] => Percent::fromBasisPoints($first),
+                (string) $people[1]['id'] => Percent::fromBasisPoints(10_000 - $first),
+            ];
         }
 
         $others = count($people) - 1;

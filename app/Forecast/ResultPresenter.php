@@ -1411,16 +1411,19 @@ final class ResultPresenter
         }
 
         // The split of the home between two people. Nobody is asked in most plans, and the engine
-        // has always halved it, which decides how much of the home sits in the FIRST estate. It is
-        // immaterial while a couple is married and material the moment they are not, so the
-        // assumption is named rather than left to look like something they entered (card 0059).
+        // then splits it equally, which decides what each of them is paid when it is sold, how much
+        // of it a care assessment counts as theirs, and how much sits in the FIRST estate (cards
+        // 0059 and 0102). The assumption is named rather than left to look like something they
+        // entered, and the share is READ from the engine rule that applies it.
         if ($home !== null && count($household->persons) > 1 && $home->beneficialShares === null) {
-            $out[] = 'You have not told us how the home is owned between you, so we have assumed equal shares: '
-                .'half each. That is the usual position for a couple who bought together as joint tenants, and it '
-                .'decides how much of the home sits in the first estate when one of you dies. It changes no tax at '
-                .'all while you are married or in a civil partnership, because everything passing to a husband, wife '
-                .'or civil partner is exempt. It matters if you are not: the share we have assumed is the share we '
-                .'tax. If the deeds say something else, say so and we will use it.';
+            $equal = self::formatPercent($home->beneficialShare($household->persons[0]->id, count($household->persons))->asFraction());
+            $out[] = "You have not told us how the home is owned between you, so we have assumed equal shares: {$equal} each. "
+                .'That is the usual position for a couple who bought together as joint tenants. It decides three '
+                .'things: what each of you is paid when the home is sold, how much of it a care assessment counts '
+                .'as yours, and how much of it sits in the first estate when one of you dies. That last one changes '
+                .'no tax while you are married or in a civil partnership, because everything passing to a husband, '
+                .'wife or civil partner is exempt; if you are not, the share we have assumed is the share we tax. If '
+                .'the deeds say something else, enter each of your shares and we will use them.';
         }
 
         // Using the ISA allowance ("bed and ISA"). This one is not a blank input filled in, it is
