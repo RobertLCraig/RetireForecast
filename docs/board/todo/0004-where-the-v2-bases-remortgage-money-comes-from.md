@@ -1,3 +1,6 @@
+---
+needs: 0022
+---
 # Where does the missing £49,495 in the base plan come from?
 
 ## What I need from you
@@ -22,7 +25,9 @@ After the answer: at builder step 3 on scenario 9, add a one-off capital receipt
 
 ## Links
 
-**Relates to**
+**Blocked by**
 - `0022` - picks the mortgage route; its interest-only loan would cut this gap to about £9,000.
 
 ## Comments
+
+**2026-10-11** No source for the gap is recorded yet, and card 0022 (which mortgage route) is still waiting on the lender details Rob was sent for, so this card waits on it as the For-the-agent note says: added `needs: 0022` and moved to `todo/`. Nothing was entered in scenario 9. Clear-down session, Rob attended.

@@ -1,5 +1,5 @@
 ---
-needs: 0012
+needs: 0012, 0174
 ---
 # The couple's private details are in tracked docs again
 
@@ -27,6 +27,9 @@ into `storage/logs/`.
 **Blocked by**
 - `0012` - the public-release blockers card owns the question of whether git history gets purged,
   and that decision sets how far this scrub has to go.
+- `0174` - scrubs cards 0022 and 0023 and deletes the `PENDING_SCRUB` exemption, which is the only
+  thing between #1 and green.
+
 ## Not this card
 The history purge itself. Do the guard and the scrub first, then decide on history under 0012.
 
@@ -39,8 +42,8 @@ The history purge itself. Do the guard and the scrub first, then decide on histo
 ## Tasks
 - [ ] Add `tests/Feature/Docs/NoPrivateDataTest.php`, shaped like `HandoverHygieneTest`
 - [ ] Scrub the eleven tracked files; move figures into `SCENARIO-V2.local.md`
-- [ ] Encrypt or delete the plaintext scenario backups
-- [ ] Add data hygiene, and the history question, to card 0012
+- [x] Encrypt or delete the plaintext scenario backups
+- [x] Add data hygiene, and the history question, to card 0012
 
 ## Comments
 
@@ -114,3 +117,5 @@ OUTCOME: rob
 
 
 **2026-10-11** **Decided:** **2026-10-11** **Decided:** Option 1: delete the plaintext docs/scenario-backup-*.local.json files.
+
+**2026-10-11** Done as decided. The three `docs/scenario-backup-*.local.json` files were deleted from the checkout; they were gitignored and never tracked (no commit in any branch touches them), so there was nothing to `git rm`. The data-hygiene blocker and the git-history question are now a task and a comment on card 0012. Added `0174` to `needs:` and to Blocked by, since #1 goes green only once 0174 removes the exemption, and moved this card to `todo/`. Clear-down session, Rob attended.

@@ -1,12 +1,17 @@
 # Is a park home still an option? A £1,500 grant top-up ends March 2027
 
 ## What I need from you
-Say whether a park home is still on the table. Reply 1 or 2.
-1. **Yes.** Then write to one named park and ask three things: (a) may a heat pump and solar panels go on the pitch; (b) does the home have its own electricity meter number (MPAN), or does the site owner resell power; (c) will the roof take panels. Pass: three written answers from that park.
-2. **No.** The card is discarded. Scenarios 51 to 54 stay as what-ifs only.
+**Send this letter:** `C:\Dev\RetireForecast\docs\outreach\park-home-heat-pump-letter.local.md`. Fill in your name, address and the date, then post or email it to the park it names.
 
-**My recommendation:** decide by January 2027. Doing nothing forfeits the £1,500 top-up without warning.
-Paste to answer: `**2026-10-07** **Decided:** Option 2, park homes are not a live option.` or `**2026-10-07** **Decided:** Option 1, asked [park name]: (a) ___ (b) ___ (c) ___.`
+**Pass:**
+- the park answers all three questions in writing: (a) may a heat pump and solar panels go on the pitch; (b) does the home have its own electricity meter number (MPAN), or does the site owner resell power; (c) will the roof take panels
+- you paste the answers here: `**<date>** Park replied: (a) ___ (b) ___ (c) ___.`
+
+**Fail:** no reply in four weeks, or a reply that skips a question. Say so here; an agent then drafts a chaser or picks the next park.
+
+**Why it needs you:** the letter goes out in your name to a business you may buy from. The extra £1,500 grant for homes on oil or LPG ends in March 2027, so send it by January 2027.
+
+The letter is gitignored because it names the park, which locates you.
 
 ## What you need to know
 - The Boiler Upgrade Scheme (a government grant for heat pumps) pays £7,500. It runs to 2030.
@@ -42,3 +47,5 @@ rather than remembered. All read 2026-09-30.
   fit it within 120 days of the voucher. <https://www.gov.uk/apply-boiler-upgrade-scheme/check-if-youre-eligible>
 
 **2026-10-11** **Decided:** **2026-10-11** **Decided:** Option 1: write to one named park with the 3 questions.
+
+**2026-10-11** Drafted the letter at `docs/outreach/park-home-heat-pump-letter.local.md` (new folder, gitignored by a new `.gitignore` line because the park's name locates the household). The park is the cheaper site the stored park-home scenarios model; the letter's header says which one and why. The site owner's company could not be found online, so the letter goes to the park manager at the country park's postal address and suggests asking the agent or the council's site licence register for the owner's name. Ask rewritten to "send this letter"; the card stays in `human-review/` until the answers are pasted. Clear-down session, Rob attended.

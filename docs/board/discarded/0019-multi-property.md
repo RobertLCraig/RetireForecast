@@ -89,3 +89,5 @@ WHY: The card is a yes/no choice about the household's own assets, and the repos
 
 OUTCOME: question
 
+
+**2026-10-11** Discarded on the card's own recommendation: nothing recorded shows a second property, and Rob did not name one in the 2026-10-11 queue triage. The settled design stays at `docs/build/PLAN-multi-property.md`; if a second property ever exists, move this card back to `todo/` and build to that plan. Clear-down session, Rob attended.

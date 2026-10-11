@@ -34,6 +34,8 @@ Thumbs.db
 # (.json covers raw builder_state / overrides exports taken before a scenario rebuild.)
 /docs/*.local.md
 /docs/*.local.json
+# Letters to named parties carry names and places that locate the household (card 0006).
+/docs/outreach/*.local.md
 
 # Playwright MCP session artifacts (snapshots, console logs)
 .playwright-mcp/

@@ -38,7 +38,7 @@ Universal Credit. Out of scope for a pension-age tool; the mixed-age warning is 
 ## Acceptance
 <!-- AC:BEGIN -->
 - [x] #1 WHEN a pension-age household rents and its income and capital qualify, THE APP SHALL award Housing Benefit on the pension-age basis.
-- [ ] #2 WHEN proceeds of a former home are held with the intention of buying another, THE APP SHALL disregard them for the statutory period.
+- [x] #2 WHEN proceeds of a former home are held with the intention of buying another, THE APP SHALL disregard them for the statutory period. (closed by decision, not built: DECISIONS 2026-10-11, card 0116)
 - [x] #3 WHEN capital is held in property, THE APP SHALL deduct the allowed notional costs of sale before assessing it.
 - [x] #4 IF Housing Benefit is not modelled for a given plan, THE APP SHALL state on that plan that it is excluded and the plan is therefore understated.
 <!-- AC:END -->
@@ -188,3 +188,5 @@ worktree is not served by Herd.
 **2026-09-06** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 4 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
 
 **2026-09-28** Manager pass: back to todo with `needs: 0116`. #1, #3 and #4 are built; #2 is open only because `Dto\HousingAction` has no date, so no plan can hold sale proceeds before buying again. That is card 0116's subject, so it is now a declared blocker rather than a reason for the loop to retake this card and change nothing. When 0116 lands, #2 is ordinary build work.
+
+**2026-10-11** **Decided:** #2 closes unbuilt. Card 0116 was answered no (DECISIONS 2026-10-11: a gap between selling and buying is not modelled), so no plan ever holds sale proceeds with an intention to buy and the disregard has nothing to act on. #1, #3 and #4 were built on 2026-09-06 and have never had their adversarial pass, so this card moves to `ai-review/` rather than `done/`. Clear-down session, Rob attended.

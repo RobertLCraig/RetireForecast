@@ -3,6 +3,23 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-11: a gap between selling and buying is not modelled
+
+**Context:** card 0116, raised by card 0048 #2. The pension-age means test disregards the proceeds of a
+former home held to buy another, for 26 weeks from the sale. `Dto\HousingAction` carries no year,
+month or date, so `HousingComparison::buyVariant` sells, buys and banks the surplus in one step before
+year 0, and no engine state ever holds proceeds with an intention to buy.
+**Decision:** No. The engine keeps selling and buying in the same moment, and the disregard is not
+built. No stored plan sells and buys in different years, and none can, so the rule has nothing to act
+on. Card 0027 (the months between instruction and completion) adds the COST of that wait as a one-off;
+it does not hold the proceeds as capital, so it does not open the state either.
+**Consequence:** card 0116 closes on criterion #1 and its two conditional criteria are void; card 0048
+#2 closes with it. Reopen if a plan ever needs a purchase that completes in a later year than its sale:
+that is a completion offset on `HousingAction`, `buyVariant` split into a sale leg and a purchase leg,
+the disregard sourced beside the tariff in `Benefits\CapitalAssessment`, and a re-run of every stored
+buy plan.
+**Status:** active
+
 ## 2026-10-11: each member enters a share of the whole home, and the sale and care follow it
 
 **Context:** card 0102. `Property::$beneficialShares` already existed (card 0059), but only the first

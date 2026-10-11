@@ -41,6 +41,9 @@ panel is a separate card, raised only if a release is ever scheduled.
       feature test in each posture
 - [x] Tighten CSP `script-src` to nonces
 - [ ] Hand a11y checks: done under card 0001, tick when that card records them
+- [ ] Data hygiene before a public release (from card 0043): `NoPrivateDataTest` must be green with
+      its `PENDING_SCRUB` exemption gone (card 0174), and decide whether git history is purged of
+      the couple's names and figures that earlier commits carried (cards 0043 and 0176)
 
 ## Plan
 Stand in `C:\Dev\RetireForecast` on `master`. The dataset is
@@ -108,3 +111,5 @@ OUT-OF-SCOPE: none
 Not checked in a browser: Herd serves C:\Dev\RetireForecast, not this worktree, so the notice card still needs one look in each posture.
 
 I did not fold a block out of HANDOVER.md even though the orient hook asked for it (78 KB). That is outside this card.
+
+**2026-10-11** Added the data-hygiene blocker from card 0043 as a task, not a criterion, so this review is not held on it. Two parts: the tracked-file guard (`NoPrivateDataTest`) must be green with no exemption left, which card 0174 finishes; and the open question of whether git history is purged of the private names and figures earlier commits carried (cards 0043 and 0176). The three plaintext scenario backups 0043 named were deleted from the checkout today on Rob's decision; they were never tracked. Clear-down session, Rob attended.

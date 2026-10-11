@@ -37,13 +37,13 @@ documented v1 simplification.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] THE APP SHALL record a decision from Rob on whether a gap between selling and buying is worth modelling at all, with the reasoning, in docs/DECISIONS.md. proves: none
-- [ ] IF it is, WHEN a plan's purchase completes in a later year than its sale, THE APP SHALL hold the proceeds as capital in the intervening years. proves: `test_a_deferred_purchase_holds_the_proceeds_as_capital`
-- [ ] IF it is, WHEN proceeds of a former home are held with the intention of buying another, THE APP SHALL disregard them from the means-tested capital assessment for the statutory period, sourced and dated. proves: `test_proceeds_held_to_buy_are_disregarded_for_the_statutory_period`
+- [x] THE APP SHALL record a decision from Rob on whether a gap between selling and buying is worth modelling at all, with the reasoning, in docs/DECISIONS.md. proves: none
+- [ ] (void: the answer is no) IF it is, WHEN a plan's purchase completes in a later year than its sale, THE APP SHALL hold the proceeds as capital in the intervening years. proves: `test_a_deferred_purchase_holds_the_proceeds_as_capital`
+- [ ] (void: the answer is no) IF it is, WHEN proceeds of a former home are held with the intention of buying another, THE APP SHALL disregard them from the means-tested capital assessment for the statutory period, sourced and dated. proves: `test_proceeds_held_to_buy_are_disregarded_for_the_statutory_period`
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Put the question to Rob first. The other two lines are dead if the answer is no.
+- [x] Put the question to Rob first. The other two lines are dead if the answer is no.
 - [ ] If yes: give `HousingAction` a completion offset, and split `HousingComparison::buyVariant`
       into a sale leg and a purchase leg the projector fires in different years.
 - [ ] If yes: source the disregard period (Regulation 10 and Schedule 10 of the pension-age Housing
@@ -111,4 +111,6 @@ QUESTION: Should the forecast model a gap between selling the old home and buyin
 WHY: Only Rob can decide if this rare case is worth a big change to the engine, and the builder has nothing to do until he answers.
 
 OUTCOME: question
+
+**2026-10-11** **Decided:** No. A gap between selling and buying is not modelled. Recorded in `docs/DECISIONS.md` (2026-10-11: a gap between selling and buying is not modelled). Checked against the code first: `Dto\HousingAction` still carries no year or date, so no stored plan sells and buys in different years, and in-progress card 0027 adds the cost of the wait, not held proceeds. The two conditional criteria are void, and card 0048 #2 closes with this one. Reopen if a plan ever needs a purchase that completes in a later year than its sale. Clear-down session, Rob attended.
 
