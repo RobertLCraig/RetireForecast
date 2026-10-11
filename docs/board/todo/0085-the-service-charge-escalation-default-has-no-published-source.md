@@ -1,5 +1,4 @@
 ---
-waiting_on: web access, which an unattended session does not have - recheck 2026-10-06
 no_outward_effect: "published source" is a figure somebody else printed, read here; nothing is published by us
 ---
 # The service-charge escalation the model now charges everyone is one reviewer's opinion
@@ -65,3 +64,5 @@ above follow it automatically. Nothing else needs editing to change the number.
 attended.
 
 ## Comments
+
+**2026-10-11** Research done in an attended session with web access. The sourced figure, its URL and verified_on date, the optimistic and adverse alternatives for #3, and the exact edits are in `docs/research/RESEARCH-0085-service-charge-escalation.md`. Build from that note; it needs no web. The note flags one judgement for the builder: the sourced default sits BELOW the shipped one, because no published whole-charge series supports the shipped rate; ship the note's figure, which is the adverse end of the published evidence, and keep the higher one only as the labelled stress alternative. Removed `waiting_on:` so the loop builds it. Clear-down session, Rob attended.
