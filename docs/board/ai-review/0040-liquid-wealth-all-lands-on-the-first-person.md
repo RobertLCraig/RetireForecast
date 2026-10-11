@@ -43,7 +43,7 @@ Whose assets pay for shared spending, which is card 0101 and is what the third c
 <!-- AC:BEGIN -->
 - [x] #1 WHEN a jointly owned home is sold, THE APP SHALL split the proceeds between the owners by their ownership shares.
 - [x] #2 WHEN a year produces a surplus, THE APP SHALL bank it to the person who generated it where that is attributable, and split it evenly otherwise.
-- [ ] #3 WHEN the order two people were entered in is swapped, THE APP SHALL produce the same care charge.
+- [x] #3 WHEN the order two people were entered in is swapped, THE APP SHALL produce the same care charge.
 <!-- AC:END -->
 
 ## Tasks
@@ -159,3 +159,18 @@ the same wall. `## Not this card` gained the matching scope fence.
 
 Criteria 1 and 2 stay ticked and were re-run green (Engine suite, 518 tests). Criterion 3 stays open.
 Still built in a worktree and still nothing new to look at in a browser: no screen changed.
+
+**2026-10-11** RESULT: done
+TESTS: +0 new, all green
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Criterion 3 was closed by card 0101's commit (181dace), which made the cash, GIA and ISA draws in `PathProjector::fundShortfall` take from both living holders in proportion. That commit also added `test_swapping_the_order_leaves_a_drawdown_funded_care_spell_unchanged` and widened `test_swapping_the_order_the_household_was_entered_in_leaves_the_first_care_year_unchanged` to compare the whole spell, so this session had nothing left to build and changed no file.
+
+What this session checked rather than inherited:
+- Watched the criterion fail: with `PathProjector.php` put back to 181dace^ the drawdown-funded spell test fails for the criterion's own reason (care bill 39,988.26 vs 122,923.40 pounds by typing order). Restored to HEAD afterwards. The older widened test still passes against the pre-0101 engine, because its household self-funds every year in either order, so the drawdown test is the one that actually guards criterion 3.
+- Probed the passes card 0196 still leaves in declaration order (pension band fill and the free-gains GIA draw) with a throwaway test, both people holding equal DC pots or equal GIA-with-gains, small cash, one or both in care. The care charge was identical in both orders in every probe. 0196 still matters for the wider forecast (pots, LSA use, MPAA) but did not move the care charge here. Probe removed, nothing committed from it.
+
+One honest wart left alone: the older test's name still says `first_care_year` though it now asserts the whole spell. Renaming it would orphan the earlier comment on this card that cites it, so it is noted here instead.
+
+Full suite run from this worktree: green (one skip is the advice-mode partition test, by design). No screen changed, so there is nothing to see in a browser.
