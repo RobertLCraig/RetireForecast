@@ -31,3 +31,6 @@ Put the quoted rate on the buy-side mortgage of the sell-and-buy scenarios (66 a
 - `0034` - its engine fix may cut how much the purchase must borrow, so the quoted amount could fall.
 
 ## Comments
+
+
+**2026-10-11** **2026-10-11** Rob: waiting on an email from Mark with details of the new mortgage from Beverly.

@@ -62,3 +62,5 @@ later-life disability benefit and what it passports (0044, 0045). Detail in the 
 
 **2026-10-07** Condensed for reading. The YCC working-to-72 ask now points at card 0157 question 2,
 which asks the same thing (when the working partner stops work), so Rob answers it once.
+
+**2026-10-11** **2026-10-11** Rob: waiting on an email from Mark with details of the new mortgage from Beverly.

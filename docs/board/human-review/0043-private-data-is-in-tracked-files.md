@@ -112,3 +112,5 @@ WHY: The builder can only meet #1 after card 0174 runs, and the other tasks need
 
 OUTCOME: rob
 
+
+**2026-10-11** **Decided:** **2026-10-11** **Decided:** Option 1: delete the plaintext docs/scenario-backup-*.local.json files.

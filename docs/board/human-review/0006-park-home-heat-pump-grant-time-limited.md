@@ -40,3 +40,5 @@ rather than remembered. All read 2026-09-30.
   <https://www.ofgem.gov.uk/sites/default/files/2026-04/summary_of_updates_to_bus_guidance_for_installers_V5_20260424143100.pdf>
 - Owner must own the property and be replacing a fossil-fuel system; an MCS-certified installer must
   fit it within 120 days of the voucher. <https://www.gov.uk/apply-boiler-upgrade-scheme/check-if-youre-eligible>
+
+**2026-10-11** **Decided:** **2026-10-11** **Decided:** Option 1: write to one named park with the 3 questions.
