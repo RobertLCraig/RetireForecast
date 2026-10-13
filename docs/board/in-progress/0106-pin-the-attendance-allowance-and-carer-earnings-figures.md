@@ -70,3 +70,10 @@ TOUCHED: none
 OUT-OF-SCOPE: none
 
 This card needs web access, and this unattended session has none: WebFetch of gov.uk/attendance-allowance/what-youll-get and gov.uk/carers-allowance/eligibility, and WebSearch, were all refused for permission. The repository holds no published figure to pin from: docs/spec/ASSUMPTIONS.md section 20 still carries only the shipped values (AA 2026/27 GBP 76.70 / 114.60 derived; earnings limit GBP 196.00 / 203.36, the second derived from 16 x NLW). So neither criterion is met: #1 needs the fetched source URL and verified_on date, and #2 needs a published figure to compare against before its test can be watched failing. Nothing was changed or committed. Next step: run this card in an attended session with WebFetch allowed (the card's Plan says so), or have Rob paste the gov.uk rates for both years into the card.
+
+**2026-10-13** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second unattended take, same block as the first. WebFetch of gov.uk/attendance-allowance/what-youll-get and WebSearch were both refused for permission in this session. The repository still holds no published figure: docs/spec/ASSUMPTIONS.md section 20 (lines 432-438) carries only the shipped values, and no docs/research page has the AA or Carer's Allowance rates. So neither criterion is met: #1 needs a fetched source URL and verified_on date, and #2 needs a published figure before its test can be watched failing. Nothing was changed or committed. This card cannot advance in the unattended loop. Next step: run it in an attended session with WebFetch allowed, or have Rob paste the gov.uk AA rates and the Carer's Allowance earnings limit for 2025/26 and 2026/27 into the card. Suggest marking it not_for_the_loop so the scheduler stops re-queuing it.
