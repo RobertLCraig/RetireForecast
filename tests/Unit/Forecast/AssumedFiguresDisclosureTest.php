@@ -410,6 +410,29 @@ final class AssumedFiguresDisclosureTest extends TestCase
         $this->assertStringContainsString('2035', $note);
     }
 
+    /**
+     * Card 0100 AC#3. The lock's earnings limb runs on a national earnings figure the engine
+     * supplies for itself, so the triple lock note names it, read from the set the run used. The
+     * old sentence saying the limb is not modelled must be gone, or the page contradicts the run.
+     */
+    public function test_the_assumed_national_earnings_growth_is_disclosed_with_its_value(): void
+    {
+        $set = AssumptionSetLibrary::default();
+        $this->assertGreaterThan(0.0, $set->nationalEarningsRealGrowth()->asPercent(), 'the shipped default carries a sourced earnings figure');
+
+        $note = $this->only($this->disclosures(
+            ['salePrice' => '400000', 'annualRent' => '18000'],
+            set: $set,
+            variant: 'rent',
+            settings: new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+        ), 'triple lock');
+
+        $this->assertStringContainsString(self::pct($set->nationalEarningsRealGrowth()->asPercent()).'%', $note,
+            'the disclosed earnings growth must be the one the run used');
+        $this->assertStringContainsString('earnings', $note);
+        $this->assertStringNotContainsString('we do not model the earnings', $note);
+    }
+
     /** A lock that ends before the first uprating never lifts anything, so nothing is claimed. */
     public function test_nothing_is_disclosed_for_a_lock_that_ends_before_the_plan_uprates(): void
     {

@@ -38,7 +38,7 @@ use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
 final class AssumptionOverrides
 {
     /** The override keys, in the same order the read-only assumptions panel lists them. */
-    public const KEYS = ['investmentGrowth', 'inflation', 'houseGrowth', 'propertyVolatility', 'rentGrowth', 'salaryGrowth', 'incomeYield', 'careCostGrowth', 'investmentCharge'];
+    public const KEYS = ['investmentGrowth', 'inflation', 'houseGrowth', 'propertyVolatility', 'rentGrowth', 'salaryGrowth', 'nationalEarningsGrowth', 'incomeYield', 'careCostGrowth', 'investmentCharge'];
 
     /**
      * The overrides that are NOT percentages, so they cannot ride {@see KEYS} (which the panel,
@@ -87,6 +87,9 @@ final class AssumptionOverrides
         if (self::filled($overrides, 'salaryGrowth')) {
             $set = $set->withSalaryGrowth(self::percent($overrides['salaryGrowth']));
         }
+        if (self::filled($overrides, 'nationalEarningsGrowth')) {
+            $set = $set->withNationalEarningsRealGrowth(self::percent($overrides['nationalEarningsGrowth']));
+        }
         if (self::filled($overrides, 'incomeYield')) {
             $set = $set->withInvestmentIncomeYield(self::percent($overrides['incomeYield']));
         }
@@ -118,6 +121,7 @@ final class AssumptionOverrides
             'propertyVolatility' => self::format($set->singlePropertyVolatility()?->asPercent() ?? 0.0),
             'rentGrowth' => self::format($set->rentInflation->asPercent()),
             'salaryGrowth' => self::format($set->salaryGrowth->asPercent()),
+            'nationalEarningsGrowth' => self::format($set->nationalEarningsRealGrowth()->asPercent()),
             'incomeYield' => self::format($set->investmentIncomeYield->asPercent()),
             'careCostGrowth' => self::format($set->careCostRealGrowth()->asPercent()),
             'investmentCharge' => self::format($set->investmentCharge()->asPercent()),

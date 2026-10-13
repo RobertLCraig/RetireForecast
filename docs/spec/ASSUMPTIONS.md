@@ -422,11 +422,24 @@ cash **−0.5%**.
    has no web access, so treat the citation as a statement of the policy rather than a verified
    quotation of it.
    Two things about the modelling, both stated on the results page:
-   - **The earnings limb is not modelled.** The only earnings series the engine holds is the
-     household's own real salary growth, which is an assumption about one couple's pay and not
-     about national average weekly earnings, so using it would model one thing with another.
-     Leaving it out understates the State Pension, which errs the cautious way. Board card
-     **0100** carries closing it.
+   - **The earnings limb runs on national earnings, not salary growth (card 0100, verified
+     2026-10-11).** `AssumptionSet::$nationalEarningsRealGrowth` is real average weekly earnings
+     growth against CPI, editable as `nationalEarningsGrowth`. The household's own `salaryGrowth`
+     never reaches the State Pension. Per set:
+
+     | Set | Value | Source |
+     |---|---|---|
+     | FCA default | **0.25%** | OBR EFO March 2026 paras 2.29-2.30: weekly earnings 2.25% nominal in the medium term against 2% CPI. https://obr.uk/efo/economic-and-fiscal-outlook-march-2026/ |
+     | OBR/BoE | **0.25%** | The same. |
+     | DMS historical | **0.75%** | ONS AWE regular pay (KAI7) deflated by CPI (D7BT), 2000-2025. https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/timeseries/kai7/lms |
+
+     Alternatives, lowest first: 0.15% (ONS AWE 2008-2025, the weakest sustained period), 0.25%
+     (OBR forecast), 0.75% / 0.80% (ONS full record, regular / total pay), about 1.5% against the
+     GDP deflator (OBR FRS July 2026, the 50-year baseline, the optimistic end). A higher figure
+     raises the State Pension, so the default takes the lowest defensible forward figure. It is a
+     trend with no volatility of its own. At 2% CPI and 0.25% real the earnings limb gives 2.255%,
+     so the 2.5% floor still binds on the default path. Working in
+     docs/research/RESEARCH-0100-national-earnings-growth.md.
    - **The default is the full lock for the whole plan**, which reproduces every scenario stored
      before this card byte-identically, and is the OPTIMISTIC branch of contested policy. That is
      the reverse of the standing "adverse default, user-editable" rule, and it is a choice about

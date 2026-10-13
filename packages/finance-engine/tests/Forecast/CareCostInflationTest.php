@@ -167,6 +167,11 @@ final class CareCostInflationTest extends TestCase
             {
                 return $this->careGrowth;
             }
+
+            public function nationalEarningsRealGrowth(): float
+            {
+                return 0.0;
+            }
         };
     }
 }

@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-13 (rpi-wedge-39bp-obr-2026): a defined-benefit pension on an RPI basis now
+     * Bumped 2026-10-14 (triple-lock-earnings-limb): the triple lock now uprates the State Pension by
+     * the highest of national earnings growth (0.25% real on the default and OBR sets, 0.75% on the
+     * historical set), prices and 2.5%. Under the default the floor still binds at 2% CPI, so only
+     * Monte Carlo paths with inflation above about 2.24%, and every plan on the historical set, gain
+     * State Pension and Pension Credit income. Board card 0100.
+     * Previous bump 2026-10-13 (rpi-wedge-39bp-obr-2026): a defined-benefit pension on an RPI basis now
      * escalates at CPI + 0.39% (the OBR's long-run RPI-minus-CPI gap), not at CPI. Only plans with an
      * RPI-linked DB pension move, upward. Board card 0095.
      * Previous bump 2026-10-13 (bought-home-upkeep-has-a-flat-floor): a bought home with no running cost
@@ -608,7 +613,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/rpi-wedge-39bp-obr-2026';
+    public const ENGINE_VERSION = 'finance-engine/triple-lock-earnings-limb';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

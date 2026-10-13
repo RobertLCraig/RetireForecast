@@ -352,6 +352,7 @@ class ScenarioBuilder extends Component
             'assumptionOverrides.propertyVolatility' => ['nullable', 'numeric', 'between:0,60'],
             'assumptionOverrides.rentGrowth' => ['nullable', 'numeric', 'between:-15,30'],
             'assumptionOverrides.salaryGrowth' => ['nullable', 'numeric', 'between:-15,30'],
+            'assumptionOverrides.nationalEarningsGrowth' => ['nullable', 'numeric', 'between:-15,30'],
             'assumptionOverrides.incomeYield' => ['nullable', 'numeric', 'between:0,30'],
             // Care fees only ever rise in real terms (labour-cost driven); a small negative is
             // permitted for a deliberate optimistic stress, capped like the other growth figures.
@@ -2007,6 +2008,7 @@ class ScenarioBuilder extends Component
                 ['key' => 'propertyVolatility', 'label' => 'Your home\'s price swing (real)', 'note' => 'how far your OWN home\'s value moves year to year; wider than the index, because one home is not a market'],
                 ['key' => 'rentGrowth', 'label' => 'Rent growth (real)', 'note' => 'a year above inflation'],
                 ['key' => 'salaryGrowth', 'label' => 'Salary growth (real)', 'note' => 'a year above inflation'],
+                ['key' => 'nationalEarningsGrowth', 'label' => 'National earnings growth (real)', 'note' => 'average weekly earnings across the country, a year above inflation; the triple lock\'s earnings part'],
                 ['key' => 'incomeYield', 'label' => 'Investment income yield (nominal)', 'note' => 'the part of the return paid out and taxed each year'],
                 ['key' => 'careCostGrowth', 'label' => 'Care cost growth (real)', 'note' => 'how fast care-home fees rise above inflation (they outrun general prices)'],
                 ['key' => 'investmentCharge', 'label' => 'Investment charges (a year)', 'note' => 'platform and fund fees taken from pensions, ISAs and investments; cash pays none'],

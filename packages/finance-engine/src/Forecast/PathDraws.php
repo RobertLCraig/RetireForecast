@@ -83,4 +83,11 @@ interface PathDraws
      * {@see inflation}. See {@see AssumptionSet::$careCostRealGrowth}.
      */
     public function careCostRealGrowth(): float;
+
+    /**
+     * NATIONAL average-earnings growth above CPI, as a fraction: the triple lock's earnings limb
+     * ({@see AssumptionSet::$nationalEarningsRealGrowth}). Not sampled: a stated trend with no
+     * volatility of its own, the same simplification as the per-person salary override.
+     */
+    public function nationalEarningsRealGrowth(): float;
 }

@@ -3,6 +3,25 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-14: the triple lock's earnings limb runs on a national earnings figure, not salary growth
+
+**Context:** card 0100. The engine uprated the State Pension by the higher of prices and 2.5%; the
+earnings limb was missing. The only earnings figure it held was `salaryGrowth`, the household's own
+pay, which is entered and overridden per person.
+
+**Decision:** a new `AssumptionSet::$nationalEarningsRealGrowth`, sourced per set: 0.25% real on the
+default and OBR sets (OBR EFO March 2026 medium-term weekly earnings against 2% CPI), 0.75% on the
+historical set (ONS AWE regular pay 2000-2025). The lowest defensible forward figure was taken, as a
+higher one raises the State Pension. It is editable as `nationalEarningsGrowth`. Without the lock the
+State Pension still follows prices alone; that choice is card 0099's. Working in
+docs/research/RESEARCH-0100-national-earnings-growth.md.
+
+**Consequence:** Monte Carlo golden master pinned 2026-10-14 (pin f52c118f46b5). Under the default
+set the 2.5% floor still binds at 2% CPI, so only paths with inflation above about 2.24% gain, by
+0.25 points that year: essentials success 0.4500 to 0.4550, terminal wealth up at p25, p75 and p90.
+`ENGINE_VERSION` is `finance-engine/triple-lock-earnings-limb`. A stored `assumption_sets` row needs
+re-seeding before the figure reaches a forecast (`scenarios:audit` flags it).
+
 ## 2026-10-11: a gap between selling and buying is not modelled
 
 **Context:** card 0116, raised by card 0048 #2. The pension-age means test disregards the proceeds of a

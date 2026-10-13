@@ -159,6 +159,15 @@ final class AssumptionSet
          * @var list<FigureSource>
          */
         public readonly array $economicSourcing = [],
+        /**
+         * NATIONAL average weekly earnings growth, REAL (above CPI), annual: the triple lock's
+         * earnings limb (board card 0100). Not {@see $salaryGrowth}, which is the household's own
+         * pay and is overridden per person; the State Pension follows the country's earnings, not
+         * the couple's. Null = no real growth, so the earnings limb equals inflation and adds
+         * nothing, which keeps a hand-rolled test set byte-identical. Sourced in
+         * docs/spec/ASSUMPTIONS.md §19.
+         */
+        public readonly ?Percent $nationalEarningsRealGrowth = null,
     ) {}
 
     /**
@@ -219,6 +228,12 @@ final class AssumptionSet
     public function careCostRealGrowth(): Percent
     {
         return $this->careCostRealGrowth ?? Percent::zero();
+    }
+
+    /** National real average-earnings growth, the triple lock's earnings limb (zero if none). */
+    public function nationalEarningsRealGrowth(): Percent
+    {
+        return $this->nationalEarningsRealGrowth ?? Percent::zero();
     }
 
     /**
@@ -310,6 +325,7 @@ final class AssumptionSet
             $this->inflationAssetCorrelations,
             $this->isDefault,
             $this->economicSourcing,
+            $this->nationalEarningsRealGrowth,
         );
     }
 
@@ -343,6 +359,11 @@ final class AssumptionSet
         return $this->copy(careCostRealGrowth: $value);
     }
 
+    public function withNationalEarningsRealGrowth(Percent $value): self
+    {
+        return $this->copy(nationalEarningsRealGrowth: $value);
+    }
+
     public function withInvestmentCharge(Percent $value): self
     {
         return $this->copy(investmentCharge: $value);
@@ -369,6 +390,7 @@ final class AssumptionSet
         ?Percent $careCostRealGrowth = null,
         ?Percent $investmentCharge = null,
         ?Percent $singlePropertyVolatility = null,
+        ?Percent $nationalEarningsRealGrowth = null,
     ): self {
         return new self(
             $this->name,
@@ -392,6 +414,7 @@ final class AssumptionSet
             $this->inflationAssetCorrelations,
             $this->isDefault,
             $this->economicSourcing,
+            $nationalEarningsRealGrowth ?? $this->nationalEarningsRealGrowth,
         );
     }
 }

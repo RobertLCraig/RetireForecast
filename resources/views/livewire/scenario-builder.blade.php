@@ -404,7 +404,7 @@
                         @endforeach
                     </select>
                     <p class="mt-1 text-xs text-gray-500">
-                        The triple lock raises the State Pension by the highest of earnings, prices and a fixed floor. The floor is government policy, not law, and no government has promised it beyond the current Parliament, so assuming it survives a whole retirement is the <strong>cheerful</strong> choice. It also lifts the Pension Credit guarantee, which is uprated by the same figure. We do not model the earnings part of the lock, so in a year when wages beat both this runs on the cautious side.
+                        The triple lock raises the State Pension by the highest of earnings, prices and a fixed floor. The floor is government policy, not law, and no government has promised it beyond the current Parliament, so assuming it survives a whole retirement is the <strong>cheerful</strong> choice. It also lifts the Pension Credit guarantee, which is uprated by the same figure. The earnings part follows national earnings growth, which you can change in the assumptions, not your own pay.
                     </p>
                     @error('assumptionOverrides.statePensionUprating') <p id="statePensionUprating-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
 

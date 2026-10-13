@@ -34,6 +34,7 @@ final class SampledPathDraws implements PathDraws
         $this->salaryGrowth = $set->salaryGrowth->asFraction();
         $this->incomeYield = $set->investmentIncomeYield->asFraction();
         $this->careCostRealGrowth = $set->careCostRealGrowth()->asFraction();
+        $this->nationalEarningsRealGrowth = $set->nationalEarningsRealGrowth()->asFraction();
         $this->investmentCharge = $set->investmentCharge()->asFraction();
         $this->houseGrowth = $set->houseGrowth->asFraction();
         $this->singlePropertyMultiple = $set->singlePropertyVolatilityMultiple();
@@ -45,6 +46,9 @@ final class SampledPathDraws implements PathDraws
     private readonly float $incomeYield;
 
     private readonly float $careCostRealGrowth;
+
+    /** National real earnings growth: a stated trend, not sampled. */
+    private readonly float $nationalEarningsRealGrowth;
 
     /** The ongoing charge on invested balances: a price, not a risk, so it is not sampled. */
     private readonly float $investmentCharge;
@@ -111,6 +115,11 @@ final class SampledPathDraws implements PathDraws
     public function careCostRealGrowth(): float
     {
         return $this->careCostRealGrowth;
+    }
+
+    public function nationalEarningsRealGrowth(): float
+    {
+        return $this->nationalEarningsRealGrowth;
     }
 
     /**

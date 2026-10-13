@@ -1182,9 +1182,12 @@ final class ResultPresenter
                 ."percent, the {$floor} floor lifts the pension in most years while it runs, so it grows in real "
                 .'terms, and the Pension Credit guarantee rises with it, because that is uprated by the same '
                 .'figure. If you would rather not plan on that, you can end the lock in a year of your choosing or '
-                .'have the State Pension rise with prices alone. One thing works the other way: the real lock is the '
-                .'highest of earnings, prices and the floor, and we do not model the earnings part, because we hold '
-                .'no national wage series. So in a year when wages outrun both, this is on the cautious side.';
+                .'have the State Pension rise with prices alone.'
+                // The earnings limb (card 0100), its figure READ from the set the run used.
+                .($set === null ? '' : ' The lock is the highest of earnings, prices and the floor, and for the '
+                    .'earnings part we assume average weekly earnings across the country grow '
+                    .self::ratePct($set->nationalEarningsRealGrowth()->asPercent()).' a year faster than prices. '
+                    .'That is a national figure, not your own pay, and you can change it in the assumptions.');
         }
 
         // HOW LONG THE PLAN HAS TO LAST (board card 0061). This was each person's own median age at
@@ -3939,6 +3942,7 @@ final class ResultPresenter
             ['key' => 'houseGrowth', 'label' => 'House price growth (real)', 'value' => self::ratePct($set->houseGrowth->asPercent()), 'note' => 'a year above inflation'],
             ['key' => 'rentGrowth', 'label' => 'Rent growth (real)', 'value' => self::ratePct($set->rentInflation->asPercent()), 'note' => 'a year above inflation'],
             ['key' => 'salaryGrowth', 'label' => 'Salary growth (real)', 'value' => self::ratePct($set->salaryGrowth->asPercent()), 'note' => 'a year above inflation'],
+            ['key' => 'nationalEarningsGrowth', 'label' => 'National earnings growth (real)', 'value' => self::ratePct($set->nationalEarningsRealGrowth()->asPercent()), 'note' => 'average weekly earnings across the country, a year above inflation; the triple lock raises the State Pension by at least this, and your own salary growth does not move it'],
             ['key' => 'incomeYield', 'label' => 'Investment income yield (nominal)', 'value' => self::ratePct($set->investmentIncomeYield->asPercent()), 'note' => 'the part of the return paid out and taxed each year; the rest is capital growth'],
             ['key' => 'careCostGrowth', 'label' => 'Care cost growth (real)', 'value' => self::ratePct($set->careCostRealGrowth()->asPercent()), 'note' => 'how fast care-home fees rise above inflation; care outruns general prices, so a late-life care spell costs more the later it falls'],
             ['key' => 'investmentCharge', 'label' => 'Investment charges (a year)', 'value' => self::ratePct($set->investmentCharge()->asPercent()), 'note' => 'platform and fund fees taken out of pensions, ISAs and investments each year; the growth rate above is before charges, and cash deposits pay none'],

@@ -786,7 +786,7 @@ final class PathProjector
             'dbSchemes' => $dbSchemes,
             'spFactor' => 1.0,
             // How the State Pension is uprated, and (for a lock with an end date) the last year
-            // the 2.5% floor applies. It also carries the Pension Credit guarantee, which rides
+            // the triple lock (earnings, prices or 2.5%) applies. It also carries the Pension Credit guarantee, which rides
             // the same running factor. {@see StatePensionUprating} for what each choice means.
             'spUprating' => $settings->statePensionUprating,
             'spTripleLockUntilYear' => $settings->tripleLockUntilYear,
@@ -5354,6 +5354,7 @@ final class PathProjector
         // so "the lock ends in 2036" means 2036 is the last year the floor lifts the pension into.
         $state['spFactor'] *= 1.0 + $state['spUprating']->increase(
             $infl,
+            $draws->nationalEarningsRealGrowth(),
             $state['baseYear'] + $yearIndex + 1,
             $state['spTripleLockUntilYear'],
         );

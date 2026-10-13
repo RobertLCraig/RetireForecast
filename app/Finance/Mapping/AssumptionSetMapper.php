@@ -84,6 +84,8 @@ final class AssumptionSetMapper
             // clamped ones, so a re-sourced figure moves a set the reader never overrode.
             'inflationPersistence' => $set->inflationPersistence,
             'inflationAssetCorrelations' => $set->inflationAssetCorrelations,
+            // Board card 0100. Null = no earnings limb above prices, the pre-card behaviour.
+            'nationalEarningsRealGrowth' => $set->nationalEarningsRealGrowth !== null ? Codec::bps($set->nationalEarningsRealGrowth) : null,
             // Board card 0065. The per-figure sourcing rides the snapshot so a stored run stays
             // auditable back to where each of its economic figures came from and when that was last
             // checked. Without it a run kept its figures and lost their provenance, which is the
@@ -169,6 +171,9 @@ final class AssumptionSetMapper
                 ),
                 $payload['economicSourcing'] ?? [],
             ),
+            // Back-compat: a snapshot stored before board card 0100 has no earnings figure; null
+            // keeps the earnings limb at inflation, so an old stored run reproduces byte-identically.
+            nationalEarningsRealGrowth: isset($payload['nationalEarningsRealGrowth']) ? Codec::percent($payload['nationalEarningsRealGrowth']) : null,
         );
     }
 }

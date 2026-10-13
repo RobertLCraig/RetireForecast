@@ -130,6 +130,24 @@ final class AssumptionSetLibrary
         .'https://www.landecon.cam.ac.uk/sites/default/files/2023-05/crerc-wp-2020-01-lindenthal.pdf ), '
         .'so 2.0 is the cautious end. No UK study found.';
 
+    /**
+     * National real earnings growth, the triple lock's earnings limb (board card 0100). The
+     * forward-looking sets take the OBR's medium-term weekly-earnings forecast, the lowest
+     * defensible figure (a higher one raises the State Pension); the historical set takes the full
+     * ONS AWE record. Working and the alternatives in docs/research/RESEARCH-0100-national-earnings-growth.md.
+     */
+    public const OBR_EARNINGS_SOURCE = 'OBR Economic and Fiscal Outlook, March 2026, paras 2.29-2.30: nominal weekly '
+        .'earnings growth averaging 2.25% a year in the medium term against CPI at 2.0% from 2027, so about '
+        .'0.25% real. The OBR long-run (FRS July 2026) baseline of about 1.5% real is the optimistic end: '
+        .'https://obr.uk/efo/economic-and-fiscal-outlook-march-2026/';
+
+    public const ONS_EARNINGS_SOURCE = 'ONS Average Weekly Earnings, whole economy regular pay (KAI7) deflated by '
+        .'CPI (D7BT), 2000-2025 annual averages: 0.75% a year real (total pay KAB9: 0.80%; 2008-2025: 0.15%): '
+        .'https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/timeseries/kai7/lms';
+
+    /** The date the national earnings sources were read. */
+    public const NATIONAL_EARNINGS_VERIFIED_ON = '2026-10-11';
+
     /** The date the single-property multiple's sources were read. See {@see SINGLE_PROPERTY_SOURCE}. */
     public const SINGLE_PROPERTY_VERIFIED_ON = '2026-10-11';
 
@@ -211,7 +229,8 @@ final class AssumptionSetLibrary
             inflationPersistence: self::INFLATION_PERSISTENCE,
             inflationAssetCorrelations: self::INFLATION_ASSET_CORRELATIONS,
             isDefault: true,
-            economicSourcing: self::economicSourcing(self::OBR_MACRO_SOURCE),
+            economicSourcing: self::economicSourcing(self::OBR_MACRO_SOURCE, self::OBR_EARNINGS_SOURCE),
+            nationalEarningsRealGrowth: Percent::fromPercent(0.25),
         );
     }
 
@@ -252,7 +271,9 @@ final class AssumptionSetLibrary
             inflationAssetCorrelations: self::INFLATION_ASSET_CORRELATIONS,
             // This set reads its macro figures off the same long-run record its asset figures come
             // from, not off a forward-looking forecast, so its macro citation is that record.
-            economicSourcing: self::economicSourcing(self::DMS_RETURN_SOURCE),
+            economicSourcing: self::economicSourcing(self::DMS_RETURN_SOURCE, self::ONS_EARNINGS_SOURCE),
+            // The full AWE record, regular pay: the lower of the two series.
+            nationalEarningsRealGrowth: Percent::fromPercent(0.75),
         );
     }
 
@@ -288,7 +309,8 @@ final class AssumptionSetLibrary
             investmentCharge: Percent::fromPercent(0.5),
             inflationPersistence: self::INFLATION_PERSISTENCE,
             inflationAssetCorrelations: self::INFLATION_ASSET_CORRELATIONS,
-            economicSourcing: self::economicSourcing(self::OBR_MACRO_SOURCE),
+            economicSourcing: self::economicSourcing(self::OBR_MACRO_SOURCE, self::OBR_EARNINGS_SOURCE),
+            nationalEarningsRealGrowth: Percent::fromPercent(0.25),
         );
     }
 
@@ -337,7 +359,7 @@ final class AssumptionSetLibrary
      *
      * @return list<FigureSource>
      */
-    private static function economicSourcing(string $macroSource): array
+    private static function economicSourcing(string $macroSource, string $earningsSource): array
     {
         return [
             new FigureSource('correlationMatrix', 'Asset-class correlations', self::DMS_VOLATILITY_SOURCE, self::VERIFIED_ON),
@@ -356,6 +378,7 @@ final class AssumptionSetLibrary
             new FigureSource('singlePropertyVolatility', 'One home\'s volatility over the index', self::SINGLE_PROPERTY_SOURCE, self::SINGLE_PROPERTY_VERIFIED_ON),
             new FigureSource('inflationPersistence', 'Inflation persistence', self::INFLATION_DYNAMICS_SOURCE, self::INFLATION_DYNAMICS_VERIFIED_ON),
             new FigureSource('inflationAssetCorrelations', 'Inflation to asset-class correlations', self::INFLATION_DYNAMICS_SOURCE, self::INFLATION_DYNAMICS_VERIFIED_ON),
+            new FigureSource('nationalEarningsRealGrowth', 'Real national average weekly earnings growth', $earningsSource, self::NATIONAL_EARNINGS_VERIFIED_ON),
         ];
     }
 

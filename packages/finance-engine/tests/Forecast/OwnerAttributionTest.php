@@ -121,6 +121,11 @@ final class OwnerAttributionTest extends TestCase
             {
                 return 0.0;
             }
+
+            public function nationalEarningsRealGrowth(): float
+            {
+                return 0.0;
+            }
         };
     }
 

@@ -39,6 +39,8 @@ final class HistoricalSequenceDraws implements PathDraws
 
     private readonly float $careCostRealGrowth;
 
+    private readonly float $nationalEarningsRealGrowth;
+
     private readonly float $investmentCharge;
 
     private readonly float $weightEquity;
@@ -63,6 +65,7 @@ final class HistoricalSequenceDraws implements PathDraws
         $this->salaryGrowth = $set->salaryGrowth->asFraction();
         $this->incomeYield = $set->investmentIncomeYield->asFraction();
         $this->careCostRealGrowth = $set->careCostRealGrowth()->asFraction();
+        $this->nationalEarningsRealGrowth = $set->nationalEarningsRealGrowth()->asFraction();
         $this->investmentCharge = $set->investmentCharge()->asFraction();
         $this->weightEquity = $allocation->weights[0] ?? 0.0;
         $this->weightBond = $allocation->weights[1] ?? 0.0;
@@ -138,5 +141,10 @@ final class HistoricalSequenceDraws implements PathDraws
     public function careCostRealGrowth(): float
     {
         return $this->careCostRealGrowth;
+    }
+
+    public function nationalEarningsRealGrowth(): float
+    {
+        return $this->nationalEarningsRealGrowth;
     }
 }

@@ -52,7 +52,7 @@ final class StatePensionUpratingTest extends TestCase
      * is the only thing moving and every expected figure is the base pension times a compounding
      * factor.
      */
-    private function assumptionsWithInflation(float $percent): AssumptionSet
+    private function assumptionsWithInflation(float $percent, ?float $earningsRealPercent = null, float $salaryGrowthPercent = 0.0): AssumptionSet
     {
         return new AssumptionSet(
             name: 'flat', sourceNote: 'test',
@@ -64,7 +64,8 @@ final class StatePensionUpratingTest extends TestCase
             correlationMatrix: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
             inflationMean: Percent::fromPercent($percent), inflationVolatility: Percent::zero(),
             houseGrowth: Percent::zero(), rentInflation: Percent::zero(),
-            salaryGrowth: Percent::zero(), investmentIncomeYield: Percent::zero(),
+            salaryGrowth: Percent::fromPercent($salaryGrowthPercent), investmentIncomeYield: Percent::zero(),
+            nationalEarningsRealGrowth: $earningsRealPercent !== null ? Percent::fromPercent($earningsRealPercent) : null,
         );
     }
 
@@ -80,13 +81,17 @@ final class StatePensionUpratingTest extends TestCase
         ?int $tripleLockUntilYear = null,
         float $inflationPercent = 1.0,
         bool $rentArm = false,
+        ?float $earningsRealPercent = null,
+        float $salaryGrowthPercent = 0.0,
+        ?float $personSalaryGrowthPercent = null,
     ): array {
+        $personSalary = $personSalaryGrowthPercent !== null ? Percent::fromPercent($personSalaryGrowthPercent) : null;
         $household = new Household(
             'State Pension uprating',
             RegionProfile::EnglandWalesNi,
             [
-                new Person('p1', new DateTimeImmutable('1950-01-01'), Sex::Male, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(99)),
-                new Person('p2', new DateTimeImmutable('1952-01-01'), Sex::Female, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(99)),
+                new Person('p1', new DateTimeImmutable('1950-01-01'), Sex::Male, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(99), salaryGrowth: $personSalary),
+                new Person('p2', new DateTimeImmutable('1952-01-01'), Sex::Female, EmploymentStatus::Retired, longevity: LongevityAdjustment::fixedAge(99), salaryGrowth: $personSalary),
             ],
             new ExpenseProfile(Money::fromPounds(18_000), Money::zero(), Percent::fromPercent(70)),
             pensions: [
@@ -95,7 +100,7 @@ final class StatePensionUpratingTest extends TestCase
             ],
             primaryResidence: $rentArm ? new Property(currentValue: Money::fromPounds(300_000), ownership: OwnershipType::Outright) : null,
         );
-        $assumptions = $this->assumptionsWithInflation($inflationPercent);
+        $assumptions = $this->assumptionsWithInflation($inflationPercent, $earningsRealPercent, $salaryGrowthPercent);
         $settings = new ForecastSettings(
             baseYear: 2026,
             baseTaxYear: '2026-27',
@@ -200,6 +205,43 @@ final class StatePensionUpratingTest extends TestCase
             $this->statePensionByYear(StatePensionUprating::Inflation, inflationPercent: 1.0)[2046],
             $this->statePensionByYear(StatePensionUprating::TripleLockUntil, inflationPercent: 1.0)[2046],
         );
+    }
+
+    /**
+     * Card 0100 AC#1. The third limb. At 2% inflation and national earnings 1% a year above it,
+     * earnings grow 3.02% nominal, which beats both the 2% prices and the 2.5% floor, so the
+     * locked pension rises 3.02% a year. A double lock would give 2.5%, which is what this
+     * catches. Prices-only ignores earnings altogether: that choice is card 0099's, not this one's.
+     */
+    public function test_the_earnings_limb_wins_when_it_beats_prices_and_the_floor(): void
+    {
+        $sp = $this->statePensionByYear(inflationPercent: 2.0, earningsRealPercent: 1.0);
+
+        $this->assertEqualsWithDelta($this->compounded($sp, 3.02, 20), $sp[2046], 200.0,
+            'the lock pays the earnings limb (1.02 x 1.01 - 1 = 3.02%), not the 2.5% floor');
+
+        $this->assertEqualsWithDelta(
+            $this->compounded($sp, 2.0, 20),
+            $this->statePensionByYear(StatePensionUprating::Inflation, inflationPercent: 2.0, earningsRealPercent: 1.0)[2046],
+            200.0,
+            'with the lock dropped the pension follows prices alone',
+        );
+    }
+
+    /**
+     * Card 0100 AC#2. The earnings limb is the COUNTRY's earnings, not the couple's. A household
+     * expecting big pay rises (5% real on the set, 8% real per person) gets exactly the State
+     * Pension it would get on flat pay, because the triple lock does not read their payslips.
+     */
+    public function test_a_persons_salary_growth_override_does_not_move_the_state_pension(): void
+    {
+        $flatPay = $this->statePensionByYear(inflationPercent: 2.0, earningsRealPercent: 1.0);
+        $bigRises = $this->statePensionByYear(
+            inflationPercent: 2.0, earningsRealPercent: 1.0,
+            salaryGrowthPercent: 5.0, personSalaryGrowthPercent: 8.0,
+        );
+
+        $this->assertSame($flatPay, $bigRises, 'the household\'s own salary growth must not move the State Pension');
     }
 
     /**

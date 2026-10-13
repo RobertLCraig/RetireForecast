@@ -10,11 +10,11 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * How the State Pension is uprated each year, for the whole length of a projection.
  *
  * The triple lock raises the State Pension by the HIGHEST of average earnings growth, CPI, or
- * 2.5%. This engine models the last two limbs ({@see TRIPLE_LOCK_FLOOR_BPS}); the earnings limb
- * is not modelled, because the only earnings series the engine carries is the household's own
- * real salary growth, which is an assumption about one couple's pay and not about national
- * average weekly earnings. Leaving it out understates the State Pension, so the omission errs
- * in the cautious direction — but it is an omission, and the disclosure says so.
+ * 2.5% ({@see TRIPLE_LOCK_FLOOR_BPS}). All three limbs are modelled. The earnings limb reads the
+ * set's NATIONAL real earnings growth ({@see AssumptionSet::$nationalEarningsRealGrowth}), never
+ * the household's own salary growth, which is one couple's pay and not the country's (card 0100).
+ * Without the lock the State Pension follows prices alone; whether it should follow earnings
+ * there instead is card 0099's question.
  *
  * Until board card 0038 the floor was a bare `max($infl, 0.025)` in the projector: no source, no
  * assumption field, no control and nothing on any screen. With inflation modelled near 2% the
@@ -57,15 +57,17 @@ enum StatePensionUprating: string
     }
 
     /**
-     * The nominal rise the State Pension takes into $calendarYear, as a fraction. $untilYear is
-     * the last year the floor applies under {@see TripleLockUntil} and is ignored by the other
-     * two; a TripleLockUntil with no year is the same as prices alone, because a lock with no end
-     * date that was asked to have one has nothing to lock to.
+     * The nominal rise the State Pension takes into $calendarYear, as a fraction. While the lock
+     * holds it is the highest of prices, nominal earnings (real $earningsReal on top of
+     * $inflation) and the floor; otherwise prices alone. $untilYear is the last year the lock
+     * applies under {@see TripleLockUntil} and is ignored by the other two; a TripleLockUntil with
+     * no year is the same as prices alone, because a lock with no end date that was asked to have
+     * one has nothing to lock to.
      */
-    public function increase(float $inflation, int $calendarYear, ?int $untilYear = null): float
+    public function increase(float $inflation, float $earningsReal, int $calendarYear, ?int $untilYear = null): float
     {
         return $this->floorApplies($calendarYear, $untilYear)
-            ? max($inflation, self::floor()->asFraction())
+            ? max($inflation, (1.0 + $earningsReal) * (1.0 + $inflation) - 1.0, self::floor()->asFraction())
             : $inflation;
     }
 

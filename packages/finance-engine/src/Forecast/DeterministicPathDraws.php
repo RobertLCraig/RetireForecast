@@ -48,6 +48,8 @@ final class DeterministicPathDraws implements PathDraws
 
     private readonly float $careCostRealGrowth;
 
+    private readonly float $nationalEarningsRealGrowth;
+
     private readonly float $investmentCharge;
 
     /**
@@ -67,6 +69,7 @@ final class DeterministicPathDraws implements PathDraws
         $this->salaryGrowth = $set->salaryGrowth->asFraction();
         $this->incomeYield = $set->investmentIncomeYield->asFraction();
         $this->careCostRealGrowth = $set->careCostRealGrowth()->asFraction();
+        $this->nationalEarningsRealGrowth = $set->nationalEarningsRealGrowth()->asFraction();
         $this->investmentCharge = $set->investmentCharge()->asFraction();
     }
 
@@ -133,5 +136,10 @@ final class DeterministicPathDraws implements PathDraws
     public function careCostRealGrowth(): float
     {
         return $this->careCostRealGrowth;
+    }
+
+    public function nationalEarningsRealGrowth(): float
+    {
+        return $this->nationalEarningsRealGrowth;
     }
 }
