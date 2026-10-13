@@ -132,3 +132,5 @@ WHY: The work left is web research, and only an attended session (or a permissio
 
 OUTCOME: rob
 
+
+**2026-10-13** Research done in an attended session with web access: `docs/research/RESEARCH-0095-db-escalation-figures.md` holds both figures with source URLs and verified_on dates (RPI-over-CPI wedge 0 to 39 bps from the OBR long-run determinants; the 3% fixed default stands, PPF Purple Book 2025). Build from that note; it needs no web. The wedge moves, so the ENGINE_VERSION bump in the Plan is owed. Committed with this card as its evidence. Moved to todo/ for the loop. (agent, after Rob's 2026-10-13 clear-down)
