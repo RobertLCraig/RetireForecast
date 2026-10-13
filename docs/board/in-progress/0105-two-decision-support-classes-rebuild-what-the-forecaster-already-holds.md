@@ -38,8 +38,8 @@ Memoising the bisection itself, any cache that outlives the response (0042's own
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN the sustainable-spend search and the advice-cost comparison resolve a plan's inputs, THE APP SHALL read the forecaster's memoised answer rather than deriving the household a second time. proves: `test_the_decision_support_classes_derive_the_household_once`
-- [ ] #2 WHEN a scenario names a housing variant the ladder does not know, THE APP SHALL fall back to stay-put rather than erroring. proves: `test_an_unknown_variant_falls_back_to_stay_put`
+- [x] #1 WHEN the sustainable-spend search and the advice-cost comparison resolve a plan's inputs, THE APP SHALL read the forecaster's memoised answer rather than deriving the household a second time. proves: `test_the_decision_support_classes_derive_the_household_once`
+- [x] #2 WHEN a scenario names a housing variant the ladder does not know, THE APP SHALL fall back to stay-put rather than erroring. proves: `test_an_unknown_variant_falls_back_to_stay_put`
 <!-- AC:END -->
 
 ## Tasks
@@ -65,3 +65,16 @@ builder's own validation will not produce but a hand-edited or migrated row can.
 
 No figure should move: the inputs are the same objects, only resolved once. `GoldenMasterTest` and
 the sustainable-spend tests pin that.
+
+## Comments
+
+**2026-10-13** RESULT: done
+TESTS: +2 new, all green
+TOUCHED: tests/Feature/DecisionSupport/DecisionSupportVariantInputsTest.php
+OUT-OF-SCOPE: none
+
+The code this card asks for was already on master: commit 77c1ac0 (2026-10-04) replaced the hand-rolled blocks in SustainableSpend::forScenario() and AdviceCostComparison with $this->forecaster->variantInputs(), and both take their assumptions from it, so from ScenarioForecaster::assumptions(). No production file changed here. What was missing was the two proves: tests, now in DecisionSupportVariantInputsTest.
+
+Watched failing against the pre-77c1ac0 versions of the two classes (checked out from 77c1ac0~1, then restored to HEAD): #1 failed 'Failed asserting that 2 is identical to 1' for each class separately; #2 failed 'Undefined array key "not_a_variant"' in SustainableSpend. The old AdviceCostComparison already had the ?? stay_put fallback, so #2's advice-cost assertions guard but were never red.
+
+One blind spot found and closed while writing #1: ScenarioForecaster is a scoped singleton and its memo keys on the row, so a second probe of the same row read the first probe's warm memo and counted 1 even on the old code. The test calls forgetScopedInstances() between the two probes. No figure moved; nothing needs a browser check.
