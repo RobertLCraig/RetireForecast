@@ -159,3 +159,5 @@ Third unattended run, same two walls. Nothing changed in the tree.
 The code reading in the 2026-09-05 entries is still accurate; I did not repeat it.
 
 The scheduler started this card although its `needs: 0069` is unresolved, which docs/board/README.md line 89 says the unattended loop will not do. That is a fault in ProgressBoard's scheduler, not in this repository, so no card was raised on this board. Suggest moving this card out of in-progress until 0069 is answered and a web-enabled session is available.
+
+**2026-10-13** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 3 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
