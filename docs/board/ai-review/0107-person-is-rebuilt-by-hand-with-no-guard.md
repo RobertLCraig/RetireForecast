@@ -30,8 +30,8 @@ death-in-service cover; that is its whole job and stays.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] THE APP SHALL copy a Person through one private method, so a new field is carried by every copy without editing each one. proves: `test_every_person_wither_carries_every_field`
-- [ ] WHEN a Person copy drops a field, THE APP SHALL fail a test that enumerates the DTO's own properties by reflection. proves: `test_every_person_wither_carries_every_field`
+- [x] THE APP SHALL copy a Person through one private method, so a new field is carried by every copy without editing each one. proves: `test_every_person_wither_carries_every_field`
+- [x] WHEN a Person copy drops a field, THE APP SHALL fail a test that enumerates the DTO's own properties by reflection. proves: `test_every_person_wither_carries_every_field`
 <!-- AC:END -->
 
 ## Tasks
@@ -53,3 +53,16 @@ Stand in `C:\Dev\RetireForecast` on `master`. The DTO is
 moving is the pass.
 
 ## Comments
+
+**2026-10-13** RESULT: done
+TESTS: +1 new, all green
+TOUCHED: packages/finance-engine/src/Dto/Person.php
+TOUCHED: packages/finance-engine/tests/Dto/PersonWitherTest.php
+TOUCHED: app/DecisionSupport/ProtectionGap.php
+OUT-OF-SCOPE: none
+
+`Person` now has a private keyed `copy()` (the ExpenseProfile shape). withPlannedRetirementAge(), withLongevity() and a new withoutDeathInServiceCover() all go through it; ProtectionGap::withoutEmployerCover() calls the new wither instead of hand-listing the constructor.
+
+Watched red first: the new wither was added as a hand rebuild that left out disabilityBenefitFromAge (the card-0044 fault). The test failed with "withoutDeathInServiceCover() silently dropped or altered $disabilityBenefitFromAge" (null vs 75). Then the rebuild moved into copy() and it went green.
+
+The test reads the constructor's parameters by reflection. It first asserts that every defaulted field in the fixture differs from its default (assertNotSame, because assertNotEquals treats null and false as equal). So a field that copy() forgets reverts to its default and goes red. Because of that, no separate source-text test is needed. No projection changed: no ENGINE_VERSION bump and no re-run is owed. Ran the suite with php artisan test because vendor/bin/pest.bat does not exist in this repo.
