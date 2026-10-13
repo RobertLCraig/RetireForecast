@@ -38,9 +38,9 @@ Whether the lock survives, and for how long. That is card 0099.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 THE APP SHALL uprate the State Pension by the highest of national earnings growth, inflation and the floor. proves: `test_the_earnings_limb_wins_when_it_beats_prices_and_the_floor`
-- [ ] #2 THE APP SHALL carry the national earnings assumption as a sourced figure, separate from any person's own salary growth. proves: `test_a_persons_salary_growth_override_does_not_move_the_state_pension`
-- [ ] #3 WHEN the earnings assumption is the engine's own, THE APP SHALL disclose it with its value. proves: `test_the_assumed_national_earnings_growth_is_disclosed_with_its_value`
+- [x] #1 THE APP SHALL uprate the State Pension by the highest of national earnings growth, inflation and the floor. proves: `test_the_earnings_limb_wins_when_it_beats_prices_and_the_floor`
+- [x] #2 THE APP SHALL carry the national earnings assumption as a sourced figure, separate from any person's own salary growth. proves: `test_a_persons_salary_growth_override_does_not_move_the_state_pension`
+- [x] #3 WHEN the earnings assumption is the engine's own, THE APP SHALL disclose it with its value. proves: `test_the_assumed_national_earnings_growth_is_disclosed_with_its_value`
 <!-- AC:END -->
 
 ## Tasks
@@ -127,3 +127,16 @@ OUTCOME: rob
 
 
 **2026-10-13** Research done in an attended session with web access: `docs/research/RESEARCH-0100-national-earnings-growth.md` holds the sourced national earnings real-growth default, its URL and verified_on date, and the property, override key and label to add. Build from that note; it needs no web. Committed with this card as its evidence. Moved to todo/ for the loop. (agent, after Rob's 2026-10-13 clear-down)
+
+**2026-10-14** RESULT: done
+TESTS: +3 new, all green
+TOUCHED: app/Finance/Mapping/AssumptionSetMapper.php, app/Forecast/AssumptionOverrides.php, app/Forecast/ResultPresenter.php, app/Forecast/ScenarioForecaster.php, app/Livewire/ScenarioBuilder.php, docs/DECISIONS.md, docs/HANDOVER.md, docs/spec/ASSUMPTIONS.md, packages/finance-engine/src/Assumptions/AssumptionSetLibrary.php, packages/finance-engine/src/Dto/AssumptionSet.php, packages/finance-engine/src/Forecast/DeterministicPathDraws.php, packages/finance-engine/src/Forecast/HistoricalSequenceDraws.php, packages/finance-engine/src/Forecast/PathDraws.php, packages/finance-engine/src/Forecast/PathProjector.php, packages/finance-engine/src/MonteCarlo/SampledPathDraws.php, packages/finance-engine/src/StatePension/StatePensionUprating.php, packages/finance-engine/tests/Forecast/CareCostInflationTest.php, packages/finance-engine/tests/Forecast/CareMeansTestedChargeTest.php, packages/finance-engine/tests/Forecast/CouncilTaxTest.php, packages/finance-engine/tests/Forecast/OwnerAttributionTest.php, packages/finance-engine/tests/Forecast/StatePensionUpratingTest.php, packages/finance-engine/tests/MonteCarlo/GoldenMasterTest.php, resources/views/livewire/scenario-builder.blade.php, tests/Unit/Forecast/AssumedFiguresDisclosureTest.php
+OUT-OF-SCOPE: none
+
+Built from docs/research/RESEARCH-0100-national-earnings-growth.md, no web needed. AssumptionSet::$nationalEarningsRealGrowth (0.25% on the default and OBR sets, cited to OBR EFO March 2026; 0.75% on the DMS set, cited to ONS AWE KAI7/D7BT 2000-2025; verified_on 2026-10-11) with a FigureSource row, mapper round-trip, override key nationalEarningsGrowth (KEYS, apply, presetFigures, builder field + validation, results assumptions row). PathDraws::nationalEarningsRealGrowth() in all three draws (not sampled) and the four engine test doubles. StatePensionUprating::increase() takes the earnings rate as its third limb under the lock; Inflation and after-TripleLockUntil stay prices alone (card 0099's question).
+
+Watched fail: #1 red at 2.5% where 3.02% was due. #3 red on the old 'we do not model the earnings part' note. #2 was green before the change, because nothing wired salary to the State Pension; I watched it fail by temporarily wiring the limb to salaryGrowthReal, then restored it.
+
+The Monte Carlo golden master moved (essentials success 0.4500 to 0.4550, terminal wealth up at p25/p75/p90), as the research predicted for paths with inflation above about 2.24%. Re-pinned with PIN_REVISION 2026-10-14 and a DECISIONS entry. ENGINE_VERSION is finance-engine/triple-lock-earnings-limb.
+
+Still owed by a person: re-seed the assumption_sets table (AssumptionSetSeeder), or the stored rows lack the key, hydrate it as null, and the limb adds nothing; scenarios:audit reports it until then. Then re-run stored scenarios. The new builder field, results assumptions row, triple lock note and builder help text are NOT seen in a browser: this worktree is not what Herd serves.
