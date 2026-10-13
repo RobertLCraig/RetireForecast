@@ -132,48 +132,51 @@ final class Person
     /** The same person with a different planned retirement age (immutable; e.g. a sweep lever). */
     public function withPlannedRetirementAge(?int $plannedRetirementAge): self
     {
-        return new self(
-            $this->id,
-            $this->dob,
-            $this->sex,
-            $this->employmentStatus,
-            $this->grossSalary,
-            $this->salaryGrowth,
-            $plannedRetirementAge,
-            $this->niCategory,
-            $this->name,
-            $this->longevity,
-            $this->receivesDisabilityBenefit,
-            $this->caresForPartner,
-            $this->deathInServiceCover,
-            $this->disabilityBenefitFromAge,
-            $this->disabilityAwardRate,
-            $this->hasWill,
-            $this->ukLongTermResident,
-        );
+        return $this->copy(['plannedRetirementAge' => $plannedRetirementAge]);
     }
 
     /** The same person with a different lifespan what-if (immutable; e.g. a per-person longevity sweep). */
     public function withLongevity(?LongevityAdjustment $longevity): self
     {
+        return $this->copy(['longevity' => $longevity]);
+    }
+
+    /** The same person with no employer death-in-service cover (the protection-gap comparator). */
+    public function withoutDeathInServiceCover(): self
+    {
+        return $this->copy(['deathInServiceCover' => null]);
+    }
+
+    /**
+     * The ONE place a Person is rebuilt from an existing one, so a field added to this DTO cannot be
+     * silently dropped by a wither that listed the constructor arguments by hand (card 0107; card
+     * 0044 had to edit three such lists). Keyed by field name, as `ExpenseProfile::copy()` is, so a
+     * wither can SET a field to null. Guarded by `PersonWitherTest`.
+     *
+     * @param  array<string, mixed>  $changes  field name => its new value
+     */
+    private function copy(array $changes): self
+    {
+        $take = fn (string $field): mixed => array_key_exists($field, $changes) ? $changes[$field] : $this->{$field};
+
         return new self(
-            $this->id,
-            $this->dob,
-            $this->sex,
-            $this->employmentStatus,
-            $this->grossSalary,
-            $this->salaryGrowth,
-            $this->plannedRetirementAge,
-            $this->niCategory,
-            $this->name,
-            $longevity,
-            $this->receivesDisabilityBenefit,
-            $this->caresForPartner,
-            $this->deathInServiceCover,
-            $this->disabilityBenefitFromAge,
-            $this->disabilityAwardRate,
-            $this->hasWill,
-            $this->ukLongTermResident,
+            id: $take('id'),
+            dob: $take('dob'),
+            sex: $take('sex'),
+            employmentStatus: $take('employmentStatus'),
+            grossSalary: $take('grossSalary'),
+            salaryGrowth: $take('salaryGrowth'),
+            plannedRetirementAge: $take('plannedRetirementAge'),
+            niCategory: $take('niCategory'),
+            name: $take('name'),
+            longevity: $take('longevity'),
+            receivesDisabilityBenefit: $take('receivesDisabilityBenefit'),
+            caresForPartner: $take('caresForPartner'),
+            deathInServiceCover: $take('deathInServiceCover'),
+            disabilityBenefitFromAge: $take('disabilityBenefitFromAge'),
+            disabilityAwardRate: $take('disabilityAwardRate'),
+            hasWill: $take('hasWill'),
+            ukLongTermResident: $take('ukLongTermResident'),
         );
     }
 }

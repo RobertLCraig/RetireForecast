@@ -238,17 +238,7 @@ final class ProtectionGap
     private function withoutEmployerCover(Household $household, string $personId): Household
     {
         return $household->withPersons(array_map(
-            static fn (Person $p): Person => $p->id === $personId
-                ? new Person(
-                    $p->id, $p->dob, $p->sex, $p->employmentStatus, $p->grossSalary, $p->salaryGrowth,
-                    $p->plannedRetirementAge, $p->niCategory, $p->name, $p->longevity,
-                    $p->receivesDisabilityBenefit, $p->caresForPartner, deathInServiceCover: null,
-                    disabilityBenefitFromAge: $p->disabilityBenefitFromAge,
-                    disabilityAwardRate: $p->disabilityAwardRate,
-                    hasWill: $p->hasWill,
-                    ukLongTermResident: $p->ukLongTermResident,
-                )
-                : $p,
+            static fn (Person $p): Person => $p->id === $personId ? $p->withoutDeathInServiceCover() : $p,
             $household->persons,
         ));
     }
