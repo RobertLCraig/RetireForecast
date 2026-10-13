@@ -27,8 +27,8 @@ corrupted artefact), and any change to the retry window.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a worker restarts while an export is building, THE APP SHALL NOT build the same user's export twice at once. proves: `test_a_restarted_worker_cannot_build_the_same_export_twice_at_once`
-- [ ] #2 WHEN two different users export at the same time, THE APP SHALL build both. proves: `test_two_users_exports_do_not_block_each_other`
+- [x] #1 WHEN a worker restarts while an export is building, THE APP SHALL NOT build the same user's export twice at once. proves: `test_a_restarted_worker_cannot_build_the_same_export_twice_at_once`
+- [x] #2 WHEN two different users export at the same time, THE APP SHALL build both. proves: `test_two_users_exports_do_not_block_each_other`
 <!-- AC:END -->
 
 ## Tasks
@@ -45,3 +45,13 @@ not on the Git Bash PATH).
 middleware through a pipeline and nests a second attempt inside the first, which is how a
 concurrent worker is expressed without a worker. Windows has no `pcntl`, so nothing here can be
 proved by running one.
+
+## Comments
+
+**2026-10-13** RESULT: done
+TESTS: +2 new, all green
+TOUCHED: app/Jobs/BuildScenarioExport.php
+tests/Feature/Queue/QueuedRunSafetyTest.php
+OUT-OF-SCOPE: none
+
+BuildScenarioExport now has middleware(): WithoutOverlapping on the user id, dontRelease(), expireAfter($timeout + 60), the same shape as the two forecast jobs. The two proves: tests sit in QueuedRunSafetyTest and reuse its existing overlap pair with BuildScenarioExport::class. #1 was watched failing first ("Two workers ran BuildScenarioExport ... 2 is identical to 1"). #2 was green before the fix as well as after: with no middleware nothing blocks, so it is a guard that the lock is per user and not global, and it cannot fail before a lock exists. As the card says, no real worker runs here (no pcntl on Windows); the proof is the job's own middleware driven through a pipeline. No browser check is needed or done.
