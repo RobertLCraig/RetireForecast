@@ -4,13 +4,12 @@ waiting_on: a formal RICS valuation and a written position from the lender - rec
 # Settle what the flat is worth, and what happens if it does not sell
 
 ## What I need from you
-The recheck date (9 September) has passed.
+Two things, both outside the app. The recheck date (9 September) has passed.
 1. Instruct a formal RICS valuation (by a chartered surveyor, a few hundred pounds). Pass: a written valuation. Another agent's appraisal is a fail.
 2. Ask the lender, in writing: what happens at the redemption date if the flat is not under offer, and what evidence would they need to extend? Pass: a written answer. A phone answer is a fail.
-3. Tell me which sale price the base plan should run on.
 
-**My recommendation:** for 3, drop the top appraisal and plan on a lower "must sell by a deadline" price, below the middle figure. Ask 2 is the most urgent: it is the biggest risk on the board.
-Paste to answer: `**2026-10-07** **Decided:** RICS valuation £___ on <date>. Lender says ___. Base runs on £___.`
+**My recommendation:** do 2 first: it is the biggest risk on the board.
+Paste to answer: `**2026-10-13** **Decided:** RICS valuation £___ on <date>. Lender says ___.`
 
 ## What you need to know
 - Every sell plan rests on one price, and the evidence is wide: an agent's desktop appraisal at the top, a broker well below it, and one lender's surveyor who declined to lend at all.
@@ -35,3 +34,5 @@ Set the base scenario's sale price to the answer and anchor card 0027's forced-s
 
 
 **2026-10-13** **Decided:** Q3: the base plan runs on the lower must-sell-by-a-deadline price, below the middle appraisal. Q1 and Q2 still open. (Rob, attended clear-down 2026-10-13)
+
+**2026-10-13** Ask cut to Q1 and Q2; Q3 is answered above. The base plan's sale price is not a config or seeded value: it is `housing.salePrice` inside the stored scenario's encrypted `scenarios.builder_state` (pgsql database, edited on the housing step of the scenario builder; `HouseholdAssembler` reads it). `DemoScenario` holds only the demo's own figure. So the next session changes that one field on the base scenario to a must-sell-by-deadline price below the middle appraisal, re-runs it, and re-anchors it to the RICS figure once Q1 lands. No new card raised. (agent, after Rob's 2026-10-13 clear-down)
