@@ -145,3 +145,17 @@ re-sourcing it and disclosing it, in those words. No new card raised.
 Nothing under `packages/` or `app/` changed, so the suite result is the baseline and not evidence
 about this card. `pint --dirty` passes on the diff; a whole-repository `pint --test` exits 1 on
 three files this card never opened, raised as card 0083.
+
+**2026-10-13** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Third unattended run, same two walls. Nothing changed in the tree.
+
+- #1 and #2 need a sourced months-from-instruction-to-completion figure. WebSearch was refused again in this session (permission not granted), so it still cannot be sourced here. One attended session with the web clears it.
+- #3 needs the forced-sale discount anchored to the RICS valuation. Card 0069 is still in human-review: Q3 is decided (base plan uses a must-sell-by-deadline price), but Q1 (the RICS valuation) and Q2 (the lender's written position) are open. So `needs: 0069` is still unresolved.
+
+The code reading in the 2026-09-05 entries is still accurate; I did not repeat it.
+
+The scheduler started this card although its `needs: 0069` is unresolved, which docs/board/README.md line 89 says the unattended loop will not do. That is a fault in ProgressBoard's scheduler, not in this repository, so no card was raised on this board. Suggest moving this card out of in-progress until 0069 is answered and a web-enabled session is available.
