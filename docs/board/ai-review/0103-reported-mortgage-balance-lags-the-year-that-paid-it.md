@@ -36,9 +36,9 @@ is applied to the household's share of the balance rather than the whole. The no
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a year of a repayment mortgage is reported, THE APP SHALL show the balance left after that year's instalments, not the balance it opened with. proves: `test_a_reported_year_shows_the_mortgage_balance_after_that_years_payments`
-- [ ] #2 WHEN a year of a lifetime mortgage is reported, THE APP SHALL show the balance after that year's roll-up. proves: `test_a_reported_year_shows_the_rolled_up_lifetime_mortgage_balance`
-- [ ] #3 WHEN the mortgage reporting point moves, THE APP SHALL keep every stored figure reconciling, so the sum of the parts still equals the reported total wealth. proves: `test_total_wealth_still_reconciles_to_liquid_plus_pension_plus_equity`
+- [x] #1 WHEN a year of a repayment mortgage is reported, THE APP SHALL show the balance left after that year's instalments, not the balance it opened with. proves: `test_a_reported_year_shows_the_mortgage_balance_after_that_years_payments`
+- [x] #2 WHEN a year of a lifetime mortgage is reported, THE APP SHALL show the balance after that year's roll-up. proves: `test_a_reported_year_shows_the_rolled_up_lifetime_mortgage_balance`
+- [x] #3 WHEN the mortgage reporting point moves, THE APP SHALL keep every stored figure reconciling, so the sum of the parts still equals the reported total wealth. proves: `test_total_wealth_still_reconciles_to_liquid_plus_pension_plus_equity`
 <!-- AC:END -->
 
 ## Tasks
@@ -75,3 +75,30 @@ construction rather than inventing one, and read the expected balances off
 
 "It worked" is the whole suite green plus, on a household with a £100,000 repayment mortgage, the
 year 2026 row reporting a balance BELOW £100,000.
+
+## Comments
+
+**2026-10-13** RESULT: done
+TESTS: +3 new, all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/src/Forecast/YearResult.php
+app/Forecast/ScenarioForecaster.php
+packages/finance-engine/tests/Forecast/MortgageReportingPointTest.php
+packages/finance-engine/tests/Forecast/ForcedSaleTest.php
+packages/finance-engine/tests/Forecast/RepaymentMortgageForecastTest.php
+tests/Unit/Forecast/InputNotesTest.php
+docs/HANDOVER.md
+docs/board/todo/0200-smi-and-deferred-care-balances-lag-their-roll-up.md
+OUT-OF-SCOPE: 0200
+
+Built: `PathProjector::mortgageAfterTheYear()` is the one definition of the balance left at the end of a year (amortised off the schedule, or rolled up and NNEG-capped, less any overpayment). The row reports it and `growState` carries it into next year, so the two cannot drift. The year order in `project()` is untouched. The reporting point is written into `YearResult::mortgageBalance()`'s docblock. ENGINE_VERSION is `finance-engine/mortgage-reported-at-the-end-of-its-year`; the stored re-run is owed for every mortgaged plan.
+
+All three new tests were watched failing first for the card's reason: the 2026 row still owed 10000000p; the lifetime row showed 10000000p, not 10600000p; and the wealth step missed by the difference between two years' capital (1755318 vs 1744769).
+
+Tests re-examined, not loosened: four engine tests and three app tests pinned the OLD point (the opening balance). RepaymentMortgageForecastTest now expects openingBalanceIn(year + 1), and the term clears on the 2042 row, not 2043. ForcedSaleTest reads the control run's 2029 row for what the 2030 sale redeems. InputNotesTest runs with inflation, so it now matches the 2029 row and the sale's redeemed balance in nominal pounds, then checks the note shows the sale row's real figure.
+
+MonteCarlo GoldenMasterTest stayed green: its frozen household carries no mortgage, so no re-pin was needed and no DECISIONS entry is owed.
+
+Assumed: on a lifetime mortgage where NNEG binds, the row caps against the home value that row reports; growState caps against the grown value, as before. In a growing year these differ only when the cap binds, and the card puts the cap out of scope.
+
+Not checked in a browser (worktree). Not done: the HANDOVER is 88 KB and the orient hook asks for one block to be folded out; that is outside this card.
