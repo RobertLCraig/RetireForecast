@@ -163,8 +163,9 @@ cash **−0.5%**.
    **Not modelled:** a one-off / initial advice charge (commonly £1,500–£4,000, or a percentage of the amount
    invested) is charged on top and is stated as unmodelled on the panel. User-editable per scenario — the
    benchmark average is a starting figure and a real quote is better.
-12. **Home-ownership costs escalate at CPI + 3% real when no rate is entered (added 2026-09-05;
-   verified_on 2026-08-19; lives in `ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS`).** It applies
+12. **Home-ownership costs escalate at CPI + 1.8% real when no rate is entered (added 2026-09-05;
+   re-sourced 2026-10-11, card 0085; verified_on 2026-10-11; lives in
+   `ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS`).** It applies
    to the `while_owning_home` spend bucket only: service charge, ground rent and block levies. Until now a
    blank input meant "rises with CPI", which is the one shape the evidence rules out. The three largest
    components of a block service charge have each compounded faster than prices since 2019: buildings
@@ -172,17 +173,31 @@ cash **−0.5%**.
    the new regulatory regime), and the communal energy a charge covering water and lighting buys. Over a
    long projection the gap against a CPI escalator is thousands a year of real spend, concentrated in the
    survivor years, which is enough to change which housing plan ranks first.
-   **Why 3%.** Per the adverse-default rule the shipped value is the cautious end of the reviewed range:
-   CPI + 3% real central, CPI + 1.5% real as the optimistic sensitivity. User-editable per scenario (builder
-   step 4), with both figures on the input, and disclosed as an assumed figure on the results page reading
-   the constant. An explicit rate, **including an explicit zero**, always wins.
-   **⚠️ SOURCING GAP, the first in this document.** The figures are the judgement of the
-   property reviewer in the five-discipline expert review of **2026-08-19** (gitignored
-   `docs/REVIEW-PANEL-2026-08-19.local.md`; board card 0028). That is a reviewer's opinion, **not a published
-   series**. Every other figure above cites a primary or fetchable secondary source; this one does not.
-   Board card **0085** carries the work of pinning it to a published statistic (ONS/Hometrack service-charge
-   series, ABI buildings-insurance premium data, or an equivalent), which the unattended build loop cannot do
-   because it has no web access. **Confirm you are happy with CPI + 3% until that lands.**
+   **Why 1.8%.** No official series measures service-charge inflation: the ONS CPI publishes no class
+   04.4.4 "other services relating to the dwelling", and the English Housing Survey 2023-24 finds the mean
+   charge (£1,720) with "no significant change over the past five years", which is flat in cash
+   ([EHS 2023-24 leasehold fact sheet](https://www.gov.uk/government/statistics/english-housing-survey-2023-to-2024-leasehold-experience-fact-sheet/english-housing-survey-2023-to-2024-leasehold-experience-fact-sheet)).
+   The only published multi-year whole-charge series is the
+   [Hamptons Service Charge Index 2025](https://www.hamptons.co.uk/articles/2025-service-charge-index)
+   (figures as reported by [Property Industry Eye](https://propertyindustryeye.com/leaseholders-face-record-high-service-charges/)
+   and [Landlord Today](https://www.landlordtoday.co.uk/breaking-news/2026/03/soaring-service-charges-on-leasehold-flats-hit-capital-values/),
+   verified_on 2026-10-11):
+
+   | Case | Hamptons window | Charge | CPI | Real a year |
+   |---|---|---|---|---|
+   | **Adverse (the default)** | London, 2016-2025 | +64.5% | +39.8% | **+1.8%** |
+   | Central | England and Wales, 2016-2025 | +55.6% | +39.8% | +1.2% |
+   | Optimistic | England and Wales, 2020-2025 | +32.6% | +30.9% | +0.3% |
+
+   Per the adverse-default rule the shipped value is the cautious end of that long-run range. A **stress**
+   case of about CPI + 3% is stated on the input but not shipped: it is one component (the BCIS July 2026
+   five-year cleaning-cost forecast, +29.1% to 1Q2031, staff-driven), not a whole charge. Short shocks such
+   as the 2024 +11% year are better entered as a `while_owning_home` one-off cost than as a lifetime rate.
+   Hamptons is industry data from flats **listed for sale**, not an official statistic, and starts in 2016;
+   revisit when its 2026 index is published (usually February or March). Full working in
+   `docs/research/RESEARCH-0085-service-charge-escalation.md`. User-editable per scenario (builder step 4),
+   with the alternatives on the input, and disclosed as an assumed figure on the results page reading the
+   constant. An explicit rate, **including an explicit zero**, always wins.
 13. **One home is modelled over DOUBLE the index house-price volatility (added 2026-09-05;
    verified_on 2026-08-19; lives in `AssumptionSet::SINGLE_PROPERTY_VOLATILITY_MULTIPLE`).** The 9% / 11%
    in the table above is an INDEX figure: it is what a whole market does on average, so the part of the

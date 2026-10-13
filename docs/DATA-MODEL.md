@@ -175,7 +175,7 @@ follows the bucket (a sold home escalates nothing; the mortgage payment is contr
 escalated). Builder key `expense.propertyCostsGrowthPct`, stored **sparsely** (absent when blank, so
 pre-field scenarios and unchanged what-ifs record no delta).
 **Null is no longer "no growth" (card 0028).** `propertyCostsRealGrowth()` returns
-`ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS` (**CPI + 3%**) when the rate is null **and**
+`ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS` (**CPI + 1.8%**, sourced by card 0085 in ASSUMPTIONS §12) when the rate is null **and**
 the bucket is positive; an explicit rate, including an explicit **zero**, is the reader's own figure
 and wins. The default is disclosed as an `assumed_figure` input note reading that constant, and only
 on a plan that keeps the current home (`ResultPresenter::keepsCurrentHome`): a buy or rent variant

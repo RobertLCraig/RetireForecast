@@ -73,19 +73,26 @@ final class ExpenseProfile
      *
      * **Adverse by rule, editable by design** (Rob's standing default rule): where several figures
      * are defensible the shipped one is the most adverse, and it is exposed as a user input with its
-     * alternatives beside it. CPI + 1.5% is the optimistic sensitivity.
+     * alternatives beside it. CPI + 0.3% is the sourced optimistic case, CPI + 1.2% the central one,
+     * and about CPI + 3% a stress case for a staff-heavy block.
      *
      * **PUBLIC so a presenter can DISCLOSE it without restating it**, the no-invisible-figures rule.
      * It applies ONLY when $propertyCosts is positive: a household with no service charge has nothing
      * for it to grow. An explicit rate, INCLUDING an explicit zero, is the reader's own figure and
      * always wins.
      *
-     * **Source of record: the expert property review of 2026-08-19** (board card 0028), which models
-     * CPI + 3% real with CPI + 1.5% as the optimistic sensitivity; verified_on 2026-08-19. That is a
-     * reviewer's judgement, NOT a published series, so a primary citation is still owed (board
-     * card 0085). See docs/spec/ASSUMPTIONS.md §12.
+     * **Source of record: Hamptons Service Charge Index 2025** (board card 0085),
+     * https://www.hamptons.co.uk/articles/2025-service-charge-index, figures as reported at
+     * https://propertyindustryeye.com/leaseholders-face-record-high-service-charges/ and
+     * https://www.landlordtoday.co.uk/breaking-news/2026/03/soaring-service-charges-on-leasehold-flats-hit-capital-values/;
+     * verified_on 2026-10-11. London flats 2016-2025 rose 64.5% against CPI 39.8%, about +1.8% a year
+     * real (the adverse end); England and Wales over the decade about +1.2%, over five years about
+     * +0.3%. The stress case is the BCIS July 2026 cleaning-cost forecast. The ONS CPI has no
+     * service-charge class, and the English Housing Survey 2023-24 shows charges flat in cash, so no
+     * official series exists. See docs/spec/ASSUMPTIONS.md §12 and
+     * docs/research/RESEARCH-0085-service-charge-escalation.md.
      */
-    public const DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS = 300; // CPI + 3.00% a year
+    public const DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS = 180; // CPI + 1.80% a year
 
     /** The essential floor as an age-varying real path — its first band is $essentialAnnualSpend. */
     public readonly SpendPath $essentialSpendPath;

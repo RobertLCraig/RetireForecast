@@ -671,14 +671,18 @@ class ScenarioBuilderTest extends TestCase
         // Card 0028: the rate has to be a figure the reader can see, challenge and change, so the
         // input states the default that applies when it is blank AND the optimistic alternative,
         // with where both came from. The default is READ from the constant that owns it, so the
-        // screen cannot drift from what the projection charges.
+        // screen cannot drift from what the projection charges. Card 0085: the alternatives are
+        // the published ones (Hamptons Service Charge Index 2025, BCIS cleaning-cost forecast).
         $default = ScenarioBuilder::propertyCostsGrowthDefaultPct();
 
         Livewire::test(ScenarioBuilder::class)
             ->set('step', 4)
             ->assertSee("{$default}% a year above inflation")
-            ->assertSee('1.5%')
-            ->assertSee('expert property review of 2026-08-19');
+            ->assertSee('Hamptons Service Charge Index')
+            ->assertSee('1.2%')
+            ->assertSee('0.3%')
+            ->assertSee('3%')
+            ->assertDontSee('expert property review of 2026-08-19');
     }
 
     public function test_a_one_off_cost_can_be_tied_to_owning_the_home(): void

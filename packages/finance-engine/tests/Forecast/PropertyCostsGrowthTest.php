@@ -131,6 +131,10 @@ final class PropertyCostsGrowthTest extends TestCase
         // inside a service charge have all compounded above CPI. A blank input now takes the
         // adverse-but-defensible default the profile owns, and the figure is READ from that
         // constant so the test cannot drift from what the projection charged.
+        // Card 0085 pins the constant to its published source: Hamptons Service Charge Index 2025,
+        // London flats 2016-2025 (+64.5% against CPI +39.8%), about CPI + 1.8% a year. A change to
+        // the figure must come with a change to its citation in ASSUMPTIONS.md §12.
+        $this->assertSame(180, ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS, 'the default is the sourced CPI + 1.8%');
         $rate = Percent::fromBasisPoints(ExpenseProfile::DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS)->asFraction();
         $escalation = static fn (int $yearIndex): int => (int) round(self::PROPERTY_COSTS * ((1.0 + $rate) ** $yearIndex - 1.0));
 

@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-10 (shortfall-drawn-pro-rata-across-holders): a year funded by selling assets
+     * Bumped 2026-10-13 (property-cost-growth-sourced-at-cpi-plus-1-8): a service charge with no
+     * growth rate entered now escalates at CPI + 1.8% real, the published Hamptons figure, not the
+     * reviewer's CPI + 3%. Every stay-put plan with a service charge and a blank rate spends less
+     * in later years than under the previous stamp. Board card 0085.
+     * Previous bump 2026-10-10 (shortfall-drawn-pro-rata-across-holders): a year funded by selling assets
      * now takes each cash, GIA and ISA draw from every living holder in proportion to what each
      * holds, instead of spending the first-declared person's balance to zero first. A two-person
      * plan that draws down moves wherever a per-person assessment or allowance reads the balance
@@ -584,7 +588,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/shortfall-drawn-pro-rata-across-holders';
+    public const ENGINE_VERSION = 'finance-engine/property-cost-growth-sourced-at-cpi-plus-1-8';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
