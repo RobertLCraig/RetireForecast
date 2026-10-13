@@ -96,3 +96,29 @@ Criterion 2 is NOT met: changing a constant needs a published value I could not 
 No commit. Direction is unchanged from the first take: this card cannot advance in the unattended loop. Run it in an attended session with web access, or mark it not_for_the_loop so the scheduler stops re-queuing it.
 
 **2026-10-13** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-13 manager (m20261013184332-4a38)
+
+**outcome: rob**
+
+This card needs a web lookup, and the unattended loop has no web access, so only an attended session can do the work.
+
+**what the session said**
+
+The two figures are still unchecked. Both are constants at the top of `SupportForMortgageInterest.php`, and both still have their "SOURCING GAP" notes.
+
+The loop ran this card twice. Each time, the web tools were refused. Both criteria are still open because nobody could look up the real numbers on gov.uk. A third run in the loop hits the same block. Nothing in the reviews needs Rob to decide anything.
+
+What is left is a manual job. Someone runs the card in a session with web access, in `C:\Dev\RetireForecast`. That session:
+
+1. Gets the current SMI standard interest rate from gov.uk.
+2. Gets the pension-age capital limit, which is believed to be £100,000.
+3. Sets the two constants and cites the source in `docs/spec/ASSUMPTIONS.md` section 21.
+4. Follows the card's Tasks: it bumps `ScenarioForecaster::ENGINE_VERSION`, and if the rate changes, it also updates the text in `InputNotesTest`.
+
+The same research pass can also unblock cards 0085 - 0087, 0091, 0092, 0095, 0111, 0113, 0118 and 0129. Another option is to mark this card `not_for_the_loop` so the loop stops picking it up.
+
+WHY: This card needs a web lookup, and the unattended loop has no web access, so only an attended session can do the work.
+
+OUTCOME: rob
+
