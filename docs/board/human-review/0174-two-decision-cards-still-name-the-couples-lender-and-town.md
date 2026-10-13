@@ -53,3 +53,27 @@ Second loop take, same block as the first. Nothing has changed since: the guard 
 This needs a person. Either Rob (or an attended session) scrubs 0022 and 0023 and deletes PENDING_SCRUB, pendingCard() and the $stale branch in one commit, or the card gets not_for_the_loop: so the scheduler stops sending it here. Recommend the scrub: about ten minutes attended.
 
 **2026-10-13** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 1 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-13 manager (m20261013053034-2f8e)
+
+**outcome: rob**
+
+Cards 0022 and 0023 must be edited, and the loop is not allowed to edit them, so a person or an attended session has to do this ten-minute job.
+
+**what the session said**
+
+The loop cannot finish this card. Its only open job is to edit cards 0022 and 0023. The loop's rules do not let a card session edit any card except its own.
+
+I checked the test file. `tests/Feature/Docs/NoPrivateDataTest.php` still has `PENDING_SCRUB`, `pendingCard()` and the `$stale` check. The `$stale` check fails when an exempt card is clean. The suite is still green, so 0022 and 0023 still contain the private names.
+
+Criterion #1 is open, but sending the card back to the loop does not help. The builder would hit the same rule again. This is not a question for the owner. It is a short manual job:
+
+1. Open cards 0022 and 0023. Replace the lender, broker, town and estate figure with neutral words. Add a pointer to `docs/SCENARIO-V2.local.md`.
+2. In `NoPrivateDataTest.php`, delete `PENDING_SCRUB`, `pendingCard()` and the `$stale` branch.
+3. Run `php artisan test --filter test_no_tracked_doc_or_test_names_the_private_couple` and confirm it is green.
+4. Commit all of this in one commit.
+
+WHY: Cards 0022 and 0023 must be edited, and the loop is not allowed to edit them, so a person or an attended session has to do this ten-minute job.
+
+OUTCOME: rob
+
