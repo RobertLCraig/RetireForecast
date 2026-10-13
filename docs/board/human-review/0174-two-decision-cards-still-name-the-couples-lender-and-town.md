@@ -77,3 +77,5 @@ WHY: Cards 0022 and 0023 must be edited, and the loop is not allowed to edit the
 
 OUTCOME: rob
 
+
+**2026-10-13** Waits on 0043 only. 0043 is in todo/, not done/, and this card's `needs: 0043` holds it until 0043 lands. Nothing here needs Rob: once 0043 is done the scrub of 0022 and 0023 is agent work and the card goes to todo/. (agent, after Rob's 2026-10-13 clear-down)
