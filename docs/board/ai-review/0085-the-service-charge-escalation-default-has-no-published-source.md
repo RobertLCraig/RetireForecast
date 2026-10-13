@@ -35,9 +35,9 @@ Only the number and its citation are in question here.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 THE APP SHALL cite a published source, with a URL and a verified_on date, for the default above-CPI growth of home-ownership costs. proves: none, because a citation is prose and no test can tell a real source from an invented one
-- [ ] #2 WHEN the sourced figure differs from the shipped one, THE APP SHALL apply the sourced figure and the disclosure SHALL move with it. proves: `test_a_blank_rate_escalates_the_bucket_at_the_engine_default`
-- [ ] #3 THE APP SHALL state the sourced optimistic and adverse alternatives on the builder input. proves: `test_the_property_cost_growth_input_offers_its_sourced_alternatives`
+- [x] #1 THE APP SHALL cite a published source, with a URL and a verified_on date, for the default above-CPI growth of home-ownership costs. proves: none, because a citation is prose and no test can tell a real source from an invented one
+- [x] #2 WHEN the sourced figure differs from the shipped one, THE APP SHALL apply the sourced figure and the disclosure SHALL move with it. proves: `test_a_blank_rate_escalates_the_bucket_at_the_engine_default`
+- [x] #3 THE APP SHALL state the sourced optimistic and adverse alternatives on the builder input. proves: `test_the_property_cost_growth_input_offers_its_sourced_alternatives`
 <!-- AC:END -->
 
 ## Tasks
@@ -66,3 +66,17 @@ attended.
 ## Comments
 
 **2026-10-11** Research done in an attended session with web access. The sourced figure, its URL and verified_on date, the optimistic and adverse alternatives for #3, and the exact edits are in `docs/research/RESEARCH-0085-service-charge-escalation.md`. Build from that note; it needs no web. The note flags one judgement for the builder: the sourced default sits BELOW the shipped one, because no published whole-charge series supports the shipped rate; ship the note's figure, which is the adverse end of the published evidence, and keep the higher one only as the labelled stress alternative. Removed `waiting_on:` so the loop builds it. Clear-down session, Rob attended.
+
+**2026-10-13** RESULT: done
+TESTS: +0 new, 2 extended (test_a_blank_rate_escalates_the_bucket_at_the_engine_default now pins the constant to 180, watched fail at 300; test_the_property_cost_growth_input_offers_its_sourced_alternatives now asserts the Hamptons citation and 1.2% / 0.3% / 3%, watched fail on the missing citation), all green
+TOUCHED: packages/finance-engine/src/Dto/ExpenseProfile.php
+packages/finance-engine/tests/Forecast/PropertyCostsGrowthTest.php
+resources/views/livewire/scenario-builder.blade.php
+tests/Feature/Livewire/ScenarioBuilderTest.php
+app/Forecast/ScenarioForecaster.php
+docs/spec/ASSUMPTIONS.md
+docs/DATA-MODEL.md
+docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+Built from docs/research/RESEARCH-0085-service-charge-escalation.md, as the 2026-10-11 comment asked. DEFAULT_PROPERTY_COSTS_REAL_GROWTH_BPS 300 -> 180 (CPI + 1.8%, Hamptons Service Charge Index 2025, London flats 2016-2025, verified_on 2026-10-11). This LOWERS the default: the forecast is less cautious than before, as the research note flagged for Rob. #1 is prose: the docblock and ASSUMPTIONS.md §12 now cite the URLs and verified_on, and the SOURCING GAP warning is gone. #2: the disclosure and builder placeholder read the constant, so they moved with it. #3: the builder help text states the central 1.2%, optimistic 0.3% and stress 3% (BCIS cleaning forecast). ENGINE_VERSION is now finance-engine/property-cost-growth-sourced-at-cpi-plus-1-8. STILL OWED: (a) the re-run of stored scenarios, which I did not do because the stored scenarios live in Rob's database, not this worktree; stay-put plans with a service charge and a blank rate are affected. (b) a browser check of the step-4 help text, because Herd serves C:\Dev\RetireForecast, not this worktree. HANDOVER.md now carries one line for this bump with the re-run and the browser check owed.
