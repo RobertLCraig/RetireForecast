@@ -94,3 +94,5 @@ Criterion 1 is NOT met: no search ran, so recording 'the search found none' woul
 Criterion 2 is NOT met: changing a constant needs a published value I could not fetch.
 
 No commit. Direction is unchanged from the first take: this card cannot advance in the unattended loop. Run it in an attended session with web access, or mark it not_for_the_loop so the scheduler stops re-queuing it.
+
+**2026-10-13** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
