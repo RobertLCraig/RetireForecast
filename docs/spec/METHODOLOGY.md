@@ -127,13 +127,13 @@ rent**, the whole net proceeds are invested and rent is paid each year, growing 
 rate.
 
 **Renting has to be agreed as well as afforded.** A landlord's referencing agency asks for gross
-annual income of at least **30 times the monthly rent**, and it is an income test: the money the sale
-frees does not count towards it, however large it is. The tool checks each year of a rent plan
-against that bar and flags the years that fall short, because no amount of capital gets a household
-over it. Where it is short, it states the two normal ways round it and what each costs: a UK
-homeowner **guarantor** referenced at 36 times the monthly rent against their own income, or **rent
-paid in advance**, normally 6 to 12 months of it, which locks that capital up and is asked for again
-at every renewal. The **deposit** is charged as a real cost at the start of a rent plan, capped as the
+annual income of at least **30 times the monthly rent**, and the standard income reference does not
+count the money the sale frees. The tool checks each year of a rent plan against that bar and flags
+the years that fall short. Where it is short, it states the usual way round it and what it costs: a
+**guarantor** referenced at 36 times the monthly rent against their own income. It also says that
+rent in advance is no longer a way round: since 1 May 2026 a landlord in England may ask for at
+most one month of it. Some referencing firms accept proof of funds from a completed sale instead;
+the flag says so but does not model it. The **deposit** is charged as a real cost at the start of a rent plan, capped as the
 Tenant Fees Act 2019 caps it: five weeks' rent, or six weeks at an annual rent of £50,000 or more.
 The first month's rent in advance is not charged twice, because the first year of a
 monthly-in-advance tenancy is twelve payments and the year's rent already charges twelve; the

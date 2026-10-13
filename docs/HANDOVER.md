@@ -9,6 +9,10 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **The referencing flag is sourced, and rent in advance is no longer offered as a way round.** Card
+  0091. 30x / 36x stand (HomeLet, Goodlord); the 6-12 months became the 1-month statutory cap. No
+  re-run is owed. The new copy is **not seen in a browser**. Sources in ASSUMPTIONS §15.
+
 - **A let home with blank letting rates loses 34% of its rent, sourced.** Card 0087. Management is 18%
   (was 12%), maintenance 8% (was 5%), void still 8%. `ENGINE_VERSION` is
   `finance-engine/letting-costs-sourced-at-34-percent`; the **re-run is owed** for let plans with a

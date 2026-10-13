@@ -76,14 +76,12 @@ final class RentReferencingNoticeTest extends TestCase
         $this->assertNotNull($flaggedYear);
         $this->assertStringContainsString($flaggedYear->grossIncome->format(), $message);
 
-        // AC #2: the alternatives and what rent in advance would tie up, in the engine's own words.
+        // AC #2: the guarantor route, and the statutory cap on rent in advance (card 0091), in the
+        // engine's own words.
         $this->assertStringContainsString('guarantor', $message);
         $this->assertStringContainsString(Tenancy::GUARANTOR_INCOME_MULTIPLE.' times the monthly rent', $message);
-        $this->assertStringContainsString(
-            Tenancy::ADVANCE_MONTHS_MIN.' to '.Tenancy::ADVANCE_MONTHS_MAX.' months of it',
-            $message,
-        );
-        $this->assertMatchesRegularExpression('/£[\d,]+\.\d\d of capital locked up/', $message);
+        $this->assertStringContainsString('at most '.Tenancy::RENT_IN_ADVANCE_CAP_MONTHS." month's rent in advance", $message);
+        $this->assertMatchesRegularExpression("/month's rent in advance \(£[\d,]+\.\d\d\)/", $message);
     }
 
     /**

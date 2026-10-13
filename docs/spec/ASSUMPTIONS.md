@@ -270,10 +270,11 @@ cash **−0.5%**.
    `Housing\Tenancy`).** Four figures, applying to any plan that pays a landlord rent: sell and
    rent, a forced sale, and the referencing flag on "Let out & rent elsewhere" (card 0031):
    **30x the monthly rent** is the gross ANNUAL income a standard tenant reference asks for
-   (`REFERENCING_INCOME_MULTIPLE`); **36x** is the higher bar a homeowner guarantor is referenced at
-   (`GUARANTOR_INCOME_MULTIPLE`); **6 to 12 months** is the rent in advance a landlord asks of an
-   applicant who fails (`ADVANCE_MONTHS_MIN` / `MAX`); and the **deposit** is capped at **5 weeks'
-   rent**, or **6 weeks** at an annual rent of £50,000 or more.
+   (`REFERENCING_INCOME_MULTIPLE`); **36x** is the higher bar a guarantor is referenced at
+   (`GUARANTOR_INCOME_MULTIPLE`); **1 month** is the most rent in advance a landlord in England may
+   ask for (`RENT_IN_ADVANCE_CAP_MONTHS`), so paying up front is no longer a way round a failed
+   reference; and the **deposit** is capped at **5 weeks' rent**, or **6 weeks** at an annual rent of
+   £50,000 or more.
    **Why it matters.** Referencing is an INCOME test and takes no account of capital, so a retired
    household sitting on the whole proceeds of a sale can fail it outright however well the
    money-lasts projection reads. That is a wall, not a cost, and the forecast could not see it. Only
@@ -283,12 +284,24 @@ cash **−0.5%**.
    the rent line already charges twelve, so the disclosure names the day-one cash instead.
    **The deposit cap is statute** and is not part of the gap below: Tenant Fees Act 2019 c.4,
    Schedule 1 paragraph 2, verified_on 2026-09-05.
-   **⚠️ SOURCING GAP, the fourth in this document,** and it covers the three multiples only. 30x, 36x
-   and 6-to-12 months are the judgement of the property reviewer in the five-discipline expert review
-   of **2026-08-19** (gitignored `docs/REVIEW-PANEL-2026-08-19.local.md`; board card 0031). They match
-   common UK referencing practice, but **no primary source was fetched**, because the unattended build
-   loop has no web access. Board card **0091** carries pinning them to the referencing providers' own
-   published criteria. **Confirm you are happy with 30x / 36x / 6-12 months until that lands.**
+   **The other three are sourced (card 0091, verified_on 2026-10-11).** Full working in
+   `docs/research/RESEARCH-0091-tenant-referencing.md`.
+
+   | Figure | Value | Source |
+   |---|---|---|
+   | Tenant income multiple | 30x monthly (2.5x annual) | [HomeLet Referencing Service Guidelines HL202407, p.8](https://connect.homelet.co.uk/assets/connect/pdf/Referencing_Service_Guidelines.pdf); [Goodlord referencing API guide, ratio 2.5](https://portal.goodlord.co/blog/2024/8/20/getting-started-with-goodlord-referencing-api) |
+   | Guarantor income multiple | 36x monthly (3x annual) | the same two: HomeLet p.8-9, Goodlord ratio 3 |
+   | Rent in advance | at most 1 month, pre-tenancy only, assured tenancies from 1 May 2026 | [Renters' Rights Act 2025 c.26 s.8](https://www.legislation.gov.uk/ukpga/2025/26/section/8) (Housing Act 1988 s.4B); [gov.uk, Rent payments and deposits](https://www.gov.uk/guidance/renting-out-your-property-guidance-for-landlords-and-letting-agents/rent-payments-and-deposits) |
+
+   30x and 36x are unchanged; no provider publishes a stricter figure and neither varies it by rent
+   level or region. The shipped **6 to 12 months** of rent in advance is gone: no provider or
+   official source published it, and the Act now caps it at one month. The copy's "asked for again
+   at every renewal" is gone with it (tenancies from 1 May 2026 are periodic). **No source requires a
+   homeowner guarantor**, so the copy no longer says one. **Not settled:** Scotland caps rent in
+   advance at 6 months ([mygov.scot](https://www.mygov.scot/tenant-new-tenancy)) and the engine
+   still states the England rule there; Wales and Northern Ireland were not researched. HomeLet
+   also passes an applicant on independent means (proof of funds from a completed sale); the flag
+   mentions it but does not model it.
 16. **Selling a home costs 4% of the sale price all in, and a taxable disposal costs £750 more
    (added 2026-09-05; verified_on 2026-08-19; lives in
    `HousingProceeds::DEFAULT_SELLING_COST_RATE_BP` and `HousingProceeds::CGT_RETURN_FEE_PENCE`).**

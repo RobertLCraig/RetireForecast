@@ -4337,14 +4337,15 @@ final class PathProjector
      * The tenancy is not only a question of whether the money lasts: it has to be GRANTED. A
      * letting agent's standard reference asks for gross annual income of at least
      * {@see Tenancy::REFERENCING_INCOME_MULTIPLE} times the monthly rent, and it is an INCOME
-     * test — the proceeds of the sale the plan has just banked count for nothing towards it. So
+     * test — the proceeds of the sale the plan has just banked do not count towards it. So
      * a household with a large pot and a small pension hits a wall the money-lasts projection
      * cannot see, and until board card 0031 nothing said so.
      *
      * Raised on every year the household's income falls short, not just the first, because rent
      * rises and income does not always keep up: a tenancy granted at 68 can be refused at 78, and
-     * a renewal is a fresh reference. The message states both normal ways round it and the money
-     * each costs, because a flag that only says "no" leaves the reader nowhere.
+     * a move is a fresh reference. The message states the way round it and what it costs, and
+     * that rent in advance no longer is one (card 0091), because a flag that only says "no"
+     * leaves the reader nowhere.
      *
      * @param  callable(int): Money  $m  nominal pence -> the reported Money (real, or the nominal twin)
      * @return list<Warning>
@@ -4369,15 +4370,14 @@ final class PathProjector
             ."Your income is {$income->format()}. A letting agent's standard reference asks for gross annual "
             .'income of at least '.Tenancy::REFERENCING_INCOME_MULTIPLE.' times the monthly rent — the rent is '
             ."{$monthly->format()} a month, so the bar is ".Tenancy::referencingIncomeRequired($rent)->format()
-            .' a year. It is an INCOME test: the money from the sale does not count towards it, however large it is. '
-            .'The two usual ways round a failed reference both cost money. One is a UK homeowner guarantor, '
-            .'referenced at '.Tenancy::GUARANTOR_INCOME_MULTIPLE.' times the monthly rent against their own income ('
-            .Tenancy::guarantorIncomeRequired($rent)->format().' a year) — and a household that has just sold no '
-            .'longer has a homeowner in it. The other is rent paid in advance, normally '
-            .Tenancy::ADVANCE_MONTHS_MIN.' to '.Tenancy::ADVANCE_MONTHS_MAX.' months of it: '
-            .Tenancy::rentInAdvance($rent, Tenancy::ADVANCE_MONTHS_MIN)->format().' to '
-            .Tenancy::rentInAdvance($rent, Tenancy::ADVANCE_MONTHS_MAX)->format().' of capital locked up and asked '
-            .'for again at every renewal, so it is not invested and not earning while the tenancy runs.',
+            .' a year. A standard income reference does not count the money from the sale; some referencing firms '
+            .'will accept proof of funds from a completed sale instead, at around three times the rent for the whole tenancy. '
+            .'The usual way round a failed reference is a guarantor, referenced at '
+            .Tenancy::GUARANTOR_INCOME_MULTIPLE.' times the monthly rent against their own income ('
+            .Tenancy::guarantorIncomeRequired($rent)->format().' a year). Paying rent up front is no longer a way '
+            .'round: since 1 May 2026 a landlord in England can ask for at most '.Tenancy::RENT_IN_ADVANCE_CAP_MONTHS
+            ." month's rent in advance (".Tenancy::monthlyRent($rent)->times(Tenancy::RENT_IN_ADVANCE_CAP_MONTHS)->format()
+            .'), and only before the tenancy starts.',
         )];
     }
 

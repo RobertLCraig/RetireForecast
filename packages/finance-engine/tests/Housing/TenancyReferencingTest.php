@@ -132,6 +132,18 @@ final class TenancyReferencingTest extends TestCase
         $this->assertSame(Money::fromPounds(45_000)->pence, $required->pence);
         $this->assertStringContainsString($required->format(), $flagged[0]->message);
         $this->assertStringContainsString((string) Tenancy::REFERENCING_INCOME_MULTIPLE, $flagged[0]->message);
+
+        // Card 0091: the copy moves with the sourced figures. Since 1 May 2026 a landlord in
+        // England may ask for at most one month's rent in advance (Renters' Rights Act 2025 s.8),
+        // so months up front are no longer a way round, and periodic tenancies have no renewal.
+        // No published referencing criterion asks for a HOMEOWNER guarantor (HomeLet HL202407).
+        $message = $flagged[0]->message;
+        $this->assertStringNotContainsString('renewal', $message);
+        $this->assertStringNotContainsString('homeowner', $message);
+        $this->assertStringNotContainsString('capital locked up', $message);
+        $this->assertStringContainsString('1 May 2026', $message);
+        $this->assertSame(1, Tenancy::RENT_IN_ADVANCE_CAP_MONTHS);
+        $this->assertStringContainsString('at most '.Tenancy::RENT_IN_ADVANCE_CAP_MONTHS." month's rent in advance", $message);
     }
 
     /**
@@ -156,10 +168,10 @@ final class TenancyReferencingTest extends TestCase
     }
 
     /**
-     * AC #2. A flag that only says "no" leaves the reader nowhere. The two normal ways round a
-     * failed reference are a homeowner guarantor at the higher multiple and rent paid in
-     * advance, and the second locks up capital the plan is relying on being invested — so the
-     * pounds it would tie up are named, not left as "six to twelve months".
+     * AC #2. A flag that only says "no" leaves the reader nowhere. The usual way round a failed
+     * reference is a guarantor at the higher multiple, named in pounds. Rent in advance was the
+     * other, until the Renters' Rights Act capped it at one month in England (card 0091), so the
+     * flag says it is no longer one and names the most a landlord may ask.
      */
     public function test_the_flag_states_both_alternatives_and_the_capital_rent_in_advance_ties_up(): void
     {
@@ -170,8 +182,11 @@ final class TenancyReferencingTest extends TestCase
         $this->assertStringContainsString('guarantor', $message);
         $this->assertStringContainsString(Tenancy::guarantorIncomeRequired($rent)->format(), $message, 'the guarantor bar in pounds');
         $this->assertStringContainsString('advance', $message);
-        $this->assertStringContainsString(Tenancy::rentInAdvance($rent, Tenancy::ADVANCE_MONTHS_MIN)->format(), $message);
-        $this->assertStringContainsString(Tenancy::rentInAdvance($rent, Tenancy::ADVANCE_MONTHS_MAX)->format(), $message);
+        $this->assertStringContainsString(
+            Tenancy::monthlyRent($rent)->times(Tenancy::RENT_IN_ADVANCE_CAP_MONTHS)->format(),
+            $message,
+            'the most rent in advance a landlord may ask, in pounds',
+        );
     }
 
     /**

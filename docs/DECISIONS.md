@@ -1261,6 +1261,9 @@ The plan was also handed the tenancy for nothing: no deposit, no up-front cost o
   times the monthly rent against their own income, and 6 to 12 months' rent in advance with the
   pounds that would tie up. A flag that only says "no" leaves the reader nowhere, and the second
   route is exactly the kind of capital lock-up the plan's own arithmetic assumes away.
+  *Superseded in part by card 0091 (2026-10-13):* the Renters' Rights Act 2025 caps rent in advance
+  at one month in England from 1 May 2026, so the flag now says that route is closed; no published
+  criterion asks for a homeowner guarantor, so it says "a guarantor". Sources in ASSUMPTIONS §15.
 - **The tenancy deposit is charged as a year-0 one-off**, at the Tenant Fees Act cap
   (`Tenancy::deposit()`, five weeks' rent, six at £50,000 a year or more), on the same
   `withOneOffCost` path the unfunded-purchase gap uses.
