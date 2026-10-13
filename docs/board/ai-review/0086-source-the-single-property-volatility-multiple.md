@@ -35,8 +35,8 @@ This card only replaces the number and its citation, which is one constant and o
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] THE APP SHALL carry a primary or fetchable secondary source URL and a verified_on date for the single-property volatility multiple in docs/spec/ASSUMPTIONS.md, or record there that the search found none. proves: manual
-- [ ] WHEN the sourced figure differs from 2.0, THE APP SHALL use the sourced one and the disclosure SHALL move with it. proves: `test_the_uplift_scales_the_index_figure_rather_than_replacing_it`
+- [x] THE APP SHALL carry a primary or fetchable secondary source URL and a verified_on date for the single-property volatility multiple in docs/spec/ASSUMPTIONS.md, or record there that the search found none. proves: manual
+- [x] WHEN the sourced figure differs from 2.0, THE APP SHALL use the sourced one and the disclosure SHALL move with it. proves: `test_the_uplift_scales_the_index_figure_rather_than_replacing_it`
 <!-- AC:END -->
 
 ## Tasks
@@ -1200,3 +1200,12 @@ sessions' permission settings, with card 0085 in the same pass.
 **2026-09-29** **Decided:** B, in the narrower form Rob ruled on 0084 on 2026-09-28: the unattended loop gets the web only in a separate research session that can write notes under `docs/research/` and nothing else, and a later build session with no web builds this card from the note. Settled by an attended agent under Rob's rule that human-review holds only what he must decide: this card's A-or-B ask is the question 0084 asked, and Rob answered it there. The research session is `progressboard#0211`, not yet built, so this card carries `waiting_on:` until it lands, which keeps the build loop from spending another take on the refusal.
 
 **2026-10-13** `waiting_on:` removed. The research this card waited for was done in an attended session on 2026-10-11 and is now committed as `docs/research/RESEARCH-0086-single-property-volatility.md`, so no research session is needed: build from the note. Attended session, on Rob's go.
+
+**2026-10-13** RESULT: done
+TESTS: +0 new, all green
+TOUCHED: packages/finance-engine/src/Dto/AssumptionSet.php
+packages/finance-engine/src/Assumptions/AssumptionSetLibrary.php
+docs/spec/ASSUMPTIONS.md
+docs/board/todo/0197-one-home-s-own-price-shock-compounds-every-year.md
+OUT-OF-SCOPE: 0197
+Built from docs/research/RESEARCH-0086-single-property-volatility.md, with no web use. The sourced figure is 2.0, so the constant is unchanged. #1: ASSUMPTIONS.md section 13 now cites Giacoletti 2017 (the Case and Shiller 'twice as volatile' finding) as primary, Cheung et al. 2023 and Eichholtz et al. 2020 as support, verified_on 2026-10-11, names the 1.1-2.2x range by horizon with 1.4x as the optimistic sensitivity, and says no UK study exists. The SOURCING GAP paragraph is gone and the three URLs are in the source list at the foot. AssumptionSetLibrary::SINGLE_PROPERTY_SOURCE and SINGLE_PROPERTY_VERIFIED_ON (now 2026-10-11) carry the same citation, so the assumptions panel shows it. #2: met because its WHEN did not fire: the sourced figure equals 2.0, so the app already uses it and the disclosure (which reads the constant) is unchanged. Its proves test test_the_uplift_scales_the_index_figure_rather_than_replacing_it already exists and passes; I did not write a new test or watch one fail, because there is no change in behaviour to catch. ENGINE_VERSION is NOT bumped and no re-run is owed, per the research note. The other ASSUMPTIONS gap labels keep their old ordinals ('the third in this document' and so on), as card 0085 also left them. Raised 0197: the engine compounds the house-specific shock every year, where the evidence says it is mostly one-off; a mechanism change this card excluded. Suite ran through php artisan test (vendor/bin/pest.bat is missing here); pint passed.
