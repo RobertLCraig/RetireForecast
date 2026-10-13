@@ -1,16 +1,8 @@
----
-waiting_on: progressboard#0211, the research-only web session Rob ruled for on 0084 - recheck 2026-10-13
----
 # Pin the three letting-cost rates to a published source
 
 ## What I need from you
-Reply A or B: who looks up the three letting-cost rates, given the unattended loop cannot reach the web (card 0084 asks the same question)?
-
-- **A. An attended session.** The card stays out of the loop. The next time you run a session by hand, tell it "source card 0087". It has the web and can finish the card in one sitting. I recommend A: it is what 0084 recommends, and it keeps an agent nobody is watching off the internet.
-- **B. Web for the loop.** You allow WebSearch and WebFetch in the unattended build sessions' permissions. This card and the other sourcing cards (0085, 0086, 0091, 0092, 0129) then build on their own. The risk of an unwatched agent fetching from the internet is yours to accept.
-
-**Pass:** you reply A or B. After A, the card stays here until an attended session writes a source URL and `verified_on` for the management, void and maintenance rates into `docs/spec/ASSUMPTIONS.md` §14. After B, it goes back to `todo/` and the loop's next take does that.
-**Fail:** the card keeps collecting "WebSearch was refused" entries. That means nothing was decided. Answer 0084 first.
+Nothing. The A/B question was decided on 2026-09-29 (see Comments), and the web research is done:
+`docs/research/RESEARCH-0087-letting-cost-rates.md` (2026-10-11). Build from that note. Do not go to the web.
 
 ## Why
 The engine now takes **25% of gross rent** off a let property before it is banked or taxed: 12%
@@ -116,3 +108,5 @@ happens. The suite was run with `php artisan test`, because this worktree has no
 **2026-09-28** Manager pass: this card's text was restored from commit `51b1442`. Commit `36d2291` ("board: 0088 what the session left uncommitted") had committed it as an empty file. That commit also emptied one other card, `...running-costs-are-charged-as-household-spend.md`, which this pass has not touched. The card is left in `human-review/` with an ask: four unattended takes ended on the same WebSearch refusal, and only Rob can decide whether the loop gets the web (card 0084).
 
 **2026-09-29** **Decided:** B, in the narrower form Rob ruled on 0084 on 2026-09-28: the unattended loop gets the web only in a separate research session that can write notes under `docs/research/` and nothing else, and a later build session with no web builds this card from the note. Settled by an attended agent under Rob's rule that human-review holds only what he must decide: this card's A-or-B ask is the question 0084 asked, and Rob answered it there. The research session is `progressboard#0211`, not yet built, so this card carries `waiting_on:` until it lands, which keeps the build loop from spending another take on the refusal.
+
+**2026-10-13** `waiting_on:` removed. The research this card waited for was done in an attended session on 2026-10-11 and is now committed as `docs/research/RESEARCH-0087-letting-cost-rates.md`, so no research session is needed: build from the note. Attended session, on Rob's go.
