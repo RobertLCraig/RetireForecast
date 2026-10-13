@@ -32,3 +32,6 @@ Set the base scenario's sale price to the answer and anchor card 0027's forced-s
 - `0027` - models a slow or forced sale; its forced-sale discount is anchored to the valuation this card settles.
 
 ## Comments
+
+
+**2026-10-13** **Decided:** Q3: the base plan runs on the lower must-sell-by-a-deadline price, below the middle appraisal. Q1 and Q2 still open. (Rob, attended clear-down 2026-10-13)
