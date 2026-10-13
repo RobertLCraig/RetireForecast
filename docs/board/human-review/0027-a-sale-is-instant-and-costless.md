@@ -161,3 +161,23 @@ The code reading in the 2026-09-05 entries is still accurate; I did not repeat i
 The scheduler started this card although its `needs: 0069` is unresolved, which docs/board/README.md line 89 says the unattended loop will not do. That is a fault in ProgressBoard's scheduler, not in this repository, so no card was raised on this board. Suggest moving this card out of in-progress until 0069 is answered and a web-enabled session is available.
 
 **2026-10-13** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 3 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-13 manager (m20261013210239-e978)
+
+**outcome: rob**
+
+Nothing is left for a builder until Rob runs one attended session with web access to source the months-to-sell figure, and gets the RICS valuation and the lender's letter that card 0069 waits for.
+
+**what the session said**
+
+The loop should not take this card again. All three criteria are still open. The builder has hit the same two walls on three runs, and both walls need a person:
+
+- **#1 and #2** need a sourced figure: the months from instruction to completion for a sale in England and Wales. An unattended session has no web access (WebSearch and WebFetch are refused), so it cannot find this. One attended session with web access can find it in minutes. The code work is already mapped in the card comments: a one-off cost through `ExpenseProfile::withOneOffCost()` in `HousingComparison::withHousing()`, and a disclosure through `ResultPresenter::assumedFigures()`.
+- **#3** is blocked by card 0069. That card still waits for the RICS valuation (Q1) and the lender's written position (Q2). Only Rob can get these. Q3 is decided.
+
+If the card goes back to `todo/` now, the scheduler starts it again even though `needs: 0069` is open. Run four found that fault in ProgressBoard. Then the builder fails a fourth time.
+
+WHY: Nothing is left for a builder until Rob runs one attended session with web access to source the months-to-sell figure, and gets the RICS valuation and the lender's letter that card 0069 waits for.
+
+OUTCOME: rob
+
