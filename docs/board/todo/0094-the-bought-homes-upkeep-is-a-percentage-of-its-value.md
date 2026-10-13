@@ -113,3 +113,5 @@ WHY: The card needs a research note from the web, and only an attended session t
 
 OUTCOME: rob
 
+
+**2026-10-13** Research done in an attended session with web access: `docs/research/RESEARCH-0094-home-upkeep-basis.md` holds the sources, URLs and verified_on dates, what each basis charges on the three test purchases, and the recommended basis (the greater of 1% of the buy price and a flat annual figure). Build from that note; it needs no web. Committed with this card as its evidence. Moved to todo/ for the loop. (agent, after Rob's 2026-10-13 clear-down)
