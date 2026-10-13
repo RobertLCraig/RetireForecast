@@ -199,7 +199,7 @@ cash **−0.5%**.
    with the alternatives on the input, and disclosed as an assumed figure on the results page reading the
    constant. An explicit rate, **including an explicit zero**, always wins.
 13. **One home is modelled over DOUBLE the index house-price volatility (added 2026-09-05;
-   verified_on 2026-08-19; lives in `AssumptionSet::SINGLE_PROPERTY_VOLATILITY_MULTIPLE`).** The 9% / 11%
+   sourced 2026-10-11, card 0086; verified_on 2026-10-11; lives in `AssumptionSet::SINGLE_PROPERTY_VOLATILITY_MULTIPLE`).** The 9% / 11%
    in the table above is an INDEX figure: it is what a whole market does on average, so the part of the
    risk belonging to one particular home has already been averaged out of it. A household whose net worth
    is one flat is not exposed to index risk. Their flat is re-rated by its block, its lease, its street
@@ -214,13 +214,23 @@ cash **−0.5%**.
    User-editable per scenario (builder step 1, "Your home's price swing"), disclosed as an assumed figure
    on the results page reading the constant, and shown beside the index figure in the assumptions panel so
    the two can never be read for each other. An explicit figure always wins.
-   **⚠️ SOURCING GAP, the second in this document.** "Roughly double" is the judgement of the property
-   reviewer in the five-discipline expert review of **2026-08-19** (gitignored
-   `docs/REVIEW-PANEL-2026-08-19.local.md`; board card 0029). It is directionally the standard finding in
-   the repeat-sales literature, where idiosyncratic variance dominates index variance, but **no primary
-   source was fetched for the multiple itself**, because the unattended build loop has no web access.
-   Board card **0086** carries pinning it to a published estimate of UK single-property dispersion.
-   **Confirm you are happy with 2.0x until that lands.**
+   **Why 2.0.** "Individual homes are twice more volatile than city-level house price indexes" is the
+   Case and Shiller (1988) finding, as reported by
+   [Giacoletti (2017)](https://finance.unibocconi.eu/sites/default/files/files/media/attachments/MarcoGiacolettiJMP20170116082355.pdf)
+   (published RFS 34(8), 2021). The Case-Shiller originals are image-only scans and were not read, so the
+   2.0 rests on secondary sources that agree. The same literature finds the house-specific shock is mostly
+   **one-off** (Giacoletti: 9.6% to 17.8% per resale in California, 2001-2012, not growing with the
+   holding period), whereas the engine scales the yearly shock, so its spread compounds. The effective
+   multiple the evidence supports against the 9% index therefore falls with the horizon: about **2.2x** at
+   one year, **1.3x to 1.8x** at five years (Giacoletti's shock, and the idiosyncratic spread in
+   [Cheung et al. 2023](https://repec.canterbury.ac.nz/cbt/econwp/2313.pdf), about 1 million New Zealand
+   repeat sales, which report 1.3x to 2.6x by region against a smoother 2.55% index), and about
+   **1.1x to 1.4x** over twenty years
+   ([Eichholtz et al. 2020](https://www.landecon.cam.ac.uk/sites/default/files/2023-05/crerc-wp-2020-01-lindenthal.pdf),
+   Paris and Amsterdam). Per the adverse-default rule the shipped 2.0 is the cautious end of that range
+   at every horizon of five years or more; **1.4x** is the sourced optimistic sensitivity. **No UK study
+   was found**: the evidence is US, New Zealand and historic Dutch and French repeat-sales data. Full
+   working in `docs/research/RESEARCH-0086-single-property-volatility.md`.
 14. **Letting a property costs 25% of gross rent when no rates are entered (added 2026-09-05;
    verified_on 2026-08-19; lives in `Property::DEFAULT_LETTING_MANAGEMENT_BPS` and its two siblings).**
    Three rates, applied only to a home flagged as let: **12% management** (a fully managed agent
@@ -837,6 +847,9 @@ cash **−0.5%**.
 - OBR Economic and Fiscal Outlook, March 2026: https://obr.uk/efo/economic-and-fiscal-outlook-march-2026/
 - ONS Private rent and house prices, UK (June 2026): https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/privaterentandhousepricesuk/june2026
 - Jordà, Knoll, Kuvshinov, Schularick & Taylor, "The Rate of Return on Everything, 1870–2015", NBER Working Paper 24112 (housing far less volatile than equities; low equity–housing covariance / diversification gains): https://www.nber.org/papers/w24112
+- Giacoletti, "Idiosyncratic Risk in Housing Markets", job-market paper, January 2017 (credits "individual homes twice more volatile than city indexes" to Case and Shiller 1988; house-specific shock 9.6%-17.8% per resale, not compounding), read 2026-10-11: https://finance.unibocconi.eu/sites/default/files/files/media/attachments/MarcoGiacolettiJMP20170116082355.pdf
+- Cheung, Galimberti & Vermeulen, "Evidence on the Determinants and Variation of Idiosyncratic Risk in Housing Markets", University of Canterbury WP 13/2023 (NZ repeat sales, 1.3x-2.6x the index at five years), read 2026-10-11: https://repec.canterbury.ac.nz/cbt/econwp/2313.pdf
+- Eichholtz, Korevaar, Lindenthal & Tallec, "The Total Return and Risk to Residential Real Estate", Cambridge CRERC WP 2020-01 (idiosyncratic share about half of variance over long holds, about 1.4x), read 2026-10-11: https://www.landecon.cam.ac.uk/sites/default/files/2023-05/crerc-wp-2020-01-lindenthal.pdf
 - Champagne, Kurmann & Stewart, "Dissecting Aggregate Real Wage Fluctuations", FRB San Francisco WP 2011-23 (aggregate real wage growth volatility ~0.51× GDP-growth volatility — far smoother than profits): https://www.frbsf.org/wp-content/uploads/wp11-23bk.pdf
 - ONS, Average weekly earnings in Great Britain (real regular-pay growth series used to sanity-check the ~2% annual real-earnings volatility): https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/bulletins/averageweeklyearningsingreatbritain/january2026
 - King's Fund, Social Care 360 — expenditure and provider fees (care unit-cost drivers): https://www.kingsfund.org.uk/insight-and-analysis/long-reads/social-care-360-expenditure

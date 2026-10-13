@@ -107,10 +107,12 @@ final class AssumptionSet
      * of the same order as the market-wide one, and variances add. Applies to the primary
      * residence, so it widens the fan on every plan that keeps or buys a home.
      *
-     * SOURCE: the property reviewer's figure in the five-discipline expert review of
-     * 2026-08-19 (docs/REVIEW-PANEL-2026-08-19.local.md, gitignored). It is a reviewer's
-     * judgement rather than a published series. See docs/spec/ASSUMPTIONS.md §13, which
-     * flags the sourcing gap and the card raised to close it. User-editable per scenario.
+     * SOURCE: the "individual homes about twice as volatile as the city index" finding (Case
+     * and Shiller 1988, as reported by Giacoletti 2017/2021). It sits at the cautious end of
+     * the repeat-sales evidence, because house-specific shocks are largely one-off rather than
+     * compounding, so over long horizons the measured multiple is about 1.1-1.8x. No UK study
+     * was found. See docs/spec/ASSUMPTIONS.md §13 and
+     * docs/research/RESEARCH-0086-single-property-volatility.md. User-editable per scenario.
      */
     public const SINGLE_PROPERTY_VOLATILITY_MULTIPLE = 2.0;
 

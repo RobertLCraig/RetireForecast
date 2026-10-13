@@ -119,16 +119,19 @@ final class AssumptionSetLibrary
         .'https://www.gov.uk/government/publications/pension-charges-survey-2020-charges-in-defined-contribution-pension-schemes/pension-charges-survey-2020-charges-in-defined-contribution-pension-schemes';
 
     /**
-     * The single-property volatility MULTIPLE is a reviewer's calibration, not a published series,
-     * and the citation says so rather than dressing it up. The published record supports the
-     * direction and the order of magnitude; the 2.0 itself is board card 0086.
+     * The single-property volatility MULTIPLE rests on repeat-sales studies from outside the UK,
+     * and the citation says so. Full working in docs/research/RESEARCH-0086-single-property-volatility.md.
      */
-    public const SINGLE_PROPERTY_SOURCE = 'Direction and order of magnitude from the long-run housing-returns '
-        .'record: https://www.nber.org/papers/w24112 . The multiple itself is the property reviewer\'s '
-        .'calibration of 2026-08-19 and is NOT from a published series: board card 0086.';
+    public const SINGLE_PROPERTY_SOURCE = 'Individual homes are about twice as volatile as the city index '
+        .'(Case and Shiller 1988, reported in Giacoletti 2017: '
+        .'https://finance.unibocconi.eu/sites/default/files/files/media/attachments/MarcoGiacolettiJMP20170116082355.pdf ). '
+        .'Repeat-sales studies put the long-horizon multiple at 1.1-1.8x (Cheung et al. 2023, NZ: '
+        .'https://repec.canterbury.ac.nz/cbt/econwp/2313.pdf ; Eichholtz et al. 2020, about 1.4x: '
+        .'https://www.landecon.cam.ac.uk/sites/default/files/2023-05/crerc-wp-2020-01-lindenthal.pdf ), '
+        .'so 2.0 is the cautious end. No UK study found.';
 
-    /** The date the single-property multiple was calibrated. See {@see SINGLE_PROPERTY_SOURCE}. */
-    public const SINGLE_PROPERTY_VERIFIED_ON = '2026-08-19';
+    /** The date the single-property multiple's sources were read. See {@see SINGLE_PROPERTY_SOURCE}. */
+    public const SINGLE_PROPERTY_VERIFIED_ON = '2026-10-11';
 
     /**
      * The inflation dynamics ({@see INFLATION_PERSISTENCE}, {@see INFLATION_ASSET_CORRELATIONS})
