@@ -254,12 +254,12 @@ final class LettingCostsTest extends TestCase
         // and the rental PROFIT. Profit used to be approximated by gross rent, so a mortgaged let
         // was over-relieved on rent it never kept.
         //
-        // Two landlords whose rental PROFIT is the same £18,000 by two different routes: one lets
-        // £24,000 and loses the 25% default costs, the other lets £18,000 with the costs set to
-        // zero. Same profit, same taxable income, so their tax bills must match exactly. They only
-        // match if the reducer reads the profit; on gross rent the first would take a credit on
-        // £24,000 and pay £1,200 less tax than a landlord in an identical position.
-        $mortgaged = fn (int $rent, ?Percent $rates): Household => new Household(
+        // Two landlords whose rental PROFIT is the same by two different routes: one lets £24,000
+        // and loses the default costs (read from the constants, card 0087), the other lets that
+        // profit with the costs set to zero. Same profit, same taxable income, so their tax bills
+        // must match exactly. They only match if the reducer reads the profit; on gross rent the
+        // first would take a credit on £24,000 and pay less tax than a landlord in an identical position.
+        $mortgaged = fn (Money $rent, ?Percent $rates): Household => new Household(
             'Landlord', RegionProfile::EnglandWalesNi,
             [new Person('p1', new DateTimeImmutable('1955-01-01'), Sex::Female, EmploymentStatus::Retired)],
             new ExpenseProfile(
@@ -269,7 +269,7 @@ final class LettingCostsTest extends TestCase
             pensions: [new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 30))],
             incomeStreams: [
                 new IncomeStream('p1', IncomeStreamType::Other, Money::fromPounds(60_000), taxable: true, inflationLinked: false, startAge: 0),
-                new IncomeStream('p1', IncomeStreamType::Rental, Money::fromPounds($rent), taxable: true, inflationLinked: false, startAge: 0),
+                new IncomeStream('p1', IncomeStreamType::Rental, $rent, taxable: true, inflationLinked: false, startAge: 0),
             ],
             primaryResidence: new Property(
                 currentValue: Money::fromPounds(350_000),
@@ -282,9 +282,14 @@ final class LettingCostsTest extends TestCase
             ),
         );
 
-        $grossing24k = $this->year0($mortgaged(24_000, null));   // 25% comes off => £18,000 profit
-        $grossing18k = $this->year0($mortgaged(18_000, Percent::zero())); // already net => £18,000 profit
+        $gross = Money::fromPounds(24_000);
+        $profit = $gross->minus($gross->applyRate(Percent::fromBasisPoints(
+            Property::DEFAULT_LETTING_MANAGEMENT_BPS + Property::DEFAULT_LETTING_VOID_BPS + Property::DEFAULT_LETTING_MAINTENANCE_BPS,
+        )));
 
-        $this->assertSame($grossing18k->totalTax->pence, $grossing24k->totalTax->pence);
+        $grossing = $this->year0($mortgaged($gross, null));            // the default costs come off
+        $alreadyNet = $this->year0($mortgaged($profit, Percent::zero())); // the same profit, no costs
+
+        $this->assertSame($alreadyNet->totalTax->pence, $grossing->totalTax->pence);
     }
 }

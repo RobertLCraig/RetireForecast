@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-13 (property-cost-growth-sourced-at-cpi-plus-1-8): a service charge with no
+     * Bumped 2026-10-13 (letting-costs-sourced-at-34-percent): a let property with no letting rates
+     * entered now loses 18% management and 8% maintenance to its rent (was 12% and 5%), the sourced
+     * figures; the void stays 8%. Every let-to-let plan with a blank rate banks less rent than under
+     * the previous stamp and needs re-running. Board card 0087.
+     * Previous bump 2026-10-13 (property-cost-growth-sourced-at-cpi-plus-1-8): a service charge with no
      * growth rate entered now escalates at CPI + 1.8% real, the published Hamptons figure, not the
      * reviewer's CPI + 3%. Every stay-put plan with a service charge and a blank rate spends less
      * in later years than under the previous stamp. Board card 0085.
@@ -588,7 +592,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/property-cost-growth-sourced-at-cpi-plus-1-8';
+    public const ENGINE_VERSION = 'finance-engine/letting-costs-sourced-at-34-percent';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

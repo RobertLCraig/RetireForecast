@@ -1861,6 +1861,12 @@ class ScenarioBuilder extends Component
         return self::trimmed(Percent::fromBasisPoints(SpendingGuardrail::DEFAULT_DISCRETIONARY_CUT_BPS)->asPercent());
     }
 
+    /** A letting-cost default as the placeholder shows it ("18"), read from the engine. */
+    public static function lettingDefaultPct(int $bps): string
+    {
+        return self::trimmed(Percent::fromBasisPoints($bps)->asPercent());
+    }
+
     /** A figure as a placeholder writes it: 3.00 to "3", 1.50 to "1.5". */
     private static function trimmed(float $value): string
     {

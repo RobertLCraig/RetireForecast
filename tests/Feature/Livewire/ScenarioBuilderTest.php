@@ -685,6 +685,18 @@ class ScenarioBuilderTest extends TestCase
             ->assertDontSee('expert property review of 2026-08-19');
     }
 
+    public function test_the_letting_rate_placeholders_show_the_sourced_defaults(): void
+    {
+        // Card 0087 moved management to 18% and maintenance to 8%. A placeholder is the figure a
+        // blank input will be charged, so it must read the constant, not restate the old 12% / 5%.
+        Livewire::test(ScenarioBuilder::class)
+            ->set('step', 3)
+            ->set('property.isLet', true)
+            ->assertSeeHtml('id="property-lettingManagementRate" type="text" inputmode="decimal" placeholder="18"')
+            ->assertSeeHtml('id="property-lettingVoidRate" type="text" inputmode="decimal" placeholder="8"')
+            ->assertSeeHtml('id="property-lettingMaintenanceRate" type="text" inputmode="decimal" placeholder="8"');
+    }
+
     public function test_a_one_off_cost_can_be_tied_to_owning_the_home(): void
     {
         // Card 0028: a Section 20 major-works demand is a liability of owning the flat. The builder

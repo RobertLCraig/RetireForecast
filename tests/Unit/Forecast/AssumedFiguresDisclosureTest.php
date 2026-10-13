@@ -255,6 +255,15 @@ final class AssumedFiguresDisclosureTest extends TestCase
         $this->assertStringContainsString(self::pct(Property::DEFAULT_LETTING_MANAGEMENT_BPS / 100).'% for letting-agent', $disclosures[0]);
         $this->assertStringContainsString(self::pct(Property::DEFAULT_LETTING_VOID_BPS / 100).'% for the weeks', $disclosures[0]);
         $this->assertStringContainsString(self::pct(Property::DEFAULT_LETTING_MAINTENANCE_BPS / 100).'% for repairs', $disclosures[0]);
+
+        // Card 0087. The sourced figures (docs/research/RESEARCH-0087-letting-cost-rates.md, ASSUMPTIONS
+        // §14) are pinned here as literals, so the reviewer's old 12% / 5% cannot come back unseen.
+        $this->assertStringContainsString('18% for letting-agent', $disclosures[0]);
+        $this->assertStringContainsString('8% for the weeks', $disclosures[0]);
+        $this->assertStringContainsString('8% for repairs', $disclosures[0]);
+        $this->assertStringContainsString('34% of it in all', $disclosures[0]);
+        // The prose around the figures must not restate the old total as "a quarter of the rent".
+        $this->assertStringNotContainsString('quarter', $disclosures[0]);
     }
 
     public function test_only_the_letting_rates_the_reader_left_blank_are_reported_as_assumed(): void

@@ -123,11 +123,11 @@ final class Property
 {
     /**
      * What a fully managed single let COSTS, as a percentage of gross rent, where the reader gives
-     * no figure of their own: **12% management, 8% void, 5% maintenance, a quarter of the rent
-     * before any tax.**
+     * no figure of their own: **18% management, 8% void, 8% maintenance, about a third of the
+     * rent before any tax.**
      *
      * Gross rent is the one figure a landlord never receives. A letting agent's fully managed fee
-     * is around 10% plus VAT; the flat stands empty between tenancies, which on a single property
+     * is 10% to 15% plus VAT, shipped at the top; the flat stands empty between tenancies, which on a single property
      * is roughly a month a year; and repairs, an inventory, the annual gas safety certificate and
      * the five-yearly electrical report are all the landlord's, not the tenant's. Modelling the
      * rent gross does not merely flatter a let plan, it can invert its sign: the reviewer's
@@ -144,16 +144,23 @@ final class Property
      * **PUBLIC so a presenter can DISCLOSE each figure without restating it**, the
      * no-invisible-figures rule.
      *
-     * **Source of record: the expert property review of 2026-08-19** (board card 0030), which
-     * models roughly 12% management including VAT, 8% void and about 5% for repairs, inventory,
-     * gas safety and electrical checks; verified_on 2026-08-19. That is a reviewer's judgement,
-     * NOT a published series, so a primary citation is still owed. See docs/spec/ASSUMPTIONS.md §14.
+     * **Sources (card 0087, verified_on 2026-10-11).** No primary government or ARLA Propertymark
+     * series exists for any of the three (the English Private Landlord Survey 2024 publishes none),
+     * so each is a fetchable secondary source:
+     *  - management: https://www.buildington.co.uk/blog/letting-agent-vs-self-managing-a-2026-guide-for-landlords
+     *    (10% to 15% plus VAT; 15% + VAT = 18%);
+     *  - void: https://www.propertyreporter.co.uk/englands-average-void-period-falls-to-21-days-as-landlords-adapt-to-rra.html
+     *    (21 to 24 days per void in 2026; a month a year sits above it);
+     *  - maintenance: https://www.mortgagesolutions.co.uk/mortgage-news/2026/01/06/landlords-income-squeezed-by-rising-repair-and-maintenance-costs/
+     *    (repairs 31% to 39% of running costs that are 25% to 45% of rent; 8% is the low end of
+     *    that DERIVED range, rounded up, not a published rate).
+     * See docs/spec/ASSUMPTIONS.md §14 and docs/research/RESEARCH-0087-letting-cost-rates.md.
      */
-    public const DEFAULT_LETTING_MANAGEMENT_BPS = 1_200; // 12.00% of gross rent, VAT included
+    public const DEFAULT_LETTING_MANAGEMENT_BPS = 1_800; // 18.00% of gross rent, VAT included
 
     public const DEFAULT_LETTING_VOID_BPS = 800;         // 8.00% of gross rent
 
-    public const DEFAULT_LETTING_MAINTENANCE_BPS = 500;  // 5.00% of gross rent
+    public const DEFAULT_LETTING_MAINTENANCE_BPS = 800;  // 8.00% of gross rent
 
     /**
      * What the SITE OWNER takes out of the price when a park home changes hands: **10% of the sale

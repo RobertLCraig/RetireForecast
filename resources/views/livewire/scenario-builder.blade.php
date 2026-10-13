@@ -1160,19 +1160,19 @@
                             <div class="mt-3 grid gap-4 sm:grid-cols-3">
                                 <div>
                                     <label for="property-lettingManagementRate" class="{{ $label }}">Letting agent (% of rent)</label>
-                                    <input id="property-lettingManagementRate" type="text" inputmode="decimal" placeholder="12" wire:model="property.lettingManagementRate" class="{{ $field }}" @error('property.lettingManagementRate') aria-invalid="true" aria-describedby="property-lettingManagementRate-error" @enderror>
+                                    <input id="property-lettingManagementRate" type="text" inputmode="decimal" placeholder="{{ \App\Livewire\ScenarioBuilder::lettingDefaultPct(\RetireForecast\FinanceEngine\Dto\Property::DEFAULT_LETTING_MANAGEMENT_BPS) }}" wire:model="property.lettingManagementRate" class="{{ $field }}" @error('property.lettingManagementRate') aria-invalid="true" aria-describedby="property-lettingManagementRate-error" @enderror>
                                     @error('property.lettingManagementRate') <p id="property-lettingManagementRate-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                                     <p class="mt-1 text-xs text-gray-500">A fully managed service, VAT included.</p>
                                 </div>
                                 <div>
                                     <label for="property-lettingVoidRate" class="{{ $label }}">Empty periods (% of rent)</label>
-                                    <input id="property-lettingVoidRate" type="text" inputmode="decimal" placeholder="8" wire:model="property.lettingVoidRate" class="{{ $field }}" @error('property.lettingVoidRate') aria-invalid="true" aria-describedby="property-lettingVoidRate-error" @enderror>
+                                    <input id="property-lettingVoidRate" type="text" inputmode="decimal" placeholder="{{ \App\Livewire\ScenarioBuilder::lettingDefaultPct(\RetireForecast\FinanceEngine\Dto\Property::DEFAULT_LETTING_VOID_BPS) }}" wire:model="property.lettingVoidRate" class="{{ $field }}" @error('property.lettingVoidRate') aria-invalid="true" aria-describedby="property-lettingVoidRate-error" @enderror>
                                     @error('property.lettingVoidRate') <p id="property-lettingVoidRate-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                                     <p class="mt-1 text-xs text-gray-500">Rent you don't get between tenants. 8% is about a month a year.</p>
                                 </div>
                                 <div>
                                     <label for="property-lettingMaintenanceRate" class="{{ $label }}">Repairs and checks (% of rent)</label>
-                                    <input id="property-lettingMaintenanceRate" type="text" inputmode="decimal" placeholder="5" wire:model="property.lettingMaintenanceRate" class="{{ $field }}" @error('property.lettingMaintenanceRate') aria-invalid="true" aria-describedby="property-lettingMaintenanceRate-error" @enderror>
+                                    <input id="property-lettingMaintenanceRate" type="text" inputmode="decimal" placeholder="{{ \App\Livewire\ScenarioBuilder::lettingDefaultPct(\RetireForecast\FinanceEngine\Dto\Property::DEFAULT_LETTING_MAINTENANCE_BPS) }}" wire:model="property.lettingMaintenanceRate" class="{{ $field }}" @error('property.lettingMaintenanceRate') aria-invalid="true" aria-describedby="property-lettingMaintenanceRate-error" @enderror>
                                     @error('property.lettingMaintenanceRate') <p id="property-lettingMaintenanceRate-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                                     <p class="mt-1 text-xs text-gray-500">Repairs, inventory, gas safety and electrical checks. Not used if you entered running costs, which already cover repairs.</p>
                                 </div>

@@ -231,11 +231,11 @@ cash **−0.5%**.
    at every horizon of five years or more; **1.4x** is the sourced optimistic sensitivity. **No UK study
    was found**: the evidence is US, New Zealand and historic Dutch and French repeat-sales data. Full
    working in `docs/research/RESEARCH-0086-single-property-volatility.md`.
-14. **Letting a property costs 25% of gross rent when no rates are entered (added 2026-09-05;
-   verified_on 2026-08-19; lives in `Property::DEFAULT_LETTING_MANAGEMENT_BPS` and its two siblings).**
-   Three rates, applied only to a home flagged as let: **12% management** (a fully managed agent
+14. **Letting a property costs 34% of gross rent when no rates are entered (added 2026-09-05;
+   verified_on 2026-10-11; lives in `Property::DEFAULT_LETTING_MANAGEMENT_BPS` and its two siblings).**
+   Three rates, applied only to a home flagged as let: **18% management** (a fully managed agent
    service, VAT included), **8% void** (the weeks it stands empty between tenancies, about a month a
-   year on a single property), and **5% maintenance** (repairs, the inventory, the annual gas safety
+   year on a single property), and **8% maintenance** (repairs, the inventory, the annual gas safety
    certificate and the five-yearly electrical report). Gross rent is the one figure a landlord never
    receives, and until now the model took it gross. The void is lost rent rather than a bill, but the
    arithmetic is the same, so all three come off together.
@@ -249,13 +249,23 @@ cash **−0.5%**.
    flagged as let) and disclosed as an assumed figure on the results page reading the constant. An
    explicit rate, **including an explicit zero**, always wins, so a landlord who self-manages sets
    management to nil.
-   **⚠️ SOURCING GAP, the third in this document.** The three figures are the judgement of the property
-   reviewer in the five-discipline expert review of **2026-08-19** (gitignored
-   `docs/REVIEW-PANEL-2026-08-19.local.md`; board card 0030). They sit squarely inside the ranges the
-   letting industry quotes, but **no primary source was fetched**, because the unattended build loop has
-   no web access. Board card **0087** carries pinning them to published data (a letting-agent fee survey,
-   an ARLA/Propertymark void statistic, and a landlord repairs-cost series).
-   **Confirm you are happy with 12% / 8% / 5% until that lands.**
+   **Sources (card 0087, all read 2026-10-11).** No primary government or ARLA Propertymark series
+   exists for any of the three: the
+   [English Private Landlord Survey 2024](https://www.gov.uk/government/statistics/english-private-landlord-survey-2024-main-report/english-private-landlord-survey-2024-main-report)
+   publishes no fee, void-length or repair-spend figure. Each rate rests on fetchable secondary sources
+   (agents' fee guides and industry surveys):
+
+   | Rate | Was | Now | Basis | Source |
+   |---|---|---|---|---|
+   | Management | 12% | **18%** | top of the 10% to 15% + VAT high-street band | [Buildington 2026](https://www.buildington.co.uk/blog/letting-agent-vs-self-managing-a-2026-guide-for-landlords); also [Purplebricks](https://www.purplebricks.co.uk/moving-guides/letting-agent-fees-for-landlords), [Landlord Studio](https://www.landlordstudio.com/uk-blog/property-management-fees-uk) |
+   | Void | 8% | **8%** | about a month a year, above the 21 to 24 days per void reported for 2026 | [Property Reporter, Aug 2026](https://www.propertyreporter.co.uk/englands-average-void-period-falls-to-21-days-as-landlords-adapt-to-rra.html); also [Mortgage Solutions, Feb 2022](https://www.mortgagesolutions.co.uk/mortgage-news/2022/02/07/rental-property-voids-hit-five-year-low/) |
+   | Maintenance | 5% | **8%** | low end, rounded up, of repairs at 31% to 39% of running costs that are 25% to 45% of rent | [Mortgage Solutions, Jan 2026 (Pegasus Insight)](https://www.mortgagesolutions.co.uk/mortgage-news/2026/01/06/landlords-income-squeezed-by-rising-repair-and-maintenance-costs/) |
+
+   The maintenance 8% is **this build's arithmetic on the Pegasus survey, not a published rate**; no
+   series states landlord repairs as a share of rent. A Propertymark 15% to 20% management figure and
+   66 to 70 day void figures were seen only in search snippets and are not relied on. Full working in
+   `docs/research/RESEARCH-0087-letting-cost-rates.md`. Stored let scenarios priced before 2026-10-13
+   used 12% / 8% / 5% and need re-running.
 15. **A tenancy has to be GRANTED as well as afforded (added 2026-09-05; lives in
    `Housing\Tenancy`).** Four figures, applying to any plan that pays a landlord rent: sell and
    rent, a forced sale, and the referencing flag on "Let out & rent elsewhere" (card 0031):
@@ -850,6 +860,13 @@ cash **−0.5%**.
 - Giacoletti, "Idiosyncratic Risk in Housing Markets", job-market paper, January 2017 (credits "individual homes twice more volatile than city indexes" to Case and Shiller 1988; house-specific shock 9.6%-17.8% per resale, not compounding), read 2026-10-11: https://finance.unibocconi.eu/sites/default/files/files/media/attachments/MarcoGiacolettiJMP20170116082355.pdf
 - Cheung, Galimberti & Vermeulen, "Evidence on the Determinants and Variation of Idiosyncratic Risk in Housing Markets", University of Canterbury WP 13/2023 (NZ repeat sales, 1.3x-2.6x the index at five years), read 2026-10-11: https://repec.canterbury.ac.nz/cbt/econwp/2313.pdf
 - Eichholtz, Korevaar, Lindenthal & Tallec, "The Total Return and Risk to Residential Real Estate", Cambridge CRERC WP 2020-01 (idiosyncratic share about half of variance over long holds, about 1.4x), read 2026-10-11: https://www.landecon.cam.ac.uk/sites/default/files/2023-05/crerc-wp-2020-01-lindenthal.pdf
+- MHCLG, English Private Landlord Survey 2024 (publishes no letting fee, void or repair-spend figure), read 2026-10-11: https://www.gov.uk/government/statistics/english-private-landlord-survey-2024-main-report/english-private-landlord-survey-2024-main-report
+- Buildington, "Letting Agent vs Self-Managing: A 2026 Guide for Landlords", 16 Jul 2026 (full management 10% to 15% + VAT), read 2026-10-11: https://www.buildington.co.uk/blog/letting-agent-vs-self-managing-a-2026-guide-for-landlords
+- Purplebricks, "Letting agent fees for landlords" (full management 10% to 20% + VAT), read 2026-10-11: https://www.purplebricks.co.uk/moving-guides/letting-agent-fees-for-landlords
+- Landlord Studio, "Property Management Fees UK", updated 1 Oct 2026 (8% to 15% national), read 2026-10-11: https://www.landlordstudio.com/uk-blog/property-management-fees-uk
+- Property Reporter, "England's average void period falls to 21 days", 13 Aug 2026 (Rushbrook & Rathbone; 21 to 24 days per void), read 2026-10-11: https://www.propertyreporter.co.uk/englands-average-void-period-falls-to-21-days-as-landlords-adapt-to-rra.html
+- Mortgage Solutions, "Rental property voids hit five-year low", 7 Feb 2022 (Paragon/BVA BDRC share of landlords with a void), read 2026-10-11: https://www.mortgagesolutions.co.uk/mortgage-news/2022/02/07/rental-property-voids-hit-five-year-low/
+- Mortgage Solutions, "Landlords' income squeezed by rising repair and maintenance costs", 6 Jan 2026 (Pegasus Insight: running costs 25% to 45% of gross rent, repairs 31% to 39% of spend), read 2026-10-11: https://www.mortgagesolutions.co.uk/mortgage-news/2026/01/06/landlords-income-squeezed-by-rising-repair-and-maintenance-costs/
 - Champagne, Kurmann & Stewart, "Dissecting Aggregate Real Wage Fluctuations", FRB San Francisco WP 2011-23 (aggregate real wage growth volatility ~0.51× GDP-growth volatility — far smoother than profits): https://www.frbsf.org/wp-content/uploads/wp11-23bk.pdf
 - ONS, Average weekly earnings in Great Britain (real regular-pay growth series used to sanity-check the ~2% annual real-earnings volatility): https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/bulletins/averageweeklyearningsingreatbritain/january2026
 - King's Fund, Social Care 360 — expenditure and provider fees (care unit-cost drivers): https://www.kingsfund.org.uk/insight-and-analysis/long-reads/social-care-360-expenditure

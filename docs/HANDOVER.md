@@ -9,8 +9,14 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A let home with blank letting rates loses 34% of its rent, sourced.** Card 0087. Management is 18%
+  (was 12%), maintenance 8% (was 5%), void still 8%. `ENGINE_VERSION` is
+  `finance-engine/letting-costs-sourced-at-34-percent`; the **re-run is owed** for let plans with a
+  blank rate. The step-3 placeholders now read the constants and are **not seen in a browser**.
+  Sources in ASSUMPTIONS §14.
+
 - **A blank service-charge growth rate is CPI + 1.8%, cited to Hamptons.** Card 0085. It was CPI + 3%.
-  `ENGINE_VERSION` is `finance-engine/property-cost-growth-sourced-at-cpi-plus-1-8`; the **re-run is
+  `ENGINE_VERSION` was `finance-engine/property-cost-growth-sourced-at-cpi-plus-1-8`; the **re-run is
   owed** for stay-put plans with a service charge and a blank rate. The step-4 help text is **not seen
   in a browser**. Source in ASSUMPTIONS §12.
 

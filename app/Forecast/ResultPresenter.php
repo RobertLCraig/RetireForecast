@@ -1043,7 +1043,7 @@ final class ResultPresenter
         }
 
         // What letting the home costs, where the reader gave no rate of their own. Until card 0030
-        // a let property earned its rent GROSS, and a quarter of gross rent is the difference
+        // a let property earned its rent GROSS, and a third of gross rent is the difference
         // between a let that pays and one that loses money every month. The rates are READ from the
         // constants that own them, so re-sourcing one moves this sentence with it.
         $home = $household->primaryResidence;
@@ -1064,8 +1064,8 @@ final class ResultPresenter
             $out[] = "You didn't say what letting this property costs you, so we've taken "
                 .$list.' off the rent, '
                 ."{$total} of it in all. Gross rent is the one figure a landlord never receives, and leaving "
-                .'those costs out does not just flatter a letting plan: on a single flat they are usually about a '
-                .'quarter of the rent, which is enough to turn what looks like money coming in into money going '
+                .'those costs out does not just flatter a letting plan: on a single flat they are a large share of '
+                .'the rent, which is enough to turn what looks like money coming in into money going '
                 .'out. If you self-manage, or you have a long-standing tenant, enter your own figures.';
         }
 
