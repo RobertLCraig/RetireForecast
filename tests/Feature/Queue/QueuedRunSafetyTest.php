@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Queue;
 
+use App\Jobs\BuildScenarioExport;
 use App\Jobs\RunLeverThreshold;
 use App\Jobs\RunScenarioSimulation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -108,6 +109,17 @@ class QueuedRunSafetyTest extends TestCase
         });
 
         $this->assertSame(2, $runs, "{$jobClass} locks the whole queue rather than the one record.");
+    }
+
+    /** The export holds a user id, not a record id, so the same pair runs over users (card 0104). */
+    public function test_a_restarted_worker_cannot_build_the_same_export_twice_at_once(): void
+    {
+        $this->test_a_restarted_worker_cannot_run_the_same_record_twice_at_once(BuildScenarioExport::class);
+    }
+
+    public function test_two_users_exports_do_not_block_each_other(): void
+    {
+        $this->test_two_different_records_do_not_block_each_other(BuildScenarioExport::class);
     }
 
     /**

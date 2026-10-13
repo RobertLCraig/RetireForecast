@@ -8,6 +8,7 @@ use App\Export\ScenarioExport;
 use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Throwable;
 
 /**
@@ -30,6 +31,20 @@ class BuildScenarioExport implements ShouldQueue
     public int $tries = 1;
 
     public function __construct(public readonly int $userId) {}
+
+    /**
+     * One worker per user's export — see {@see RunScenarioSimulation::middleware()}.
+     *
+     * @return list<object>
+     */
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping((string) $this->userId))
+                ->dontRelease()
+                ->expireAfter($this->timeout + 60),
+        ];
+    }
 
     public function handle(ScenarioExport $export): void
     {
