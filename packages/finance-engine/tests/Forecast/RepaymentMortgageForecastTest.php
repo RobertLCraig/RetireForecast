@@ -130,13 +130,14 @@ final class RepaymentMortgageForecastTest extends TestCase
         $balances = $this->balancesByYear($this->forecast($this->couple($this->esisTerms())));
         $schedule = AmortisationSchedule::for(Money::fromPounds(160_000), $this->esisTerms());
 
-        // Zero inflation, so the reported real balance is the schedule's nominal balance exactly.
+        // Zero inflation, so the reported real balance is the schedule's nominal balance exactly. A
+        // row reports the END of its year (board card 0103): what the next year opens owing.
         foreach (range(2026, 2043) as $year) {
             $this->assertArrayHasKey($year, $balances);
             $this->assertSame(
-                $schedule->openingBalanceIn($year)->pence,
+                $schedule->openingBalanceIn($year + 1)->pence,
                 $balances[$year],
-                "the {$year} balance must be the schedule's opening balance",
+                "the {$year} balance must be what the schedule leaves after that year's instalments",
             );
         }
     }
@@ -145,12 +146,13 @@ final class RepaymentMortgageForecastTest extends TestCase
     {
         $balances = $this->balancesByYear($this->forecast($this->couple($this->esisTerms())));
 
-        $this->assertSame(16_000_000, $balances[2026], 'the plan opens owing the whole loan');
-        $this->assertGreaterThan(0, $balances[2042], 'the final year of the term still owes something');
-        $this->assertSame(0, $balances[2043], 'the loan is cleared once the term has run');
+        // Four instalments from September 2026 have already come off the 2026 row.
+        $this->assertLessThan(16_000_000, $balances[2026], 'the first year has repaid some capital');
+        $this->assertGreaterThan(0, $balances[2041], 'the last full year before the term ends still owes something');
+        $this->assertSame(0, $balances[2042], 'the loan is cleared by the end of its final year');
 
         foreach ($balances as $year => $balance) {
-            if ($year > 2043) {
+            if ($year > 2042) {
                 $this->assertSame(0, $balance, "nothing is owed in {$year}");
             }
         }

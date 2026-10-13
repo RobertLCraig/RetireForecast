@@ -370,14 +370,15 @@ final class ForcedSaleTest extends TestCase
             $this->movingBalanceHousehold(MortgageMaturityAction::ForcedSale, $rollUpRate, $repaymentTerms),
             $settings,
         ));
-        // The same household that never sells: its sale-year row reports the balance in force that
-        // year, which is what the sale has to clear.
+        // The same household that never sells. A row reports the balance at the END of its year
+        // (board card 0103), so the balance the sale year opens owing, which is what the sale has
+        // to clear, is the row before it.
         $kept = $this->byYear($this->forecast(
             $this->movingBalanceHousehold(MortgageMaturityAction::Refinance, $rollUpRate, $repaymentTerms),
             $settings,
         ));
 
-        $owedAtSale = $kept[2030]->mortgageBalance()->pence;
+        $owedAtSale = $kept[2029]->mortgageBalance()->pence;
         $this->assertNotSame(
             Money::fromPounds(100_000)->pence,
             $owedAtSale,

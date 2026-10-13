@@ -2001,7 +2001,9 @@ final class PathProjector
                     .'plan carries the full risk of the target it is scored against.',
                 )] : []),
             ],
-            mortgageBalance: $m($state['mortgageOutstanding']),
+            // Owed at the END of the year, after its instalments or roll-up, the point the liquid
+            // and pension legs are read at (board card 0103). Capped against the home the row reports.
+            mortgageBalance: $m($this->mortgageAfterTheYear($state, $yearIndex, $state['property'])),
             mortgageRedeemed: $m($mortgageRedeemedNominal),
             nominal: $nominal,
             isaSheltered: $m($isaShelteredNominal),
@@ -5167,6 +5169,35 @@ final class PathProjector
      *  is a figure the reader can see rather than a silently smaller growth line.
      *
      *  @return array{growth: int, charges: int} */
+    /**
+     * The household's share of the mortgage left at the END of the year, nominal pence: the one
+     * definition the year's row reports and {@see growState} carries into next year (board card
+     * 0103). A capital-and-interest mortgage AMORTISES to what the schedule says is left after this
+     * year's instalments, read and never accrued; one already cleared (redeemed early, or the home
+     * sold) stays cleared. A lifetime mortgage (equity release) ROLLS UP at its fixed nominal rate,
+     * capped at $homeValue by the No-Negative-Equity Guarantee, less any voluntary overpayment
+     * (fixed nominal, floored at zero; the cash for it is the Mortgage expense line). Anything else
+     * is static: an interest-serviced loan's interest is an expense line, not accrued.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function mortgageAfterTheYear(array $state, int $yearIndex, int $homeValue): int
+    {
+        if ($state['repaymentSchedule'] !== null && ! $state['mortgageRepaid'] && ! $state['homeSold']) {
+            return (int) round(
+                $state['repaymentSchedule']->openingBalanceIn($state['baseYear'] + $yearIndex + 1)->pence
+                    * $state['ownershipShare']
+            );
+        }
+        if ($state['mortgageRollUpRate'] !== null && $state['mortgageOutstanding'] > 0) {
+            $rolled = (int) round($state['mortgageOutstanding'] * (1.0 + $state['mortgageRollUpRate']));
+
+            return max(0, min($rolled, $homeValue) - $state['mortgageOverpaymentAnnual']);
+        }
+
+        return $state['mortgageOutstanding'];
+    }
+
     private function growState(array &$state, PathDraws $draws, int $yearIndex): array
     {
         $infl = $draws->inflation($yearIndex);
@@ -5265,17 +5296,9 @@ final class PathProjector
         // whole figure for its CGT gain (share value / share, without the rounding drift).
         $state['propertyWhole'] = self::grownHomeValue($state['propertyWhole'], $propertyNominal);
 
-        // A lifetime mortgage (equity release) rolls up: with no payments the balance compounds
-        // at its fixed nominal rate each year. It is repaid from the estate on death/sale, capped
-        // at the home's value by the No-Negative-Equity Guarantee — so cap the (share-scaled)
-        // balance at the (share-scaled) home value. A null rate leaves the balance static (a
-        // repayment/interest-serviced mortgage, whose interest is an expense line, not accrued).
-        if ($state['mortgageRollUpRate'] !== null && $state['mortgageOutstanding'] > 0) {
-            $rolled = (int) round($state['mortgageOutstanding'] * (1.0 + $state['mortgageRollUpRate']));
-            // A voluntary overpayment pays some of the (grown) balance back down each year, slowing
-            // the roll-up. Fixed nominal, floored at zero; the cash for it is the Mortgage expense line.
-            $state['mortgageOutstanding'] = max(0, min($rolled, $state['property']) - $state['mortgageOverpaymentAnnual']);
-        }
+        // The mortgage moves to what this year's row already reported ({@see mortgageAfterTheYear}),
+        // capped against the home's grown value rather than the row's.
+        $state['mortgageOutstanding'] = $this->mortgageAfterTheYear($state, $yearIndex, $state['property']);
 
         // The Support for Mortgage Interest charge rolls up too: it is a loan, and what DWP has
         // already paid out accrues until the home is sold or the last owner dies. It is rolled at
@@ -5294,17 +5317,6 @@ final class PathProjector
         // write-off belongs in the zero floor on home equity and on the estate.
         if ($state['deferredCareBalance'] > 0) {
             $state['deferredCareBalance'] = (int) round($state['deferredCareBalance'] * (1.0 + DeferredPaymentAgreement::interestRate()->asFraction()));
-        }
-
-        // A capital-and-interest mortgage instead AMORTISES: next year opens on whatever the
-        // schedule says is left after this year's instalments, reaching zero at the end of the
-        // term. Read, never accrued — the schedule is the single definition of the balance. A
-        // mortgage already cleared (redeemed early, or the home sold) stays cleared.
-        if ($state['repaymentSchedule'] !== null && ! $state['mortgageRepaid'] && ! $state['homeSold']) {
-            $state['mortgageOutstanding'] = (int) round(
-                $state['repaymentSchedule']->openingBalanceIn($state['baseYear'] + $yearIndex + 1)->pence
-                    * $state['ownershipShare']
-            );
         }
 
         $rentNominal = (1.0 + $state['rentInflationReal']) * (1.0 + $infl) - 1.0;

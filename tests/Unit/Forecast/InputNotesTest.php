@@ -380,8 +380,8 @@ final class InputNotesTest extends TestCase
      * Card 0041 #5. A forced sale redeems the balance owed IN THE SALE YEAR, so the note has to
      * state that balance and not the one typed in. They agree only for an interest-only loan
      * redeemed at once, which is all the test above builds. The expected figure is read from a
-     * control run that keeps the home: its sale-year row reports the balance the projector holds
-     * that year, so this test never replays the roll-up or amortisation arithmetic.
+     * control run that keeps the home: its row before the sale reports the balance the sale year
+     * opens with, so this test never replays the roll-up or amortisation arithmetic.
      */
     public function test_a_forced_sale_note_states_a_rolled_up_balance(): void
     {
@@ -429,18 +429,31 @@ final class InputNotesTest extends TestCase
             ),
         );
 
+        // A row reports the balance at the END of its year (card 0103), so what 2030 opens owing is
+        // the control run's 2029 row. That row is in 2029's money and the note in 2030's, so the two
+        // are matched in nominal pounds, where they are the same integer.
         $kept = $this->forecastFor($household(MortgageMaturityAction::Refinance));
-        $owed = null;
+        $opening = null;
         foreach ($kept->years as $year) {
+            if ($year->calendarYear === 2029) {
+                $opening = $year->nominal->mortgageBalance();
+            }
+        }
+        $this->assertNotNull($opening);
+
+        $sold = $household(MortgageMaturityAction::ForcedSale);
+        $soldForecast = $this->forecastFor($sold);
+        $owed = null;
+        foreach ($soldForecast->years as $year) {
             if ($year->calendarYear === 2030) {
-                $owed = $year->mortgageBalance();
+                $this->assertSame($opening->pence, $year->nominal->mortgageRedeemed()->pence, 'the sale redeems what the year opened owing');
+                $owed = $year->mortgageRedeemed();
             }
         }
         $this->assertNotNull($owed);
 
-        $sold = $household(MortgageMaturityAction::ForcedSale);
         $flag = array_values(array_filter(
-            ResultPresenter::inputNotes($sold, $this->forecastFor($sold)),
+            ResultPresenter::inputNotes($sold, $soldForecast),
             fn (array $n): bool => $n['kind'] === 'mortgage_redemption',
         ));
         $this->assertCount(1, $flag);

@@ -203,7 +203,11 @@ final class YearResult
     /**
      * The outstanding mortgage on the home this year (zero if none), in the same money as the
      * rest of this year: real on a reported year, nominal on its {@see $nominal} twin. Non-zero and
-     * GROWING when a lifetime mortgage rolls up unpaid; level when it is repaid/serviced.
+     * GROWING when a lifetime mortgage rolls up unpaid; level when it is serviced.
+     *
+     * Read at the END of the year, the point every wealth leg on a row reports: after that year's
+     * instalments on a repayment mortgage and after that year's roll-up on a lifetime one. The
+     * balance a year opened with is the previous row's. Board card 0103.
      */
     public function mortgageBalance(): Money
     {

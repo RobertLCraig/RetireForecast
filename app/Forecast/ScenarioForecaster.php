@@ -61,7 +61,12 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-13 (letting-costs-sourced-at-34-percent): a let property with no letting rates
+     * Bumped 2026-10-13 (mortgage-reported-at-the-end-of-its-year): a year's row now reports the
+     * mortgage owed after that year's instalments or roll-up, not the balance it opened with, so
+     * every mortgaged plan's total wealth moves on every row: up on a repayment mortgage, down on a
+     * lifetime one. Its depletion year and success odds can move with it; every mortgaged plan
+     * needs re-running. Board card 0103.
+     * Previous bump 2026-10-13 (letting-costs-sourced-at-34-percent): a let property with no letting rates
      * entered now loses 18% management and 8% maintenance to its rent (was 12% and 5%), the sourced
      * figures; the void stays 8%. Every let-to-let plan with a blank rate banks less rent than under
      * the previous stamp and needs re-running. Board card 0087.
@@ -592,7 +597,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/letting-costs-sourced-at-34-percent';
+    public const ENGINE_VERSION = 'finance-engine/mortgage-reported-at-the-end-of-its-year';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
