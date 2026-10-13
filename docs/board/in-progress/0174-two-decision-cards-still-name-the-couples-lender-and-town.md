@@ -42,3 +42,12 @@ What would unblock it, either one:
 2. Mark this card not_for_the_loop: so the scheduler stops sending it here.
 
 Recommend 1: it is two small text edits plus a short test deletion, about ten minutes attended.
+
+**2026-10-13** RESULT: blocked
+TESTS: +0 new; test_no_tracked_doc_or_test_names_the_private_couple run, green (unchanged)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second loop take, same block as the first. Nothing has changed since: the guard test is still green, and its $stale branch fails if an exempt card goes clean, so cards 0022 and 0023 still carry the denied terms. The first task is to edit those two cards. A loop session may not edit any card but its own report. Deleting PENDING_SCRUB alone turns the suite red, and red is never committed.
+
+This needs a person. Either Rob (or an attended session) scrubs 0022 and 0023 and deletes PENDING_SCRUB, pendingCard() and the $stale branch in one commit, or the card gets not_for_the_loop: so the scheduler stops sending it here. Recommend the scrub: about ten minutes attended.
