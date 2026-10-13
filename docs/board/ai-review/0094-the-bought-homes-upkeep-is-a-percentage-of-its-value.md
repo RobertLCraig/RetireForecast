@@ -38,8 +38,8 @@ about which basis the fallback should use.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN no running cost is entered for a home being bought, THE APP SHALL charge upkeep on a basis backed by a published maintenance-cost source, with that source and its verified-on date recorded beside the figure. proves: `test_an_assumed_upkeep_figure_is_disclosed_with_its_value`
-- [ ] #2 THE APP SHALL state, in docs/spec/ASSUMPTIONS.md, which basis was chosen and what the alternative would have charged on a low-value purchase. proves: none - a doc statement, read by a person
+- [x] #1 WHEN no running cost is entered for a home being bought, THE APP SHALL charge upkeep on a basis backed by a published maintenance-cost source, with that source and its verified-on date recorded beside the figure. proves: `test_an_assumed_upkeep_figure_is_disclosed_with_its_value`
+- [x] #2 THE APP SHALL state, in docs/spec/ASSUMPTIONS.md, which basis was chosen and what the alternative would have charged on a low-value purchase. proves: none - a doc statement, read by a person
 <!-- AC:END -->
 
 ## Tasks
@@ -115,3 +115,24 @@ OUTCOME: rob
 
 
 **2026-10-13** Research done in an attended session with web access: `docs/research/RESEARCH-0094-home-upkeep-basis.md` holds the sources, URLs and verified_on dates, what each basis charges on the three test purchases, and the recommended basis (the greater of 1% of the buy price and a flat annual figure). Build from that note; it needs no web. Committed with this card as its evidence. Moved to todo/ for the loop. (agent, after Rob's 2026-10-13 clear-down)
+
+**2026-10-13** RESULT: done
+TESTS: +2 new, all green
+TOUCHED: packages/finance-engine/src/Housing/HousingComparison.php
+app/Forecast/ResultPresenter.php
+app/Forecast/ScenarioForecaster.php
+tests/Unit/Forecast/AssumedFiguresDisclosureTest.php
+packages/finance-engine/tests/Housing/HousingComparisonTest.php
+packages/finance-engine/tests/Housing/DepreciatingHomePurchaseTest.php
+packages/finance-engine/tests/Forecast/CareMeansTestedChargeTest.php
+docs/spec/ASSUMPTIONS.md
+docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+Built from docs/research/RESEARCH-0094-home-upkeep-basis.md. When no running cost is entered and the current home has none to scale, newHomeRunningCosts() now charges the greater of 1% of the buy price and HOME_MAINTENANCE_FLOOR_POUNDS = 3,000 (ONS Family spending FYE2025 Table 2.4, 65-74s, GBP 2,943 rounded up). New public constants HOME_MAINTENANCE_SOURCE and HOME_MAINTENANCE_VERIFIED_ON (2026-10-11). The untraceable Checkatrade citation is replaced with BCIS 1.16%. The assumed-figure disclosure now reads the amount from the engine, names which arm applied, and carries the source URL and verified_on date when the floor applies.
+
+#1: test_an_assumed_upkeep_figure_is_disclosed_with_its_value rewritten (GBP 150,000 now discloses GBP 3,000 plus source and date) and two new cases (GBP 60,000 floor, GBP 400,000 at 1%). Watched both floor cases fail first with the constants in place and the charge unchanged (disclosed GBP 1,500 and GBP 600). test_the_disclosed_figures_are_read_from_the_engine_not_restated moved from GBP 250,000 to GBP 350,000 so it still tests the percentage arm. #2: ASSUMPTIONS.md section 17 rewritten with the basis, both sources, and what 1% alone would have charged (GBP 600 on a GBP 60,000 park home, GBP 1,200 on a GBP 120,000 flat).
+
+Three engine tests drifted with the new default and were re-examined, not loosened: HousingComparisonTest now expects GBP 3,000 on a GBP 250,000 buy; DepreciatingHomePurchaseTest uses a GBP 4,500 pitch fee so the GBP 1,500 replace-not-add gap still holds; CareMeansTestedChargeTest pins buyRunningCosts at GBP 1,500 so its calibrated spend is unchanged (the test is about the care disregard, not upkeep).
+
+ENGINE_VERSION bumped to finance-engine/bought-home-upkeep-has-a-flat-floor. Stored scenarios are NOT re-run here: buy plans under GBP 300,000 on the default owe a re-run (scenarios:audit will flag the stamp). The figure stays editable through the existing buy running-cost field. The new disclosure sentence still needs a browser check from C:\Dev\RetireForecast.
