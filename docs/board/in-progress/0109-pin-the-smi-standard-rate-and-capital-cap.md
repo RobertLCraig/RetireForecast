@@ -68,3 +68,17 @@ separate gilt-linked rate DWP charges on the loan itself, and the interest met i
 interest actually charged that year.
 
 ## Comments
+
+**2026-10-13** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+This card needs web access, and this unattended session has none. WebSearch and WebFetch were both refused when called (permission not granted), as the card's own Plan predicted. Nothing in the repository holds the figures either: docs/research/ has no SMI research, and the only statements of 2.09% and GBP 100,000 are the unverified constants in packages/finance-engine/src/Benefits/SupportForMortgageInterest.php themselves.
+
+Criterion 1 is NOT met. Its fallback ('record that the search found none') would be false here, because no search ran. I did not write that into ASSUMPTIONS section 21.
+Criterion 2 is NOT met. Its test (test_guarantee_credit_meets_the_mortgage_interest_at_the_dwp_standard_rate) already exists and derives its pence from the constants. Changing a constant needs a published value I could not fetch, and inventing one would break the no-invented-figures rule.
+
+No code, doc or test changed, so there is no commit.
+
+Direction: run this card in an attended session with web access, standing in C:\Dev\RetireForecast. Two things to fetch: (1) the current SMI standard interest rate. Look on gov.uk (Support for Mortgage Interest page / DWP SMI guidance) and in the Loans for Mortgage Interest Regulations 2017 for the rule. (2) The pension-age eligible capital limit (believed GBP 100,000, versus GBP 200,000 for working age). Then follow the card's Tasks: set the two constants, delete both SOURCING GAP blocks, update ASSUMPTIONS section 21 with a source and verified_on, change the literal '2.09% a year' in InputNotesTest if the rate moves, and bump ScenarioForecaster::ENGINE_VERSION (expect the Monte Carlo golden master to need a re-pin and a DECISIONS entry). Cards 0085-0087, 0091, 0092, 0095, 0111, 0113, 0118 and 0129 are blocked by the same missing web access, so one attended research pass could settle several of them.
