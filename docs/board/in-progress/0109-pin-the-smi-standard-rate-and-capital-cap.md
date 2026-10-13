@@ -82,3 +82,15 @@ Criterion 2 is NOT met. Its test (test_guarantee_credit_meets_the_mortgage_inter
 No code, doc or test changed, so there is no commit.
 
 Direction: run this card in an attended session with web access, standing in C:\Dev\RetireForecast. Two things to fetch: (1) the current SMI standard interest rate. Look on gov.uk (Support for Mortgage Interest page / DWP SMI guidance) and in the Loans for Mortgage Interest Regulations 2017 for the rule. (2) The pension-age eligible capital limit (believed GBP 100,000, versus GBP 200,000 for working age). Then follow the card's Tasks: set the two constants, delete both SOURCING GAP blocks, update ASSUMPTIONS section 21 with a source and verified_on, change the literal '2.09% a year' in InputNotesTest if the rate moves, and bump ScenarioForecaster::ENGINE_VERSION (expect the Monte Carlo golden master to need a re-pin and a DECISIONS entry). Cards 0085-0087, 0091, 0092, 0095, 0111, 0113, 0118 and 0129 are blocked by the same missing web access, so one attended research pass could settle several of them.
+
+**2026-10-13** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second unattended take, same block as the first. WebSearch and WebFetch were both called again this session and both were refused (permission not granted). The repository still holds no source for either figure: docs/research/ has no SMI research, and the only statements of 2.09% and GBP 100,000 are the unverified constants in packages/finance-engine/src/Benefits/SupportForMortgageInterest.php.
+
+Criterion 1 is NOT met: no search ran, so recording 'the search found none' would be false.
+Criterion 2 is NOT met: changing a constant needs a published value I could not fetch.
+
+No commit. Direction is unchanged from the first take: this card cannot advance in the unattended loop. Run it in an attended session with web access, or mark it not_for_the_loop so the scheduler stops re-queuing it.
