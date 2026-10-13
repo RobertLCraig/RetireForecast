@@ -9,6 +9,11 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **An RPI-linked DB pension escalates at CPI + 0.39%, sourced to the OBR.** Card 0095. The 3% fixed
+  default stands, sourced to the PPF. `ENGINE_VERSION` is `finance-engine/rpi-wedge-39bp-obr-2026`;
+  the **re-run is owed** for plans with an RPI basis. The new disclosure is **not seen in a
+  browser**. Sources in ASSUMPTIONS §18.
+
 - **A bought home with no upkeep entered pays the greater of 1% of its price and £3,000 a year.** Card
   0094. `ENGINE_VERSION` is `finance-engine/bought-home-upkeep-has-a-flat-floor`; the **re-run is
   owed** for buy plans under £300,000 on that default. The new disclosure is **not seen in a

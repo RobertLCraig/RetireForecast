@@ -386,20 +386,28 @@ cash **−0.5%**.
    pensionable service before 6 April 2005 and 2.5% for service after it (Pensions Act 1995 s.51,
    as amended by Pensions Act 2004 s.278), and it is a floor as well as a cap, so a capped pension
    is not cut when prices fall.
-   **⚠️ SOURCING GAP, the sixth in this document.** Two figures beside them are this build's own
-   judgement with **no primary source fetched**, because the unattended build loop has no web access:
-   - **RPI escalates at CPI** (`PensionEscalationBasis::RPI_OVER_CPI_WEDGE_BPS` = 0). The reasoning
-     is that RPI is being aligned with CPIH from February 2030, so a plan of this length spends
-     nearly all of its years past the point the two agree, and zero is the cautious reading for
-     income the household receives. That alignment was not verified against the UK Statistics
-     Authority statement, and the pre-2030 years do carry a real wedge the model does not apply.
+   The two figures beside them were sourced by board card 0095:
+   - **RPI escalates at CPI + 0.39%** (`PensionEscalationBasis::RPI_OVER_CPI_WEDGE_BPS` = 39). This
+     is the OBR's long-run RPI-minus-CPI gap: long-run RPI 2.3855% against CPI 2.0%, "in line with
+     CPIH". Source:
+     <https://obr.uk/download/long-term-economic-determinants-march-2026-economic-and-fiscal-outlook/>,
+     backed by <https://obr.uk/box/the-long-run-difference-between-rpi-and-cpi-inflation/>.
+     verified_on: 2026-10-11. RPI takes CPIH's methods from February 2030, with annual rates fully
+     aligned from February 2031, under the HM Treasury / UK Statistics Authority response of
+     25 November 2020:
+     <https://assets.publishing.service.gov.uk/media/5fbd3b86d3bf7f5735e29b43/RPI_Response_FINAL_VERSION_.pdf>.
+     verified_on: 2026-10-11. RPI follows CPIH, not CPI, so the wedge stays positive after 2030. The
+     pre-2030 wedge of about 0.8-1.0 pp is deliberately not modelled: a flat 39 bp stays at or below
+     the OBR's year-by-year path at every horizon for a plan starting 2026-27, which is the cautious
+     direction for income the household receives.
    - **A Fixed basis with no rate entered escalates at 3%** (`DbPension::DEFAULT_FIXED_ESCALATION_BPS`).
-     3% and 5% are the two rates scheme rules commonly grant and 3% is the lower, which is the
-     adverse reading; neither the pair nor the choice is cited.
+     3% is the most common fixed rate in scheme rules: PPF Purple Book 2025 Fig. 3.13 (benefits
+     built up before 6 April 1997), 18% of schemes at 3%, 9% at 5%, 1% at 2.5%. Source:
+     <https://www.ppf.co.uk/-/media/PPF-Website/Public/Purple-Book-Data-2025/Pension-Protection-Fund-Purple-Book-2025-accessible.pdf>.
+     verified_on: 2026-10-11.
    Both are disclosed on the results page as assumed figures reading their own constants, and both
-   are overridden by what the reader enters (the fixed rate is now a builder input). Board card
-   **0095** carries pinning them to published data. **Confirm you are happy with RPI-as-CPI and 3%
-   until that lands.**
+   are overridden by what the reader enters (the fixed rate is a builder input). Full working:
+   [RESEARCH-0095](../research/RESEARCH-0095-db-escalation-figures.md).
 19. **How long the State Pension triple lock is assumed to last (added 2026-09-05; lives in
    `StatePension\StatePensionUprating`).** Board card 0038. The projector used to raise the State
    Pension by the greater of inflation and **2.5%** with no source, no setting and no control.

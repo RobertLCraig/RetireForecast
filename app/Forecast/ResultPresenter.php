@@ -1072,7 +1072,7 @@ final class ResultPresenter
         // What a Defined Benefit pension's increases were taken to mean. Board card 0035 made both
         // escalation dropdowns live, and two of the choices a reader can make are not taken wholly
         // at their word: a FIXED basis with no rate falls back to the engine's, and RPI is modelled
-        // at CPI because no wedge between them is sourced. Both compound on guaranteed income for
+        // at CPI plus one flat long-run wedge (card 0095). Both compound on guaranteed income for
         // the whole plan, and a reader told nothing would believe the model heard them.
         $fixedIsAssumed = false;
         $rpiChosen = false;
@@ -1095,11 +1095,13 @@ final class ResultPresenter
                 .'which rate applies, and you can enter it on the pension.';
         }
         if ($rpiChosen) {
+            // READ from the constant that owns it, so re-sourcing the wedge moves this sentence.
+            $wedge = self::ratePct(Percent::fromBasisPoints(PensionEscalationBasis::RPI_OVER_CPI_WEDGE_BPS)->asPercent());
             $out[] = 'You set one of your defined-benefit pensions to increase with RPI. We increase it at CPI '
-                .'instead: RPI is being brought into line with CPIH from 2030, so on a plan of this length the two '
-                .'are the same for nearly all of it, and we have no published figure for the gap in the years before '
-                .'that. It means an RPI pension is modelled slightly LOW rather than slightly high, which is the '
-                .'direction we err in. If your scheme is RPI-linked and you want the difference modelled, say so.';
+                ."plus {$wedge} a year, the Office for Budget Responsibility's long-run gap between the two once RPI "
+                .'is brought into line with CPIH from 2030. Before 2030 the real gap is larger, about 0.8 to 1 point '
+                .'a year, so an RPI pension is modelled slightly LOW rather than slightly high, which is the '
+                .'direction we err in.';
         }
 
         // Two figures the engine supplies for itself when an annuity is bought with money that is

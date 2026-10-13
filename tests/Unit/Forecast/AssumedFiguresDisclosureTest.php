@@ -12,6 +12,7 @@ use RetireForecast\FinanceEngine\Care\CareAssumptions;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\DbPension;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
+use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Forecast\AllocationProfile;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
@@ -865,11 +866,11 @@ final class AssumedFiguresDisclosureTest extends TestCase
         ]]));
     }
 
-    public function test_an_rpi_basis_discloses_that_the_model_treats_it_as_cpi(): void
+    public function test_an_rpi_basis_discloses_the_wedge_it_is_modelled_at(): void
     {
-        // The engine models no RPI-over-CPI wedge (PensionEscalationBasis::RPI_OVER_CPI_WEDGE_BPS).
-        // A reader who picked RPI and was told nothing would reasonably believe the model heard
-        // them, which is the exact failure board card 0035 was raised for.
+        // RPI is modelled as CPI plus a single long-run wedge (PensionEscalationBasis::
+        // RPI_OVER_CPI_WEDGE_BPS), not the year-by-year path. The disclosure must show the wedge
+        // the engine actually uses, read from its constant, so re-sourcing it moves the sentence.
         $disclosures = $this->disclosuresFor([[
             'id' => 'db1', 'ownerId' => 'p1', 'subtype' => 'db', 'accruedAnnualPension' => '12000',
             'normalRetirementAge' => '65', 'revaluationBasis' => 'rpi', 'escalationInPayment' => 'rpi',
@@ -877,7 +878,12 @@ final class AssumedFiguresDisclosureTest extends TestCase
 
         $this->assertCount(1, $disclosures);
         $this->assertStringContainsString('RPI', $disclosures[0]);
-        $this->assertStringContainsString('CPI', $disclosures[0]);
+        $this->assertStringContainsString(
+            'CPI plus '.self::pct(PensionEscalationBasis::RPI_OVER_CPI_WEDGE_BPS / 100).'%',
+            $disclosures[0],
+            'the disclosed wedge must be the one the engine actually escalates at',
+        );
+        $this->assertStringContainsString('2030', $disclosures[0]);
     }
 
     public function test_the_disclosed_figures_are_read_from_the_engine_not_restated(): void

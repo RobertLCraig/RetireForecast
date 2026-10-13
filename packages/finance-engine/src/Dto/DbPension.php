@@ -30,11 +30,14 @@ final class DbPension implements Pension
      * The fixed annual increase used when a scheme is set to PensionEscalationBasis::Fixed and
      * the reader entered no rate of their own: 3% a year.
      *
-     * SOURCE: judgement, not a published series. 3% and 5% are the two rates UK scheme rules
-     * commonly grant, and 3% is the lower — the adverse reading for income the household
-     * receives, which is the house rule where several figures are plausible. The gap is board
-     * card 0095. Read, never restated, by the disclosure that surfaces it, and overridden
-     * outright by a rate the reader enters.
+     * 3% is the most common fixed rate in UK scheme rules and the lower of the two common ones:
+     * PPF Purple Book 2025, Fig. 3.13 (benefits built up before 6 April 1997), fixed 3% at 18% of
+     * schemes, 5% at 9%, 2.5% at 1%. Lower is the adverse reading for income the household
+     * receives. Read, never restated, by the disclosure that surfaces it, and overridden outright
+     * by a rate the reader enters. Board card 0095.
+     *
+     * Source: https://www.ppf.co.uk/-/media/PPF-Website/Public/Purple-Book-Data-2025/Pension-Protection-Fund-Purple-Book-2025-accessible.pdf
+     * verified_on: 2026-10-11
      */
     public const DEFAULT_FIXED_ESCALATION_BPS = 300;
 

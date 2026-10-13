@@ -247,9 +247,8 @@ final class DbEscalationTest extends TestCase
 
     /**
      * Every basis the reader can choose moves the twenty-year income to a DIFFERENT place, which
-     * is the whole point of the control. RPI is the exception and is asserted below on its own:
-     * the engine models no RPI-over-CPI wedge (see PensionEscalationBasis::RPI_OVER_CPI_WEDGE_BPS),
-     * so it lands on CPI.
+     * is the whole point of the control. RPI is asserted below on its own, against CPI plus its
+     * sourced wedge (see PensionEscalationBasis::RPI_OVER_CPI_WEDGE_BPS).
      */
     public function test_each_escalation_basis_reaches_a_different_twenty_year_income(): void
     {
@@ -277,18 +276,19 @@ final class DbEscalationTest extends TestCase
     }
 
     /**
-     * The RPI case, stated openly rather than left to be discovered. The engine has no sourced
-     * RPI-over-CPI wedge, so RPI escalates at CPI; this pins that it is a DELIBERATE zero and
-     * fails the moment a wedge is introduced without the disclosure moving with it.
+     * The RPI case, stated openly rather than left to be discovered. RPI escalates at CPI plus the
+     * OBR's long-run wedge (card 0095); this pins the sourced 39 bp so a later change is deliberate,
+     * and proves the wedge actually reaches the income rather than sitting unread in a constant.
      */
-    public function test_rpi_escalates_at_cpi_because_no_wedge_is_modelled(): void
+    public function test_rpi_escalates_at_cpi_plus_the_sourced_wedge(): void
     {
-        $this->assertSame(0, PensionEscalationBasis::RPI_OVER_CPI_WEDGE_BPS);
+        $this->assertSame(39, PensionEscalationBasis::RPI_OVER_CPI_WEDGE_BPS);
 
         $rpi = $this->dbIncomeByYear(PensionEscalationBasis::Rpi, 6.0);
         $cpi = $this->dbIncomeByYear(PensionEscalationBasis::Cpi, 6.0);
 
-        $this->assertSame($cpi[2046], $rpi[2046]);
+        $this->assertGreaterThan($cpi[2046], $rpi[2046]);
+        $this->assertEqualsWithDelta($this->compounded(6.39, 20), $rpi[2046], 50.0);
     }
 
     /**

@@ -28,19 +28,22 @@ enum PensionEscalationBasis: string
     /**
      * How far RPI is modelled as running above CPI, in basis points.
      *
-     * ZERO, deliberately, and this is the one figure in this file with no citation. RPI is being
-     * aligned with CPIH from February 2030 (UK Statistics Authority / HM Treasury, announced
-     * November 2020), and a retirement projection started now spends nearly all of its years on
-     * the far side of that date — so a permanent wedge would overstate an RPI-linked pension for
-     * the bulk of the plan. Zero is also the ADVERSE reading for income the household receives,
-     * which is the house rule where several figures are plausible.
+     * 39 bp: the OBR's long-run RPI-minus-CPI gap (long-run RPI 2.3855% against CPI 2.0%, "in line
+     * with CPIH"). RPI takes CPIH's methods and data from February 2030 (HM Treasury / UK Statistics
+     * Authority response, 25 November 2020), so after that RPI follows CPIH, not CPI, and the wedge
+     * narrows but stays positive.
      *
-     * The reasoning above could not be verified against a primary source in the session that wrote
-     * it (no web access), and the pre-2030 years genuinely do carry a wedge. Board card 0095 holds
-     * the sourcing. Until it lands, the app's assumed-figure disclosures tell any reader who picks
-     * RPI that the model treats it as CPI, so the choice is not silently ignored.
+     * One flat figure, not the OBR's year-by-year path: {@see increase} takes no year. For a plan
+     * starting 2026-27 the flat 39 bp compounds to no more than that path at every horizon, because
+     * it gives up the pre-2030 wedge of about 0.8-1.0 pp. That is the cautious direction for income
+     * the household receives. Board card 0095; docs/research/RESEARCH-0095-db-escalation-figures.md.
+     *
+     * Source: https://obr.uk/download/long-term-economic-determinants-march-2026-economic-and-fiscal-outlook/
+     * and https://obr.uk/box/the-long-run-difference-between-rpi-and-cpi-inflation/ ;
+     * alignment: https://assets.publishing.service.gov.uk/media/5fbd3b86d3bf7f5735e29b43/RPI_Response_FINAL_VERSION_.pdf
+     * verified_on: 2026-10-11
      */
-    public const RPI_OVER_CPI_WEDGE_BPS = 0;
+    public const RPI_OVER_CPI_WEDGE_BPS = 39;
 
     /**
      * The statutory cap on this basis in basis points, or null when the basis is not capped.
