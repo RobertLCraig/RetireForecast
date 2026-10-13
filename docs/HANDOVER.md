@@ -9,6 +9,11 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **A blank service-charge growth rate is CPI + 1.8%, cited to Hamptons.** Card 0085. It was CPI + 3%.
+  `ENGINE_VERSION` is `finance-engine/property-cost-growth-sourced-at-cpi-plus-1-8`; the **re-run is
+  owed** for stay-put plans with a service charge and a blank rate. The step-4 help text is **not seen
+  in a browser**. Source in ASSUMPTIONS §12.
+
 - **Each member enters their own share of the home, and the sale and care follow it.** Card 0102.
   No re-run is owed. The two share inputs are **not seen in a browser**. Reasons in DECISIONS 2026-10-11.
 
