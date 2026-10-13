@@ -40,8 +40,8 @@ citations.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] THE APP SHALL carry a primary or fetchable secondary source URL and a verified_on date for the RPI-over-CPI wedge and the default fixed escalation rate in docs/spec/ASSUMPTIONS.md, or record there that the search found none. proves: manual
-- [ ] WHEN a sourced figure differs from the shipped one, THE APP SHALL use the sourced one, and the disclosure that reads the constant SHALL move with it. proves: `test_an_assumed_fixed_db_escalation_rate_is_disclosed_with_its_value`
+- [x] THE APP SHALL carry a primary or fetchable secondary source URL and a verified_on date for the RPI-over-CPI wedge and the default fixed escalation rate in docs/spec/ASSUMPTIONS.md, or record there that the search found none. proves: manual
+- [x] WHEN a sourced figure differs from the shipped one, THE APP SHALL use the sourced one, and the disclosure that reads the constant SHALL move with it. proves: `test_an_assumed_fixed_db_escalation_rate_is_disclosed_with_its_value`
 <!-- AC:END -->
 
 ## Tasks
@@ -134,3 +134,32 @@ OUTCOME: rob
 
 
 **2026-10-13** Research done in an attended session with web access: `docs/research/RESEARCH-0095-db-escalation-figures.md` holds both figures with source URLs and verified_on dates (RPI-over-CPI wedge 0 to 39 bps from the OBR long-run determinants; the 3% fixed default stands, PPF Purple Book 2025). Build from that note; it needs no web. The wedge moves, so the ENGINE_VERSION bump in the Plan is owed. Committed with this card as its evidence. Moved to todo/ for the loop. (agent, after Rob's 2026-10-13 clear-down)
+
+**2026-10-13** RESULT: done
+TESTS: +0 new (2 rewritten to the new behaviour, both watched red first), all green
+TOUCHED: packages/finance-engine/src/Dto/PensionEscalationBasis.php
+packages/finance-engine/src/Dto/DbPension.php
+packages/finance-engine/tests/Forecast/DbEscalationTest.php
+app/Forecast/ResultPresenter.php
+app/Forecast/ScenarioForecaster.php
+tests/Unit/Forecast/AssumedFiguresDisclosureTest.php
+docs/spec/ASSUMPTIONS.md
+docs/HANDOVER.md
+docs/board/todo/0201-fixed-db-rate-disclosure-overstates-the-gap.md
+OUT-OF-SCOPE: 0201
+
+Built from docs/research/RESEARCH-0095-db-escalation-figures.md. No web was used in this session.
+
+- RPI_OVER_CPI_WEDGE_BPS is now 39 (was 0): OBR March 2026 long-run RPI 2.3855% less CPI 2.0%. Docblock cites the OBR and the HMT/UKSA 2020 response, verified_on 2026-10-11.
+- DEFAULT_FIXED_ESCALATION_BPS stays 300, now cited to PPF Purple Book 2025 Fig. 3.13.
+- The RPI disclosure in ResultPresenter::assumedFigures() used to hard-code 'at CPI instead'. It now reads the wedge constant, so it moves with it.
+- ASSUMPTIONS.md section 18: the sourcing-gap block is replaced by both citations. No other gap count existed in the file to lower.
+- ENGINE_VERSION is finance-engine/rpi-wedge-39bp-obr-2026.
+
+Tests. DbEscalationTest::test_rpi_escalates_at_cpi_because_no_wedge_is_modelled became test_rpi_escalates_at_cpi_plus_the_sourced_wedge (pins 39, RPI income at 2046 above CPI and equal to 6.39% compounded). First run red: 'Failed asserting that 0 is identical to 39.' AssumedFiguresDisclosureTest::test_an_rpi_basis_discloses_that_the_model_treats_it_as_cpi became test_an_rpi_basis_discloses_the_wedge_it_is_modelled_at (asserts 'CPI plus 0.39%' read from the constant, and '2030'). First run red: the old sentence did not contain the wedge.
+
+Note on criterion 2: its proves: name, test_an_assumed_fixed_db_escalation_rate_is_disclosed_with_its_value, covers the FIXED rate, and that figure did not move, so that test is unchanged and green. The figure that moved is the RPI wedge; the two tests above are what prove it moves the engine and the disclosure.
+
+Still owed by a person: the re-run of stored scenarios with an RPI basis, and a browser look at the new RPI sentence (Herd serves C:\Dev\RetireForecast, not this worktree). php artisan scenarios:audit exits non-zero against the copied .env database, but every finding is old state unrelated to this card: runs with no integrity stamp, and three assumption sets missing inflationPersistence / inflationAssetCorrelations / economicSourcing (fix: php artisan db:seed --class=Database\Seeders\AssumptionSetSeeder). I did not write to that database.
+
+Card 0201: the fixed-rate disclosure says 3% vs 5% over thirty years 'roughly doubles the pension'; it is about 1.78x. Left as copy for its own card.
