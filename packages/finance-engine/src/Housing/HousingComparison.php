@@ -59,16 +59,31 @@ final class HousingComparison
     public const DEFAULT_MOVING_COSTS_PENCE = 200_000; // £2,000
 
     /**
-     * The standard annual home-maintenance rate applied to a BOUGHT freehold home that has no
-     * explicit running-cost basis — 1% of the home's value a year, the widely-used UK rule of
-     * thumb (Checkatrade 2023: homeowners spent on average ~1% of property value a year on
-     * maintenance; newer homes ~1%, older 1.5-4%, so 1% is conservative). It stops a bought home
-     * being modelled with zero upkeep when the current home is a leasehold flat whose building
-     * maintenance sat inside its service charge (empty runningCosts). A DEFAULT only: a current
-     * home with its own runningCosts scales those instead, and a real chosen property's actual
-     * costs would override it. verified_on 2026-07-08.
+     * The upkeep of a BOUGHT home with no explicit running-cost basis is the greater of this rate
+     * of its value and {@see HOME_MAINTENANCE_FLOOR_POUNDS} a year (board card 0094). It stops a
+     * bought home being modelled with zero upkeep when the current home is a leasehold flat whose
+     * building maintenance sat inside its service charge (empty runningCosts). A DEFAULT only: a
+     * current home with its own runningCosts scales those instead, and an entered figure wins.
+     *
+     * The 1% is BCIS's 1.16% of replacement cost (2021 data,
+     * https://bcis.co.uk/news/fm-market-represents-nearly-8-of-uk-gdp/), which matches ONS spend at
+     * the UK average price. The old "Checkatrade 2023" citation could not be traced
+     * (docs/research/RESEARCH-0094-home-upkeep-basis.md). verified_on 2026-10-11.
      */
     public const HOME_MAINTENANCE_RATE_BPS = 100; // 1.00% of value a year (PUBLIC so it can be disclosed)
+
+    /**
+     * The flat floor under that rate, in today's pounds: ONS Family spending FYE2025, Table 2.4,
+     * households aged 65-74 spend £14.10 a week on maintenance and repair plus £42.50 on alterations
+     * and improvements (boilers, roofs, windows, bathrooms), £2,943 a year, rounded up toward caution.
+     * Without it 1% of a cheap home (£600 on a £60,000 park home) is less than one boiler. The two
+     * bases cross at £300,000. verified_on 2026-10-11.
+     */
+    public const HOME_MAINTENANCE_FLOOR_POUNDS = 3_000;
+
+    public const HOME_MAINTENANCE_SOURCE = 'https://www.ons.gov.uk/peoplepopulationandcommunity/personalandhouseholdfinances/expenditure/datasets/familyspendingworkbook5expenditureonhousing';
+
+    public const HOME_MAINTENANCE_VERIFIED_ON = '2026-10-11';
 
     public function __construct(
         private readonly TaxYearConfig $config,
@@ -396,7 +411,8 @@ final class HousingComparison
      * runningCosts (a house with entered upkeep), scale them to the new home's value. When it
      * does not — the common case here, a leasehold flat whose building maintenance was inside
      * its service charge (a while_owning_home spend line, stripped on sale), so its runningCosts
-     * is empty — fall back to the standard {@see HOME_MAINTENANCE_RATE_BPS} of the buy price, so
+     * is empty — fall back to the greater of {@see HOME_MAINTENANCE_RATE_BPS} of the buy price and
+     * {@see HOME_MAINTENANCE_FLOOR_POUNDS}, so
      * the freehold purchase is not modelled with zero upkeep. The maintenance default replaces
      * the service charge the sold flat no longer pays.
      *
@@ -418,7 +434,10 @@ final class HousingComparison
             return Money::fromPence((int) round($current->pence * $buyPrice->pence / $action->salePrice->pence));
         }
 
-        return $buyPrice->applyRate(Percent::fromBasisPoints(self::HOME_MAINTENANCE_RATE_BPS));
+        $ofValue = $buyPrice->applyRate(Percent::fromBasisPoints(self::HOME_MAINTENANCE_RATE_BPS));
+        $floor = Money::fromPounds(self::HOME_MAINTENANCE_FLOOR_POUNDS);
+
+        return $ofValue->pence >= $floor->pence ? $ofValue : $floor;
     }
 
     /**

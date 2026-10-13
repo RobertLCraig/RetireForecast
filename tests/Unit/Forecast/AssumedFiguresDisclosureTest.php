@@ -86,16 +86,39 @@ final class AssumedFiguresDisclosureTest extends TestCase
 
     public function test_an_assumed_upkeep_figure_is_disclosed_with_its_value(): void
     {
-        // No running costs given for the home being bought => the engine assumes 1% of value a year.
-        // The reader must be told the rate AND the resulting pounds.
+        // No running costs given for a £150,000 home being bought => the engine charges the greater of
+        // 1% of value (£1,500) and the flat floor (board card 0094). Below £300,000 the floor wins:
+        // 1% of a cheap home is less than one boiler. The reader must be told the basis, the pounds,
+        // and where the figure comes from and when it was checked.
         $disclosures = $this->disclosures(['salePrice' => '400000', 'buyPrice' => '150000', 'movingCosts' => '3000']);
 
         $this->assertCount(1, $disclosures);
-        $expected = Money::fromPounds(150_000)
+        $floor = Money::fromPounds(HousingComparison::HOME_MAINTENANCE_FLOOR_POUNDS);
+
+        $this->assertStringContainsString($floor->format(), $disclosures[0], 'the disclosed pounds must be the figure actually used');
+        $this->assertStringNotContainsString('£1,500.00', $disclosures[0], '1% of a £150,000 home is below the floor');
+        $this->assertStringContainsString(HousingComparison::HOME_MAINTENANCE_SOURCE, $disclosures[0]);
+        $this->assertStringContainsString(HousingComparison::HOME_MAINTENANCE_VERIFIED_ON, $disclosures[0]);
+    }
+
+    public function test_a_cheap_home_is_charged_the_upkeep_floor_not_one_percent(): void
+    {
+        // A £60,000 park home: 1% would be £600 a year, below what 65-74s spend on minor repairs alone.
+        $disclosures = $this->disclosures(['salePrice' => '400000', 'buyPrice' => '60000', 'movingCosts' => '3000']);
+
+        $this->assertStringContainsString(Money::fromPounds(HousingComparison::HOME_MAINTENANCE_FLOOR_POUNDS)->format(), $disclosures[0]);
+        $this->assertStringNotContainsString('£600.00', $disclosures[0]);
+    }
+
+    public function test_a_dear_home_is_charged_one_percent_of_its_value(): void
+    {
+        // Above the £300,000 crossover the percentage arm wins: £400,000 at 1% is £4,000 a year.
+        $disclosures = $this->disclosures(['salePrice' => '500000', 'buyPrice' => '400000', 'movingCosts' => '3000']);
+        $expected = Money::fromPounds(400_000)
             ->applyRate(Percent::fromBasisPoints(HousingComparison::HOME_MAINTENANCE_RATE_BPS));
 
         $this->assertStringContainsString('1% of its value', $disclosures[0]);
-        $this->assertStringContainsString($expected->format(), $disclosures[0], 'the disclosed pounds must be the figure actually used');
+        $this->assertStringContainsString($expected->format(), $disclosures[0]);
     }
 
     public function test_an_assumed_moving_cost_is_disclosed_with_its_value(): void
@@ -862,9 +885,9 @@ final class AssumedFiguresDisclosureTest extends TestCase
         // Guards the drift this rule exists to prevent: if the engine's constant changed but the
         // disclosure did not, the reader would be shown a figure the model is not using. Because the
         // presenter reads the constant, moving the constant moves the disclosure.
-        $disclosures = $this->disclosures(['salePrice' => '400000', 'buyPrice' => '250000', 'movingCosts' => '3000']);
+        $disclosures = $this->disclosures(['salePrice' => '500000', 'buyPrice' => '350000', 'movingCosts' => '3000']);
 
-        $onBiggerHome = Money::fromPounds(250_000)
+        $onBiggerHome = Money::fromPounds(350_000)
             ->applyRate(Percent::fromBasisPoints(HousingComparison::HOME_MAINTENANCE_RATE_BPS));
 
         $this->assertStringContainsString($onBiggerHome->format(), $disclosures[0]);

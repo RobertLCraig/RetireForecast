@@ -1494,16 +1494,23 @@ final class ResultPresenter
             return $out;
         }
 
-        // The bought home's upkeep: 1% of its value a year, when no figure was entered. On a £150,000
-        // home that is £1,500/yr charged as an essential cost for the rest of the plan.
+        // The bought home's upkeep when no figure was entered: the greater of 1% of its value and a
+        // flat floor (board card 0094), charged as an essential cost for the rest of the plan. The
+        // amount is READ from the engine, so the sentence names the arm actually charged.
         if ($action->buyPrice !== null && $action->buyPrice->isPositive() && $action->buyRunningCosts === null) {
             $current = $household->primaryResidence?->runningCosts;
             if ($current === null || ! $current->isPositive() || $action->salePrice->isZero()) {
                 $rate = Percent::fromBasisPoints(HousingComparison::HOME_MAINTENANCE_RATE_BPS);
-                $amount = $action->buyPrice->applyRate($rate);
+                $amount = HousingComparison::newHomeRunningCosts($household, $action, $action->buyPrice);
                 $pct = rtrim(rtrim(number_format($rate->asPercent(), 2), '0'), '.');
-                $out[] = "You didn't give running costs for the home you'd buy, so we've assumed {$pct}% of its "
-                    ."value a year — {$amount->format()} a year for upkeep — and "
+                $floor = Money::fromPounds(HousingComparison::HOME_MAINTENANCE_FLOOR_POUNDS);
+                $basis = $amount->pence > $floor->pence
+                    ? "{$pct}% of its value a year, which on this home is more than the {$floor->format()} floor"
+                    : 'what households aged 65-74 typically spend a year on repairs and replacements (ONS Family '
+                        .'spending, '.HousingComparison::HOME_MAINTENANCE_SOURCE.', checked '
+                        .HousingComparison::HOME_MAINTENANCE_VERIFIED_ON."), which on this home is no less than {$pct}% of its value";
+                $out[] = "You didn't give running costs for the home you'd buy, so we've assumed {$basis} — "
+                    ."{$amount->format()} a year for upkeep — and "
                     .'charged it as an essential cost for the whole plan. If you know the real figure (a service '
                     ."charge, or a park home's pitch fee) enter it: at this size, being out by half changes the "
                     .'plan by hundreds of pounds a year.'.self::councilTaxOnTop($household);

@@ -129,22 +129,22 @@ final class DepreciatingHomePurchaseTest extends TestCase
 
     public function test_an_explicit_running_cost_replaces_the_one_percent_default(): void
     {
-        // A £150,000 home defaults to £1,500/yr upkeep (1% of value). A park home's pitch fee is
-        // £3,000/yr — so the default understates it by £1,500 a year, every year.
+        // A £150,000 home defaults to £3,000/yr upkeep (the floor over 1% of value, board card 0094).
+        // A park home's pitch fee of £4,500/yr — so the default understates it by £1,500 a year.
         $defaulted = $this->buyForecast(null, null);
-        $pitchFee = $this->buyForecast(null, Money::fromPounds(3_000));
+        $pitchFee = $this->buyForecast(null, Money::fromPounds(4_500));
 
         $extra = $pitchFee->years[0]->essentialSpend->pence - $defaulted->years[0]->essentialSpend->pence;
-        $this->assertSame(150_000, $extra, 'the explicit £3,000 replaces the £1,500 default (a £1,500 increase)');
+        $this->assertSame(150_000, $extra, 'the explicit £4,500 replaces the £3,000 default (a £1,500 increase)');
 
-        // ...and it is not ADDED to the default (that would be £4,500 of upkeep, a double count).
-        $this->assertNotSame(300_000, $extra);
+        // ...and it is not ADDED to the default (that would be £7,500 of upkeep, a double count).
+        $this->assertNotSame(450_000, $extra);
     }
 
     public function test_a_lower_running_cost_than_the_default_is_honoured_too(): void
     {
         // The point of the park-home option is cheaper running costs, so the field must be able to
-        // go DOWN as well as up — £900/yr against the £1,500 default.
+        // go DOWN as well as up — £900/yr against the £3,000 default.
         $defaulted = $this->buyForecast(null, null);
         $cheap = $this->buyForecast(null, Money::fromPounds(900));
 

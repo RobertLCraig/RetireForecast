@@ -543,7 +543,9 @@ final class CareMeansTestedChargeTest extends TestCase
                 ),
                 new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
                 AssumptionSetLibrary::default(),
-                new HousingAction(salePrice: Money::fromPounds(300_000), buyPrice: Money::fromPounds(150_000), annualRent: Money::fromPounds(12_000)),
+                // Upkeep pinned at £1,500 so the fixture's calibrated spend is not moved by the
+                // upkeep default (board card 0094): this test is about the disregard, not upkeep.
+                new HousingAction(salePrice: Money::fromPounds(300_000), buyPrice: Money::fromPounds(150_000), annualRent: Money::fromPounds(12_000), buyRunningCosts: Money::fromPounds(1_500)),
             )['buy_outright']['household'];
 
         $charge = fn (bool $relative): int => $this->project($variant($relative), deathAges: ['p1' => 90], careFromAge: ['p1' => 88])

@@ -121,8 +121,9 @@ final class HousingComparisonTest extends TestCase
     {
         // A leasehold flat whose building maintenance sat inside its service charge has empty
         // runningCosts. Selling it and buying a £250k freehold must not model zero upkeep: the
-        // bought home carries the standard 1%-of-value maintenance (£2,500/yr), replacing the
-        // service charge the sold flat no longer pays.
+        // bought home carries the standard maintenance default, the greater of 1% of value
+        // (£2,500) and the £3,000 floor (board card 0094), replacing the service charge the sold
+        // flat no longer pays.
         $flatDweller = new Household(
             'Leaseholder', RegionProfile::EnglandWalesNi,
             [new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired)],
@@ -137,7 +138,7 @@ final class HousingComparisonTest extends TestCase
             AssumptionSetLibrary::default(), $action,
         )['buy_outright']['household'];
 
-        $this->assertSame(Money::fromPounds(2_500)->pence, $buy->primaryResidence->runningCosts->pence);
+        $this->assertSame(Money::fromPounds(3_000)->pence, $buy->primaryResidence->runningCosts->pence);
     }
 
     /**

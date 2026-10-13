@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-13 (carer-addition-respects-the-earnings-limit): a carer whose pay in a year is
+     * Bumped 2026-10-13 (bought-home-upkeep-has-a-flat-floor): a bought home with no running cost
+     * entered, and no current-home upkeep to scale, is now charged the greater of 1% of its price
+     * and £3,000 a year (was 1% alone). Every buy plan under £300,000 on that default moves down:
+     * up to £2,400 a year more essential spend at £60,000. Board card 0094.
+     * Previous bump 2026-10-13 (carer-addition-respects-the-earnings-limit): a carer whose pay in a year is
      * over the Carer's Allowance earnings limit no longer gets the Pension Credit carer addition
      * that year. Only a plan where somebody both cares and earns past State Pension age moves, and
      * it moves down: its Pension Credit, wealth and success odds were too favourable. Board card 0108.
@@ -601,7 +605,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/carer-addition-respects-the-earnings-limit';
+    public const ENGINE_VERSION = 'finance-engine/bought-home-upkeep-has-a-flat-floor';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

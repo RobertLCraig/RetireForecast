@@ -360,22 +360,24 @@ cash **−0.5%**.
      Adding the itemised leasehold lines above (about £1,200 of pack, licence and notices plus £300 of
      extra conveyancing) and the conditional £750 return to a £300,000 flat gives 3.4% to 3.9%, so 4%
      stands as the cautious catch-all, and the itemised set is what a reader should actually use.
-17. **The upkeep of a home you would BUY is 1% of its value a year (in use since 2026-07-08;
-   verified_on 2026-07-08; lives in `HousingComparison::HOME_MAINTENANCE_RATE_BPS`).** It applies
-   only where the reader entered no running cost for the purchase AND the current home has none of
-   its own to scale, which is the usual case when the current home is a leasehold flat whose
-   maintenance sat inside its service charge. The figure is the widely-quoted UK rule of thumb
-   (Checkatrade's 2023 survey put average homeowner maintenance at about 1% of property value a
-   year, with older stock at 1.5% to 4%), so 1% is the cautious end of that range.
-   **The open question is the BASIS, not the number** (board card 0033). A roof, a boiler and a
-   rewire cost about the same in a cheap area as an expensive one, so a percentage of value is a
-   proxy for the quality of the stock rather than a driver of the cost, and it understates upkeep
-   at the low end, which is exactly where a downsizing purchase sits. A flat annual figure by
-   property type and age is the alternative basis, and choosing one needs a published maintenance
-   series this session could not fetch. Board card **0094** carries that comparison.
-   Documented in the meantime rather than changed: it is disclosed on the results page as an
-   assumed figure reading the constant, and an entered running cost always wins.
-   **Confirm you are happy with 1% of value until that lands.**
+17. **The upkeep of a home you would BUY is the greater of 1% of its price and £3,000 a year
+   (since 2026-10-13, board card 0094; verified_on 2026-10-11; lives in
+   `HousingComparison::HOME_MAINTENANCE_RATE_BPS` and `HOME_MAINTENANCE_FLOOR_POUNDS`).** It
+   applies only where the reader entered no running cost for the purchase AND the current home has
+   none of its own to scale. An entered running cost always wins.
+   - **The £3,000** is ONS Family spending FYE2025, Table 2.4
+     (<https://www.ons.gov.uk/peoplepopulationandcommunity/personalandhouseholdfinances/expenditure/datasets/familyspendingworkbook5expenditureonhousing>):
+     households aged 65-74 spend £14.10 a week on maintenance and repair plus £42.50 on alterations
+     and improvements (boilers, roofs, windows, bathrooms), £2,943 a year, rounded up.
+   - **The 1%** is BCIS's 1.16% of rebuild cost (2021,
+     <https://bcis.co.uk/news/fm-market-represents-nearly-8-of-uk-gdp/>), which matches ONS spend at
+     the UK average price. The old "Checkatrade 2023" citation could not be traced.
+   - **The alternative, 1% of value alone,** would have charged £600 on a £60,000 park home and
+     £1,200 on a £120,000 flat. That is below even the £733 that 65-74s spend on minor repairs
+     before any boiler, roof or window. The two bases cross at £300,000, so above that 1% applies.
+   - The floor likely overstates a park home or a service-charged leasehold flat; no source covers
+     either, so caution governs and the reader should enter the real figure. Full comparison:
+     [RESEARCH-0094](../research/RESEARCH-0094-home-upkeep-basis.md).
 18. **How a defined-benefit pension increases (added 2026-09-05; lives in
    `PensionEscalationBasis` and `DbPension`).** Board card 0035 made both escalation dropdowns
    live: a scheme now revalues on its revaluation basis until normal retirement age and escalates
