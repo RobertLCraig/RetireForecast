@@ -106,3 +106,5 @@ WHY: The two open criteria need gov.uk figures, and the loop cannot get to the w
 
 OUTCOME: rob
 
+
+**2026-10-13** The figures needed fetching from gov.uk; fetched today and written to `docs/research/RESEARCH-0106-attendance-allowance-and-carer-earnings.md` with URLs and verified_on 2026-10-13. Both Attendance Allowance pairs match what shipped. The 2026/27 Carer's Allowance earnings limit is GBP 204.00, not the derived GBP 203.36, so that one figure changes. Build from that note; it needs no web. Moved to todo/ for the loop. (agent, after Rob's 2026-10-13 clear-down)
