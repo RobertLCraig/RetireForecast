@@ -78,3 +78,10 @@ The code this card asks for was already on master: commit 77c1ac0 (2026-10-04) r
 Watched failing against the pre-77c1ac0 versions of the two classes (checked out from 77c1ac0~1, then restored to HEAD): #1 failed 'Failed asserting that 2 is identical to 1' for each class separately; #2 failed 'Undefined array key "not_a_variant"' in SustainableSpend. The old AdviceCostComparison already had the ?? stay_put fallback, so #2's advice-cost assertions guard but were never red.
 
 One blind spot found and closed while writing #1: ScenarioForecaster is a scoped singleton and its memo keys on the row, so a second probe of the same row read the first probe's warm memo and counted 1 even on the old code. The test calls forgetScopedInstances() between the two probes. No figure moved; nothing needs a browser check.
+
+**2026-10-13** RESULT: done
+TESTS: +0 new this take (the 2 from the previous take, commit 27c6208), all green
+TOUCHED: none this take (previous take: tests/Feature/DecisionSupport/DecisionSupportVariantInputsTest.php)
+OUT-OF-SCOPE: none
+
+Resumed take. The previous take already committed the two proves: tests (27c6208) and its comment is on the card; the production change is 77c1ac0. This take re-checked: SustainableSpend.php:69 and AdviceCostComparison.php:72 both call $this->forecaster->variantInputs(), DecisionSupportVariantInputsTest passes (2 tests), and the whole suite is green (1 skip, the compliance partition test that skips in personal-use mode). Nothing new to commit. No browser check needed: no figure or screen changed.
