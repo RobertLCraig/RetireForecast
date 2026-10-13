@@ -51,3 +51,5 @@ OUT-OF-SCOPE: none
 Second loop take, same block as the first. Nothing has changed since: the guard test is still green, and its $stale branch fails if an exempt card goes clean, so cards 0022 and 0023 still carry the denied terms. The first task is to edit those two cards. A loop session may not edit any card but its own report. Deleting PENDING_SCRUB alone turns the suite red, and red is never committed.
 
 This needs a person. Either Rob (or an attended session) scrubs 0022 and 0023 and deletes PENDING_SCRUB, pendingCard() and the $stale branch in one commit, or the card gets not_for_the_loop: so the scheduler stops sending it here. Recommend the scrub: about ten minutes attended.
+
+**2026-10-13** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 1 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
