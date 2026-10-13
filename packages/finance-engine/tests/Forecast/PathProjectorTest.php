@@ -246,6 +246,44 @@ final class PathProjectorTest extends TestCase
         $this->assertSame(540 * 52, $pc($this->couple($expense, $pensions, override1: $carerP1, override2: $disabledP2)));
     }
 
+    public function test_earnings_above_the_carer_limit_block_the_carer_addition(): void
+    {
+        // Card 0108. p1 cares for disabled p2 and still works, at £11,000 a year until 70, which is
+        // above the Carer's Allowance earnings limit (£203.36 a week, £10,574.72 a year). Earnings over
+        // it fail a condition of Carer's Allowance, so there is no underlying entitlement and no
+        // carer addition. The pay is small enough that Pension Credit is still paid, so the test
+        // reads the addition as the difference the carer flag makes, year by year.
+        $expense = new ExpenseProfile(Money::fromPounds(20_000), Money::zero(), Percent::fromPercent(70));
+        $pensions = [
+            new StatePensionEntitlement('p1', weeklyForecast: Money::of(50, 0)),
+            new StatePensionEntitlement('p2', weeklyForecast: Money::of(50, 0)),
+        ];
+        $disabledP2 = new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired, receivesDisabilityBenefit: true);
+        $worker = fn (bool $cares): Person => new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Employed,
+            grossSalary: Money::fromPounds(11_000), plannedRetirementAge: 70, caresForPartner: $cares);
+
+        $pcByYear = function (bool $cares) use ($expense, $pensions, $disabledP2, $worker): array {
+            $byYear = [];
+            foreach ($this->forecaster()->forecast($this->couple($expense, $pensions, override1: $worker($cares), override2: $disabledP2), $this->flatAssumptions(), $this->settings())->years as $y) {
+                $byYear[$y->calendarYear] = $y->incomeBySource['means_tested_benefit']->pence;
+            }
+
+            return $byYear;
+        };
+        $withFlag = $pcByYear(true);
+        $without = $pcByYear(false);
+
+        // Pension Credit is paid in the working years either way, so a zero difference below is the
+        // earnings limit at work and not the award vanishing for some other reason.
+        $this->assertGreaterThan(0, $without[2026]);
+
+        // Ages 68 and 69, a full year's pay over the limit: the flag adds nothing.
+        $this->assertSame($without[2026], $withFlag[2026]);
+        $this->assertSame($without[2027], $withFlag[2027]);
+        // Age 71, the pay has stopped: the addition is awarded again.
+        $this->assertGreaterThan($without[2029], $withFlag[2029]);
+    }
+
     public function test_a_let_home_counts_as_assessable_capital_and_erodes_pension_credit(): void
     {
         // A low-income couple who qualify for Pension Credit — but they LET their home and live

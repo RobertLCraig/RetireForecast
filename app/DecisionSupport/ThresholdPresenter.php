@@ -63,16 +63,17 @@ final class ThresholdPresenter
     }
 
     /**
-     * A consequence of moving this lever that its odds curve cannot show, or null when the lever
-     * carries none for this household. One case so far, and it is the reason the section exists:
-     * working longer looks purely favourable on the meter (more earnings, a shorter drawdown), but
-     * underlying entitlement to Carer's Allowance has a weekly EARNINGS limit, so a carer who keeps
-     * earning above it has no underlying entitlement and the household therefore gets no Pension
-     * Credit carer addition in those years. The lever postpones the addition; the S-curve, which
-     * only reads the household as entered, shows the gain and never the delay.
+     * A consequence of moving this lever that its odds curve shows but does not explain, or null
+     * when the lever carries none for this household. One case so far, and it is the reason the
+     * section exists: working longer looks purely favourable (more earnings, a shorter drawdown),
+     * but underlying entitlement to Carer's Allowance has a weekly EARNINGS limit, so a carer who
+     * keeps earning above it has no underlying entitlement and the household therefore gets no
+     * Pension Credit carer addition in those years. The projector withholds the addition in those
+     * years (board card 0108), so the curve already carries the delay; this names why the gain
+     * from working longer is smaller than the pay.
      *
      * Raised only where it can bite, which is where the projector would award the addition at all
-     * ({@see PathProjector::meansTestedBenefitNominal()}): the person caring is one the lever would
+     * ({@see PathProjector::pensionCreditAward()}): the person caring is one the lever would
      * actually move, a still-earning member, AND their partner's qualifying benefit starts before
      * the carer passes $latestRetirementAge, the top of the ages the lever explores. A partner with
      * no qualifying benefit, or one whose claim starts after that, leaves nothing to postpone. The
@@ -111,11 +112,11 @@ final class ThresholdPresenter
 
         $limit = TaxYearRegistry::for($baseTaxYear)->benefits->carersAllowanceEarningsLimitWeekly;
 
-        return 'One thing this lever does that the odds above cannot show. '
+        return 'Why working longer gains less here than the extra pay suggests. '
             ."Carer's Allowance has a weekly earnings limit of {$limit->format()} after allowable deductions. "
             .'Earn more than that and there is no underlying entitlement to it, and no underlying entitlement '
             .'means no Pension Credit carer addition either. So working longer also postpones that addition, '
-            .'year for year, and this sweep does not subtract it. Check the current limit on gov.uk before '
+            .'year for year, and the odds above already take it off. Check the current limit on gov.uk before '
             .'reading a retirement age off this page.';
     }
 

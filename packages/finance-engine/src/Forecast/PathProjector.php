@@ -1087,6 +1087,7 @@ final class PathProjector
         // (nominal pence, after any suspension above). Assessable income for the care financial
         // assessment, which the mobility component is not — see the care leg below.
         $careComponentPerPerson = array_fill_keys(array_map(static fn ($person): string => $person->id, $household->persons), 0);
+        $carerTestEarnings = [];
 
         foreach ($household->persons as $person) {
             $age = $state['baseAge'][$person->id] + $yearIndex;
@@ -1117,7 +1118,16 @@ final class PathProjector
                 // gives the relief: there is no second, parallel relief calculation to drift from
                 // the engine's one income-tax pass. Capped at pay — you cannot give up more than
                 // you earn — which also stops it by itself at retirement, when pay ends.
-                $earnings -= $this->payNetPayContributions($state, $person->id, $state['spendFactor'], $fraction, $earnings);
+                $netPay = $this->payNetPayContributions($state, $person->id, $state['spendFactor'], $fraction, $earnings);
+                $earnings -= $netPay;
+
+                // What the Carer's Allowance earnings limit reads (board card 0108): pay less HALF of
+                // the pension contribution, which is the statutory deduction. Tax and NI are not taken
+                // off: at the limit there are none (it sits below the personal allowance and the NI
+                // threshold), and above it they could only lower a figure already over the line.
+                // Care costs, which the test also deducts, are not known here; leaving them in is the
+                // adverse rounding.
+                $carerTestEarnings[$person->id] = $earnings + intdiv($netPay, 2);
             }
 
             // Guaranteed pension / other income, kept split by source.
@@ -1330,7 +1340,7 @@ final class PathProjector
         $awardPeriod = $this->pensionCreditAwardPeriod($household, $state, $alive, $calendarYear);
         $awardAssessedOn = fn (int $extraAssessableAnnual): ?PensionCreditResult => $this->pensionCreditAward(
             $household, $stateAtAward, $alive, $calendarYear, $ages, $taxablePerPerson, $aliveCount,
-            $meansTestExcluded, array_keys($disabilityCareFraction), $extraAssessableAnnual, $awardPeriod,
+            $meansTestExcluded, array_keys($disabilityCareFraction), $extraAssessableAnnual, $awardPeriod, $carerTestEarnings,
         );
         $pensionCreditAward = $awardAssessedOn(0);
 
@@ -2095,8 +2105,12 @@ final class PathProjector
      *                              fraction of the weekly pension and the award topped up the rest
      *                              (board card 0097). Other income stays at its annual rate over 52
      *                              weeks, which is the same weekly figure for income paid evenly.
+     * @param  array<string, int>  $carerTestEarnings  each earner's pay this year as the Carer's Allowance
+     *                                                 earnings limit reads it (nominal pence). A carer
+     *                                                 over the limit has no underlying entitlement, so
+     *                                                 no carer addition (board card 0108).
      */
-    private function pensionCreditAward(Household $household, array $state, array $alive, int $calendarYear, array $ages, array $taxablePerPerson, int $aliveCount, array $excludedFromAssessable = [], array $inFundedCarePlacement = [], int $extraAssessableAnnual = 0, float $awardPeriod = 1.0): ?PensionCreditResult
+    private function pensionCreditAward(Household $household, array $state, array $alive, int $calendarYear, array $ages, array $taxablePerPerson, int $aliveCount, array $excludedFromAssessable = [], array $inFundedCarePlacement = [], int $extraAssessableAnnual = 0, float $awardPeriod = 1.0, array $carerTestEarnings = []): ?PensionCreditResult
     {
         $weeksPerYear = $this->config->statePension->weeksPerYear;
 
@@ -2165,9 +2179,14 @@ final class PathProjector
         // Allowance rests on the same qualifying-benefit list as the severe-disability addition,
         // so both read the one predicate above. It does not remove the cared-for partner's own
         // severe-disability addition (only PAID Carer's Allowance would).
+        // A carer earning over the Carer's Allowance limit fails a condition of entitlement and gets
+        // no addition. The weekly limit is annualised and carried at CPI, like the housing-support
+        // capital limit: the law ties it to the National Living Wage, which tends to rise faster,
+        // so CPI is the adverse side and blocks the addition sooner rather than later.
+        $earningsLimitAnnual = (int) round($this->config->benefits->carersAllowanceEarningsLimitWeekly->pence * $weeksPerYear * $state['spendFactor']);
         $carers = 0;
         foreach ($living as $carerId => $person) {
-            if (! $person->caresForPartner) {
+            if (! $person->caresForPartner || ($carerTestEarnings[$carerId] ?? 0) > $earningsLimitAnnual) {
                 continue;
             }
             foreach ($living as $partnerId => $partner) {
