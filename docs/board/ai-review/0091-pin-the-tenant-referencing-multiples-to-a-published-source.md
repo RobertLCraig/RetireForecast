@@ -40,8 +40,8 @@ This card only replaces numbers and adds their citations.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] THE APP SHALL carry a primary or fetchable secondary source URL and a verified_on date for the referencing multiple, the guarantor multiple and the rent-in-advance range in docs/spec/ASSUMPTIONS.md, or record there that the search found none. proves: manual
-- [ ] WHEN a sourced figure differs from the shipped one, THE APP SHALL use the sourced one and the flag and its copy SHALL move with it. proves: `test_a_rent_plan_whose_income_fails_referencing_is_flagged_in_every_such_year`
+- [x] THE APP SHALL carry a primary or fetchable secondary source URL and a verified_on date for the referencing multiple, the guarantor multiple and the rent-in-advance range in docs/spec/ASSUMPTIONS.md, or record there that the search found none. proves: manual
+- [x] WHEN a sourced figure differs from the shipped one, THE APP SHALL use the sourced one and the flag and its copy SHALL move with it. proves: `test_a_rent_plan_whose_income_fails_referencing_is_flagged_in_every_such_year`
 <!-- AC:END -->
 
 ## Tasks
@@ -703,3 +703,27 @@ both criteria stay open.
 **2026-09-29** **Decided:** B, in the narrower form Rob ruled on 0084 on 2026-09-28: the unattended loop gets the web only in a separate research session that can write notes under `docs/research/` and nothing else, and a later build session with no web builds this card from the note. Settled by an attended agent under Rob's rule that human-review holds only what he must decide: this card's A-or-B ask is the question 0084 asked, and Rob answered it there. The research session is `progressboard#0211`, not yet built, so this card carries `waiting_on:` until it lands, which keeps the build loop from spending another take on the refusal.
 
 **2026-10-13** `waiting_on:` removed. The research this card waited for was done in an attended session on 2026-10-11 and is now committed as `docs/research/RESEARCH-0091-tenant-referencing.md`, so no research session is needed: build from the note. Attended session, on Rob's go.
+
+**2026-10-13** RESULT: done
+TESTS: +0 new (1 extended, 2 repointed), all green
+TOUCHED: packages/finance-engine/src/Housing/Tenancy.php
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Housing/TenancyReferencingTest.php
+tests/Feature/Forecast/RentReferencingNoticeTest.php
+docs/spec/ASSUMPTIONS.md
+docs/spec/METHODOLOGY.md
+docs/DECISIONS.md
+docs/HANDOVER.md
+docs/board/todo/0198-referencing-can-be-passed-on-capital.md
+docs/board/todo/0199-scotland-rent-in-advance-is-not-englands-rule.md
+OUT-OF-SCOPE: 0198, 0199
+
+Built from docs/research/RESEARCH-0091-tenant-referencing.md, no web used.
+
+#1: ASSUMPTIONS §15 now carries a source table with URLs and verified_on 2026-10-11. 30x (HomeLet HL202407 p.8, Goodlord ratio 2.5) and 36x (HomeLet p.8-9, Goodlord ratio 3) stand. The sourcing-gap paragraph is gone. It records that no source requires a homeowner guarantor, and that Scotland differs and Wales/NI were not researched.
+
+#2: the sourced figure that differs is rent in advance. ADVANCE_MONTHS_MIN/MAX (6/12) and Tenancy::rentInAdvance() are deleted. New RENT_IN_ADVANCE_CAP_MONTHS = 1, cited to Renters' Rights Act 2025 s.8 and gov.uk. The flag copy in PathProjector::rentReferencingWarnings reads it: rent up front is no longer a way round, at most 1 month (in pounds), before the tenancy starts. Also dropped from the copy, per the note: 'asked for again at every renewal', 'UK homeowner guarantor' and 'a household that has just sold no longer has a homeowner in it'. The sale-money sentence is softened to say some firms accept proof of funds from a completed sale. The proves test was extended and watched fail on the old copy ('renewal' present) before the change. The results-page banner shows the engine message, so it moves with no view edit.
+
+No ENGINE_VERSION bump: the flag changes no projected number. The new copy still needs a browser check (Herd serves C:\Dev\RetireForecast, not this worktree).
+
+Raised 0198 (HomeLet's independent-means route would pass households the flag still fires on; post-Act sizing unknown, needs web) and 0199 (a Scottish rent plan is told England's 1-month rule; Scotland allows 6).
