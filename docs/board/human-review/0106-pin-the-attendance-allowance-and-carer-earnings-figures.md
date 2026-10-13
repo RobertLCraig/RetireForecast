@@ -79,3 +79,30 @@ OUT-OF-SCOPE: none
 Second unattended take, same block as the first. WebFetch of gov.uk/attendance-allowance/what-youll-get and WebSearch were both refused for permission in this session. The repository still holds no published figure: docs/spec/ASSUMPTIONS.md section 20 (lines 432-438) carries only the shipped values, and no docs/research page has the AA or Carer's Allowance rates. So neither criterion is met: #1 needs a fetched source URL and verified_on date, and #2 needs a published figure before its test can be watched failing. Nothing was changed or committed. This card cannot advance in the unattended loop. Next step: run it in an attended session with WebFetch allowed, or have Rob paste the gov.uk AA rates and the Carer's Allowance earnings limit for 2025/26 and 2026/27 into the card. Suggest marking it not_for_the_loop so the scheduler stops re-queuing it.
 
 **2026-10-13** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-13 manager (m20261013112712-84dd)
+
+**outcome: rob**
+
+The two open criteria need gov.uk figures, and the loop cannot get to the web.
+
+**what the session said**
+
+This card is the `rob` outcome. Neither box is ticked, and no review finding disproves anything.
+
+Both takes stopped at the same block. The loop has no web access, and both criteria need figures from gov.uk:
+- the Attendance Allowance weekly rates for 2025/26 and 2026/27
+- the Carer's Allowance earnings limit for both years
+
+I searched `docs/research/` and no page there has these figures. So the builder has nothing to pin from. If I sent the card back to `todo/`, it would only come back here a third time.
+
+One person must do the work, in one of two ways:
+1. Run the card in an attended session that has WebFetch. The card's Plan says to do this.
+2. Paste the four gov.uk figures and their URLs into the card. Then the loop can finish it.
+
+Cards 0085, 0086, 0087, 0091, 0092 and 0095 have the same gap. One research pass can close all of them.
+
+WHY: The two open criteria need gov.uk figures, and the loop cannot get to the web.
+
+OUTCOME: rob
+
