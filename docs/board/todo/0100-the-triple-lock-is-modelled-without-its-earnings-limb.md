@@ -125,3 +125,5 @@ WHY: Every box on the card needs one earnings figure that someone looks up on th
 
 OUTCOME: rob
 
+
+**2026-10-13** Research done in an attended session with web access: `docs/research/RESEARCH-0100-national-earnings-growth.md` holds the sourced national earnings real-growth default, its URL and verified_on date, and the property, override key and label to add. Build from that note; it needs no web. Committed with this card as its evidence. Moved to todo/ for the loop. (agent, after Rob's 2026-10-13 clear-down)
