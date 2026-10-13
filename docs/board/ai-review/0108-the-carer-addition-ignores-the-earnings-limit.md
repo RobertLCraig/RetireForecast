@@ -36,8 +36,8 @@ is a larger piece of modelling nobody has asked for.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] WHEN a carer's earnings in a projected year exceed the Carer's Allowance weekly earnings limit, THE APP SHALL award no Pension Credit carer addition for that year. proves: `test_earnings_above_the_carer_limit_block_the_carer_addition`
-- [ ] WHEN that carer's earnings stop, THE APP SHALL award the addition from that year on. proves: `test_earnings_above_the_carer_limit_block_the_carer_addition`
+- [x] WHEN a carer's earnings in a projected year exceed the Carer's Allowance weekly earnings limit, THE APP SHALL award no Pension Credit carer addition for that year. proves: `test_earnings_above_the_carer_limit_block_the_carer_addition`
+- [x] WHEN that carer's earnings stop, THE APP SHALL award the addition from that year on. proves: `test_earnings_above_the_carer_limit_block_the_carer_addition`
 <!-- AC:END -->
 
 ## Tasks
@@ -66,3 +66,23 @@ Every stored plan with a working carer is too favourable, so this needs an `ENGI
 household has no carer.
 
 ## Comments
+
+**2026-10-13** RESULT: done
+TESTS: +1 new, all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php
+TOUCHED: packages/finance-engine/tests/Forecast/PathProjectorTest.php
+TOUCHED: app/Forecast/ScenarioForecaster.php
+TOUCHED: app/DecisionSupport/ThresholdPresenter.php
+OUT-OF-SCOPE: none
+
+Built: `projectYear()` records each earner's pay for the year and passes it to `pensionCreditAward()` (the method the card calls `meansTestedBenefitNominal()`; that name no longer exists). A carer whose pay is over `carersAllowanceEarningsLimitWeekly` x weeksPerYear x CPI-to-date gets no carer addition that year. The retirement year uses the prorated pay, as the Plan asked, so a part year can still be over the limit and is the adverse rounding.
+
+Watched red first: `test_earnings_above_the_carer_limit_block_the_carer_addition` failed with the flag adding 250,380p (48.15 x 52) in a working year. The carer earns 11,000 a year, over the 10,574.72 limit but low enough that Pension Credit is still paid, so the test reads the addition as the difference the flag makes. It asserts that difference is zero at ages 68 and 69 and positive at 71, after the pay stops.
+
+Decided, gross or net (the card's task; written here because the card is not mine to edit): net of HALF the pension contribution, which is the statutory deduction. Tax and NI are not taken off: at the limit there are none, because it sits below the personal allowance and the NI threshold, and above it they only lower a pay figure already over the line. Care costs are not known to the engine; leaving them in is the adverse direction. Only net-pay contributions are deducted; a relief-at-source contribution would also count for half under the rule, and is not deducted (adverse).
+
+Assumed: the limit is carried at CPI (`spendFactor`), like the housing-support capital limit. The law ties it to the National Living Wage, which tends to rise faster, so CPI blocks the addition sooner and is the adverse choice. Card 0106 may pin a source for the limit; the comparison reads the one config field.
+
+ENGINE_VERSION is bumped to `finance-engine/carer-addition-respects-the-earnings-limit`. `ThresholdPresenter::leverCaveat()` now explains the effect the sweep shows instead of saying the sweep does not subtract it. Its existing tests still hold.
+
+Not done here: the stored-scenario re-run and `php artisan scenarios:audit`. Both write to or read Rob's live Postgres through the per-card .env copy, and a re-run from an unmerged branch would stamp his stored results with a version master does not have yet. Run both after the merge. The lever note's new wording still needs a browser check from C:\Dev\RetireForecast; nothing here was looked at in a browser.
