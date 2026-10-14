@@ -951,7 +951,9 @@
             @if ($pensionCredit)
                 <div class="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm">
                     <h3 class="font-semibold text-blue-900">{{ $pensionCredit['howToClaim'] !== [] ? 'How to claim Pension Credit' : 'Why there is no Pension Credit' }}</h3>
-                    @if ($pensionCredit['awarded'])
+                    @if ($pensionCredit['unclaimedValue'] !== null)
+                        <p class="mt-1 text-blue-800">You said Pension Credit is <strong>not claimed</strong>, so this forecast pays none. The means test here would award <strong>{{ $pensionCredit['unclaimedValue'] }}</strong> over the plan, in today's money, in the years it is not paid. Claiming also brings help with mortgage interest, which this forecast leaves out while the claim is not made.</p>
+                    @elseif ($pensionCredit['awarded'])
                         <p class="mt-1 text-blue-800">This forecast spends Pension Credit as contingent income, shown separately above rather than as part of your secure income. It's <strong>means-tested, so it has to be claimed</strong> — it isn't paid automatically, and it's one of the most under-claimed benefits, so it's worth acting on.</p>
                     @elseif ($pensionCredit['nearMiss'] !== [])
                         <p class="mt-1 text-blue-800">This forecast awards you <strong>no</strong> Pension Credit, but your income comes close to the line, so it is still worth putting a claim in and letting the DWP decide. We model the Guarantee Credit only, and we apply none of the disregards a real assessment does, so the real gap can be smaller than the one here.</p>

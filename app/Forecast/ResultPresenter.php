@@ -3211,7 +3211,7 @@ final class ResultPresenter
      * household falls under working-age support instead. The engine names the years and carries
      * the explanation; this quotes it rather than restating the rule.
      *
-     * @return array{awarded: bool, nearMiss: list<string>, mixedAge: list<string>, instead: list<string>, howToClaim: list<string>, passports: list<string>, source: string, verifiedOn: string}|null
+     * @return array{awarded: bool, unclaimedValue: ?string, nearMiss: list<string>, mixedAge: list<string>, instead: list<string>, howToClaim: list<string>, passports: list<string>, source: string, verifiedOn: string}|null
      */
     public static function pensionCreditGuidance(ForecastResult $forecast): ?array
     {
@@ -3219,10 +3219,12 @@ final class ResultPresenter
         $nearMiss = [];
         $mixedAge = [];
         $mixedAgeLastYear = null;
+        $unclaimed = Money::zero();
         foreach ($forecast->years as $year) {
             if (($year->incomeBySource['means_tested_benefit'] ?? Money::zero())->isPositive()) {
                 $received = true;
             }
+            $unclaimed = $unclaimed->plus($year->unclaimedPensionCredit());
             $message = self::firstWarning($year, WarningCode::PENSION_CREDIT_NEAR_MISS);
             if ($message !== null && $nearMiss === []) {
                 $nearMiss[] = "In {$year->calendarYear}: {$message}";
@@ -3238,13 +3240,17 @@ final class ResultPresenter
         if ($mixedAgeLastYear !== null) {
             $mixedAge[] = "The forecast treats this household as mixed-age up to and including {$mixedAgeLastYear}, and awards it no Pension Credit in any of those years.";
         }
-        if (! $received && $nearMiss === [] && $mixedAge === []) {
+        // A FOURTH way in (board card 0110): an award the means test grants and the household has
+        // said it has not claimed. The forecast pays it nothing, so the panel names what claiming
+        // would add, summed over the plan in today's money.
+        $hasUnclaimed = $unclaimed->isPositive();
+        if (! $received && $nearMiss === [] && $mixedAge === [] && ! $hasUnclaimed) {
             return null;
         }
 
         // A household that is ONLY shut out (card 0051 review) is given no claim steps for a
         // benefit it cannot claim, and is told what to check instead and when the door opens.
-        $claimable = $received || $nearMiss !== [];
+        $claimable = $received || $nearMiss !== [] || $hasUnclaimed;
         $instead = [];
         $howToClaim = [];
         if ($mixedAgeLastYear !== null) {
@@ -3266,6 +3272,7 @@ final class ResultPresenter
 
         return [
             'awarded' => $received,
+            'unclaimedValue' => $hasUnclaimed ? $unclaimed->format() : null,
             'nearMiss' => $nearMiss,
             'mixedAge' => $mixedAge,
             'instead' => $instead,

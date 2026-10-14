@@ -64,6 +64,11 @@ final class Household
         // couple were married before 6 April 2016. Null = not given. Captured, not yet consumed:
         // no rule here reads it, and no figure moves with it.
         public readonly ?string $marriageDate = null,
+        // Whether Pension Credit is actually claimed (board card 0110). The means test still runs
+        // either way; an unclaimed award is paid nothing, passports no Support for Mortgage
+        // Interest, and is reported as what claiming would be worth. Default claimed, so a
+        // scenario stored before the question existed keeps the figures it was saved with.
+        public readonly bool $pensionCreditClaimed = true,
     ) {}
 
     /**
@@ -182,6 +187,7 @@ final class Household
             $this->realisedGainsAtStart,
             $this->formerResidenceDisposal,
             $this->marriageDate,
+            $this->pensionCreditClaimed,
         );
     }
 

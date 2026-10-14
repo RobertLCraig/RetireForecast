@@ -613,7 +613,12 @@
         @endif
         @if ($pensionCredit)
             <h3>{{ $pensionCredit['howToClaim'] !== [] ? 'How to claim Pension Credit' : 'Why there is no Pension Credit' }}</h3>
-            @if ($pensionCredit['awarded'])
+            @if ($pensionCredit['unclaimedValue'] !== null)
+                <p>You said Pension Credit is <strong>not claimed</strong>, so this forecast pays none. The means
+                    test here would award <strong>{{ $pensionCredit['unclaimedValue'] }}</strong> over the plan, in
+                    today's money, in the years it is not paid. Claiming also brings help with mortgage interest,
+                    which this forecast leaves out while the claim is not made.</p>
+            @elseif ($pensionCredit['awarded'])
                 <p>This forecast spends Pension Credit as contingent income, shown separately above rather than as
                     part of your secure income. It's <strong>means-tested, so it has to be claimed</strong> — it
                     isn't paid automatically, and it's one of the most under-claimed benefits, so it's worth acting

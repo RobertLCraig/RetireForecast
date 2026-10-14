@@ -883,6 +883,18 @@ cash **−0.5%**.
    and not only for lump sums, and that the under-75 exemption is not itself capped by the
    deceased's remaining lump sum and death benefit allowance in drawdown form. Board card **0146**.
 
+39. **Pension Credit is assumed claimed unless the reader says it is not** (board card 0110; live
+   on `Dto\Household::$pensionCreditClaimed`, the builder's "Pension Credit is claimed" box). The
+   default is claimed, and it is NOT the cautious answer: it keeps every stored scenario
+   byte-identical, as the card required. Unticked, the means test still runs, but the award pays
+   nothing, opens no Support for Mortgage Interest and no Guarantee Credit draw order, and the
+   results panel names the sum of the unpaid award over the plan in today's money. That sum is
+   the award on the unclaimed path, not a re-run of the claimed one, so it can differ from the
+   gap between the two runs. Housing Benefit and Council Tax Reduction are still assessed as
+   before, on the same means test: they are separate claims, and awarding them was out of the
+   card's scope. They still take the Guarantee Credit passport, which board card **0202** carries.
+   **No sourced figure rides on it.**
+
 - Tenant Fees Act 2019 c.4, Schedule 1 (tenancy deposit capped at five weeks' rent, six weeks where the annual rent is £50,000 or more): https://www.legislation.gov.uk/ukpga/2019/4/schedule/1
 - NextWealth Fee Benchmarking Report 2026 (ongoing advice fee 83bp, up from 77bp): https://nextwealth.co.uk/research/fee-benchmarking-report-2026/
 - Professional Adviser, "Almost half of clients report increase in advice fees" (12 Mar 2026 — independent confirmation of the 83bp figure): https://www.professionaladviser.com/news/4526864/half-clients-report-increase-advice-fees

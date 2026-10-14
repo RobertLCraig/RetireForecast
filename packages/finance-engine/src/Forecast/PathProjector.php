@@ -1575,7 +1575,7 @@ final class PathProjector
         // it no longer had, filled the free tax bands out of the pension, and left the capital
         // that would have kept the award untouched. Pinned by
         // PathProjectorTest::test_fill_bands_is_pension_credit_aware_and_leaves_the_pension_intact.
-        $onGuaranteeCredit = ($pensionCreditAward?->guaranteeCreditWeekly->pence ?? 0) > 0;
+        $onGuaranteeCredit = $household->pensionCreditClaimed && ($pensionCreditAward?->guaranteeCreditWeekly->pence ?? 0) > 0;
         $passState = $state;
         $passSpendNominal = $spendNominal;
         $passEssentialNominal = $essentialNominal;
@@ -1590,9 +1590,13 @@ final class PathProjector
         $previousGap = null;
         for ($pass = 0; ; $pass++) {
             // Paid only for the weeks of the award period: the qualifying year starts on the date.
-            $benefitNominal = $pensionCreditAward === null
+            // And paid only if it is claimed (board card 0110): an unclaimed award is reported as
+            // what claiming is worth and pays nothing, so the SMI below, gated on it, is not met.
+            $awardNominal = $pensionCreditAward === null
                 ? 0
                 : (int) round($pensionCreditAward->guaranteeCreditWeekly->pence * $this->config->statePension->weeksPerYear * $awardPeriod);
+            $benefitNominal = $household->pensionCreditClaimed ? $awardNominal : 0;
+            $unclaimedPensionCreditNominal = $awardNominal - $benefitNominal;
             $netCashNominal += $benefitNominal;
             $grossIncomeNominal += $benefitNominal;
             $src['means_tested_benefit'] += $benefitNominal;
@@ -2022,6 +2026,7 @@ final class PathProjector
             councilTax: $m($councilTaxNominal),
             housingBenefit: $m($housingBenefitNominal),
             guardrailReduction: $m($guardrailCutNominal),
+            unclaimedPensionCredit: $m($unclaimedPensionCreditNominal),
             pensionTaxableIfDrawn: $m($pensionDraw['taxable']),
             pensionTaxIfDrawn: $m($pensionDraw['tax']),
         );

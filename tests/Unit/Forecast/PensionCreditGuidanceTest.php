@@ -11,6 +11,7 @@ use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Support\Warning;
 use RetireForecast\FinanceEngine\Support\WarningCode;
+use RetireForecast\FinanceEngine\Tests\Forecast\PensionCreditClaimTest;
 
 /**
  * Pension Credit is means-tested — it has to be claimed, and is heavily under-claimed — so
@@ -134,6 +135,33 @@ final class PensionCreditGuidanceTest extends TestCase
         $this->assertTrue($guidance['awarded']);
         $this->assertStringContainsString('gov.uk/pension-credit', implode(' ', $guidance['howToClaim']));
         $this->assertStringContainsString('2031', $guidance['howToClaim'][0], 'the first step says when the claim can start');
+    }
+
+    public function test_the_value_of_claiming_is_reported_when_an_award_goes_unclaimed(): void
+    {
+        // Board card 0110. A household that has not claimed is paid no Pension Credit, so without
+        // this the panel either vanished or told it to claim a benefit worth an unnamed sum.
+        $claimed = PensionCreditClaimTest::forecast(PensionCreditClaimTest::claimant(claimed: true));
+        $unclaimed = PensionCreditClaimTest::forecast(PensionCreditClaimTest::claimant(claimed: false));
+
+        // Reconciliation: the first year starts from the same state either way, so what goes
+        // unclaimed in it is exactly what the claimed run is paid.
+        $this->assertTrue($unclaimed->years[0]->unclaimedPensionCredit()->isPositive());
+        $this->assertSame(
+            $claimed->years[0]->incomeBySource['means_tested_benefit']->pence,
+            $unclaimed->years[0]->unclaimedPensionCredit()->pence,
+        );
+
+        $total = array_reduce($unclaimed->years, static fn (Money $c, YearResult $y): Money => $c->plus($y->unclaimedPensionCredit()), Money::zero());
+        $guidance = ResultPresenter::pensionCreditGuidance($unclaimed);
+
+        $this->assertNotNull($guidance);
+        $this->assertFalse($guidance['awarded'], 'an unclaimed award is not income in this forecast');
+        $this->assertSame($total->format(), $guidance['unclaimedValue']);
+        $this->assertNotEmpty($guidance['howToClaim']);
+
+        // A claimed award names no unclaimed value.
+        $this->assertNull(ResultPresenter::pensionCreditGuidance($claimed)['unclaimedValue']);
     }
 
     public function test_no_guidance_when_no_year_receives_pension_credit(): void

@@ -144,6 +144,7 @@ final class YearResult
         public readonly ?Money $pensionTaxableIfDrawn = null,
         public readonly ?Money $pensionTaxIfDrawn = null,
         public readonly ?Money $mortgageRedeemed = null,
+        public readonly ?Money $unclaimedPensionCredit = null,
     ) {
         $this->totalWealth = $liquidWealth->plus($pensionWealth)->plus($this->homeEquity());
     }
@@ -222,6 +223,15 @@ final class YearResult
     public function mortgageRedeemed(): Money
     {
         return $this->mortgageRedeemed ?? Money::zero();
+    }
+
+    /**
+     * The Guarantee Credit the means test awards this year that the household has not claimed, so
+     * is not paid (zero when it is claimed, or nothing is awarded). Board card 0110.
+     */
+    public function unclaimedPensionCredit(): Money
+    {
+        return $this->unclaimedPensionCredit ?? Money::zero();
     }
 
     /**
@@ -350,6 +360,7 @@ final class YearResult
             $this->pensionTaxableIfDrawn,
             $this->pensionTaxIfDrawn,
             $this->mortgageRedeemed,
+            $this->unclaimedPensionCredit,
         );
     }
 }

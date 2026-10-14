@@ -165,6 +165,7 @@ final class WhatIfChanges
             'ihtModelled' => 'Model inheritance tax', 'householdName' => 'Household name',
             'relationshipStatus' => 'Relationship status', 'homeToDescendants' => 'Leave home to descendants',
             'hasDescendants' => 'Children or other descendants',
+            'pensionCreditClaimed' => 'Pension Credit claimed',
             'useIsaAllowance' => 'Use ISA allowance',
             'assumptionSetId' => 'Assumption set', 'hasProperty' => 'Owns a property',
             'marriageDate' => 'Date of marriage or civil partnership',

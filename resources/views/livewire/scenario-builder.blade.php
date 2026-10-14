@@ -939,6 +939,15 @@
                 @endforeach
                 <button type="button" wire:click="addIncome" class="mt-4 rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100">+ Add income</button>
             </fieldset>
+
+            <fieldset class="{{ $section }}">
+                <legend class="{{ $legend }}">Pension Credit</legend>
+                <label class="mt-2 flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" wire:model="pensionCreditClaimed" class="rounded border-gray-300">
+                    Pension Credit is claimed, or will be claimed as soon as it is due
+                </label>
+                <p class="mt-1 text-xs text-gray-500">Pension Credit is not paid automatically. Untick this if it has not been claimed. The forecast then pays none, and no help with mortgage interest, and the results show what claiming would be worth.</p>
+            </fieldset>
         @endif
 
         {{-- Step 3: Capture your net worth (savings, investments and the home) ------- --}}

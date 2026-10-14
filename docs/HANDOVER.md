@@ -9,6 +9,9 @@ _Last updated: 2026-09-20 (card 0083). The exceptions a fresh session needs, new
 inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded out to
 [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md) to keep this loadable in one session:_
 
+- **Pension Credit can be marked not claimed.** Card 0110. Default claimed, so no re-run is owed.
+  The new step-2 box and the results line are **not seen in a browser**. ASSUMPTIONS §39.
+
 - **The triple lock has its earnings limb, on a sourced national earnings figure.** Card 0100.
   `ENGINE_VERSION` is `finance-engine/triple-lock-earnings-limb`; the **re-run is owed**, and the
   `assumption_sets` rows must be **re-seeded** first or the figure reaches no forecast. The new

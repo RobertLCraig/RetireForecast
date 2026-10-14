@@ -512,6 +512,7 @@ final class HousingComparison
             realisedGainsAtStart: $realisedGains,
             formerResidenceDisposal: $formerResidenceDisposal,
             marriageDate: $household->marriageDate,
+            pensionCreditClaimed: $household->pensionCreditClaimed,
         );
     }
 }

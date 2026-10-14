@@ -102,6 +102,8 @@ final class HouseholdAssembler
             // The date of the marriage or civil partnership, which decides which State Pension
             // inheritance rules a survivor falls under. Blank or absent = not given.
             marriageDate: $this->stringOrNull($state['marriageDate'] ?? null),
+            // Absent = claimed (card 0110), so a scenario stored before the question keeps its figures.
+            pensionCreditClaimed: (bool) ($state['pensionCreditClaimed'] ?? true),
         );
     }
 

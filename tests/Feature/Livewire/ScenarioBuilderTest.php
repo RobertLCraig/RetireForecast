@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Livewire;
 
 use App\Enums\ScenarioStatus;
+use App\Forecast\HouseholdAssembler;
 use App\Forecast\ScenarioForecaster;
 use App\Livewire\ScenarioBuilder;
 use App\Models\Scenario;
@@ -194,6 +195,36 @@ class ScenarioBuilderTest extends TestCase
         $none = $save(fn ($c) => $c->set('ihtModelled', true)->set('hasDescendants', false));
         $this->assertFalse($none->effectiveBuilderState()['hasDescendants']);
         $this->assertFalse(app(ScenarioForecaster::class)->settings($none)->hasDescendants);
+    }
+
+    /**
+     * Board card 0110 #1. Whether Pension Credit is actually claimed is the reader's to say. It
+     * defaults to claimed and is stored only when not, so no stored scenario moves.
+     */
+    public function test_a_household_can_say_pension_credit_is_not_claimed(): void
+    {
+        $save = function (callable $mutate) {
+            $component = Livewire::test(ScenarioBuilder::class);
+            foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+                $component->set($key, $value);
+            }
+            $mutate($component);
+            $component->call('save')->assertHasNoErrors();
+
+            return Scenario::latest('id')->firstOrFail();
+        };
+        $household = fn (Scenario $s) => app(HouseholdAssembler::class)->household($s->effectiveBuilderState());
+
+        $untouched = $save(fn ($c) => $c);
+        $this->assertArrayNotHasKey('pensionCreditClaimed', $untouched->effectiveBuilderState());
+        $this->assertTrue($household($untouched)->pensionCreditClaimed);
+
+        $notClaimed = $save(fn ($c) => $c->set('pensionCreditClaimed', false));
+        $this->assertFalse($notClaimed->effectiveBuilderState()['pensionCreditClaimed']);
+        $this->assertFalse($household($notClaimed)->pensionCreditClaimed);
+
+        // And it reloads into the builder unticked.
+        Livewire::test(ScenarioBuilder::class, ['scenario' => $notClaimed])->assertSet('pensionCreditClaimed', false);
     }
 
     /**
