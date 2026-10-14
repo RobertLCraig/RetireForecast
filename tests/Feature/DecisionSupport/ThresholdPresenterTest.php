@@ -43,6 +43,11 @@ final class ThresholdPresenterTest extends TestCase
         $household = $scenario->toHousehold();
         $limit = TaxYearRegistry::for($scenario->base_tax_year)->benefits->carersAllowanceEarningsLimitWeekly;
 
+        // Card 0106. The published 2026/27 limit is £204 a week (gov.uk/carers-allowance/eligibility,
+        // read 2026-10-13), not the derived 16 x £12.71 = £203.36. The warning moves with the constant.
+        $this->assertSame('2026-27', $scenario->base_tax_year);
+        $this->assertSame(20_400, $limit->pence);
+
         $caveat = ThresholdPresenter::leverCaveat(LeverKey::RetirementAge, $household, $scenario->base_tax_year, 75);
 
         $this->assertNotNull($caveat);

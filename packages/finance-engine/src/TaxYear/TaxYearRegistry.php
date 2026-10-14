@@ -96,10 +96,10 @@ final class TaxYearRegistry
                 standardMinimumGuaranteeCoupleWeekly: Money::of(346, 60),
                 severeDisabilityAdditionWeekly: Money::of(82, 90),
                 carerAdditionWeekly: Money::of(46, 40),
-                // Attendance Allowance 2025/26 (gov.uk/attendance-allowance/what-youll-get).
+                // Attendance Allowance and the Carer's Allowance earnings limit 2025/26 (DWP Benefit
+                // and pension rates 2025 to 2026, read 2026-10-13).
                 attendanceAllowanceLowerWeekly: Money::of(73, 90),
                 attendanceAllowanceHigherWeekly: Money::of(110, 40),
-                // Carer's Allowance earnings limit 2025/26 (gov.uk/carers-allowance/eligibility).
                 carersAllowanceEarningsLimitWeekly: Money::of(196, 0),
             ),
             iht: self::ihtParameters(),
@@ -115,8 +115,8 @@ final class TaxYearRegistry
                 'sdlt' => 'https://www.gov.uk/stamp-duty-land-tax/residential-property-rates',
                 'cgt' => 'https://www.gov.uk/capital-gains-tax/rates',
                 'benefits' => 'https://www.gov.uk/pension-credit/eligibility',
-                'attendance_allowance' => 'https://www.gov.uk/attendance-allowance/what-youll-get',
-                'carers_allowance' => 'https://www.gov.uk/carers-allowance/eligibility',
+                'attendance_allowance' => 'https://www.gov.uk/government/publications/benefit-and-pension-rates-2025-to-2026/benefit-and-pension-rates-2025-to-2026',
+                'carers_allowance' => 'https://www.gov.uk/government/publications/benefit-and-pension-rates-2025-to-2026/benefit-and-pension-rates-2025-to-2026',
                 'iht' => 'https://www.gov.uk/inheritance-tax',
                 'care' => 'https://www.gov.uk/help-with-care-costs/financial-assessment',
             ],
@@ -184,14 +184,13 @@ final class TaxYearRegistry
                 standardMinimumGuaranteeCoupleWeekly: Money::of(363, 25),
                 severeDisabilityAdditionWeekly: Money::of(86, 5),
                 carerAdditionWeekly: Money::of(48, 15),
-                // Attendance Allowance 2026/27, uprated from 2025/26 by the same +3.8% rounded to
-                // the nearest 5p that the two additions above were uprated by. NOT read off a
-                // published table: see the warning on BenefitsParameters and card 0044.
+                // Attendance Allowance 2026/27 (gov.uk/attendance-allowance/what-youll-get, read
+                // 2026-10-13; docs/research/RESEARCH-0106-attendance-allowance-and-carer-earnings.md).
                 attendanceAllowanceLowerWeekly: Money::of(76, 70),
                 attendanceAllowanceHigherWeekly: Money::of(114, 60),
-                // Carer's Allowance earnings limit 2026/27: the government's stated rule of 16
-                // hours at the National Living Wage (16 x £12.71). Same warning as above.
-                carersAllowanceEarningsLimitWeekly: Money::of(203, 36),
+                // Carer's Allowance earnings limit 2026/27 (gov.uk/carers-allowance/eligibility, read
+                // 2026-10-13): £204, which is 16 hours at the £12.71 National Living Wage rounded up.
+                carersAllowanceEarningsLimitWeekly: Money::of(204, 0),
             ),
             iht: self::ihtParameters(),
             care: self::careParameters(personalExpensesAllowanceWeekly: Money::of(31, 80)),

@@ -249,7 +249,7 @@ final class PathProjectorTest extends TestCase
     public function test_earnings_above_the_carer_limit_block_the_carer_addition(): void
     {
         // Card 0108. p1 cares for disabled p2 and still works, at £11,000 a year until 70, which is
-        // above the Carer's Allowance earnings limit (£203.36 a week, £10,574.72 a year). Earnings over
+        // above the Carer's Allowance earnings limit (£204 a week, £10,608 a year). Earnings over
         // it fail a condition of Carer's Allowance, so there is no underlying entitlement and no
         // carer addition. The pay is small enough that Pension Credit is still paid, so the test
         // reads the addition as the difference the carer flag makes, year by year.

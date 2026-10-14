@@ -448,23 +448,23 @@ cash **−0.5%**.
    after it), or prices alone throughout.
 
 20. **Attendance Allowance and the Carer's Allowance earnings limit (added 2026-09-06; live in
-   `TaxYear\BenefitsParameters`).** Board card 0044. Three figures were added by an unattended
-   session with **no web access**, so two of them are stated rather than verified. Neither reaches
-   a projection on its own: Attendance Allowance seeds the editable income stream a what-if
-   creates, and the earnings limit is quoted in a warning beside the retirement-age lever.
-   - **Attendance Allowance 2025/26, £73.90 lower and £110.40 higher a week**, is the published
-     pair (gov.uk/attendance-allowance/what-youll-get), written from the building session's own
-     knowledge and not re-fetched.
-   - **Attendance Allowance 2026/27, £76.70 and £114.60**, is DERIVED, not published: it applies
-     the same +3.8% and rounding to the nearest 5p that this file's own 2026/27 Pension Credit
-     additions were derived by. Treat it as an estimate of the April 2026 uprating.
-   - **The Carer's Allowance earnings limit**, £196.00 a week for 2025/26 and £203.36 for
-     2026/27, is likewise stated rather than read off a table. The 2026/27 figure applies the
-     government's stated rule of 16 hours at the National Living Wage (16 x £12.71) and the real
-     published limit may be rounded differently.
+   `TaxYear\BenefitsParameters`).** Board card 0044 added them; card 0106 pinned all of them to a
+   published source, **verified_on 2026-10-13** (working in
+   docs/research/RESEARCH-0106-attendance-allowance-and-carer-earnings.md). Neither reaches a
+   projection on its own: Attendance Allowance seeds the editable income stream a what-if creates,
+   and the earnings limit is quoted in a warning beside the retirement-age lever.
+   - **2025/26: Attendance Allowance £73.90 lower and £110.40 higher a week; Carer's Allowance
+     earnings limit £196.00 a week.** Source: DWP, Benefit and pension rates 2025 to 2026,
+     https://www.gov.uk/government/publications/benefit-and-pension-rates-2025-to-2026/benefit-and-pension-rates-2025-to-2026
+   - **2026/27: Attendance Allowance £76.70 lower and £114.60 higher a week.** Source:
+     https://www.gov.uk/attendance-allowance/what-youll-get. It matches the figure shipped.
+   - **2026/27: Carer's Allowance earnings limit £204.00 a week** after tax, NI and expenses.
+     Source: https://www.gov.uk/carers-allowance/eligibility. It replaced a derived £203.36
+     (16 x £12.71): the published limit is that figure rounded up to the whole pound.
+   The two live gov.uk pages state no tax year. Read in October 2026 they carry the rates in force,
+   which are the 2026/27 ones; the DWP 2026/27 rates table was not found at the 2025/26 URL pattern.
    The LOWER Attendance Allowance rate is what the what-if uses, which is the cautious of the two
-   and still qualifies for the Pension Credit severe-disability addition. Board card **0106**
-   carries pinning all of it to a published source.
+   and still qualifies for the Pension Credit severe-disability addition.
 21. **The Support for Mortgage Interest standard rate and capital cap (added 2026-09-06; live in
    `Benefits\SupportForMortgageInterest`).** Board card 0045. Unlike section 20, **both figures
    reach a projection**: a household on Pension Credit Guarantee Credit has its mortgage interest
