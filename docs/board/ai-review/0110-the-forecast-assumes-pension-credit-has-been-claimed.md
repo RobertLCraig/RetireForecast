@@ -32,9 +32,9 @@ Awarding Housing Benefit or Council Tax Reduction. Changing how the entitlement 
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 THE APP SHALL let the reader say whether Pension Credit is currently claimed. proves: `test_a_household_can_say_pension_credit_is_not_claimed`
-- [ ] #2 WHEN Pension Credit is marked as not claimed, THE APP SHALL project no Pension Credit income and no Support for Mortgage Interest. proves: `test_an_unclaimed_award_reaches_neither_income_nor_support_for_mortgage_interest`
-- [ ] #3 WHEN Pension Credit is marked as not claimed and the means test would award it, THE APP SHALL report what claiming it is worth over the plan. proves: `test_the_value_of_claiming_is_reported_when_an_award_goes_unclaimed`
+- [x] #1 THE APP SHALL let the reader say whether Pension Credit is currently claimed. proves: `test_a_household_can_say_pension_credit_is_not_claimed`
+- [x] #2 WHEN Pension Credit is marked as not claimed, THE APP SHALL project no Pension Credit income and no Support for Mortgage Interest. proves: `test_an_unclaimed_award_reaches_neither_income_nor_support_for_mortgage_interest`
+- [x] #3 WHEN Pension Credit is marked as not claimed and the means test would award it, THE APP SHALL report what claiming it is worth over the plan. proves: `test_the_value_of_claiming_is_reported_when_an_award_goes_unclaimed`
 <!-- AC:END -->
 
 ## Tasks
@@ -64,3 +64,34 @@ claimed, and a figure naming what claiming would be worth.
 **2026-09-06** Raised from card 0046, which found this and left it: 0046's four criteria are about
 how the credit is REPORTED, and whether it is in payment at all is a modelling change with a stored
 scenario cost behind it.
+
+**2026-10-14** RESULT: done
+TESTS: +3 new, all green
+TOUCHED: app/Forecast/HouseholdAssembler.php
+app/Forecast/ResultPresenter.php
+app/Forecast/WhatIfChanges.php
+app/Livewire/ScenarioBuilder.php
+docs/HANDOVER.md
+docs/spec/ASSUMPTIONS.md
+docs/board/todo/0202-an-unclaimed-pension-credit-award-still-passports-housing-support.md
+packages/finance-engine/src/Dto/Household.php
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/src/Forecast/YearResult.php
+packages/finance-engine/src/Housing/HousingComparison.php
+packages/finance-engine/tests/Forecast/PensionCreditClaimTest.php
+resources/views/livewire/scenario-builder.blade.php
+resources/views/livewire/scenario-results.blade.php
+resources/views/pdf/partials/report.blade.php
+tests/Feature/Livewire/ScenarioBuilderTest.php
+tests/Unit/Forecast/PensionCreditGuidanceTest.php
+OUT-OF-SCOPE: 0202
+
+Built: `Household::$pensionCreditClaimed` (default true, carried by `copy()` and the housing transform). In `PathProjector` the means test still runs; unclaimed, the award pays nothing, so the SMI gate (which reads the same `$benefitNominal`) meets nothing, and the Guarantee Credit draw order is off. The unpaid award is a new `YearResult::$unclaimedPensionCredit`. `ResultPresenter::pensionCreditGuidance` now opens on it and returns `unclaimedValue`, the sum over the plan in real pounds; the web panel and the PDF both name it (both needed it, or the PDF told an unclaimed household the reason was the mixed-age rule). Builder: a step-2 'Pension Credit' checkbox, stored sparsely only when unticked, like `hasDescendants`, so the fixture and child what-if deltas do not move. ASSUMPTIONS section 39 records the default and its reasoning.
+
+Watched red: #1 failed on 'Public property [$pensionCreditClaimed] not found' (the reader had no way to say it); #2 failed on '2026 pays an unclaimed award' after the DTO field existed; #3 failed on the guidance being null for an unclaimed household (the engine half had already landed under #2, so its reconciliation assertion was green first).
+
+Assumed: ENGINE_VERSION NOT bumped. The card's task says bump 'if any default changes', and none does: claimed is the default and every claimed path is byte-identical. The value-of-claiming figure is the award on the unclaimed path, not a re-run of the claimed one; ASSUMPTIONS 39 says so.
+
+Raised 0202: Housing Benefit and Council Tax Reduction still take the Guarantee Credit passport from an unclaimed award (the card's 'Not this card' kept them out).
+
+Needs a browser check: the step-2 box and the results and PDF line were not seen in a browser (Herd serves C:\Dev\RetireForecast, not this worktree). `.\vendor\bin\pest.bat` does not exist here; the suite was run with `php artisan test`.
