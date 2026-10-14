@@ -79,3 +79,14 @@ This card needs a session with web access, as its own Plan says. In this unatten
 I did not change any figure, test or doc. Criterion 1 needs a visited URL and a verified_on date, so writing one from memory would be the same unverified figure with a fake citation. Criterion 2 only applies once a published figure is known.
 
 To move it: run it in an attended session with web access, from C:\Dev\RetireForecast. Start at https://www.legislation.gov.uk/uksi/2006/214 (the SI the docblocks name; I could not check which regulation holds each figure). The same pass can settle 0106, 0109 and 0111.
+
+**2026-10-14** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second unattended take, same block. WebFetch (legislation.gov.uk/uksi/2006/214/regulation/29) and WebSearch both came back refused: permission not granted. Without them I cannot read SI 2006/214 for the 65% taper, the Guarantee Credit passport, the 16,000 pound capital limit or the 10% notional sale costs.
+
+Nothing changed. A URL and verified_on written from memory would be the same unverified figure with a false citation, so criterion 1 is not met. Criterion 2 waits on a published figure.
+
+This card should not go back to the unattended loop: each take burns a run and ends here. It needs an attended session with web access, from C:\Dev\RetireForecast, starting at https://www.legislation.gov.uk/uksi/2006/214. That pass can settle 0106, 0109 and 0111 too.
