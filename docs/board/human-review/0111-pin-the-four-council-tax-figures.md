@@ -98,3 +98,5 @@ Criterion 1 is not met. No search ran, so recording "the search found none" in A
 Criterion 2 is not met. No published figure was read, so none can be confirmed or moved. A test written now would only restate the shipped values.
 
 The loop has now picked this card up twice with no way to advance it. Rob: add not_for_the_loop: to its frontmatter, then run it attended from C:\Dev\RetireForecast with web access. Read LGFA 1992 s.5 and s.11, SI 1992/554 and SI 2012/2885. Cards 0106 and 0109 can share that research pass.
+
+**2026-10-14** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
