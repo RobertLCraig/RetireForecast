@@ -90,3 +90,5 @@ Second unattended take, same block. WebFetch (legislation.gov.uk/uksi/2006/214/r
 Nothing changed. A URL and verified_on written from memory would be the same unverified figure with a false citation, so criterion 1 is not met. Criterion 2 waits on a published figure.
 
 This card should not go back to the unattended loop: each take burns a run and ends here. It needs an attended session with web access, from C:\Dev\RetireForecast, starting at https://www.legislation.gov.uk/uksi/2006/214. That pass can settle 0106, 0109 and 0111 too.
+
+**2026-10-14** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
