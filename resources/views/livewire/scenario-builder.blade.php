@@ -1639,6 +1639,11 @@
                         <input id="housing-rentInflationReal" type="text" inputmode="decimal" wire:model="housing.rentInflationReal" class="{{ $field }}">
                     </div>
                     <div>
+                        <label for="housing-rentCouncilTax" class="{{ $label }}">Council tax on the rented home (£/yr)</label>
+                        <input id="housing-rentCouncilTax" type="text" inputmode="decimal" wire:model="housing.rentCouncilTax" aria-describedby="housing-rentCouncilTax-hint" class="{{ $field }}">
+                        <p id="housing-rentCouncilTax-hint" class="mt-1 text-xs text-gray-500">A tenant pays council tax. Leave blank to charge the same bill as your home now.</p>
+                    </div>
+                    <div>
                         <label for="housing-movingCosts" class="{{ $label }}">Moving costs (£)</label>
                         <input id="housing-movingCosts" type="text" inputmode="decimal" wire:model="housing.movingCosts" class="{{ $field }}">
                     </div>

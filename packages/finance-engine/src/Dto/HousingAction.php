@@ -38,6 +38,11 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * site owner takes up to 10% commission on sale). Without this, the engine can only model a bought
  * home appreciating like bricks, so a depreciating home looks strictly better than it is. Null =
  * the assumption set's rate, as before.
+ *
+ * $rentCouncilTax is the annual council tax bill on the RENTED home (board card 0112): a tenant
+ * is the liable person, so a sell-and-rent plan still pays it. Null carries the current home's
+ * bill across, the way a bought home carries it, which is the cautious answer when the rented
+ * home is smaller and nobody has looked its band up.
  */
 final class HousingAction
 {
@@ -54,5 +59,6 @@ final class HousingAction
         public readonly ?Percent $buyMortgageRate = null,
         public readonly ?Money $buyRunningCosts = null,
         public readonly ?Percent $buyGrowthOverride = null,
+        public readonly ?Money $rentCouncilTax = null,
     ) {}
 }

@@ -946,9 +946,11 @@ final class InputNotesTest extends TestCase
      *
      * @param  string  $secondDob  the second member's date of birth: 1955 is well past State
      *                             Pension age in 2026, 1975 is well short of it
+     * @param  array<string, string>  $property  merged over the home
+     * @param  array<string, string>  $housing  merged over the housing action
      * @return list<array{kind: string, text: string}>
      */
-    private function rentPlanNotes(string $secondDob): array
+    private function rentPlanNotes(string $secondDob, array $property = [], array $housing = []): array
     {
         $state = [
             'householdName' => 'Renter', 'region' => 'england_wales_ni',
@@ -963,8 +965,8 @@ final class InputNotesTest extends TestCase
             'expenseLines' => [['id' => 'e1', 'amount' => '20000', 'category' => 'essential']],
             'expense' => ['survivorFactor' => '70'],
             'hasProperty' => true,
-            'property' => ['currentValue' => '300000', 'ownership' => 'outright'],
-            'housing' => ['salePrice' => '300000', 'annualRent' => '15000'],
+            'property' => ['currentValue' => '300000', 'ownership' => 'outright', ...$property],
+            'housing' => ['salePrice' => '300000', 'annualRent' => '15000', ...$housing],
         ];
 
         $household = (new HouseholdAssembler)->household($state);
@@ -991,6 +993,34 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('65%', $text, 'the note names the taper the award is withdrawn at');
         $this->assertStringContainsString('£15,000.00', $text, 'and the rent it is set against');
         $this->assertStringContainsString('Local Housing Allowance', $text, 'and the cap that is NOT modelled');
+    }
+
+    public function test_the_renting_council_tax_note_states_what_is_charged(): void
+    {
+        // Board card 0112. A tenant pays council tax, so the rent plan is charged a bill, and the
+        // no-invisible-figures rule says the reader is told which one and where it came from.
+        $note = function (array $property, array $housing = []): string {
+            $notes = $this->rentPlanNotes('1955-01-01', $property, $housing);
+            $kinds = array_column($notes, 'kind');
+            $this->assertContains('council_tax_rent', $kinds);
+
+            return $notes[array_search('council_tax_rent', $kinds, true)]['text'];
+        };
+
+        // Blank: the current home's bill is carried across.
+        $carried = $note(['councilTax' => '2000']);
+        $this->assertStringContainsString('£2,000.00', $carried, 'the note names the bill charged');
+        $this->assertStringContainsString('your home now', $carried, 'and that it is the current home\'s');
+
+        // Entered for the rented home itself.
+        $entered = $note(['councilTax' => '2000'], ['rentCouncilTax' => '1500']);
+        $this->assertStringContainsString('£1,500.00', $entered);
+        $this->assertStringContainsString('rented home', $entered);
+        $this->assertStringNotContainsString('£2,000.00', $entered);
+
+        // Nothing to carry: the current bill is still inside the running costs, so none is charged.
+        $none = $note(['runningCosts' => '3000']);
+        $this->assertStringContainsString('charges no council tax', $none);
     }
 
     public function test_a_rent_plan_with_a_member_under_state_pension_age_says_it_is_understated(): void

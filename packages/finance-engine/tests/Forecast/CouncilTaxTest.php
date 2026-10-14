@@ -14,6 +14,7 @@ use RetireForecast\FinanceEngine\Dto\CouncilTaxBand;
 use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
+use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Person;
@@ -26,6 +27,7 @@ use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\PathDraws;
 use RetireForecast\FinanceEngine\Forecast\PathProjector;
 use RetireForecast\FinanceEngine\Forecast\YearResult;
+use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -55,6 +57,9 @@ final class CouncilTaxTest extends TestCase
     private const BILL = 2_000;
 
     private const ESSENTIAL_SPEND = 20_000;
+
+    /** The annual rent of a sell-and-rent plan. */
+    private const RENT = 9_000;
 
     private function flatAssumptions(): AssumptionSet
     {
@@ -317,6 +322,75 @@ final class CouncilTaxTest extends TestCase
         $liability = (int) round(self::BILL * 100 * 0.75);
         $this->assertLessThan($liability, $poor->years[0]->councilTax()->pence);
         $this->assertSame($liability, $rich->years[0]->councilTax()->pence, 'capital above the limit ends the reduction');
+    }
+
+    /**
+     * The sell-and-rent variant of $owner, built exactly as the comparison builds it.
+     *
+     * @return array{0: Household, 1: ForecastSettings}
+     */
+    private function rentPlan(Household $owner, int $salePricePounds = 300_000, ?int $rentCouncilTaxPounds = null): array
+    {
+        $variants = (new HousingComparison(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
+            ->variantInputs($owner, new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'), $this->flatAssumptions(), new HousingAction(
+                salePrice: Money::fromPounds($salePricePounds),
+                annualRent: Money::fromPounds(self::RENT),
+                rentCouncilTax: $rentCouncilTaxPounds === null ? null : Money::fromPounds($rentCouncilTaxPounds),
+            ));
+
+        return [$variants['rent']['household'], $variants['rent']['settings']];
+    }
+
+    private function forecastWith(Household $h, ForecastSettings $settings): ForecastResult
+    {
+        return (new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
+            ->forecast($h, $this->flatAssumptions(), $settings);
+    }
+
+    public function test_a_renting_household_is_charged_council_tax(): void
+    {
+        // Board card 0112. A tenant of a self-contained home is the liable person, so a household
+        // that sells and rents still pays council tax. A couple far above the Pension Credit line,
+        // both living to 95, so nothing reduces the bill and it is charged in full every year.
+        [$renter, $settings] = $this->rentPlan($this->household([400, 400]));
+        $this->assertNull($renter->primaryResidence, 'the rent plan owns no home');
+
+        $result = $this->forecastWith($renter, $settings);
+        foreach ($result->years as $year) {
+            $this->assertSame(self::BILL * 100, $year->councilTax()->pence, "council tax is charged in {$year->calendarYear}");
+        }
+        $this->assertSame(
+            (self::ESSENTIAL_SPEND + self::RENT + self::BILL) * 100,
+            $result->years[0]->essentialSpend->pence,
+            'the bill is an essential cost beside the rent, not instead of it',
+        );
+
+        // A bill entered for the rented home itself replaces the one carried from the home sold.
+        [$renter, $settings] = $this->rentPlan($this->household([400, 400]), rentCouncilTaxPounds: 1_500);
+        $this->assertSame(1_500_00, $this->forecastWith($renter, $settings)->years[0]->councilTax()->pence);
+    }
+
+    public function test_a_renters_council_tax_falls_the_same_way_an_owners_does(): void
+    {
+        // The single-person discount: the second member dies at 80 and the survivor pays 75%.
+        [$renter, $settings] = $this->rentPlan($this->household([400, 400], secondDeathAge: 80));
+        $survivor = $this->firstSurvivorYear($this->forecastWith($renter, $settings));
+        $this->assertSame((int) round(self::BILL * 100 * 0.75), $survivor->councilTax()->pence, 'a renter living alone gets the discount');
+
+        // Council Tax Reduction, on the same pension-age taper an owner gets. The sale frees under
+        // the £10,000 lower capital limit, so the renter's capital earns no tariff income and the
+        // two means tests run on the same figures: what each still pays is the same.
+        $owner = $this->forecast($this->household([288]));
+        [$renter, $settings] = $this->rentPlan($this->household([288]), salePricePounds: 8_000);
+        $rented = $this->forecastWith($renter, $settings);
+
+        $liability = (int) round(self::BILL * 100 * 0.75);
+        $this->assertLessThan($liability, $owner->years[0]->councilTax()->pence, 'the owner gets a reduction');
+        $this->assertSame($owner->years[0]->councilTax()->pence, $rented->years[0]->councilTax()->pence, 'so does the renter, to the penny');
+
+        // And the disabled band reduction, which belongs to the resident, follows a carried bill.
+        [$renter, $settings] = $this->rentPlan($this->household([400, 400], disabledBandReduction: CouncilTaxBand::D));
+        $this->assertSame((int) round(self::BILL * 100 * 8 / 9), $this->forecastWith($renter, $settings)->years[0]->councilTax()->pence);
     }
 
     public function test_a_disabled_band_reduction_charges_the_band_below(): void

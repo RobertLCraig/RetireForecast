@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RetireForecast\FinanceEngine\Forecast;
 
 use RetireForecast\FinanceEngine\Care\CareCostSampler;
+use RetireForecast\FinanceEngine\Dto\CouncilTaxBand;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
@@ -129,6 +130,13 @@ final class ForecastSettings
          * 0075 #4). Without this a reader who chose spend-savings-first was told nobody chose it.
          */
         public readonly bool $drawdownStrategyIsChosen = false,
+        /**
+         * The council tax bill on the RENTED home, and the disabled band reduction it carries (board
+         * card 0112). Read only while the household rents. Null on a forced sale falls back to the
+         * sold home's own bill; the year-0 rent plan has no home, so {@see withRent} resolves it.
+         */
+        public readonly ?Money $rentCouncilTax = null,
+        public readonly ?CouncilTaxBand $rentDisabledBandReduction = null,
     ) {}
 
     /**
@@ -217,14 +225,16 @@ final class ForecastSettings
             $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
             $this->planningHorizon, $this->taxableIncomeTargetPence, $this->hasDescendants,
             $this->startingMixIsAssumed, $this->drawdownStrategyIsChosen,
+            $this->rentCouncilTax, $this->rentDisabledBandReduction,
         );
     }
 
     /**
-     * A copy that pays this rent. Every other setting is preserved, so the rent arm of a housing
-     * comparison runs on the reader's own choices and differs from the other arms only in its rent.
+     * A copy that pays this rent, and this council tax on the rented home. Every other setting is
+     * preserved, so the rent arm of a housing comparison runs on the reader's own choices and
+     * differs from the other arms only in its housing costs.
      */
-    public function withRent(Money $annualRent, Percent $rentInflationReal): self
+    public function withRent(Money $annualRent, Percent $rentInflationReal, ?Money $councilTax = null, ?CouncilTaxBand $disabledBandReduction = null): self
     {
         return new self(
             $this->baseYear, $this->baseTaxYear, $this->drawdownStrategy, $this->allocation,
@@ -233,6 +243,7 @@ final class ForecastSettings
             $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
             $this->planningHorizon, $this->taxableIncomeTargetPence, $this->hasDescendants,
             $this->startingMixIsAssumed, $this->drawdownStrategyIsChosen,
+            $councilTax, $disabledBandReduction,
         );
     }
 }

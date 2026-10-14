@@ -2797,6 +2797,33 @@ final class ResultPresenter
         //
         // The rent is read from the housing ACTION, not from the years, so the note reads the
         // same whichever forecast a caller hands in.
+        // (c4c2) COUNCIL TAX ON THE RENTED HOME. Board card 0112: a tenant is the liable person, so
+        // the rent plan is charged a bill, and the reader is told which one and where it came from.
+        // The figure is READ from HousingComparison::rentCouncilTax, the rule the plan is charged by.
+        if ($variant === 'rent' && $housingAction !== null) {
+            [$bill, $band] = HousingComparison::rentCouncilTax($household, $housingAction);
+            if ($bill !== null && $housingAction->rentCouncilTax !== null) {
+                $text = "A tenant pays council tax, so this plan charges the {$bill->format()} a year "
+                    .'you entered for the rented home.';
+            } elseif ($bill !== null) {
+                $text = "A tenant pays council tax, so this plan charges the same {$bill->format()} a year as your home now, "
+                    .'because no bill was entered for the rented home. A smaller home is often in a lower band, so this may be '
+                    .'more than you would pay: enter the rented home\'s own bill beside the rent if you know it.';
+                if ($band !== null) {
+                    $text .= ' The disabled band reduction you claim now is carried with it.';
+                }
+            } else {
+                $text = 'This plan charges no council tax on the rented home, although a tenant pays it, because there is no '
+                    .'figure to charge: your current bill is not in its own box on the home step. Enter the rented home\'s bill '
+                    .'beside the rent, or your current bill on the home step, to see what you would pay.';
+            }
+            if ($bill !== null) {
+                $text .= ' It falls the same way an owner\'s does: '.self::ratePct(CouncilTax::singlePersonDiscount()->asPercent())
+                    .' off once only one of you is left, and Council Tax Reduction where your income and savings qualify.';
+            }
+            $notes[] = ['kind' => 'council_tax_rent', 'text' => $text];
+        }
+
         $rentPlan = $variant === 'rent' && $housingAction?->annualRent !== null && $housingAction->annualRent->isPositive();
         if ($rentPlan) {
             $notes[] = ['kind' => 'housing_benefit', 'text' => 'This plan pays '

@@ -3,6 +3,20 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-14: a renter's council tax is its own input, blank meaning the current home's bill
+
+**Context:** card 0112. A tenant is the liable person for council tax, but the sell-and-rent plan
+has no home, so it was charged none. The card offered two sources: carry the current home's bill, or
+a new input beside the rent.
+
+**Decision:** both. `HousingAction::$rentCouncilTax` is a new input on the housing step; blank carries
+the current home's bill, as a bought home already does. That default is the cautious one (a smaller
+rented home is usually a lower band) and the input lets a known lower bill replace it. The disabled
+band reduction follows only a carried bill, because an entered bill has no band to step down from.
+`HousingComparison::rentCouncilTax()` owns the rule; the rent plan's settings and the result note both read it.
+
+**Status:** active
+
 ## 2026-10-14: the triple lock's earnings limb runs on a national earnings figure, not salary growth
 
 **Context:** card 0100. The engine uprated the State Pension by the higher of prices and 2.5%; the

@@ -9,6 +9,7 @@ use RetireForecast\FinanceEngine\Dto\AccountType;
 use RetireForecast\FinanceEngine\Dto\AssumptionSet;
 use RetireForecast\FinanceEngine\Dto\CapitalReceipt;
 use RetireForecast\FinanceEngine\Dto\CgtHistory;
+use RetireForecast\FinanceEngine\Dto\CouncilTaxBand;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
@@ -146,7 +147,7 @@ final class HousingComparison
         return [
             'stay_put' => ['household' => $household, 'settings' => $settings],
             'buy_outright' => ['household' => $this->buyVariant($household, $action, $settings), 'settings' => $settings],
-            'rent' => ['household' => $this->rentVariant($household, $netProceeds, $action, $settings), 'settings' => $this->rentSettings($settings, $assumptions, $action)],
+            'rent' => ['household' => $this->rentVariant($household, $netProceeds, $action, $settings), 'settings' => $this->rentSettings($settings, $assumptions, $action, $household)],
         ];
     }
 
@@ -398,12 +399,34 @@ final class HousingComparison
         );
     }
 
-    private function rentSettings(ForecastSettings $settings, AssumptionSet $assumptions, HousingAction $action): ForecastSettings
+    /**
+     * A tenant is the liable person for council tax (board card 0112), so the rent plan carries a
+     * bill. The one entered for the rented home wins; blank carries the current home's bill across,
+     * exactly as {@see buyVariant} carries it to a bought home and for the same cautious reason. The
+     * disabled band reduction follows only a CARRIED bill: it is the resident's, but it is a band
+     * lower than the dwelling's, and an entered bill comes with no band to step down from.
+     */
+    private function rentSettings(ForecastSettings $settings, AssumptionSet $assumptions, HousingAction $action, Household $household): ForecastSettings
     {
         return $settings->withRent(
             $action->annualRent ?? Money::zero(),
             $action->rentInflationReal ?? $assumptions->rentInflation,
+            ...self::rentCouncilTax($household, $action),
         );
+    }
+
+    /**
+     * The rent plan's council tax bill and the disabled band reduction it carries, by the rule
+     * {@see rentSettings} gives. PUBLIC and static so the result note READS the figure charged
+     * rather than restating the rule.
+     *
+     * @return array{0: ?Money, 1: ?CouncilTaxBand}
+     */
+    public static function rentCouncilTax(Household $household, HousingAction $action): array
+    {
+        return $action->rentCouncilTax !== null
+            ? [$action->rentCouncilTax, null]
+            : [$household->primaryResidence?->annualCouncilTax, $household->primaryResidence?->disabledBandReduction];
     }
 
     /**

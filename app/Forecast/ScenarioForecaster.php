@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-14 (triple-lock-earnings-limb): the triple lock now uprates the State Pension by
+     * Bumped 2026-10-14 (renter-pays-council-tax): a sell-and-rent plan, and a forced sale that ends in a
+     * tenancy, is now charged council tax on the rented home (the bill entered for it, else the current
+     * home's), with the same reliefs an owner gets. Every plan with a rent leg costs more, so its
+     * wealth, depletion year and success odds move down. Board card 0112.
+     * Previous bump 2026-10-14 (triple-lock-earnings-limb): the triple lock now uprates the State Pension by
      * the highest of national earnings growth (0.25% real on the default and OBR sets, 0.75% on the
      * historical set), prices and 2.5%. Under the default the floor still binds at 2% CPI, so only
      * Monte Carlo paths with inflation above about 2.24%, and every plan on the historical set, gain
@@ -613,7 +617,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/triple-lock-earnings-limb';
+    public const ENGINE_VERSION = 'finance-engine/renter-pays-council-tax';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
@@ -993,6 +997,7 @@ final class ScenarioForecaster
             // A glidepath alone still starts from our mix, so that mix stays disclosed (card 0062 #5).
             startingMixIsAssumed: AssumptionOverrides::startingMixIsAssumed($overrides),
             annualRent: $action?->annualRent,
+            rentCouncilTax: $action?->rentCouncilTax,
             rentInflationReal: $action?->rentInflationReal ?? ($forcedSale ? $scenario->assumptionSet?->toDto()?->rentInflation : null),
             modelCareCost: (bool) ($scenario->effectiveBuilderState()['modelCareCost'] ?? false),
             sellingCosts: $action?->sellingCosts,

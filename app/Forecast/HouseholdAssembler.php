@@ -114,6 +114,8 @@ final class HouseholdAssembler
             buyPrice: $this->money($h['buyPrice'] ?? null),
             annualRent: $this->money($h['annualRent'] ?? null),
             rentInflationReal: $this->percent($h['rentInflationReal'] ?? null),
+            // Blank = the current home's bill carried across to the rented one (card 0112).
+            rentCouncilTax: $this->money($h['rentCouncilTax'] ?? null),
             movingCosts: $this->money($h['movingCosts'] ?? null),
             sellingCosts: $this->sellingCosts($h),
             buyMortgageRate: $this->percent($h['buyMortgageRate'] ?? null),

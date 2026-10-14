@@ -1635,7 +1635,8 @@ final class PathProjector
             $soldForCare = $home !== null && $atHome === 0;
             $rentChargedNominal = 0;
             $housingBenefitNominal = 0;
-            if ($settings->annualRent !== null && ! $ownsHome && ! $soldForCare) {
+            $renting = $settings->annualRent !== null && ! $ownsHome && ! $soldForCare;
+            if ($renting) {
                 $rentChargedNominal = (int) round($settings->annualRent->pence * $state['rentFactor']);
 
                 // Housing Benefit meets some or all of that rent for a pension-age renter whose income
@@ -1670,7 +1671,7 @@ final class PathProjector
             // permanent care is a disregarded person, so the partner left at home is a single
             // occupant. With nobody left at home it falls back to the living count, as before.
             // $atHome is counted above, beside the rent.
-            $councilTaxNominal = $this->councilTaxNominal($household, $state, $pensionCreditAward, $atHome ?: $aliveCount);
+            $councilTaxNominal = $this->councilTaxNominal($household, $settings, $renting, $state, $pensionCreditAward, $atHome ?: $aliveCount);
             $spendNominal += $councilTaxNominal;
             $essentialNominal += $councilTaxNominal;
 
@@ -1834,7 +1835,7 @@ final class PathProjector
             $supportFrom = fn (?PensionCreditResult $award): array => [
                 $award?->guaranteeCreditWeekly->pence ?? 0,
                 $this->housingBenefitNominal($household, $supportState, $award, $rentChargedNominal),
-                $this->councilTaxNominal($household, $supportState, $award, $atHome ?: $aliveCount),
+                $this->councilTaxNominal($household, $settings, $renting, $supportState, $award, $atHome ?: $aliveCount),
             ];
             if ($pensionCreditAward === null
                 || $taxablePensionDrawn === $assessedDrawNominal
@@ -2237,10 +2238,12 @@ final class PathProjector
      * the disabled band reduction, the single-person discount and Council Tax Reduction, in the
      * order {@see CouncilTax} applies them.
      *
-     * Zero unless the household entered a council tax figure of its own and still owns the home
-     * (a bill still bundled inside {@see Property::$runningCosts} is charged there, in full, and
-     * the result note says so). It rides CPI like every other spend line, but is NOT scaled by
-     * the ownership share: council tax is charged to whoever lives in the dwelling, not to its
+     * An owner is charged the figure entered for the home (a bill still bundled inside
+     * {@see Property::$runningCosts} is charged there, in full, and the result note says so). A
+     * RENTER is charged too, because a tenant is the liable person (board card 0112): the rented
+     * home's bill on the settings, else, after a forced sale, the sold home's own. Nothing once the
+     * home is sold and nobody rents. It rides CPI like every other spend line, but is NOT scaled
+     * by the ownership share: council tax is charged to whoever lives in the dwelling, not to its
      * owners in proportion.
      *
      * The pension-age Council Tax Reduction is applied only where the Pension Credit means test
@@ -2253,14 +2256,20 @@ final class PathProjector
      *                                       which is also what blocks the pension-age reduction
      * @param  int  $occupants  members living in the home this year (a care resident is not)
      */
-    private function councilTaxNominal(Household $household, array $state, ?PensionCreditResult $award, int $occupants): int
+    private function councilTaxNominal(Household $household, ForecastSettings $settings, bool $renting, array $state, ?PensionCreditResult $award, int $occupants): int
     {
         $home = $household->primaryResidence;
-        if ($home?->annualCouncilTax === null || $state['homeSold']) {
+        [$bill, $band] = match (true) {
+            $home !== null && ! $state['homeSold'] => [$home->annualCouncilTax, $home->disabledBandReduction],
+            $renting && $settings->rentCouncilTax !== null => [$settings->rentCouncilTax, $settings->rentDisabledBandReduction],
+            $renting => [$home?->annualCouncilTax, $home?->disabledBandReduction],
+            default => [null, null],
+        };
+        if ($bill === null) {
             return 0;
         }
 
-        $liability = CouncilTax::liabilityAnnual($home->annualCouncilTax, $home->disabledBandReduction, $occupants === 1);
+        $liability = CouncilTax::liabilityAnnual($bill, $band, $occupants === 1);
         $nominal = Money::fromPence((int) round($liability->pence * $state['spendFactor']));
 
         if ($award === null) {
