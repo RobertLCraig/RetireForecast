@@ -68,3 +68,14 @@ it and the test is the place to record the new one. `InputNotesTest` asserts the
 the note text and would need that one string changed.
 
 ## Comments
+
+**2026-10-14** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+This card needs a session with web access, as its own Plan says. In this unattended session, WebFetch and WebSearch both came back refused (permission not granted). So I could not read SI 2006/214 for the 65% taper, the Guarantee Credit passport, the £16,000 capital limit, or the 10% notional sale costs.
+
+I did not change any figure, test or doc. Criterion 1 needs a visited URL and a verified_on date, so writing one from memory would be the same unverified figure with a fake citation. Criterion 2 only applies once a published figure is known.
+
+To move it: run it in an attended session with web access, from C:\Dev\RetireForecast. Start at https://www.legislation.gov.uk/uksi/2006/214 (the SI the docblocks name; I could not check which regulation holds each figure). The same pass can settle 0106, 0109 and 0111.
