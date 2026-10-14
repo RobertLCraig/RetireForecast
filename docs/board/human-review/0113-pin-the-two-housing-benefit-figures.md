@@ -92,3 +92,22 @@ Nothing changed. A URL and verified_on written from memory would be the same unv
 This card should not go back to the unattended loop: each take burns a run and ends here. It needs an attended session with web access, from C:\Dev\RetireForecast, starting at https://www.legislation.gov.uk/uksi/2006/214. That pass can settle 0106, 0109 and 0111 too.
 
 **2026-10-14** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-15 manager (m20261015004633-1875)
+
+**outcome: rob**
+
+The card needs a web search, and the unattended loop is never allowed one, so another builder run will fail the same way.
+
+**what the session said**
+
+Nothing is fixed yet. The "SOURCING GAP" block is still on `HousingBenefit` (see the docblock above `TAPER_BPS`). `CapitalAssessment::NOTIONAL_SALE_COSTS_BPS` still has no citation. ASSUMPTIONS section 24 still says that card 0113 holds the gap.
+
+Neither criterion is ticked. The builder already knows what to do, but it cannot do it. Each unattended run is refused web access. If you send the card back to todo/, it will fail the same way again.
+
+Only a person can move this card. Start an attended Claude session in `C:\Dev\RetireForecast` with web access allowed. Begin at https://www.legislation.gov.uk/uksi/2006/214. In that same session you can also clear cards 0106, 0109 and 0111, and the Council Tax and SMI figures that have the same gap.
+
+WHY: The card needs a web search, and the unattended loop is never allowed one, so another builder run will fail the same way.
+
+OUTCOME: rob
+
