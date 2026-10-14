@@ -40,8 +40,8 @@ The mechanism. The start age, the what-if preset, the carer input and the lever 
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] THE APP SHALL carry a source URL and a verified_on date for the Attendance Allowance rates and the Carer's Allowance earnings limit in docs/spec/ASSUMPTIONS.md section 20, for both tax years, or record there that the search found none. proves: manual
-- [ ] WHEN a published figure differs from the shipped one, THE APP SHALL use the published one, and the warning and the what-if that read the constant SHALL move with it. proves: `test_the_working_longer_lever_flags_the_carer_earnings_limit`
+- [x] THE APP SHALL carry a source URL and a verified_on date for the Attendance Allowance rates and the Carer's Allowance earnings limit in docs/spec/ASSUMPTIONS.md section 20, for both tax years, or record there that the search found none. proves: manual
+- [x] WHEN a published figure differs from the shipped one, THE APP SHALL use the published one, and the warning and the what-if that read the constant SHALL move with it. proves: `test_the_working_longer_lever_flags_the_carer_earnings_limit`
 <!-- AC:END -->
 
 ## Tasks
@@ -108,3 +108,10 @@ OUTCOME: rob
 
 
 **2026-10-13** The figures needed fetching from gov.uk; fetched today and written to `docs/research/RESEARCH-0106-attendance-allowance-and-carer-earnings.md` with URLs and verified_on 2026-10-13. Both Attendance Allowance pairs match what shipped. The 2026/27 Carer's Allowance earnings limit is GBP 204.00, not the derived GBP 203.36, so that one figure changes. Build from that note; it needs no web. Moved to todo/ for the loop. (agent, after Rob's 2026-10-13 clear-down)
+
+**2026-10-14** RESULT: done
+TESTS: +0 new, 1 extended (test_the_working_longer_lever_flags_the_carer_earnings_limit), all green
+TOUCHED: packages/finance-engine/src/TaxYear/TaxYearRegistry.php, packages/finance-engine/src/TaxYear/BenefitsParameters.php, packages/finance-engine/tests/Forecast/PathProjectorTest.php, tests/Feature/DecisionSupport/ThresholdPresenterTest.php, docs/spec/ASSUMPTIONS.md
+OUT-OF-SCOPE: none
+
+Built from docs/research/RESEARCH-0106-attendance-allowance-and-carer-earnings.md (no web needed). The 2026/27 Carer's Allowance earnings limit moved from the derived GBP 203.36 to the published GBP 204.00; the four Attendance Allowance figures and the 2025/26 limit matched and only gained citations. The extended test pins the limit at 20400 pence for the 2026-27 fixture and was watched failing first ('20336 is identical to 20400'); the warning still asserts it reads the constant. The 2025/26 attendance_allowance and carers_allowance source URLs now point at the DWP Benefit and pension rates 2025 to 2026 table; the 2026/27 ones stay on the live gov.uk pages. The NOT INDEPENDENTLY VERIFIED block on BenefitsParameters is gone, and ASSUMPTIONS section 20 now carries each source URL with verified_on 2026-10-13. PathProjectorTest only had a comment restating GBP 203.36; its GBP 11,000 earner is still above the new limit. No ENGINE_VERSION bump and no re-run, per the card's Plan: neither figure enters a projection. The lever warning still needs a browser check, which cannot be done from the worktree.
