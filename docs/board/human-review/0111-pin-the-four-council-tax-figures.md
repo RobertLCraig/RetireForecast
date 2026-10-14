@@ -100,3 +100,27 @@ Criterion 2 is not met. No published figure was read, so none can be confirmed o
 The loop has now picked this card up twice with no way to advance it. Rob: add not_for_the_loop: to its frontmatter, then run it attended from C:\Dev\RetireForecast with web access. Read LGFA 1992 s.5 and s.11, SI 1992/554 and SI 2012/2885. Cards 0106 and 0109 can share that research pass.
 
 **2026-10-14** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-14 manager (m20261014180434-79ac)
+
+**outcome: rob**
+
+Both criteria need statutory figures read from the web, and the unattended loop cannot reach the web, so only an attended session started by Rob can do this.
+
+**what the session said**
+
+The "SOURCING GAP" blocks are still in `Benefits\CouncilTax` and `Dto\CouncilTaxBand`. So nobody has pinned the four figures yet.
+
+Neither criterion is ticked. No review finding disproves anything. The only thing in the way is web access. The loop has none: both takes had WebFetch and WebSearch refused on the first call. If I send the card back to `todo/`, the next take fails the same way and the card comes straight back here.
+
+What is left needs a person:
+1. Add `not_for_the_loop:` to the card's frontmatter.
+2. Open an attended session with web access in `C:\Dev\RetireForecast`.
+3. In that session, read LGFA 1992 s.5 and s.11, SI 1992/554 and SI 2012/2885.
+
+Cards 0106 and 0109 have the same gap. One research pass can settle all three.
+
+WHY: Both criteria need statutory figures read from the web, and the unattended loop cannot reach the web, so only an attended session started by Rob can do this.
+
+OUTCOME: rob
+
