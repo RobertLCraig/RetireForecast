@@ -73,3 +73,16 @@ personal allowances and premiums. If the two differ by enough to matter, that is
 not this one.
 
 ## Comments
+
+**2026-10-14** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+This card needs web access, and this unattended session has none. WebSearch and WebFetch were both refused on their first call (a legislation.gov.uk fetch of LGFA 1992 s.5, then a search). Its own Plan says the same: "Needs a session with web access."
+
+Criterion 1 is not met. It allows recording that "the search found none", but no search ran. Writing that into ASSUMPTIONS section 23 would claim a search that did not happen.
+
+Criterion 2 is not met. It depends on reading the published figures. With no source read, no figure can be confirmed or moved. A test written now would just restate the values already shipped, so its failure would prove nothing.
+
+Next step: run this card in an attended session with web access, from C:\Dev\RetireForecast. Read LGFA 1992 s.5 and s.11, SI 1992/554 (Reductions for Disabilities), and SI 2012/2885 (CTR Prescribed Requirements, England). Cards 0106 and 0109 have the same gap and can share one research pass. Consider adding not_for_the_loop: to this card's frontmatter so the loop stops picking it up.
