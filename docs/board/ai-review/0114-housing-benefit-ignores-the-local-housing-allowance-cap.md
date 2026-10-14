@@ -28,8 +28,8 @@ beside this one and are not carded.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] WHEN a modelled rent is above the household's Local Housing Allowance rate, THE APP SHALL cap the eligible rent at that rate before the award is worked out. proves: `test_eligible_rent_is_capped_at_the_local_housing_allowance_rate`
-- [ ] THE APP SHALL state on the plan which LHA rate was applied and where it came from, or that none was and the award is therefore the optimistic end. proves: `test_a_rent_plan_states_what_housing_benefit_does_for_it`
+- [x] WHEN a modelled rent is above the household's Local Housing Allowance rate, THE APP SHALL cap the eligible rent at that rate before the award is worked out. proves: `test_eligible_rent_is_capped_at_the_local_housing_allowance_rate`
+- [x] THE APP SHALL state on the plan which LHA rate was applied and where it came from, or that none was and the award is therefore the optimistic end. proves: `test_a_rent_plan_states_what_housing_benefit_does_for_it`
 <!-- AC:END -->
 
 ## Tasks
@@ -61,3 +61,31 @@ the adverse reading is the other way.
 Run `php artisan test` after. `HousingBenefitTest` is where the capping case belongs.
 
 ## Comments
+
+**2026-10-14** RESULT: done
+TESTS: +1 new (test_eligible_rent_is_capped_at_the_local_housing_allowance_rate), 1 extended (test_a_rent_plan_states_what_housing_benefit_does_for_it), all green
+TOUCHED: app/Forecast/HouseholdAssembler.php
+app/Forecast/ResultPresenter.php
+app/Forecast/ScenarioForecaster.php
+app/Forecast/WhatIfChanges.php
+app/Livewire/ScenarioBuilder.php
+docs/DECISIONS.md
+docs/spec/ASSUMPTIONS.md
+packages/finance-engine/src/Benefits/HousingBenefit.php
+packages/finance-engine/src/Dto/HousingAction.php
+packages/finance-engine/src/Forecast/ForecastSettings.php
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/src/Housing/HousingComparison.php
+packages/finance-engine/tests/Forecast/HousingBenefitTest.php
+resources/views/livewire/scenario-builder.blade.php
+tests/Support/BuilderStateFixture.php
+tests/Unit/Forecast/InputNotesTest.php
+OUT-OF-SCOPE: none
+
+Task 1 chose the builder input (DECISIONS 2026-10-14). The shipped table was not possible here: no web access to fetch rates. New field housing.rentLhaWeekly, entered WEEKLY because LHA rates are published weekly; the engine caps annual eligible rent at rate x weeksPerYear x the rent's growth factor, inside HousingBenefit::annualAward, before the passport and the taper. The four builder-field moves (blank default, validation, loadState backfill, BuilderStateFixture::full) went together. ENGINE_VERSION bumped to finance-engine/housing-benefit-lha-cap.
+
+Watched red: criterion 1 failed with 800000 vs 520000 (the full rent paid, not the cap); criterion 2 failed on the old note text, which had no 'No Local Housing Allowance rate was entered' line.
+
+Two calls Rob may want to revisit, both written down: (1) BLANK CAPS NOTHING. The card names the adverse reading the other way. I took no-cap because the adverse reading of a blank would award nothing and understate every stored rent plan by the whole award; AC2 itself names the 'none entered, optimistic end' state, and the note says so in words. The switch is one null check in PathProjector::housingBenefitNominal. (2) The cap grows each year with the rent factor, so the gap entered stays the gap. Real LHA rates have been frozen for long spells, which would make a flat-nominal cap the more adverse choice; the note discloses the 'grown each year with the rent' assumption.
+
+Not checked in a browser: the new input on the housing step and the reworded note still need one (Herd serves C:\Dev\RetireForecast, not this worktree). Suite run via php artisan test (no pest.bat in this repo); pint --dirty clean.
