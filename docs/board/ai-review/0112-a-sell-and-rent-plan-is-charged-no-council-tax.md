@@ -36,9 +36,9 @@ and is built. This card only decides what a renter is charged and charges it.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] WHEN a plan sells the home and rents, THE APP SHALL charge council tax on the rented home for every year of the tenancy. proves: `test_a_renting_household_is_charged_council_tax`
-- [ ] WHEN only one person remains in a renting household, THE APP SHALL apply the single-person discount and any Council Tax Reduction, on the same rules an owner gets. proves: `test_a_renters_council_tax_falls_the_same_way_an_owners_does`
-- [ ] THE APP SHALL state on the result which council tax figure a renting plan was charged and where it came from. proves: `test_the_renting_council_tax_note_states_what_is_charged`
+- [x] WHEN a plan sells the home and rents, THE APP SHALL charge council tax on the rented home for every year of the tenancy. proves: `test_a_renting_household_is_charged_council_tax`
+- [x] WHEN only one person remains in a renting household, THE APP SHALL apply the single-person discount and any Council Tax Reduction, on the same rules an owner gets. proves: `test_a_renters_council_tax_falls_the_same_way_an_owners_does`
+- [x] THE APP SHALL state on the result which council tax figure a renting plan was charged and where it came from. proves: `test_the_renting_council_tax_note_states_what_is_charged`
 <!-- AC:END -->
 
 ## Tasks
@@ -75,3 +75,32 @@ stored plan with a rent leg gets more expensive, so its wealth, depletion year a
 move and a stored re-run is owed.
 
 ## Comments
+
+**2026-10-14** RESULT: done
+TESTS: +3 new, all green
+TOUCHED: app/Forecast/HouseholdAssembler.php
+app/Forecast/ResultPresenter.php
+app/Forecast/ScenarioForecaster.php
+app/Forecast/WhatIfChanges.php
+app/Livewire/ScenarioBuilder.php
+docs/DECISIONS.md
+packages/finance-engine/src/Dto/HousingAction.php
+packages/finance-engine/src/Forecast/ForecastSettings.php
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/src/Housing/HousingComparison.php
+packages/finance-engine/tests/Forecast/CouncilTaxTest.php
+resources/views/livewire/scenario-builder.blade.php
+tests/Support/BuilderStateFixture.php
+tests/Unit/Forecast/InputNotesTest.php
+docs/board/todo/0203-the-buy-price-sweep-drops-the-bought-homes-own-costs-and-growth.md
+OUT-OF-SCOPE: 0203
+
+Task 1 decided (DECISIONS 2026-10-14): both shapes. A new housing-step input, HousingAction::$rentCouncilTax ('Council tax on the rented home'); blank carries the current home's bill, as a bought home does. That keeps the cautious default and lets a known lower bill replace it. The disabled band reduction follows only a carried bill, since an entered bill has no band to step down from. HousingComparison::rentCouncilTax() owns that rule; rentSettings and the result note both read it.
+
+Engine: ForecastSettings gains rentCouncilTax + rentDisabledBandReduction (set by withRent). PathProjector::councilTaxNominal charges a renting household (annualRent set, no owned home, not sold for care) the settings' bill, else after a forced sale the sold home's own, through the same CouncilTax reliefs. ScenarioForecaster passes the entered figure to a forced-sale run too. ENGINE_VERSION bumped to renter-pays-council-tax; the Monte Carlo golden master stayed green (its household does not rent), so no re-pin. Stored runs with a rent leg are owed a re-run.
+
+Watched failing first: both engine tests charged the renter 0 (expected 200000 / 150000); the note test found no council_tax_rent note.
+
+Not checked: a browser look at the new builder box and the note. Herd serves C:\Dev\RetireForecast, not this worktree.
+
+Card 0203: BuyPriceLever rebuilds HousingAction without buyRunningCosts and buyGrowthOverride, so the buy-price sweep prices a park home on derived upkeep and bricks growth.
