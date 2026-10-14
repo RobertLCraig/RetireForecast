@@ -137,6 +137,12 @@ final class ForecastSettings
          */
         public readonly ?Money $rentCouncilTax = null,
         public readonly ?CouncilTaxBand $rentDisabledBandReduction = null,
+        /**
+         * The WEEKLY Local Housing Allowance rate for the rented home's area and size (board card
+         * 0114), as published. Housing Benefit counts no more rent than this. Null = none entered,
+         * so the whole rent counts, which is the optimistic end and the result note says so.
+         */
+        public readonly ?Money $rentLocalHousingAllowanceWeekly = null,
     ) {}
 
     /**
@@ -225,7 +231,7 @@ final class ForecastSettings
             $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
             $this->planningHorizon, $this->taxableIncomeTargetPence, $this->hasDescendants,
             $this->startingMixIsAssumed, $this->drawdownStrategyIsChosen,
-            $this->rentCouncilTax, $this->rentDisabledBandReduction,
+            $this->rentCouncilTax, $this->rentDisabledBandReduction, $this->rentLocalHousingAllowanceWeekly,
         );
     }
 
@@ -234,7 +240,7 @@ final class ForecastSettings
      * preserved, so the rent arm of a housing comparison runs on the reader's own choices and
      * differs from the other arms only in its housing costs.
      */
-    public function withRent(Money $annualRent, Percent $rentInflationReal, ?Money $councilTax = null, ?CouncilTaxBand $disabledBandReduction = null): self
+    public function withRent(Money $annualRent, Percent $rentInflationReal, ?Money $councilTax = null, ?CouncilTaxBand $disabledBandReduction = null, ?Money $localHousingAllowanceWeekly = null): self
     {
         return new self(
             $this->baseYear, $this->baseTaxYear, $this->drawdownStrategy, $this->allocation,
@@ -243,7 +249,7 @@ final class ForecastSettings
             $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
             $this->planningHorizon, $this->taxableIncomeTargetPence, $this->hasDescendants,
             $this->startingMixIsAssumed, $this->drawdownStrategyIsChosen,
-            $councilTax, $disabledBandReduction,
+            $councilTax, $disabledBandReduction, $localHousingAllowanceWeekly,
         );
     }
 }

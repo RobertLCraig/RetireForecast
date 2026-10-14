@@ -116,6 +116,8 @@ final class HouseholdAssembler
             rentInflationReal: $this->percent($h['rentInflationReal'] ?? null),
             // Blank = the current home's bill carried across to the rented one (card 0112).
             rentCouncilTax: $this->money($h['rentCouncilTax'] ?? null),
+            // Blank = no Local Housing Allowance cap on Housing Benefit, disclosed (card 0114).
+            rentLhaWeekly: $this->money($h['rentLhaWeekly'] ?? null),
             movingCosts: $this->money($h['movingCosts'] ?? null),
             sellingCosts: $this->sellingCosts($h),
             buyMortgageRate: $this->percent($h['buyMortgageRate'] ?? null),

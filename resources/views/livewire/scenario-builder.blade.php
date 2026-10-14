@@ -1644,6 +1644,11 @@
                         <p id="housing-rentCouncilTax-hint" class="mt-1 text-xs text-gray-500">A tenant pays council tax. Leave blank to charge the same bill as your home now.</p>
                     </div>
                     <div>
+                        <label for="housing-rentLhaWeekly" class="{{ $label }}">Local Housing Allowance rate (£/week)</label>
+                        <input id="housing-rentLhaWeekly" type="text" inputmode="decimal" wire:model="housing.rentLhaWeekly" aria-describedby="housing-rentLhaWeekly-hint" class="{{ $field }}">
+                        <p id="housing-rentLhaWeekly-hint" class="mt-1 text-xs text-gray-500">Housing Benefit counts no more rent than this. Look up the weekly rate for the area and home size on gov.uk. Leave blank and the whole rent counts, which overstates the help.</p>
+                    </div>
+                    <div>
                         <label for="housing-movingCosts" class="{{ $label }}">Moving costs (£)</label>
                         <input id="housing-movingCosts" type="text" inputmode="decimal" wire:model="housing.movingCosts" class="{{ $field }}">
                     </div>

@@ -561,6 +561,7 @@ class ScenarioBuilder extends Component
             'housing.annualRent' => $money,
             'housing.rentInflationReal' => $rate,
             'housing.rentCouncilTax' => $money,
+            'housing.rentLhaWeekly' => $money,
             'housing.movingCosts' => $money,
             // Selling costs are a set of named components, each entered as a % of the sale
             // (basis "percent") or a flat £ (basis "fixed"). A blank line just costs nothing.
@@ -954,6 +955,7 @@ class ScenarioBuilder extends Component
         $this->housing['buyRunningCosts'] ??= '';
         $this->housing['buyGrowthReal'] ??= '';
         $this->housing['rentCouncilTax'] ??= '';
+        $this->housing['rentLhaWeekly'] ??= '';
 
         // Every spend line carries an explicit `included` flag so its on/off checkbox binds to a
         // real boolean; a line saved before the toggle existed (no flag) defaults to included.
@@ -2366,6 +2368,8 @@ class ScenarioBuilder extends Component
             'rentInflationReal' => '', 'movingCosts' => '',
             // The rented home's council tax (card 0112). Empty = carry the current home's bill.
             'rentCouncilTax' => '',
+            // The weekly Local Housing Allowance rate (card 0114). Empty = no cap, disclosed.
+            'rentLhaWeekly' => '',
             'sellingCosts' => self::defaultSellingCosts(),
         ];
     }

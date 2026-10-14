@@ -2826,15 +2826,24 @@ final class ResultPresenter
 
         $rentPlan = $variant === 'rent' && $housingAction?->annualRent !== null && $housingAction->annualRent->isPositive();
         if ($rentPlan) {
+            // (c4d) Board card 0114: the Local Housing Allowance rate that capped the rent, read from
+            // the input the engine was given, or the plain statement that nothing capped it.
+            $lha = $housingAction->rentLhaWeekly;
+            $lhaText = $lha !== null
+                ? 'Housing Benefit counts no more rent than the Local Housing Allowance rate you entered, '
+                    .$lha->format().' a week, grown each year with the rent; any rent above it you pay yourself.'
+                : 'No Local Housing Allowance rate was entered, so the whole rent counts. A private tenant\'s help is '
+                    .'capped at the rate for the area and home size, so where your rent is above it this award is the '
+                    .'optimistic end: look the weekly rate up on gov.uk and enter it beside the rent.';
             $notes[] = ['kind' => 'housing_benefit', 'text' => 'This plan pays '
                 .$housingAction->annualRent->format().' a year in rent, and the forecast now meets part of it with '
-                .'Housing Benefit on the pension-age rules. On Guarantee Credit the whole rent is met. Above that, '
+                .'Housing Benefit on the pension-age rules. '.$lhaText.' On Guarantee Credit all the rent that counts '
+                .'is met. Above that, '
                 .self::ratePct(HousingBenefit::taper()->asPercent()).' of every pound of weekly income above your '
                 .'Pension Credit guarantee is taken off the award, which is steep: help runs out sooner than most '
                 .'people expect. Savings above the capital limit end it outright, and the plan flags the year you '
-                .'cross that line. Three things are NOT in it, and all three mean the figure here is the '
-                .'optimistic end: the Local Housing Allowance cap on how much rent counts (it varies by area and we '
-                .'hold no table of rates), any part of the rent that pays for fuel, water or meals, and a deduction '
+                .'cross that line. Two things are NOT in it, and both mean the figure here is the '
+                .'optimistic end: any part of the rent that pays for fuel, water or meals, and a deduction '
                 .'for another adult living with you. Nothing is paid automatically, so an award shown here is one '
                 .'you still have to claim.'];
 

@@ -3,6 +3,26 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-14: the Local Housing Allowance rate is a builder input, blank meaning no cap
+
+**Context:** card 0114. Housing Benefit counted the whole rent, with no Local Housing Allowance cap.
+The card offered two shapes: a builder input the reader fills from gov.uk, or a shipped table of
+rates per broad rental market area.
+
+**Decision:** a builder input, `housing.rentLhaWeekly` (`HousingAction::$rentLhaWeekly`), entered as
+the WEEKLY rate because that is how the rates are published. A shipped table has about 190 areas
+per bedroom size, goes stale every April, and could not be fetched by the unattended session that
+built this, which had no web access. The cap is grown each year by the same factor as the rent, so
+the gap the reader entered stays the gap.
+
+**Blank caps nothing, deliberately.** The adverse reading of a blank would award no Housing Benefit
+at all, which would understate every stored rent plan by the whole award and hide help a pension-age
+tenant does get. So blank keeps the old uncapped award, and the `housing_benefit` result note says
+in plain words that no rate was entered and the award is therefore the optimistic end. Rob may
+reverse this; the switch is the one null check in `PathProjector::housingBenefitNominal`.
+
+**Status:** active
+
 ## 2026-10-14: a renter's council tax is its own input, blank meaning the current home's bill
 
 **Context:** card 0112. A tenant is the liable person for council tax, but the sell-and-rent plan

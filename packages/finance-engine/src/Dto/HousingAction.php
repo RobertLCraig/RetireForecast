@@ -43,6 +43,9 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * is the liable person, so a sell-and-rent plan still pays it. Null carries the current home's
  * bill across, the way a bought home carries it, which is the cautious answer when the rented
  * home is smaller and nobody has looked its band up.
+ *
+ * $rentLhaWeekly is the WEEKLY Local Housing Allowance rate for the rented home (board card 0114),
+ * which caps the rent Housing Benefit counts. Null caps nothing, the optimistic end, disclosed.
  */
 final class HousingAction
 {
@@ -60,5 +63,6 @@ final class HousingAction
         public readonly ?Money $buyRunningCosts = null,
         public readonly ?Percent $buyGrowthOverride = null,
         public readonly ?Money $rentCouncilTax = null,
+        public readonly ?Money $rentLhaWeekly = null,
     ) {}
 }

@@ -34,12 +34,13 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * {@see CouncilTax} gives: the HB applicable amount is built to the same shape from the same
  * figures, and a second hand-entered table would be a second definition of one quantity.
  *
- * v1 limits, flagged, and the first of them is the one that matters:
- *  - the LOCAL HOUSING ALLOWANCE cap is not modelled. A private tenant's eligible rent is capped
- *    at the LHA rate for their broad rental market area and household size, and this engine holds
- *    no LHA table (there is one per area, re-set every April). So the whole rent is treated as
- *    eligible, which OVERSTATES the award wherever the rent is above the local cap — the
- *    optimistic direction, against the house rule of defaulting adverse. Board card 0114.
+ * The LOCAL HOUSING ALLOWANCE cap (board card 0114): a private tenant's eligible rent is capped
+ * at the LHA rate for their broad rental market area and household size. The engine holds no LHA
+ * table (one per area, re-set every April), so the reader enters their own rate, and where none
+ * is entered the whole rent counts. That OVERSTATES the award wherever the rent is above the
+ * local cap, and the result note says so. DECISIONS 2026-10-14.
+ *
+ * v1 limits, flagged:
  *  - ineligible service charges (fuel, water, meals inside a rent) are not stripped out, which
  *    overstates it slightly again;
  *  - non-dependant deductions are not modelled, which overstates it for a household with another
@@ -91,8 +92,16 @@ final class HousingBenefit
         Money $assessableCapital,
         Money $upperCapitalLimit,
         int $weeksPerYear,
+        ?Money $annualLocalHousingAllowance = null,
     ): Money {
         $rent = $annualEligibleRent->minZero();
+
+        // A private tenant's eligible rent is capped at the Local Housing Allowance rate, and the
+        // rent above it is met by nobody. Capped first, so the passport and the taper both act on
+        // the capped figure. Board card 0114.
+        if ($annualLocalHousingAllowance !== null && $rent->greaterThan($annualLocalHousingAllowance)) {
+            $rent = $annualLocalHousingAllowance->minZero();
+        }
 
         // Passported: on Guarantee Credit the whole eligible rent is met, and no capital limit
         // applies. Getting this edge wrong tells the poorest household in the model that its

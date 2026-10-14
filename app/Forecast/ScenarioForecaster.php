@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-14 (renter-pays-council-tax): a sell-and-rent plan, and a forced sale that ends in a
+     * Bumped 2026-10-14 (housing-benefit-lha-cap): Housing Benefit counts no more rent than the Local
+     * Housing Allowance rate entered beside it, so a rent plan with a rate below its rent is awarded
+     * less and its wealth, depletion year and success odds move down. Blank caps nothing, so a plan
+     * without a rate is unchanged. Board card 0114.
+     * Previous bump 2026-10-14 (renter-pays-council-tax): a sell-and-rent plan, and a forced sale that ends in a
      * tenancy, is now charged council tax on the rented home (the bill entered for it, else the current
      * home's), with the same reliefs an owner gets. Every plan with a rent leg costs more, so its
      * wealth, depletion year and success odds move down. Board card 0112.
@@ -617,7 +621,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/renter-pays-council-tax';
+    public const ENGINE_VERSION = 'finance-engine/housing-benefit-lha-cap';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
@@ -998,6 +1002,7 @@ final class ScenarioForecaster
             startingMixIsAssumed: AssumptionOverrides::startingMixIsAssumed($overrides),
             annualRent: $action?->annualRent,
             rentCouncilTax: $action?->rentCouncilTax,
+            rentLocalHousingAllowanceWeekly: $action?->rentLhaWeekly,
             rentInflationReal: $action?->rentInflationReal ?? ($forcedSale ? $scenario->assumptionSet?->toDto()?->rentInflation : null),
             modelCareCost: (bool) ($scenario->effectiveBuilderState()['modelCareCost'] ?? false),
             sellingCosts: $action?->sellingCosts,

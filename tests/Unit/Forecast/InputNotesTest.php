@@ -992,7 +992,17 @@ final class InputNotesTest extends TestCase
         $text = $notes[array_search('housing_benefit', $kinds, true)]['text'];
         $this->assertStringContainsString('65%', $text, 'the note names the taper the award is withdrawn at');
         $this->assertStringContainsString('£15,000.00', $text, 'and the rent it is set against');
-        $this->assertStringContainsString('Local Housing Allowance', $text, 'and the cap that is NOT modelled');
+
+        // Board card 0114: the plan says which Local Housing Allowance rate capped the rent and
+        // where it came from, or that none did and the award is the optimistic end.
+        $this->assertStringContainsString('No Local Housing Allowance rate was entered', $text);
+        $this->assertStringContainsString('optimistic end', $text);
+
+        $notes = $this->rentPlanNotes('1955-01-01', housing: ['rentLhaWeekly' => '150']);
+        $capped = $notes[array_search('housing_benefit', array_column($notes, 'kind'), true)]['text'];
+        $this->assertStringContainsString('£150.00 a week', $capped, 'the note names the rate applied');
+        $this->assertStringContainsString('the Local Housing Allowance rate you entered', $capped, 'and where it came from');
+        $this->assertStringNotContainsString('No Local Housing Allowance rate was entered', $capped);
     }
 
     public function test_the_renting_council_tax_note_states_what_is_charged(): void

@@ -133,14 +133,39 @@ final class HousingBenefitTest extends TestCase
         );
     }
 
-    private function forecast(Household $h, ?int $annualRent = null): ForecastResult
+    private function forecast(Household $h, ?int $annualRent = null, ?int $weeklyLha = null): ForecastResult
     {
         return (new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
             ->forecast($h, $this->flatAssumptions(), new ForecastSettings(
                 baseYear: 2026,
                 baseTaxYear: '2026-27',
                 annualRent: $annualRent === null ? null : Money::fromPounds($annualRent),
+                rentLocalHousingAllowanceWeekly: $weeklyLha === null ? null : Money::fromPounds($weeklyLha),
             ));
+    }
+
+    public function test_eligible_rent_is_capped_at_the_local_housing_allowance_rate(): void
+    {
+        // Board card 0114. A private tenant's eligible rent is capped at the Local Housing
+        // Allowance rate for the area, and the rent above it is met by nobody. £100 a week is
+        // £5,200 a year against £8,000 of rent, so even the maximum award (Guarantee Credit in
+        // payment) leaves £2,800 a year for the household to pay itself.
+        $capped = $this->forecast($this->renter([150]), self::RENT, weeklyLha: 100)->years[0];
+
+        $this->assertSame(100_00 * 52, $capped->housingBenefit()->pence, 'the award is met on the LHA rate, not the rent');
+        $this->assertSame(
+            (self::ESSENTIAL_SPEND + self::RENT) * 100 - 100_00 * 52,
+            $capped->spendTarget->pence,
+            'the rent above the cap stays in the spending target',
+        );
+
+        // A rate above the rent caps nothing.
+        $uncapped = $this->forecast($this->renter([150]), self::RENT, weeklyLha: 200)->years[0];
+        $this->assertSame(self::RENT * 100, $uncapped->housingBenefit()->pence);
+
+        // The taper comes off the CAPPED rent: £50 a week of excess income at 65p in the pound.
+        $tapered = $this->forecast($this->renter([288]), self::RENT, weeklyLha: 100)->years[0];
+        $this->assertSame(100_00 * 52 - (int) round(50_00 * 0.65) * 52, $tapered->housingBenefit()->pence);
     }
 
     public function test_a_pension_age_renter_on_guarantee_credit_has_the_rent_met_in_full(): void

@@ -540,11 +540,12 @@ cash **−0.5%**.
      Same regulations, the capital-valuation rules.
 
    The applicable amount used is the Pension Credit one the engine already computes, for the same
-   reason and with the same caveat item 23 gives. Four v1 limits follow, all flagged in code and
-   all pushing the award the OPTIMISTIC way, which is against the standing rule of defaulting
-   adverse: the **Local Housing Allowance cap** on eligible rent is not applied at all (there is
-   one rate per broad rental market area, re-set every April, and the engine holds no table), which
-   is board card **0114**; ineligible service charges inside a rent are not stripped out;
+   reason and with the same caveat item 23 gives. The **Local Housing Allowance cap** on eligible
+   rent applies only where the reader enters their weekly rate beside the rent (board card **0114**,
+   DECISIONS 2026-10-14): the engine holds no table, as there is one rate per broad rental market
+   area, re-set every April. A blank caps nothing, and the result note says that award is the
+   optimistic end. Three v1 limits follow, all flagged in code and all pushing the award the
+   OPTIMISTIC way, which is against the standing rule of defaulting adverse: ineligible service charges inside a rent are not stripped out;
    non-dependant deductions are not modelled; and whether anybody claims is not modelled. Working-
    age Housing Benefit is deliberately not modelled either, since it is closed to new claims and
    its replacement is the Universal Credit housing element, which card 0048 put out of scope for a

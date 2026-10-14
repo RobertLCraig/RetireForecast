@@ -1648,7 +1648,7 @@ final class PathProjector
                 // $rentChargedNominal stays the GROSS rent the landlord asks for, because that is what
                 // the deposit and the referencing warnings below are sized against: a letting agent's
                 // affordability test is on the rent, not on what the tenant is left paying.
-                $housingBenefitNominal = $this->housingBenefitNominal($household, $state, $pensionCreditAward, $rentChargedNominal);
+                $housingBenefitNominal = $this->housingBenefitNominal($household, $settings, $state, $pensionCreditAward, $rentChargedNominal);
                 $rentPaidNominal = max(0, $rentChargedNominal - $housingBenefitNominal);
 
                 $spendNominal += $rentPaidNominal;
@@ -1834,7 +1834,7 @@ final class PathProjector
             // a draw can move.
             $supportFrom = fn (?PensionCreditResult $award): array => [
                 $award?->guaranteeCreditWeekly->pence ?? 0,
-                $this->housingBenefitNominal($household, $supportState, $award, $rentChargedNominal),
+                $this->housingBenefitNominal($household, $settings, $supportState, $award, $rentChargedNominal),
                 $this->councilTaxNominal($household, $settings, $renting, $supportState, $award, $atHome ?: $aliveCount),
             ];
             if ($pensionCreditAward === null
@@ -2298,25 +2298,30 @@ final class PathProjector
      * card 0048 put out of scope for a pension-age tool. A younger renter is therefore awarded
      * nothing, which UNDERSTATES that plan, and the result note beside it says so.
      *
-     * The whole rent is treated as eligible rent: the Local Housing Allowance cap needs a table of
-     * area rates this engine does not hold. {@see HousingBenefit} carries that limit and its card.
+     * Eligible rent is capped at the reader's Local Housing Allowance rate where one is entered
+     * (board card 0114). The rate is grown by the same factor as the rent, so the gap between the
+     * two stays the one the reader entered. Blank caps nothing; {@see HousingBenefit} says why.
      *
      * @param  array<string, mixed>  $state
      * @param  ?PensionCreditResult  $award  null when the qualifying-age gate blocked the award,
      *                                       which is also what blocks Housing Benefit
      */
-    private function housingBenefitNominal(Household $household, array $state, ?PensionCreditResult $award, int $rentNominal): int
+    private function housingBenefitNominal(Household $household, ForecastSettings $settings, array $state, ?PensionCreditResult $award, int $rentNominal): int
     {
         if ($award === null || $rentNominal <= 0) {
             return 0;
         }
+
+        $weeksPerYear = $this->config->statePension->weeksPerYear;
+        $lha = $settings->rentLocalHousingAllowanceWeekly;
 
         return HousingBenefit::annualAward(
             Money::fromPence($rentNominal),
             $award,
             $this->meansTestAssessableCapital($household, $state),
             $this->config->benefits->housingSupportUpperCapitalLimit,
-            $this->config->statePension->weeksPerYear,
+            $weeksPerYear,
+            $lha === null ? null : Money::fromPence((int) round($lha->pence * $weeksPerYear * $state['rentFactor'])),
         )->pence;
     }
 

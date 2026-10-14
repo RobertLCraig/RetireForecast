@@ -31,7 +31,7 @@ final class WhatIfChanges
         'grossSalary', 'currentValue', 'ongoingContribution', 'employerContribution', 'pclsTakenToDate', 'crystallisedValue',
         'accruedAnnualPension', 'commutationLumpSum', 'weeklyForecast', 'balance', 'unrealisedGain',
         'grossAnnual', 'amount', 'salePrice', 'buyPrice', 'annualRent', 'movingCosts',
-        'outstandingMortgage', 'runningCosts', 'councilTax', 'rentCouncilTax',
+        'outstandingMortgage', 'runningCosts', 'councilTax', 'rentCouncilTax', 'rentLhaWeekly',
     ];
 
     /** Leaf field names whose value is a rate — shown with a % suffix. */
@@ -191,7 +191,7 @@ final class WhatIfChanges
             ],
             'housing' => [
                 'salePrice' => 'Sale price', 'buyPrice' => 'Cheaper home to buy', 'annualRent' => 'Rent if you sell & rent',
-                'rentInflationReal' => 'Rent growth', 'rentCouncilTax' => 'Council tax on the rented home', 'movingCosts' => 'Moving costs', 'sellingCostRate' => 'Selling cost rate',
+                'rentInflationReal' => 'Rent growth', 'rentCouncilTax' => 'Council tax on the rented home', 'rentLhaWeekly' => 'Local Housing Allowance rate', 'movingCosts' => 'Moving costs', 'sellingCostRate' => 'Selling cost rate',
             ],
             'expense' => ['survivorFactor' => 'Survivor spending factor'],
             'property' => [

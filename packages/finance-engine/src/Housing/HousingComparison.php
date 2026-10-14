@@ -412,6 +412,7 @@ final class HousingComparison
             $action->annualRent ?? Money::zero(),
             $action->rentInflationReal ?? $assumptions->rentInflation,
             ...self::rentCouncilTax($household, $action),
+            localHousingAllowanceWeekly: $action->rentLhaWeekly,
         );
     }
 
