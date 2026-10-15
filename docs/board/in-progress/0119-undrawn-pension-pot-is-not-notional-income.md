@@ -50,3 +50,14 @@ live on `packages/finance-engine/src/TaxYear/BenefitsParameters.php` and
 `php artisan test` and `php artisan scenarios:audit`.
 
 ## Comments
+
+**2026-10-15** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+The card's first task needs the notional income rate from the web, and its own Tasks line says so: "Needs web, so not an unattended card." This session tried WebSearch and the permission was refused, as in every unattended card session. The repository has no sourced figure for it: a grep for notional income, GAD rate and annuity rate finds only the 0051 divergence note, the DATA-MODEL Known divergences entry and the unrelated purchase-annuity table (cards 0065 / 0140).
+
+I did not build the arithmetic around a null or placeholder rate. The project rule is no unsourced figure in a projection, and a test written against an invented rate would prove nothing about the real one. So #1 and #2 have no test yet, and #3 (rate with source URL and verified-on date) cannot be met.
+
+To unblock: run this card in an attended session with web access, or have /research fetch the rate first. What it must settle: the State Pension Credit Regulations 2002 reg 18 notional income rule for an unused money-purchase fund, and the rate table DWP uses for it (believed to be GAD-based, NOT verified here), with the gov.uk or legislation.gov.uk URL. The rest of the card (BenefitsParameters field, applying it in PathProjector::pensionCreditAward assessable income, the no-double-count test against drawn cash, ENGINE_VERSION bump, closing the DATA-MODEL divergence) is ordinary engine work once that figure exists. Suggest marking the card not_for_the_loop: so the scheduler stops picking it.
