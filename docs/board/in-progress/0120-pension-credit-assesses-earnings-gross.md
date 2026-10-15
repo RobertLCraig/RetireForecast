@@ -47,3 +47,22 @@ per-person tax and NI, so the netting should read those. Run `php artisan test` 
 `php artisan scenarios:audit`.
 
 ## Comments
+
+**2026-10-15** RESULT: partial
+TESTS: +1 new, all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Forecast/PathProjectorTest.php
+app/Forecast/ScenarioForecaster.php
+docs/DECISIONS.md
+docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+Built: Pension Credit now assesses earnings net of income tax, NI and HALF a net-pay pension contribution (it used to take earnings gross of tax and NI and net of the WHOLE contribution). test_pension_credit_assesses_earnings_net was watched failing at the gross figure (80912 vs 149500, i.e. GBP 15.56/wk vs 28.75/wk) before the fix. ENGINE_VERSION is finance-engine/pension-credit-assesses-earnings-net; the re-run is owed for plans with earnings in a Pension Credit year.
+
+Why criterion 1 is NOT claimed: a contribution paid out of the year's surplus (relief-at-source and non-earner routes, applyContributions) is settled AFTER the award, so it is not yet halved and deducted. Only net-pay is. That is the under-award (adverse) side. Closing it needs the award re-asked once the surplus contribution is known, like the pension-draw re-ask.
+
+Assumed (DECISIONS 2026-10-15): the tax pass has no per-source split, so the earnings' share of tax is the tax on the earnings alone through the same band core, capped at the year's tax. This gives earnings the personal allowance first (as PAYE does for the main job), the smaller deduction and so the adverse side. NI is read straight from the year's figure. The card asked to read the year's tax rather than recompute it; for an earner with no other non-savings income the two are the same, but with a pension beside the earnings there is nothing per-source to read. Rob may prefer another split.
+
+Blocked: criteria 2 and 3 need the single, couple and higher earnings disregard figures with a source URL and verified-on date. WebFetch was refused in this unattended session, so nothing was fetched and no unsourced figure was added. A session with web access must fetch them (SI 2002/1792 Schedule VI is the likely source) and add them to BenefitsParameters.
+
+Not done: php artisan scenarios:audit was not run (it reads Rob's live database and the re-run is owed anyway). The near-miss warning copy (card 0046) still apologises for 'no income disregards', which stays true until the disregard lands. No UI changed, so no browser check is owed. Suite run with php artisan test (no pest.bat exists here); pint clean.
