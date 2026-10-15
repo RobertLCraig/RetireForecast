@@ -67,3 +67,15 @@ Run `php artisan test` after. `CareMeansTestedChargeTest` holds the two behaviou
 figure moves all of them together.
 
 ## Comments
+
+**2026-10-15** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+This card needs the web and this session has none. WebSearch and WebFetch were both refused (permission not granted), the same gap the card's own Why names. So I could not read AA Regs 1991 reg 7, DLA Regs 1991 reg 9, or the Care and Support (Charging and Assessment of Resources) Regs 2014 Sch 1.
+
+Criterion 1 not met: no source URL or verified_on date can be honestly written into ASSUMPTIONS section 25, and 'the search found none' would be false because no search ran.
+Criterion 2 not met: it turns on whether the published rule differs from the shipped 28 days and mobility disregard, which only the read can say. The proves test test_a_local_authority_funded_placement_stops_the_care_component_after_the_statutory_period already exists (packages/finance-engine/tests/Forecast/CareMeansTestedChargeTest.php:407) and reads the constant, so a corrected figure moves it with no test edit.
+
+Next step: run this card in an attended session with WebFetch allowed, or mark it not_for_the_loop. Cards 0106, 0109, 0111, 0113 share the same block and can be settled in one research pass. The SOURCING GAP block on DisabilityBenefitInCare.php:26 stays until then.
