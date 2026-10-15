@@ -93,3 +93,22 @@ Criterion 2 not met: it depends on whether the published rule differs from the s
 This card cannot advance in the unattended loop. Next step: run it attended with WebFetch allowed, or mark it not_for_the_loop. Cards 0106, 0109, 0111, 0113 share the block and fit one research pass.
 
 **2026-10-15** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-15 manager (m20261015145528-50cc)
+
+**outcome: rob**
+
+The loop cannot reach the web, and this card is only a web lookup, so only a session that a person starts with web access can do it.
+
+**what the session said**
+
+Both acceptance criteria are still open. Nothing in the code is fixed yet. The "SOURCING GAP" note is still in `DisabilityBenefitInCare.php`, beside the constant `PAYMENT_STOP_DAYS = 28`.
+
+The builder did not fail at the work. It could not start, because the loop has no web access. Both takes asked for WebFetch, and the loop refused it both times. No copy of the three laws (the SIs, or statutory instruments) is in the repo. If I send the card back to `todo/`, it will fail the same way a third time.
+
+You do not need to decide anything. Someone must run the card in a session that has web access. That session reads the three laws, writes the source URLs into ASSUMPTIONS section 25, and changes the constant only if the law says a different number. Cards 0106, 0109, 0111 and 0113 have the same block, so one research session can clear all five.
+
+WHY: The loop cannot reach the web, and this card is only a web lookup, so only a session that a person starts with web access can do it.
+
+OUTCOME: rob
+
