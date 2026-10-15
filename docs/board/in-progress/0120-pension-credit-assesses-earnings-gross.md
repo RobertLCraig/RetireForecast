@@ -66,3 +66,18 @@ Assumed (DECISIONS 2026-10-15): the tax pass has no per-source split, so the ear
 Blocked: criteria 2 and 3 need the single, couple and higher earnings disregard figures with a source URL and verified-on date. WebFetch was refused in this unattended session, so nothing was fetched and no unsourced figure was added. A session with web access must fetch them (SI 2002/1792 Schedule VI is the likely source) and add them to BenefitsParameters.
 
 Not done: php artisan scenarios:audit was not run (it reads Rob's live database and the re-run is owed anyway). The near-miss warning copy (card 0046) still apologises for 'no income disregards', which stays true until the disregard lands. No UI changed, so no browser check is owed. Suite run with php artisan test (no pest.bat exists here); pint clean.
+
+**2026-10-15** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, no change. WebFetch and WebSearch were both refused again in this unattended session, so nothing could move.
+
+Criteria 2 and 3 still need the single, couple and higher weekly earnings disregards with a source URL and verified-on date (SI 2002/1792 Schedule VI is the likely source). The repository holds no copy of them, and no unsourced figure was added.
+
+Criterion 1 is still not claimed for the reason the first take gave: a relief-at-source contribution is paid out of the year's surplus after the award, so it is not yet halved and deducted. Closing it also needs the regulation's wording on whether the sum halved is the net payment or the grossed-up contribution, which I could not check without web, so I did not build it.
+
+What stands from the first take (commit 3f4e04a): earnings are assessed net of income tax, NI and half a net-pay contribution; ENGINE_VERSION finance-engine/pension-credit-assesses-earnings-net; the scenario re-run is owed. Engine suite re-run here and green.
+
+This card cannot advance unattended. It needs a session with web access, or Rob pasting the disregard figures and the contribution wording with their source.
