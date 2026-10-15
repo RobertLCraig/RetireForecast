@@ -1,5 +1,9 @@
 # Pension Credit assesses earnings gross, with no earnings disregard
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 3 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 `PathProjector::pensionCreditAward` builds its assessable income out of `$taxablePerPerson`, which
 is the GROSS figure. Pension Credit does not work that way. Earnings are assessed **net** of income
@@ -81,3 +85,5 @@ Criterion 1 is still not claimed for the reason the first take gave: a relief-at
 What stands from the first take (commit 3f4e04a): earnings are assessed net of income tax, NI and half a net-pay contribution; ENGINE_VERSION finance-engine/pension-credit-assesses-earnings-net; the scenario re-run is owed. Engine suite re-run here and green.
 
 This card cannot advance unattended. It needs a session with web access, or Rob pasting the disregard figures and the contribution wording with their source.
+
+**2026-10-15** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 3 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
