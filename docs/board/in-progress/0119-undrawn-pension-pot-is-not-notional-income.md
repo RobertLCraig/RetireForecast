@@ -61,3 +61,14 @@ The card's first task needs the notional income rate from the web, and its own T
 I did not build the arithmetic around a null or placeholder rate. The project rule is no unsourced figure in a projection, and a test written against an invented rate would prove nothing about the real one. So #1 and #2 have no test yet, and #3 (rate with source URL and verified-on date) cannot be met.
 
 To unblock: run this card in an attended session with web access, or have /research fetch the rate first. What it must settle: the State Pension Credit Regulations 2002 reg 18 notional income rule for an unused money-purchase fund, and the rate table DWP uses for it (believed to be GAD-based, NOT verified here), with the gov.uk or legislation.gov.uk URL. The rest of the card (BenefitsParameters field, applying it in PathProjector::pensionCreditAward assessable income, the no-double-count test against drawn cash, ENGINE_VERSION bump, closing the DATA-MODEL divergence) is ordinary engine work once that figure exists. Suggest marking the card not_for_the_loop: so the scheduler stops picking it.
+
+**2026-10-15** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, same block as the first. The session asked to WebFetch legislation.gov.uk (State Pension Credit Regulations 2002 reg 18) and the permission was refused, so the notional income rate and its source still cannot be fetched here. The repository still has no sourced figure: 'notional income' appears only in the docs/DATA-MODEL.md Known divergences entry, and docs/research/ has nothing on it.
+
+I did not build the arithmetic around a placeholder rate. A test against an invented rate proves nothing about the real one, and the project rule forbids an unsourced figure in a projection. So no criterion is met.
+
+To unblock: run /research in an attended session for the reg 18 notional income rule for an unused money-purchase fund over qualifying age, and the DWP rate table it uses (believed GAD-based, not verified), with the legislation.gov.uk or gov.uk URL. Then the rest is ordinary engine work. This card should carry not_for_the_loop: so the scheduler stops picking it. That is a card edit, and I am not allowed to make it.
