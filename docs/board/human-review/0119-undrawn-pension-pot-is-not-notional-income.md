@@ -72,3 +72,5 @@ Second take, same block as the first. The session asked to WebFetch legislation.
 I did not build the arithmetic around a placeholder rate. A test against an invented rate proves nothing about the real one, and the project rule forbids an unsourced figure in a projection. So no criterion is met.
 
 To unblock: run /research in an attended session for the reg 18 notional income rule for an unused money-purchase fund over qualifying age, and the DWP rate table it uses (believed GAD-based, not verified), with the legislation.gov.uk or gov.uk URL. Then the rest is ordinary engine work. This card should carry not_for_the_loop: so the scheduler stops picking it. That is a card edit, and I am not allowed to make it.
+
+**2026-10-15** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 3 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
