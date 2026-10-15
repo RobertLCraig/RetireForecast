@@ -71,3 +71,14 @@ Criterion 1 needs the Care and Support Statutory Guidance, Annex B, read off the
 Criterion 2 is conditional on criterion 1, so I did not build it. Building it now would apply an unconfirmed rule, and card 0113 (which pins the 10% figure) is still in human-review, which this card's Links say to settle first.
 
 To unblock: run this card in a session with web access (or have Rob paste Annex B's property-valuation paragraphs into docs/research/). The build is then small: PathProjector::careAssessableCapital (packages/finance-engine/src/Forecast/PathProjector.php, near line 2344) calls CapitalAssessment::propertyCapital on the WHOLE value and secured debt before the resident's share split, the test reads the answer through the care charge, and ScenarioForecaster::ENGINE_VERSION is bumped.
+
+**2026-10-15** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, same block. Criterion 1 needs the Care and Support Statutory Guidance, Annex B, read off the page. WebFetch (gov.uk) and WebSearch were both refused for permission again in this unattended session. No local copy exists: grep of docs/ for 'Annex B', 'expenses of sale', 'Charging for Care and Support' finds only this card, 0130, 0113, 0048 and the benefits-side ASSUMPTIONS entry. The card says the 10% is a recollection to confirm, not apply, so I did not record it from memory.
+
+Criterion 2 is conditional on criterion 1 and was not built. Card 0113 (pins the 10% figure) is still in human-review, which the card's Links say to settle first.
+
+To unblock: run this card in an attended session with web access, or have Rob paste Annex B's property-valuation paragraphs into docs/research/. Rerunning it unattended will block a third time. The build is then small: PathProjector::careAssessableCapital calls CapitalAssessment::propertyCapital on the WHOLE value and secured debt before the resident's share split, the test reads the answer through the care charge, and ScenarioForecaster::ENGINE_VERSION is bumped.
