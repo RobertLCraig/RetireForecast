@@ -187,6 +187,30 @@ final class PathProjectorTest extends TestCase
         $this->assertSame(12_935 * 52, $pc($this->couple($expense, $pensions, override1: $disabledP1, override2: $disabledP2)));
     }
 
+    public function test_a_non_dependant_adult_blocks_the_severe_disability_addition(): void
+    {
+        // Card 0121. The household above that qualifies on both partners' awards, now with an adult
+        // child living at home. The addition needs nobody else normally living there, so the
+        // guarantee falls back to the plain £363.25, under the couple's £406/wk: no award at all.
+        $expense = new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70));
+        $pensions = [
+            new StatePensionEntitlement('p1', weeklyForecast: Money::of(203, 0)),
+            new StatePensionEntitlement('p2', weeklyForecast: Money::of(203, 0)),
+        ];
+        $persons = [
+            new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired, receivesDisabilityBenefit: true),
+            new Person('p2', new DateTimeImmutable('1958-09-01'), Sex::Male, EmploymentStatus::Retired, receivesDisabilityBenefit: true),
+        ];
+        $pc = fn (int $others): int => $this->forecaster()->forecast(
+            new Household('Test', RegionProfile::EnglandWalesNi, $persons, $expense, $pensions, nonDependantAdults: $others),
+            $this->flatAssumptions(), $this->settings(),
+        )->years[0]->incomeBySource['means_tested_benefit']->pence;
+
+        // The gate: alone, the couple gets the addition, or the blocked run would prove nothing.
+        $this->assertSame(12_935 * 52, $pc(0));
+        $this->assertSame(0, $pc(1));
+    }
+
     public function test_a_disability_benefit_can_start_at_a_chosen_age(): void
     {
         // Card 0044. Both partners are 68 in 2026 and both claim Attendance Allowance at 80, which

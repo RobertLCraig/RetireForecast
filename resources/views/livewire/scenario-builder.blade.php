@@ -947,6 +947,12 @@
                     Pension Credit is claimed, or will be claimed as soon as it is due
                 </label>
                 <p class="mt-1 text-xs text-gray-500">Pension Credit is not paid automatically. Untick this if it has not been claimed. The forecast then pays none, and no help with mortgage interest, and the results show what claiming would be worth.</p>
+                <label class="mt-4 block text-sm text-gray-700">
+                    Other adults who normally live in the home
+                    <input type="number" min="0" step="1" wire:model="nonDependantAdults" class="{{ $field }} mt-1 sm:max-w-xs" @error('nonDependantAdults') aria-invalid="true" aria-describedby="nonDependantAdults-error" @enderror>
+                </label>
+                <p class="mt-1 text-xs text-gray-500">For example a grown-up son or daughter living at home. Do not count the people in this plan. Any other adult stops the Pension Credit severe-disability addition. The rules excuse some adults, so check with a benefits adviser whether each one counts.</p>
+                @error('nonDependantAdults') <p id="nonDependantAdults-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
             </fieldset>
         @endif
 

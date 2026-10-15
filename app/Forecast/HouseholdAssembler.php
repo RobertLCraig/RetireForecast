@@ -104,6 +104,8 @@ final class HouseholdAssembler
             marriageDate: $this->stringOrNull($state['marriageDate'] ?? null),
             // Absent = claimed (card 0110), so a scenario stored before the question keeps its figures.
             pensionCreditClaimed: (bool) ($state['pensionCreditClaimed'] ?? true),
+            // Absent = nobody else lives there (card 0121), what every earlier scenario meant.
+            nonDependantAdults: (int) ($state['nonDependantAdults'] ?? 0),
         );
     }
 

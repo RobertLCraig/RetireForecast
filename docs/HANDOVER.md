@@ -14,6 +14,10 @@ inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded ou
   owed** for plans with earnings in a Pension Credit year. The earnings disregard still waits on
   sourced figures. Reasons in DECISIONS 2026-10-15.
 
+- **Another adult living at home blocks the severe-disability addition.** Card 0121, partial. Default
+  none, so no re-run is owed. The registered-blind route is still open on the card; the excused-adult
+  list is card 0204. The new step-2 field is **not seen in a browser**.
+
 - **Pension Credit can be marked not claimed.** Card 0110. Default claimed, so no re-run is owed.
   The new step-2 box and the results line are **not seen in a browser**. ASSUMPTIONS §39.
 

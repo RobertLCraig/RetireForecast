@@ -2427,7 +2427,11 @@ final class ResultPresenter
                     .'Two things follow, and only the first is in these '
                     .'figures. In the figures: the benefit itself, if you entered it as a tax-free income stream, and the '
                     .'Pension Credit severe-disability addition it opens (a couple both need a qualifying benefit for that; '
-                    .'one on its own gets nothing), plus the carer addition if a partner is ticked as caring for them. NOT in '
+                    .'one on its own gets nothing, and '
+                    .($household->nonDependantAdults > 0
+                        ? "the {$household->nonDependantAdults} other adult(s) entered as living in the home stop it altogether"
+                        : 'it is paid on the basis that no other adult the rules count lives in the home')
+                    .'; whether being registered blind opens it is not yet modelled), plus the carer addition if a partner is ticked as caring for them. NOT in '
                     .'the figures: everything a disability benefit or Pension Credit then passports. That list is Support for '
                     .'Mortgage Interest, Council Tax Reduction, the Warm Home Discount, a free TV licence at 75, Cold Weather '
                     .'Payments and help with NHS costs. Together those are usually worth more per year than the benefit, so '

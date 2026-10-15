@@ -2193,7 +2193,10 @@ final class PathProjector
                 $disabledCount++;
             }
         }
-        $severeDisability = $aliveCount === 1 ? $disabledCount === 1 : $disabledCount >= 2;
+        // Nobody else may normally live there either (board card 0121): an adult the rules do not
+        // excuse, such as a grown-up child at home, blocks it as a non-disabled partner does.
+        $severeDisability = $household->nonDependantAdults === 0
+            && ($aliveCount === 1 ? $disabledCount === 1 : $disabledCount >= 2);
 
         // Carer additions: EACH living member with (underlying) entitlement to Carer's Allowance,
         // i.e. caring for a living partner who receives a qualifying disability benefit, carries

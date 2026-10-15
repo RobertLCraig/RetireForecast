@@ -166,6 +166,7 @@ final class WhatIfChanges
             'relationshipStatus' => 'Relationship status', 'homeToDescendants' => 'Leave home to descendants',
             'hasDescendants' => 'Children or other descendants',
             'pensionCreditClaimed' => 'Pension Credit claimed',
+            'nonDependantAdults' => 'Other adults living in the home',
             'useIsaAllowance' => 'Use ISA allowance',
             'assumptionSetId' => 'Assumption set', 'hasProperty' => 'Owns a property',
             'marriageDate' => 'Date of marriage or civil partnership',

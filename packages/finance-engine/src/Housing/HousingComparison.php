@@ -537,6 +537,7 @@ final class HousingComparison
             formerResidenceDisposal: $formerResidenceDisposal,
             marriageDate: $household->marriageDate,
             pensionCreditClaimed: $household->pensionCreditClaimed,
+            nonDependantAdults: $household->nonDependantAdults,
         );
     }
 }

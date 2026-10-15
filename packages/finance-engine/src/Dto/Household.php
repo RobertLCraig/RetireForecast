@@ -69,6 +69,11 @@ final class Household
         // Interest, and is reported as what claiming would be worth. Default claimed, so a
         // scenario stored before the question existed keeps the figures it was saved with.
         public readonly bool $pensionCreditClaimed = true,
+        // How many OTHER adults normally live in the home, beyond the household's own members,
+        // counting only ones the severe-disability rules do not excuse (board card 0121). Any at
+        // all blocks the Pension Credit severe-disability addition. Default none, which is what
+        // every scenario stored before the question meant, so nothing stored moves.
+        public readonly int $nonDependantAdults = 0,
     ) {}
 
     /**
@@ -188,6 +193,7 @@ final class Household
             $this->formerResidenceDisposal,
             $this->marriageDate,
             $this->pensionCreditClaimed,
+            $this->nonDependantAdults,
         );
     }
 

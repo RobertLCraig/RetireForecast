@@ -99,7 +99,7 @@ class ScenarioBuilder extends Component
     private const STEP_OF_FIELD = [
         'name' => 1, 'householdName' => 1, 'region' => 1, 'baseTaxYear' => 1,
         'variant' => 1, 'assumptionSetId' => 1, 'assumptionOverrides' => 1, 'adviceFeePct' => 1, 'ihtModelled' => 1,
-        'homeToDescendants' => 1, 'hasDescendants' => 1, 'pensionCreditClaimed' => 2, 'useIsaAllowance' => 1, 'relationshipStatus' => 1, 'people' => 1,
+        'homeToDescendants' => 1, 'hasDescendants' => 1, 'pensionCreditClaimed' => 2, 'nonDependantAdults' => 2, 'useIsaAllowance' => 1, 'relationshipStatus' => 1, 'people' => 1,
         'pensions' => 2, 'incomeStreams' => 2,
         'accounts' => 3, 'property' => 3, 'hasProperty' => 3, 'capitalReceipts' => 3,
         'expense' => 4, 'expenseLines' => 4, 'oneOffCosts' => 4,
@@ -139,6 +139,13 @@ class ScenarioBuilder extends Component
      * moves; off, the forecast pays no award and reports what claiming would be worth.
      */
     public bool $pensionCreditClaimed = true;
+
+    /**
+     * Other adults who normally live in the home and are not excused (card 0121). Any at all
+     * blocks the Pension Credit severe-disability addition. Default none, so no stored scenario
+     * moves; a number input binds a string, so both are accepted.
+     */
+    public int|string $nonDependantAdults = 0;
 
     /**
      * Whether the forecast uses each person's unused ISA allowance on money already held in a
@@ -322,6 +329,7 @@ class ScenarioBuilder extends Component
             'homeToDescendants' => ['boolean'],
             'hasDescendants' => ['boolean'],
             'pensionCreditClaimed' => ['boolean'],
+            'nonDependantAdults' => ['nullable', 'integer', 'min:0', 'max:20'],
             'useIsaAllowance' => ['boolean'],
             // The four UK marginal rates an inheriting beneficiary can be on, plus blank for the
             // engine's disclosed default. A free box would invite a rate that is not a rate.
@@ -1369,6 +1377,11 @@ class ScenarioBuilder extends Component
         // The Pension Credit claimed answer, stored only when OFF (sparse), like homeToDescendants above.
         if (! $this->pensionCreditClaimed) {
             $state['pensionCreditClaimed'] = false;
+        }
+
+        // Other adults living there, stored only when there are any (sparse), like the above.
+        if ((int) $this->nonDependantAdults > 0) {
+            $state['nonDependantAdults'] = (int) $this->nonDependantAdults;
         }
 
         // The ISA-allowance toggle, stored only when OFF (sparse), like homeToDescendants above.
