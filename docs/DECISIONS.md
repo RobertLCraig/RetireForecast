@@ -3,6 +3,21 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-15: Pension Credit takes the tax on earnings alone as the earnings' share
+
+**Context:** card 0120. Pension Credit assesses earnings net of income tax, NI and half of any
+pension contribution. The engine's tax pass charges one figure per person over all their income, so
+a person with earnings AND a pension has no "tax on the earnings" to read.
+
+**Decision:** the earnings' share is the tax on the earnings alone, through the same band core,
+capped at the year's actual tax. Earnings take the personal allowance first, as PAYE gives it to the
+main job. That is the smaller deduction of the two stackings, so it is the adverse side: it never
+over-awards. NI is read straight from the year's figure, all of which is on earnings. Only a NET-PAY
+contribution is halved; a contribution paid out of the year's surplus is settled after the award
+and is not yet deducted (card 0120 stays open for it and for the earnings disregard).
+
+**Status:** active
+
 ## 2026-10-14: the Local Housing Allowance rate is a builder input, blank meaning no cap
 
 **Context:** card 0114. Housing Benefit counted the whole rent, with no Local Housing Allowance cap.

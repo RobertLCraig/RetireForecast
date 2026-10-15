@@ -25,6 +25,7 @@ use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
 use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Pension;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
+use RetireForecast\FinanceEngine\Dto\PensionReliefMethod;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
@@ -282,6 +283,32 @@ final class PathProjectorTest extends TestCase
         $this->assertSame($without[2027], $withFlag[2027]);
         // Age 71, the pay has stopped: the addition is awarded again.
         $this->assertGreaterThan($without[2029], $withFlag[2029]);
+    }
+
+    public function test_pension_credit_assesses_earnings_net(): void
+    {
+        // Card 0120. p1 is 68 and still works for £16,000 a year; both have £20 a week of State
+        // Pension (£2,080 a year). Pension Credit assesses earnings net of income tax and NI, and
+        // of HALF of any pension contribution. Over State Pension age there is no NI.
+        $expense = new ExpenseProfile(Money::fromPounds(15_000), Money::zero(), Percent::fromPercent(70));
+        $statePensions = [
+            new StatePensionEntitlement('p1', weeklyForecast: Money::of(20, 0)),
+            new StatePensionEntitlement('p2', weeklyForecast: Money::of(20, 0)),
+        ];
+        $worker = new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Employed,
+            grossSalary: Money::fromPounds(16_000), plannedRetirementAge: 70);
+        $pc = fn (array $pensions): int => $this->forecaster()->forecast($this->couple($expense, $pensions, override1: $worker), $this->flatAssumptions(), $this->settings())
+            ->years[0]->incomeBySource['means_tested_benefit']->pence;
+
+        // No contribution. Tax (£16,000 − £12,570) × 20% = £686, so £15,314 of earnings plus £2,080
+        // = £334.50 a week, £28.75 under the £363.25 couple guarantee. Assessed gross it was £15.56.
+        $this->assertSame(2_875 * 52, $pc($statePensions));
+
+        // A £1,000 net-pay contribution. Pay taxed is £15,000, so tax is £486; half the contribution
+        // (£500) comes off: £16,000 − £500 − £486 = £15,014, plus £2,080 = £328.73 a week, an award
+        // of £34.52. Taking the WHOLE contribution off, as the gross figure did, gave £34.79.
+        $netPay = new DcPension('p1', Money::zero(), Money::fromPounds(1_000), Money::zero(), 57, reliefMethod: PensionReliefMethod::NetPay);
+        $this->assertSame(3_452 * 52, $pc([...$statePensions, $netPay]));
     }
 
     public function test_a_let_home_counts_as_assessable_capital_and_erodes_pension_credit(): void

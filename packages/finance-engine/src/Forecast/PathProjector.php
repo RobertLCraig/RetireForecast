@@ -1088,6 +1088,7 @@ final class PathProjector
         // assessment, which the mobility component is not — see the care leg below.
         $careComponentPerPerson = array_fill_keys(array_map(static fn ($person): string => $person->id, $household->persons), 0);
         $carerTestEarnings = [];
+        $taxedEarnings = [];
 
         foreach ($household->persons as $person) {
             $age = $state['baseAge'][$person->id] + $yearIndex;
@@ -1128,6 +1129,7 @@ final class PathProjector
                 // Care costs, which the test also deducts, are not known here; leaving them in is the
                 // adverse rounding.
                 $carerTestEarnings[$person->id] = $earnings + intdiv($netPay, 2);
+                $taxedEarnings[$person->id] = $earnings;
             }
 
             // Guaranteed pension / other income, kept split by source.
@@ -1273,6 +1275,19 @@ final class PathProjector
                 Money::fromPence($giaDividends),
             ), $thresholdFactor);
             $ni = $this->niForPerson($household, $person->id, $state, $yearIndex);
+
+            // Board card 0120. Pension Credit assesses earnings NET of income tax, NI and half of
+            // any pension contribution, where $taxablePerPerson holds them gross of tax and NI and
+            // net of the WHOLE net-pay contribution. The NI is all on earnings. The tax pass has no
+            // per-source split, so the earnings' share is the tax on them alone, through the same
+            // band core: earnings take the personal allowance first, as PAYE gives it to the main
+            // job, which is the smaller deduction and the adverse side for a person with a pension
+            // as well. The year's tax caps it, so it can never exceed what was charged.
+            if (isset($taxedEarnings[$person->id])) {
+                $earningsTax = min($tax, $this->indexedTotalPence(new TaxableIncome(Money::fromPence($taxedEarnings[$person->id]), Money::zero(), Money::zero()), $thresholdFactor));
+                $netEarnings = $carerTestEarnings[$person->id] - $earningsTax - $ni;
+                $meansTestExcluded[$person->id] = ($meansTestExcluded[$person->id] ?? 0) + $taxedEarnings[$person->id] - $netEarnings;
+            }
             $totalTaxNominal += $tax + $ni;
             $netCashNominal += $taxable + $investmentIncome - $tax - $ni;
             $netPerPerson[$person->id] += $taxable + $investmentIncome - $tax - $ni;
@@ -2083,9 +2098,11 @@ final class PathProjector
      * @param  array<string, int>  $ages  this year's age per person, which decides whether a
      *                                    disability benefit with a start age is yet in payment
      * @param  array<string, int>  $taxablePerPerson
-     * @param  array<string, int>  $excludedFromAssessable  taxable receipts that are CAPITAL for the
-     *                                                      means test, not income (a death-in-service
-     *                                                      lump sum): taxed as income, assessed as capital
+     * @param  array<string, int>  $excludedFromAssessable  taxable income the means test does not count:
+     *                                                      receipts that are CAPITAL for it (a death-in-service
+     *                                                      lump sum: taxed as income, assessed as capital),
+     *                                                      and the tax, NI and half pension contribution
+     *                                                      that earnings are assessed net of (board card 0120)
      * @param  list<string>  $inFundedCarePlacement  person ids in a local-authority-funded care
      *                                               placement this year. The severe-disability
      *                                               addition rides the disability CARE component,

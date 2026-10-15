@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-14 (housing-benefit-lha-cap): Housing Benefit counts no more rent than the Local
+     * Bumped 2026-10-15 (pension-credit-assesses-earnings-net): Pension Credit assesses earnings net
+     * of income tax, NI and half of a net-pay pension contribution, not gross. Only a plan with
+     * earnings in a Pension Credit year moves, and its award moves up (down slightly where half a
+     * large net-pay contribution outweighs the tax). Board card 0120.
+     * Previous bump 2026-10-14 (housing-benefit-lha-cap): Housing Benefit counts no more rent than the Local
      * Housing Allowance rate entered beside it, so a rent plan with a rate below its rent is awarded
      * less and its wealth, depletion year and success odds move down. Blank caps nothing, so a plan
      * without a rate is unchanged. Board card 0114.
@@ -621,7 +625,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/housing-benefit-lha-cap';
+    public const ENGINE_VERSION = 'finance-engine/pension-credit-assesses-earnings-net';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
