@@ -79,3 +79,15 @@ Criterion 1 not met: no source URL or verified_on date can be honestly written i
 Criterion 2 not met: it turns on whether the published rule differs from the shipped 28 days and mobility disregard, which only the read can say. The proves test test_a_local_authority_funded_placement_stops_the_care_component_after_the_statutory_period already exists (packages/finance-engine/tests/Forecast/CareMeansTestedChargeTest.php:407) and reads the constant, so a corrected figure moves it with no test edit.
 
 Next step: run this card in an attended session with WebFetch allowed, or mark it not_for_the_loop. Cards 0106, 0109, 0111, 0113 share the same block and can be settled in one research pass. The SOURCING GAP block on DisabilityBenefitInCare.php:26 stays until then.
+
+**2026-10-15** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, same block. WebFetch and WebSearch were both refused again (permission not granted). I did not route round the refusal with curl. No local copy of the legislation exists: docs/research/RESEARCH-0106 does not cover the care-home stop or the mobility disregard, and the only mentions of the SIs are this card and ASSUMPTIONS section 25.
+
+Criterion 1 not met: no source URL or verified_on date can be written honestly, and 'the search found none' would be false because no search ran.
+Criterion 2 not met: it depends on whether the published rule differs from the shipped 28 days and mobility disregard, which only the read can settle. Its proves test already exists (CareMeansTestedChargeTest.php:407) and reads the constant, so a corrected figure moves it with no test edit.
+
+This card cannot advance in the unattended loop. Next step: run it attended with WebFetch allowed, or mark it not_for_the_loop. Cards 0106, 0109, 0111, 0113 share the block and fit one research pass.
