@@ -84,3 +84,24 @@ Criterion 2 is conditional on criterion 1 and was not built. Card 0113 (pins the
 To unblock: run this card in an attended session with web access, or have Rob paste Annex B's property-valuation paragraphs into docs/research/. Rerunning it unattended will block a third time. The build is then small: PathProjector::careAssessableCapital calls CapitalAssessment::propertyCapital on the WHOLE value and secured debt before the resident's share split, the test reads the answer through the care charge, and ScenarioForecaster::ENGINE_VERSION is bumped.
 
 **2026-10-15** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-15 manager (m20261015123242-58f7)
+
+**outcome: rob**
+
+The work needs a page from gov.uk, and only an attended session or a person can get it.
+
+**what the session said**
+
+This card is stuck on a missing source document, not on the code. Neither take changed any code, so the code has no review finding to check against a criterion.
+
+Both open criteria wait on the same document: the Care and Support Statutory Guidance, Annex B. Criterion 1 is a manual check of that text. Criterion 2 applies only if the text says the 10% costs-of-sale deduction applies. Unattended sessions cannot open web pages. I searched `docs/` and found no saved copy of Annex B. The only hits are the cards and the benefits-side entry in `docs/spec/ASSUMPTIONS.md`.
+
+If I reopen the card, the builder blocks a third time. This is not a question for the owner either: the guidance is a fact to read, not a preference.
+
+What Rob must do: run this card in a session that can open web pages, or put the Annex B paragraphs on property value into `docs/research/`. Then move the card back to `todo/`. Card 0113 sets the 10% figure and is still in `human-review/`, so settle 0113 first.
+
+WHY: The work needs a page from gov.uk, and only an attended session or a person can get it.
+
+OUTCOME: rob
+
