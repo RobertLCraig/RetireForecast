@@ -60,3 +60,14 @@ asset.
 Run `php artisan test` after.
 
 ## Comments
+
+**2026-10-15** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Criterion 1 needs the Care and Support Statutory Guidance, Annex B, read off the page. This unattended session has no web: WebFetch on gov.uk was refused for permission. No local copy exists in the repository (docs/, docs/research/) or in SecondBrain (find.py 'care act annex capital' returns nothing relevant). The card itself says the 10% is a recollection to be confirmed, not applied, so I did not record it in ASSUMPTIONS.md from memory.
+
+Criterion 2 is conditional on criterion 1, so I did not build it. Building it now would apply an unconfirmed rule, and card 0113 (which pins the 10% figure) is still in human-review, which this card's Links say to settle first.
+
+To unblock: run this card in a session with web access (or have Rob paste Annex B's property-valuation paragraphs into docs/research/). The build is then small: PathProjector::careAssessableCapital (packages/finance-engine/src/Forecast/PathProjector.php, near line 2344) calls CapitalAssessment::propertyCapital on the WHOLE value and secured debt before the resident's share split, the test reads the answer through the care charge, and ScenarioForecaster::ENGINE_VERSION is bumped.
