@@ -74,3 +74,24 @@ I did not build the arithmetic around a placeholder rate. A test against an inve
 To unblock: run /research in an attended session for the reg 18 notional income rule for an unused money-purchase fund over qualifying age, and the DWP rate table it uses (believed GAD-based, not verified), with the legislation.gov.uk or gov.uk URL. Then the rest is ordinary engine work. This card should carry not_for_the_loop: so the scheduler stops picking it. That is a card edit, and I am not allowed to make it.
 
 **2026-10-15** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 3 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-15 manager (m20261015192014-7bf6)
+
+**outcome: rob**
+
+The only thing blocking this card is a figure from the web, and only an attended session can get it.
+
+**what the session said**
+
+This card needs one fact from the web. That fact is the notional income rate from the State Pension Credit Regulations 2002, reg 18, with its source URL. ("Notional income" means the income a person could take from a pension pot they have not touched.) An unattended session cannot use the web, so both builder takes stopped at the same point.
+
+I looked in the repository. No sourced rate exists yet: not in `docs/research/`, and not on `BenefitsParameters` in `packages/finance-engine/src/TaxYear/BenefitsParameters.php`. All three criteria are still open, and no review finding disproves any of them.
+
+If you reopen the card, the loop will block again for the same reason. This is not a question about what you prefer. It is a job that needs a session with web access. Run `/research` in an attended session to get the reg 18 rule, the DWP rate table and the legislation.gov.uk URL. Then move the card back to `todo/`. The rest is ordinary engine work.
+
+Also add `not_for_the_loop:` to the card until the research lands.
+
+WHY: The only thing blocking this card is a figure from the web, and only an attended session can get it.
+
+OUTCOME: rob
+
