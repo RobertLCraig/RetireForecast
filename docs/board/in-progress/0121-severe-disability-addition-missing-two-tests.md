@@ -29,7 +29,7 @@ entitlement on purpose (DECISIONS 2026-07-29).
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] WHEN another non-excused adult normally lives in the household, THE APP SHALL award no severe-disability addition. proves: `test_a_non_dependant_adult_blocks_the_severe_disability_addition`
+- [x] WHEN another non-excused adult normally lives in the household, THE APP SHALL award no severe-disability addition. proves: `test_a_non_dependant_adult_blocks_the_severe_disability_addition`
 - [ ] THE APP SHALL settle, from a cited source, whether registration as severely sight impaired is a route into the pension-age addition, and either model it or record why not. proves: none
 <!-- AC:END -->
 
@@ -49,3 +49,26 @@ backfill and `Tests\Support\BuilderStateFixture`. Default it to "nobody else liv
 what every stored scenario means today, so nothing stored moves.
 
 ## Comments
+
+**2026-10-15** RESULT: partial
+TESTS: +1 new, all green
+TOUCHED: packages/finance-engine/src/Dto/Household.php
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/src/Housing/HousingComparison.php
+packages/finance-engine/tests/Forecast/PathProjectorTest.php
+app/Forecast/HouseholdAssembler.php
+app/Forecast/ResultPresenter.php
+app/Forecast/WhatIfChanges.php
+app/Livewire/ScenarioBuilder.php
+resources/views/livewire/scenario-builder.blade.php
+docs/HANDOVER.md
+docs/board/todo/0204-the-non-dependant-adults-the-severe-disability-rules-excuse-are-not-sourced.md
+OUT-OF-SCOPE: 0204
+
+Criterion 1: Household::$nonDependantAdults, an int count defaulting to 0, gates the severe-disability addition in PathProjector::pensionCreditAward beside the qualifying-rate test. The carer addition is untouched. The builder field (step 2, Pension Credit fieldset) is stored only when above 0, so no stored scenario moves, no ENGINE_VERSION bump and no re-run is owed. The loadState backfill is the generic property_exists loop, and BuilderStateFixture needs no change because the key is sparse, as with pensionCreditClaimed (card 0110). test_a_non_dependant_adult_blocks_the_severe_disability_addition was watched failing first: 'Failed asserting that 672620 is identical to 0', which means the addition was still paid with an adult child at home. The disability_benefit_passports note now says whether other adults were entered and that the registered-blind route is not modelled.
+
+Criterion 2 is NOT met. WebFetch was refused in this session, so I could not read the State Pension Credit Regulations 2002, Schedule I. It still needs a session with web.
+
+Not settled from the repository: which adults the rules excuse from the count. The help text does not list them. It tells the reader to check with a benefits adviser. Card 0204 carries this.
+
+The new builder field and the note text still need a browser check. Herd serves the main tree, not this worktree.
