@@ -82,3 +82,5 @@ Second take, same block. Criterion 1 needs the Care and Support Statutory Guidan
 Criterion 2 is conditional on criterion 1 and was not built. Card 0113 (pins the 10% figure) is still in human-review, which the card's Links say to settle first.
 
 To unblock: run this card in an attended session with web access, or have Rob paste Annex B's property-valuation paragraphs into docs/research/. Rerunning it unattended will block a third time. The build is then small: PathProjector::careAssessableCapital calls CapitalAssessment::propertyCapital on the WHOLE value and secured debt before the resident's share split, the test reads the answer through the care charge, and ScenarioForecaster::ENGINE_VERSION is bumped.
+
+**2026-10-15** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
