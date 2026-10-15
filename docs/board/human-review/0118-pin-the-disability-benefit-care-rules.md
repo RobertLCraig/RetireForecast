@@ -91,3 +91,5 @@ Criterion 1 not met: no source URL or verified_on date can be written honestly, 
 Criterion 2 not met: it depends on whether the published rule differs from the shipped 28 days and mobility disregard, which only the read can settle. Its proves test already exists (CareMeansTestedChargeTest.php:407) and reads the constant, so a corrected figure moves it with no test edit.
 
 This card cannot advance in the unattended loop. Next step: run it attended with WebFetch allowed, or mark it not_for_the_loop. Cards 0106, 0109, 0111, 0113 share the block and fit one research pass.
+
+**2026-10-15** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
