@@ -79,3 +79,25 @@ OUT-OF-SCOPE: none
 Third take. #2 stays met from the first take (commit bd5c84a5 on this branch; its test still passes). #1 is still NOT met: WebFetch was refused again in this unattended session, so I could not check which page carries the benefits rates, and I did not guess a URL or go round the refusal another way. The benefits URL is unchanged. This is the third run to block on the same thing; re-running it unattended will block again. It needs an attended session with web, or not_for_the_loop: in its frontmatter. Pages to check there: DWP 'Benefit and pension rates 2026 to 2027' and gov.uk/pension-credit/what-youll-get (the page must carry the SMG, the severe-disability and carer additions and the capital rules). The sweep of the other source keys also needs web.
 
 **2026-10-16** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-16 manager (m20261016223144-3f10)
+
+**outcome: rob**
+
+The only open criterion needs a web lookup, and the unattended loop cannot do that, so only Rob can start the session that does it.
+
+**what the session said**
+
+I checked the code.
+
+- **Criterion #2 is done.** `TaxYearConfig` makes each source carry its own date, and `TaxYearRegistry::verifiedOnBySource()` holds those dates. The second date (2026-06-30) is gone from the `BenefitsParameters` docblock.
+- **Criterion #1 is still open.** `TaxYearRegistry` still points `'benefits'` at `gov.uk/pension-credit/eligibility` for both tax years.
+- **No review finding says #2 is wrong.** A `reopen` would only send #1 back to the loop. The loop has no web access, so it would stop on the same step for a fourth time.
+- **This is not a choice for Rob to make.** It is a fact to look up on GOV.UK.
+
+What is left is to do the work in a session where a person is present and the web is on. That session must find the page that shows the Standard Minimum Guarantee, the severe-disability addition, the carer addition and the capital rules. The two pages to check first are the DWP "Benefit and pension rates 2026 to 2027" page and `gov.uk/pension-credit/what-youll-get`. The same session must check the other source keys for the same mistake. Another choice is to add `not_for_the_loop:` to the card.
+
+WHY: The only open criterion needs a web lookup, and the unattended loop cannot do that, so only Rob can start the session that does it.
+
+OUTCOME: rob
+
