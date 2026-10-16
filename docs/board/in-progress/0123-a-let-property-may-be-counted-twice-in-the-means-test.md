@@ -48,3 +48,16 @@ assessable income while leaving it taxable already exists there. The existing gu
 `packages/finance-engine/tests/Forecast/PathProjectorTest.php`.
 
 ## Comments
+
+**2026-10-16** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+The card's first task is to settle the rule from a citable source, and the card itself says it needs the web. In this unattended session WebSearch and WebFetch were both refused (permission not granted). The repository holds no source for the rule either: a grep for the capital-versus-income treatment found only the original note on card 0051, which states the reading without a citation.
+
+I did not write the failing test or change pensionCreditAward. Which way the test should assert (rent excluded from assessable income, or equity excluded from assessable capital) is the very rule the card says must be sourced first, and guessing it risks an over-award, which the card warns against.
+
+Where to look next, as a lead and not a finding: the State Pension Credit Regulations 2002 (SI 2002/1792), regulation 15 and the capital rules near it, on legislation.gov.uk, and the DWP Decision Makers' Guide chapter on Pension Credit capital. Once a session with web access cites the rule, the build is small: add the let property's rent to $excludedFromAssessable in pensionCreditAward if capital wins, bump ENGINE_VERSION, and re-run stored scenarios.
+
+This card should run in an attended session, or with web permission granted.
