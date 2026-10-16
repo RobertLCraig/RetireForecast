@@ -1,5 +1,9 @@
 # The benefits source points at an eligibility page, and two verified-on dates disagree
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Every tax figure in this engine is supposed to carry a source URL and a verified-on date, and both
 of the benefits ones are wrong in a way a reader cannot see.
@@ -73,3 +77,5 @@ TOUCHED: none
 OUT-OF-SCOPE: none
 
 Third take. #2 stays met from the first take (commit bd5c84a5 on this branch; its test still passes). #1 is still NOT met: WebFetch was refused again in this unattended session, so I could not check which page carries the benefits rates, and I did not guess a URL or go round the refusal another way. The benefits URL is unchanged. This is the third run to block on the same thing; re-running it unattended will block again. It needs an attended session with web, or not_for_the_loop: in its frontmatter. Pages to check there: DWP 'Benefit and pension rates 2026 to 2027' and gov.uk/pension-credit/what-youll-get (the page must carry the SMG, the severe-disability and carer additions and the capital rules). The sweep of the other source keys also needs web.
+
+**2026-10-16** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
