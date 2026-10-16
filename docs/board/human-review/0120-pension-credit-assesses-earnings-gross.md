@@ -87,3 +87,30 @@ What stands from the first take (commit 3f4e04a): earnings are assessed net of i
 This card cannot advance unattended. It needs a session with web access, or Rob pasting the disregard figures and the contribution wording with their source.
 
 **2026-10-15** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 3 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-16 manager (m20261016031034-e9a3)
+
+**outcome: rob**
+
+The rest of the card waits on sourced figures from the web, and an unattended session cannot fetch them.
+
+**what the session said**
+
+The loop cannot finish this card by itself. It needs a person.
+
+**What I checked:** `BenefitsParameters` has no earnings disregard yet. It has only the capital disregard. So criteria 2 and 3 are still open, as the two takes said.
+
+**Why not `reopen`:** the builder runs unattended, and an unattended session cannot use the web. Both takes stopped at the same place, because the web search was refused. If I send the card back, it returns to this queue again.
+
+**Why not `question`:** nothing here is a choice that only you can make. The missing part is three published figures and a source for each.
+
+**What you do now (pick one):**
+1. Run this card in a session that has web access. I recommend this one.
+2. Paste the single, couple and higher weekly earnings disregards into the card, with the source URL. Also paste the regulation's wording on the pension contribution: is half of the net payment taken off, or half of the grossed-up amount? Then move the card to `todo/`.
+
+The likely source is SI 2002/1792, Schedule VI.
+
+WHY: The rest of the card waits on sourced figures from the web, and an unattended session cannot fetch them.
+
+OUTCOME: rob
+
