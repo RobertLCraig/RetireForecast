@@ -1,5 +1,9 @@
 # The severe-disability addition still skips the non-dependant test and the registered-blind route
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0051 fixed the qualifying-benefit half of the severe-disability addition: the award now has to
 be the care side (`Dto\DisabilityAwardRate`), so a mobility-only or lowest-rate-care award no longer
@@ -94,3 +98,5 @@ Criterion 1 still holds: test_a_non_dependant_adult_blocks_the_severe_disability
 Criterion 2 is NOT met. WebFetch was refused again in this unattended session, so the State Pension Credit Regulations 2002, Schedule I (legislation.gov.uk/uksi/2002/1792/schedule/I) could not be read. This is the third take to stop at the same point. The card's own task says it needs web and is not an unattended card. Please run criterion 2 in an attended session with web access, or take it off the loop.
 
 The step-2 field from the first take still needs a browser check. Herd serves the main tree, not this worktree.
+
+**2026-10-16** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
