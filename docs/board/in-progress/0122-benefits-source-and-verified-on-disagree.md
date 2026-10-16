@@ -66,3 +66,10 @@ TOUCHED: none
 OUT-OF-SCOPE: none
 
 Second take. #2 stays met from the first take (its commit bd5c84a5 is on this branch, and its test still passes). #1 is still NOT met: WebFetch was refused again in this unattended session, so I could not find or check the rate-table page, and I did not guess a URL. I did not try to reach the web another way, such as a browser tool or curl, because that would go round a refused permission. The benefits URL is unchanged. The card's own task says it is not an unattended card. Re-running it unattended will block the same way. It needs an attended session with web, or not_for_the_loop: in its frontmatter. Candidate pages to check there: the DWP 'Benefit and pension rates 2026 to 2027' publication, and gov.uk/pension-credit/what-youll-get (it must carry the SMG, the severe-disability and carer additions and the capital rules). The sweep of the other source keys also still needs web.
+
+**2026-10-16** RESULT: blocked
+TESTS: +0 new, all green (test_every_source_carries_its_own_verified_on_date re-run, passes)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Third take. #2 stays met from the first take (commit bd5c84a5 on this branch; its test still passes). #1 is still NOT met: WebFetch was refused again in this unattended session, so I could not check which page carries the benefits rates, and I did not guess a URL or go round the refusal another way. The benefits URL is unchanged. This is the third run to block on the same thing; re-running it unattended will block again. It needs an attended session with web, or not_for_the_loop: in its frontmatter. Pages to check there: DWP 'Benefit and pension rates 2026 to 2027' and gov.uk/pension-credit/what-youll-get (the page must carry the SMG, the severe-disability and carer additions and the capital rules). The sweep of the other source keys also needs web.
