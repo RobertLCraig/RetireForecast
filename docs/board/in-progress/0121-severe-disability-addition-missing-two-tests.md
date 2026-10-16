@@ -83,3 +83,14 @@ Criterion 1 still holds from the previous take: test_a_non_dependant_adult_block
 Criterion 2 is NOT met, and this take could not advance it. WebFetch and WebSearch were both refused again, so I could not read the State Pension Credit Regulations 2002, Schedule I (legislation.gov.uk/uksi/2002/1792/schedule/I). The repository holds no primary source for the rule. The only citations it has (DECISIONS 2026-07-29: Turn2us and entitledto, verified 2026-07-29) describe the severe disability premium, which is the working-age premium. They say a couple qualifies when the other partner is registered blind. That is exactly the working-age reading this card doubts, so I did not use it to settle the pension-age rule. This criterion needs a session with web access. Running it unattended again will stop at the same point.
 
 The step-2 field from the previous take still needs a browser check. Herd serves the main tree, not this worktree.
+
+**2026-10-16** RESULT: partial
+TESTS: +0 new, all green
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Criterion 1 still holds: test_a_non_dependant_adult_blocks_the_severe_disability_addition passes on this branch. No code changed this take.
+
+Criterion 2 is NOT met. WebFetch was refused again in this unattended session, so the State Pension Credit Regulations 2002, Schedule I (legislation.gov.uk/uksi/2002/1792/schedule/I) could not be read. This is the third take to stop at the same point. The card's own task says it needs web and is not an unattended card. Please run criterion 2 in an attended session with web access, or take it off the loop.
+
+The step-2 field from the first take still needs a browser check. Herd serves the main tree, not this worktree.
