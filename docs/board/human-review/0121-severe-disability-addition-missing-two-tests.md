@@ -100,3 +100,24 @@ Criterion 2 is NOT met. WebFetch was refused again in this unattended session, s
 The step-2 field from the first take still needs a browser check. Herd serves the main tree, not this worktree.
 
 **2026-10-16** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-16 manager (m20261016113825-4070)
+
+**outcome: rob**
+
+The last open criterion needs web access that the loop does not have, and the new field still needs a check in a real browser.
+
+**what the session said**
+
+Criterion 1 is done in the code. `Household::$nonDependantAdults` holds the count. `PathProjector::pensionCreditAward` stops the addition when that count is above 0. `ScenarioBuilder` stores the field, and the note in `ResultPresenter` tells you about it.
+
+Criterion 2 is still open. It needs one source: the State Pension Credit Regulations 2002, Schedule I. The loop cannot get to the web, so three takes stopped at the same point. If I reopen the card, it comes back again for the same reason.
+
+You must do two things:
+1. Run criterion 2 in a session you start yourself, with web access. That session reads Schedule I, cites it, and then models the registered-blind route or records why not.
+2. Look at the new "other adults living in the home" field on step 2 in a browser. Check that it shows correctly. No take could do this, because Herd serves the main tree and not the worktree.
+
+WHY: The last open criterion needs web access that the loop does not have, and the new field still needs a check in a real browser.
+
+OUTCOME: rob
+
