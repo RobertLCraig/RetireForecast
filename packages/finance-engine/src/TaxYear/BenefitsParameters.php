@@ -23,17 +23,17 @@ use RetireForecast\FinanceEngine\Money\Money;
  * income up to, plus the severe-disability and carer additions) are uprated each year —
  * unlike the static capital rules — so they differ between tax years.
  *
- * Verified against gov.uk on 2026-06-27 (capital rules) and 2026-06-30 (Guarantee Credit
- * figures): £10,000 disregard, £1 a week of tariff income per £500 above it, and the
+ * The figures: £10,000 disregard, £1 a week of tariff income per £500 above it, and the
  * £16,000 upper limit for Housing Benefit / Council Tax Support (Pension Credit itself
  * has no upper capital limit). Standard Minimum Guarantee 2025/26 single £227.10 / couple
  * £346.60, 2026/27 single £238.00 / couple £363.25; severe-disability addition £82.90 →
  * £86.05; carer addition £46.40 → £48.15 (gov.uk Benefit and pension rates 2025-26 /
- * 2026-27; gov.uk/pension-credit).
+ * 2026-27; gov.uk/pension-credit). The date each was read lives in one place only,
+ * TaxYearRegistry::verifiedOnBySource() (card 0122).
  *
- * Attendance Allowance and the Carer's Allowance earnings limit were read off gov.uk on
- * 2026-10-13 (card 0106; sources per year in TaxYearRegistry and ASSUMPTIONS §20). Neither
- * reaches a projection on its own: they seed a what-if's editable income stream and a warning.
+ * Attendance Allowance and the Carer's Allowance earnings limit came in with card 0106
+ * (sources per year in TaxYearRegistry and ASSUMPTIONS §20). Neither reaches a projection
+ * on its own: they seed a what-if's editable income stream and a warning.
  */
 final class BenefitsParameters
 {

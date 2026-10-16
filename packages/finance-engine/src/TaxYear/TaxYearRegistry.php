@@ -120,7 +120,7 @@ final class TaxYearRegistry
                 'iht' => 'https://www.gov.uk/inheritance-tax',
                 'care' => 'https://www.gov.uk/help-with-care-costs/financial-assessment',
             ],
-            verifiedOn: '2026-06-27',
+            verifiedOnBySource: self::verifiedOnBySource(),
         );
     }
 
@@ -210,7 +210,7 @@ final class TaxYearRegistry
                 'iht' => 'https://www.gov.uk/inheritance-tax',
                 'care' => 'https://www.gov.uk/help-with-care-costs/financial-assessment',
             ],
-            verifiedOn: '2026-06-27',
+            verifiedOnBySource: self::verifiedOnBySource(),
         );
     }
 
@@ -323,12 +323,39 @@ final class TaxYearRegistry
     }
 
     /**
+     * The date each source key was last read: the one home for it (card 0122). Both tax
+     * years were read on the same days. A key whose figures were read on different days
+     * carries the OLDEST, because that is the figure due for a re-check first ('benefits'
+     * holds capital rules and Guarantee Credit figures read on two days). Attendance Allowance and the Carer's Allowance earnings limit came in with card 0106.
+     *
+     * @return array<string, string>
+     */
+    private static function verifiedOnBySource(): array
+    {
+        return [
+            'income_tax' => '2026-06-27',
+            'dividends' => '2026-06-27',
+            'savings' => '2026-06-27',
+            'national_insurance' => '2026-06-27',
+            'pension' => '2026-06-27',
+            'isa' => '2026-06-27',
+            'state_pension' => '2026-06-27',
+            'sdlt' => '2026-06-27',
+            'cgt' => '2026-06-27',
+            'benefits' => '2026-06-27',
+            'attendance_allowance' => '2026-10-13',
+            'carers_allowance' => '2026-10-13',
+            'iht' => '2026-06-27',
+            'care' => '2026-06-27',
+        ];
+    }
+
+    /**
      * Pension-age means-tested benefit parameters. The capital rules are static (the same
      * for both tax years); the Guarantee Credit figures (the appropriate minimum guarantee
      * + the severe-disability / carer additions) are uprated each year and passed in.
-     * Verified against gov.uk on 2026-06-27 (capital rules: £10,000 disregarded, £1/week
-     * per £500 above, £16,000 cap for Housing Benefit / Council Tax Support) and 2026-06-30
-     * (Guarantee Credit figures — see the per-year call sites + {@see BenefitsParameters}).
+     * Capital rules: £10,000 disregarded, £1/week per £500 above, £16,000 cap for Housing
+     * Benefit / Council Tax Support. When they were read is {@see verifiedOnBySource()}.
      */
     private static function benefitsParameters(
         Money $standardMinimumGuaranteeSingleWeekly,
