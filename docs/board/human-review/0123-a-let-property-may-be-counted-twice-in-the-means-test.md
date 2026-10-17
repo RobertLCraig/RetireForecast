@@ -82,3 +82,26 @@ Lead, not a finding: State Pension Credit Regulations 2002 (SI 2002/1792), regul
 Do not put this card back in the unattended loop. It needs an attended session, or a run with web permission granted. A further unattended take will stop here again.
 
 **2026-10-17** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-17 manager (m20261017085057-a754)
+
+**outcome: rob**
+
+The rule must come from a citable legal source, and only a session with web access can get it. Unattended takes have no web, so another take will block again.
+
+**what the session said**
+
+The code matches what the card says. `PathProjector::meansTestAssessableCapital` counts the let property's equity as capital. `PathProjector::pensionCreditAward` already has the `$excludedFromAssessable` hook, so the fix will be small.
+
+Neither criterion is ticked. No review finding disproves anything. The only blocker is that the card needs the web. Two unattended takes asked for WebSearch and WebFetch, and both requests were refused. If you move the card back to `todo/`, the next take will stop at the same place.
+
+The pick-up lead is the State Pension Credit Regulations 2002 (SI 2002/1792), regs 15 and 17 and Schedule IV, plus the DWP Decision Makers' Guide chapter on Pension Credit capital.
+
+What you do now (pick one):
+1. Run card 0123 yourself in an attended session that has web access. I recommend this one.
+2. Give the loop web permission, then move the card back to `todo/`.
+
+WHY: The rule must come from a citable legal source, and only a session with web access can get it. Unattended takes have no web, so another take will block again.
+
+OUTCOME: rob
+
