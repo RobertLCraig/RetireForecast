@@ -56,3 +56,12 @@ The card's own first task says it needs web and is not an unattended card. That 
 What the repository already holds, for whoever takes this with web: InheritanceTaxCalculator.php:52-68 and docs/spec/ASSUMPTIONS.md:608-613 already NAME the sources (AEA 1925 s.46(1)(i) as amended by SI 2023/758, the legislation.gov.uk URL, IHTA 1984 s.18(2)) but carry no verified_on date. Nothing in the repo names a source for the Northern Ireland fixed net sum or for the FA 2025 long-term-residence test and the cost of the s.267ZA election. Those are the four checks to make, then the docblock and ASSUMPTIONS §27 get the date.
 
 Next step: run this card in an interactive session with WebFetch allowed, or have Rob grant WebFetch for legislation.gov.uk and gov.uk to the card sessions.
+
+**2026-10-18** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second unattended take, same block as the first. WebFetch (https://www.legislation.gov.uk/uksi/2023/758/made) and WebSearch were both refused again with a permission prompt nobody can answer unattended. Both criteria need a primary source read on a stated date. Writing a verified_on date for a page nobody opened would be the invented figure the house rule forbids, so nothing was written.
+
+The card's own first task says it is not an unattended card, and two takes have now confirmed that. Re-queuing it for the loop will block a third time. It needs either an interactive session with WebFetch allowed, or Rob granting WebFetch for legislation.gov.uk and gov.uk to card sessions. The previous comment's list of what the repo already names (InheritanceTaxCalculator.php:52-68, ASSUMPTIONS.md:608-613) and what it lacks (the NI fixed net sum, the FA 2025 long-term-residence test and the s.267ZA election cost) still holds.
