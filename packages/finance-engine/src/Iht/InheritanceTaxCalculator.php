@@ -35,10 +35,9 @@ final class InheritanceTaxCalculator
     /**
      * The downsizing addition is available only where the former residence was disposed of ON OR
      * AFTER 8 July 2015, the date the residence nil-rate band was announced. Held as a YEAR
-     * because {@see ResidenceDisposal} carries no month: the engine models no disposal before its
-     * own base year, so this can never be the deciding test and a year is enough to state the
-     * rule. A disposal IN 2015 is excluded rather than admitted, which is the cautious reading of
-     * a date the model cannot resolve.
+     * because {@see ResidenceDisposal} carries no month. A sale entered from before the plan (card
+     * 0126) can fall in 2015, and a disposal IN 2015 is excluded rather than admitted, which is the
+     * cautious reading of a date the model cannot resolve. The builder help text says so.
      *
      * source: Inheritance Tax Act 1984 ss.8FA to 8FE (inserted by Finance Act 2016 s.93 and Sch.15),
      * and gov.uk "Inheritance Tax: residence nil rate band" downsizing guidance,

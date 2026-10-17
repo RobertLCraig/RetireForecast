@@ -33,6 +33,7 @@ use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\RepaymentMortgageTerms;
+use RetireForecast\FinanceEngine\Dto\ResidenceDisposal;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\SpendingGuardrail;
 use RetireForecast\FinanceEngine\Dto\SpendPath;
@@ -106,7 +107,23 @@ final class HouseholdAssembler
             pensionCreditClaimed: (bool) ($state['pensionCreditClaimed'] ?? true),
             // Absent = nobody else lives there (card 0121), what every earlier scenario meant.
             nonDependantAdults: (int) ($state['nonDependantAdults'] ?? 0),
+            // A home sold before the plan (card 0126). A sell plan writes its own sale over this
+            // one, so a plan that sells again claims one addition, not two.
+            formerResidenceDisposal: $this->priorHomeSale($state),
         );
+    }
+
+    /**
+     * The former main home sold before the plan starts, as the household's net interest in it at
+     * the sale: the value the reader entered is already net of what was secured on it, the basis
+     * the engine records its own sales on. Null when no sale, or only half of one, was entered.
+     */
+    private function priorHomeSale(array $state): ?ResidenceDisposal
+    {
+        $value = $this->money($state['priorHomeSaleValue'] ?? null);
+        $year = $state['priorHomeSaleYear'] ?? '';
+
+        return $value === null || $year === '' || $year === null ? null : new ResidenceDisposal($value, (int) $year);
     }
 
     public function housingAction(array $h): HousingAction

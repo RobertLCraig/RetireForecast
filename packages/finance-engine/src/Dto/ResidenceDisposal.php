@@ -25,9 +25,8 @@ use RetireForecast\FinanceEngine\Money\Money;
  * terms, so a disposal is measured against the band in force when it happened.
  *
  * $year is the calendar year of the disposal. The addition is only available for a disposal on or
- * after 8 July 2015 (`InheritanceTaxCalculator::DOWNSIZING_DISPOSALS_AFTER_YEAR`);
- * the engine models no disposal before its own base year, so the gate is a statement of the rule
- * rather than a filter that fires.
+ * after 8 July 2015 (`InheritanceTaxCalculator::DOWNSIZING_DISPOSALS_AFTER_YEAR`). A sale the
+ * reader enters from before the plan (card 0126) can fall on either side of it, so the gate fires.
  */
 final class ResidenceDisposal
 {

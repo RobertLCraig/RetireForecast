@@ -167,6 +167,8 @@ final class WhatIfChanges
             'hasDescendants' => 'Children or other descendants',
             'pensionCreditClaimed' => 'Pension Credit claimed',
             'nonDependantAdults' => 'Other adults living in the home',
+            'priorHomeSaleValue' => 'Value of a home sold before the plan',
+            'priorHomeSaleYear' => 'Year a home was sold before the plan',
             'useIsaAllowance' => 'Use ISA allowance',
             'assumptionSetId' => 'Assumption set', 'hasProperty' => 'Owns a property',
             'marriageDate' => 'Date of marriage or civil partnership',

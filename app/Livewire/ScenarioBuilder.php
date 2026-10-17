@@ -99,7 +99,7 @@ class ScenarioBuilder extends Component
     private const STEP_OF_FIELD = [
         'name' => 1, 'householdName' => 1, 'region' => 1, 'baseTaxYear' => 1,
         'variant' => 1, 'assumptionSetId' => 1, 'assumptionOverrides' => 1, 'adviceFeePct' => 1, 'ihtModelled' => 1,
-        'homeToDescendants' => 1, 'hasDescendants' => 1, 'pensionCreditClaimed' => 2, 'nonDependantAdults' => 2, 'useIsaAllowance' => 1, 'relationshipStatus' => 1, 'people' => 1,
+        'homeToDescendants' => 1, 'hasDescendants' => 1, 'pensionCreditClaimed' => 2, 'nonDependantAdults' => 2, 'priorHomeSaleValue' => 1, 'priorHomeSaleYear' => 1, 'useIsaAllowance' => 1, 'relationshipStatus' => 1, 'people' => 1,
         'pensions' => 2, 'incomeStreams' => 2,
         'accounts' => 3, 'property' => 3, 'hasProperty' => 3, 'capitalReceipts' => 3,
         'expense' => 4, 'expenseLines' => 4, 'oneOffCosts' => 4,
@@ -161,6 +161,16 @@ class ScenarioBuilder extends Component
      * records no key and no what-if delta. Only relevant when Inheritance Tax is modelled.
      */
     public string $beneficiaryTaxRate = '';
+
+    /**
+     * A former main home sold BEFORE the plan starts (card 0126): the household's net interest in
+     * it, in pounds, and the calendar year of the sale. It earns the Inheritance Tax downsizing
+     * addition a sale the plan makes would. Both blank by default and stored only when given, so no
+     * stored scenario moves; a sell plan records its own sale in the same slot.
+     */
+    public string $priorHomeSaleValue = '';
+
+    public string $priorHomeSaleYear = '';
 
     /**
      * How the two people are related (married/civil-partnership vs cohabiting), which drives the
@@ -329,6 +339,8 @@ class ScenarioBuilder extends Component
             'homeToDescendants' => ['boolean'],
             'hasDescendants' => ['boolean'],
             'pensionCreditClaimed' => ['boolean'],
+            'priorHomeSaleValue' => ['nullable', 'numeric', 'min:0', 'required_with:priorHomeSaleYear'],
+            'priorHomeSaleYear' => ['nullable', 'integer', 'min:1900', 'max:'.date('Y'), 'required_with:priorHomeSaleValue'],
             'nonDependantAdults' => ['nullable', 'integer', 'min:0', 'max:20'],
             'useIsaAllowance' => ['boolean'],
             // The four UK marginal rates an inheriting beneficiary can be on, plus blank for the
@@ -649,6 +661,8 @@ class ScenarioBuilder extends Component
             'householdName' => 'household name',
             'relationshipStatus' => 'relationship status',
             'marriageDate' => 'date of marriage or civil partnership',
+            'priorHomeSaleValue' => 'value of the home you sold',
+            'priorHomeSaleYear' => 'year you sold it',
             'people.*.ukLongTermResident' => 'UK long-term residence',
             'people.*.dob' => 'date of birth',
             'people.*.grossSalary' => 'gross salary',
@@ -1387,6 +1401,12 @@ class ScenarioBuilder extends Component
         // The ISA-allowance toggle, stored only when OFF (sparse), like homeToDescendants above.
         if (! $this->useIsaAllowance) {
             $state['useIsaAllowance'] = false;
+        }
+
+        // A home sold before the plan, stored only when given (sparse), like marriageDate above.
+        if (trim($this->priorHomeSaleValue) !== '') {
+            $state['priorHomeSaleValue'] = $this->priorHomeSaleValue;
+            $state['priorHomeSaleYear'] = $this->priorHomeSaleYear;
         }
 
         // The beneficiary's assumed tax rate, stored only when chosen (sparse). Blank keeps the

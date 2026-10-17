@@ -198,6 +198,50 @@ class ScenarioBuilderTest extends TestCase
     }
 
     /**
+     * Board card 0126 #1. A household that sold its main home before the plan starts can record
+     * the sale, and the final death claims the downsizing addition from it. Untouched, nothing is
+     * stored and no addition is claimed, so no stored scenario moves.
+     */
+    public function test_a_disposal_entered_in_the_builder_earns_a_downsizing_addition(): void
+    {
+        $save = function (callable $mutate) {
+            $component = Livewire::test(ScenarioBuilder::class);
+            foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+                $component->set($key, $value);
+            }
+            // A renter with money to leave: no home to shelter, so the band is lost unless the
+            // former home's sale brings it back.
+            $component->set('ihtModelled', true)->set('accounts', [
+                ['id' => 'acc1', 'ownerId' => 'p1', 'type' => 'cash', 'balance' => '900000', 'unrealisedGain' => '', 'yield' => ''],
+            ]);
+            $mutate($component);
+            $component->call('save')->assertHasNoErrors();
+
+            return Scenario::latest('id')->firstOrFail();
+        };
+        $addition = fn (Scenario $s): int => (new ScenarioForecaster)->deterministic($s)->iht->secondDeath->downsizingAddition->pence;
+
+        $untouched = $save(fn ($c) => $c);
+        $this->assertArrayNotHasKey('priorHomeSaleValue', $untouched->effectiveBuilderState());
+        $this->assertNull(app(HouseholdAssembler::class)->household($untouched->effectiveBuilderState())->formerResidenceDisposal);
+        $this->assertSame(0, $addition($untouched));
+
+        $sold = $save(fn ($c) => $c->set('priorHomeSaleValue', '300000')->set('priorHomeSaleYear', '2020'));
+        $disposal = app(HouseholdAssembler::class)->household($sold->effectiveBuilderState())->formerResidenceDisposal;
+        $this->assertSame(300_000_00, $disposal?->netValue->pence);
+        $this->assertSame(2020, $disposal->year);
+        $this->assertGreaterThan(0, $addition($sold), 'a home sold in 2020 must bring the residence band back');
+
+        // A value without its year is half an answer, and so is a year without its value.
+        Livewire::test(ScenarioBuilder::class)->set('priorHomeSaleValue', '300000')->call('save')->assertHasErrors('priorHomeSaleYear');
+        Livewire::test(ScenarioBuilder::class)->set('priorHomeSaleYear', '2020')->call('save')->assertHasErrors('priorHomeSaleValue');
+
+        // And it reloads into the builder as entered.
+        Livewire::test(ScenarioBuilder::class, ['scenario' => $sold])
+            ->assertSet('priorHomeSaleValue', '300000')->assertSet('priorHomeSaleYear', '2020');
+    }
+
+    /**
      * Board card 0110 #1. Whether Pension Credit is actually claimed is the reader's to say. It
      * defaults to claimed and is stored only when not, so no stored scenario moves.
      */

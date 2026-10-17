@@ -792,8 +792,10 @@ from the original plan, flagged inline:
   statutory **downsizing addition**, reported apart on `IhtResult::$downsizingAddition` so a
   residence band shown beside no house can be accounted for. The reported figure is only the part
   of the band the addition supplies after the taper (the band less the home's part), so it is never
-  larger than the band it sits in (card 0053 #4). It is DERIVED, never entered: there is
-  no builder field, so a disposal made before the base year is not modelled.
+  larger than the band it sits in (card 0053 #4). A sale made before the plan is entered on
+  the builder as `priorHomeSaleValue` (net of what was secured on it) and `priorHomeSaleYear`,
+  stored only when given, and mapped into the same slot by `HouseholdAssembler` (card 0126). A
+  plan that sells writes its own sale over it, so one plan never claims two additions.
 - **Planned fields never materialised:**
   `StatePensionEntitlement` `spa_override` + `triple_lock_assumption` (SPA computes from DOB;
   the triple-lock factor lives in the projector). Kept here rather than in the entity tables

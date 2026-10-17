@@ -393,6 +393,33 @@ class ScenarioForecasterTest extends TestCase
         return $total;
     }
 
+    /**
+     * Board card 0126 #2. A disposal entered before the plan and one the plan makes share the one
+     * slot, `Household::$formerResidenceDisposal`. Staying put keeps the entered sale; a plan that
+     * sells records its own sale in its place, so it never claims the addition twice.
+     */
+    public function test_a_modelled_sale_replaces_an_entered_prior_disposal(): void
+    {
+        $user = User::factory()->create();
+        $forecaster = new ScenarioForecaster;
+        $entered = ScenarioFixture::rich($user, ['ihtModelled' => true, 'priorHomeSaleValue' => '650000', 'priorHomeSaleYear' => '2019']);
+        $none = ScenarioFixture::rich($user, ['ihtModelled' => true]);
+
+        $stayPut = $forecaster->variantInputs($entered, 'stay_put')['household']->formerResidenceDisposal;
+        $this->assertSame(650_000_00, $stayPut?->netValue->pence);
+        $this->assertSame(2019, $stayPut->year);
+
+        // The rent plan sells the £525,000 home with £48,000 owed on it in the base year.
+        $rent = $forecaster->variantInputs($entered, 'rent')['household']->formerResidenceDisposal;
+        $this->assertSame(477_000_00, $rent?->netValue->pence);
+        $this->assertSame(2026, $rent->year);
+
+        // One addition, the same one a plan with no entered sale claims.
+        $addition = fn (Scenario $s): int => $forecaster->deterministicVariants($s)['rent']->iht->secondDeath->downsizingAddition->pence;
+        $this->assertGreaterThan(0, $addition($none));
+        $this->assertSame($addition($none), $addition($entered));
+    }
+
     public function test_the_lifetime_tax_the_optimiser_ranks_on_counts_the_tax_paid_at_death(): void
     {
         // The panel calls its totals "tax paid across the plan" and the steer turns the gap into

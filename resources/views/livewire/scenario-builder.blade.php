@@ -291,6 +291,19 @@
                             There are children or other direct descendants
                         </label>
                         <p class="mt-1 pl-6 text-xs text-gray-500">Without a will, children take a share of the estate, and a husband, wife or civil partner does not inherit everything. Untick only if there are no children, grandchildren or other descendants.</p>
+                        <div class="mt-3 grid gap-3 pl-6 sm:grid-cols-2">
+                            <div>
+                                <label for="priorHomeSaleValue" class="{{ $label }}">A main home you sold before now: its value (£)</label>
+                                <input id="priorHomeSaleValue" type="number" min="0" step="1" wire:model="priorHomeSaleValue" class="{{ $field }}" @error('priorHomeSaleValue') aria-invalid="true" aria-describedby="priorHomeSaleValue-error" @enderror>
+                                @error('priorHomeSaleValue') <p id="priorHomeSaleValue-error" class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="priorHomeSaleYear" class="{{ $label }}">The year you sold it</label>
+                                <input id="priorHomeSaleYear" type="number" min="1900" step="1" wire:model="priorHomeSaleYear" class="{{ $field }}" @error('priorHomeSaleYear') aria-invalid="true" aria-describedby="priorHomeSaleYear-error" @enderror>
+                                @error('priorHomeSaleYear') <p id="priorHomeSaleYear-error" class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                        </div>
+                        <p class="mt-1 pl-6 text-xs text-gray-500">If you sold or gave away a home you lived in, or moved somewhere cheaper, your estate can still claim the residence band it would have had. Enter your share of the price, less the mortgage paid off from it. Only a sale on or after 8 July 2015 counts, and a sale in 2015 is not counted, because we hold the year and not the day. A plan that sells your current home uses that sale instead, so it is never counted twice.</p>
                         <div class="mt-3 pl-6">
                             <label for="beneficiaryTaxRate" class="{{ $label }}">Tax rate of whoever inherits your pension</label>
                             <select id="beneficiaryTaxRate" wire:model="beneficiaryTaxRate" class="{{ $field }}">
