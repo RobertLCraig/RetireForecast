@@ -1,5 +1,9 @@
 # The downsizing-addition rule is stated, not verified
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0053 built the Inheritance Tax downsizing addition, and it reaches a projection: every stored
 plan that sells its home now pays different Inheritance Tax. The rule behind it was written from
@@ -61,3 +65,5 @@ OUT-OF-SCOPE: none
 Second unattended take, same block as the first. WebFetch on legislation.gov.uk/ukpga/1984/51/section/8FE and WebSearch were both refused for lack of permission. I did not route round that with curl, and I did not cite IHTA 1984 ss.8FA to 8FE from memory: an unchecked citation is the fault this card exists to fix.
 
 The scheduler keeps picking this card up and it cannot advance unattended. To move it: Rob runs it in an attended session with WebFetch allowed, or adds not_for_the_loop: true to its frontmatter so the loop stops taking it. The work itself is small: the docblock on Iht\InheritanceTaxCalculator::DOWNSIZING_DISPOSALS_AFTER_YEAR and docs/spec/ASSUMPTIONS.md section 26, each with a source URL, a verified_on date, and one line on whether the engine matches (covering the 8 July 2015 date, taper as ceiling on home plus addition, the cap, pence-vs-percentage, and most-recent-disposal choice).
+
+**2026-10-17** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
