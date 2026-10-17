@@ -43,3 +43,16 @@ Changing the arithmetic. If the source says the engine has it wrong, that is a n
 - [ ] Pin the legacy to the Administration of Estates Act 1925 s.46 and SI 2023/758.
 - [ ] Pin the capped exemption to IHTA 1984 s.18(2) and the long-term-residence rules in FA 2025.
 - [ ] Update the constant's docblock and docs/spec/ASSUMPTIONS.md §27 with the date checked.
+
+## Comments
+
+**2026-10-17** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+The card's own first task says it needs web and is not an unattended card. That held: in this session WebFetch (https://www.legislation.gov.uk/uksi/2023/758/made) and WebSearch were both refused with a permission prompt nobody can answer unattended. Both criteria need a primary source read on a stated date, so neither can be met here, and writing a verified_on date for a page nobody opened would be exactly the invented figure the house rule forbids.
+
+What the repository already holds, for whoever takes this with web: InheritanceTaxCalculator.php:52-68 and docs/spec/ASSUMPTIONS.md:608-613 already NAME the sources (AEA 1925 s.46(1)(i) as amended by SI 2023/758, the legislation.gov.uk URL, IHTA 1984 s.18(2)) but carry no verified_on date. Nothing in the repo names a source for the Northern Ireland fixed net sum or for the FA 2025 long-term-residence test and the cost of the s.267ZA election. Those are the four checks to make, then the docblock and ASSUMPTIONS §27 get the date.
+
+Next step: run this card in an interactive session with WebFetch allowed, or have Rob grant WebFetch for legislation.gov.uk and gov.uk to the card sessions.
