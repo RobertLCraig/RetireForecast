@@ -67,3 +67,27 @@ Second unattended take, same block as the first. WebFetch on legislation.gov.uk/
 The scheduler keeps picking this card up and it cannot advance unattended. To move it: Rob runs it in an attended session with WebFetch allowed, or adds not_for_the_loop: true to its frontmatter so the loop stops taking it. The work itself is small: the docblock on Iht\InheritanceTaxCalculator::DOWNSIZING_DISPOSALS_AFTER_YEAR and docs/spec/ASSUMPTIONS.md section 26, each with a source URL, a verified_on date, and one line on whether the engine matches (covering the 8 July 2015 date, taper as ceiling on home plus addition, the cap, pence-vs-percentage, and most-recent-disposal choice).
 
 **2026-10-17** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-17 manager (m20261017231444-75b5)
+
+**outcome: rob**
+
+The card needs web access to check the statute, and only an attended session has it, so another unattended take will fail again.
+
+**what the session said**
+
+Both acceptance criteria are still open. No reviewer finding marks a ticked box as wrong, so "reopen" gives the builder nothing new to do.
+
+I read the docblock on `Iht\InheritanceTaxCalculator::DOWNSIZING_DISPOSALS_AFTER_YEAR`. It still says `verified_on: NOT VERIFIED` because the build had no web access. The work is still to be done.
+
+The work needs the internet: IHTA 1984 ss.8FA to 8FE on legislation.gov.uk, and the gov.uk page on the residence nil rate band. The unattended loop cannot get on the web. It tried two times and was refused two times. If the card goes back to `todo/`, the loop takes it again and it fails the same way.
+
+This is a job for a person, not a question. Rob must do one of these two things:
+
+1. Run the card in an attended session that allows WebFetch. After that, update the docblock and `docs/spec/ASSUMPTIONS.md` §26.
+2. Add `not_for_the_loop: true` to the card's frontmatter, so that the loop stops taking it.
+
+WHY: The card needs web access to check the statute, and only an attended session has it, so another unattended take will fail again.
+
+OUTCOME: rob
+
