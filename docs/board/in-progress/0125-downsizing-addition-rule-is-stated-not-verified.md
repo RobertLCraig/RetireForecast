@@ -52,3 +52,12 @@ OUT-OF-SCOPE: none
 This card needs a primary source for three things: the 8 July 2015 date, the order of operations (the taper as the ceiling on the home plus the addition), and the cap on the addition. Those are IHTA 1984 ss.8FA to 8FE on legislation.gov.uk and the gov.uk guidance. This unattended session has no web: WebFetch on legislation.gov.uk/ukpga/1984/51/section/8FE was refused for lack of permission. I did not route round the refusal with curl. The card's own first task already says it is not an unattended card. I did not cite the rule from memory, because a figure stated without checking is the exact fault this card exists to fix.
 
 To move it: run it in an attended session with WebFetch allowed, or mark it not_for_the_loop: so the scheduler stops picking it up. Both criteria are prose (proves: none). The work is the docblock on Iht\InheritanceTaxCalculator::DOWNSIZING_DISPOSALS_AFTER_YEAR and docs/spec/ASSUMPTIONS.md section 26, each with a source URL, a verified_on date, and a line saying whether the engine matches. That line also covers the percentage-versus-pence point and the most-recent-disposal choice.
+
+**2026-10-17** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second unattended take, same block as the first. WebFetch on legislation.gov.uk/ukpga/1984/51/section/8FE and WebSearch were both refused for lack of permission. I did not route round that with curl, and I did not cite IHTA 1984 ss.8FA to 8FE from memory: an unchecked citation is the fault this card exists to fix.
+
+The scheduler keeps picking this card up and it cannot advance unattended. To move it: Rob runs it in an attended session with WebFetch allowed, or adds not_for_the_loop: true to its frontmatter so the loop stops taking it. The work itself is small: the docblock on Iht\InheritanceTaxCalculator::DOWNSIZING_DISPOSALS_AFTER_YEAR and docs/spec/ASSUMPTIONS.md section 26, each with a source URL, a verified_on date, and one line on whether the engine matches (covering the 8 July 2015 date, taper as ceiling on home plus addition, the cap, pence-vs-percentage, and most-recent-disposal choice).
