@@ -61,3 +61,18 @@ I did not write the failing test or change pensionCreditAward. Which way the tes
 Where to look next, as a lead and not a finding: the State Pension Credit Regulations 2002 (SI 2002/1792), regulation 15 and the capital rules near it, on legislation.gov.uk, and the DWP Decision Makers' Guide chapter on Pension Credit capital. Once a session with web access cites the rule, the build is small: add the let property's rent to $excludedFromAssessable in pensionCreditAward if capital wins, bump ENGINE_VERSION, and re-run stored scenarios.
 
 This card should run in an attended session, or with web permission granted.
+
+**2026-10-17** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, same block. The first task is to settle the rule from a citable source. This session asked for WebSearch and WebFetch, and both were refused (permission not granted). This is the second unattended take to stop at the same place.
+
+I searched the repository again for a source. There is still none for Pension Credit. DECISIONS.md (the care means-test entry) says income from capital is treated as capital, but it cites the care charging regulations. The care rules are a different scheme, so I did not use them for Pension Credit. Card 0051 states the same reading with no citation.
+
+I did not write the failing test. The direction of the assertion (take the rent out of assessable income, or take the equity out of assessable capital) is the rule that must be sourced first. A guess could over-award Guarantee Credit.
+
+Lead, not a finding: State Pension Credit Regulations 2002 (SI 2002/1792), regulations 15 and 17 and Schedule IV, and the DWP Decision Makers' Guide chapter on Pension Credit capital and income from capital. When that is cited, the build is small: put the let rent in $excludedFromAssessable in pensionCreditAward if capital wins, add the test named on criterion 1, bump ENGINE_VERSION, and re-run the stored scenarios.
+
+Do not put this card back in the unattended loop. It needs an attended session, or a run with web permission granted. A further unattended take will stop here again.
