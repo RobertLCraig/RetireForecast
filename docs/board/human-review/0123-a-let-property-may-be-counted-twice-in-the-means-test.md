@@ -1,5 +1,9 @@
 # A let property may be counted twice in the Pension Credit means test
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 A let home is assessed twice over, once as an asset and once as what the asset earns.
 
@@ -76,3 +80,5 @@ I did not write the failing test. The direction of the assertion (take the rent 
 Lead, not a finding: State Pension Credit Regulations 2002 (SI 2002/1792), regulations 15 and 17 and Schedule IV, and the DWP Decision Makers' Guide chapter on Pension Credit capital and income from capital. When that is cited, the build is small: put the let rent in $excludedFromAssessable in pensionCreditAward if capital wins, add the test named on criterion 1, bump ENGINE_VERSION, and re-run the stored scenarios.
 
 Do not put this card back in the unattended loop. It needs an attended session, or a run with web permission granted. A further unattended take will stop here again.
+
+**2026-10-17** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
