@@ -224,15 +224,7 @@ final class ForecastSettings
      */
     public function withModelCareCost(bool $on): self
     {
-        return new self(
-            $this->baseYear, $this->baseTaxYear, $this->drawdownStrategy, $this->allocation,
-            $this->freezeEndYear, $this->annualRent, $this->rentInflationReal, $on,
-            $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
-            $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
-            $this->planningHorizon, $this->taxableIncomeTargetPence, $this->hasDescendants,
-            $this->startingMixIsAssumed, $this->drawdownStrategyIsChosen,
-            $this->rentCouncilTax, $this->rentDisabledBandReduction, $this->rentLocalHousingAllowanceWeekly,
-        );
+        return $this->copy(['modelCareCost' => $on]);
     }
 
     /**
@@ -242,14 +234,24 @@ final class ForecastSettings
      */
     public function withRent(Money $annualRent, Percent $rentInflationReal, ?Money $councilTax = null, ?CouncilTaxBand $disabledBandReduction = null, ?Money $localHousingAllowanceWeekly = null): self
     {
-        return new self(
-            $this->baseYear, $this->baseTaxYear, $this->drawdownStrategy, $this->allocation,
-            $this->freezeEndYear, $annualRent, $rentInflationReal, $this->modelCareCost,
-            $this->sellingCosts, $this->modelIht, $this->homeToDescendants, $this->useIsaAllowance,
-            $this->statePensionUprating, $this->tripleLockUntilYear, $this->beneficiaryMarginalRate,
-            $this->planningHorizon, $this->taxableIncomeTargetPence, $this->hasDescendants,
-            $this->startingMixIsAssumed, $this->drawdownStrategyIsChosen,
-            $councilTax, $disabledBandReduction, $localHousingAllowanceWeekly,
-        );
+        return $this->copy([
+            'annualRent' => $annualRent,
+            'rentInflationReal' => $rentInflationReal,
+            'rentCouncilTax' => $councilTax,
+            'rentDisabledBandReduction' => $disabledBandReduction,
+            'rentLocalHousingAllowanceWeekly' => $localHousingAllowanceWeekly,
+        ]);
+    }
+
+    /**
+     * The ONE rebuild site (board card 0124). It carries every property by name, so a field added
+     * to the constructor is carried without anyone listing it; a hand-listed rebuild is how the
+     * rent arm once ran with no Inheritance Tax. Guarded by ForecastSettingsCopyTest.
+     *
+     * @param  array<string, mixed>  $changes
+     */
+    private function copy(array $changes): self
+    {
+        return new self(...array_merge(get_object_vars($this), $changes));
     }
 }

@@ -25,6 +25,7 @@ use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
+use RetireForecast\FinanceEngine\Tests\Forecast\ForecastSettingsCopyTest;
 
 final class HousingComparisonTest extends TestCase
 {
@@ -169,6 +170,26 @@ final class HousingComparisonTest extends TestCase
         foreach (get_object_vars($settings) as $field => $value) {
             if (! in_array($field, ['annualRent', 'rentInflationReal'], true)) {
                 $this->assertEquals($value, $rent->{$field}, "the rent arm dropped {$field}");
+            }
+        }
+    }
+
+    /**
+     * Board card 0124. The test above leaves most settings on their defaults, so a field the rent
+     * arm drops back to its default passes it. This one sets every field away from its default.
+     */
+    public function test_the_rent_variant_keeps_every_setting_it_was_given(): void
+    {
+        $settings = ForecastSettingsCopyTest::fullyPopulated();
+        $rentFields = ['annualRent', 'rentInflationReal', 'rentCouncilTax', 'rentDisabledBandReduction', 'rentLocalHousingAllowanceWeekly'];
+
+        $inputs = $this->comparison()->variantInputs($this->houseRichCashPoor(), $settings, AssumptionSetLibrary::default(), $this->action());
+        $rent = $inputs['rent']['settings'];
+
+        $this->assertSame(Money::fromPounds(14_000)->pence, $rent->annualRent->pence);
+        foreach (get_object_vars($settings) as $field => $value) {
+            if (! in_array($field, $rentFields, true)) {
+                $this->assertEquals($value, $rent->{$field}, "the rent variant dropped {$field}");
             }
         }
     }
