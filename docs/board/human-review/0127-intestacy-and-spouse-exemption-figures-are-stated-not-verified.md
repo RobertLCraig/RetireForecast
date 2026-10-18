@@ -71,3 +71,28 @@ Second unattended take, same block as the first. WebFetch (https://www.legislati
 The card's own first task says it is not an unattended card, and two takes have now confirmed that. Re-queuing it for the loop will block a third time. It needs either an interactive session with WebFetch allowed, or Rob granting WebFetch for legislation.gov.uk and gov.uk to card sessions. The previous comment's list of what the repo already names (InheritanceTaxCalculator.php:52-68, ASSUMPTIONS.md:608-613) and what it lacks (the NI fixed net sum, the FA 2025 long-term-residence test and the s.267ZA election cost) still holds.
 
 **2026-10-18** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-18 manager (m20261018043004-f220)
+
+**outcome: rob**
+
+The only work left needs web access, and only Rob can give it or do the work himself.
+
+**what the session said**
+
+The loop cannot finish this card. Both criteria need someone to read the law on the web. Card sessions have no web, so both takes were blocked.
+
+I checked the code. `InheritanceTaxCalculator` still marks every figure "verified_on: NOT VERIFIED". That includes the docblock on `STATUTORY_LEGACY_PENCE` and the docblock on the spouse-exemption cap. So nothing is fixed yet. Both criteria are still open.
+
+A reopen will block a third time. Nothing in the review proves a criterion wrong. The builder only lacks web access.
+
+You must do one of these two things:
+- **Run the card yourself** in an interactive session that has WebFetch. I recommend this. It is one short job.
+- **Let card sessions use WebFetch** for `legislation.gov.uk` and `gov.uk`. This also fixes cards 0122 and 0125.
+
+After that, move the card back to `todo/`.
+
+WHY: The only work left needs web access, and only Rob can give it or do the work himself.
+
+OUTCOME: rob
+
