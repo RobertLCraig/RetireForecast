@@ -1,5 +1,9 @@
 # Verify that permanent care redeems a lifetime mortgage, and how long the lender gives you
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 1 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Raised by card 0056, which built the rule. That card made permanent entry into residential care by
 the last surviving borrower call in a roll-up balance: the home is sold in that year and the lender
@@ -72,3 +76,5 @@ Second unattended take, same block as the first. The card's own Plan says it nee
 I did not write sources from memory. A URL with a verified_on date that nobody fetched is the invisible-figure fault this card exists to remove.
 
 To finish it: Rob, or an attended session with WebSearch and WebFetch allowed, runs the card from C:\Dev\RetireForecast. Please add not_for_the_loop: to the card's frontmatter so the loop stops picking it up; this is the second take spent on the same refusal.
+
+**2026-10-18** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 1 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
