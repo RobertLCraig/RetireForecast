@@ -34,7 +34,7 @@ Any change to the figures. This is the record of changes already shipped.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] THE APP SHALL record, in the `ENGINE_VERSION` docblock, one entry for each of the two missing bumps, in stamp order, saying what moved and which way. proves: none
+- [x] THE APP SHALL record, in the `ENGINE_VERSION` docblock, one entry for each of the two missing bumps, in stamp order, saying what moved and which way. proves: none
 <!-- AC:END -->
 
 ## Tasks
@@ -50,3 +50,14 @@ The source for both paragraphs is the card's own HANDOVER.md bullet plus its com
 already say which plans move and in which direction, so nothing has to be re-derived from the code.
 
 ## Comments
+
+**2026-10-18** RESULT: done
+TESTS: +0 new, all green (criterion 1 is proves: none; full suite run with php artisan test, as vendor\bin\pest.bat does not exist here)
+TOUCHED: app/Forecast/ScenarioForecaster.php, docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+Added two entries to the ENGINE_VERSION docblock, between the 0056 entry and rnrb-downsizing-addition, newest first: deferred-care-payment-on-the-home (0055) above intestacy-on-the-first-death (0054). Stamp order checked against the commits: 752a028c set rnrb -> intestacy, 20cbe7b3 set intestacy -> deferred-care, 8469a2c7 set deferred-care -> lifetime-mortgage. Text is taken from each card's HANDOVER bullet; nothing re-derived from code. I left out a claim that a single person is byte-identical under 0054, because no source says it.
+
+Task 2 check: every stamp name ever added in git log -G'ENGINE_VERSION = ' now appears once in the log, with no duplicates. The only names not matched are phase-3 and phase-3-btl-finance-cost / -care-means-test / -home-maintenance / -net-wealth. These are the early names of entries the log keeps under their short names (net-wealth names the phase-3 stamp it replaced), so they are not missing.
+
+Also removed the sentence in the 0056 HANDOVER bullet that named this gap as open, because it is no longer true. No figures move, so no browser check is needed.
