@@ -422,6 +422,27 @@ final class ScenarioForecaster
      * estate are all wrong, in either direction, and the roll-up stops compounding at the sale. A
      * plan with no roll-up rate, or whose paths never reach care, is byte-identical, which is why
      * the Monte Carlo golden master did not move. See board card 0056.
+     * Previous bump 2026-09-07 (deferred-care-payment-on-the-home): a care charge the plan cannot pay is
+     * no longer a plan failure. The unfundable part of the CARE charge alone (never the rest of the
+     * year's spending) becomes a deferred payment debt on the home, capped at the equity the
+     * security bears, rolled up at the rate on `Care\DeferredPaymentAgreement`, redeemed at a forced
+     * sale and deducted at both deaths. Alongside it, the property disregard in the care means test
+     * now also applies where a qualifying relative lives in the home
+     * (`Property::$occupiedByQualifyingRelative`, default false, so nothing stored moves until it is
+     * ticked). Any stored plan whose paths reach an unfundable care year is too PESSIMISTIC under an
+     * earlier stamp on survival: it failed where it now survives, and its estate was too HIGH
+     * because no debt was charged against the home. The Monte Carlo golden master was re-pinned
+     * (essentials success up, terminal wealth down at every percentile). A plan that never reaches
+     * an unfundable care year is byte-identical. See board card 0055.
+     * Previous bump 2026-09-07 (intestacy-on-the-first-death): marital status is no longer assumed
+     * married and a will is no longer assumed. `Person::$hasWill` defaults false, so the first death
+     * splits the estate under the intestacy rules (the statutory legacy plus half the residue to
+     * the survivor) instead of handing the survivor the whole estate spouse-exempt, and the
+     * exemption is capped at the nil-rate band where the survivor is not a UK long-term resident.
+     * Only the UNUSED nil-rate band now transfers to the second death. Any stored plan that models
+     * Inheritance Tax pays too LITTLE under an earlier stamp until its will boxes are ticked, so the
+     * estate it leaves is overstated. A plan that does not model Inheritance Tax is
+     * byte-identical. See board card 0054.
      * Previous bump 2026-09-07 (rnrb-downsizing-addition): selling the home no longer deletes the residence
      * nil-rate band. A home disposed of during the plan (a year-0 sell variant or an in-projection
      * forced sale) is recorded, and the part of the band it would have sheltered is restored at the

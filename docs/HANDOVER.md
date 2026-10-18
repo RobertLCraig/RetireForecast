@@ -599,9 +599,7 @@ inventory and cards 0024, 0025, 0028 to 0038, 0044, 0045 and 0052 were folded ou
   `finance-engine/lifetime-mortgage-redeemed-on-entry-to-care` and the **stored-scenario re-run is
   owed**. The rule is **STATED, not verified** (no web in this session): see
   [docs/spec/ASSUMPTIONS.md](spec/ASSUMPTIONS.md) (§29), carded as **0132**. Built in a worktree, so
-  the rewritten equity-release note **has not been seen in a browser**. One gap carded rather than
-  fixed: **0131**, cards 0054 and 0055 bumped `ENGINE_VERSION` without adding their paragraph to its
-  log, so the log's newest entry names a stamp two behind the constant.
+  the rewritten equity-release note **has not been seen in a browser**.
 - **A care bill the plan cannot pay is now a debt on the home, not a plan failure, and the property
   disregard follows the statute.** Card 0055. Two faults with one cause: the model treated an
   assessable home as money it could neither shelter nor spend. The disregard applied only while a
