@@ -91,3 +91,31 @@ Run `php artisan test` after.
 **2026-10-18** Research note committed by the loop: docs/research/0129-research.md. 18 figure row(s) lifted by the script, each from an untrusted web page, so check it against its URL: Fixed addition to the gilt rate for the DPA maximum interest rate (reg 9(3)) = 0.15% (https://www.legislation.gov.uk/uksi/2014/2671/regulation/9); DPA relevant period 1 (reg 9(5)) = 1 January to 30 June (https://www.legislation.gov.uk/uksi/2014/2671/regulation/9); DPA relevant period 2 (reg 9(5)) = 1 July to 31 December (https://www.legislation.gov.uk/uksi/2014/2671/regulation/9); Commencement of SI 2014/2671 reg 9 = 1 April 2015 (https://www.legislation.gov.uk/uksi/2014/2671/regulation/9); OBR March 2026 EFO publication date = 3 March 2026 (https://obr.uk/efo/economic-and-fiscal-outlook-march-2026/); OBR March 2026 EFO Table A.3 market gilt rate (weighted average on conventional gilts), 2026-27 = 4.5% (https://obr.uk/efo/economic-and-fiscal-outlook-march-2026/); OBR November 2025 EFO Table A.3 market gilt rate, 2025-26 = 4.6% (https://obr.uk/efo/economic-and-fiscal-outlook-november-2025/); OBR November 2025 EFO Table A.3 market gilt rate, 2026-27 = 4.7% (https://obr.uk/efo/economic-and-fiscal-outlook-november-2025/); DPA maximum interest rate from 1 July 2026 (Central Bedfordshire) = 4.65% (https://www.centralbedfordshire.gov.uk/health-and-social-care/paying-care/deferred-payments/how-does-it-work); DPA interest rate 1 July 2026 to 31 December 2026 (Reading, charges the maximum) = 4.65% (https://www.reading.gov.uk/adult-care/paying-for-your-care/care-and-support-charging-and-financial-assessment-framework-policies/appendix-j-charges-for-deferred-payment-agreements-and-interim-funding-arrangements); DPA interest rate 1 April 2026 to 30 June 2026 (Reading, charges the maximum) = 4.75% (https://www.reading.gov.uk/adult-care/paying-for-your-care/care-and-support-charging-and-financial-assessment-framework-policies/appendix-j-charges-for-deferred-payment-agreements-and-interim-funding-arrangements); Schedule 2 revised text stated up to date to = 15 October 2026 (https://www.legislation.gov.uk/uksi/2014/2672/schedule/2); Commencement of Schedule 2 paras 4 and 5 = 1 April 2015 (https://www.legislation.gov.uk/uksi/2014/2672/schedule/2); Home disregard on first entering a care home (Sch 2 para 2(1)) = 12 weeks (https://www.legislation.gov.uk/uksi/2014/2672/schedule/2/made); Disregard after the qualifying relative dies or enters a care home (Sch 2 para 4(3)) = 12 weeks (https://www.legislation.gov.uk/uksi/2014/2672/schedule/2/made); Discretionary disregard after an unexpected change in the relative's circumstances (Sch 2 para 4(4)) = 12 weeks (https://www.legislation.gov.uk/uksi/2014/2672/schedule/2/made); Qualifying relative age threshold, family member or relative (Sch 2 para 4(5)(b)) = 60 or over (https://www.legislation.gov.uk/uksi/2014/2672/schedule/2); Qualifying relative age threshold, child (Sch 2 para 4(5)(c)) = under 18 (https://www.legislation.gov.uk/uksi/2014/2672/schedule/2)
 
 **2026-10-18** The loop moved this card from todo/ to human-review/ WITHOUT trying it. All 2 of its open acceptance criteria say proves: manual, so there is nothing left an unattended session could close and starting one would change nothing. Each open criterion names what to look at and what a pass is: tick what passes and move the card on, or say what failed and move it back to todo/.
+
+### 2026-10-18 manager (m20261018121739-4849)
+
+**outcome: rob**
+
+The research is done, but the loop will not build a card whose criteria are all `proves: manual`, so only an attended session can finish it.
+
+**what the session said**
+
+The research note is in place: `docs/research/0129-research.md`. The code still has the old "SOURCING GAP" text:
+
+- `Care\DeferredPaymentAgreement::MAXIMUM_INTEREST_RATE_BPS` still says "SOURCING GAP".
+- `Dto\Property` has no Schedule 2 citation for the disregard list yet.
+
+The note gives a builder with no web all it needs:
+
+- **Rate:** Regulation 9 of SI 2014/2671 sets the rule: the OBR gilt rate plus 0.15%. The current published maximum is 4.65%. That is the same as the shipped figure, so `ENGINE_VERSION` does not change and the golden master does not need a new pin.
+- **Disregard list:** The note found three wording errors in the shipped list:
+  - The law says "partner", not "spouse or civil partner".
+  - The law says "other family member or relative", not just "relative".
+  - The disregard is mandatory only if the relative lived in the home before the resident first went into a care home.
+
+`reopen` will not help. Both criteria say `proves: manual`, and the loop parks a card like that without trying it. The card would come straight back. So a person must do this step: build the card from the note in an attended session, or change the criteria so a test can prove them.
+
+WHY: The research is done, but the loop will not build a card whose criteria are all `proves: manual`, so only an attended session can finish it.
+
+OUTCOME: rob
+
