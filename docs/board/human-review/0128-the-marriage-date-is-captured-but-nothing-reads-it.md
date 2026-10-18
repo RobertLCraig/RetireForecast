@@ -63,3 +63,29 @@ Re-checked the engine: packages/finance-engine/src still has no protected paymen
 This card cannot advance in the loop. It needs either (a) not_for_the_loop: in its frontmatter and an interactive session with web to source the rules, or (b) Rob to split the new inheritable-State-Pension input into its own card first. Recommend (a), with the input built on this card since criterion 1 cannot be met without it.
 
 **2026-10-18** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-18 manager (m20261018092927-3195)
+
+**outcome: rob**
+
+The work needs web research, and the unattended loop has no web access, so only you can start a session that can do it.
+
+**what the session said**
+
+I checked the code. Both builder takes were right.
+
+- `Household` in `packages/finance-engine/src/Dto/Household.php` holds `marriageDate`. Only `HousingComparison` passes it on. No projector code reads it.
+- The engine has no protected payment input. It has no additional State Pension (SERPS / S2P) input either. Each person has one State Pension amount, so there is nothing for an inheritance share to apply to.
+- Both criteria are open. No review finding disproves a ticked box, so the outcome is not `reopen`.
+- Each take failed for the same reason: the loop session cannot fetch GOV.UK. A third take would park the card again.
+
+The input question has a clear answer from the repo. Build the new per-person "inheritable State Pension" input on this card, because criterion 1 cannot pass without it.
+
+What you do now:
+1. Add `not_for_the_loop:` to the card's frontmatter.
+2. Start an interactive session that has web access. In it, source both schemes with `source` URLs and `verified_on` dates, then build the input and the rule.
+
+WHY: The work needs web research, and the unattended loop has no web access, so only you can start a session that can do it.
+
+OUTCOME: rob
+
