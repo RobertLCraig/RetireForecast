@@ -46,3 +46,14 @@ Blocked on sourcing, as the card's own first Task predicted. WebFetch of the GOV
 A second gap, found while reading the engine: there is no input for the part of a State Pension a survivor can inherit. packages/finance-engine/src has no protected payment, additional State Pension (SERPS / S2P) or pre-2016 basic-pension field anywhere. Each person carries one State Pension amount. So even with sourced rules, the projector has nothing to apply an inheritance percentage to. Building criterion 1 means adding that input as well (DTO field, builder field, assembler mapping, loadState backfill, BuilderStateFixture::full), and the card's Why says 'the field, the builder input and the disclosure exist', which is true only of the marriage date.
 
 What the next take needs: a session with web (an interactive one, or this card marked not_for_the_loop) to source the inherited protected payment share, the inherited additional State Pension shares by date of death, and the marriage-before-6-April-2016 and survivor-SPA conditions. Rob may also want to decide whether the new per-person 'inheritable State Pension' input belongs on this card or a card of its own before it is built. I did not guess any figure.
+
+**2026-10-18** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, same block as the first. WebFetch of https://www.gov.uk/new-state-pension/inheriting-or-increasing-state-pension-from-a-spouse-or-civil-partner was refused again in this unattended session, so neither inheritance scheme can carry a source URL and verified_on date. I did not guess any figure.
+
+Re-checked the engine: packages/finance-engine/src still has no protected payment, additional State Pension (SERPS/S2P) or other inheritable-amount input; each person has one State Pension amount. So criterion 1 also needs a new per-person input (DTO, builder field, assembler, loadState backfill, BuilderStateFixture::full), which the card's Why does not account for.
+
+This card cannot advance in the loop. It needs either (a) not_for_the_loop: in its frontmatter and an interactive session with web to source the rules, or (b) Rob to split the new inheritable-State-Pension input into its own card first. Recommend (a), with the input built on this card since criterion 1 cannot be met without it.
