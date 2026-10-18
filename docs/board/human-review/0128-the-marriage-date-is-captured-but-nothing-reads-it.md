@@ -1,5 +1,9 @@
 # The marriage date is captured and nothing reads it
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0054 added the date of the marriage or civil partnership to the builder, because it decides
 which State Pension inheritance rules a survivor falls under: the rules turn on whether the couple
@@ -57,3 +61,5 @@ Second take, same block as the first. WebFetch of https://www.gov.uk/new-state-p
 Re-checked the engine: packages/finance-engine/src still has no protected payment, additional State Pension (SERPS/S2P) or other inheritable-amount input; each person has one State Pension amount. So criterion 1 also needs a new per-person input (DTO, builder field, assembler, loadState backfill, BuilderStateFixture::full), which the card's Why does not account for.
 
 This card cannot advance in the loop. It needs either (a) not_for_the_loop: in its frontmatter and an interactive session with web to source the rules, or (b) Rob to split the new inheritable-State-Pension input into its own card first. Recommend (a), with the input built on this card since criterion 1 cannot be met without it.
+
+**2026-10-18** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
