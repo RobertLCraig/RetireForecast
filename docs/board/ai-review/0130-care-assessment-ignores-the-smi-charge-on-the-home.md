@@ -33,7 +33,7 @@ The notional costs of sale, which is card 0115.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] WHEN a Support for Mortgage Interest charge stands against the home, THE APP SHALL value the home for the care financial assessment net of that charge. proves: `test_the_care_assessment_nets_the_support_for_mortgage_interest_charge`
+- [x] WHEN a Support for Mortgage Interest charge stands against the home, THE APP SHALL value the home for the care financial assessment net of that charge. proves: `test_the_care_assessment_nets_the_support_for_mortgage_interest_charge`
 <!-- AC:END -->
 
 ## Tasks
@@ -61,3 +61,11 @@ DECISIONS.md entry, per that test's own docblock.
 Run `php artisan test` after.
 
 ## Comments
+
+**2026-10-18** RESULT: done
+TESTS: +0 new, all green
+TOUCHED: none
+OUT-OF-SCOPE: none
+The fix was already on master before this card was taken. Commit 613d9c2f (2026-10-07, card 0045 #1/#4) added `- $state['smiBalance']` to `PathProjector::careHomeEquity`, replaced the FLAGGED docblock paragraph with one saying the charge is netted, bumped `ScenarioForecaster::ENGINE_VERSION` to `finance-engine/smi-occupied-home-and-care-equity`, and added the proves: test `test_the_care_assessment_nets_the_support_for_mortgage_interest_charge` in `packages/finance-engine/tests/Forecast/CareMeansTestedChargeTest.php`.
+I checked that the test catches the fault. With the smiBalance term removed it fails for the reason the criterion gives: the resident with equity is charged 8416089p for care against 5741089p for the no-equity twin. With the term restored it passes. The full suite and pint are green.
+I did not bump ENGINE_VERSION again. The bump that came with the fix already invalidated every affected stored result, so a second bump would ask for a re-run that changes nothing. Nothing was committed, because the card needed no change. Card 0115 (costs of sale) is still open on its own.
