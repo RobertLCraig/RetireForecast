@@ -70,3 +70,16 @@ Run `php artisan test` after. `InheritedPensionTaxTest` pins the arithmetic to t
 together.
 
 ## Comments
+
+**2026-10-18** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+This session has no web access. WebSearch and WebFetch were both refused (permission not granted), the same gap the card's own Plan names: "Needs a session with web access."
+
+#1 not met. It asks for a source URL and verified_on date for each rule, or a record that the search found none. No search ran, so writing "found none" into ASSUMPTIONS section 30 would be false. PTM073010 is still unvisited.
+
+#2 not met. It is conditional on a published rule differing from the shipped one, and that cannot be known without reading the source. Its proves: test, test_a_pot_inherited_on_a_death_at_or_after_75_is_taxed_as_the_beneficiarys_income, already exists in packages/finance-engine/tests/Iht/InheritedPensionTaxTest.php from card 0057 and pins the shipped rule. There is no failing case to write until the source says the rule is wrong.
+
+No code or doc changed and nothing was committed. Card 0146 (todo) covers the age-75 half of the same research; one attended session with web access can settle both. Run it from C:\Dev\RetireForecast with WebFetch allowed for gov.uk and legislation.gov.uk.
