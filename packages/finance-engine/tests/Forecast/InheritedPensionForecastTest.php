@@ -24,6 +24,7 @@ use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Forecast\YearResult;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -117,7 +118,63 @@ final class InheritedPensionForecastTest extends TestCase
             $elsewhere->firstDeath->tax->isPositive(),
             'a pot nominated to a child passes outside the will and is chargeable, married or not',
         );
-        $this->assertGreaterThan($toSpouse->total->pence, $elsewhere->total->pence);
+        // The pot charged at the first death has left the household (board card 0133), so the
+        // final estate no longer holds it. Comparing the TOTAL tax here would only pass while the
+        // pot was taxed twice, once at each death.
+        $this->assertLessThan($toSpouse->secondDeath->totalEstate->pence, $elsewhere->secondDeath->totalEstate->pence);
+    }
+
+    /**
+     * The last two-person year and the first survivor year (board card 0133).
+     *
+     * @return array{0: YearResult, 1: YearResult}
+     */
+    private function aroundTheFirstDeath(ForecastResult $result): array
+    {
+        $before = null;
+        foreach ($result->years as $year) {
+            if ($year->aliveCount === 1) {
+                return [$before, $year];
+            }
+            $before = $year;
+        }
+        $this->fail('the first death never happens inside the horizon');
+    }
+
+    public function test_a_pot_nominated_to_a_child_leaves_the_household_at_the_first_death(): void
+    {
+        // Each member holds the same pot and nominates it to a child. The scheme pays the child, so
+        // the survivor is left with their own pot alone: the household's pension wealth roughly
+        // halves at the first death instead of carrying on whole.
+        [$before, $after] = $this->aroundTheFirstDeath($this->forecast($this->couple(PensionBeneficiary::SomeoneElse)));
+
+        $this->assertLessThan(
+            (int) round($before->pensionWealth->pence * 0.6),
+            $after->pensionWealth->pence,
+            'a pot nominated to a child must not stay with the survivor to grow and be drawn',
+        );
+
+        // The spouse-nominated pot is the control: it does pass to the survivor.
+        [$before, $after] = $this->aroundTheFirstDeath($this->forecast($this->couple(PensionBeneficiary::SpouseOrCivilPartner)));
+        $this->assertGreaterThan((int) round($before->pensionWealth->pence * 0.9), $after->pensionWealth->pence);
+    }
+
+    public function test_the_first_death_tax_still_charges_the_pot_that_left(): void
+    {
+        // The tax and the settlement must describe the same event: the pot the first death charges
+        // as leaving the household is the pot the household no longer has. Measured against the
+        // spouse-nominated run, which keeps it; the gap is that pot plus a year's growth.
+        $toSpouse = $this->forecast($this->couple(PensionBeneficiary::SpouseOrCivilPartner));
+        $elsewhere = $this->forecast($this->couple(PensionBeneficiary::SomeoneElse));
+
+        $left = $elsewhere->iht->firstDeath->unusedPensionPassing->pence;
+        $this->assertTrue($elsewhere->iht->firstDeath->tax->isPositive(), 'the first death is still chargeable on the pot');
+        $this->assertGreaterThan(0, $left);
+
+        $gap = $this->aroundTheFirstDeath($toSpouse)[1]->pensionWealth->pence
+            - $this->aroundTheFirstDeath($elsewhere)[1]->pensionWealth->pence;
+        $this->assertGreaterThanOrEqual((int) round($left * 0.95), $gap, 'the household lost less than the tax says left it');
+        $this->assertLessThanOrEqual((int) round($left * 1.15), $gap, 'the household lost more than the tax says left it');
     }
 
     public function test_an_unanswered_nomination_takes_the_adverse_answer(): void

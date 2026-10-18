@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-15 (pension-credit-assesses-earnings-net): Pension Credit assesses earnings net
+     * Bumped 2026-10-18 (pot-nominated-away-leaves-the-household): a DC pot nominated to somebody
+     * other than the partner leaves the household at the member's death instead of passing to the
+     * survivor. Every two-person plan with such a pot (or an unanswered nomination, which reads as
+     * not the partner) loses it from the survivor's years and from the final estate. Board card 0133.
+     * Previous bump 2026-10-15 (pension-credit-assesses-earnings-net): Pension Credit assesses earnings net
      * of income tax, NI and half of a net-pay pension contribution, not gross. Only a plan with
      * earnings in a Pension Credit year moves, and its award moves up (down slightly where half a
      * large net-pay contribution outweighs the tax). Board card 0120.
@@ -646,7 +650,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/pension-credit-assesses-earnings-net';
+    public const ENGINE_VERSION = 'finance-engine/pot-nominated-away-leaves-the-household';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

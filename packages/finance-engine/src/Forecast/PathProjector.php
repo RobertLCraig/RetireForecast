@@ -25,6 +25,7 @@ use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\IncomeStream;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\MortgageMaturityAction;
+use RetireForecast\FinanceEngine\Dto\PensionBeneficiary;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\PensionReliefMethod;
 use RetireForecast\FinanceEngine\Dto\Person;
@@ -365,8 +366,8 @@ final class PathProjector
             pensionNominatedToSpouse: Money::fromPence($this->personPotsNominatedToSpouse($state, $deceased->id)),
             deceasedDiedAtOrAfter75: $draws->deathAge($deceased->id) >= InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE,
             beneficiaryMarginalRate: $settings->beneficiaryMarginalRate(),
-            // A cohabiting partner can be nominated too: settleEstates hands them the pot either
-            // way, so the nomination, not the marriage, decides whether it leaves the household.
+            // A cohabiting partner can be nominated too: settleEstates hands them the pot unless it
+            // is nominated to somebody else, so the nomination, not the marriage, decides whether it leaves.
             partnerSurvives: $survivor !== null,
         );
 
@@ -653,6 +654,10 @@ final class PathProjector
                     // because the nomination is per pot: a member can leave one to a spouse and
                     // another to a child.
                     'nominatedToSpouse' => $pension->nominatedToSpouse(),
+                    // Nominated, on an answered form, to somebody outside the household: the scheme
+                    // pays them, so settleEstates does not pass the pot to the survivor. An
+                    // unanswered nomination is NOT this; it still passes (board card 0133).
+                    'nominatedAway' => $pension->nominatedBeneficiary === PensionBeneficiary::SomeoneElse,
                 ];
                 $lsaUsed[$pension->ownerId] += $pension->pclsTakenToDate?->pence ?? 0;
 
@@ -832,7 +837,7 @@ final class PathProjector
      * Each estate is settled once (tracked in `estateSettled`), transferring the deceased's
      * cash / ISA / GIA — with a CGT base-cost uplift to the value at death, so the heir is
      * taxed only on later gains — and the remaining pension pot value to the FIRST living
-     * person. The deceased's scheduled withdrawals and contributions do NOT carry (they were
+     * person, except a pot nominated to somebody else, which leaves the household. The deceased's scheduled withdrawals and contributions do NOT carry (they were
      * the deceased's decisions), so no schedule re-runs on the heir; and only the deceased's
      * own assets move, so the heir's own pot is untouched — no double-count. On the last death
      * there is no recipient, so nothing transfers (it stays as the terminal estate).
@@ -874,9 +879,14 @@ final class PathProjector
             // The remaining pension value passes as inherited drawdown: drawable for shortfalls,
             // but with no scheduled withdrawals or contributions of its own (those were the
             // deceased's), so it neither re-runs a schedule on the heir nor double-dips their pot.
+            // A pot nominated to somebody else does not pass: the scheme pays whoever the
+            // expression of wish names, so it leaves the household here, the same event the
+            // first death's tax already charged as leaving (board card 0133).
             $inherited = 0;
             foreach ($state['pots'][$id] as $pot) {
-                $inherited += $pot['value'];
+                if (! ($pot['nominatedAway'] ?? false)) {
+                    $inherited += $pot['value'];
+                }
             }
             if ($inherited > 0) {
                 // An inherited DC pot is a beneficiary drawdown — accessible at any age (access age 0);
