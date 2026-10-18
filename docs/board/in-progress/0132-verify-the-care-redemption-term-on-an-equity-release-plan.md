@@ -61,3 +61,14 @@ This card needs the web. Its own Plan says so: "Needs a session with web access,
 I did not write section 29 from memory. A source URL with a verified_on date that nobody fetched is the exact invisible-figure fault this card exists to remove.
 
 To finish it: Rob, or an attended session with WebSearch/WebFetch allowed, runs the card from C:\Dev\RetireForecast. Fetch the Council product standards and two or more lender tariffs (for example Aviva, Legal & General, more2life). Then replace the three STATED lines in docs/spec/ASSUMPTIONS.md section 29 with the sources and dates, and add the URLs to that file's source list. If the notice period is material, raise a card for it. Suggest the card gets not_for_the_loop: in its frontmatter so the loop stops picking it up.
+
+**2026-10-18** RESULT: blocked
+TESTS: +0 new, none run (no code or doc changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second unattended take, same block as the first. The card's own Plan says it needs a session with web access. This session tried WebSearch (Equity Release Council lifetime mortgage repaid on long-term care) and WebFetch (equityreleasecouncil.com standards page). Both were refused for permission. No Council standard and no lender tariff could be fetched, so ASSUMPTIONS section 29 still says STATED, not verified.
+
+I did not write sources from memory. A URL with a verified_on date that nobody fetched is the invisible-figure fault this card exists to remove.
+
+To finish it: Rob, or an attended session with WebSearch and WebFetch allowed, runs the card from C:\Dev\RetireForecast. Please add not_for_the_loop: to the card's frontmatter so the loop stops picking it up; this is the second take spent on the same refusal.
