@@ -33,3 +33,16 @@ already says so.
 - [ ] **Needs web to source the two inheritance schemes, so probably not an unattended card.**
 - [ ] Read `Household::$marriageDate` in the projector's survivor settlement.
 - [ ] Every figure with a `source` URL and a `verified_on` date.
+
+## Comments
+
+**2026-10-18** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Blocked on sourcing, as the card's own first Task predicted. WebFetch of the GOV.UK page (https://www.gov.uk/new-state-pension/inheriting-or-increasing-state-pension-from-a-spouse-or-civil-partner) was refused in this unattended session, so neither inheritance scheme can be given a source URL and a verified_on date. The repository holds no sourced figures for either scheme: docs/ASSUMPTIONS, docs/research and DECISIONS have nothing on State Pension inheritance beyond DECISIONS 2026-09-07 Decision 4, which already says the same thing.
+
+A second gap, found while reading the engine: there is no input for the part of a State Pension a survivor can inherit. packages/finance-engine/src has no protected payment, additional State Pension (SERPS / S2P) or pre-2016 basic-pension field anywhere. Each person carries one State Pension amount. So even with sourced rules, the projector has nothing to apply an inheritance percentage to. Building criterion 1 means adding that input as well (DTO field, builder field, assembler mapping, loadState backfill, BuilderStateFixture::full), and the card's Why says 'the field, the builder input and the disclosure exist', which is true only of the marriage date.
+
+What the next take needs: a session with web (an interactive one, or this card marked not_for_the_loop) to source the inherited protected payment share, the inherited additional State Pension shares by date of death, and the marriage-before-6-April-2016 and survivor-SPA conditions. Rob may also want to decide whether the new per-person 'inheritable State Pension' input belongs on this card or a card of its own before it is built. I did not guess any figure.
