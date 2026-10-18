@@ -1,5 +1,9 @@
 # The intestacy and capped-exemption rules are stated, not verified
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0054 put the intestacy rules into the first death, and they reach a projection: every stored
 plan that models Inheritance Tax now pays tax on the first death unless a will is ticked. The rules
@@ -65,3 +69,5 @@ OUT-OF-SCOPE: none
 Second unattended take, same block as the first. WebFetch (https://www.legislation.gov.uk/uksi/2023/758/made) and WebSearch were both refused again with a permission prompt nobody can answer unattended. Both criteria need a primary source read on a stated date. Writing a verified_on date for a page nobody opened would be the invented figure the house rule forbids, so nothing was written.
 
 The card's own first task says it is not an unattended card, and two takes have now confirmed that. Re-queuing it for the loop will block a third time. It needs either an interactive session with WebFetch allowed, or Rob granting WebFetch for legislation.gov.uk and gov.uk to card sessions. The previous comment's list of what the repo already names (InheritanceTaxCalculator.php:52-68, ASSUMPTIONS.md:608-613) and what it lacks (the NI fixed net sum, the FA 2025 long-term-residence test and the s.267ZA election cost) still holds.
+
+**2026-10-18** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
