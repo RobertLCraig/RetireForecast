@@ -78,3 +78,31 @@ I did not write sources from memory. A URL with a verified_on date that nobody f
 To finish it: Rob, or an attended session with WebSearch and WebFetch allowed, runs the card from C:\Dev\RetireForecast. Please add not_for_the_loop: to the card's frontmatter so the loop stops picking it up; this is the second take spent on the same refusal.
 
 **2026-10-18** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 1 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-18 manager (m20261018223219-8498)
+
+**outcome: rob**
+
+The work needs web access, and the unattended loop does not have it. Only a person or an attended session can finish it.
+
+**what the session said**
+
+The card is not done. Section 29 of `docs/spec/ASSUMPTIONS.md` still says "STATED, not verified" for all three statements.
+
+The one criterion is still open. Two builder sessions tried to finish it. Both times, the loop blocked WebSearch and WebFetch, so nothing could be looked up.
+
+If I reopen the card, the next take hits the same block and comes back here. No review finding is wrong, and there is nothing for the builder to fix.
+
+What is left needs a session that can use the web:
+- Get the Equity Release Council product standards.
+- Get two or more lender terms (for example Aviva, Legal & General, more2life).
+- Put the source links and dates into section 29.
+
+You can do it yourself, or start an attended session in `C:\Dev\RetireForecast` that allows web access.
+
+Also add `not_for_the_loop:` to the card's frontmatter. Then the loop stops picking it up.
+
+WHY: The work needs web access, and the unattended loop does not have it. Only a person or an attended session can finish it.
+
+OUTCOME: rob
+
