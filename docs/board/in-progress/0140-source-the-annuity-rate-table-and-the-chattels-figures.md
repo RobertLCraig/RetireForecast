@@ -78,3 +78,15 @@ Criterion 1 not met: I did not write 'the search found none' into ASSUMPTIONS 36
 Criterion 2 not met: it only applies once a sourced figure exists to compare against. No figure was sourced, so no constant moved and ENGINE_VERSION stays.
 
 Next step: run this card in an attended session with web access, standing in C:\Dev\RetireForecast as the Plan says. Consider not_for_the_loop: true in its frontmatter so the loop stops picking it up.
+
+**2026-10-19** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, same block. This card needs live web pages. WebFetch (gov.uk capital-gains-tax-personal-possessions) and WebSearch were both refused on permission again, so no figure was sourced.
+
+Criterion 1 not met: no search ran, so writing 'the search found none' into ASSUMPTIONS 36/37 would be a false record.
+Criterion 2 not met: it applies only once a sourced figure exists to compare against. No constant moved and ENGINE_VERSION stays.
+
+The loop cannot advance this card. Run it in an attended session with web access, in C:\Dev\RetireForecast as the Plan says, or set not_for_the_loop: true in its frontmatter so the loop stops picking it up.
