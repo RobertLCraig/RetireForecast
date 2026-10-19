@@ -90,3 +90,30 @@ Criterion 1 not met: writing "the search found none" into ASSUMPTIONS.md section
 To advance: run this card in an attended session with web access. The loop will block on it every take until then; the card wants not_for_the_loop: in its frontmatter, which I may not add.
 
 **2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-19 manager (m20261019205804-813f)
+
+**outcome: rob**
+
+The work cannot start until someone runs it in a session that can use the web, and the loop cannot get web access.
+
+**what the session said**
+
+The loop parked this card because it has no web access. Both criteria are still open. No review finding disproves anything, because nothing was built.
+
+The card needs two figures from outside sources:
+- the inflation persistence (0.70)
+- the inflation-to-asset correlations ([-0.30, -0.50, -0.55])
+
+Both builder takes asked for WebSearch and WebFetch, and the permission prompt refused both times. The card's own Plan says it "Needs a session with web access".
+
+Sending it back to `todo/` would only repeat the same block. It is also not a question for the owner, because nothing here turns on a preference.
+
+What is left is a task for a person. Do one of these:
+1. Run the card yourself in an attended session that has web access. This is the one I recommend.
+2. Add `not_for_the_loop:` to the card's frontmatter so the loop stops taking it. The builder is not allowed to add it.
+
+WHY: The work cannot start until someone runs it in a session that can use the web, and the loop cannot get web access.
+
+OUTCOME: rob
+
