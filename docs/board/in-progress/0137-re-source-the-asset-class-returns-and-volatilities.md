@@ -44,3 +44,18 @@ a sourcing gap.
 - [ ] Fetch a current DMS / Barclays volatility and correlation set
 - [ ] Re-source the gilt real return against index-linked gilt yields, dated
 - [ ] Move `AssumptionSetLibrary::VERIFIED_ON` to the date of the check, and update ASSUMPTIONS.md
+
+## Comments
+
+**2026-10-19** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+This session has no web access. WebFetch of the FCA COBS 13 Annex 2 page was refused ("permissions to use WebFetch ... not granted"). This is the same gap that left the card open in 0062.
+
+Criterion 1 cannot be met. It asks for a FETCHED source URL and the date of the fetch. AssumptionSetLibrary::VERIFIED_ON (2026-06-24) is still the sign-off date and not a check date. If I moved it without a fetch, that would be the false 'checked' date the card warns about. The named test, test_every_shipped_asset_class_carries_a_source_and_a_verified_on_date, already exists in packages/finance-engine/tests/Assumptions/AssetClassSourcingTest.php:26. It proves that a source and a date are present. It cannot prove that the page was fetched, so a green run of it does not show that criterion 1 is met. No fixture can tell a fetched date from a stated one. The proof is the dated fetch record itself.
+
+Criterion 2 cannot be met either way. To restate the gilt real return, I need the current index-linked gilt yields. To record why 0.0% stands, I need those same yields. The repository has neither, and a reason written without them would be invented.
+
+Next step: run this card in an attended session that has WebFetch/WebSearch. Fetch the FCA COBS 13 Annex 2 rates, a current DMS/UBS Yearbook or Barclays Equity Gilt Study volatility set, and the BoE/DMO index-linked gilt real yield curve. Then update the figures and VERIFIED_ON, and write ASSUMPTIONS.md section 33. If a figure moves, expect MonteCarlo GoldenMasterTest to go red, and do a re-pin plus a DECISIONS entry.
