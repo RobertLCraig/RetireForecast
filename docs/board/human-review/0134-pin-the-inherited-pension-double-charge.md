@@ -102,3 +102,22 @@ Second take, same block. This session also has no web access: WebFetch on https:
 Nothing changed and nothing was committed. Re-queuing this card unattended will block the same way. It needs an attended session in C:\Dev\RetireForecast with WebFetch allowed for gov.uk and legislation.gov.uk (it can settle card 0146 in the same pass). Consider marking it not_for_the_loop.
 
 **2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-19 manager (m20261019044600-bfb6)
+
+**outcome: rob**
+
+Both criteria need someone to read the published sources on the web, and the loop has no web access, so another unattended take cannot make progress.
+
+**what the session said**
+
+The loop cannot do this card. Both open criteria need someone to read HMRC pages and legislation.gov.uk. The loop has no web access. The builder tried two times, and each take stopped at the WebFetch refusal. A third take will stop at the same place.
+
+The code is not the problem. The test `test_a_pot_inherited_on_a_death_at_or_after_75_is_taxed_as_the_beneficiarys_income` already exists in `InheritedPensionTaxTest` and checks the rule as shipped. The value `InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE` can only change after someone reads the source.
+
+What you must do: open an attended session in `C:\Dev\RetireForecast` and allow WebFetch for gov.uk and legislation.gov.uk. Do this card in that session. Do card 0146 (`docs/board/todo/0146-pin-the-inherited-pension-age-75-rule.md`) there too. It needs the same research, and if the loop picks it up first, it will stop the same way.
+
+WHY: Both criteria need someone to read the published sources on the web, and the loop has no web access, so another unattended take cannot make progress.
+
+OUTCOME: rob
+
