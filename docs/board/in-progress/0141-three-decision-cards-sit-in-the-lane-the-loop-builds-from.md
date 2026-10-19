@@ -64,3 +64,14 @@ Neither criterion is met as written, so I name none. #1 asks for the three to si
 Task 2, re-read of todo/ for further cards with '## Options' or '## What I need from you': four match, and every one is already kept from the loop by its frontmatter, so no new card is needed. 0004 has needs: 0022; 0015 has waiting_on: progressboard#0211; 0099 and 0173 have not_for_the_loop:.
 
 Recommendation for Rob or the reviewer: discard this card as overtaken, or close it as done with the note above. That call is not mine to make unattended.
+
+**2026-10-19** RESULT: blocked
+TESTS: +0 new, none run (no code or test changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, same finding as the first. The card's premise is overtaken: 0002, 0003 and 0084 are not in todo/. All three carry a Decided answer and sit in done/, which is where an answered decision belongs. Moving them to human-review/ (#1) would undo answers that were already acted on, so I name no criterion met. #2 is a lane rule the scheduler owns; nothing to build.
+
+Task 2 re-read of todo/ for '## Options' or '## What I need from you': four match (0004, 0015, 0099, 0173). Each is already kept from the loop by frontmatter (needs: 0022; waiting_on: progressboard#0211; not_for_the_loop: on 0099 and 0173). No new card needed.
+
+This card has now spent two unattended sessions finding nothing to do. Rob or the reviewer should close it as overtaken (discard, or done with this note). That call is not mine to make unattended.
