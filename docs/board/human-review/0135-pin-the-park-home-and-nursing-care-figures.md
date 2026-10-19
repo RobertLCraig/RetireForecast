@@ -4,6 +4,10 @@ no_outward_effect: "published" names a source somebody else printed, read here; 
 
 # Pin the park-home and NHS nursing-care figures to a published source
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0059 put three new rules into the engine, and none of them was read off a live page, because
 the unattended build loop has **no web access**. All three reach a projection.
@@ -88,3 +92,5 @@ Criterion 1 not met: no search ran, so writing "the search found none" into ASSU
 Criterion 2 not met: no published figure was read, so there is nothing to compare the shipped constants against and no failing test could be written. Property::MAX_SITE_COMMISSION_BPS, CareAssumptions::FUNDED_NURSING_CARE_WEEKLY_PENCE and Property::qualifiesForRnrb() are unchanged; ENGINE_VERSION is not bumped.
 
 Next: this card cannot advance in the unattended loop. It needs not_for_the_loop: in its frontmatter, or an attended session at C:\Dev\RetireForecast where Rob allows WebFetch/WebSearch. Sending it back to the loop will block a third time the same way.
+
+**2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
