@@ -64,3 +64,16 @@ restating them, so a corrected figure keeps it green; the disclosure test in
 `Feature\Forecast\SpendingGuardrailNoticeTest` does the same.
 
 ## Comments
+
+**2026-10-19** RESULT: blocked
+TESTS: +0 new, none run (nothing changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+This card needs the web, and this session has none. WebSearch and WebFetch were both refused for permission. The card's own Plan says it needs a session with web access.
+
+No criterion is met. #1 cannot honestly record 'the search found none', because no search ran. #2 depends on #1.
+
+Pointer for the session that has web: docs/research/RESEARCH-competitive-gap-analysis.md (lines 78 and 251) links the Guyton & Klinger 2006 paper PDF at financialplanningassociation.org and summarises it as +/-20% withdrawal-rate bands with +/-10% adjustments. That summary is second-hand and was not read against the paper here. If it holds, two things differ from the constants: the trigger is a withdrawal rate 20% above its starting value, not a funded ratio of 1.00, and the 10% cut is of the whole withdrawal, not of discretionary spend only. Confirm both from the PDF before re-pinning. A withdrawal-rate trigger is a different rule shape, which the card's 'Not this card' says goes to its own card.
+
+Suggest not_for_the_loop: on this card, so the build loop stops picking it up.
