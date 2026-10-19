@@ -4,6 +4,10 @@ no_outward_effect: "published" names a rule somebody else printed, read here; no
 
 # Pin the spending guardrail's trigger and cut to a published rule
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0063 built one funded-ratio guardrail: below a multiple of the essential spend the plan still
 has to fund, discretionary spend is cut by a set percentage until wealth recovers. Both figures
@@ -90,3 +94,5 @@ No criterion is met. #1 cannot honestly say 'the search found none', because no 
 The pointer from the first take still holds: docs/research/RESEARCH-competitive-gap-analysis.md links the paper and summarises it second-hand as +/-20% withdrawal-rate bands with 10% adjustments to the whole withdrawal. If the paper confirms that, the trigger is a different rule shape, which 'Not this card' sends to its own card.
 
 This card should carry not_for_the_loop: so the build loop stops picking it up. Rob, or a session with web, has to run it.
+
+**2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
