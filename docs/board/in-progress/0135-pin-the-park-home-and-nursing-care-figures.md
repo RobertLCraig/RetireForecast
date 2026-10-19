@@ -76,3 +76,15 @@ Criterion 1 not met: I did not write "the search found none" into ASSUMPTIONS se
 Criterion 2 not met: with no published figure read, there is nothing to compare the shipped constants against, so no test was written or watched fail. Property::MAX_SITE_COMMISSION_BPS, CareAssumptions::FUNDED_NURSING_CARE_WEEKLY_PENCE and Property::qualifiesForRnrb() are unchanged, and ENGINE_VERSION is not bumped.
 
 Next: run this card in an attended session at C:\Dev\RetireForecast where Rob can allow WebFetch/WebSearch, or mark it not_for_the_loop. Sending it back to the unattended loop will block again the same way.
+
+**2026-10-19** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Blocked on web access for the second take in a row. WebFetch (legislation.gov.uk/uksi/1983/748, the Mobile Homes (Commission) Order 1983) and WebSearch (NHS FNC 2025/26 rate) were both refused at the permission prompt in this unattended session. Every task on the card is reading a live page, so none could be done.
+
+Criterion 1 not met: no search ran, so writing "the search found none" into ASSUMPTIONS section 31 would be false.
+Criterion 2 not met: no published figure was read, so there is nothing to compare the shipped constants against and no failing test could be written. Property::MAX_SITE_COMMISSION_BPS, CareAssumptions::FUNDED_NURSING_CARE_WEEKLY_PENCE and Property::qualifiesForRnrb() are unchanged; ENGINE_VERSION is not bumped.
+
+Next: this card cannot advance in the unattended loop. It needs not_for_the_loop: in its frontmatter, or an attended session at C:\Dev\RetireForecast where Rob allows WebFetch/WebSearch. Sending it back to the loop will block a third time the same way.
