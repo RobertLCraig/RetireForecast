@@ -1,5 +1,9 @@
 # Three decision cards sit in the lane the unattended loop builds from
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 `todo/` is the lane the unattended build loop takes its next card from. Three of the cards in it are
 not buildable work at all. They are decisions: each one carries `## What I need from you` or
@@ -75,3 +79,5 @@ Second take, same finding as the first. The card's premise is overtaken: 0002, 0
 Task 2 re-read of todo/ for '## Options' or '## What I need from you': four match (0004, 0015, 0099, 0173). Each is already kept from the loop by frontmatter (needs: 0022; waiting_on: progressboard#0211; not_for_the_loop: on 0099 and 0173). No new card needed.
 
 This card has now spent two unattended sessions finding nothing to do. Rob or the reviewer should close it as overtaken (discard, or done with this note). That call is not mine to make unattended.
+
+**2026-10-20** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
