@@ -51,3 +51,16 @@ three should move and why, so that whoever runs the move has the list.
 - [ ] Re-read `todo/` for any further card carrying `## Options` or `## What I need from you`
 
 ## Comments
+
+**2026-10-19** RESULT: blocked
+TESTS: +0 new, none run (no code or test changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+The card's premise is overtaken. 0002, 0003 and 0084 are no longer in todo/: all three carry a Decided answer and sit in done/ (commits dc75fc64 for 0002, 1424f423 for 0084; 0084 decided 2026-09-28). So the fault the card names, decision cards in the loop's lane, no longer exists for these three.
+
+Neither criterion is met as written, so I name none. #1 asks for the three to sit in human-review/; they are in done/, which is the correct place for an answered decision, and moving them back would be wrong. #2 is satisfied in spirit (answering moved them out of the decision lane), but they went to done/, not todo/, because each answer was acted on. Both are proves: none and are lane moves the scheduler owns, so there was nothing to build.
+
+Task 2, re-read of todo/ for further cards with '## Options' or '## What I need from you': four match, and every one is already kept from the loop by its frontmatter, so no new card is needed. 0004 has needs: 0022; 0015 has waiting_on: progressboard#0211; 0099 and 0173 have not_for_the_loop:.
+
+Recommendation for Rob or the reviewer: discard this card as overtaken, or close it as done with the note above. That call is not mine to make unattended.
