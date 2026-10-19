@@ -1,5 +1,9 @@
 # Pin the purchased-life-annuity tax split and the enhanced uplift to a published source
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0060 let an annuity be bought with money that is not pension money, and taxed it as a
 purchased life annuity. Two figures behind that were **stated, not read off a live page**, because
@@ -77,3 +81,5 @@ Second take, same block as the first. This session has no web access: WebFetch (
 Criterion 1 is not met: no search ran, so recording 'the search found none' would be false. Criterion 2 is not met: its test needs the prescribed expectation-of-life figure to assert, and that figure is not available without the web. A figure from memory would break the no-invented-figures rule.
 
 Direction: the loop cannot finish this card. Add not_for_the_loop: to its frontmatter so the scheduler stops picking it up, and run it in an interactive session with web allowed. The open questions are the card's own Tasks.
+
+**2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
