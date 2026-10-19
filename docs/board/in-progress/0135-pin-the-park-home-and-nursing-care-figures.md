@@ -64,3 +64,15 @@ together. A moved FNC rate also reddens `MonteCarlo\GoldenMasterTest`, which nee
 its own DECISIONS.md entry.
 
 ## Comments
+
+**2026-10-19** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Blocked on web access, as the card's own Plan predicted ("Needs a session with web access"). In this unattended session WebSearch and WebFetch were both refused at the permission prompt (tried legislation.gov.uk for the Mobile Homes (Commission) Order 1983, and a search for the NHS FNC 2025/26 rate). Every task on the card is reading a live page, so none could be done.
+
+Criterion 1 not met: I did not write "the search found none" into ASSUMPTIONS section 31, because no search ran; that line would be false.
+Criterion 2 not met: with no published figure read, there is nothing to compare the shipped constants against, so no test was written or watched fail. Property::MAX_SITE_COMMISSION_BPS, CareAssumptions::FUNDED_NURSING_CARE_WEEKLY_PENCE and Property::qualifiesForRnrb() are unchanged, and ENGINE_VERSION is not bumped.
+
+Next: run this card in an attended session at C:\Dev\RetireForecast where Rob can allow WebFetch/WebSearch, or mark it not_for_the_loop. Sending it back to the unattended loop will block again the same way.
