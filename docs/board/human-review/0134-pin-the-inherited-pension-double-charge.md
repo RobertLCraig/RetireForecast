@@ -4,6 +4,10 @@ no_outward_effect: "published" names an HMRC source somebody else printed, read 
 
 # Pin the inherited-pension double charge to a published source
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0057 made an unused pension pot show BOTH the taxes that fall on it: Inheritance Tax on the
 estate, and then the beneficiary's own income tax on drawing what is left. Three statements do that
@@ -96,3 +100,5 @@ Second take, same block. This session also has no web access: WebFetch on https:
 #2 not met. It depends on whether a published rule differs from the shipped one, which cannot be known without the source. Its proves: test already exists (InheritedPensionTaxTest, card 0057) and pins the shipped rule; there is no failing case to write yet.
 
 Nothing changed and nothing was committed. Re-queuing this card unattended will block the same way. It needs an attended session in C:\Dev\RetireForecast with WebFetch allowed for gov.uk and legislation.gov.uk (it can settle card 0146 in the same pass). Consider marking it not_for_the_loop.
+
+**2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
