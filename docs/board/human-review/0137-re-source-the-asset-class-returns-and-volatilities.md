@@ -80,3 +80,31 @@ Criterion 2 is not met. Both of its branches (restate the gilt return, or record
 This card cannot advance in the unattended loop. It needs an attended session with WebFetch/WebSearch, or a /research run that writes the FCA COBS 13 Annex 2 rates, a DMS/UBS or Barclays volatility set and the BoE/DMO real yield curve into docs/research/ with read dates. A card session can then build from that file without the web. If a figure moves, expect the MonteCarlo GoldenMasterTest to go red: re-pin it and add a DECISIONS entry.
 
 **2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-19 manager (m20261019141732-3568)
+
+**outcome: rob**
+
+Every open criterion needs figures fetched from the web, and only an attended session can fetch them.
+
+**what the session said**
+
+**Outcome: `rob`.** I left this card for you. Another loop session cannot finish it.
+
+Both criteria are still open, and no review finding disproves a ticked box, so `reopen` does not apply. Both criteria need figures from the web. The unattended loop has no web, and both builder sessions were refused WebFetch and WebSearch.
+
+I checked `docs/research/`. No file there has the FCA COBS 13 Annex 2 rates, a volatility set or index-linked gilt real yields. `RESEARCH-0095-db-escalation-figures.md` mentions index-linked gilts only for the 2030 RPI reform. So a builder session has nothing to build from.
+
+This is not a question for you either. Ordinary practice settles the method: fetch the real figures, then update them.
+
+**What you do:** In an attended session with web access, run `/research` for three things:
+1. The FCA COBS 13 Annex 2 projection rates.
+2. A DMS/UBS Yearbook or Barclays Equity Gilt Study volatility set.
+3. The BoE/DMO index-linked gilt real yield curve, with read dates.
+
+Then move the card back to `todo/`. The loop will build from that file.
+
+WHY: Every open criterion needs figures fetched from the web, and only an attended session can fetch them.
+
+OUTCOME: rob
+
