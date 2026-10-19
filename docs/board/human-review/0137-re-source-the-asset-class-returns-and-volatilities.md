@@ -1,5 +1,9 @@
 # Re-source the asset-class returns and volatilities, and the gilt real return above all
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0062 gave every asset class a source and a verified-on date for its return and for its
 volatility, which they had never carried. The values it recorded were **stated, not read off a live
@@ -74,3 +78,5 @@ Criterion 1 is not met. It needs a fetched URL and the fetch date. Moving Assump
 Criterion 2 is not met. Both of its branches (restate the gilt return, or record why 0.0% stands) need current index-linked gilt yields, and the repository has none.
 
 This card cannot advance in the unattended loop. It needs an attended session with WebFetch/WebSearch, or a /research run that writes the FCA COBS 13 Annex 2 rates, a DMS/UBS or Barclays volatility set and the BoE/DMO real yield curve into docs/research/ with read dates. A card session can then build from that file without the web. If a figure moves, expect the MonteCarlo GoldenMasterTest to go red: re-pin it and add a DECISIONS entry.
+
+**2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
