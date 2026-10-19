@@ -60,3 +60,16 @@ Run `php artisan test` after. Expect `MonteCarlo\GoldenMasterTest` red beside an
 figure: re-pin it, bump its `PIN_REVISION`, and add the DECISIONS entry its companion test demands.
 
 ## Comments
+
+**2026-10-19** RESULT: blocked
+TESTS: +0 new, suite not run (no code or doc changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Blocked on web access, as the card's own Plan predicts ("Needs a session with web access"). In this unattended session both WebSearch and WebFetch were refused at the permission prompt, so no ONS CPIH/RPI series could be fetched to fit the AR(1) coefficient and no Barclays Equity Gilt Study or DMS/UBS yearbook page could be read for the inflation-to-real-return correlations.
+
+I checked the repository for a local copy of either: none. docs/research/ mentions DMS and the Barclays study only as licence-blocked sources (RESEARCH-stress-test-and-official-sources.md:58); no inflation series or correlation table is on file.
+
+Criterion 1 not met: I did not write "the search found none" into ASSUMPTIONS.md section 35, because no search ran; recording that would claim a negative result that was never looked for. Criterion 2 not met: with nothing sourced there is nothing to compare 0.70 and [-0.30, -0.50, -0.55] against, so the constants, ENGINE_VERSION and the Monte Carlo golden master are untouched.
+
+To advance: run this card in an attended session with web access (or grant WebSearch/WebFetch to the loop). Without that the loop will block on it every take; it wants not_for_the_loop: in its frontmatter, which I may not add myself.
