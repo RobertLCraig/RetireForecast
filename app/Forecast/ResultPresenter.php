@@ -585,7 +585,7 @@ final class ResultPresenter
             'p90' => $y['p90']->format(),
         ], $series);
 
-        $basisLabel = $usableBasis ? 'Spendable money, excl. home' : 'Total wealth, incl. home equity';
+        $basisLabel = $usableBasis ? 'Spendable money, excl. home, after pension tax' : 'Total wealth, incl. home equity';
 
         // Anchor the axis at £0 so "do we hit zero?" reads honestly — UNLESS the net-position
         // series dips below zero (a household that runs out), in which case let the axis extend
@@ -756,7 +756,7 @@ final class ResultPresenter
             $lineRows[] = ['year' => $year, 'ages' => $ageByYear[$year] ?? null, 'cells' => $cells];
         }
 
-        $basisLabel = $usableBasis ? 'Median spendable money, excl. home' : 'Median total wealth, incl. home equity';
+        $basisLabel = $usableBasis ? 'Median spendable money, excl. home, after pension tax' : 'Median total wealth, incl. home equity';
 
         // A strategy whose median future runs out shows a net-position median below £0; let the
         // axis extend negative so that depth is visible rather than clipped to a flat zero.
@@ -895,7 +895,7 @@ final class ResultPresenter
             'dataLabels' => ['enabled' => false],
             'markers' => ['size' => 0],
             'xaxis' => ['type' => 'numeric', 'tickAmount' => 8, 'decimalsInFloat' => 0, 'title' => ['text' => 'Calendar year']],
-            'yaxis' => ['title' => ['text' => 'Usable wealth, excl. home (real £)']],
+            'yaxis' => ['title' => ['text' => 'Usable wealth, excl. home, after pension tax (real £)']],
             'legend' => ['position' => 'top'],
         ];
 

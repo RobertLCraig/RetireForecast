@@ -122,7 +122,7 @@
                     <th scope="col" class="px-4 py-3">Money lasts</th>
                     <th scope="col" class="px-4 py-3">To spend / month</th>
                     <th scope="col" class="px-4 py-3">Available capital</th>
-                    <th scope="col" class="px-4 py-3">Usable wealth left (excl. home)</th>
+                    <th scope="col" class="px-4 py-3">Usable wealth left (excl. home, after pension tax)</th>
                     <th scope="col" class="px-4 py-3">Total wealth left (incl. home equity)</th>
                     @if ($showIht)<th scope="col" class="px-4 py-3">Inheritance tax</th>@endif
                     <th scope="col" class="px-4 py-3"><span class="sr-only">Links</span></th>
@@ -236,7 +236,7 @@
         <div class="mt-4" wire:key="burndown-{{ $hideNonViable ? 'viable' : 'all' }}">
             <div wire:ignore>
                 <div x-data="chart(@js($burndown['options']))" role="img"
-                    aria-label="Line chart of usable wealth (excluding the home) by year for each plan. The full figures are in the data table below."></div>
+                    aria-label="Line chart of usable wealth (excluding the home, after pension tax) by year for each plan. The full figures are in the data table below."></div>
             </div>
         </div>
 
@@ -244,7 +244,7 @@
             <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers behind this chart</summary>
             <div class="mt-2 overflow-x-auto" tabindex="0">
                 <table class="min-w-full text-sm">
-                    <caption class="sr-only">Usable wealth (excluding the home) by year for each plan, in today's money.</caption>
+                    <caption class="sr-only">Usable wealth (excluding the home, after pension tax) by year for each plan, in today's money.</caption>
                     <thead>
                         <tr>
                             <th scope="col" class="border-b border-gray-200 px-3 py-2 text-left font-medium text-gray-700">Year</th>

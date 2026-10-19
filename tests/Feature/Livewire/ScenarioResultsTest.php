@@ -415,7 +415,7 @@ class ScenarioResultsTest extends TestCase
             ->assertOk()
             ->assertSeeHtml('href="'.e(route('scenarios.results', ['scenario' => $scenario, 'tab' => 'money'])).'"')
             ->assertSee('Year-by-year cashflow')      // in the page even while another tab shows
-            ->assertSee('Usable (excl. home)');
+            ->assertSee('Usable (excl. home, after pension tax)');
 
         // Following that link renders the same section visible, with no JavaScript involved.
         $this->get(route('scenarios.results', ['scenario' => $scenario, 'tab' => 'money']))
@@ -472,7 +472,7 @@ class ScenarioResultsTest extends TestCase
         $this->get(route('scenarios.results', $this->scenario()))
             ->assertOk()
             ->assertSee('Year-by-year cashflow')
-            ->assertSee('Usable (excl. home)')
+            ->assertSee('Usable (excl. home, after pension tax)')
             ->assertSee('Total (incl. home equity)');
     }
 
@@ -497,8 +497,31 @@ class ScenarioResultsTest extends TestCase
         Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
             ->set('previewPaths', 30)
             ->call('preview')
-            ->assertSee('Usable wealth left (excl. home)')
+            ->assertSee('Usable wealth left (excl. home, after pension tax)')
             ->assertSee('Total wealth left (incl. home equity)');
+    }
+
+    public function test_the_usable_wealth_label_says_the_pension_tax_is_off(): void
+    {
+        // Card 0142: usable wealth is net of the tax on the pension part (card 0076), so every
+        // label over it has to say so, or a reader takes the deduction for a missing pound.
+        $this->get(route('scenarios.results', $this->scenario()))
+            ->assertOk()
+            ->assertSee('Usable (excl. home, after pension tax)')
+            ->assertDontSee('Usable (excl. home)');
+
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->set('previewPaths', 30)
+            ->call('preview')
+            ->assertSee('Usable wealth left (excl. home, after pension tax)')
+            ->assertDontSee('Usable wealth left (excl. home)');
+
+        /** @var ScenarioResults $instance */
+        $instance = Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])->instance();
+        ob_start();
+        $instance->downloadLadderCsv()->sendContent();
+        $csv = ob_get_clean();
+        $this->assertStringContainsString('Usable wealth (excl. home, after pension tax)', $csv);
     }
 
     public function test_the_cashflow_ladder_shows_the_scenarios_own_strategy_and_home_sale(): void
@@ -524,7 +547,7 @@ class ScenarioResultsTest extends TestCase
         $csv = ob_get_clean();
 
         $this->assertStringContainsString('guidance only, not financial advice', strtolower($csv));
-        $this->assertStringContainsString('Usable wealth (excl. home)', $csv);
+        $this->assertStringContainsString('Usable wealth (excl. home, after pension tax)', $csv);
     }
 
     public function test_a_completed_run_shows_a_plain_english_run_out_verdict(): void

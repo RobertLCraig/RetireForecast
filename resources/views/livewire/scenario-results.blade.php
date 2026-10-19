@@ -238,7 +238,7 @@
                     <div class="flex justify-between"><dt class="text-gray-600">Chance of running out</dt><dd class="font-medium">{{ $v['depletionRate'] }}</dd></div>
                     <div class="flex justify-between"><dt class="text-gray-600">If so, typically by</dt><dd class="font-medium">{{ $v['medianDepletionYear'] ?? '—' }}</dd></div>
                     @if ($v['usableP50'])
-                        <div class="flex justify-between"><dt class="text-gray-600">Usable wealth left (excl. home)</dt><dd class="font-medium">{{ $v['usableP50'] }}</dd></div>
+                        <div class="flex justify-between"><dt class="text-gray-600">Usable wealth left (excl. home, after pension tax)</dt><dd class="font-medium">{{ $v['usableP50'] }}</dd></div>
                     @endif
                     <div class="flex justify-between"><dt class="text-gray-600">Total wealth left (incl. home equity)</dt><dd class="font-medium">{{ $v['terminalP50'] }}</dd></div>
                 </dl>
@@ -353,7 +353,7 @@
                 <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers behind this chart</summary>
                 <div class="mt-2 overflow-x-auto" tabindex="0">
                     <table class="w-full text-sm">
-                        <caption class="sr-only">Projected {{ $fan['usableBasis'] ? 'spendable money (excl. home)' : 'total wealth (incl. home equity)' }} (real pounds) by calendar year and percentile for {{ $fan['label'] }}</caption>
+                        <caption class="sr-only">Projected {{ $fan['usableBasis'] ? 'spendable money (excl. home, after pension tax)' : 'total wealth (incl. home equity)' }} (real pounds) by calendar year and percentile for {{ $fan['label'] }}</caption>
                         <thead>
                             <tr>
                                 <th scope="col" class="{{ $th }}">Year</th>
@@ -1574,7 +1574,7 @@
                 <button type="button" wire:click="downloadLadderCsv" class="text-sm text-blue-700 underline">Download CSV</button>
             </div>
             <p class="mt-1 text-sm text-gray-600">
-                The central best-estimate projection, year by year: where income comes from, the tax on it, the spend it has to meet (split into its essential floor and discretionary remainder), and the usable (excl. home) and total (incl. home equity, net of any mortgage owed) wealth carried forward. Figures are in today's money. This is one illustrative path, not a probability.
+                The central best-estimate projection, year by year: where income comes from, the tax on it, the spend it has to meet (split into its essential floor and discretionary remainder), and the usable (excl. home, after pension tax) and total (incl. home equity, net of any mortgage owed) wealth carried forward. Figures are in today's money. This is one illustrative path, not a probability.
             </p>
             <p class="mt-1 text-sm text-gray-600">
                 <strong>To spend / month</strong> is what this plan can actually <em>fund</em> that year, divided by twelve —
@@ -1667,7 +1667,7 @@
                                 <th scope="col" class="{{ $th }} text-right">Investment growth</th>
                             @endif
                             <th scope="col" class="{{ $th }} text-right">Available capital</th>
-                            <th scope="col" class="{{ $th }} text-right">Usable (excl. home)</th>
+                            <th scope="col" class="{{ $th }} text-right">Usable (excl. home, after pension tax)</th>
                             <th scope="col" class="{{ $th }} text-right">Total (incl. home equity)</th>
                         </tr>
                     </thead>

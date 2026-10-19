@@ -1138,8 +1138,16 @@ class ScenarioBuilderTest extends TestCase
         $this->fill(BuilderStateFixture::full())
             ->assertSee('Live preview')
             ->assertSee('On these figures, the money') // the verdict line (lasts / runs short)
-            ->assertSee('Spendable at end (excl. home)')
+            ->assertSee('Spendable at end (excl. home, after pension tax)')
             ->assertSee('Total wealth at end');
+    }
+
+    public function test_the_usable_wealth_label_says_the_pension_tax_is_off(): void
+    {
+        // Card 0142: the live preview's end figure is net of the tax on the pension part (card 0076).
+        $this->fill(BuilderStateFixture::full())
+            ->assertSee('Spendable at end (excl. home, after pension tax)')
+            ->assertDontSee('Spendable at end (excl. home)');
     }
 
     public function test_the_lifespan_lever_shows_the_modelled_age_at_death(): void

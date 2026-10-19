@@ -346,7 +346,7 @@ class ScenarioResults extends Component
             $header = [...$header, 'Tax', 'Spend', 'Essential spend', 'Discretionary spend', 'Unmet spend',
                 'To spend per month', 'of which essential per month', 'of which free per month',
                 'Available capital (cash + investments)', 'Pension capital (taxable when drawn)',
-                'Investment growth (capital)', 'Usable wealth (excl. home)', 'Total wealth (incl. home equity)'];
+                'Investment growth (capital)', 'Usable wealth (excl. home, after pension tax)', 'Total wealth (incl. home equity)'];
             fputcsv($out, $header);
 
             foreach ($ladder['rows'] as $row) {

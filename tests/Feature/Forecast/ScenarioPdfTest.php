@@ -398,7 +398,7 @@ class ScenarioPdfTest extends TestCase
 
         foreach (['Tax', 'Spend', 'of which essential', 'of which discretionary', 'Unmet spend',
             'To spend / month', 'of which free', 'Available capital', 'Pension capital (taxable)',
-            'Usable (excl. home)', 'Total (incl. home equity)'] as $column) {
+            'Usable (excl. home, after pension tax)', 'Total (incl. home equity)'] as $column) {
             $this->assertStringContainsString($column, $html, "The printed ladder is missing the '{$column}' column.");
         }
 
@@ -408,6 +408,20 @@ class ScenarioPdfTest extends TestCase
         foreach ($ladder['sources'] as $source) {
             $this->assertStringContainsString($ladder['sourceLabels'][$source], $html);
         }
+    }
+
+    /** Card 0142: usable wealth is net of the pension tax (card 0076), and every label says so. */
+    public function test_the_usable_wealth_label_says_the_pension_tax_is_off(): void
+    {
+        $scenario = ScenarioFixture::rich($this->user);
+        (new SimulationRunner(new ScenarioForecaster))->preview($scenario, paths: 20); // the run's tiles print only after one
+        $html = $this->renderReport($scenario);
+
+        foreach (['Usable (excl. home, after pension tax)', 'Usable wealth left (excl. home, after pension tax)',
+            'Median usable (excl. home, after pension tax)'] as $label) {
+            $this->assertStringContainsString($label, $html);
+        }
+        $this->assertDoesNotMatchRegularExpression('/usable (wealth left )?\(excl\. home\)/i', $html);
     }
 
     public function test_the_report_renders_the_key_figures_and_the_disclaimer(): void

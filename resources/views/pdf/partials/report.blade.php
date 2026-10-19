@@ -110,7 +110,7 @@
                 <td><div class="tile"><p class="tile-label">Essentials always met</p><p class="tile-value">{{ $primary['successEssentials'] }}</p></div></td>
                 <td><div class="tile"><p class="tile-label">Full spending met every year</p><p class="tile-value">{{ $primary['successFullSpend'] }}</p><p class="tile-note">in {{ $primary['fullSpendMostYearsThreshold'] }}%+ of years: {{ $primary['successFullSpendMostYears'] ?? '—' }}</p></div></td>
                 <td><div class="tile"><p class="tile-label">Chance of running out</p><p class="tile-value">{{ $primary['depletionRate'] }}</p><p class="tile-note">if so, typically by {{ $primary['medianDepletionYear'] ?? '—' }}</p></div></td>
-                <td><div class="tile"><p class="tile-label">Usable wealth left (excl. home)</p><p class="tile-value">{{ $primary['usableP50'] ?? '—' }}</p></div></td>
+                <td><div class="tile"><p class="tile-label">Usable wealth left (excl. home, after pension tax)</p><p class="tile-value">{{ $primary['usableP50'] ?? '—' }}</p></div></td>
                 <td><div class="tile"><p class="tile-label">Total wealth left (incl. home)</p><p class="tile-value">{{ $primary['terminalP50'] }}</p></div></td>
             </tr>
         </table>
@@ -124,7 +124,7 @@
                     <th class="num">Full spend met</th>
                     <th class="num">Ran out at some point</th>
                     <th class="num">If so, typically by</th>
-                    <th class="num">Median usable (excl. home)</th>
+                    <th class="num">Median usable (excl. home, after pension tax)</th>
                     <th class="num">Median total (incl. home equity)</th>
                 </tr>
             </thead>
@@ -1294,7 +1294,7 @@
     <h2>Year-by-year cashflow <span class="badge">{{ $ladderSelectedLabel }}</span></h2>
     <p class="lede">The central best-estimate projection, year by year: where income comes from, the tax on it, the
         spend it has to meet (split into its essential floor and discretionary remainder), and the usable (excl.
-        home) and total (incl. home equity, net of any mortgage owed) wealth carried forward. Real terms, to
+        home, after pension tax) and total (incl. home equity, net of any mortgage owed) wealth carried forward. Real terms, to
         {{ $ladder['finalYear'] }}. This is one illustrative path, not a probability.</p>
     <p class="lede"><strong>To spend / month</strong> is what this plan can actually <em>fund</em> that year, divided
         by twelve — not what it targets, so in a year that falls short it shows the smaller, real figure.
@@ -1377,7 +1377,7 @@
                 @endif
                 <th class="num">Available capital</th>
                 <th class="num">Pension capital (taxable)</th>
-                <th class="num">Usable (excl. home)</th>
+                <th class="num">Usable (excl. home, after pension tax)</th>
                 <th class="num">Total (incl. home equity)</th>
             </tr>
         </thead>

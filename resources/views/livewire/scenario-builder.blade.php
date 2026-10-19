@@ -183,7 +183,7 @@
                     <p class="mt-0.5 text-sm text-gray-700">{{ $livePreview['spendNote'] }}</p>
                 </div>
                 <dl class="shrink-0 text-right text-sm">
-                    <dt class="text-xs text-gray-500">Spendable at end (excl. home)</dt>
+                    <dt class="text-xs text-gray-500">Spendable at end (excl. home, after pension tax)</dt>
                     <dd class="font-semibold text-gray-900">{{ $livePreview['usable'] }}</dd>
                     <dt class="mt-1 text-xs text-gray-500">Total wealth at end</dt>
                     <dd class="font-semibold text-gray-900">{{ $livePreview['total'] }}</dd>

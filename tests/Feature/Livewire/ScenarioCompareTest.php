@@ -61,6 +61,17 @@ class ScenarioCompareTest extends TestCase
             ->assertViewHas('plans', fn ($plans) => $plans->count() === 2);
     }
 
+    public function test_the_usable_wealth_label_says_the_pension_tax_is_off(): void
+    {
+        // Card 0142: the column is net of the tax on the pension part (card 0076).
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Livewire::test(ScenarioCompare::class, ['scenario' => ScenarioFixture::rich($user)])
+            ->assertSee('Usable wealth left (excl. home, after pension tax)')
+            ->assertDontSee('Usable wealth left (excl. home)');
+    }
+
     public function test_an_overridden_figure_changes_that_plans_column(): void
     {
         $user = User::factory()->create();
