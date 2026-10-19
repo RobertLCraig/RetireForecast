@@ -59,3 +59,18 @@ Criterion 1 cannot be met. It asks for a FETCHED source URL and the date of the 
 Criterion 2 cannot be met either way. To restate the gilt real return, I need the current index-linked gilt yields. To record why 0.0% stands, I need those same yields. The repository has neither, and a reason written without them would be invented.
 
 Next step: run this card in an attended session that has WebFetch/WebSearch. Fetch the FCA COBS 13 Annex 2 rates, a current DMS/UBS Yearbook or Barclays Equity Gilt Study volatility set, and the BoE/DMO index-linked gilt real yield curve. Then update the figures and VERIFIED_ON, and write ASSUMPTIONS.md section 33. If a figure moves, expect MonteCarlo GoldenMasterTest to go red, and do a re-pin plus a DECISIONS entry.
+
+**2026-10-19** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, same block. This session has no web access: WebFetch of https://www.handbook.fca.org.uk/handbook/COBS/13/Annex2.html and a WebSearch for UK index-linked gilt real yields were both refused ("permissions ... not granted").
+
+I searched the repository for a usable figure. docs/research/RESEARCH-0095-db-escalation-figures.md (read 2026-10-11) cites index-linked gilts only for the 2030 RPI reform, not for any yield. No fetched return, volatility or real-yield figure is on disk.
+
+Criterion 1 is not met. It needs a fetched URL and the fetch date. Moving AssumptionSetLibrary::VERIFIED_ON without a fetch would write the false 'checked' date the card warns about. The named test already exists (packages/finance-engine/tests/Assumptions/AssetClassSourcingTest.php) and proves presence, not that a fetch happened.
+
+Criterion 2 is not met. Both of its branches (restate the gilt return, or record why 0.0% stands) need current index-linked gilt yields, and the repository has none.
+
+This card cannot advance in the unattended loop. It needs an attended session with WebFetch/WebSearch, or a /research run that writes the FCA COBS 13 Annex 2 rates, a DMS/UBS or Barclays volatility set and the BoE/DMO real yield curve into docs/research/ with read dates. A card session can then build from that file without the web. If a figure moves, expect the MonteCarlo GoldenMasterTest to go red: re-pin it and add a DECISIONS entry.
