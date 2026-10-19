@@ -96,3 +96,26 @@ Criterion 2 not met: it applies only once a sourced figure exists to compare aga
 The loop cannot advance this card. Run it in an attended session with web access, in C:\Dev\RetireForecast as the Plan says, or set not_for_the_loop: true in its frontmatter so the loop stops picking it up.
 
 **2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-19 manager (m20261019231442-560d)
+
+**outcome: rob**
+
+The work is to read live gov.uk and annuity quote pages, and only a session with web access can do that.
+
+**what the session said**
+
+Both criteria on card 0140 are still open. No reviewer found a problem in the code, so there is nothing to untick. The only block is that this work needs the web, and the loop has none.
+
+I checked the code. The figures are still the old ones that nobody has checked:
+- `AnnuityRateTable` still has `INDEX_LINKED_MULTIPLE = 0.62`, `FULL_SURVIVOR_REDUCTION = 0.20` and `VERIFIED_ON = '2026-09-08'`. Its own docblock says that date is when the figures were written down, not when they were checked.
+- `TaxYearRegistry` still sets `chattelsExemptAmount` to £6,000.
+
+If I reopen the card, the loop gets refused on WebFetch and WebSearch a third time. Then the card comes straight back here. This is not a question for the owner either, because the card already says exactly what to do.
+
+To finish it, one person must run it in a session that has web access, from `C:\Dev\RetireForecast` on `master`. Or they can add `not_for_the_loop: true` to its frontmatter so the loop stops picking it up.
+
+WHY: The work is to read live gov.uk and annuity quote pages, and only a session with web access can do that.
+
+OUTCOME: rob
+
