@@ -83,3 +83,16 @@ This session has no web access. WebSearch and WebFetch were both refused (permis
 #2 not met. It is conditional on a published rule differing from the shipped one, and that cannot be known without reading the source. Its proves: test, test_a_pot_inherited_on_a_death_at_or_after_75_is_taxed_as_the_beneficiarys_income, already exists in packages/finance-engine/tests/Iht/InheritedPensionTaxTest.php from card 0057 and pins the shipped rule. There is no failing case to write until the source says the rule is wrong.
 
 No code or doc changed and nothing was committed. Card 0146 (todo) covers the age-75 half of the same research; one attended session with web access can settle both. Run it from C:\Dev\RetireForecast with WebFetch allowed for gov.uk and legislation.gov.uk.
+
+**2026-10-19** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, same block. This session also has no web access: WebFetch on https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm073010 and WebSearch were both refused (permission not granted). The card's Plan already says it needs a session with web access.
+
+#1 not met. No source was read, so no URL and verified_on can be written, and writing "search found none" into ASSUMPTIONS section 30 would be false.
+
+#2 not met. It depends on whether a published rule differs from the shipped one, which cannot be known without the source. Its proves: test already exists (InheritedPensionTaxTest, card 0057) and pins the shipped rule; there is no failing case to write yet.
+
+Nothing changed and nothing was committed. Re-queuing this card unattended will block the same way. It needs an attended session in C:\Dev\RetireForecast with WebFetch allowed for gov.uk and legislation.gov.uk (it can settle card 0146 in the same pass). Consider marking it not_for_the_loop.
