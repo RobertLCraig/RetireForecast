@@ -1,5 +1,9 @@
 # Source the inflation persistence and its correlation with real returns
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0064 gave the Monte Carlo's inflation draw a memory and a place in the correlation matrix.
 Both figures behind it were **stated, not read off a live page**, because the unattended build loop
@@ -84,3 +88,5 @@ Second take, same block. WebSearch was refused at the permission prompt again in
 Criterion 1 not met: writing "the search found none" into ASSUMPTIONS.md section 35 would claim a negative result from a search that never ran. Criterion 2 not met: with nothing sourced there is nothing to compare 0.70 and [-0.30, -0.50, -0.55] against, so the constants, ENGINE_VERSION and the Monte Carlo golden master are untouched.
 
 To advance: run this card in an attended session with web access. The loop will block on it every take until then; the card wants not_for_the_loop: in its frontmatter, which I may not add.
+
+**2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
