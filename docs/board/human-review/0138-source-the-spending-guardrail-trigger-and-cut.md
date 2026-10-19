@@ -96,3 +96,24 @@ The pointer from the first take still holds: docs/research/RESEARCH-competitive-
 This card should carry not_for_the_loop: so the build loop stops picking it up. Rob, or a session with web, has to run it.
 
 **2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-19 manager (m20261019180305-2919)
+
+**outcome: rob**
+
+The work that is left is web research, and the loop cannot reach the web, so a person or a session with web access must do it.
+
+**what the session said**
+
+The code has not changed since the card was written. `Dto\SpendingGuardrail` still holds a 1.00 trigger and a 10% cut. `docs/spec/ASSUMPTIONS.md` section 34 still says nobody has read the Guyton-Klinger paper.
+
+Both criteria are still open, so nothing needs to be unticked. The builder cannot move the card forward. The task needs the web, and the loop refused WebSearch and WebFetch two times. If the card goes back to `todo/`, it will be blocked again in the same way.
+
+You have two jobs:
+1. Run this card in a session that has web access. Read the Guyton & Klinger 2006 PDF. The link is in `docs/research/RESEARCH-competitive-gap-analysis.md`. The loop's guess is that the paper's trigger is a change in the withdrawal rate, not a funded ratio. If that is true, record it in ASSUMPTIONS.md section 34. Open a new card for a withdrawal-rate rule. Do not change the rule on this card.
+2. Add `not_for_the_loop:` to the card, so that the loop does not take it again.
+
+WHY: The work that is left is web research, and the loop cannot reach the web, so a person or a session with web access must do it.
+
+OUTCOME: rob
+
