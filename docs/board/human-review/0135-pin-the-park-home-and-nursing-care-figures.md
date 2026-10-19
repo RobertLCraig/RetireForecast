@@ -94,3 +94,27 @@ Criterion 2 not met: no published figure was read, so there is nothing to compar
 Next: this card cannot advance in the unattended loop. It needs not_for_the_loop: in its frontmatter, or an attended session at C:\Dev\RetireForecast where Rob allows WebFetch/WebSearch. Sending it back to the loop will block a third time the same way.
 
 **2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-19 manager (m20261019081107-70e6)
+
+**outcome: rob**
+
+Every task on this card needs live web pages, and only Rob can open a session that is allowed to read them.
+
+**what the session said**
+
+This card does not need the loop. It needs a person.
+
+All three figures are still in the engine and still not checked:
+- `Property::MAX_SITE_COMMISSION_BPS` is 10% of the sale price.
+- `CareAssumptions::FUNDED_NURSING_CARE_WEEKLY_PENCE` is £254.06 a week.
+- `Property::qualifiesForRnrb()` gives a park home no residence nil-rate band. That is the band of Inheritance Tax allowance for a home.
+
+There are no review findings, and both criteria are still open. So there is nothing to untick, and the builder has nothing new to try. Both takes stopped at the same place. The loop has no web access, and every task on this card is reading a live web page. If you send it back to `todo/`, it will block a third time.
+
+To finish it, open an attended session at `C:\Dev\RetireForecast` and allow WebSearch and WebFetch. The other choice is to add `not_for_the_loop:` to the card's frontmatter so the loop stops taking it.
+
+WHY: Every task on this card needs live web pages, and only Rob can open a session that is allowed to read them.
+
+OUTCOME: rob
+
