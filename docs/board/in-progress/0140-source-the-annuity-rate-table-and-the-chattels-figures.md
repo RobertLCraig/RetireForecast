@@ -66,3 +66,15 @@ Run `php artisan test` after, then `php artisan figures:freshness`, which now sw
 assumptions as well as the statutory ones.
 
 ## Comments
+
+**2026-10-19** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+This card needs live web pages, and this unattended session has none. WebSearch and WebFetch were both refused on permission (tried gov.uk for the chattels page). The card's own Plan already says it needs a session with web access.
+
+Criterion 1 not met: I did not write 'the search found none' into ASSUMPTIONS 36/37, because no search ran. Saying so would be a false record.
+Criterion 2 not met: it only applies once a sourced figure exists to compare against. No figure was sourced, so no constant moved and ENGINE_VERSION stays.
+
+Next step: run this card in an attended session with web access, standing in C:\Dev\RetireForecast as the Plan says. Consider not_for_the_loop: true in its frontmatter so the loop stops picking it up.
