@@ -66,3 +66,14 @@ This card needs web access, and this unattended session has none. WebSearch and 
 Criterion 1 is not met: no search ran, so writing 'the search found none' into ASSUMPTIONS.md section 32 would be false. Criterion 2 is not met: the prescribed expectation-of-life table is not in the repository, and putting a figure from memory into the engine would break the no-invented-figures rule. No failing test was written for 2, because the test cannot be expressed without the prescribed figure it should assert.
 
 Direction: run this card in an interactive session with web allowed (the Plan already says so), or mark it not_for_the_loop so the scheduler stops picking it up. Open questions for that session are the card's own Tasks: which tables the Income Tax (Purchased Life Annuities) Regulations 2008 (SI 2008/562) prescribe and whether they vary by sex and term; whether the capital element stays fixed on an escalating contract; a current published enhanced-annuity uplift range to re-pin ENHANCED_UPLIFT_BPS; and an ENGINE_VERSION bump (plus golden-master re-pin) if either figure moves.
+
+**2026-10-19** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, same block as the first. This session has no web access: WebFetch (legislation.gov.uk/uksi/2008/562) and WebSearch were both refused on 2026-10-19. The repository does not hold the prescribed tables or an enhanced-uplift source either: the only mention is the 'To verify' note at docs/spec/ASSUMPTIONS.md line 755.
+
+Criterion 1 is not met: no search ran, so recording 'the search found none' would be false. Criterion 2 is not met: its test needs the prescribed expectation-of-life figure to assert, and that figure is not available without the web. A figure from memory would break the no-invented-figures rule.
+
+Direction: the loop cannot finish this card. Add not_for_the_loop: to its frontmatter so the scheduler stops picking it up, and run it in an interactive session with web allowed. The open questions are the card's own Tasks.
