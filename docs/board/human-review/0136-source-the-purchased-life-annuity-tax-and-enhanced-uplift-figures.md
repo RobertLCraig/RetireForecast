@@ -83,3 +83,28 @@ Criterion 1 is not met: no search ran, so recording 'the search found none' woul
 Direction: the loop cannot finish this card. Add not_for_the_loop: to its frontmatter so the scheduler stops picking it up, and run it in an interactive session with web allowed. The open questions are the card's own Tasks.
 
 **2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-19 manager (m20261019111844-5d47)
+
+**outcome: rob**
+
+The work is clear, but only a session with web access can do it, and only a person can start one.
+
+**what the session said**
+
+I read the card and the code it names. Both criteria are still open. The loop cannot close them.
+
+- `Pension\PurchasedLifeAnnuity::capitalElementPerYear` still uses the engine's own ONS life expectancy (a population estimate of how long a person lives). It does not use the table that the law prescribes.
+- `Dto\AnnuityPurchase::ENHANCED_UPLIFT_BPS` is still 10%, with no source.
+- `docs/spec/ASSUMPTIONS.md` section 32 still has only its "To verify" note.
+
+Each figure must come from a live web page: the Income Tax (Purchased Life Annuities) Regulations 2008 (SI 2008/562), and a current range for enhanced annuity uplifts. The unattended loop has no web access. Two takes proved this. If you send the card back to `todo/`, it fails a third time in the same way.
+
+The person must do one of these two things:
+1. Run this card in an interactive session with web access. I recommend this.
+2. Add `not_for_the_loop:` to the card's frontmatter, so that the scheduler stops picking it up.
+
+WHY: The work is clear, but only a session with web access can do it, and only a person can start one.
+
+OUTCOME: rob
+
