@@ -1,5 +1,9 @@
 # Source the annuity rate table and the chattels figures
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0065 replaced a single free-text annuity rate with a table by age, escalation basis and
 joint-life setting, and added the chattels capital-gains rule. Every figure behind both was
@@ -90,3 +94,5 @@ Criterion 1 not met: no search ran, so writing 'the search found none' into ASSU
 Criterion 2 not met: it applies only once a sourced figure exists to compare against. No constant moved and ENGINE_VERSION stays.
 
 The loop cannot advance this card. Run it in an attended session with web access, in C:\Dev\RetireForecast as the Plan says, or set not_for_the_loop: true in its frontmatter so the loop stops picking it up.
+
+**2026-10-19** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
