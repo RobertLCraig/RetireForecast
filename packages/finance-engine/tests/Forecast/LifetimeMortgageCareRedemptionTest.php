@@ -168,6 +168,32 @@ final class LifetimeMortgageCareRedemptionTest extends TestCase
         }
     }
 
+    /**
+     * Card 0154. The last surviving borrower of a couple goes into care, and the home is sold for
+     * it. A rent figure on the plan must move nothing in any care year: not the spend, not the
+     * wealth, not the depletion year. The resident pays the care fee for their housing, not a rent.
+     */
+    public function test_a_care_forced_sale_charges_no_rent_while_the_resident_is_in_care(): void
+    {
+        $household = $this->couple(500_000, 100_000, Percent::fromPercent(6.5));
+        $noRent = $this->withCare($household);
+        $withRent = $this->forecaster()->forecastWithCareStress(
+            $household,
+            $this->flatEconomy(),
+            $this->settings()->withRent(Money::fromPounds(12_000), Percent::fromPercent(0)),
+            CareStressScenario::adverseDefault(),
+        );
+        $care = $this->firstCareYear($noRent);
+
+        $this->assertSame(1, $noRent->years[$care]->aliveCount, 'only the last borrower is left, and in care');
+        foreach (array_slice($withRent->years, $care, null, true) as $i => $year) {
+            $this->assertSame(0, $year->propertyWealth->pence, "year {$year->calendarYear}: the home has been sold");
+            $this->assertSame($noRent->years[$i]->essentialSpend->pence, $year->essentialSpend->pence, "year {$year->calendarYear}: no rent in the spend");
+            $this->assertSame($noRent->years[$i]->totalWealth->pence, $year->totalWealth->pence, "year {$year->calendarYear}: no rent off the wealth");
+        }
+        $this->assertSame($noRent->depletionCalendarYear, $withRent->depletionCalendarYear);
+    }
+
     /** An ordinary serviced mortgage is not an equity-release plan, so care does not call it in. */
     public function test_a_mortgage_with_no_roll_up_rate_is_not_redeemed_on_entry_to_care(): void
     {
