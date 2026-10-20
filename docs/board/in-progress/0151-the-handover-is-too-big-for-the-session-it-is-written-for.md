@@ -83,3 +83,14 @@ OUT-OF-SCOPE: none
 #3 NOT met, by design: the card says the bounding rule (bullet cap, age cut-off, or archive at done/) is Rob's call. The _Last updated_ line now says the test holds 40 KB and that the folding rule is open on this card. Recommendation for Rob: archive a bullet when its card reaches done/, because the card already carries the detail and done/ is a fact a session can check.
 
 Not done: the 710-character line is still there (it is now in a section below the list, not in a folded bullet). Splitting it is a task on the card, not an acceptance criterion, so I left it.
+
+**2026-10-20** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+This take found #1 and #2 already built and merged (commit 62dde558). HandoverHygieneTest passes: docs/HANDOVER.md is 38,260 bytes against the 40,960-byte budget. Nothing new to build.
+
+#3 is still blocked on Rob. The card says the bounding rule (a bullet cap, an age cut-off, or archive when the card reaches done/) is his call, so no session can meet it unattended. Recommendation: archive a bullet when its card reaches done/. The card keeps the detail, and done/ is a fact a session can check.
+
+Note: headroom is only about 2.7 KB. The next few cards that add a bullet will make HandoverHygieneTest fail until the rule exists and a fold is done.
