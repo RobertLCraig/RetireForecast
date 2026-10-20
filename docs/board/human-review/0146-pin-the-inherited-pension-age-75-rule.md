@@ -1,5 +1,9 @@
 # Pin the inherited-pension age-75 rule to a live page
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0079 made a draw from an inherited pension tax-free where its owner died under 75, and taxable
 where they died at 75 or over. The rule was **stated, not read off a live page**, because the
@@ -72,3 +76,5 @@ Second unattended take, same block as the first. The WebFetch of HMRC PTM073010 
 Criterion 1 cannot be met honestly: no search ran, so recording 'the search found none' in ASSUMPTIONS section 38 would be false. Criterion 2 has nothing to act on until the page is read. ASSUMPTIONS.md, PathProjector::drawIsTaxFree and InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE are unchanged.
 
 This card cannot advance in the loop. It needs Rob or an attended session with web access (do card 0134 in the same pass), or a not_for_the_loop: line in its frontmatter so the loop stops picking it up. I did not add that line because I may not edit the card.
+
+**2026-10-20** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
