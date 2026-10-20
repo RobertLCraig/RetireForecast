@@ -75,3 +75,10 @@ The two options for Rob:
 2. Adopt Pest in RetireForecast: makes the literal true here, but it is a migration this card rules out, and every other non-Pest project would still be told the wrong command.
 
 Once Rob picks, the work belongs on a ProgressBoard card, not this board.
+
+**2026-10-20** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Still a decision for Rob, with no answer on the card yet. Re-checked today: C:\Dev\ProgressBoard\bin\prompts\build.md line 51 still hard-codes .\vendor\bin\pest.bat, and this tree's vendor\bin still has phpunit.bat and pint.bat and no pest.bat. The fix lives in ProgressBoard, which an unattended RetireForecast session must not edit. The options and the recommendation (make the prompt name Suite::command(), which the gate already runs) are in the previous comment and are unchanged. Once Rob picks, the work goes on a ProgressBoard card.
