@@ -1,5 +1,9 @@
 # Every card session is told to run a test runner this project does not have
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 The scheduler's standing instruction to an unattended card session says, as its step 3:
 
@@ -82,3 +86,5 @@ TOUCHED: none
 OUT-OF-SCOPE: none
 
 Still a decision for Rob, with no answer on the card yet. Re-checked today: C:\Dev\ProgressBoard\bin\prompts\build.md line 51 still hard-codes .\vendor\bin\pest.bat, and this tree's vendor\bin still has phpunit.bat and pint.bat and no pest.bat. The fix lives in ProgressBoard, which an unattended RetireForecast session must not edit. The options and the recommendation (make the prompt name Suite::command(), which the gate already runs) are in the previous comment and are unchanged. Once Rob picks, the work goes on a ProgressBoard card.
+
+**2026-10-20** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
