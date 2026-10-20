@@ -83,6 +83,21 @@ final class HandoverHygieneTest extends TestCase
             'A resolved [x] is sitting in the open-items list — drop it (resolved items live in DECISIONS / the Session log).');
     }
 
+    /**
+     * The byte budget the global orient hook (~/.claude/hooks/orient-hook.ps1) warns at on
+     * every session start: 40 KB is what a fresh session can afford to load. The hook only
+     * shouts; this makes growth past it a red suite (card 0151).
+     */
+    private const HANDOVER_BYTES_BUDGET = 40 * 1024;
+
+    public function test_handover_fits_the_byte_budget_a_session_can_load(): void
+    {
+        $bytes = strlen($this->doc());
+        $this->assertLessThanOrEqual(self::HANDOVER_BYTES_BUDGET, $bytes,
+            "docs/HANDOVER.md is {$bytes} bytes, over the ".self::HANDOVER_BYTES_BUDGET.'-byte budget a fresh session can load. '
+            .'Fold the oldest exception bullets into docs/HANDOVER-ARCHIVE.md, keeping one line of what still stands.');
+    }
+
     public function test_has_a_last_updated_date_stamp(): void
     {
         $this->assertMatchesRegularExpression('/_Last updated:\s*\d{4}-\d{2}-\d{2}/', $this->doc(),
