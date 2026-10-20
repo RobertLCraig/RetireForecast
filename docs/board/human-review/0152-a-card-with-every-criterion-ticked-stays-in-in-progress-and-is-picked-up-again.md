@@ -100,3 +100,26 @@ OUT-OF-SCOPE: none
 Second take, same answer as the 2026-10-20 entry above. Nothing in this repository changed since then: 0083 is still in ai-review/ (Rob's hand move, 5414f0cc), and 0152 is the only card in in-progress/. All three criteria are about the scheduler in C:\Dev\ProgressBoard (lane-move logic in Builder.php, the session prompt in Prompt.php / work-card.ps1). An unattended card session must stay in its worktree, so it cannot build or check them. This card should not go to the loop again. It needs one of these, which is Rob's call: move it to the ProgressBoard board, or mark it not_for_the_loop: here.
 
 **2026-10-20** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 3 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-20 manager (m20261020190934-bd10)
+
+**outcome: rob**
+
+The work is in another repository, so the loop here can never finish it, and only a person can move the card.
+
+**what the session said**
+
+I checked two facts. Card 0083 is now in `docs/board/ai-review/`. Rob moved it there by hand. ProgressBoard supports a `not_for_the_loop` card field: `app\Support\Board\Card.php` reads it and `bin\work-card.ps1` uses it.
+
+All three criteria are still open. No review finding is involved, and no box is ticked to untick. The work is in the scheduler in `C:\Dev\ProgressBoard`: the lane-move logic in `Builder.php` and the session prompt in `Prompt.php` / `work-card.ps1`. A RetireForecast card session must stay in its worktree, so it cannot do this work. If I reopen the card, it comes back again. That is what happened twice already.
+
+What is left is a board move, and only a person can do it:
+1. Move card 0152 to the ProgressBoard board, where a builder can reach the code.
+2. Or, if Rob wants it to stay in this repository, add `not_for_the_loop: here` so the loop stops picking it.
+
+I would go with option 1.
+
+WHY: The work is in another repository, so the loop here can never finish it, and only a person can move the card.
+
+OUTCOME: rob
+
