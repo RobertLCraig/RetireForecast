@@ -111,3 +111,26 @@ Third take. #1 and #2 are still built and merged (commit 62dde558). HandoverHygi
 This card should go to a person, not back to the loop: re-running it unattended gives the same result.
 
 **2026-10-20** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-20 manager (m20261020123423-cb25)
+
+**outcome: question**
+
+Only the last criterion is open, and it needs Rob to choose the rule; no code fix can close it.
+
+**The question:** Which rule keeps the handover's exception list small: (a) move a bullet to the archive when its card reaches done/ (recommended), (b) a maximum number of bullets, or (c) an age limit?
+
+**what the session said**
+
+I checked the repository. Criteria #1 and #2 are built. `HandoverHygieneTest::test_handover_fits_the_byte_budget_a_session_can_load` checks the file against `HANDOVER_BYTES_BUDGET`, which is 40 KB. No review finding disproves either of them.
+
+#3 is still open. The card itself says the folding rule is Rob's call. I looked in `docs/DECISIONS.md` for a rule that is already chosen and found none. Ordinary practice does not decide it either, because each choice gives a different trade-off between the handover and the card history. So a builder session cannot close #3, and sending the card back would get the same result again.
+
+The builder recommends "archive a bullet when its card reaches done/". That is a good default: the card keeps the detail, and a session can check whether a card is in done/. The space left under 40 KB is small (about 2.7 KB), so the next few cards will make the test fail until Rob answers.
+
+QUESTION: Which rule keeps the handover's exception list small: (a) move a bullet to the archive when its card reaches done/ (recommended), (b) a maximum number of bullets, or (c) an age limit?
+
+WHY: Only the last criterion is open, and it needs Rob to choose the rule; no code fix can close it.
+
+OUTCOME: question
+
