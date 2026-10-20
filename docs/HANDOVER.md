@@ -198,8 +198,8 @@ Rob's call on card 0151:_
 
 - **A forced sale is charged the tenancy deposit in the sale year.** Card 0090. `ENGINE_VERSION` is
   `finance-engine/forced-sale-tenancy-deposit`; the **stored re-run is owed** for any plan with a
-  maturity forced sale and a rent figure. A care-forced sale is charged no deposit, but is still
-  charged rent while in care: card 0154.
+  maturity forced sale and a rent figure. A care-forced sale is charged no deposit, and no rent
+  while in care (card 0056 #4, proven by card 0154).
 
 - **A card worktree can start with `packages/finance-engine` emptied — 289 tracked files deleted in
   the working tree, index and `master` untouched.** Card 0149. **Read `git status` before committing
