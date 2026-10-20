@@ -50,3 +50,14 @@ a figure, so the suite should stay green and no `ENGINE_VERSION` bump is owed. D
 same pass: it is the same page.
 
 ## Comments
+
+**2026-10-20** RESULT: blocked
+TESTS: +0 new, suite not run (no file changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+This card needs a live read of HMRC PTM073010 (https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm073010). In this unattended session both WebFetch and WebSearch were refused by the permission layer, so the page could not be read. I did not fall back to curl, because that would route round a refused permission.
+
+Criterion 1 allows recording that 'the search found none', but no search ran, so writing that into ASSUMPTIONS section 38 would be false. Nothing was changed: ASSUMPTIONS.md, PathProjector::drawIsTaxFree and InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE are as they were. Criterion 2 has nothing to act on until the page is read.
+
+The card's own Plan already says it needs a session with web access, standing in C:\Dev\RetireForecast. It should be taken by Rob or an attended session (with card 0134 in the same pass), or carry not_for_the_loop: so the loop stops picking it up.
