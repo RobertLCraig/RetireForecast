@@ -2720,7 +2720,16 @@ final class ResultPresenter
         // costs do now (a letting expense, and they carry the repairs). Factual, not advice.
         if ($home !== null && $home->isLet) {
             $running = $home->runningCosts !== null && $home->runningCosts->isPositive() ? $home->runningCosts->format() : null;
-            if ($home->annualCouncilTax !== null) {
+            if ($housingAction?->rentCouncilTax !== null) {
+                // Card 0155: the bill entered for the rented home is the one charged.
+                $councilTax = "Third, council tax: once this home is let its bill is the tenant's, not yours. You pay council tax on "
+                    ."the home you rent instead, so the forecast charges the {$housingAction->rentCouncilTax->format()} a year you "
+                    .'entered for the home you rent, with the single-person discount and Council Tax Reduction where they apply.';
+                if ($home->annualCouncilTax === null && $running !== null) {
+                    $councilTax .= " This home's own bill is still inside its {$running} of running costs, where the forecast "
+                        .'cannot tell it apart from the upkeep, so it is charged too. Enter it in its own box on the home step to stop that.';
+                }
+            } elseif ($home->annualCouncilTax !== null) {
                 $councilTax = "Third, council tax: once this home is let its bill is the tenant's, not yours, but you still pay "
                     .'council tax on the home you live in now, and the forecast has no figure for that one, so it keeps '
                     ."charging the {$home->annualCouncilTax->format()} a year you entered for this home in its place.";

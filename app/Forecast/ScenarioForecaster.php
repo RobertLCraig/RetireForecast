@@ -61,7 +61,10 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-20 (inherited-draw-assessed-for-pension-credit): a draw from a pot inherited
+     * Bumped 2026-10-20 (let-and-rent-pays-the-rented-homes-council-tax): a household that lets its
+     * home and has entered a council tax bill for the home it rents is charged that bill, not the
+     * let home's. Only let plans with that box filled move. Board card 0155.
+     * Previous bump 2026-10-20 (inherited-draw-assessed-for-pension-credit): a draw from a pot inherited
      * under 75 is assessable income for Pension Credit although it is free of income tax, and a
      * year where every pound drawn is assessed now settles on the award it leaves rather than the
      * unreduced one. A survivor on Pension Credit drawing an inherited pot, or drawing a taxed pot
@@ -655,7 +658,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/inherited-draw-assessed-for-pension-credit';
+    public const ENGINE_VERSION = 'finance-engine/let-and-rent-pays-the-rented-homes-council-tax';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from
@@ -1035,7 +1038,8 @@ final class ScenarioForecaster
             // A glidepath alone still starts from our mix, so that mix stays disclosed (card 0062 #5).
             startingMixIsAssumed: AssumptionOverrides::startingMixIsAssumed($overrides),
             annualRent: $action?->annualRent,
-            rentCouncilTax: $action?->rentCouncilTax,
+            // A let home's household rents elsewhere and pays that home's bill too (board card 0155).
+            rentCouncilTax: ($home?->isLet ? $this->housingAction($scenario) : $action)?->rentCouncilTax,
             rentLocalHousingAllowanceWeekly: $action?->rentLhaWeekly,
             rentInflationReal: $action?->rentInflationReal ?? ($forcedSale ? $scenario->assumptionSet?->toDto()?->rentInflation : null),
             modelCareCost: (bool) ($scenario->effectiveBuilderState()['modelCareCost'] ?? false),

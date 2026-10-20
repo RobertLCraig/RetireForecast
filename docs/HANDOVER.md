@@ -189,8 +189,10 @@ Rob's call on card 0151:_
 - **A let home's running costs come off the rent, and they carry its repairs.** Card 0088.
   `PathProjector::runningCostsNominal()` is the one home of the figure the spend charges and
   `lettingCostsPerOwner` deducts, but only where `annualCouncilTax` is held apart.
-  `Property::repairsInRunningCosts()` zeroes the repairs rate where running costs exist. The let
-  home's council tax is still charged, as a stand-in for the rented home's bill (card 0155).
+  `Property::repairsInRunningCosts()` zeroes the repairs rate where running costs exist. A let plan
+  is charged the "Council tax on the rented home" bill where one is entered, else the let home's
+  stands in (card 0155, `ENGINE_VERSION` `finance-engine/let-and-rent-pays-the-rented-homes-council-tax`;
+  the **re-run is owed** only for let plans with that box filled).
   Reasons in DECISIONS 2026-10-04. `ENGINE_VERSION` is
   `finance-engine/let-home-running-costs-are-a-letting-expense`; the **re-run is owed** for let
   plans with running costs. Built in a worktree, so the note and the builder hint are **not seen in

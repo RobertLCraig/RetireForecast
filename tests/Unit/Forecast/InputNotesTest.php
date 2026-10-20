@@ -280,6 +280,39 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('repairs', $text, 'and so is the repairs rate they replace');
     }
 
+    public function test_the_let_and_rent_council_tax_note_names_the_rented_homes_bill(): void
+    {
+        // Board card 0155. A bill entered for the rented home is the one charged, so the note names
+        // it and where it came from, and stops calling the let home's bill a stand-in.
+        $state = fn (array $housing): array => [
+            'householdName' => 'Landlord', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Alex', 'dob' => '1958-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => ['currentValue' => '350000', 'ownership' => 'outright', 'isLet' => true, 'councilTax' => '2000'],
+            'housing' => $housing,
+        ];
+        $caveat = function (array $notes): string {
+            $kinds = array_column($notes, 'kind');
+
+            return $notes[array_search('letting_caveats', $kinds, true)]['text'];
+        };
+
+        $entered = $caveat($this->notes($state(['rentCouncilTax' => '1500'])));
+        $this->assertStringContainsString('£1,500.00', $entered, 'the note names the bill charged');
+        $this->assertStringContainsString('you entered for the home you rent', $entered, 'and where it came from');
+        $this->assertStringNotContainsString('£2,000.00', $entered, 'the let home\'s bill is not charged');
+
+        // Blank: the let home's bill still stands in, and the note says so.
+        $carried = $caveat($this->notes($state([])));
+        $this->assertStringContainsString('£2,000.00', $carried);
+        $this->assertStringContainsString('in its place', $carried);
+    }
+
     public function test_a_home_they_live_in_raises_no_letting_note(): void
     {
         // No noise: none of it applies to a household living in their own home.

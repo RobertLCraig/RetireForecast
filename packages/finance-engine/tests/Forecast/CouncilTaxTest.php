@@ -92,6 +92,7 @@ final class CouncilTaxTest extends TestCase
         int $upkeep = self::UPKEEP,
         int $secondDeathAge = 95,
         int $isaBalance = 0,
+        bool $isLet = false,
     ): Household {
         $persons = [];
         $pensions = [];
@@ -126,6 +127,7 @@ final class CouncilTaxTest extends TestCase
                 runningCosts: Money::fromPounds($upkeep),
                 annualCouncilTax: $councilTax === null ? null : Money::fromPounds($councilTax),
                 disabledBandReduction: $disabledBandReduction,
+                isLet: $isLet,
             ),
         );
     }
@@ -368,6 +370,30 @@ final class CouncilTaxTest extends TestCase
         // A bill entered for the rented home itself replaces the one carried from the home sold.
         [$renter, $settings] = $this->rentPlan($this->household([400, 400]), rentCouncilTaxPounds: 1_500);
         $this->assertSame(1_500_00, $this->forecastWith($renter, $settings)->years[0]->councilTax()->pence);
+    }
+
+    public function test_a_let_and_rent_plan_is_charged_council_tax_on_the_home_it_rents(): void
+    {
+        // Board card 0155. A household that lets its home and rents elsewhere pays the rented
+        // home's bill; the let home's is the tenant's. The rented home's bill is the same figure a
+        // sell-and-rent plan takes (card 0112), so it arrives on the settings the same way.
+        $letHome = $this->household([400, 400], disabledBandReduction: CouncilTaxBand::D, isLet: true);
+        $settings = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', rentCouncilTax: Money::fromPounds(1_500));
+
+        $result = $this->forecastWith($letHome, $settings);
+        foreach ($result->years as $year) {
+            $this->assertSame(1_500_00, $year->councilTax()->pence, "the rented home's bill is charged in {$year->calendarYear}, not the let home's");
+        }
+
+        // A home the household still lives in keeps its own bill, whatever the settings carry.
+        $lived = $this->household([400, 400], isLet: false);
+        $this->assertSame(self::BILL * 100, $this->forecastWith($lived, $settings)->years[0]->councilTax()->pence);
+
+        // Blank: the let home's bill stands in, as card 0112 carries the current bill to a rent plan.
+        $this->assertSame(
+            (int) round(self::BILL * 100 * 8 / 9),
+            $this->forecastWith($letHome, new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'))->years[0]->councilTax()->pence,
+        );
     }
 
     public function test_a_renters_council_tax_falls_the_same_way_an_owners_does(): void

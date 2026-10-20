@@ -2288,7 +2288,8 @@ final class PathProjector
      * An owner is charged the figure entered for the home (a bill still bundled inside
      * {@see Property::$runningCosts} is charged there, in full, and the result note says so). A
      * RENTER is charged too, because a tenant is the liable person (board card 0112): the rented
-     * home's bill on the settings, else, after a forced sale, the sold home's own. Nothing once the
+     * home's bill on the settings, else, after a forced sale, the sold home's own. A household that
+     * lets its home and rents elsewhere is charged that same rented-home bill (board card 0155). Nothing once the
      * home is sold and nobody rents. It rides CPI like every other spend line, but is NOT scaled
      * by the ownership share: council tax is charged to whoever lives in the dwelling, not to its
      * owners in proportion.
@@ -2306,9 +2307,12 @@ final class PathProjector
     private function councilTaxNominal(Household $household, ForecastSettings $settings, bool $renting, array $state, ?PensionCreditResult $award, int $occupants): int
     {
         $home = $household->primaryResidence;
+        // A let home's bill is the tenant's: a household that lets and rents elsewhere pays the
+        // rented home's, entered beside the rent (board card 0155). Blank, the let home's stands in.
+        $letting = $home !== null && $home->isLet && ! $state['homeSold'];
         [$bill, $band] = match (true) {
+            ($renting || $letting) && $settings->rentCouncilTax !== null => [$settings->rentCouncilTax, $settings->rentDisabledBandReduction],
             $home !== null && ! $state['homeSold'] => [$home->annualCouncilTax, $home->disabledBandReduction],
-            $renting && $settings->rentCouncilTax !== null => [$settings->rentCouncilTax, $settings->rentDisabledBandReduction],
             $renting => [$home?->annualCouncilTax, $home?->disabledBandReduction],
             default => [null, null],
         };
