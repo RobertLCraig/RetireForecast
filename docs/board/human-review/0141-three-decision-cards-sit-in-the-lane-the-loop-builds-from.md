@@ -81,3 +81,22 @@ Task 2 re-read of todo/ for '## Options' or '## What I need from you': four matc
 This card has now spent two unattended sessions finding nothing to do. Rob or the reviewer should close it as overtaken (discard, or done with this note). That call is not mine to make unattended.
 
 **2026-10-20** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-20 manager (m20261020011028-45a7)
+
+**outcome: rob**
+
+The three cards were answered and moved to `done/`, so this card has no work left, and only Rob can close it as overtaken (discard it, or move it to `done/` with the builder's note).
+
+**what the session said**
+
+Both builder takes were right. I checked the board. `0002`, `0003` and `0084` are all in `docs/board/done/`. Each one has an answer, and that answer was acted on.
+
+So the problem this card describes is already gone. Criterion #1 asks to move the three cards to `human-review/`. Doing that would undo answers that are already in place. Criterion #2 is a rule about moving cards between lanes. The scheduler does those moves, so there is nothing for the builder to build. Neither box is ticked, and no review finding disproves anything. If I reopen the card, a third session will find the same nothing.
+
+Task 2 is done. The other four decision-style cards in `todo/` (`0004`, `0015`, `0099`, `0173`) are already kept away from the loop by settings at the top of each card. Nobody has to choose anything here. What is left is to close the card, and only a person can do that.
+
+WHY: The three cards were answered and moved to `done/`, so this card has no work left, and only Rob can close it as overtaken (discard it, or move it to `done/` with the builder's note).
+
+OUTCOME: rob
+
