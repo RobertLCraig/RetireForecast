@@ -87,3 +87,10 @@ What I found by reading only (nothing was changed outside this worktree):
 - The other in-progress cards: only 0152 (this card) is in in-progress/ now, so the task 'check the other four' has nothing left to check in this repository.
 
 Suggest: move this card to the ProgressBoard board, or let Rob tick criterion 3 by hand given 5414f0cc. That is his call, not this session's.
+
+**2026-10-20** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second take, same answer as the 2026-10-20 entry above. Nothing in this repository changed since then: 0083 is still in ai-review/ (Rob's hand move, 5414f0cc), and 0152 is the only card in in-progress/. All three criteria are about the scheduler in C:\Dev\ProgressBoard (lane-move logic in Builder.php, the session prompt in Prompt.php / work-card.ps1). An unattended card session must stay in its worktree, so it cannot build or check them. This card should not go to the loop again. It needs one of these, which is Rob's call: move it to the ProgressBoard board, or mark it not_for_the_loop: here.
