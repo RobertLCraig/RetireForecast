@@ -3,6 +3,25 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-20: on Guarantee Credit, a year that loses the whole award draws on through the basic-rate band
+
+**Context:** card 0143. The Pension Credit claw-back is capped at the year's award. Once the capital
+was spent, fill-the-bands drew only each year's shortfall out of the pension and lost the whole award
+in every remaining year. The card offered two shapes: concentrate the remaining draws, or draw the
+capital and the pension together.
+
+**Decision:** concentrate. In a year whose taxable draw already takes the whole award, the order
+draws on to the top of the basic-rate band and banks what the shortfall did not need as cash, in the
+pot holder's name. The years after live off that cash and keep the award, less the tariff income
+the cash earns. A year whose draw leaves some award standing still draws the shortfall alone,
+because there every pound drawn early costs the same credit as it would later. The ceiling is the
+basic-rate band, the same one the order fills for a household not on the credit, so the extra draw
+is never taxed above 20%. A tax-free inherited pot is not drawn by the top-up: the means test does
+not see it, so drawing it early saves nothing. On the card's household this keeps £227,604 of credit
+against £213,940 for the pension-aware order (it was £201,131), with less unmet spend.
+
+**Status:** active
+
 ## 2026-10-15: Pension Credit takes the tax on earnings alone as the earnings' share
 
 **Context:** card 0120. Pension Credit assesses earnings net of income tax, NI and half of any

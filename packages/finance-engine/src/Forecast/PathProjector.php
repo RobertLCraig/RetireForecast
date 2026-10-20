@@ -1601,6 +1601,12 @@ final class PathProjector
         // that would have kept the award untouched. Pinned by
         // PathProjectorTest::test_fill_bands_is_pension_credit_aware_and_leaves_the_pension_intact.
         $onGuaranteeCredit = $household->pensionCreditClaimed && ($pensionCreditAward?->guaranteeCreditWeekly->pence ?? 0) > 0;
+        // The whole award before any draw: the most a draw this year can claw back (board card
+        // 0143). Fixed for every pass, like the order, so the draw it shapes cannot flip between
+        // passes on the award a pass happens to be using.
+        $creditAtRisk = $onGuaranteeCredit
+            ? (int) round($pensionCreditAward->guaranteeCreditWeekly->pence * $this->config->statePension->weeksPerYear * $awardPeriod)
+            : 0;
         $passState = $state;
         $passSpendNominal = $spendNominal;
         $passEssentialNominal = $essentialNominal;
@@ -1810,7 +1816,7 @@ final class PathProjector
             $gainsThisYear = $seedGains;
             $taxablePensionDrawn = 0;
             if ($shortfall > 0) {
-                $funded = $this->fundShortfall($household, $settings, $state, $alive, $ages, $taxablePerPerson, $savingsPerPerson, $dividendsPerPerson, $shortfall, $thresholdFactor, $onGuaranteeCredit, $seedGains);
+                $funded = $this->fundShortfall($household, $settings, $state, $alive, $ages, $taxablePerPerson, $savingsPerPerson, $dividendsPerPerson, $shortfall, $thresholdFactor, $creditAtRisk, $seedGains);
                 $fundedNominal = $funded['funded'];
                 $totalTaxNominal += $funded['extraTax'];
                 // The tax-free quarter of a UFPLS-style ad-hoc draw goes on the tax-free cash line and
@@ -3769,8 +3775,11 @@ final class PathProjector
      * @param  array<string, int>  $dividendsPerPerson  nominal dividend income per person
      * @return array{funded: int, extraTax: int, fromPension: int, fromPensionTaxFree: int, fromInheritedTaxFree: int, fromAssets: int}
      */
-    private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $ages, array $taxablePerPerson, array $savingsPerPerson, array $dividendsPerPerson, int $shortfall, float $thresholdFactor = 1.0, bool $onGuaranteeCredit = false, array $seedGains = []): array
+    private function fundShortfall(Household $household, ForecastSettings $settings, array &$state, array $alive, array $ages, array $taxablePerPerson, array $savingsPerPerson, array $dividendsPerPerson, int $shortfall, float $thresholdFactor = 1.0, int $creditAtRisk = 0, array $seedGains = []): array
     {
+        // $creditAtRisk is the year's whole Guarantee Credit award before any draw (nominal
+        // pence), and zero for a household not on it.
+        $onGuaranteeCredit = $creditAtRisk > 0;
         $remaining = $shortfall;
         $funded = 0;
         $extraTax = 0;
@@ -3991,7 +4000,10 @@ final class PathProjector
         // part consumes, so the draw is ~a third larger for the same taxable income) and the
         // person's remaining Lump Sum Allowance. {@see maxUfplsGross} solves both. With no
         // allowance left the split is all-taxable, so this degrades exactly to $drawPension.
-        $drawPensionUfpls = function (?int $taxableLimit) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, &$fromPensionTaxFree, &$drawnTaxable, $alive, $ages, $household, $incomeOf, $thresholdFactor, $takeTaxFreeInherited): void {
+        // $netDrawnBy holds the cash each person's draws raised, so a draw taken beyond the
+        // shortfall can be banked in the name of whoever's pot it came out of (board card 0143).
+        $netDrawnBy = array_fill_keys(array_map(fn ($p): string => $p->id, $household->persons), 0);
+        $drawPensionUfpls = function (?int $taxableLimit, bool $taxableOnly = false) use (&$state, &$remaining, &$funded, &$extraTax, &$fromPension, &$fromPensionTaxFree, &$drawnTaxable, &$netDrawnBy, $alive, $ages, $household, $incomeOf, $thresholdFactor, $takeTaxFreeInherited): void {
             $pclsRate = $this->config->pension->pclsRate->asFraction();
             $lsa = $this->config->pension->lumpSumAllowance->pence;
 
@@ -4002,6 +4014,7 @@ final class PathProjector
                 if (! $alive[$person->id]) {
                     continue;
                 }
+                $fundedBefore = $funded;
                 $alreadyTaxable = $drawnTaxable[$person->id];
                 foreach ($state['pots'][$person->id] as &$pot) {
                     if ($remaining <= 0 || $pot['value'] <= 0) {
@@ -4016,7 +4029,9 @@ final class PathProjector
                     // The same tax-free-inheritance gate $drawPension applies, through the same
                     // one home: whether a draw is taxed at all cannot turn on the draw ORDER.
                     if (self::drawIsTaxFree($pot)) {
-                        $takeTaxFreeInherited($pot);
+                        if (! $taxableOnly) {
+                            $takeTaxFreeInherited($pot);
+                        }
 
                         continue;
                     }
@@ -4071,6 +4086,7 @@ final class PathProjector
                 }
                 unset($pot);
                 $drawnTaxable[$person->id] = $alreadyTaxable;
+                $netDrawnBy[$person->id] += $funded - $fundedBefore;
             }
         };
 
@@ -4100,6 +4116,27 @@ final class PathProjector
             // the pass being run: once the claw-back has taken the whole award, the order stops
             // avoiding the pension, because there is no longer a credit to protect.
             $drawPensionUfpls(null);
+
+            // Board card 0143. The claw-back is capped at the year's award, so once this year's
+            // taxable draw has taken all of it, a further pound drawn this year costs no credit,
+            // where the same pound drawn next year would take a pound of next year's award. So in
+            // that year draw on through the basic-rate band and bank what the shortfall did not
+            // need as cash, which funds the years after with the award intact. Drawing only each
+            // year's shortfall instead lost the whole award in every year once the capital was
+            // spent. A year whose draw leaves some award standing is drawn to the shortfall
+            // alone: there, every pound drawn early costs the same credit it would cost later.
+            if ($onGuaranteeCredit && $fromPension - $fromPensionTaxFree - $fromInheritedTaxFree >= $creditAtRisk) {
+                $stillNeeded = $remaining;
+                $fundedBeforeTopUp = $funded;
+                $netBeforeTopUp = $netDrawnBy;
+                $remaining = $this->totalPots($state);
+                $drawPensionUfpls($basicLimit, taxableOnly: true);
+                $remaining = $stillNeeded;
+                $funded = $fundedBeforeTopUp;
+                foreach ($netDrawnBy as $pid => $net) {
+                    $state['cash'][$pid] += $net - $netBeforeTopUp[$pid];
+                }
+            }
         } elseif ($strategy === DrawdownStrategy::PensionAware) {
             $drawPension($basicLimit);   // pension up to the basic-rate band first
             $drawNonPension();

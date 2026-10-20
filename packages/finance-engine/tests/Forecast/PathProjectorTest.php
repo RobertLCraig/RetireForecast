@@ -745,8 +745,51 @@ final class PathProjectorTest extends TestCase
         // Once a draw actually reduces the award, the claw-back is capped at the year the draw
         // is made in, so a few large draws cost less credit in total than the same money taken
         // in small amounts over many years, and deferring the pension until the cash is gone is
-        // what spreads it. Whether the order should answer that is board card 0143; this test
-        // guards the rule the order states, not a total that now turns on the shape of the draw.
+        // what spreads it. Board card 0143 answers that, and the test below guards the total;
+        // this one guards the rule the order states while the capital lasts.
+    }
+
+    /**
+     * Board card 0143. The claw-back is capped at the year's award, so once a year's pension draw
+     * has taken the whole award, every further pound drawn that year costs no credit at all. The
+     * household above, once its cash is spent, used to draw only each year's shortfall, which
+     * lost the whole award in every remaining year: £201,131 of credit across the plan against
+     * £213,940 for the order that draws the pension early. Drawing more in the years the award is
+     * lost anyway, and living off it after, keeps the award in the years between.
+     */
+    public function test_the_pension_credit_aware_order_does_not_spread_the_claw_back(): void
+    {
+        $build = fn () => $this->couple(
+            new ExpenseProfile(Money::fromPounds(30_000), Money::zero(), Percent::fromPercent(70)),
+            pensions: [
+                new StatePensionEntitlement('p1', weeklyForecast: Money::of(120, 0)),
+                new StatePensionEntitlement('p2', weeklyForecast: Money::of(120, 0)),
+                new DcPension('p1', Money::fromPounds(100_000), Money::zero(), Money::zero(), 55),
+            ],
+            accounts: [new Account('p1', AccountType::Cash, Money::fromPounds(60_000))],
+        );
+        $total = function (DrawdownStrategy $strategy) use ($build): array {
+            $credit = 0;
+            $unmet = 0;
+            $yearsLost = 0;
+            foreach ($this->forecaster()->forecast($build(), $this->flatAssumptions(), $this->settings($strategy))->years as $year) {
+                $credit += $year->incomeBySource['means_tested_benefit']->pence;
+                $unmet += $year->unmetSpend->pence;
+                $yearsLost += $year->incomeBySource['means_tested_benefit']->pence === 0 ? 1 : 0;
+            }
+
+            return [$credit, $unmet, $yearsLost];
+        };
+
+        [$fillCredit, $fillUnmet, $fillLost] = $total(DrawdownStrategy::FillBands);
+        [$awareCredit, $awareUnmet] = $total(DrawdownStrategy::PensionAware);
+
+        // The Pension-Credit-aware order keeps at least the credit the order that draws the
+        // pension first keeps, and does not leave more of the spending unmet to do it.
+        $this->assertGreaterThanOrEqual($awareCredit, $fillCredit, "credit: fill-bands {$fillCredit}p, pension-aware {$awareCredit}p");
+        $this->assertLessThanOrEqual($awareUnmet, $fillUnmet, "unmet: fill-bands {$fillUnmet}p, pension-aware {$awareUnmet}p");
+        // ...and it does it by losing the award in fewer years, not the same six.
+        $this->assertLessThan(6, $fillLost);
     }
 
     /**
