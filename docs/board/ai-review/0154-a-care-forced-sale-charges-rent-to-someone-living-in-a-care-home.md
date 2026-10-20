@@ -29,7 +29,7 @@ home: that sale does not fire, because it needs the LAST borrower in care.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] WHEN a home is sold because its last surviving borrower went into permanent care, THE APP SHALL charge no rent for any year that person is in care. proves: `test_a_care_forced_sale_charges_no_rent_while_the_resident_is_in_care`
+- [x] WHEN a home is sold because its last surviving borrower went into permanent care, THE APP SHALL charge no rent for any year that person is in care. proves: `test_a_care_forced_sale_charges_no_rent_while_the_resident_is_in_care`
 <!-- AC:END -->
 
 ## Tasks
@@ -45,3 +45,17 @@ the fixture to extend (search the engine tests for `equityReleaseRedeemedByCare`
 `php artisan test --testsuite=Engine` from PowerShell, then `php artisan test`.
 
 ## Comments
+
+**2026-10-20** RESULT: done
+TESTS: +1 new, all green
+TOUCHED: packages/finance-engine/tests/Forecast/LifetimeMortgageCareRedemptionTest.php
+docs/HANDOVER.md (the 0090 bullet no longer calls this fault open)
+OUT-OF-SCOPE: none
+
+The fault was already fixed before this card was picked up. Card 0056 #4 (commit 339c502c, 2026-10-08) added the `! $soldForCare` gate on the rent in `PathProjector::projectYear`, ten days after card 0090 raised this card. So no engine code changed here, and there is no `ENGINE_VERSION` bump: the bump that owns this behaviour is 0056's `finance-engine/no-rent-while-everyone-is-in-care`, and the HANDOVER already says its re-run is owed.
+
+What I built: `test_a_care_forced_sale_charges_no_rent_while_the_resident_is_in_care`, on the couple fixture with a rolled-up lifetime mortgage (the 0056 test used a lone person). The last borrower goes into care, the home is sold, and a 12,000 pound rent figure must move nothing in any care year: essential spend, total wealth and the depletion year all equal the no-rent run.
+
+Watched it fail: with the `! $soldForCare` gate removed, it fails in 2042 (the first care year) with the spend exactly 12,000 pounds too high (15309274 vs 14109274 pence). Gate restored, the whole suite is green and pint passes.
+
+The existing gate counts living members not in care each year, so rent comes back if a care spell ends while the person still lives. That matches the criterion's 'any year that person is in care'. No browser check is needed: nothing on screen changed.
