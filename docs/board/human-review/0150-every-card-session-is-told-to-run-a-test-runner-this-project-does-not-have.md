@@ -88,3 +88,29 @@ OUT-OF-SCOPE: none
 Still a decision for Rob, with no answer on the card yet. Re-checked today: C:\Dev\ProgressBoard\bin\prompts\build.md line 51 still hard-codes .\vendor\bin\pest.bat, and this tree's vendor\bin still has phpunit.bat and pint.bat and no pest.bat. The fix lives in ProgressBoard, which an unattended RetireForecast session must not edit. The options and the recommendation (make the prompt name Suite::command(), which the gate already runs) are in the previous comment and are unchanged. Once Rob picks, the work goes on a ProgressBoard card.
 
 **2026-10-20** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-20 manager (m20261020083818-0c39)
+
+**outcome: rob**
+
+The decision is settled, but the work is in ProgressBoard, and this loop is not allowed to edit it.
+
+**what the session said**
+
+I checked the facts. The comments on the card are correct.
+
+- `C:\Dev\ProgressBoard\bin\prompts\build.md` (step 3) still tells a session to run `.\vendor\bin\pest.bat`.
+- `BuildPrompt::raise()` in `app\Support\Loop\BuildPrompt.php` has the same fixed text.
+- `Suite::command()` in `app\Support\Loop\Suite.php` already picks the correct runner. It tries `pest.bat` first, then `phpunit.bat`.
+- RetireForecast has `vendor\bin\phpunit.bat` and `pint.bat`. It has no `pest.bat`.
+
+You do not need to choose. The card itself says "adopting Pest" is out of scope. Normal practice also gives one answer: make the prompt use the result of `Suite::command()`. Then the runner is set in one place only.
+
+But all of the fix is in ProgressBoard. A RetireForecast session must not edit that repo. If I send the card back to `todo/`, it will only stop again.
+
+**What you do:** open a ProgressBoard card. It must make `build.md` and `BuildPrompt::raise()` use `Suite::command()`. Then close 0150 here.
+
+WHY: The decision is settled, but the work is in ProgressBoard, and this loop is not allowed to edit it.
+
+OUTCOME: rob
+
