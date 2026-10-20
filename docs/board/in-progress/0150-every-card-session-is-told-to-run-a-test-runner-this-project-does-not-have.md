@@ -57,3 +57,21 @@ repository saying the same thing.
 - [ ] Apply whichever answer, and check it against `CLAUDE.md`'s test commands.
 
 ## Comments
+
+**2026-10-20** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+This card is a decision, not a build. Its own Tasks say to put the question to Rob, criterion 2 says the answer is a call for Rob, and the only fix lives in C:\Dev\ProgressBoard, which an unattended RetireForecast card session must not edit. So no criterion is met and nothing was committed.
+
+Task 1 is done (read-only), so Rob has the facts:
+- The instruction comes from C:\Dev\ProgressBoard\bin\prompts\build.md line 51, a hard-coded `.\vendor\bin\pest.bat`. The raise prompt has the same hard-code at app\Support\Loop\BuildPrompt.php line 120.
+- ProgressBoard already derives the right runner per project: app\Support\Loop\Suite.php `Suite::command()` tries pest.bat, then phpunit.bat. For RetireForecast it returns `vendor\bin\phpunit.bat`, because this tree's vendor\bin holds phpunit.bat and pint.bat and no pest.bat (checked).
+- So the scheduler's own suite gate and the prompt it gives a session already disagree.
+
+The two options for Rob:
+1. Fix the prompt (recommended): make build.md and BuildPrompt::raise() name the project's `Suite::command()` result instead of a literal pest.bat. That is one place, inside ProgressBoard, and it is what the gate already runs, so the prompt cannot drift from what is checked. CLAUDE.md here can keep `php artisan test`. Card 0147 still applies: the PHPUnit run may need `php -d memory_limit=1G` until it lands.
+2. Adopt Pest in RetireForecast: makes the literal true here, but it is a migration this card rules out, and every other non-Pest project would still be told the wrong command.
+
+Once Rob picks, the work belongs on a ProgressBoard card, not this board.
