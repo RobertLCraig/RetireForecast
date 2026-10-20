@@ -2486,8 +2486,11 @@ final class ResultPresenter
         // (c) The current home's mortgage is due for redemption within the plan — a forced
         // decision the "stay put" projection rests on. State the assumption + its consequence so
         // an impossible "keep paying forever" path is never left implied (factual, not advice).
+        //
+        // (c) to (c3) describe the loan on the home as entered. A sell plan sells that home in year
+        // 0 and clears the loan from the proceeds (card 0153), so none of them is raised there.
         $home = $household->primaryResidence;
-        $mortgage = $home?->outstandingMortgage;
+        $mortgage = self::keepsCurrentHome($variant) ? $home?->outstandingMortgage : null;
         if ($home !== null && $home->mortgageRedemptionYear !== null && $mortgage !== null && $mortgage->isPositive()) {
             $year = $home->mortgageRedemptionYear;
             $amount = $mortgage->format();
@@ -2757,20 +2760,31 @@ final class ResultPresenter
         // council tax for the rest of their life (board card 0047). Both branches below are the
         // no-invisible-figures rule: a bill that is being reduced has to say by how much, and a
         // bill still hidden inside the running costs has to say that it is being charged in full.
-        if ($home !== null && $home->annualCouncilTax !== null) {
-            $first = $entered->years[0];
+        //
+        // Card 0153: on a sell plan the entered home is sold. A rent plan has its own note (c4c2);
+        // a buy plan carries the bill across to the bought home, so the note says that and reads
+        // the buy plan's own years. The bundled form names the sold home's running costs, so it is
+        // raised only where that home is kept.
+        $keeps = self::keepsCurrentHome($variant);
+        if ($home !== null && $home->annualCouncilTax !== null && $variant !== ScenarioVariant::Rent->value) {
+            $charged = $keeps ? $entered : $forecast;
+            $first = $charged->years[0];
             $survivor = null;
-            foreach ($entered->years as $year) {
+            foreach ($charged->years as $year) {
                 if ($year->aliveCount === 1 && $first->aliveCount > 1) {
                     $survivor = $year;
                     break;
                 }
             }
 
-            $text = "Council tax is charged as its own cost, starting from the {$home->annualCouncilTax->format()} a year you entered. "
+            $text = ($keeps
+                ? "Council tax is charged as its own cost, starting from the {$home->annualCouncilTax->format()} a year you entered. "
+                : "Council tax on the home you buy is charged as its own cost, starting from the {$home->annualCouncilTax->format()} "
+                    .'a year you entered for your home now: we do not know the new home\'s band, and a cheaper home is often in a '
+                    .'lower one, so this may be more than you would pay. ')
                 ."In {$first->calendarYear} the forecast charges {$first->councilTax()->format()}.";
             if ($home->disabledBandReduction !== null) {
-                $text .= ' Your home is band '.$home->disabledBandReduction->label().' and you have said the disabled band '
+                $text .= ' Your home'.($keeps ? '' : ' now').' is band '.$home->disabledBandReduction->label().' and you have said the disabled band '
                     .'reduction applies, so it is charged at the band below. That reduction is not means-tested and does not '
                     .'depend on anything else in this plan, so claim it now if you have not.';
             }
@@ -2784,7 +2798,7 @@ final class ResultPresenter
                 .'adult living with you, and whether you actually claim. Nothing is paid automatically except the single-person '
                 .'discount, so a reduction shown here is one you still have to apply to your council for.';
             $notes[] = ['kind' => 'council_tax', 'text' => $text];
-        } elseif ($home !== null && $home->runningCosts !== null && $home->runningCosts->isPositive()) {
+        } elseif ($keeps && $home !== null && $home->runningCosts !== null && $home->runningCosts->isPositive()) {
             $notes[] = ['kind' => 'council_tax_bundled', 'text' => 'Your council tax is inside the '
                 .$home->runningCosts->format().' of home running costs, where the forecast cannot tell it apart from '
                 .'maintenance and insurance. So it is charged in full for the whole plan, and three reductions that would be '

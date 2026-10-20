@@ -27,6 +27,7 @@ use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
+use RetireForecast\FinanceEngine\Housing\HousingComparison;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
@@ -1031,6 +1032,90 @@ final class InputNotesTest extends TestCase
         // Nothing to carry: the current bill is still inside the running costs, so none is charged.
         $none = $note(['runningCosts' => '3000']);
         $this->assertStringContainsString('charges no council tax', $none);
+    }
+
+    /**
+     * Card 0153. A sell plan sells the home in year 0 and clears its loan from the proceeds, so the
+     * notes describing that loan and that home's council tax describe costs the plan on display
+     * never carries. Each fixture raises every one of those notes on stay put (the control), so
+     * their absence on a sell plan is the gate and not the fixture.
+     */
+    public function test_a_sell_plan_is_not_told_about_the_loan_it_repaid(): void
+    {
+        $base = [
+            'householdName' => 'Seller', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Pat', 'dob' => '1953-01-01', 'sex' => 'female', 'employmentStatus' => 'retired'],
+                ['id' => 'p2', 'name' => 'Lee', 'dob' => '1953-01-01', 'sex' => 'male', 'employmentStatus' => 'retired'],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '300'],
+                ['id' => 'sp2', 'ownerId' => 'p2', 'subtype' => 'state', 'weeklyForecast' => '300'],
+            ],
+            'expenseLines' => [['id' => 'e1', 'amount' => '20000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'housing' => ['salePrice' => '400000', 'buyPrice' => '200000', 'annualRent' => '12000'],
+        ];
+        $homes = [
+            'roll-up' => [
+                'kinds' => ['mortgage_redemption', 'lifetime_mortgage_rollup', 'council_tax'],
+                'property' => [
+                    'currentValue' => '400000', 'ownership' => 'mortgaged', 'outstandingMortgage' => '100000',
+                    'mortgageRollUpRate' => '6', 'mortgageRedemptionYear' => '2040', 'mortgageMaturityAction' => 'refinance',
+                    'councilTax' => '2000',
+                ],
+            ],
+            'repayment' => [
+                'kinds' => ['repayment_mortgage', 'council_tax_bundled'],
+                'property' => [
+                    'currentValue' => '400000', 'ownership' => 'mortgaged', 'outstandingMortgage' => '100000',
+                    'mortgageRepaymentTermMonths' => '120', 'mortgageRepaymentStartYear' => '2026',
+                    'mortgageRepaymentStartMonth' => '1', 'mortgageRepaymentRate' => '5',
+                    'runningCosts' => '3000',
+                ],
+            ],
+        ];
+
+        $assembler = new HouseholdAssembler;
+        $forecaster = new DeterministicForecaster(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable);
+        $set = AssumptionSetLibrary::default();
+        $settings = new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27');
+
+        foreach ($homes as $name => $home) {
+            $household = $assembler->household([...$base, 'property' => $home['property']]);
+            $action = $assembler->housingAction($base['housing']);
+            $variants = (new HousingComparison(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi), new CohortLifeTable))
+                ->variantInputs($household, $settings, $set, $action);
+            $entered = $forecaster->forecast($household, $set, $settings);
+
+            $stayPut = array_column(ResultPresenter::inputNotes($household, $entered, null, ScenarioVariant::StayPut->value, $set, $settings), 'kind');
+            foreach ($home['kinds'] as $kind) {
+                $this->assertContains($kind, $stayPut, "{$name}: the control raises {$kind} on stay put");
+            }
+
+            foreach ([ScenarioVariant::BuyOutright->value, ScenarioVariant::Rent->value] as $variant) {
+                $shown = $forecaster->forecast($variants[$variant]['household'], $set, $variants[$variant]['settings']);
+                $notes = ResultPresenter::inputNotes($household, $entered, ResultPresenter::housingActionFor($action, $variant), $variant, $set, $settings, $shown);
+                $kinds = array_column($notes, 'kind');
+
+                foreach (['mortgage_redemption', 'lifetime_mortgage_rollup', 'repayment_mortgage', 'council_tax_bundled'] as $kind) {
+                    $this->assertNotContains($kind, $kinds, "{$name} on {$variant}: the sold home's {$kind} note");
+                }
+
+                // The bill follows the household to a bought home, so a buy plan still states it, as
+                // the bought home's and in the figures the buy plan charges. A rent plan has its own.
+                if ($variant === ScenarioVariant::Rent->value || ! in_array('council_tax', $home['kinds'], true)) {
+                    $this->assertNotContains('council_tax', $kinds, "{$name} on {$variant}: the sold home's council tax");
+
+                    continue;
+                }
+                $this->assertContains('council_tax', $kinds);
+                $text = $notes[array_search('council_tax', $kinds, true)]['text'];
+                $this->assertStringContainsString('home you buy', $text);
+                $this->assertStringContainsString("the forecast charges {$shown->years[0]->councilTax()->format()}", $text);
+            }
+        }
     }
 
     public function test_a_rent_plan_with_a_member_under_state_pension_age_says_it_is_understated(): void
