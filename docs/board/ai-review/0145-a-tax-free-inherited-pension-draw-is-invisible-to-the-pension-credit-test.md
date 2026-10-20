@@ -31,8 +31,8 @@ have to part company, part them at the means test and not on the screen.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 THE APP SHALL assess a draw from a tax-free inherited pension as income for Pension Credit. proves: `test_a_tax_free_inherited_pension_draw_is_assessed_for_pension_credit`
-- [ ] #2 THE APP SHALL keep the tax-free QUARTER of an ordinary draw out of that assessment, as now. proves: `test_the_tax_free_quarter_of_an_ordinary_draw_is_still_not_assessed`
+- [x] #1 THE APP SHALL assess a draw from a tax-free inherited pension as income for Pension Credit. proves: `test_a_tax_free_inherited_pension_draw_is_assessed_for_pension_credit`
+- [x] #2 THE APP SHALL keep the tax-free QUARTER of an ordinary draw out of that assessment, as now. proves: `test_the_tax_free_quarter_of_an_ordinary_draw_is_still_not_assessed`
 <!-- AC:END -->
 
 ## Tasks
@@ -52,3 +52,25 @@ point around it is card 0077's work, so read that loop before changing what feed
 Run `php artisan test` and `php artisan scenarios:audit` after.
 
 ## Comments
+
+**2026-10-20** RESULT: done
+TESTS: +3 new (1 test x 2 draw orders, 1 test), all green
+TOUCHED:
+packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Forecast/InheritedPensionDrawPensionCreditTest.php
+packages/finance-engine/tests/MonteCarlo/GoldenMasterTest.php
+app/Forecast/ScenarioForecaster.php
+docs/DECISIONS.md
+docs/HANDOVER.md
+docs/board/todo/0208-a-taxed-draw-with-no-tax-free-quarter-has-no-pension-credit-settling-test.md
+OUT-OF-SCOPE: 0208
+
+No third channel was needed: fundShortfall already returned fromInheritedTaxFree apart from fromPensionTaxFree. projectYear now assesses the draw less the tax-free quarter only ($taxablePensionDrawn renamed $assessablePensionDrawn). The ladder line is unchanged. The card 0143 top-up condition now counts the inherited draw towards taking the whole award; the top-up itself still draws taxable pots only.
+
+Watched failing: #1 failed for the card's reason (the survivor kept 753,948p of credit while drawing the inherited pot, under both TaxEfficient and FillBands). With only the assessment change, #1 STILL failed: when every pound drawn is assessed, the award loop's secant flew off on near-parallel gaps and the 8 passes ran out on the unreduced award. So the step now goes to a nil award when the gap's slope is not negative. Checked: with the old step back, #1 goes red again. #2 was green before the change (it guards behaviour that must not move); it was watched failing by temporarily assessing the quarter too.
+
+The loop fix also changes an ordinary taxed draw under TaxEfficient, which had the same non-settling fault. That case has no test of its own: card 0208.
+
+ENGINE_VERSION is finance-engine/inherited-draw-assessed-for-pension-credit; re-run owed for Pension Credit plans drawing an inherited or taxed pot. GoldenMaster re-pinned (only terminalWealth.p90 moved, by 138.66 pounds) with its DECISIONS entry.
+
+NOT DONE: task 1 (cite the Pension Credit income rule with source + verified-on). WebFetch was refused in this unattended session, so the rule is not cited; DECISIONS says so. scenarios:audit exits non-zero on old database state only (runs with no integrity stamp, assumption sets not re-seeded, as in the handover), nothing from this change. No UI changed, so no browser check is owed.
