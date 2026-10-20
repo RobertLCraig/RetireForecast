@@ -94,3 +94,14 @@ This take found #1 and #2 already built and merged (commit 62dde558). HandoverHy
 #3 is still blocked on Rob. The card says the bounding rule (a bullet cap, an age cut-off, or archive when the card reaches done/) is his call, so no session can meet it unattended. Recommendation: archive a bullet when its card reaches done/. The card keeps the detail, and done/ is a fact a session can check.
 
 Note: headroom is only about 2.7 KB. The next few cards that add a bullet will make HandoverHygieneTest fail until the rule exists and a fold is done.
+
+**2026-10-20** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Third take. #1 and #2 are still built and merged (commit 62dde558). HandoverHygieneTest passes: docs/HANDOVER.md is 38,260 bytes against the 40,960-byte budget. Nothing new to build.
+
+#3 is still blocked on Rob. No answer to the folding rule is on the card, in DECISIONS.md, or in git log. The card says the rule (a bullet cap, an age cut-off, or archive when the card reaches done/) is his call, so an unattended take cannot meet it. Recommendation: archive a bullet when its card reaches done/. The card keeps the detail, and done/ is a fact a session can check.
+
+This card should go to a person, not back to the loop: re-running it unattended gives the same result.
