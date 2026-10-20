@@ -37,7 +37,7 @@ wherever the interpretation layer decides such things.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a household on Guarantee Credit has to draw a pension across several years, THE APP
+- [x] #1 WHEN a household on Guarantee Credit has to draw a pension across several years, THE APP
       SHALL not lose more of the award than a draw of the same total money would. proves: `test_the_pension_credit_aware_order_does_not_spread_the_claw_back`
 <!-- AC:END -->
 
@@ -48,3 +48,14 @@ wherever the interpretation layer decides such things.
       is drawn and when, not how it is assessed
 
 ## Comments
+
+**2026-10-20** RESULT: done
+TESTS: +1 new, all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php, packages/finance-engine/tests/Forecast/PathProjectorTest.php, docs/DECISIONS.md
+OUT-OF-SCOPE: none
+
+Built the 'concentrate' option from the card's first task. In a year where a household on Guarantee Credit has a taxable pension draw that already takes the whole award, fill-the-bands now draws on to the top of the basic-rate band. What the shortfall did not need is banked as cash in the pot holder's name, so the next years live off it and keep the award. A year whose draw leaves some award standing still draws only the shortfall, so PensionCreditDrawAssessedTest keeps its exact figures. 'The whole award' is the award before any draw. It is fixed for every pass, like the order is, so the card 0077 fixed point is unchanged: the iteration still decides how the draw is assessed. A tax-free inherited pot is not drawn by the top-up. The decision is in DECISIONS.md 2026-10-20.
+
+Watched it fail first, for the card's reason: fill-bands 20113132p of credit against pension-aware 21394048p. After the change, on the card's household: £227,604 of credit (pension-aware £213,940), unmet spend £8,453 (pension-aware £22,796), and the award is lost in 1 year instead of 6.
+
+Assumed: the basic-rate band is the right ceiling for the extra draw. It is the same band the order fills for a household not on the credit, so the extra draw is never taxed above 20%. A renter's Housing Benefit also tapers on the extra draw in that one year. That loss is capped per year too, but no test proves the trade is always a win for a renter on Guarantee Credit plus Housing Benefit. The year's pension draw line now shows more than that year's spending needed, and the extra appears as cash in liquid wealth. No new result note explains it. Not browser-checked: Herd serves C:\Dev\RetireForecast, not this worktree.
