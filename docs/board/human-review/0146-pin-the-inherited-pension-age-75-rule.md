@@ -78,3 +78,26 @@ Criterion 1 cannot be met honestly: no search ran, so recording 'the search foun
 This card cannot advance in the loop. It needs Rob or an attended session with web access (do card 0134 in the same pass), or a not_for_the_loop: line in its frontmatter so the loop stops picking it up. I did not add that line because I may not edit the card.
 
 **2026-10-20** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-20 manager (m20261020073744-480c)
+
+**outcome: rob**
+
+The card needs a live read of an HMRC page, and only an attended session with web access can do that.
+
+**what the session said**
+
+I checked the card against the code. The work is still not done.
+
+`docs/spec/ASSUMPTIONS.md` has no PTM073010 source yet. Both criteria are still open. No review finding disproves anything. The work never started.
+
+The only task is to read one HMRC web page. That page is PTM073010. The loop has no web access. So `reopen` would fail the same way a third time.
+
+What a person must do:
+- Start an attended Claude session with web access in `C:\Dev\RetireForecast`. Tell it to do cards 0146 and 0134 together, because both use the same page.
+- Or add a `not_for_the_loop:` line to the card, so the loop stops taking it.
+
+WHY: The card needs a live read of an HMRC page, and only an attended session with web access can do that.
+
+OUTCOME: rob
+
