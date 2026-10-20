@@ -1062,10 +1062,11 @@ final class ScenarioForecaster
             // How long the plan has to last: a percentile of the LAST survivor's age at death, not
             // each person's own median. Absent = the engine's cautious default (board card 0061).
             planningHorizon: AssumptionOverrides::planningHorizon($overrides),
-            // A GENERATED candidate the search is pricing (board card 0078): hold the pension draw
-            // under £X of taxable income instead of the order's own bands. Null for every ordinary
-            // run and for every stored scenario, so nothing a reader saved moves.
-            taxableIncomeTargetPence: $taxableIncomeTargetPence,
+            // A GENERATED order (board card 0078): stop the pension draw at £X of taxable income
+            // instead of the order's own bands. An explicit $strategy is the search pricing one
+            // candidate, which carries its own target or none; otherwise it is the reader's own
+            // (card 0144), null for every scenario that names none, so nothing stored earlier moves.
+            taxableIncomeTargetPence: $strategy !== null ? $taxableIncomeTargetPence : AssumptionOverrides::taxableIncomeTargetPence($overrides),
         );
     }
 

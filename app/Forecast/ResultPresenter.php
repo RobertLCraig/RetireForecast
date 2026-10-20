@@ -34,6 +34,7 @@ use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\RelationshipStatus;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\AllocationProfile;
+use RetireForecast\FinanceEngine\Forecast\DrawdownStrategy;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Forecast\HistoricalBacktestOutcome;
@@ -1216,8 +1217,9 @@ final class ResultPresenter
                 .'is one of the biggest levers there is on the tax you pay over a whole lifetime, and from April '
                 .'2027 an unspent pension counts towards Inheritance Tax, so leaving the pension until last is no '
                 .'longer the safe answer for an estate near the threshold. Your results price the three named orders, '
-                .'and a few variations on filling your allowances, and name the cheapest. You can pick any of the three '
-                .'named orders in the builder; the variations cannot be picked in the builder yet.';
+                .'and a few variations on filling your allowances, and name the cheapest. You can pick any of them in the builder: '
+                .'a named order by its name, and a variation by picking '.DrawdownStrategy::FillBands->label()
+                .' and the taxable income to stop drawing pension at.';
         }
 
         // WHETHER THE TWO PEOPLE ARE MARRIED. Board card 0054: this defaulted to married in the

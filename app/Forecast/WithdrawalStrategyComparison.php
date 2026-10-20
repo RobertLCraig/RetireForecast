@@ -114,6 +114,8 @@ final class WithdrawalStrategyComparison
     private function __construct(
         /** The order this scenario is actually forecast under: the reader's, or the engine's default. */
         public readonly DrawdownStrategy $current,
+        /** The whole order in place: $current, held under the reader's taxable-income target where they set one. */
+        public readonly DrawCandidate $currentOrder,
         public readonly DrawdownStrategy $alternative,
         public readonly int $baselineTaxPence,
         public readonly int $fillBandsTaxPence, // the ALTERNATIVE's tax, which is fill-the-bands only when the reader draws otherwise
@@ -131,6 +133,19 @@ final class WithdrawalStrategyComparison
     {
         $candidates = self::candidates($forecaster->config($scenario));
 
+        // The order this scenario is REALLY run on, read off the settings the projection uses,
+        // so the tile captioned "your current order" cannot show somebody else's baseline. Since
+        // card 0144 that can be a generated order the reader picked; one at a target the search
+        // does not try is priced as well, one run more and still inside the plan's ceiling of 6.
+        $settings = $forecaster->settings($scenario);
+        $current = $settings->drawdownStrategy;
+        $currentOrder = $settings->taxableIncomeTargetPence === null
+            ? DrawCandidate::order($current)
+            : DrawCandidate::managingTaxableIncomeTo($settings->taxableIncomeTargetPence);
+        if (! in_array($currentOrder->key(), array_map(fn (DrawCandidate $c): string => $c->key(), $candidates), true)) {
+            $candidates[] = $currentOrder;
+        }
+
         $tax = [];
         $funding = [];
         $includesIht = false;
@@ -143,9 +158,6 @@ final class WithdrawalStrategyComparison
             $includesIht = $includesIht || $run->iht !== null;
         }
 
-        // The order this scenario is REALLY run on, read off the settings the projection uses,
-        // so the tile captioned "your current order" cannot show somebody else's baseline.
-        $current = $forecaster->settings($scenario)->drawdownStrategy;
         $alternative = self::alternativeTo($current);
 
         // The cheapest candidate, starting from the current order so a TIE keeps it: the
@@ -153,24 +165,25 @@ final class WithdrawalStrategyComparison
         // An order that funds LESS of the household's spending than the one in place is not in
         // the running at all, whatever it costs (board card 0081, criterion 1): least tax is only
         // the same thing as most left over while the spending being funded is the same.
-        $cheapest = DrawCandidate::order($current);
+        $cheapest = $currentOrder;
         foreach ($candidates as $candidate) {
             if ($tax[$candidate->key()] >= $tax[$cheapest->key()]) {
                 continue;
             }
-            if (! self::fundsAtLeastAsMuchAs($funding[$candidate->key()], $funding[DrawCandidate::order($current)->key()])) {
+            if (! self::fundsAtLeastAsMuchAs($funding[$candidate->key()], $funding[$currentOrder->key()])) {
                 continue;
             }
             $cheapest = $candidate;
         }
 
-        $baseline = $tax[DrawCandidate::order($current)->key()];
+        $baseline = $tax[$currentOrder->key()];
         $alternativeTax = $tax[DrawCandidate::order($alternative)->key()];
-        $currentFunding = $funding[DrawCandidate::order($current)->key()];
+        $currentFunding = $funding[$currentOrder->key()];
         $alternativeFunding = $funding[DrawCandidate::order($alternative)->key()];
 
         return new self(
             current: $current,
+            currentOrder: $currentOrder,
             alternative: $alternative,
             baselineTaxPence: $baseline,
             fillBandsTaxPence: $alternativeTax,
@@ -296,7 +309,7 @@ final class WithdrawalStrategyComparison
         }
 
         return [
-            'baselineLabel' => self::label($this->current),
+            'baselineLabel' => $this->currentOrder->label(),
             'baseline' => Money::fromPence($this->baselineTaxPence)->format(),
             // Both tiles and the sentence under them name their order from label(), so neither
             // template can go on naming the order it used to show when a constant changes.

@@ -471,9 +471,20 @@
                         @endforeach
                     </ul>
                     <p class="mt-1 text-xs text-gray-500">
-                        When a year's spending is more than your income, this decides which pot pays for it. It is one of the biggest levers on the tax you pay over a lifetime, and your results price every one of these orders, and a few variations on filling your allowances that you cannot pick here yet, and tell you which is cheapest. Leave it as "not chosen" and we use {{ $drawdownStrategyDefaultLabel }}, which is what this tool has always done, and your results say so.
+                        When a year's spending is more than your income, this decides which pot pays for it. It is one of the biggest levers on the tax you pay over a lifetime, and your results price every one of these orders, and a few variations on filling your allowances, and tell you which is cheapest. Leave it as "not chosen" and we use {{ $drawdownStrategyDefaultLabel }}, which is what this tool has always done, and your results say so.
                     </p>
                     @error('assumptionOverrides.drawdownStrategy') <p id="drawdownStrategy-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+
+                    {{-- Board card 0144: the variations the results price are this order with the
+                         pension draw stopped at a figure, so the reader can run the one named cheapest. --}}
+                    <label for="taxableIncomeTarget" class="{{ $label }} mt-4">Stop drawing pension at this taxable income (£ a year, optional)</label>
+                    <input id="taxableIncomeTarget" type="text" inputmode="numeric" wire:model.blur="assumptionOverrides.taxableIncomeTarget"
+                        class="{{ $field }} sm:max-w-xs"
+                        @error('assumptionOverrides.taxableIncomeTarget') aria-invalid="true" aria-describedby="taxableIncomeTarget-error" @enderror>
+                    <p class="mt-1 text-xs text-gray-500">
+                        Only for {{ $drawdownStrategyFillBandsLabel }}. Instead of filling the tax bands, each person draws pension until their taxable income reaches this figure (not counting interest or dividends), then your savings and investments, and more pension only once those run out. If your results name one of these as the cheapest, enter its figure here. Leave it blank to fill the bands as usual.
+                    </p>
+                    @error('assumptionOverrides.taxableIncomeTarget') <p id="taxableIncomeTarget-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                 </div>
 
                 {{-- The adviser's ongoing fee is NOT an economic assumption: the forecast never

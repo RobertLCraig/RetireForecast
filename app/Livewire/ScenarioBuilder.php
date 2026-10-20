@@ -399,6 +399,11 @@ class ScenarioBuilder extends Component
             // The order money is taken out to meet a shortfall (board card 0075). Blank = the
             // engine's own default, which the results page discloses as an assumed figure.
             'assumptionOverrides.drawdownStrategy' => ['nullable', Rule::in(array_column(DrawdownStrategy::cases(), 'value'))],
+            // Where the fill-the-bands draw stops the pension, in whole pounds of taxable income
+            // (board card 0144). Only that order reads it, so on any other it is refused rather
+            // than stored as a figure that looks like it does something and does nothing.
+            'assumptionOverrides.taxableIncomeTarget' => ['nullable', 'integer', 'between:1,1000000',
+                'prohibited_unless:assumptionOverrides.drawdownStrategy,'.DrawdownStrategy::FillBands->value],
             // How the invested money is split, and the mix it de-risks to (board card 0062).
             // Blank is the engine's own cautious mix, and a blank glide target is no glidepath at
             // all. The years are REQUIRED alongside a target and bounded at one (a glide has to
@@ -2087,6 +2092,7 @@ class ScenarioBuilder extends Component
             // reader who picks the default is not told they chose nothing (card 0075 #4). The names
             // are READ from the enum that owns them, so the results page names back the same order.
             'drawdownStrategyDefaultLabel' => DrawdownStrategy::DEFAULT->label(),
+            'drawdownStrategyFillBandsLabel' => DrawdownStrategy::FillBands->label(),
             'drawdownStrategyOptions' => array_map(static fn (DrawdownStrategy $s): array => [
                 'value' => $s->value,
                 'label' => ucfirst($s->label()),

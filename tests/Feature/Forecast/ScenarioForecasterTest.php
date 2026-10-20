@@ -9,6 +9,7 @@ use App\Forecast\DrawCandidate;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\WithdrawalStrategyComparison;
+use App\Livewire\ScenarioBuilder;
 use App\Livewire\ScenarioResults;
 use App\Models\Scenario;
 use App\Models\User;
@@ -92,12 +93,15 @@ class ScenarioForecasterTest extends TestCase
      * nothing about ORDER can be seen in it at all; this household has to draw on its capital every
      * year, which is the only state in which which pot it draws first can matter.
      */
-    private function drawsOnItsCapital(): Scenario
+    private function drawsOnItsCapital(array $assumptionOverrides = []): Scenario
     {
         $state = BuilderStateFixture::full();
         $state['expenseLines'][0]['amount'] = '70000';
         $state['accounts'][1]['balance'] = '300000';
         $state['accounts'][1]['unrealisedGain'] = '90000';
+        if ($assumptionOverrides !== []) {
+            $state['assumptionOverrides'] = $assumptionOverrides;
+        }
 
         return ScenarioFixture::rich(User::factory()->create(), $state);
     }
@@ -250,7 +254,83 @@ class ScenarioForecasterTest extends TestCase
 
         $this->assertNotSame('', $note, 'the draw-order note is missing, so this test proves nothing');
         $this->assertStringNotContainsString('pick the one you want', $note);
-        $this->assertStringContainsString('cannot be picked in the builder yet', $note);
+        // Card 0144 made the variations pickable, so the note now says HOW rather than "not yet".
+        $this->assertStringContainsString('a variation by picking '.DrawdownStrategy::FillBands->label(), $note);
+    }
+
+    /**
+     * Board card 0144, criterion 1. Card 0078 let a GENERATED order win the search, and there was
+     * no builder control for its target, so the page could name a cheaper order the reader had no
+     * way to run. Picking it has to reach the forecast, and the page then has to call it theirs.
+     */
+    public function test_a_taxable_income_target_can_be_chosen_and_reaches_the_forecast(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $forecaster = new ScenarioForecaster;
+        $comparison = WithdrawalStrategyComparison::for($forecaster, $this->drawsOnItsCapital());
+        $winner = $comparison->cheapest;
+        $this->assertTrue($winner->isGenerated(), 'a generated order no longer wins here, so this proves nothing');
+        $choice = [
+            'drawdownStrategy' => $winner->strategy->value,
+            'taxableIncomeTarget' => (string) intdiv($winner->taxableIncomeTargetPence, 100),
+        ];
+
+        // The builder takes the target, in pounds, and the settings the projection runs on carry it.
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        foreach ($choice as $key => $value) {
+            $component->set("assumptionOverrides.{$key}", $value);
+        }
+        $component->call('save')->assertHasNoErrors();
+        $this->assertSame($winner->taxableIncomeTargetPence,
+            $forecaster->settings(Scenario::latest('id')->firstOrFail())->taxableIncomeTargetPence);
+
+        // Only fill-the-bands reads the target, so on any other order it would be a figure that
+        // does nothing while looking like it does something: refused, not silently dropped.
+        $component->set('assumptionOverrides.drawdownStrategy', DrawdownStrategy::TaxEfficient->value)
+            ->call('save')->assertHasErrors('assumptionOverrides.taxableIncomeTarget');
+
+        // The reader's own forecast on that household IS the order the search priced as cheapest...
+        $chosen = $this->drawsOnItsCapital($choice);
+        $this->assertSame($comparison->cheapestTaxPence, self::lifetimeTaxOf($forecaster->deterministic($chosen)));
+
+        // ...and the panel now calls it their current order, with nothing cheaper left to name.
+        $again = WithdrawalStrategyComparison::for($forecaster, $chosen);
+        $this->assertSame($winner->label(), $again->panel()['baselineLabel']);
+        $this->assertSame($comparison->cheapestTaxPence, $again->baselineTaxPence);
+        $this->assertFalse($again->optimiserSaves());
+    }
+
+    /**
+     * Board card 0144, criterion 2. Every scenario stored before the target existed holds no such
+     * key, and a blank one is stored as nothing, so each has to forecast exactly what it did.
+     */
+    public function test_a_scenario_without_a_taxable_income_target_is_unchanged(): void
+    {
+        $forecaster = new ScenarioForecaster;
+
+        foreach ([[], ['drawdownStrategy' => DrawdownStrategy::FillBands->value, 'taxableIncomeTarget' => '']] as $overrides) {
+            $scenario = $this->drawsOnItsCapital($overrides);
+            $order = $overrides === [] ? DrawdownStrategy::DEFAULT : DrawdownStrategy::FillBands;
+
+            $this->assertNull($forecaster->settings($scenario)->taxableIncomeTargetPence);
+            // The order run on its own bands, which is all any scenario could be forecast on before.
+            $before = $forecaster->deterministicUnderStrategy($scenario, $order);
+            $now = $forecaster->deterministic($scenario);
+            $this->assertEquals($before->years, $now->years);
+            $this->assertEquals($before->iht, $now->iht);
+        }
+
+        // ...and the builder stores a blank target as nothing at all, so the stored state is sparse.
+        $this->actingAs(User::factory()->create());
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component->set('assumptionOverrides.taxableIncomeTarget', '')->call('save')->assertHasNoErrors();
+        $this->assertArrayNotHasKey('assumptionOverrides', Scenario::latest('id')->firstOrFail()->effectiveBuilderState());
     }
 
     /**

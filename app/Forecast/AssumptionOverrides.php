@@ -48,7 +48,7 @@ final class AssumptionOverrides
      * the mix it de-risks to and how long that takes ({@see AllocationProfile}, board card 0062).
      * Blank means the engine's own default, exactly as a blank rate does.
      */
-    public const CHOICE_KEYS = ['statePensionUprating', 'statePensionUpratingUntilYear', 'planningHorizon', 'allocation', 'allocationGlideTo', 'allocationGlideYears', 'drawdownStrategy'];
+    public const CHOICE_KEYS = ['statePensionUprating', 'statePensionUpratingUntilYear', 'planningHorizon', 'allocation', 'allocationGlideTo', 'allocationGlideYears', 'drawdownStrategy', 'taxableIncomeTarget'];
 
     /**
      * There is deliberately no default number of glidepath years. Every one of the standing
@@ -205,6 +205,21 @@ final class AssumptionOverrides
     {
         return self::filled($overrides, 'drawdownStrategy')
             ? DrawdownStrategy::tryFrom((string) $overrides['drawdownStrategy'])
+            : null;
+    }
+
+    /**
+     * The taxable income (pence, base-year) the reader's fill-the-bands draw stops its pension pass
+     * at: the GENERATED order the search can name as cheapest (board cards 0078 and 0144), stored in
+     * whole pounds. Null when the reader gave none, or gave one on an order that does not read it
+     * (the builder refuses that), so every scenario stored before card 0144 reproduces unchanged.
+     *
+     * @param  array<string, mixed>  $overrides  the sparse `assumptionOverrides` map
+     */
+    public static function taxableIncomeTargetPence(array $overrides): ?int
+    {
+        return self::filled($overrides, 'taxableIncomeTarget') && self::drawdownStrategy($overrides) === DrawdownStrategy::FillBands
+            ? (int) round(self::number($overrides['taxableIncomeTarget']) * 100)
             : null;
     }
 
