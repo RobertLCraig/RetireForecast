@@ -67,7 +67,7 @@ final class GoldenMasterTest extends TestCase
      * The date the values below were last pinned. Bump it in the same edit that re-pins any of
      * them, and write the DECISIONS.md entry it then demands.
      */
-    private const PIN_REVISION = '2026-10-14';
+    private const PIN_REVISION = '2026-10-20';
 
     /** The exact phrase docs/DECISIONS.md has to carry, so a re-pin cannot be recorded by accident. */
     private const MARKER = 'Monte Carlo golden master pinned ';
@@ -89,7 +89,7 @@ final class GoldenMasterTest extends TestCase
         'terminalWealth.p25' => 16080704,
         'terminalWealth.p50' => 36794256,
         'terminalWealth.p75' => 65806249,
-        'terminalWealth.p90' => 110749669,
+        'terminalWealth.p90' => 110735803,
         'fan.bands' => 39,
         'fan.first.calendarYear' => 2026,
         'fan.first.p10' => 69036832,

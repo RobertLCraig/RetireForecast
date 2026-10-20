@@ -3,6 +3,37 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-20: a tax-free inherited pension draw is income for Pension Credit
+
+**Context:** card 0145. Card 0079 (2026-09-08, "an inherited pension is tax-free where its owner died
+under 75") left the tax-free inherited draw out of the Pension Credit means test, because the only
+channel it had was the one for the tax-free quarter, which is capital. Pension Credit assesses
+pension income whatever its tax treatment, so a survivor living on an inherited pot kept a credit
+the means test would have taken.
+
+**Decision:** no third channel was needed. `fundShortfall` already returns `fromInheritedTaxFree`
+apart from `fromPensionTaxFree`, so `projectYear` assesses the draw less the tax-free quarter only.
+The ladder keeps filing the draw on its own tax-free line. The card 0143 top-up now counts the
+inherited draw towards taking the whole award; the top-up itself still draws only taxable pots.
+This supersedes the means-test half of the 2026-09-08 entry; its tax half stands.
+
+**Decision:** the award loop steps to a nil award when the draw does not shrink the gap. Where every
+pound drawn is assessed (this draw, or a taxed draw under an order with no tax-free quarter), the
+gap between what a pass drew and what it was assessed on does not fall. The secant through two such
+points flew off, and the eight passes ran out on the unreduced award. Now, when the gap's slope is
+not negative, the next pass is assessed where the award is gone. Without this the card's first
+criterion stayed red under both ad-hoc draw orders.
+
+**Not verified at source:** the unattended session that built this had no web access, so the
+Pension Credit income rule is not yet cited here with a URL and a verified-on date. The card's
+first task stays open for that.
+
+Monte Carlo golden master pinned 2026-10-20 (pin d4b3416a3de7). Only `terminalWealth.p90` moved,
+by £138.66, from paths where a survivor on Pension Credit draws an inherited or taxed pot.
+`ENGINE_VERSION` is `finance-engine/inherited-draw-assessed-for-pension-credit`.
+
+**Status:** active
+
 ## 2026-10-20: on Guarantee Credit, a year that loses the whole award draws on through the basic-rate band
 
 **Context:** card 0143. The Pension Credit claw-back is capped at the year's award. Once the capital

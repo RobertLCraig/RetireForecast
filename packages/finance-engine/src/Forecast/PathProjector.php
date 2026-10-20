@@ -1614,7 +1614,7 @@ final class PathProjector
         $passGrossIncomeNominal = $grossIncomeNominal;
         $passTotalTaxNominal = $totalTaxNominal;
         $passSrc = $src;
-        // The taxable pension draw this pass's award is assessed on, and the pass before it:
+        // The assessable pension draw this pass's award is assessed on, and the pass before it:
         // the two points the secant step below extrapolates through.
         $assessedDrawNominal = 0;
         $previousAssessedDraw = null;
@@ -1814,7 +1814,7 @@ final class PathProjector
             $shortfall = $spendNominal - $netCashNominal;
             $fundedNominal = 0;
             $gainsThisYear = $seedGains;
-            $taxablePensionDrawn = 0;
+            $assessablePensionDrawn = 0;
             if ($shortfall > 0) {
                 $funded = $this->fundShortfall($household, $settings, $state, $alive, $ages, $taxablePerPerson, $savingsPerPerson, $dividendsPerPerson, $shortfall, $thresholdFactor, $creditAtRisk, $seedGains);
                 $fundedNominal = $funded['funded'];
@@ -1830,13 +1830,13 @@ final class PathProjector
                 $src['inherited_pension'] += $funded['fromInheritedTaxFree'];
                 $src['pension_drawdown'] += $taxableDrawn;
                 $src['asset_drawdown'] += $funded['fromAssets'];
-                // What the means test can see of that draw: the TAXABLE part alone. The tax-free
-                // quarter is capital in the claimant's hands, not income, so it is left out here
-                // and the capital it becomes is assessed the way any other capital is: by the
-                // tariff, at the open of the year after it was drawn. The tax-free inherited draw
-                // is NOT capital (it is income for Pension Credit), and leaving it out here too is
-                // a known gap owned by board card 0145.
-                $taxablePensionDrawn = $taxableDrawn;
+                // What the means test can see of that draw: all of it but the tax-free quarter.
+                // The quarter is capital in the claimant's hands, not income, so it is left out
+                // here and the capital it becomes is assessed the way any other capital is: by the
+                // tariff, at the open of the year after it was drawn. A draw from a pot inherited
+                // under 75 is free of income tax but it is still pension INCOME, and Pension Credit
+                // assesses income whatever its tax treatment, so it counts in full (board card 0145).
+                $assessablePensionDrawn = $taxableDrawn + $funded['fromInheritedTaxFree'];
                 // The disposals that funded the year already counted against each person's CGT
                 // annual exempt amount (they include $seedGains, shared once), so bed-and-ISA below
                 // reads them rather than re-claiming an allowance that is already spent.
@@ -1869,8 +1869,8 @@ final class PathProjector
                 $this->councilTaxNominal($household, $settings, $renting, $supportState, $award, $atHome ?: $aliveCount),
             ];
             if ($pensionCreditAward === null
-                || $taxablePensionDrawn === $assessedDrawNominal
-                || $supportFrom($awardAssessedOn($taxablePensionDrawn)) === $supportFrom($pensionCreditAward)) {
+                || $assessablePensionDrawn === $assessedDrawNominal
+                || $supportFrom($awardAssessedOn($assessablePensionDrawn)) === $supportFrom($pensionCreditAward)) {
                 break;
             }
             if ($pass >= self::MAX_PENSION_CREDIT_PASSES) {
@@ -1889,10 +1889,21 @@ final class PathProjector
             // the penny. The gap between what a pass assessed and what it drew is a straight line
             // in that assessed figure, so the secant through the last two passes lands on its root
             // at once; the first pass has no second point and takes the plain step.
-            $gap = $taxablePensionDrawn - $assessedDrawNominal;
-            $next = $previousGap !== null && $previousGap !== $gap
-                ? (int) round($assessedDrawNominal - $gap * ($assessedDrawNominal - $previousAssessedDraw) / ($gap - $previousGap))
-                : $taxablePensionDrawn;
+            // A line that does not fall has no root while any award is left: when every pound
+            // drawn is assessed (an inherited draw, or a taxed draw with no tax-free quarter) the
+            // draw grows at least as fast as the figure it was assessed on, so the only answer is
+            // the one where the award has gone. Step straight there (board card 0145); the secant
+            // through two near-parallel points instead flew off and the passes ran out on the
+            // unreduced award.
+            $gap = $assessablePensionDrawn - $assessedDrawNominal;
+            if ($previousGap === null || $assessedDrawNominal === $previousAssessedDraw) {
+                $next = $assessablePensionDrawn;
+            } elseif (($gap - $previousGap) / ($assessedDrawNominal - $previousAssessedDraw) < 0) {
+                $next = (int) round($assessedDrawNominal - $gap * ($assessedDrawNominal - $previousAssessedDraw) / ($gap - $previousGap));
+            } else {
+                $awardLeftAnnual = $pensionCreditAward->guaranteeCreditWeekly->pence * $this->config->statePension->weeksPerYear;
+                $next = max($assessablePensionDrawn, $assessedDrawNominal + $awardLeftAnnual);
+            }
             $previousAssessedDraw = $assessedDrawNominal;
             $previousGap = $gap;
             $assessedDrawNominal = max(0, $next);
@@ -4125,7 +4136,8 @@ final class PathProjector
             // year's shortfall instead lost the whole award in every year once the capital was
             // spent. A year whose draw leaves some award standing is drawn to the shortfall
             // alone: there, every pound drawn early costs the same credit it would cost later.
-            if ($onGuaranteeCredit && $fromPension - $fromPensionTaxFree - $fromInheritedTaxFree >= $creditAtRisk) {
+            // The inherited tax-free draw counts towards that claw-back: it is assessable income.
+            if ($onGuaranteeCredit && $fromPension - $fromPensionTaxFree >= $creditAtRisk) {
                 $stillNeeded = $remaining;
                 $fundedBeforeTopUp = $funded;
                 $netBeforeTopUp = $netDrawnBy;
