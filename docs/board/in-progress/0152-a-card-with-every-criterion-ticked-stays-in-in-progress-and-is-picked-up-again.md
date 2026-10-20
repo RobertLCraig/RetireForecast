@@ -71,3 +71,19 @@ across by an agent papers over the mechanism this card exists to fix. Also not t
       next card. Put it in the session template so it is not five sessions' improvisation.
 
 ## Comments
+
+**2026-10-20** RESULT: blocked
+TESTS: +0 new, none run (no code changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Nothing in this card can be built from this repository. All three criteria name the scheduler in C:\Dev\ProgressBoard, and an unattended card session is told to stay inside its worktree, so the fix is not mine to make here. Criteria 1 and 2 say proves: manual, which this session cannot do either. A ProgressBoard session, or Rob, has to take it.
+
+What I found by reading only (nothing was changed outside this worktree):
+
+- 0083 is no longer in in-progress/. Rob's commit 5414f0cc (2026-09-21) moved it to ai-review/ by hand. Its message names the cause: every take ended on a hold it could not clear (first a red suite that belonged to 0147, then a merge-back conflict on the card file). The loop also resumes an in-progress card before anything else, so 55 sessions went on it in one day. So criterion 3 is already true in fact: 0083 is in ai-review/. But it got there by a hand move, not by the mechanism this card asks for, so I do not name it met.
+- The scheduler today: Builder.php (around lines 573-651) promotes a fully ticked card to ai-review/ when the session exits cleanly and the named tests ran. A fully ticked card with a red suite is held (line 718, 'every criterion is ticked and the suite is red'). The no-progress counter (Builder.php ~1099, work-card.ps1 ~2404) moves a card to human-review/ after 2 such takes. So a fully ticked card should now stop looping after 2 takes. In September it looped because that counter did not stop it. I did not prove when that changed or that it covers the merge-conflict hold.
+- Criterion 2 (a session told its card is already met may stop and say so) is about the prompt template, Prompt.php / work-card.ps1. I did not find wording for that case. It still needs a decision there.
+- The other in-progress cards: only 0152 (this card) is in in-progress/ now, so the task 'check the other four' has nothing left to check in this repository.
+
+Suggest: move this card to the ProgressBoard board, or let Rob tick criterion 3 by hand given 5414f0cc. That is his call, not this session's.
