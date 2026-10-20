@@ -61,3 +61,14 @@ This card needs a live read of HMRC PTM073010 (https://www.gov.uk/hmrc-internal-
 Criterion 1 allows recording that 'the search found none', but no search ran, so writing that into ASSUMPTIONS section 38 would be false. Nothing was changed: ASSUMPTIONS.md, PathProjector::drawIsTaxFree and InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE are as they were. Criterion 2 has nothing to act on until the page is read.
 
 The card's own Plan already says it needs a session with web access, standing in C:\Dev\RetireForecast. It should be taken by Rob or an attended session (with card 0134 in the same pass), or carry not_for_the_loop: so the loop stops picking it up.
+
+**2026-10-20** RESULT: blocked
+TESTS: +0 new, suite not run (no file changed)
+TOUCHED: none
+OUT-OF-SCOPE: none
+
+Second unattended take, same block as the first. The WebFetch of HMRC PTM073010 (https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm073010) was refused by the permission layer again, so the page was not read. I did not route round it with curl.
+
+Criterion 1 cannot be met honestly: no search ran, so recording 'the search found none' in ASSUMPTIONS section 38 would be false. Criterion 2 has nothing to act on until the page is read. ASSUMPTIONS.md, PathProjector::drawIsTaxFree and InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE are unchanged.
+
+This card cannot advance in the loop. It needs Rob or an attended session with web access (do card 0134 in the same pass), or a not_for_the_loop: line in its frontmatter so the loop stops picking it up. I did not add that line because I may not edit the card.
