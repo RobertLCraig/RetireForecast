@@ -1,5 +1,9 @@
 # A card with every criterion ticked stays in `in-progress/` and is picked up again
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 3 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card `0083` was built on 2026-09-08. The commit that built it, `133a7dc`, set both of its acceptance
 criteria to `- [x]` in the same change. It is still in `docs/board/in-progress/`, and it has been
@@ -94,3 +98,5 @@ TOUCHED: none
 OUT-OF-SCOPE: none
 
 Second take, same answer as the 2026-10-20 entry above. Nothing in this repository changed since then: 0083 is still in ai-review/ (Rob's hand move, 5414f0cc), and 0152 is the only card in in-progress/. All three criteria are about the scheduler in C:\Dev\ProgressBoard (lane-move logic in Builder.php, the session prompt in Prompt.php / work-card.ps1). An unattended card session must stay in its worktree, so it cannot build or check them. This card should not go to the loop again. It needs one of these, which is Rob's call: move it to the ProgressBoard board, or mark it not_for_the_loop: here.
+
+**2026-10-20** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 3 of 3 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
