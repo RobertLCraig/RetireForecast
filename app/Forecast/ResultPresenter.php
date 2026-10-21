@@ -2778,9 +2778,14 @@ final class ResultPresenter
                 .'you sublet and some forbid it outright, and a licence to sublet usually costs a fee, so check the '
                 .'lease before you count on this plan at all. Second, energy efficiency: a let home has to meet a '
                 .'minimum standard, and the proposed rise to EPC C by 2030 would put either a five-figure retrofit or '
-                .'a formal exemption application in front of you, and neither is costed here. '.$councilTax.' Two consequences of letting '
-                .'ARE in the figures: the equity stops counting as your exempt main home for Pension Credit, and time '
-                .'spent let reduces the Private Residence Relief on a later sale.'];
+                .'a formal exemption application in front of you, and neither is costed here. '.$councilTax
+                // Card 0164: only an entered letting history builds the CGT history that cuts the relief.
+                .($home->cgtHistory !== null
+                    ? ' Two consequences of letting ARE in the figures: the equity stops counting as your exempt main '
+                        .'home for Pension Credit, and time spent let reduces the Private Residence Relief on a later sale.'
+                    : ' One consequence of letting IS in the figures: the equity stops counting as your exempt main home '
+                        .'for Pension Credit. The cut letting makes to Private Residence Relief on a later sale is not, '
+                        .'because no letting history has been entered; enter one on the home step to have it charged.')];
         }
 
         // (c4c) COUNCIL TAX. It is the one running cost that shrinks, and bundled in with

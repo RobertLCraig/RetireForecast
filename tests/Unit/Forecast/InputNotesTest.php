@@ -313,6 +313,27 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('in its place', $carried);
     }
 
+    public function test_the_letting_note_does_not_claim_an_unmodelled_prr_cut(): void
+    {
+        // Card 0164. Only `everLet` with a letting history builds the CGT history that cuts Private
+        // Residence Relief; `isLet` alone builds none, so the note must not say the cut is charged.
+        $caveat = function (array $property): string {
+            $notes = $this->landlordNotes($property);
+
+            return $notes[array_search('letting_caveats', array_column($notes, 'kind'), true)]['text'];
+        };
+
+        $bare = $caveat(['isLet' => true]);
+        $this->assertStringNotContainsString('time spent let reduces the Private Residence Relief', $bare);
+        $this->assertStringContainsString('Private Residence Relief', $bare, 'the gap is said, not dropped');
+
+        $withHistory = $caveat(['isLet' => true, 'everLet' => true, 'cgtHistory' => [
+            'purchasePrice' => '200000', 'acquisitionYear' => '2000',
+            'periods' => [['fromYear' => '2000', 'use' => 'main_home'], ['fromYear' => '2015', 'use' => 'let']],
+        ]]);
+        $this->assertStringContainsString('time spent let reduces the Private Residence Relief', $withHistory);
+    }
+
     public function test_a_home_they_live_in_raises_no_letting_note(): void
     {
         // No noise: none of it applies to a household living in their own home.
