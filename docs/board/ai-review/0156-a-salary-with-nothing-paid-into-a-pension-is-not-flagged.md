@@ -29,10 +29,10 @@ partner still earns have no note at all, so their zero is a figure the reader ca
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] WHEN a living person has a salary in at least one projected year AND every DC pension they own has a zero member and a zero employer contribution (or they own no DC pension), THE APP SHALL add an input note of kind `no_pension_contribution` naming that person and saying no pension contribution is modelled while they earn. proves: `test_a_salary_with_no_pension_contribution_is_flagged`
-- [ ] WHEN that person's DC pension has a positive member OR employer contribution, THE APP SHALL NOT add the `no_pension_contribution` note. proves: `test_a_salary_with_a_pension_contribution_raises_no_contribution_note`
-- [ ] WHEN the person's planned retirement age is at or below their current age (the `no_salary` case), THE APP SHALL NOT add the `no_pension_contribution` note. proves: `test_a_person_past_retirement_raises_no_contribution_note`
-- [ ] THE APP SHALL show the note on both the results page and the PDF, because both read `ResultPresenter::inputNotes()`. proves: `test_a_salary_with_no_pension_contribution_is_flagged`
+- [x] WHEN a living person has a salary in at least one projected year AND every DC pension they own has a zero member and a zero employer contribution (or they own no DC pension), THE APP SHALL add an input note of kind `no_pension_contribution` naming that person and saying no pension contribution is modelled while they earn. proves: `test_a_salary_with_no_pension_contribution_is_flagged`
+- [x] WHEN that person's DC pension has a positive member OR employer contribution, THE APP SHALL NOT add the `no_pension_contribution` note. proves: `test_a_salary_with_a_pension_contribution_raises_no_contribution_note`
+- [x] WHEN the person's planned retirement age is at or below their current age (the `no_salary` case), THE APP SHALL NOT add the `no_pension_contribution` note. proves: `test_a_person_past_retirement_raises_no_contribution_note`
+- [x] THE APP SHALL show the note on both the results page and the PDF, because both read `ResultPresenter::inputNotes()`. proves: `test_a_salary_with_no_pension_contribution_is_flagged`
 <!-- AC:END -->
 
 ## Tasks
@@ -63,3 +63,20 @@ Work in this repository, on the card's branch, running PHP through PowerShell (s
    `ENGINE_VERSION` bump and no stored re-run is owed.
 
 ## Comments
+
+**2026-10-21** RESULT: done
+TESTS: +3 new, all green
+TOUCHED: app/Forecast/ResultPresenter.php
+tests/Unit/Forecast/InputNotesTest.php
+docs/board/todo/0210-the-mpaa-warning-fires-after-workplace-contributions-stop.md
+OUT-OF-SCOPE: 0210
+
+Built: a new branch (b1) in the person loop of `ResultPresenter::inputNotes()`, beside (a) and (b) so it reuses their `$working`, `$currentAge` and `$deathYear`. It raises `no_pension_contribution` when the person is employed or self-employed with a positive salary, their retirement age is blank or above their current age (the inverse of the `no_salary` test), they are not modelled to die in the base year (the 'living' in the criterion), and no DcPension they own has a positive member or employer contribution. Wording is the card's suggested text. Nothing is assumed or defaulted, and no figure moves, so no ENGINE_VERSION bump.
+
+Watched fail: `test_a_salary_with_no_pension_contribution_is_flagged` went red on 'zero DC pot: Failed asserting that an array contains no_pension_contribution' before the code. The two negative tests were green before the code by their nature (they assert a note's absence), so they guard against over-firing only.
+
+Criterion 4 (results page and PDF) is met through the shared `inputNotes()`; the test proves the note, not a rendered page. Built in a worktree, so the note is NOT seen in a browser or a printed PDF.
+
+One existing test legitimately drifted: `test_a_sensible_household_raises_no_notes` has an earner with no pension, which this card now flags. I re-examined it rather than loosened it: it now asserts the exact note list is ['no_pension_contribution']. Giving the earner a DC pot instead was tried; a pot brings its own pension-tax and MPAA disclosures, so that route cannot reach an empty list. The test name is kept because card 0179 cites it.
+
+Raised 0210: while trying that pot, the MPAA warning fired in 2033 for a member who retired in 2032 and whose only contribution was employer/net-pay, which stops at retirement. `mpaaWarnings()` reads the set contribution, not what is paid that year.
