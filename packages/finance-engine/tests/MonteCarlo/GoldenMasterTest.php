@@ -67,7 +67,7 @@ final class GoldenMasterTest extends TestCase
      * The date the values below were last pinned. Bump it in the same edit that re-pins any of
      * them, and write the DECISIONS.md entry it then demands.
      */
-    private const PIN_REVISION = '2026-10-20';
+    private const PIN_REVISION = '2026-10-22';
 
     /** The exact phrase docs/DECISIONS.md has to carry, so a re-pin cannot be recorded by accident. */
     private const MARKER = 'Monte Carlo golden master pinned ';
@@ -83,26 +83,26 @@ final class GoldenMasterTest extends TestCase
      * @var array<string, int|string>
      */
     private const PINNED = [
-        'successProbabilityEssentials' => '0.4550',
-        'successProbabilityFullSpend' => '0.0700',
-        'terminalWealth.p10' => 3390826,
-        'terminalWealth.p25' => 16080704,
-        'terminalWealth.p50' => 36794256,
-        'terminalWealth.p75' => 65806249,
-        'terminalWealth.p90' => 110735803,
+        'successProbabilityEssentials' => '0.6000',
+        'successProbabilityFullSpend' => '0.0750',
+        'terminalWealth.p10' => 12496423,
+        'terminalWealth.p25' => 29614486,
+        'terminalWealth.p50' => 54162874,
+        'terminalWealth.p75' => 92010107,
+        'terminalWealth.p90' => 160870574,
         'fan.bands' => 39,
         'fan.first.calendarYear' => 2026,
         'fan.first.p10' => 69036832,
-        'fan.first.p50' => 69057336,
-        'fan.first.p90' => 69093637,
+        'fan.first.p50' => 69057635,
+        'fan.first.p90' => 69093942,
         'fan.middle.calendarYear' => 2045,
-        'fan.middle.p10' => 13818896,
-        'fan.middle.p50' => 39360866,
-        'fan.middle.p90' => 118338573,
+        'fan.middle.p10' => 20299412,
+        'fan.middle.p50' => 58523540,
+        'fan.middle.p90' => 161649537,
         'fan.last.calendarYear' => 2064,
-        'fan.last.p10' => 176316929,
-        'fan.last.p50' => 176316929,
-        'fan.last.p90' => 176316929,
+        'fan.last.p10' => 355134239,
+        'fan.last.p50' => 355134239,
+        'fan.last.p90' => 355134239,
     ];
 
     public function test_the_pinned_run_still_produces_the_pinned_numbers(): void

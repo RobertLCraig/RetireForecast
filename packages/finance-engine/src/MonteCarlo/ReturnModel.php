@@ -44,6 +44,13 @@ use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
  * Returns are lognormal in effect because the projector compounds them
  * multiplicatively; draws are on the return itself (a normal shock), which is a
  * standard, transparent choice for an annual-step retirement model.
+ *
+ * A stated return is a COMPOUND rate (the FCA projection rates are applied compounded, COBS 13
+ * Annex 2), so each draw is centred on {@see self::arithmeticMean()}, not on the stated rate:
+ * a yearly draw centred on the stated rate compounds about vol^2/2 a year slower, and the typical
+ * all-equity pot grew at 1.7% where 4.4% was stated (board card 0212). The house index path is
+ * left centred on its stated rate because {@see SampledPathDraws} re-centres each home itself.
+ * Inflation is not converted: its mean is a yearly CPI target, which is an arithmetic statement.
  */
 final class ReturnModel
 {
@@ -86,8 +93,9 @@ final class ReturnModel
         $means = [];
         $vols = [];
         foreach ($set->assetClasses as $assetClass) {
-            $means[] = $assetClass->expectedRealReturn->asFraction();
-            $vols[] = $assetClass->volatility->asFraction();
+            $vol = $assetClass->volatility->asFraction();
+            $means[] = self::arithmeticMean($assetClass->expectedRealReturn->asFraction(), $vol);
+            $vols[] = $vol;
         }
         $this->means = $means;
         $this->vols = $vols;
@@ -102,9 +110,19 @@ final class ReturnModel
 
         // Salary growth: the same construction as housing (mean always; volatility only when
         // the set carries one; correlation clamped to [-1, 1]).
-        $this->salaryMean = $set->salaryGrowth->asFraction();
         $this->salaryVol = $set->salaryGrowthVolatility?->asFraction() ?? 0.0;
+        $this->salaryMean = self::arithmeticMean($set->salaryGrowth->asFraction(), $this->salaryVol);
         $this->salaryEquityCorrelation = max(-1.0, min(1.0, $set->salaryEquityCorrelation));
+    }
+
+    /**
+     * The yearly mean a normal draw with volatility $vol needs so that it COMPOUNDS at $compound:
+     * the median path then grows at the stated rate. Second-order, so within about 0.05 points a
+     * year at 23% volatility (card 0212's simulation); exact at zero volatility.
+     */
+    public static function arithmeticMean(float $compound, float $vol): float
+    {
+        return $compound + $vol * $vol / 2.0;
     }
 
     /**

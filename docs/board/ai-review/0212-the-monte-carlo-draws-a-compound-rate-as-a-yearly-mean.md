@@ -40,13 +40,29 @@ Bump `ENGINE_VERSION`. Every stored Monte Carlo result is owed a re-run.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a Monte Carlo runs one 100% equity pot with no flows over 40 years, THE APP SHALL give a median annualised real return within 0.3 points of the stated equity rate. proves: `test_the_monte_carlo_median_grows_at_the_stated_compound_rate`
-- [ ] #2 WHEN the volatility of an asset class is zero, THE APP SHALL draw exactly its stated rate every year. proves: `test_a_zero_volatility_class_draws_its_stated_rate`
-- [ ] #3 THE APP SHALL state in docs/spec/METHODOLOGY.md and ASSUMPTIONS.md that the stated returns are compound rates and how the Monte Carlo converts them. proves: manual
+- [x] #1 WHEN a Monte Carlo runs one 100% equity pot with no flows over 40 years, THE APP SHALL give a median annualised real return within 0.3 points of the stated equity rate. proves: `test_the_monte_carlo_median_grows_at_the_stated_compound_rate`
+- [x] #2 WHEN the volatility of an asset class is zero, THE APP SHALL draw exactly its stated rate every year. proves: `test_a_zero_volatility_class_draws_its_stated_rate`
+- [x] #3 THE APP SHALL state in docs/spec/METHODOLOGY.md and ASSUMPTIONS.md that the stated returns are compound rates and how the Monte Carlo converts them. proves: manual
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Write #1 first and watch it fail on the current code.
-- [ ] Convert the means in `ReturnModel`.
-- [ ] Check the house and salary draws.
-- [ ] Re-pin the golden master, bump `ENGINE_VERSION`, write DECISIONS and the docs.
+- [x] Write #1 first and watch it fail on the current code.
+- [x] Convert the means in `ReturnModel`.
+- [x] Check the house and salary draws.
+- [x] Re-pin the golden master, bump `ENGINE_VERSION`, write DECISIONS and the docs.
+
+## Comments
+
+**2026-10-22** RESULT: built
+TESTS: +4 new (`CompoundRateTest`), full suite green, golden master re-pinned (pin 7b08e449241f)
+TOUCHED: `ReturnModel` (asset and salary means, new `arithmeticMean()`), `SampledPathDraws::propertyGrowthReal()`, `ScenarioForecaster::ENGINE_VERSION`, METHODOLOGY, ASSUMPTIONS, DECISIONS
+OUT-OF-SCOPE: card 0197 (one home's shock compounding). This card's shift follows whatever spread that card leaves.
+
+Watched #1 fail first: median all-equity growth 1.75%, one home -0.56%. Now 4.4% and 1.0%, each
+within 0.3 points. Each home is shifted by its own single-property spread, not the index's, because
+that is the spread it is drawn with. Inflation is not shifted (a yearly CPI target). On the pinned
+household, essentials success went from 45.5% to 60.0%. Every stored Monte Carlo result owes a re-run.
+
+Review should attack two things. First, whether the house index path in `ReturnModel`, left unshifted
+on purpose because each home is shifted in `SampledPathDraws`, is read raw anywhere else. Second,
+whether a zero-volatility set is byte-identical to before (it should be: zero spread, zero shift).

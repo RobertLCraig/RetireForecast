@@ -3,6 +3,32 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-22: a stated return is a compound rate, and the Monte Carlo now grows at it
+
+**Context:** card 0212, from the 2026-10-21 full review. The shipped returns are the FCA projection
+rates, which COBS 13 Annex 2 applies compounded. The deterministic path compounds them straight. The
+Monte Carlo drew each year's return as a normal centred on the same rate, and a yearly draw with
+volatility s compounds about s^2/2 a year slower. The typical all-equity pot grew at 1.7% real where
+4.4% was stated, and one home at -0.6% where 1.0% was stated. Every success probability was too low,
+and most so for the plans holding the most invested money or a home kept for life.
+
+**Decision:** convert at the draw, not in the assumption set. `ReturnModel::arithmeticMean()` gives
+`g + s^2/2`; `ReturnModel` centres each asset class and the salary draw on it, and
+`SampledPathDraws::propertyGrowthReal()` centres each home on it using the spread that home carries
+(index volatility times the single-property multiple). The set still holds the rate the reader sees.
+Inflation is not converted, because its mean is a yearly CPI target. A diversified mix now has a
+Monte Carlo median a little above the deterministic line (the diversification return), so the
+deterministic line stays the cautious one. Second-order conversion, within about 0.05 points a year
+at 23% volatility. To reverse: make `arithmeticMean()` return `$compound`.
+
+Monte Carlo golden master pinned 2026-10-22 (pin 7b08e449241f). Essentials success moved from 45.5%
+to 60.0% and the median terminal wealth from £367,943 to £541,629 on the pinned household; every
+percentile and every fan band past year 0 rose. `ENGINE_VERSION` is
+`finance-engine/monte-carlo-draws-compound-to-the-stated-rate`; every stored Monte Carlo result owes
+a re-run, and the ranked comparison should not be read off until it has one.
+
+**Status:** active
+
 ## 2026-10-21: family use moves to a public copy on ubuntu-web
 
 **Context:** Rob asked for an address Mum and Dad can open away from home with no Tailscale. The

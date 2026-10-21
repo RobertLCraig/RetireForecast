@@ -386,6 +386,14 @@ earns the blend of its holdings; the default is a cautious 40% growth / 60% defe
 return, volatility and correlation figure carries its own source and the date it was last checked,
 set out in the [economic assumptions](ASSUMPTIONS.md).
 
+The stated returns are **compound rates**: the rate money grows at over many years, the way the FCA
+projection rates are applied. Ups and downs make money grow slower than the average of its yearly
+returns, so each year's random draw is centred a little higher (by half the square of the
+volatility), and the typical future then grows at the stated rate. Without this, an all-shares pot
+would typically have grown at about 1.7% a year above inflation, not the 4.4% stated. The same
+applies to a home's value and to salary growth; inflation is not adjusted, because its figure is a
+yearly target.
+
 Not modelled: returns are drawn from a normal distribution, so there are no fat tails or regime
 shifts; partner deaths are independent.
 

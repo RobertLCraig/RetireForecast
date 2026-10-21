@@ -35,6 +35,11 @@ asset-class nominal midpoints (equities 6.5%, gilts 2.0%, cash 1.5% nominal) def
 Handbook's 2.0% inflation: `real = (1+nominal)/1.02 − 1` → equities **+4.4%**, bonds **0.0%**,
 cash **−0.5%**.
 
+**These are compound (geometric) rates.** The Monte Carlo centres each yearly draw on
+`rate + volatility^2 / 2` (`ReturnModel::arithmeticMean()`, card 0212), so the typical path grows at
+the rate in the table. A home uses its own single-property spread (§13) for the shift. Inflation is
+not shifted.
+
 ## The shipped sets (signed off 2026-06-24; live in `AssumptionSetLibrary`)
 
 | Field | Set A — FCA default (recommended) | Set B — DMS historical | Set C — OBR/BoE inflation-anchored |

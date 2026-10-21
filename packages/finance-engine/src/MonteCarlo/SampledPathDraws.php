@@ -38,7 +38,11 @@ final class SampledPathDraws implements PathDraws
         $this->investmentCharge = $set->investmentCharge()->asFraction();
         $this->houseGrowth = $set->houseGrowth->asFraction();
         $this->singlePropertyMultiple = $set->singlePropertyVolatilityMultiple();
+        $this->homeVolatility = ($set->houseGrowthVolatility?->asFraction() ?? 0.0) * $this->singlePropertyMultiple;
     }
+
+    /** One home's yearly spread: the index volatility widened to single-property scale. */
+    private readonly float $homeVolatility;
 
     /** Fallback salary growth (the set mean) for a path generated without a sampled salary series. */
     private readonly float $salaryGrowth;
@@ -90,9 +94,12 @@ final class SampledPathDraws implements PathDraws
         // whatever mean this home actually grows at and widen it to single-property scale. Doing
         // it here rather than in {@see ReturnModel} leaves the sampled path, and so the RNG
         // stream, exactly as it was, so a seed still lines up draw for draw.
+        // The home's stated rate is a compound rate, so the draw is centred on the arithmetic mean
+        // for the spread this home actually carries (card 0212); no spread, no shift.
         $shock = $this->at($this->path['house'], $yearIndex) - $this->houseGrowth;
 
-        return ($meanReal ?? $this->houseGrowth) + $shock * $this->singlePropertyMultiple;
+        return ReturnModel::arithmeticMean($meanReal ?? $this->houseGrowth, $this->homeVolatility)
+            + $shock * $this->singlePropertyMultiple;
     }
 
     public function salaryGrowthReal(int $yearIndex): float
