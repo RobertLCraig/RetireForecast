@@ -1552,13 +1552,16 @@ final class ResultPresenter
     }
 
     /**
-     * Is this spend line the mortgage payment? Matches {@see HouseholdAssembler::autoCondition},
-     * which classifies a line as `while_mortgaged` on the same substring — so the line whose amount
-     * is substituted here is exactly the line the engine drops.
+     * Is this spend line the mortgage payment? Names the mortgage, as {@see HouseholdAssembler::autoCondition}
+     * reads a `while_mortgaged` line, AND is the payment by {@see HouseholdAssembler::isMortgagePayment},
+     * so a "Mortgage protection insurance" line listed first never takes the instalment (board card 0160).
+     *
+     * @param  array<string, mixed>  $line
      */
-    private static function isMortgageLine(string $label): bool
+    private static function isMortgageLine(array $line): bool
     {
-        return str_contains(mb_strtolower($label), 'mortgage');
+        return str_contains(mb_strtolower((string) ($line['label'] ?? '')), 'mortgage')
+            && HouseholdAssembler::isMortgagePayment($line);
     }
 
     /**
@@ -3557,7 +3560,7 @@ final class ResultPresenter
                 // that shipped because the reconciliation tests only checked amounts.
                 $lineLabel = (string) ($line['label'] ?? '');
                 $computed = false;
-                if ($instalment !== null && self::isMortgageLine($lineLabel)) {
+                if ($instalment !== null && self::isMortgageLine($line)) {
                     $amount = $instalment;
                     $computed = true;
                     $instalment = null; // only ever substitute onto one line

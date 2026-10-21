@@ -288,6 +288,46 @@ final class SpendableViewTest extends TestCase
         $this->assertSame('£18,822.48', $breakdown['spendingTotal']);
     }
 
+    public function test_the_instalment_never_lands_on_a_protection_premium_line(): void
+    {
+        // Board card 0160. A premium line that names the mortgage, listed BEFORE the payment line,
+        // took the instalment: the premium's own amount vanished and "Mortgage" printed £0. The
+        // substitution must pick the line HouseholdAssembler::isMortgagePayment() calls the payment.
+        $state = [
+            'householdName' => 'Protected', 'region' => 'england_wales_ni', 'baseTaxYear' => '2026-27',
+            'people' => [['id' => 'p1', 'dob' => '1955-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'expenseLines' => [
+                ['id' => 'i1', 'label' => 'Mortgage protection insurance', 'amount' => '420', 'category' => 'essential', 'savedAsAsset' => false],
+                ['id' => 'm1', 'label' => 'Mortgage', 'amount' => '0', 'category' => 'essential', 'savedAsAsset' => false],
+                ['id' => 'f1', 'label' => 'Food', 'amount' => '3000', 'category' => 'essential', 'savedAsAsset' => false],
+            ],
+            'expense' => ['survivorFactor' => '70'],
+            'hasProperty' => true,
+            'property' => [
+                'currentValue' => '400000', 'ownership' => 'mortgaged', 'outstandingMortgage' => '160000',
+                'mortgageRepaymentTermMonths' => '192', 'mortgageRepaymentStartYear' => '2026',
+                'mortgageRepaymentStartMonth' => '9', 'mortgageRepaymentRate' => '6.23',
+                'mortgageRepaymentInitialMonths' => '60', 'mortgageRepaymentRevertRate' => '7.24',
+            ],
+        ];
+
+        $breakdown = ResultPresenter::expenseBreakdown($state, (new HouseholdAssembler)->household($state));
+
+        $byLabel = [];
+        foreach ($breakdown['tiers'] as $tier) {
+            foreach ($tier['lines'] as $line) {
+                $byLabel[$line['label']] = $line;
+            }
+        }
+
+        // The same first-full-year instalment the plain "Mortgage" test pins.
+        $this->assertSame('£15,822.48', $byLabel['Mortgage']['amount'], 'the instalment belongs on the "Mortgage" line');
+        $this->assertTrue($byLabel['Mortgage']['computed']);
+        $this->assertSame('£420.00', $byLabel['Mortgage protection insurance']['amount'], 'the premium keeps its own amount');
+        $this->assertFalse($byLabel['Mortgage protection insurance']['computed']);
+        $this->assertSame('£19,242.48', $breakdown['spendingTotal'], 'instalment + premium + food');
+    }
+
     public function test_a_scenario_with_no_repayment_terms_echoes_its_lines_unchanged(): void
     {
         // Back-compat: without terms the panel is the plain form-state echo it always was.
