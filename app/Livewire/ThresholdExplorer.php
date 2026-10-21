@@ -9,6 +9,7 @@ use App\DecisionSupport\LeverKey;
 use App\DecisionSupport\LeverThresholdService;
 use App\DecisionSupport\ThresholdPresenter;
 use App\DecisionSupport\ThresholdRunner;
+use App\Enums\SimulationMode;
 use App\Enums\SimulationStatus;
 use App\Models\Scenario;
 use App\Models\ThresholdResult;
@@ -241,7 +242,7 @@ class ThresholdExplorer extends Component
      */
     private function pictograph(): ?array
     {
-        $run = $this->scenario->latestCompletedRun();
+        $run = $this->scenario->latestCompletedRun(SimulationMode::Full);
         if ($run === null) {
             return null;
         }

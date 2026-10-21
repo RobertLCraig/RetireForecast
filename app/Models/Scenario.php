@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\ScenarioStatus;
 use App\Enums\ScenarioVariant;
+use App\Enums\SimulationMode;
 use App\Enums\SimulationStatus;
 use App\Forecast\BuilderStateDelta;
 use App\Forecast\HouseholdAssembler;
@@ -135,11 +136,15 @@ class Scenario extends Model
      * hides the last good result (the screen and PDF would otherwise disagree). Editing
      * inputs deletes runs, so this always reflects the current inputs. Results are eager
      * loaded since every consumer maps them per variant.
+     *
+     * Pass a mode to read only that kind of run: a reader that claims full-run odds asks for
+     * SimulationMode::Full, so a newer 1,000-path preview cannot stand in for it (card 0159).
      */
-    public function latestCompletedRun(): ?SimulationRun
+    public function latestCompletedRun(?SimulationMode $mode = null): ?SimulationRun
     {
         return $this->simulationRuns()
             ->where('status', SimulationStatus::Done)
+            ->when($mode !== null, fn ($q) => $q->where('mode', $mode))
             ->with('results')
             ->latest()
             ->first();

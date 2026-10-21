@@ -78,6 +78,21 @@ final class CombinationComparisonGateTest extends TestCase
             ->assertDontSee('lean towards');
     }
 
+    /**
+     * Card 0159: a 1,000-path preview finished after a full run must not replace the full run's
+     * odds on Compare, the same rule card 0010 #3 set for the `/afford` hero.
+     */
+    public function test_compare_reads_the_full_run_not_a_newer_preview(): void
+    {
+        $base = ScenarioFixture::rich($this->user);
+        $this->completedRun($base, $this->mc(0.92));
+        $this->travel(1)->minutes();
+        $this->completedRun($base, $this->mc(0.37), SimulationMode::Preview);
+
+        Livewire::test(ScenarioCompare::class, ['scenario' => $base])
+            ->assertViewHas('comparison', fn (array $c): bool => $c['rows'][0]['sortKey'] === 0.92);
+    }
+
     private function childOf(Scenario $base, array $overrides, string $name): Scenario
     {
         $child = new Scenario;
@@ -112,12 +127,12 @@ final class CombinationComparisonGateTest extends TestCase
         );
     }
 
-    private function completedRun(Scenario $plan, SimulationResult $mc): void
+    private function completedRun(Scenario $plan, SimulationResult $mc, SimulationMode $mode = SimulationMode::Full): void
     {
         $run = SimulationRun::create([
             'scenario_id' => $plan->id,
             'user_id' => $this->user->id,
-            'mode' => SimulationMode::Full,
+            'mode' => $mode,
             'n_paths' => $mc->nPaths,
             'seed' => $mc->seed,
             'status' => SimulationStatus::Done,

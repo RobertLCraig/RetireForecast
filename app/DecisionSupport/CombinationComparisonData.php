@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\DecisionSupport;
 
 use App\Enums\ScenarioStatus;
+use App\Enums\SimulationMode;
 use App\Forecast\ScenarioForecaster;
 use App\Models\Scenario;
 use Illuminate\Support\Collection;
@@ -43,7 +44,7 @@ final class CombinationComparisonData
         return self::plans($base)->map(static function (Scenario $plan) use ($forecaster): array {
             $forecast = $forecaster->deterministicVariants($plan)[$plan->variant->value];
 
-            $run = $plan->latestCompletedRun();
+            $run = $plan->latestCompletedRun(SimulationMode::Full);
             $mc = null;
             if ($run !== null) {
                 $result = $run->results->firstWhere(fn ($r): bool => $r->variant === $plan->variant) ?? $run->results->first();

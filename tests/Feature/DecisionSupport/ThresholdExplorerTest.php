@@ -5,15 +5,22 @@ declare(strict_types=1);
 namespace Tests\Feature\DecisionSupport;
 
 use App\DecisionSupport\LeverKey;
+use App\DecisionSupport\ThresholdPresenter;
 use App\DecisionSupport\ThresholdRunner;
+use App\Enums\SimulationMode;
 use App\Enums\SimulationStatus;
 use App\Jobs\RunLeverThreshold;
 use App\Livewire\ThresholdExplorer;
+use App\Models\Result;
+use App\Models\Scenario;
+use App\Models\SimulationRun;
 use App\Models\ThresholdResult;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use RetireForecast\FinanceEngine\Money\Money;
+use RetireForecast\FinanceEngine\MonteCarlo\SimulationResult;
 use RetireForecast\FinanceEngine\Sweep\SweepMetric;
 use Tests\Support\BuilderStateFixture;
 use Tests\Support\ScenarioFixture;
@@ -480,5 +487,54 @@ final class ThresholdExplorerTest extends TestCase
             ->set('thresholdId', $theirThreshold->id)
             ->assertSee('Find the limit')
             ->assertDontSee('Show the full sweep');
+    }
+
+    /**
+     * Card 0159: a 1,000-path preview finished after a full run must not replace the full run's
+     * odds in the pictograph, the same rule card 0010 #3 set for the `/afford` hero.
+     */
+    public function test_the_pictograph_reads_the_full_run_not_a_newer_preview(): void
+    {
+        $scenario = ScenarioFixture::rich($this->user);
+        $this->completedRun($scenario, 0.92, SimulationMode::Full);
+        $this->travel(1)->minutes();
+        $this->completedRun($scenario, 0.37, SimulationMode::Preview);
+
+        Livewire::test(ThresholdExplorer::class, ['scenario' => $scenario])
+            ->assertViewHas('pictograph', ThresholdPresenter::pictograph(0.92, null));
+    }
+
+    private function completedRun(Scenario $plan, float $ess, SimulationMode $mode): void
+    {
+        $p = fn (int $v): array => ['p10' => Money::fromPence($v), 'p25' => Money::fromPence($v), 'p50' => Money::fromPence($v), 'p75' => Money::fromPence($v), 'p90' => Money::fromPence($v)];
+        $mc = new SimulationResult(
+            nPaths: 1000,
+            seed: 42,
+            successProbabilityEssentials: $ess,
+            successProbabilityFullSpend: $ess,
+            depletionRate: 1.0 - $ess,
+            medianDepletionYear: null,
+            terminalWealthPercentiles: $p(100_000_00),
+            fanChart: [],
+            usableWealthPercentiles: $p(100_000_00),
+            usableFanChart: [],
+        );
+
+        $run = SimulationRun::create([
+            'scenario_id' => $plan->id,
+            'user_id' => $this->user->id,
+            'mode' => $mode,
+            'n_paths' => $mc->nPaths,
+            'seed' => $mc->seed,
+            'status' => SimulationStatus::Done,
+            'progress_pct' => 100,
+            'engine_version' => 'test',
+            'taxyear_config_version' => 'test',
+            'assumption_snapshot' => [],
+        ]);
+
+        $result = new Result(['simulation_run_id' => $run->id, 'variant' => $plan->variant]);
+        $result->setSimulationResult($mc);
+        $result->save();
     }
 }
