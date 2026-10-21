@@ -15,7 +15,10 @@
     @php($lead = $bottomLine['lead'])
     @php($leadTones = ['green' => 'border-green-300 bg-green-50', 'amber' => 'border-amber-300 bg-amber-50', 'red' => 'border-red-300 bg-red-50'])
     <section aria-labelledby="how-sure-heading" class="mt-6 rounded-xl border-2 p-6 {{ $leadTones[$lead['tone'] ?? ''] ?? 'border-gray-300 bg-gray-50' }}">
-        <p id="how-sure-heading" class="text-sm font-semibold tracking-wide text-gray-700 uppercase">How sure is your strongest plan?</p>
+        <p id="how-sure-heading" class="text-sm font-semibold tracking-wide text-gray-700 uppercase">{{ $lead['heading'] }}</p>
+        @if ($lead['noneWork'])
+            <p class="mt-2 text-base font-semibold text-red-800">{{ $lead['noneWork'] }}</p>
+        @endif
 
         @if ($lead['checked'])
             <p class="mt-2 flex flex-wrap items-baseline gap-x-3">

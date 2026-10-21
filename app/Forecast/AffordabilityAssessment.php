@@ -92,7 +92,7 @@ final class AffordabilityAssessment
     {
         $working = array_values(array_filter($cards, fn (array $c): bool => $c['works']));
         $best = $working[0] ?? null; // cards() already sorts working + most-money-left first
-        $lead = self::lead($cards[0] ?? null);
+        $lead = self::lead($cards[0] ?? null, $best !== null);
 
         if ($best === null) {
             return [
@@ -134,17 +134,26 @@ final class AffordabilityAssessment
      * and the caller must say so: the deterministic verdict is one average future, not a chance,
      * so putting it in the probability's place would read as certainty the tool does not have.
      *
+     * When no plan works on the expected path (card 0158), `$cards[0]` is the least-bad failing plan.
+     * It is not called "your strongest plan", and its hero is red whatever its chance, so the hero
+     * cannot read green above the red "none of these plans" verdict on the same plan.
+     *
      * @param  array<string, mixed>|null  $card  the strongest card, {@see cards()} sorts it first
-     * @return array{plan: ?string, checked: bool, percent: ?string, band: ?array{level: string, word: string}, tone: ?string}
+     * @return array{plan: ?string, checked: bool, percent: ?string, band: ?array{level: string, word: string}, tone: ?string, heading: string, noneWork: ?string}
      */
-    private static function lead(?array $card): array
+    private static function lead(?array $card, bool $anyWorks): array
     {
+        $tone = $card['mcTone'] ?? null;
+
         return [
             'plan' => $card['title'] ?? null,
             'checked' => ($card['mcEssentials'] ?? null) !== null,
             'percent' => $card['mcEssentials'] ?? null,
             'band' => $card['mcBand'] ?? null,
-            'tone' => $card['mcTone'] ?? null,
+            'tone' => $anyWorks || $tone === null ? $tone : 'red',
+            'heading' => $anyWorks ? 'How sure is your strongest plan?' : 'How sure is the least-bad plan?',
+            'noneWork' => $anyWorks ? null
+                : 'No plan keeps the essentials paid on the expected path. The figure below is for the least-bad of them, not for a plan that lasts.',
         ];
     }
 

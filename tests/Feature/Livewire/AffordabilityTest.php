@@ -247,6 +247,30 @@ class AffordabilityTest extends TestCase
         }
     }
 
+    /**
+     * Card 0158: when no plan keeps the essentials paid on the expected path, `$cards[0]` is a
+     * failing plan. The hero must not call it "your strongest plan" nor colour it green above the
+     * red "none of these plans" verdict; it says plainly that no plan lasts on the expected path.
+     */
+    public function test_the_hero_does_not_lead_with_a_failing_plan_as_the_strongest(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        // rich() merges with array_replace, so a dotted key would not reach the line: set it whole.
+        $state = ScenarioFixture::richState(['variant' => 'stay_put', 'name' => 'Spend far too much']);
+        $state['expenseLines'][0]['amount'] = '250000'; // ess1
+        $base = ScenarioFixture::fromState($user, $state);
+        $this->completedRun($base, $user, $this->mc(0.85));
+
+        Livewire::test(Affordability::class, ['scenario' => $base])
+            ->assertOk()
+            ->assertViewHas('bottomLine', fn (array $b): bool => $b['best'] === null && $b['lead']['checked'] === true)
+            ->assertViewHas('bottomLine', fn (array $b): bool => $b['lead']['tone'] !== 'green')
+            ->assertDontSee('your strongest plan')
+            ->assertDontSeeHtml('border-2 p-6 border-green-300 bg-green-50')
+            ->assertSeeInOrder(['No plan keeps the essentials paid on the expected path', '85%', 'On the expected path']);
+    }
+
     /** A minimal but valid Monte Carlo result, pinned to a chosen "chance essentials last". */
     private function mc(float $ess): SimulationResult
     {
