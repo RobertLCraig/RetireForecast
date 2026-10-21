@@ -168,6 +168,22 @@ final class SupportForMortgageInterestTest extends TestCase
         $this->assertSame(0, $let->years[0]->smiBalance()->pence);
     }
 
+    public function test_a_let_home_gets_no_support_for_mortgage_interest(): void
+    {
+        // Card 0163. A let home's service charge already leaves the spend as a letting expense
+        // (card 0030), so SMI meeting it would take the same bill off the spend twice and lend
+        // against a bill nobody was charged. Every year, the claimant on Guarantee Credit is
+        // charged exactly what the same household off the credit is, and borrows nothing.
+        $onCredit = $this->forecast($this->claimant(weeklyStatePension: 150, homeValue: self::MORTGAGE, isLet: true));
+        $offCredit = $this->forecast($this->claimant(weeklyStatePension: 400, homeValue: self::MORTGAGE, isLet: true));
+
+        $this->assertTrue($onCredit->years[0]->incomeBySource['means_tested_benefit']->isPositive());
+        foreach ($onCredit->years as $i => $year) {
+            $this->assertSame(0, $year->smiBalance()->pence, "year {$i}");
+            $this->assertSame($offCredit->years[$i]->spendTarget->pence, $year->spendTarget->pence, "year {$i}");
+        }
+    }
+
     public function test_the_interest_met_is_capped_at_the_eligible_capital_limit(): void
     {
         $capPounds = (int) (SupportForMortgageInterest::ELIGIBLE_CAPITAL_LIMIT_PENCE / 100);
