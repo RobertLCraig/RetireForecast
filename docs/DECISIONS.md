@@ -3,6 +3,22 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-21: family use moves to a public copy on ubuntu-web
+
+**Context:** Rob asked for an address Mum and Dad can open away from home with no Tailscale. The
+2026-07-12 and 2026-07-16 entries shared the app over Tailscale Serve from this PC, which needs the
+PC on and the family on the tailnet.
+
+**Decision:** a live copy runs on ubuntu-web at `https://retire.craig.ooo`, behind the app's own
+login, with its database `retireforecast` on the `db` LXC. Caddy answers 404 on `/register` for that
+name, so no stranger can make an account. Advice mode stays on, because no account can be made from
+outside and the only users are the family. Every account on the copy has a new password. The copied
+test accounts got random passwords nobody holds. The assistant is off there (no Ollama on that host).
+The copy's data is now separate from this PC's database. This supersedes the Tailscale Serve route of
+2026-07-12 and 2026-07-16 for family use; the host-conditional URL pin stands.
+
+**Status:** active
+
 ## 2026-10-20: a tax-free inherited pension draw is income for Pension Credit
 
 **Context:** card 0145. Card 0079 (2026-09-08, "an inherited pension is tax-free where its owner died

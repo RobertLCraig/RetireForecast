@@ -5,7 +5,7 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-10-20 (card 0151). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-10-21 (family copy on ubuntu-web). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and the older card bullets were folded out to [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md).
 `HandoverHygieneTest` fails this file above 40 KB. The rule for which bullets to fold next is
 Rob's call on card 0151:_
@@ -352,7 +352,8 @@ npm run build                        # build assets (public/build is gitignored)
   **A worker started before the 2026-07-09 Postgres move polls the old SQLite jobs table and never processes Postgres jobs, so kill and restart it.** The synchronous preview (1 path) needs no worker.
 - **Admin `/admin`** gated on `is_admin` (`php artisan user:make-admin {email}`). **Assistant** is inert unless `ASSISTANT_ENABLED=true` (needs Ollama with `qwen3:14b` plus the worker; build the doc index once with `php artisan assistant:index-docs`, re-run after editing a curated methodology doc). Register at `/register` and accept the `/welcome` disclaimer; 2FA at `/account/security`. Demo preset: `php artisan db:seed --class=Database\Seeders\DemoScenarioSeeder`.
 - **Machine config (not in repo):** a per-site Herd nginx conf raises this site's gateway timeout to 300s (`~/.config/herd/config/valet/Nginx/retireforecast.test.conf`).
-- **Share with family** (private, as-is): Tailscale Serve, not a public deploy (DECISIONS 2026-07-12 and 07-16). Set `APP_EXTERNAL_URL` in `.env` to this machine's `https://<name>.ts.net`, run `php artisan serve --port=8000` plus a queue worker, then `tailscale serve --bg 8000` (tailnet-only, auto HTTPS). The URL pin is host-conditional, so family traffic under the `*.ts.net` host gets pinned https URLs while local browsing at `retireforecast.test` keeps its own; both work at once with no env toggling. The `tailscale serve` config survives reboot; `artisan serve` and `queue:work` do not. Stop sharing with `tailscale serve --https=443 off`. Family log in with Rob's credentials (scenarios are per-user).
+- **The family's live copy is NOT this PC** (DECISIONS 2026-10-21). It runs at `https://retire.craig.ooo` on ubuntu-web: code `/opt/retireforecast`, database `retireforecast` on the `db` LXC, worker `retireforecast-queue.service`, scheduler `/etc/cron.d/retireforecast`. Its data has split from this PC's, so a scenario edited here never reaches the family. Deploy: copy the tree with assets already built (ubuntu-web has no node), then `composer install --no-dev`, `php artisan migrate --force`, `php artisan optimize`, `sudo systemctl restart retireforecast-queue`. The dev copy is `~/dev/RetireForecast` on ubuntu-dev, database `retireforecast_dev`. Server setup: SecondBrain `Home Network.md`, "Public names".
+- **This PC's database has migration `2026_08_29_100000_add_hashes_to_simulation_runs_table` pending.** Run `php artisan migrate` before trusting `scenarios:audit` here.
 
 ## Suggested skills / next tools
 - **`/handover resume`** — the pick-up path. Reads this doc, then the board, then starts the head card.
