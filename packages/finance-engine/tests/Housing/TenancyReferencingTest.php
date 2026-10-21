@@ -249,6 +249,29 @@ final class TenancyReferencingTest extends TestCase
         );
     }
 
+    /**
+     * Board card 0165. "Let out & rent elsewhere" keeps the home and pays its rent as a spend line
+     * marked {@see ExpenseProfile::tenantRent()}, so HousingComparison never sees a tenancy start.
+     * It starts one all the same, in year 0, and is charged and told the deposit like a sell-and-rent plan.
+     */
+    public function test_the_let_out_and_rent_plan_is_charged_the_tenancy_deposit(): void
+    {
+        $rent = Money::fromPounds(18_000);
+        $household = $this->household(14_000)->withExpenseProfile(new ExpenseProfile(
+            Money::fromPounds(12_000)->plus($rent), Money::fromPounds(2_000), Percent::fromPercent(100), tenantRent: $rent,
+        ));
+        $forecast = $this->forecast($household, new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'));
+
+        $ordinary = Money::fromPounds(14_000)->plus($rent);
+        $this->assertSame($ordinary->pence, $forecast->years[1]->spendTarget->pence, 'a later year is rent and spend only');
+        $this->assertSame($ordinary->plus(Tenancy::deposit($rent))->pence, $forecast->years[0]->spendTarget->pence);
+
+        $stated = $this->warningsOfCode($forecast, WarningCode::TENANCY_UP_FRONT_COST);
+        $this->assertCount(1, $stated, 'the tenancy starts once, so it is stated once');
+        $this->assertStringContainsString(Tenancy::deposit($rent)->format(), $stated[0]->message);
+        $this->assertStringContainsString(Tenancy::upFrontCash($rent)->format(), $stated[0]->message);
+    }
+
     /** A plan that pays no rent starts no tenancy, so it is charged and told nothing. */
     public function test_a_plan_that_pays_no_rent_is_charged_no_deposit(): void
     {

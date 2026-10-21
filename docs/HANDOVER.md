@@ -10,6 +10,10 @@ inventory and the older card bullets were folded out to [docs/HANDOVER-ARCHIVE.m
 `HandoverHygieneTest` fails this file above 40 KB. The rule for which bullets to fold next is
 Rob's call on card 0151:_
 
+- **A "Let out & rent elsewhere" plan pays the tenancy deposit in year 0.** Card 0165.
+  `ENGINE_VERSION` is `finance-engine/let-out-and-rent-pays-a-tenancy-deposit`; the **re-run is
+  owed** for let-out-and-rent plans. The notice on that plan is **not seen in a browser**.
+
 - **A tax-free inherited pension draw is income for Pension Credit.** Card 0145. `ENGINE_VERSION` is
   `finance-engine/inherited-draw-assessed-for-pension-credit`; the **re-run is owed** for plans on
   Pension Credit that draw an inherited or a taxed pot. The rule is not yet cited at source.

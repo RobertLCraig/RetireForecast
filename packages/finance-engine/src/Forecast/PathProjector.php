@@ -1516,6 +1516,13 @@ final class PathProjector
             $rentThisYear = Money::fromPence((int) round($settings->annualRent->pence * $state['rentFactor']));
             $oneOffs[] = ['label' => Tenancy::UP_FRONT_LABEL, 'amount' => Tenancy::deposit($rentThisYear)->pence];
         }
+        // The let-out-and-rent plan keeps its home and pays its rent as a spend line, so neither
+        // charge above sees its tenancy start; it starts in year 0 all the same (board card 0165).
+        // Sized on the rent line as it stands this year, the figure the referencing flag reads too.
+        $tenantRentNominal = (int) round($household->expenseProfile->tenantRent()->pence * $cumInflation);
+        if ($yearIndex === 0 && $tenantRentNominal > 0 && ! in_array(Tenancy::UP_FRONT_LABEL, array_column($oneOffs, 'label'), true)) {
+            $oneOffs[] = ['label' => Tenancy::UP_FRONT_LABEL, 'amount' => Tenancy::deposit(Money::fromPence($tenantRentNominal))->pence];
+        }
         $oneOffTotalNominal = array_sum(array_column($oneOffs, 'amount'));
 
         // The spending guardrail (board card 0063). Everything above scores the year against a
@@ -2033,11 +2040,11 @@ final class PathProjector
                 ...$this->mpaaWarnings($state, $mpaaAtYearStart),
                 ...$this->allowanceChargeWarnings($state, $mpaaAtYearStart, $aaCharges, $m),
                 ...$this->unfundedOneOffWarnings($oneOffs, $unmetOneOffNominal, $m),
-                ...$this->tenancyUpFrontWarnings($oneOffs, $rentChargedNominal, $m),
                 // The sell-and-rent leg's rent, else a rent paid as a spend line (the let-out-and-rent
                 // plan keeps its home), which rides CPI like the rest of spend.
+                ...$this->tenancyUpFrontWarnings($oneOffs, $rentChargedNominal > 0 ? $rentChargedNominal : $tenantRentNominal, $m),
                 ...$this->rentReferencingWarnings(
-                    $rentChargedNominal > 0 ? $rentChargedNominal : (int) round($household->expenseProfile->tenantRent()->pence * $cumInflation),
+                    $rentChargedNominal > 0 ? $rentChargedNominal : $tenantRentNominal,
                     $grossIncomeNominal,
                     $m,
                 ),

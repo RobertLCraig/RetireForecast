@@ -61,7 +61,10 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-21 (spend-levers-keep-the-spending-guardrail): the essential and discretionary
+     * Bumped 2026-10-21 (let-out-and-rent-pays-a-tenancy-deposit): a "Let out & rent elsewhere"
+     * plan is charged the tenancy deposit in year 0, as a sell-and-rent plan is. Only let-out-and-rent
+     * plans move. Card 0165.
+     * Previous bump 2026-10-21 (spend-levers-keep-the-spending-guardrail): the essential and discretionary
      * spend levers dropped the household's spending guardrail, so a threshold or sustainable-spend
      * answer for a guardrail plan was computed as if it never cut back. Only those move. Card 0162.
      * Previous bump 2026-10-20 (let-and-rent-pays-the-rented-homes-council-tax): a household that lets its
@@ -661,7 +664,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/spend-levers-keep-the-spending-guardrail';
+    public const ENGINE_VERSION = 'finance-engine/let-out-and-rent-pays-a-tenancy-deposit';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

@@ -105,6 +105,19 @@ final class RentReferencingNoticeTest extends TestCase
         $this->assertStringContainsString(Tenancy::monthlyRent($rent)->format().' a month', $ladder['rentReferencing']['message']);
     }
 
+    /** Board card 0165: the let-out-and-rent plan's deposit reaches the ladder too. */
+    public function test_the_let_out_and_rent_ladder_states_the_tenancy_deposit(): void
+    {
+        $base = ScenarioFixture::rich($this->user);
+        $built = QuickWhatIf::build($base, 'let_out_and_rent');
+        $child = WhatIfWriter::create($base, $built['name'], $built['overrides']);
+
+        $ladder = ResultPresenter::ladder(app(ScenarioForecaster::class)->deterministic($child));
+
+        $this->assertNotNull($ladder['tenancyUpFront']);
+        $this->assertStringContainsString(Tenancy::deposit(Money::fromPounds(18_000))->format(), $ladder['tenancyUpFront']);
+    }
+
     /** A plan that keeps the home pays no rent, so neither notice applies to it. */
     public function test_a_plan_that_pays_no_rent_carries_neither_notice(): void
     {
