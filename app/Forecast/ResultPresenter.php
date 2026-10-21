@@ -2408,6 +2408,22 @@ final class ResultPresenter
                 $notes[] = ['kind' => 'early_death', 'text' => "{$name} is modelled to die in {$deathYear} (age {$currentAge}), the very start of the forecast. If that isn't intended, check their longevity or health setting — a value below the current age is treated as the current age."];
             }
 
+            // (b1) An earner with nothing paid into any pension (card 0156). Most employees are
+            // auto-enrolled, so a nil here is far more often a blank field than a real nil, and it
+            // understates the pot and its relief invisibly. Nothing is assumed: the note names the gap.
+            // Same earning test as (a) and (b): a salary, not past retirement, alive past year 0.
+            $earns = $working && $person->grossSalary !== null && $person->grossSalary->isPositive()
+                && ($person->plannedRetirementAge === null || $person->plannedRetirementAge > $currentAge)
+                && ($deathYear === null || $deathYear > $baseYear);
+            $paysIn = array_filter(
+                $household->pensions,
+                static fn ($p): bool => $p instanceof DcPension && $p->ownerId === $person->id
+                    && ($p->ongoingContribution->isPositive() || $p->employerContribution->isPositive()),
+            );
+            if ($earns && $paysIn === []) {
+                $notes[] = ['kind' => 'no_pension_contribution', 'text' => "No pension contribution is modelled for {$name} while they earn. If they or their employer pay into a workplace pension, enter it on the pension, or the forecast understates it."];
+            }
+
             // (b3) A disability benefit passports far more than it pays, and the forecast models
             // exactly ONE of those consequences. Everything else it unlocks is real money the plan
             // is not being credited with, so a reader comparing plans off these figures has to be

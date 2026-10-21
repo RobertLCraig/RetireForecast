@@ -381,6 +381,68 @@ final class InputNotesTest extends TestCase
         $this->assertStringContainsString('earning their salary indefinitely', $notes[array_search('no_retirement_age', $kinds, true)]['text']);
     }
 
+    /** Card 0156: an earner with a DC pension row, its member and employer payments as given. */
+    private function earnerWithPension(string $retirementAge, string $member, string $employer): array
+    {
+        return $this->notes([
+            'householdName' => 'Payslip', 'region' => 'england_wales_ni',
+            'people' => [
+                ['id' => 'p1', 'name' => 'Chris', 'dob' => '1960-01-01', 'sex' => 'female', 'employmentStatus' => 'employed',
+                    'grossSalary' => '30000', 'plannedRetirementAge' => $retirementAge],
+            ],
+            'pensions' => [
+                ['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230'],
+                ['id' => 'dc1', 'ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '50000',
+                    'ongoingContribution' => $member, 'employerContribution' => $employer, 'reliefMethod' => 'net_pay', 'earliestAccessAge' => '57'],
+            ],
+            'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+            'expense' => ['survivorFactor' => '70'],
+        ]);
+    }
+
+    public function test_a_salary_with_no_pension_contribution_is_flagged(): void
+    {
+        // Card 0156. An earner paying nothing into any pension is a nil the reader cannot tell
+        // from a field nobody filled in. Both ways in: a DC pot with nothing paid in, and no DC pot.
+        // The results page and the PDF both list ResultPresenter::inputNotes(), so this is both.
+        foreach ([
+            'zero DC pot' => $this->earnerWithPension('70', '0', '0'),
+            'no DC pot' => $this->notes([
+                'householdName' => 'Payslip', 'region' => 'england_wales_ni',
+                'people' => [
+                    ['id' => 'p1', 'name' => 'Chris', 'dob' => '1960-01-01', 'sex' => 'female', 'employmentStatus' => 'employed',
+                        'grossSalary' => '30000', 'plannedRetirementAge' => '70'],
+                ],
+                'pensions' => [['id' => 'sp1', 'ownerId' => 'p1', 'subtype' => 'state', 'weeklyForecast' => '230']],
+                'expenseLines' => [['id' => 'e1', 'amount' => '15000', 'category' => 'essential']],
+                'expense' => ['survivorFactor' => '70'],
+            ]),
+        ] as $case => $notes) {
+            $kinds = array_column($notes, 'kind');
+            $this->assertContains('no_pension_contribution', $kinds, $case);
+            $text = $notes[array_search('no_pension_contribution', $kinds, true)]['text'];
+            $this->assertStringContainsString('Chris', $text, $case);
+            $this->assertStringContainsString('No pension contribution is modelled', $text, $case);
+            $this->assertStringContainsString('while they earn', $text, $case);
+        }
+    }
+
+    public function test_a_salary_with_a_pension_contribution_raises_no_contribution_note(): void
+    {
+        foreach (['member only' => ['2000', '0'], 'employer only' => ['0', '1500']] as $case => [$member, $employer]) {
+            $kinds = array_column($this->earnerWithPension('70', $member, $employer), 'kind');
+            $this->assertNotContains('no_pension_contribution', $kinds, $case);
+        }
+    }
+
+    public function test_a_person_past_retirement_raises_no_contribution_note(): void
+    {
+        // Retirement age at or below current age: the no_salary note already explains the nil.
+        $kinds = array_column($this->earnerWithPension('60', '0', '0'), 'kind');
+        $this->assertContains('no_salary', $kinds);
+        $this->assertNotContains('no_pension_contribution', $kinds);
+    }
+
     public function test_a_mortgage_due_for_redemption_is_flagged(): void
     {
         // The current home's mortgage is called for redemption within the plan — the forecast
@@ -1191,7 +1253,9 @@ final class InputNotesTest extends TestCase
             'expense' => ['survivorFactor' => '70'],
         ]);
 
-        $this->assertSame([], $notes);
+        // Alex earns and pays nothing into a pension, which card 0156 now names, so that is the one
+        // note. Giving Alex a DC pot instead brings the pot's own tax and MPAA disclosures with it.
+        $this->assertSame(['no_pension_contribution'], array_column($notes, 'kind'));
     }
 
     public function test_a_relationship_status_nobody_gave_is_disclosed_as_an_assumed_figure(): void
