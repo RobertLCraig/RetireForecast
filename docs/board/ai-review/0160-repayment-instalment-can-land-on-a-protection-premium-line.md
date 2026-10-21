@@ -23,7 +23,7 @@ How the projection charges the premium or the payment. That is card 0024 and is 
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] WHEN a home has repayment terms and a "Mortgage protection insurance" line is listed before the "Mortgage" line, THE APP SHALL show the instalment on the "Mortgage" line and the premium at its own amount. proves: `test_the_instalment_never_lands_on_a_protection_premium_line`
+- [x] WHEN a home has repayment terms and a "Mortgage protection insurance" line is listed before the "Mortgage" line, THE APP SHALL show the instalment on the "Mortgage" line and the premium at its own amount. proves: `test_the_instalment_never_lands_on_a_protection_premium_line`
 <!-- AC:END -->
 
 ## Plan
@@ -31,3 +31,11 @@ Make `isMortgageLine()` ask `HouseholdAssembler::isMortgagePayment()` as well as
 replace it with that rule. Add the test beside the other `expenseBreakdown` tests.
 
 ## Comments
+
+**2026-10-21** RESULT: done
+TESTS: +1 new, all green
+TOUCHED: app/Forecast/ResultPresenter.php
+tests/Unit/Forecast/SpendableViewTest.php
+OUT-OF-SCOPE: none
+
+`ResultPresenter::isMortgageLine()` now takes the whole line and asks `HouseholdAssembler::isMortgagePayment()` beside the 'mortgage' label test, so the breakdown and the projection share one rule for which line is the payment. test_the_instalment_never_lands_on_a_protection_premium_line lists 'Mortgage protection insurance' (420) before 'Mortgage' (0) and was watched failing first: 'Mortgage' printed £0.00 instead of £15,822.48. It now pins the instalment on 'Mortgage', the premium at £420.00, and the total at £19,242.48. No engine change, so no ENGINE_VERSION bump and no re-run owed. Built in a worktree: the panel is not seen in a browser.
