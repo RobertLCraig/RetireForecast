@@ -48,6 +48,11 @@ still uses up band space and pushes the income above it into higher bands:
   eroded pound-for-pound by non-savings income.
 - **Dividends** get their £500 allowance, then are taxed at the dividend rates for each band (from
   2026-27 these rise to 10.75% ordinary / 35.75% upper, with 39.35% additional).
+- **From 6 April 2027** savings interest above the allowances is taxed at **22% / 42% / 47%**, and
+  rent profit gets its own **property rates** of the same 22% / 42% / 47%. Rent is taxed last within
+  non-savings income, so the personal allowance goes to your pensions and earnings first. A
+  landlord's mortgage interest is relieved at 22% from then. Each year of the forecast uses the rates
+  enacted for that year (Budget 2025), so a plan that starts in 2026 changes rates part-way.
 
 Each person is taxed **individually**, as in the UK system. The tool reproduces HMRC's published
 worked examples to the penny.

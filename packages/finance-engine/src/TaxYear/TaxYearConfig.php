@@ -30,6 +30,7 @@ final class TaxYearConfig
         public readonly IncomeTaxParameters $incomeTax,
         public readonly DividendParameters $dividends,
         public readonly SavingsParameters $savings,
+        public readonly PropertyIncomeParameters $property,
         public readonly NationalInsuranceParameters $nationalInsurance,
         public readonly PensionParameters $pension,
         public readonly IsaParameters $isa,
@@ -47,5 +48,13 @@ final class TaxYearConfig
             throw new \InvalidArgumentException("{$taxYear}: sources and verified-on dates must share keys; mismatched: ".implode(', ', array_keys($missing)));
         }
         $this->verifiedOn = min($verifiedOnBySource);
+    }
+
+    /** A copy with only the income rates changed: what a scheduled rate change does to a year. */
+    public function withIncomeRates(DividendParameters $dividends, SavingsParameters $savings, PropertyIncomeParameters $property): self
+    {
+        return new self($this->taxYear, $this->region, $this->incomeTax, $dividends, $savings, $property,
+            $this->nationalInsurance, $this->pension, $this->isa, $this->statePension, $this->sdlt,
+            $this->cgt, $this->benefits, $this->iht, $this->care, $this->sources, $this->verifiedOnBySource);
     }
 }

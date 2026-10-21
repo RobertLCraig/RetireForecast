@@ -3,6 +3,35 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-22: a later year's enacted income rates reach that year
+
+**Context:** card 0213. A projection resolved one `TaxYearConfig` for its base year and used it for
+every year, so Budget 2025's rate changes never reached the forecast: savings at 22% / 42% / 47% and
+separate property rates at the same from 6 April 2027, and (for a 2025-26 base year) the 2026-27
+dividend rates. Cash-heavy and let-out plans were flattered against the others.
+
+**Decision: lay the enacted rates over the base year, per tax year.**
+`TaxYearRegistry::ratesInForce($base, $taxYearStart)` returns the base config with only the
+dividend, savings and property rates changed; thresholds and every other figure stay the base
+year's, indexed as before. `PathProjector::useTaxYear()` picks it at the top of each year, one
+calculator per distinct rate set. A calendar year is read as the tax year that starts in it (card
+0214 checks that mapping). Not a full config for every future year: nothing else is enacted, and a
+copy of every figure would be a second home for each.
+
+**Decision: property income is a part of non-savings income, not beside it.**
+`TaxableIncome::$propertyWithin` names how much of `nonSavings` is rent profit. The calculator
+stacks it last within non-savings, after the allowance has gone to other income (the 2027 order),
+and taxes it at the property rates. Every caller that only knows the non-savings total stays right,
+and every pricing of a pension draw reads the year's rent profit off the state, so a draw pushes the
+rent into higher bands as it does in life. The landlord's finance-cost credit reads the year's
+property basic rate (22% from 2027-28).
+
+`ENGINE_VERSION` is `finance-engine/savings-and-property-rates-rise-in-2027`; stored plans with
+taxable savings interest above the allowances or taxable rent owe a re-run. The golden master did
+not move (its household has neither).
+
+**Status:** active
+
 ## 2026-10-22: a stated return is a compound rate, and the Monte Carlo now grows at it
 
 **Context:** card 0212, from the 2026-10-21 full review. The shipped returns are the FCA projection

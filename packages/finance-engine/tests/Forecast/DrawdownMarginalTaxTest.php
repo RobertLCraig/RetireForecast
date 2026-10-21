@@ -106,9 +106,10 @@ final class DrawdownMarginalTaxTest extends TestCase
             + $src['pension_drawdown']->pence;
     }
 
-    private function taxOn(int $nonSavings, int $savings, int $dividends): int
+    /** Recomputed under the rates in force in that tax year (savings rise in 2027-28, card 0213). */
+    private function taxOn(int $nonSavings, int $savings, int $dividends, int $taxYearStart = 2026): int
     {
-        return (new IncomeTaxCalculator(TaxYearRegistry::for('2026-27')))->totalPence(new TaxableIncome(
+        return (new IncomeTaxCalculator(TaxYearRegistry::ratesInForce(TaxYearRegistry::for('2026-27'), $taxYearStart)))->totalPence(new TaxableIncome(
             Money::fromPence($nonSavings),
             Money::fromPence($savings),
             Money::fromPence($dividends),
@@ -216,7 +217,7 @@ final class DrawdownMarginalTaxTest extends TestCase
             // computation from the year's FINAL taxable income, or the increments are
             // priced against an income the person does not have.
             $this->assertSame(
-                $this->taxOn($nonSavings, $savings, 0),
+                $this->taxOn($nonSavings, $savings, 0, $nominal->calendarYear),
                 $nominal->totalTax->pence,
                 "the year's total tax must equal a full recomputation in {$nominal->calendarYear}",
             );

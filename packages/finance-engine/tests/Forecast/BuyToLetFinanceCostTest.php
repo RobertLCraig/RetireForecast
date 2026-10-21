@@ -122,8 +122,9 @@ final class BuyToLetFinanceCostTest extends TestCase
         $residential = $this->yearsByCalendar($this->landlord(isLet: false));
         $let = $this->yearsByCalendar($this->landlord(isLet: true));
 
+        // From 2027-28 the credit is given at the property basic rate, 22% (board card 0213).
         $this->assertSame(
-            (int) round(0.20 * self::INTEREST),
+            (int) round(0.22 * self::INTEREST),
             $residential[2036]->totalTax->pence - $let[2036]->totalTax->pence,
             'ten years of CPI must not change the finance-cost credit on a fixed interest-only loan',
         );

@@ -10,6 +10,11 @@ inventory and the older card bullets were folded out to [docs/HANDOVER-ARCHIVE.m
 `HandoverHygieneTest` fails this file above 40 KB. The rule for which bullets to fold next is
 Rob's call on card 0151:_
 
+- **Each year uses the income rates enacted for it.** Card 0213. Savings and rent pay 22% / 42% /
+  47% from 2027-28, and a 2025-26 plan takes the 2026 dividend rates. `ENGINE_VERSION` is
+  `finance-engine/savings-and-property-rates-rise-in-2027`; the **re-run is owed** for plans with
+  taxable interest above the allowances or taxable rent.
+
 - **The Monte Carlo now grows money at the stated rate.** Card 0212. Before, the typical all-shares
   pot grew 1.7% a year, not 4.4%, so every success chance was too low. `ENGINE_VERSION` is
   `finance-engine/monte-carlo-draws-compound-to-the-stated-rate`; **every stored Monte Carlo result

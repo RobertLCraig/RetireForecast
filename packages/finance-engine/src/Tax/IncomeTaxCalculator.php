@@ -231,8 +231,27 @@ final class IncomeTaxCalculator
         // income) plus the PSA are charged at 0% on the lowest savings first.
         $savingsZeroBudget = max(0, $savings->startingRateBand->pence - $nsTaxable) + $psaPence;
 
-        $ns = $this->chargeParts($consume($nsTaxable), 'non_savings', $nonSavingsRate, 0, $withLines);
-        $sav = $this->chargeParts($consume($savingsTaxable), 'savings', $nonSavingsRate, $savingsZeroBudget, $withLines);
+        // Savings and property income carry their own rates (the main rates until 5 April 2027,
+        // two points higher after: board card 0213).
+        $savingsRate = fn (string $band): Percent => match ($band) {
+            'basic' => $savings->basicRate,
+            'higher' => $savings->higherRate,
+            'additional' => $savings->additionalRate,
+        };
+        $property = $this->config->property;
+        $propertyRate = fn (string $band): Percent => match ($band) {
+            'basic' => $property->basicRate,
+            'higher' => $property->higherRate,
+            'additional' => $property->additionalRate,
+        };
+
+        // Property income is stacked LAST within non-savings, so the personal allowance and the
+        // lower bands go to the other non-savings income first (the order from April 2027).
+        $propertyTaxable = min($income->propertyWithin->pence, $nsTaxable);
+        $ns = $this->chargeParts($consume($nsTaxable - $propertyTaxable), 'non_savings', $nonSavingsRate, 0, $withLines);
+        $prop = $this->chargeParts($consume($propertyTaxable), 'property', $propertyRate, 0, $withLines);
+        $ns = ['tax' => $ns['tax'] + $prop['tax'], 'lines' => [...$ns['lines'], ...$prop['lines']]];
+        $sav = $this->chargeParts($consume($savingsTaxable), 'savings', $savingsRate, $savingsZeroBudget, $withLines);
         $div = $this->chargeParts($consume($dividendsTaxable), 'dividends', $dividendRate, $dividends->allowance->pence, $withLines);
 
         return [

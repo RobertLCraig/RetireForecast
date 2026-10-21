@@ -19,11 +19,22 @@ use RetireForecast\FinanceEngine\Money\Money;
  */
 final class TaxableIncome
 {
+    /**
+     * The part of $nonSavings that is property income (rent less its costs). It is INSIDE
+     * $nonSavings, not added to it, so every caller that only knows the non-savings total is still
+     * right; the calculator stacks this part last within non-savings and taxes it at the property
+     * rates, which differ from the main rates from 6 April 2027 (board card 0213).
+     */
+    public readonly Money $propertyWithin;
+
     public function __construct(
         public readonly Money $nonSavings,
         public readonly Money $savings,
         public readonly Money $dividends,
-    ) {}
+        ?Money $propertyWithin = null,
+    ) {
+        $this->propertyWithin = Money::fromPence(max(0, min($propertyWithin?->pence ?? 0, $nonSavings->pence)));
+    }
 
     public static function ofNonSavings(Money $nonSavings): self
     {

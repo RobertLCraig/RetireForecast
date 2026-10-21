@@ -32,8 +32,22 @@ where the property rates go. Bump `ENGINE_VERSION`; expect the golden master red
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN savings interest above the allowances is taxed in tax year 2027-28 or later, THE APP SHALL tax it at 22% / 42% / 47%. proves: `test_savings_income_is_taxed_at_the_2027_rates_from_april_2027`
-- [ ] #2 WHEN rental income is taxed in 2027-28 or later, THE APP SHALL tax it at the property rates. proves: `test_rental_income_is_taxed_at_the_property_rates_from_april_2027`
-- [ ] #3 WHEN the base tax year is 2025-26, THE APP SHALL tax dividends at the 2026-27 rates from April 2026. proves: `test_a_2025_base_year_plan_takes_the_2026_dividend_rates`
-- [ ] #4 WHEN the year is 2026-27, THE APP SHALL keep the 20% / 40% / 45% savings rates. proves: `test_savings_income_keeps_the_old_rates_before_april_2027`
+- [x] #1 WHEN savings interest above the allowances is taxed in tax year 2027-28 or later, THE APP SHALL tax it at 22% / 42% / 47%. proves: `test_savings_income_is_taxed_at_the_2027_rates_from_april_2027`
+- [x] #2 WHEN rental income is taxed in 2027-28 or later, THE APP SHALL tax it at the property rates. proves: `test_rental_income_is_taxed_at_the_property_rates_from_april_2027`
+- [x] #3 WHEN the base tax year is 2025-26, THE APP SHALL tax dividends at the 2026-27 rates from April 2026. proves: `test_a_2025_base_year_plan_takes_the_2026_dividend_rates`
+- [x] #4 WHEN the year is 2026-27, THE APP SHALL keep the 20% / 40% / 45% savings rates. proves: `test_savings_income_keeps_the_old_rates_before_april_2027`
 <!-- AC:END -->
+
+## Comments
+
+**2026-10-22** RESULT: built
+TESTS: +5 new (`IncomeRateChangesTest`), 2 drifted and updated: `BuyToLetFinanceCostTest` (the 2036 credit is now 22%) and `DrawdownMarginalTaxTest` (its recomputation now uses the year's rates). Golden master unmoved.
+TOUCHED: `TaxYearRegistry::ratesInForce()`, new `PropertyIncomeParameters`, `SavingsParameters` rates, `TaxYearConfig::withIncomeRates()`, `TaxableIncome::$propertyWithin`, `IncomeTaxCalculator`, `PathProjector::useTaxYear()` and the rent profit on the state, ENGINE_VERSION, METHODOLOGY, DECISIONS
+OUT-OF-SCOPE: card 0214 (whether calendar year Y is tax year Y/Y+1, which this card assumes).
+
+The calculator tests did not exist before `ratesInForce()`, so they could not be watched red; the
+projector test (#2) asserts a £300 gap that the old code could not produce (it taxed rent at 20%).
+
+Review should attack: whether any tax path in `PathProjector` still builds a `TaxableIncome` without
+the rent profit (grep `new TaxableIncome(`; the earnings-only one at the Pension Credit step is
+deliberately rent-free); and whether `$state['propertyProfit']` is stale in a year the let ends.

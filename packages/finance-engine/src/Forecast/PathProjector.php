@@ -58,6 +58,7 @@ use RetireForecast\FinanceEngine\Tax\IncomeTaxCalculator;
 use RetireForecast\FinanceEngine\Tax\NationalInsuranceCalculator;
 use RetireForecast\FinanceEngine\Tax\TaxableIncome;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearConfig;
+use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
 /**
  * Projects one path of a household's finances year by year: assembles each person's
@@ -131,7 +132,19 @@ final class PathProjector
         .'less than Pension Credit would be. This forecast models Pension Credit only, so it shows no means-tested benefit in '
         .'these years even where Universal Credit would be payable, and the shortfall shown here is the more pessimistic of the two.';
 
-    private readonly IncomeTaxCalculator $incomeTax;
+    /**
+     * The income-tax calculator for the tax year being projected: the base year's figures with the
+     * income rates enacted for that year laid over them (board card 0213). Set at the top of each
+     * year by {@see self::useTaxYear()}; one per distinct rate set, so a 40-year path builds two or
+     * three, not forty.
+     */
+    private IncomeTaxCalculator $incomeTax;
+
+    /** The year's config: the rates the property finance-cost credit reads. */
+    private TaxYearConfig $yearConfig;
+
+    /** @var array<int, array{0: TaxYearConfig, 1: IncomeTaxCalculator}> tax-year start => its config and calculator */
+    private array $taxByYear = [];
 
     private readonly NationalInsuranceCalculator $ni;
 
@@ -152,6 +165,7 @@ final class PathProjector
 
     public function __construct(private readonly TaxYearConfig $config)
     {
+        $this->yearConfig = $config;
         $this->incomeTax = new IncomeTaxCalculator($config);
         $this->ni = new NationalInsuranceCalculator($config);
         $this->statePension = new StatePensionCalculator($config);
@@ -219,6 +233,7 @@ final class PathProjector
             }
             $thresholdFactor = $calendarYear <= $settings->freezeEndYear ? 1.0 : $cumInflation / $freezeRefInflation;
 
+            $this->useTaxYear($calendarYear);
             $year = $this->projectYear($household, $settings, $draws, $state, $yearIndex, $calendarYear, $alive, $cumInflation, $thresholdFactor);
 
             if ($depletionYear === null && ! $year->essentialsMet) {
@@ -1197,6 +1212,13 @@ final class PathProjector
             $taxablePerPerson[$ownerId] -= $cost;
             $src['other_taxable'] -= $cost;
         }
+        // The rent profit each owner is taxed on, which sits INSIDE their non-savings income and is
+        // taxed at the property rates (board card 0213). Kept on the state for the year so every
+        // pricing of a draw sees it, not only the year's own tax pass.
+        $state['propertyProfit'] = [];
+        foreach ($this->rentalIncomePerOwner($household, $alive, $ages, $yearIndex, $cumInflation) as $ownerId => $rent) {
+            $state['propertyProfit'][$ownerId] = max(0, $rent - ($lettingCosts[$ownerId] ?? 0));
+        }
 
         // Annuity income from any purchased annuities: a guaranteed lifetime income, taxable
         // like other income, paid to the surviving partner at the joint fraction after the
@@ -1283,6 +1305,7 @@ final class PathProjector
                 Money::fromPence(max(0, $taxable - ($annuityExempt[$person->id] ?? 0))),
                 Money::fromPence($cashInterest),
                 Money::fromPence($giaDividends),
+                Money::fromPence($state['propertyProfit'][$person->id] ?? 0),
             ), $thresholdFactor);
             $ni = $this->niForPerson($household, $person->id, $state, $yearIndex);
 
@@ -1435,7 +1458,7 @@ final class PathProjector
             $rentalProfit = max(0, array_sum($this->rentalIncomePerOwner($household, $alive, $ages, $yearIndex, $cumInflation)) - array_sum($lettingCosts));
             $reducerBase = min($financeCost, $rentalProfit);
             $credit = min(
-                (int) round($reducerBase * $this->config->incomeTax->basicRate->asFraction()),
+                (int) round($reducerBase * $this->yearConfig->property->basicRate->asFraction()),
                 $totalTaxNominal,
             );
             $totalTaxNominal -= $credit;
@@ -3840,6 +3863,7 @@ final class PathProjector
             Money::fromPence($nonSavings),
             Money::fromPence($savingsPerPerson[$pid] ?? 0),
             Money::fromPence($dividendsPerPerson[$pid] ?? 0),
+            Money::fromPence($state['propertyProfit'][$pid] ?? 0),
         );
 
         // Fund the shortfall from one bucket, taking from every living holder IN PROPORTION to
@@ -4343,6 +4367,7 @@ final class PathProjector
             Money::fromPence($existing->nonSavings->pence + $extra),
             $existing->savings,
             $existing->dividends,
+            $existing->propertyWithin,
         ), $thresholdFactor);
 
         return $with - $base;
@@ -4356,6 +4381,20 @@ final class PathProjector
      * thresholds — without rebuilding the band config in the 10k-path hot loop. $factor == 1.0
      * (during the freeze, and for the HMRC worked-example unit tests) is the exact identity.
      */
+    /**
+     * Point the tax pass at the income rates in force in the tax year starting in $taxYearStart
+     * (board card 0213). A calendar year here is the tax year that starts in it.
+     */
+    private function useTaxYear(int $taxYearStart): void
+    {
+        $this->taxByYear[$taxYearStart] ??= (function () use ($taxYearStart): array {
+            $config = TaxYearRegistry::ratesInForce($this->config, $taxYearStart);
+
+            return [$config, new IncomeTaxCalculator($config)];
+        })();
+        [$this->yearConfig, $this->incomeTax] = $this->taxByYear[$taxYearStart];
+    }
+
     private function indexedTotalPence(TaxableIncome $income, float $factor): int
     {
         if ($factor <= 1.0) {
@@ -4366,6 +4405,7 @@ final class PathProjector
             Money::fromPence((int) round($income->nonSavings->pence / $factor)),
             Money::fromPence((int) round($income->savings->pence / $factor)),
             Money::fromPence((int) round($income->dividends->pence / $factor)),
+            Money::fromPence((int) round($income->propertyWithin->pence / $factor)),
         );
 
         return (int) round($this->incomeTax->totalPence($deflated) * $factor);
@@ -4778,6 +4818,7 @@ final class PathProjector
                 Money::fromPence($taxablePerPerson[$pid] ?? 0),
                 Money::fromPence($savingsPerPerson[$pid] ?? 0),
                 Money::fromPence($dividendsPerPerson[$pid] ?? 0),
+                Money::fromPence($state['propertyProfit'][$pid] ?? 0),
             ), self::MARGINAL_RATE_PROBE_PENCE, $thresholdFactor);
 
             $tax += (int) round($taxable * $rate / self::MARGINAL_RATE_PROBE_PENCE);
@@ -4843,6 +4884,7 @@ final class PathProjector
                 Money::fromPence($taxablePerPerson[$pid] ?? 0),
                 Money::fromPence($savingsPerPerson[$pid] ?? 0),
                 Money::fromPence($dividendsPerPerson[$pid] ?? 0),
+                Money::fromPence($state['propertyProfit'][$pid] ?? 0),
             ), $excess, $thresholdFactor);
         }
 

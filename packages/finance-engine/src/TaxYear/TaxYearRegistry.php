@@ -23,6 +23,47 @@ final class TaxYearRegistry
     /** The tax years the registry has a configuration for — the single source of the set. */
     public const SUPPORTED_TAX_YEARS = ['2025-26', '2026-27'];
 
+    /** Budget 2025 policy paper, 26 November 2025: the dividend, savings and property rate changes. */
+    private const RATE_CHANGES_SOURCE = 'https://www.gov.uk/government/publications/changes-to-tax-rates-for-property-savings-dividend-income/changes-to-tax-rates-for-property-savings-dividend-income';
+
+    /**
+     * The base year's figures with the income rates ENACTED for a later tax year laid over them
+     * (board card 0213). A projection resolves one config for its base year and indexes the
+     * thresholds itself, so a rate that changes inside the horizon reaches it only through here.
+     * Thresholds, allowances and every other figure stay the base year's.
+     *
+     *  - from 2026-27: dividends 10.75% / 35.75% / 39.35%.
+     *  - from 2027-28: savings 22% / 42% / 47%, and property income its own 22% / 42% / 47%.
+     *
+     * Source: {@see self::RATE_CHANGES_SOURCE}. $taxYearStart is the calendar year the tax year
+     * starts in (2027 for 2027-28).
+     */
+    public static function ratesInForce(TaxYearConfig $base, int $taxYearStart): TaxYearConfig
+    {
+        $dividends = $base->dividends;
+        if ($taxYearStart >= 2026) {
+            $dividends = new DividendParameters(
+                allowance: $base->dividends->allowance,
+                ordinaryRate: Percent::fromPercent(10.75),
+                upperRate: Percent::fromPercent(35.75),
+                additionalRate: Percent::fromPercent(39.35),
+            );
+        }
+
+        $savings = $base->savings;
+        $property = $base->property;
+        if ($taxYearStart >= 2027) {
+            $savings = $savings->withRates(Percent::fromPercent(22), Percent::fromPercent(42), Percent::fromPercent(47));
+            $property = new PropertyIncomeParameters(
+                basicRate: Percent::fromPercent(22),
+                higherRate: Percent::fromPercent(42),
+                additionalRate: Percent::fromPercent(47),
+            );
+        }
+
+        return $base->withIncomeRates($dividends, $savings, $property);
+    }
+
     public static function for(string $taxYear, RegionProfile $region = RegionProfile::EnglandWalesNi): TaxYearConfig
     {
         if ($region === RegionProfile::Scotland) {
@@ -66,6 +107,14 @@ final class TaxYearRegistry
                 psaAdditionalRate: Money::zero(),
                 startingRateBand: Money::fromPounds(5_000),
                 startingRate: Percent::zero(),
+                basicRate: Percent::fromPercent(20),
+                higherRate: Percent::fromPercent(40),
+                additionalRate: Percent::fromPercent(45),
+            ),
+            property: new PropertyIncomeParameters(
+                basicRate: Percent::fromPercent(20),
+                higherRate: Percent::fromPercent(40),
+                additionalRate: Percent::fromPercent(45),
             ),
             nationalInsurance: new NationalInsuranceParameters(
                 primaryThreshold: Money::fromPounds(12_570),
@@ -108,6 +157,7 @@ final class TaxYearRegistry
                 'income_tax' => 'https://www.gov.uk/income-tax-rates',
                 'dividends' => 'https://www.gov.uk/tax-on-dividends',
                 'savings' => 'https://www.gov.uk/apply-tax-free-interest-on-savings',
+                'income_rate_changes' => self::RATE_CHANGES_SOURCE,
                 'national_insurance' => 'https://www.gov.uk/national-insurance-rates-letters',
                 'pension' => 'https://www.gov.uk/tax-on-your-private-pension/annual-allowance',
                 'isa' => 'https://www.gov.uk/individual-savings-accounts',
@@ -153,6 +203,14 @@ final class TaxYearRegistry
                 psaAdditionalRate: Money::zero(),
                 startingRateBand: Money::fromPounds(5_000),
                 startingRate: Percent::zero(),
+                basicRate: Percent::fromPercent(20),
+                higherRate: Percent::fromPercent(40),
+                additionalRate: Percent::fromPercent(45),
+            ),
+            property: new PropertyIncomeParameters(
+                basicRate: Percent::fromPercent(20),
+                higherRate: Percent::fromPercent(40),
+                additionalRate: Percent::fromPercent(45),
             ),
             nationalInsurance: new NationalInsuranceParameters(
                 primaryThreshold: Money::fromPounds(12_570),
@@ -198,6 +256,7 @@ final class TaxYearRegistry
                 'income_tax' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
                 'dividends' => 'https://commonslibrary.parliament.uk/research-briefings/cbp-10618/',
                 'savings' => 'https://www.gov.uk/apply-tax-free-interest-on-savings',
+                'income_rate_changes' => self::RATE_CHANGES_SOURCE,
                 'national_insurance' => 'https://www.gov.uk/national-insurance-rates-letters',
                 'pension' => 'https://www.gov.uk/tax-on-your-private-pension/annual-allowance',
                 'isa' => 'https://www.gov.uk/individual-savings-accounts',
@@ -336,6 +395,7 @@ final class TaxYearRegistry
             'income_tax' => '2026-06-27',
             'dividends' => '2026-06-27',
             'savings' => '2026-06-27',
+            'income_rate_changes' => '2026-10-22',
             'national_insurance' => '2026-06-27',
             'pension' => '2026-06-27',
             'isa' => '2026-06-27',
