@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionProperty;
 use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
+use RetireForecast\FinanceEngine\Dto\SpendingGuardrail;
 use RetireForecast\FinanceEngine\Dto\SpendPath;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
@@ -49,8 +50,10 @@ final class ExpenseProfileWitherTest extends TestCase
             discretionarySpendPath: SpendPath::flat(Money::fromPounds(6_000)),
             propertyCostsRealGrowth: Percent::fromPercent(2),
             propertyCostsUtilities: Money::fromPounds(900),
+            spendingGuardrail: new SpendingGuardrail(Percent::fromPercent(85), Percent::fromPercent(20)),
             mortgageLinkedEssential: Money::fromPounds(600),
             mortgageLinkedDiscretionary: Money::fromPounds(400),
+            tenantRent: Money::fromPounds(700),
         );
     }
 
@@ -87,6 +90,11 @@ final class ExpenseProfileWitherTest extends TestCase
             'withMortgageCosts' => [
                 fn (): ExpenseProfile => $base->withMortgageCosts(Money::fromPounds(7_500)),
                 ['essentialAnnualSpend', 'essentialSpendPath', 'mortgageCosts'],
+            ],
+            // The spend levers' rebuild site (card 0162): it may set the tier it sweeps, nothing else.
+            'withFlatSpend' => [
+                fn (): ExpenseProfile => $base->withFlatSpend(Money::fromPounds(18_000), Money::fromPounds(3_000)),
+                ['essentialAnnualSpend', 'essentialSpendPath', 'discretionaryAnnualSpend', 'discretionarySpendPath'],
             ],
             'withOneOffCost' => [
                 fn (): ExpenseProfile => $base->withOneOffCost(70, Money::fromPounds(2_000), 'Deposit'),

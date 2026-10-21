@@ -21,6 +21,7 @@ use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\Person;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
+use RetireForecast\FinanceEngine\Dto\SpendingGuardrail;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
 use RetireForecast\FinanceEngine\Forecast\ForecastResult;
@@ -109,6 +110,25 @@ final class SweepLeversTest extends TestCase
             $profile = $lever->apply($household, $this->settings(), 20_000)->household->expenseProfile;
             $this->assertSame(0, $profile->propertyCostsRealGrowth()->basisPoints, $lever->name().' keeps the stated 0%');
             $this->assertFalse($profile->propertyCostsGrowthIsAssumed(), $lever->name().' does not turn a stated rate into an assumed one');
+        }
+    }
+
+    public function test_the_spend_levers_carry_the_spending_guardrail(): void
+    {
+        // Board card 0162. A lever that drops the guardrail answers "what could we spend?" for a
+        // household that never cuts back, while the base run it is read beside does cut back.
+        $guardrail = new SpendingGuardrail(Percent::fromPercent(85), Percent::fromPercent(20));
+        $household = $this->workingCouple();
+        $household = $household->withExpenseProfile(new ExpenseProfile(
+            Money::fromPounds(20_000),
+            Money::fromPounds(8_000),
+            Percent::fromPercent(70),
+            spendingGuardrail: $guardrail,
+        ));
+
+        foreach ([new EssentialSpendLever, new DiscretionarySpendLever] as $lever) {
+            $profile = $lever->apply($household, $this->settings(), 15_000)->household->expenseProfile;
+            $this->assertSame($guardrail, $profile->spendingGuardrail, $lever->name().' keeps the guardrail');
         }
     }
 

@@ -368,6 +368,24 @@ final class ExpenseProfile
     }
 
     /**
+     * The same profile with one or both spend tiers set to a flat amount, for the essential and
+     * discretionary spend levers. A tier left null keeps its path (its smile, if any). Every other
+     * field, the spending guardrail included, is carried through {@see copy} (board card 0162).
+     */
+    public function withFlatSpend(?Money $essential = null, ?Money $discretionary = null): self
+    {
+        $changes = [];
+        if ($essential !== null) {
+            $changes += ['essentialAnnualSpend' => $essential, 'essentialSpendPath' => SpendPath::flat($essential)];
+        }
+        if ($discretionary !== null) {
+            $changes += ['discretionaryAnnualSpend' => $discretionary, 'discretionarySpendPath' => SpendPath::flat($discretionary)];
+        }
+
+        return $this->copy($changes);
+    }
+
+    /**
      * The ONE place an ExpenseProfile is rebuilt from an existing one. Every wither goes through
      * here, so a field added to this DTO cannot be silently dropped by a wither that listed the
      * constructor arguments by hand and was never updated — which is exactly how a carefully

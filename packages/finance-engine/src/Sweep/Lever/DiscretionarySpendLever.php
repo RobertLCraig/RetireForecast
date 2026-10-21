@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace RetireForecast\FinanceEngine\Sweep\Lever;
 
-use RetireForecast\FinanceEngine\Dto\ExpenseProfile;
 use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Forecast\ForecastSettings;
 use RetireForecast\FinanceEngine\Money\Money;
@@ -32,21 +31,7 @@ final class DiscretionarySpendLever implements SweepLever
 {
     public function apply(Household $household, ForecastSettings $settings, float $value): SweepInputs
     {
-        $e = $household->expenseProfile;
-        $profile = new ExpenseProfile(
-            $e->essentialAnnualSpend,
-            Money::fromPence((int) round($value * 100)),
-            $e->survivorSpendFactor,
-            $e->oneOffCosts,
-            $e->propertyCosts,
-            $e->employmentCosts,
-            $e->mortgageCosts,
-            essentialSpendPath: $e->essentialSpendPath,
-            propertyCostsRealGrowth: $e->propertyCostsRealGrowth,
-            propertyCostsUtilities: $e->propertyCostsUtilities,
-            mortgageLinkedEssential: $e->mortgageLinkedEssential,
-            mortgageLinkedDiscretionary: $e->mortgageLinkedDiscretionary,
-        );
+        $profile = $household->expenseProfile->withFlatSpend(discretionary: Money::fromPence((int) round($value * 100)));
 
         return new SweepInputs(
             $household->withExpenseProfile($profile),

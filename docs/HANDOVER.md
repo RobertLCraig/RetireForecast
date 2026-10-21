@@ -162,7 +162,10 @@ Rob's call on card 0151:_
 - **The spend levers keep the reader's property-cost growth rate.** Card 0028 #4. `ENGINE_VERSION`
   was `finance-engine/spend-levers-keep-property-cost-growth`; thresholds and sustainable-spend
   answers are owed a re-run for plans with a stated rate. The results note now shows the rate in
-  force (a stated 0% too), only on a stay-put plan. Not seen in a browser.
+  force (a stated 0% too), only on a stay-put plan. Not seen in a browser. Card 0162 routed both
+  levers through `ExpenseProfile::withFlatSpend()`, so they keep the spending guardrail too.
+  `ENGINE_VERSION` is `finance-engine/spend-levers-keep-the-spending-guardrail`; the **re-run is
+  owed** for thresholds and sustainable-spend answers on guardrail plans.
 
 - **"Fully funded" now includes the one-off lumps.** Card 0025. Readers that say a plan is fully
   funded ask `ForecastResult::fullyFunded()`, not `$fullSpendAlwaysMet`; an unaffordable mortgage
