@@ -141,6 +141,15 @@
         @endphp
         <section data-verdict-hero aria-labelledby="verdict-hero-heading" class="rounded-lg border p-5 {{ $heroStyle }}">
             <h2 id="verdict-hero-heading" class="sr-only">The answer</h2>
+            {{-- When the answer was worked out, and whether today's engine would agree (card 0219). --}}
+            <p data-run-date class="mb-2 text-sm">Run on {{ ($resultsRun->finished_at ?? $resultsRun->updated_at)->format('j F Y') }}.</p>
+            @if ($resultsRun->isFromOlderEngine())
+                <div data-out-of-date role="alert" class="mb-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900">
+                    <p class="font-medium">This forecast is out of date: re-run it.</p>
+                    <p class="mt-1 text-sm">The forecast rules have changed since this run, so these figures may be wrong.</p>
+                    <button type="button" wire:click="runFull" class="mt-2 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700">Run it again</button>
+                </div>
+            @endif
             <p class="text-xl font-semibold" @if ($hero['verdict']['level'] === 'high') role="alert" @endif>{{ $hero['verdict']['text'] }}</p>
             <p class="mt-2 text-lg">Your essential spending is covered in <strong class="tabular-nums">{{ $hero['lastsOutOfTen'] }} out of 10</strong> possible futures.</p>
             @if ($hero['medianDepletionYear'])

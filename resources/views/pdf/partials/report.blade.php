@@ -101,6 +101,9 @@
         @if ($mcRun)
             <p class="lede">Under this run's assumptions, across {{ number_format($mcRun['paths']) }} simulated
                 futures ({{ $mcRun['mode'] }} run, seed {{ $mcRun['seed'] }}@if ($mcRun['date']), run {{ $mcRun['date'] }}@endif).</p>
+            @if ($mcRun['outOfDate'])
+                <p class="verdict verdict-medium">This forecast is out of date: the forecast rules have changed since this run, so these figures may be wrong. Re-run it.</p>
+            @endif
         @endif
         <p class="verdict verdict-{{ $primary['verdict']['level'] }}">{{ $primary['verdict']['text'] }}</p>
         @if ($safeSpend)

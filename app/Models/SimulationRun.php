@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\SimulationMode;
 use App\Enums\SimulationStatus;
 use App\Finance\Mapping\AssumptionSetMapper;
+use App\Forecast\ScenarioForecaster;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -52,6 +53,15 @@ class SimulationRun extends Model
 
     /** Seconds a run may sit queued at 0% before we surface the "is a worker running?" hint. */
     private const WORKER_WAIT_HINT_SECONDS = 15;
+
+    /**
+     * True when an older engine made this run, so its figures may not match today's rules (card
+     * 0219). An input edit deletes runs, so the engine is the only way a kept run goes stale.
+     */
+    public function isFromOlderEngine(): bool
+    {
+        return $this->engine_version !== ScenarioForecaster::ENGINE_VERSION;
+    }
 
     /**
      * True when this run has sat queued at 0% long enough that, run locally, the likely

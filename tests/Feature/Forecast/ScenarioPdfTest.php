@@ -515,6 +515,38 @@ class ScenarioPdfTest extends TestCase
     }
 
     /** The exact data the export produces, rendered through the exact template it uses. */
+    /** Card 0219: the reader can see when the answer was worked out, on screen and on paper. */
+    public function test_the_results_show_the_run_date(): void
+    {
+        $scenario = ScenarioFixture::rich($this->user);
+        $run = (new SimulationRunner(new ScenarioForecaster))->preview($scenario, paths: 20);
+        $run->forceFill(['finished_at' => '2026-03-14 10:00:00'])->save();
+
+        $this->get(route('scenarios.results', $scenario))->assertOk()->assertSee('Run on 14 March 2026.');
+        $this->assertStringContainsString('run 14 March 2026', $this->renderReport($scenario));
+    }
+
+    public function test_a_run_from_an_older_engine_is_flagged_out_of_date(): void
+    {
+        $scenario = ScenarioFixture::rich($this->user);
+        $run = (new SimulationRunner(new ScenarioForecaster))->preview($scenario, paths: 20);
+        $run->forceFill(['engine_version' => 'finance-engine/an-older-one'])->save();
+
+        $this->get(route('scenarios.results', $scenario))->assertOk()
+            ->assertSee('data-out-of-date', false)
+            ->assertSee('This forecast is out of date: re-run it.');
+        $this->assertStringContainsString('This forecast is out of date', $this->renderReport($scenario));
+    }
+
+    public function test_a_current_run_shows_no_out_of_date_warning(): void
+    {
+        $scenario = ScenarioFixture::rich($this->user);
+        (new SimulationRunner(new ScenarioForecaster))->preview($scenario, paths: 20);
+
+        $this->get(route('scenarios.results', $scenario))->assertOk()->assertDontSee('data-out-of-date', false);
+        $this->assertStringNotContainsString('This forecast is out of date', $this->renderReport($scenario));
+    }
+
     private function renderReport(Scenario $scenario): string
     {
         return view('pdf.results', ['reports' => [app(ScenarioPdfController::class)->data($scenario)]])->render();

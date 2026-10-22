@@ -312,7 +312,8 @@ class ScenarioReport
             'mode' => $run->mode->value,
             'paths' => $run->n_paths,
             'seed' => $run->seed,
-            'date' => $run->updated_at?->format('j F Y'),
+            'date' => ($run->finished_at ?? $run->updated_at)?->format('j F Y'),
+            'outOfDate' => $run->isFromOlderEngine(),
         ];
 
         return [$build(false), $build(true), $mcRun];
