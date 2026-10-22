@@ -707,7 +707,8 @@ final class PathProjector
                     'normalRetirementAge' => $pension->normalRetirementAge,
                     'revaluationBasis' => $pension->revaluationBasis,
                     'escalationInPayment' => $pension->escalationInPayment,
-                    'fixedRate' => $pension->fixedEscalationRate()->asFraction(),
+                    'fixedRevaluationRate' => $pension->fixedRevaluationRate()->asFraction(),
+                    'fixedEscalationRate' => $pension->fixedEscalationRate()->asFraction(),
                 ];
             }
         }
@@ -5539,11 +5540,11 @@ final class PathProjector
         foreach ($state['dbSchemes'] as $key => $scheme) {
             $ageNextYear = $state['baseAge'][$scheme['ownerId']] + $yearIndex + 1;
             $paymentStartAge = min($scheme['normalRetirementAge'], $draws->deathAge($scheme['ownerId']) + 1);
-            $basis = $ageNextYear <= $paymentStartAge
-                ? $scheme['revaluationBasis']
-                : $scheme['escalationInPayment'];
+            [$basis, $fixedRate] = $ageNextYear <= $paymentStartAge
+                ? [$scheme['revaluationBasis'], $scheme['fixedRevaluationRate']]
+                : [$scheme['escalationInPayment'], $scheme['fixedEscalationRate']];
 
-            $state['dbFactors'][$key] *= 1.0 + $basis->increase($inflation, $scheme['fixedRate']);
+            $state['dbFactors'][$key] *= 1.0 + $basis->increase($inflation, $fixedRate);
         }
     }
 

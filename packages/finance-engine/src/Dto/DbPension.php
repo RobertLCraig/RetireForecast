@@ -20,8 +20,9 @@ use RetireForecast\FinanceEngine\Money\Percent;
  *
  * $revaluationBasis governs the DEFERRED years (accrual to normal retirement age) and
  * $escalationInPayment the years after it; the two are separate rules and the projector
- * switches between them at normal retirement age. $fixedEscalationRate is the rate a
- * PensionEscalationBasis::Fixed scheme grants; null takes {@see DEFAULT_FIXED_ESCALATION_BPS},
+ * switches between them at normal retirement age. $fixedRevaluationRate and $fixedEscalationRate
+ * are the rates a PensionEscalationBasis::Fixed scheme grants in each phase (card 0171); a null
+ * one takes {@see DEFAULT_FIXED_ESCALATION_BPS},
  * which is disclosed rather than assumed silently ({@see fixedEscalationIsAssumed}).
  */
 final class DbPension implements Pension
@@ -53,25 +54,31 @@ final class DbPension implements Pension
         public readonly ?float $commutationFactor = null,
         /** The increase a Fixed-basis scheme grants each year; null takes the disclosed default. */
         public readonly ?Percent $fixedEscalationRate = null,
+        /** The revaluation a Fixed-basis scheme grants each DEFERRED year; null takes the disclosed default. */
+        public readonly ?Percent $fixedRevaluationRate = null,
     ) {}
 
-    /** The fixed annual increase this scheme grants: the reader's rate, else the disclosed default. */
+    /** The fixed annual increase this scheme grants IN PAYMENT: the reader's rate, else the disclosed default. */
     public function fixedEscalationRate(): Percent
     {
         return $this->fixedEscalationRate ?? Percent::fromBasisPoints(self::DEFAULT_FIXED_ESCALATION_BPS);
     }
 
+    /** The fixed annual revaluation this scheme grants IN DEFERMENT: the reader's rate, else the disclosed default. */
+    public function fixedRevaluationRate(): Percent
+    {
+        return $this->fixedRevaluationRate ?? Percent::fromBasisPoints(self::DEFAULT_FIXED_ESCALATION_BPS);
+    }
+
     /**
-     * Is the fixed rate in play a figure the ENGINE supplied? True only when a Fixed basis is
-     * actually used and the reader gave no rate — the condition the no-invisible-figures
-     * disclosure is gated on.
+     * Is a fixed rate in play a figure the ENGINE supplied? True only when a phase on a Fixed
+     * basis has no rate from the reader — the condition the no-invisible-figures disclosure is
+     * gated on. Each phase has its own rate (card 0171), so each is checked on its own.
      */
     public function fixedEscalationIsAssumed(): bool
     {
-        return $this->fixedEscalationRate === null && (
-            $this->revaluationBasis === PensionEscalationBasis::Fixed
-            || $this->escalationInPayment === PensionEscalationBasis::Fixed
-        );
+        return ($this->fixedRevaluationRate === null && $this->revaluationBasis === PensionEscalationBasis::Fixed)
+            || ($this->fixedEscalationRate === null && $this->escalationInPayment === PensionEscalationBasis::Fixed);
     }
 
     public function ownerId(): string
@@ -100,6 +107,7 @@ final class DbPension implements Pension
             $this->commutationLumpSum,
             $this->commutationFactor,
             $this->fixedEscalationRate,
+            $this->fixedRevaluationRate,
         );
     }
 }

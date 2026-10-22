@@ -851,9 +851,17 @@
                                     </select>
                                     <p class="mt-1 text-xs text-gray-500">How it grows once it is being paid. Pre-1997 service often has no increases at all, and that is a different rule from the one above.</p>
                                 </div>
-                                @if (($pension['revaluationBasis'] ?? '') === 'fixed' || ($pension['escalationInPayment'] ?? '') === 'fixed')
+                                @if (($pension['revaluationBasis'] ?? '') === 'fixed')
                                     <div>
-                                        <label for="pensions-{{ $i }}-fixedEscalationRate" class="{{ $label }}">Fixed increase (%/yr)</label>
+                                        <label for="pensions-{{ $i }}-fixedRevaluationRate" class="{{ $label }}">Fixed revaluation (pre-payment, %/yr)</label>
+                                        <input id="pensions-{{ $i }}-fixedRevaluationRate" type="text" inputmode="decimal" placeholder="{{ rtrim(rtrim(number_format(\RetireForecast\FinanceEngine\Dto\DbPension::DEFAULT_FIXED_ESCALATION_BPS / 100, 2), '0'), '.') }}" wire:model="pensions.{{ $i }}.fixedRevaluationRate" class="{{ $field }}">
+                                        @error('pensions.'.$i.'.fixedRevaluationRate') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                                        <p class="mt-1 text-xs text-gray-500">The rate your scheme rules grant before payment starts. Leave blank and we use {{ rtrim(rtrim(number_format(\RetireForecast\FinanceEngine\Dto\DbPension::DEFAULT_FIXED_ESCALATION_BPS / 100, 2), '0'), '.') }}%, which we tell you about in your results.</p>
+                                    </div>
+                                @endif
+                                @if (($pension['escalationInPayment'] ?? '') === 'fixed')
+                                    <div>
+                                        <label for="pensions-{{ $i }}-fixedEscalationRate" class="{{ $label }}">Fixed increase (in payment, %/yr)</label>
                                         <input id="pensions-{{ $i }}-fixedEscalationRate" type="text" inputmode="decimal" placeholder="{{ rtrim(rtrim(number_format(\RetireForecast\FinanceEngine\Dto\DbPension::DEFAULT_FIXED_ESCALATION_BPS / 100, 2), '0'), '.') }}" wire:model="pensions.{{ $i }}.fixedEscalationRate" class="{{ $field }}">
                                         @error('pensions.'.$i.'.fixedEscalationRate') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                                         <p class="mt-1 text-xs text-gray-500">The rate your scheme rules grant. Leave blank and we use {{ rtrim(rtrim(number_format(\RetireForecast\FinanceEngine\Dto\DbPension::DEFAULT_FIXED_ESCALATION_BPS / 100, 2), '0'), '.') }}%, which we tell you about in your results.</p>

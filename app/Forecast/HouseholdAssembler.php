@@ -679,6 +679,11 @@ final class HouseholdAssembler
                 // scenario saved before this input existed does not silently shift and no
                 // what-if child records a delta for it.
                 fixedEscalationRate: $this->percent($p['fixedEscalationRate'] ?? null),
+                // A scenario saved before card 0171 split the rate has no revaluation key; its one
+                // rate served both phases, so it keeps doing so rather than silently shifting.
+                fixedRevaluationRate: $this->percent(array_key_exists('fixedRevaluationRate', $p)
+                    ? $p['fixedRevaluationRate']
+                    : ($p['fixedEscalationRate'] ?? null)),
             ),
             'state' => new StatePensionEntitlement(
                 ownerId: (string) $p['ownerId'],

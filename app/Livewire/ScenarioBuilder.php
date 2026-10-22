@@ -531,6 +531,7 @@ class ScenarioBuilder extends Component
             'pensions.*.revaluationBasis' => ['nullable', Rule::in(array_column(self::escalationBases(), 'value'))],
             'pensions.*.escalationInPayment' => ['nullable', Rule::in(array_column(self::escalationBases(), 'value'))],
             'pensions.*.fixedEscalationRate' => ['nullable', 'numeric', 'min:0', 'max:20'],
+            'pensions.*.fixedRevaluationRate' => ['nullable', 'numeric', 'min:0', 'max:20'],
             'pensions.*.spousePensionFraction' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'pensions.*.commutationLumpSum' => $money,
             'pensions.*.commutationFactor' => ['nullable', 'numeric', 'min:0'],
@@ -1032,6 +1033,8 @@ class ScenarioBuilder extends Component
         // saved before it behaved, and it is disclosed rather than assumed silently.
         foreach ($this->pensions as $i => $pension) {
             $this->pensions[$i]['fixedEscalationRate'] ??= '';
+            // Before card 0171 one rate served both phases, so a scheme saved then revalues at it.
+            $this->pensions[$i]['fixedRevaluationRate'] ??= $this->pensions[$i]['fixedEscalationRate'];
             $this->pensions[$i]['crystallisedValue'] ??= '';
         }
 
@@ -2271,7 +2274,7 @@ class ScenarioBuilder extends Component
             'accruedAnnualPension' => '', 'normalRetirementAge' => '65', 'revaluationBasis' => 'cpi',
             // Blank fixed rate = the engine's disclosed default, so adding this input shifts no
             // existing scenario and creates no what-if delta.
-            'escalationInPayment' => 'cpi', 'fixedEscalationRate' => '',
+            'escalationInPayment' => 'cpi', 'fixedEscalationRate' => '', 'fixedRevaluationRate' => '',
             // Who the scheme would pay on death. Blank = not asked, which the engine reads as NOT
             // the spouse (the adverse answer) and discloses; an empty default keeps a what-if
             // child's delta clean.

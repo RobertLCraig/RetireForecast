@@ -83,6 +83,7 @@ final class DbEscalationTest extends TestCase
         ?Percent $fixedEscalationRate = null,
         int $memberDeathAge = 99,
         ?Percent $spousePensionFraction = null,
+        ?Percent $fixedRevaluationRate = null,
     ): array {
         $household = new Household(
             'DB escalation',
@@ -103,6 +104,7 @@ final class DbEscalationTest extends TestCase
                     escalationInPayment: $escalationInPayment,
                     fixedEscalationRate: $fixedEscalationRate,
                     spousePensionFraction: $spousePensionFraction,
+                    fixedRevaluationRate: $fixedRevaluationRate,
                 ),
             ],
         );
@@ -304,6 +306,27 @@ final class DbEscalationTest extends TestCase
         );
 
         $this->assertEqualsWithDelta($this->compounded(5.0, 20), $db[2046], 50.0);
+    }
+
+    /**
+     * Board card 0171. A scheme Fixed in BOTH phases may grant one rate in deferment and another in
+     * payment, so each phase reads its own. Revalue at 2% for the ten deferred years, then escalate
+     * at 5%: with one shared rate the arrival level carried 5% (or 2%) through both phases.
+     */
+    public function test_a_fixed_db_scheme_uses_its_own_rate_in_each_phase(): void
+    {
+        $db = $this->dbIncomeByYear(
+            escalationInPayment: PensionEscalationBasis::Fixed,
+            inflationPercent: 6.0,
+            revaluationBasis: PensionEscalationBasis::Fixed,
+            memberBirthYear: 1971,
+            fixedEscalationRate: Percent::fromPercent(5),
+            fixedRevaluationRate: Percent::fromPercent(2),
+        );
+
+        // 2036 is the January birthday, so eleven twelfths of the revalued rate are paid (card 0036).
+        $this->assertEqualsWithDelta($this->compounded(2.0, 10) * 11 / 12, $db[2036], 50.0, 'deferment revalues at the revaluation rate');
+        $this->assertEqualsWithDelta($db[2037] * (1.05 ** 9), $db[2046], 50.0, 'payment escalates at the in-payment rate');
     }
 
     /** @param  array<string, int>  $byBasis */

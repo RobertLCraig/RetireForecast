@@ -199,6 +199,14 @@ class HouseholdAssemblerTest extends TestCase
             DbPension::DEFAULT_FIXED_ESCALATION_BPS,
             $db(['fixedEscalationRate' => ''])->fixedEscalationRate()->basisPoints,
         );
+
+        // Each phase keeps its own rate (card 0171); a scheme saved before the split has no
+        // revaluation key, and its one rate goes on serving both phases.
+        $split = $db(['fixedEscalationRate' => '5', 'fixedRevaluationRate' => '2']);
+        $this->assertSame(200, $split->fixedRevaluationRate()->basisPoints);
+        $this->assertSame(500, $split->fixedEscalationRate()->basisPoints);
+        $this->assertSame(500, $db(['fixedEscalationRate' => '5'])->fixedRevaluationRate()->basisPoints);
+        $this->assertNull($db(['fixedEscalationRate' => '5', 'fixedRevaluationRate' => ''])->fixedRevaluationRate);
     }
 
     public function test_an_income_amount_is_annualised_by_its_pay_frequency(): void
