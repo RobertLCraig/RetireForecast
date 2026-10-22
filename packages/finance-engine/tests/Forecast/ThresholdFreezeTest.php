@@ -87,4 +87,22 @@ final class ThresholdFreezeTest extends TestCase
         // And the cumulative nominal tax over the run is lower when the freeze ends.
         $this->assertLessThan(array_sum($taxB), array_sum($taxA), 'un-freezing thresholds reduces total fiscal drag');
     }
+
+    public function test_thresholds_index_from_tax_year_2031_32(): void
+    {
+        // The freeze runs to 5 April 2031, and a year is the tax year that starts in it, so with
+        // the DEFAULT settings 2030-31 is the last frozen year and 2031-32 is already indexed
+        // (board card 0214). It used to stay frozen through 2031-32.
+        $household = $this->couple();
+        $default = $this->forecaster()->forecast($household, AssumptionSetLibrary::default(), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'));
+        $frozen = $this->forecaster()->forecast($household, AssumptionSetLibrary::default(), new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27', freezeEndYear: 2100));
+
+        $tax = static fn ($result): array => array_column(array_map(
+            static fn ($y): array => [$y->calendarYear, $y->totalTax->pence], $result->years), 1, 0);
+        $byYear = $tax($default);
+        $frozenByYear = $tax($frozen);
+
+        $this->assertSame($frozenByYear[2030], $byYear[2030], 'tax year 2030-31 is still frozen');
+        $this->assertLessThan($frozenByYear[2031], $byYear[2031], 'tax year 2031-32 is indexed');
+    }
 }

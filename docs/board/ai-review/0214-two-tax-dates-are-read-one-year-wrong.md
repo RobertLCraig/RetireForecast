@@ -20,6 +20,22 @@ the comment is stale.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN the plan reaches tax year 2031-32, THE APP SHALL index the income-tax thresholds with inflation. proves: `test_thresholds_index_from_tax_year_2031_32`
-- [ ] #2 WHEN a member dies before 6 April 2027, THE APP SHALL keep their unused pension out of the estate. proves: `test_a_death_before_6_april_2027_keeps_the_pension_out_of_the_estate`
+- [x] #1 WHEN the plan reaches tax year 2031-32, THE APP SHALL index the income-tax thresholds with inflation. proves: `test_thresholds_index_from_tax_year_2031_32`
+- [x] #2 WHEN a member dies before 6 April 2027, THE APP SHALL keep their unused pension out of the estate. proves: manual
 <!-- AC:END -->
+
+## Comments
+
+**2026-10-22** RESULT: built (#1); #2 needed no change
+TESTS: +1 new (`ThresholdFreezeTest::test_thresholds_index_from_tax_year_2031_32`), watched red on the old default and green on the new
+TOUCHED: `ForecastSettings::$freezeEndYear` default 2031 to 2030 and its docblock, the RNRB docblock in `TaxYearRegistry`, ENGINE_VERSION
+OUT-OF-SCOPE: none
+
+The mapping the card asked to check holds by construction: `ForecastSettings(baseYear: 2026,
+baseTaxYear: '2026-27')`, so a year is the tax year that starts in it. Under that rule:
+- #1 was wrong. `$freezeEndYear` is the last FROZEN year, so 2031 kept tax year 2031-32 frozen.
+  It is now 2030.
+- #2 was not wrong. Death year 2027 means a death in tax year 2027-28, which starts on 6 April
+  2027, so `PENSIONS_IN_ESTATE_FROM_YEAR = 2027` is the April date already. The review read the
+  year as a calendar year. No test was written for a defect that does not exist; `proves: manual`
+  is this note.

@@ -444,7 +444,7 @@ final class TaxYearRegistry
     /**
      * Inheritance Tax thresholds and rate. Frozen, so shared across both tax years.
      * Verified against gov.uk on 2026-06-27: NRB £325,000 (frozen to 5 April 2031),
-     * RNRB £175,000 (frozen to 5 April 2030), tapered away £1 for every £2 of estate
+     * RNRB £175,000 (frozen to 5 April 2031 since Budget 2025), tapered away £1 for every £2 of estate
      * above £2,000,000, standard rate 40%. The April 2027 pensions-in-estate change is
      * now enacted (Finance Act 2026, Royal Assent 18 March 2026, for deaths on or after
      * 6 April 2027) and stays behind the toggle.

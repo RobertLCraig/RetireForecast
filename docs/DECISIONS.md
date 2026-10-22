@@ -3,6 +3,24 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-22: the threshold freeze's last year is 2030-31
+
+**Context:** card 0214. `ForecastSettings::$freezeEndYear` is the last frozen year, and a year is the
+tax year that starts in it. Its default was 2031, which froze tax year 2031-32 as well, though the
+freeze ends on 5 April 2031: one extra year of fiscal drag on every plan.
+
+**Decision:** the default is 2030. The pensions-in-estate gate (`PENSIONS_IN_ESTATE_FROM_YEAR =
+2027`) was checked under the same rule and is right as it stands: year 2027 is the tax year from
+6 April 2027. `ENGINE_VERSION` is `finance-engine/thresholds-index-from-2031-32`; every stored plan
+running past 2030 owes a re-run.
+
+Monte Carlo golden master pinned 2026-10-22 (pin 61edc3b1c804). A second pin the same day, after
+card 0212's. Essentials success held at 60.0%; full-spend success moved from 7.5% to 7.0%, the
+median terminal wealth rose by £1,137, and the final fan band fell by £705. Less tax from 2031
+changes which pot each path draws from, so the moves are small and not all one way.
+
+**Status:** active
+
 ## 2026-10-22: a later year's enacted income rates reach that year
 
 **Context:** card 0213. A projection resolved one `TaxYearConfig` for its base year and used it for

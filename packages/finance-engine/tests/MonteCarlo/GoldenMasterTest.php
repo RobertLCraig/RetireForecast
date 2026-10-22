@@ -84,12 +84,12 @@ final class GoldenMasterTest extends TestCase
      */
     private const PINNED = [
         'successProbabilityEssentials' => '0.6000',
-        'successProbabilityFullSpend' => '0.0750',
+        'successProbabilityFullSpend' => '0.0700',
         'terminalWealth.p10' => 12496423,
         'terminalWealth.p25' => 29614486,
-        'terminalWealth.p50' => 54162874,
-        'terminalWealth.p75' => 92010107,
-        'terminalWealth.p90' => 160870574,
+        'terminalWealth.p50' => 54276550,
+        'terminalWealth.p75' => 92382230,
+        'terminalWealth.p90' => 160619309,
         'fan.bands' => 39,
         'fan.first.calendarYear' => 2026,
         'fan.first.p10' => 69036832,
@@ -97,12 +97,12 @@ final class GoldenMasterTest extends TestCase
         'fan.first.p90' => 69093942,
         'fan.middle.calendarYear' => 2045,
         'fan.middle.p10' => 20299412,
-        'fan.middle.p50' => 58523540,
-        'fan.middle.p90' => 161649537,
+        'fan.middle.p50' => 58590006,
+        'fan.middle.p90' => 161762313,
         'fan.last.calendarYear' => 2064,
-        'fan.last.p10' => 355134239,
-        'fan.last.p50' => 355134239,
-        'fan.last.p90' => 355134239,
+        'fan.last.p10' => 355063774,
+        'fan.last.p50' => 355063774,
+        'fan.last.p90' => 355063774,
     ];
 
     public function test_the_pinned_run_still_produces_the_pinned_numbers(): void

@@ -21,10 +21,12 @@ use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
  * economic assumptions: the start year, how invested pots are allocated, the
  * drawdown strategy, and the tax-year basis.
  *
- * $freezeEndYear is the year UK income-tax thresholds stop being frozen and are
- * assumed to rise with inflation again (currently April 2031); before then, frozen
- * nominal thresholds against inflating incomes produce real fiscal drag, which the
- * projector models.
+ * $freezeEndYear is the LAST year UK income-tax thresholds are frozen; the year after,
+ * they are assumed to rise with inflation again. A year is the tax year that starts in it,
+ * and the freeze runs to 5 April 2031, so the last frozen year is 2030 (tax year 2030-31)
+ * and 2031-32 is the first indexed one (board card 0214; it read 2031, one year of drag too
+ * many). Frozen nominal thresholds against inflating incomes produce real fiscal drag,
+ * which the projector models.
  *
  * $annualRent (with $rentInflationReal) models the rent leg of a "sell and rent"
  * scenario: an essential expense on top of the household's spend that grows at its
@@ -75,7 +77,7 @@ final class ForecastSettings
         public readonly string $baseTaxYear = '2026-27',
         public readonly DrawdownStrategy $drawdownStrategy = DrawdownStrategy::DEFAULT,
         public readonly ?PortfolioAllocation $allocation = null,
-        public readonly int $freezeEndYear = 2031,
+        public readonly int $freezeEndYear = 2030,
         public readonly ?Money $annualRent = null,
         public readonly ?Percent $rentInflationReal = null,
         public readonly bool $modelCareCost = false,

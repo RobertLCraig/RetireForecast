@@ -10,6 +10,9 @@ inventory and the older card bullets were folded out to [docs/HANDOVER-ARCHIVE.m
 `HandoverHygieneTest` fails this file above 40 KB. The rule for which bullets to fold next is
 Rob's call on card 0151:_
 
+- **Tax thresholds index from 2031-32, not 2032-33.** Card 0214. `ENGINE_VERSION` is
+  `finance-engine/thresholds-index-from-2031-32`; the **re-run is owed** for every plan past 2030.
+
 - **Each year uses the income rates enacted for it.** Card 0213. Savings and rent pay 22% / 42% /
   47% from 2027-28, and a 2025-26 plan takes the 2026 dividend rates. `ENGINE_VERSION` is
   `finance-engine/savings-and-property-rates-rise-in-2027`; the **re-run is owed** for plans with
