@@ -89,8 +89,11 @@ final class HousingProceeds
      *
      * **Adverse by rule, editable by design**: an accountant's fee for a single 60-day return runs
      * roughly £300 to £1,000 depending on how tangled the ownership history is, and a partial-PRR
-     * computation is the tangled end. A reader with a real quote enters it as an ordinary
-     * {@see SellingCostComponent} line.
+     * computation is the tangled end. A reader with a real quote enters it as a
+     * {@see SellingCostComponent} line labelled {@see self::CGT_RETURN_LABEL}; {@see compute()}
+     * then charges that quote INSTEAD of this figure, outside the gain (card 0167). The quote is
+     * charged even where no CGT is owed, because it is the reader's own line. Two such lines: the
+     * last one wins, since one return is prepared.
      *
      * **Sourced 2026-09-30** (card 0092): accountants publish £250 to £950 plus VAT for a single
      * 60-day return, so £750 is mid-range. Citations in docs/spec/ASSUMPTIONS.md §16.
@@ -147,6 +150,19 @@ final class HousingProceeds
         // fee). The total is their sum; the breakdown is carried so a UI can show it and it
         // reconciles to the total by construction. No components → the engine default rate.
         $components ??= [new SellingCostComponent('Selling costs', Percent::fromBasisPoints(self::DEFAULT_SELLING_COST_RATE_BP))];
+
+        // A line under the return's own label is the reader's quote for the 60-day return (card
+        // 0167). It is lifted out here so it stays out of the gain like the default it replaces,
+        // and is charged below in place of that default, never beside it. It is charged even on a
+        // sale that owes no CGT: it is the reader's own line, and an entered cost is never dropped.
+        $returnQuote = null;
+        foreach ($components as $i => $component) {
+            if (strcasecmp(trim($component->label), self::CGT_RETURN_LABEL) === 0) {
+                $returnQuote = $component->amount($salePriceWhole);
+                unset($components[$i]);
+            }
+        }
+
         if ($siteCommission !== null && $siteCommission->basisPoints > 0) {
             $components[] = new SellingCostComponent(self::SITE_COMMISSION_LABEL, $siteCommission);
         }
@@ -195,8 +211,8 @@ final class HousingProceeds
         // the co-owners split, and it is not an allowable deduction from the gain (see the
         // constant). Appending it here rather than to $components is what keeps it out of the
         // gain — and therefore out of its own trigger.
-        if ($cgt->isPositive()) {
-            $fee = Money::fromPence(self::CGT_RETURN_FEE_PENCE);
+        if ($returnQuote !== null || $cgt->isPositive()) {
+            $fee = $returnQuote ?? Money::fromPence(self::CGT_RETURN_FEE_PENCE);
             $sellingCosts = $sellingCosts->plus($fee);
             $breakdown[] = ['label' => self::CGT_RETURN_LABEL, 'amount' => $fee];
         }

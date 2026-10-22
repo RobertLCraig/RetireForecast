@@ -169,6 +169,31 @@ final class HousingProceedsReconciliationTest extends TestCase
         $this->assertNotContains(HousingProceeds::CGT_RETURN_LABEL, array_column($proceeds->sellingCostBreakdown, 'label'));
     }
 
+    public function test_a_readers_own_cgt_return_quote_replaces_the_default_fee(): void
+    {
+        // Card 0167. A reader with an accountant's quote enters it as a selling-cost line under
+        // the return's label. They pay that quote, not the quote AND the engine's default, and
+        // the quote stays out of the gain exactly as the default does (TCGA 1992 s.38).
+        $agent = new SellingCostComponent('Estate agent', Percent::fromPercent(1.25));
+        $quote = Money::fromPounds(400);
+        $withDefault = $this->comparison()->saleProceeds($this->partiallyRelievedHousehold(), new HousingAction(salePrice: Money::fromPounds(400_000), sellingCosts: [$agent]));
+        $withQuote = $this->comparison()->saleProceeds($this->partiallyRelievedHousehold(), new HousingAction(salePrice: Money::fromPounds(400_000), sellingCosts: [
+            $agent,
+            new SellingCostComponent(HousingProceeds::CGT_RETURN_LABEL, $quote),
+        ]));
+
+        $returnLines = array_values(array_filter($withQuote->sellingCostBreakdown, static fn (array $l): bool => $l['label'] === HousingProceeds::CGT_RETURN_LABEL));
+        $this->assertCount(1, $returnLines, 'one return is prepared, so it is charged once');
+        $this->assertSame($quote->pence, $returnLines[0]['amount']->pence);
+
+        $agentFee = Money::fromPounds(5_000)->pence;
+        $this->assertSame($agentFee + $quote->pence, $withQuote->sellingCosts->pence);
+        $this->assertSame($agentFee + HousingProceeds::CGT_RETURN_FEE_PENCE, $withDefault->sellingCosts->pence);
+
+        $this->assertNotNull($withQuote->capitalGainsDetail);
+        $this->assertSame($withDefault->capitalGainsDetail->chargeableGain->pence, $withQuote->capitalGainsDetail->chargeableGain->pence, 'the quote is not deducted from the gain');
+    }
+
     public function test_a_single_percent_selling_cost_component_is_honoured(): void
     {
         $action = new HousingAction(salePrice: Money::fromPounds(400_000), sellingCosts: [
