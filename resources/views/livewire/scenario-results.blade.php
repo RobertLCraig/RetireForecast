@@ -592,6 +592,39 @@
                 </ul>
             @endif
 
+            {{-- When to take it (board card 0223): the same withdrawal, taxed at four timings. --}}
+            @if ($shock['timings'])
+                <div data-shock-timings>
+                    <h3 class="text-base font-semibold text-gray-900">When to take it</h3>
+                    <p class="mt-1 text-sm text-gray-600">The tax on the same {{ $shock['gross'] }} taken at different times, each tax year with that year's other income.</p>
+                    <div class="mt-2 overflow-x-auto" tabindex="0">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="{{ $td }} text-left font-medium">When</th>
+                                    <th scope="col" class="{{ $td }} text-right font-medium">Other income that year</th>
+                                    <th scope="col" class="{{ $td }} text-right font-medium">Tax due</th>
+                                    <th scope="col" class="{{ $td }} text-right font-medium">Saving against this tax year</th>
+                                    <th scope="col" class="{{ $td }} text-right font-medium">Taken too early, reclaimable</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($shock['timings'] as $timing)
+                                    <tr>
+                                        <th scope="row" class="{{ $td }} text-left font-medium">{{ $timing['label'] }} <span class="font-normal text-gray-600">(from {{ $timing['year'] }}, age {{ $timing['age'] }})</span></th>
+                                        <td class="{{ $td }} text-right tabular-nums">{{ $timing['otherIncome']->format() }}</td>
+                                        <td class="{{ $td }} text-right tabular-nums">{{ $timing['tax']->format() }}</td>
+                                        <td class="{{ $td }} text-right tabular-nums">{{ $timing['saving']->format() }}</td>
+                                        <td class="{{ $td }} text-right tabular-nums">{{ $timing['overDeduction']->format() }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">The reclaimable figure is for the first payment; after it HMRC normally sends the provider a tax code. Other income here is salary only, as in the panel above.</p>
+                </div>
+            @endif
+
             <p class="text-xs text-gray-500">
                 @if ($shock['workingAssumed'])
                     Assumes other taxable income that year of {{ $shock['otherIncome'] }} (the owner's current salary, as they are still working at this age).

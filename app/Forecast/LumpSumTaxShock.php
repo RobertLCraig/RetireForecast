@@ -83,7 +83,75 @@ final class LumpSumTaxShock
             ? [Deprivation::warning(['taking '.$result->gross->format().' out of a pension'], $limit)]
             : [];
 
-        return $this->present($scenario, $household, $pension, $instruction, $otherIncome, $result, $deprivation);
+        return $this->present($scenario, $household, $pension, $instruction, $otherIncome, $result, $deprivation)
+            + ['timings' => $this->timings($scenario)];
+    }
+
+    /**
+     * "When should I take it?" (card 0223): the tax on the SAME first withdrawal taken this tax
+     * year, in the first tax year after its owner retires, and spread evenly over 2 and 3 tax years
+     * from then. Each tax year goes through the same assessor as the panel above, with that year's
+     * other income, and draws on what is left of the Lump Sum Allowance. The emergency
+     * over-deduction shown is the first payment's: after it HMRC normally issues a tax code.
+     * Null when there is no flexible withdrawal to time.
+     *
+     * @return list<array{label: string, year: int, age: int, otherIncome: Money, tax: Money, overDeduction: Money, saving: Money}>|null
+     */
+    public function timings(Scenario $scenario): ?array
+    {
+        $household = $scenario->toHousehold();
+        $first = $this->firstFlexibleWithdrawal($household);
+        $owner = $first === null ? null : $household->person($first[0]->ownerId);
+        if ($first === null || $owner === null) {
+            return null;
+        }
+        [$pension, $instruction] = $first;
+
+        $config = $this->forecaster->config($scenario);
+        $assessor = new FlexibleWithdrawalAssessor($config);
+        $baseYear = (int) substr($scenario->base_tax_year, 0, 4);
+        $ageNow = $baseYear - (int) $owner->dob->format('Y');
+        $working = in_array($owner->employmentStatus, [EmploymentStatus::Employed, EmploymentStatus::SelfEmployed], true)
+            && $owner->plannedRetirementAge !== null && $owner->plannedRetirementAge > $ageNow;
+        $from = $working ? $owner->plannedRetirementAge : $ageNow;
+
+        // The withdrawal split evenly over $years tax years from $startAge, each taxed on its own.
+        $run = function (int $startAge, int $years) use ($assessor, $config, $pension, $instruction, $owner): array {
+            $lsa = $config->pension->lumpSumAllowance->minus($pension->pclsTakenToDate ?? Money::zero())->minZero();
+            $slice = $instruction->amount->dividedBy($years);
+            $tax = Money::zero();
+            $over = null;
+            for ($i = 0; $i < $years; $i++) {
+                $last = $i === $years - 1;
+                $amount = $last ? $instruction->amount->minus($slice->times($years - 1)) : $slice;
+                $age = $startAge + $i;
+                $emptied = $last && $instruction->amount->greaterThanOrEqual($pension->currentValue);
+                $r = $instruction->kind === WithdrawalKind::Ufpls
+                    ? $assessor->assessUfpls($amount, $lsa, $this->otherIncome($owner, $age), $emptied,
+                        crystallised: $this->alreadyCrystallised($pension, $age, $config->pension->pclsRate->asFraction()))
+                    : $assessor->assessDrawdownIncome($amount, $this->otherIncome($owner, $age), $emptied);
+                $lsa = $lsa->minus($r->taxFree)->minZero();
+                $tax = $tax->plus($r->correctMarginalTax);
+                $over ??= $r->overDeduction;
+            }
+
+            return [$tax, $over ?? Money::zero(), $this->otherIncome($owner, $startAge)->total()];
+        };
+
+        $options = [['All of it this tax year', $ageNow, 1]];
+        if ($working) {
+            $options[] = ['All of it in the first tax year after retiring', $from, 1];
+        }
+        $options[] = ['Spread evenly over 2 tax years', $from, 2];
+        $options[] = ['Spread evenly over 3 tax years', $from, 3];
+
+        $rows = [];
+        foreach ($options as [$label, $age, $years]) {
+            [$tax, $over, $other] = $run($age, $years);
+            $rows[] = ['label' => $label, 'year' => $baseYear + $age - $ageNow, 'age' => $age, 'otherIncome' => $other, 'tax' => $tax, 'overDeduction' => $over];
+        }
+
+        return array_map(fn (array $row): array => $row + ['saving' => $rows[0]['tax']->minus($row['tax'])], $rows);
     }
 
     /**

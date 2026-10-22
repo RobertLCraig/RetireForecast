@@ -352,6 +352,24 @@
                 @endforeach
             </ul>
         @endif
+        @if ($shock['timings'])
+            <h3>When to take it</h3>
+            <table>
+                <thead><tr><th>When</th><th>Other income that year</th><th>Tax due</th><th>Saving against this tax year</th><th>Taken too early, reclaimable</th></tr></thead>
+                <tbody>
+                    @foreach ($shock['timings'] as $timing)
+                        <tr>
+                            <td>{{ $timing['label'] }} (from {{ $timing['year'] }}, age {{ $timing['age'] }})</td>
+                            <td>{{ $timing['otherIncome']->format() }}</td>
+                            <td>{{ $timing['tax']->format() }}</td>
+                            <td>{{ $timing['saving']->format() }}</td>
+                            <td>{{ $timing['overDeduction']->format() }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            <p class="note">The reclaimable figure is for the first payment; after it HMRC normally sends the provider a tax code. Other income here is salary only.</p>
+        @endif
         <p class="note">
             @if ($shock['workingAssumed'])
                 Assumes other taxable income that year of {{ $shock['otherIncome'] }} (the owner's current salary,

@@ -66,6 +66,60 @@ class LumpSumTaxShockTest extends TestCase
         $this->assertSame('£20,000.00', $shock['otherIncome']);
     }
 
+    /** Worked example A's household, retiring at 66 instead of working on (card 0223). */
+    private function retiringAt66(): Scenario
+    {
+        return $this->scenarioWith([
+            'name' => 'Timing', 'householdName' => 'Timing', 'region' => 'england_wales_ni', 'baseTaxYear' => '2025-26',
+            'variant' => 'rent', 'ihtModelled' => false,
+            'people' => [
+                ['id' => 'p1', 'name' => '', 'dob' => '1965-01-01', 'sex' => 'male', 'employmentStatus' => 'employed',
+                    'grossSalary' => '20000', 'salaryGrowth' => '', 'plannedRetirementAge' => '66', 'niCategory' => ''],
+            ],
+            'expense' => ['essential' => '18000', 'discretionary' => '6000', 'survivorFactor' => '70'],
+            'pensions' => [
+                ['ownerId' => 'p1', 'subtype' => 'dc', 'currentValue' => '400000', 'ongoingContribution' => '',
+                    'employerContribution' => '', 'earliestAccessAge' => '55', 'pclsTakenToDate' => '0',
+                    'growthAssumptionOverride' => '', 'withdrawals' => [['kind' => 'ufpls', 'amount' => '60000', 'atAge' => '66']]],
+            ],
+            'hasProperty' => false,
+            'housing' => ['salePrice' => '0'],
+        ]);
+    }
+
+    public function test_the_tax_shock_compares_withdrawal_timings(): void
+    {
+        $timings = (new LumpSumTaxShock)->assess($this->retiringAt66())['timings'];
+
+        $this->assertSame([
+            'All of it this tax year',
+            'All of it in the first tax year after retiring',
+            'Spread evenly over 2 tax years',
+            'Spread evenly over 3 tax years',
+        ], array_column($timings, 'label'));
+        $this->assertSame([2025, 2031, 2031, 2031], array_column($timings, 'year'));
+        // Each saving is measured against taking it all this tax year.
+        foreach ($timings as $timing) {
+            $this->assertSame($timings[0]['tax']->minus($timing['tax'])->pence, $timing['saving']->pence);
+        }
+        // Spreading it keeps more of it in the lower bands, so it costs no more tax.
+        $this->assertLessThanOrEqual($timings[1]['tax']->pence, $timings[2]['tax']->pence);
+        $this->assertLessThanOrEqual($timings[2]['tax']->pence, $timings[3]['tax']->pence);
+    }
+
+    public function test_each_timing_uses_that_years_income(): void
+    {
+        $timings = (new LumpSumTaxShock)->assess($this->retiringAt66())['timings'];
+
+        // This tax year the owner still earns £20,000, so it is worked example A to the penny.
+        $this->assertSame('£20,000.00', $timings[0]['otherIncome']->format());
+        $this->assertSame(1_194_600, $timings[0]['tax']->pence);
+        $this->assertSame(673_524, $timings[0]['overDeduction']->pence);
+        // After retiring there is no salary, so the same withdrawal costs less.
+        $this->assertTrue($timings[1]['otherIncome']->isZero());
+        $this->assertLessThan($timings[0]['tax']->pence, $timings[1]['tax']->pence);
+    }
+
     public function test_it_picks_the_earliest_flexible_withdrawal_and_skips_pcls(): void
     {
         // The rich fixture plans a PCLS at 66, a UFPLS at 67 and drawdown at 68. The

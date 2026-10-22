@@ -276,7 +276,10 @@ class ScenarioResultsTest extends TestCase
             ->assertOk()
             ->assertSee('The pension lump-sum tax shock')
             ->assertSee('Tax-free (25%)')
-            ->assertSee('emergency (Month-1) basis');
+            ->assertSee('emergency (Month-1) basis')
+            // Board card 0223: the same withdrawal at other timings.
+            ->assertSee('When to take it')
+            ->assertSee('Spread evenly over 3 tax years');
     }
 
     public function test_the_results_page_shows_the_historical_stress_test_before_any_run(): void
