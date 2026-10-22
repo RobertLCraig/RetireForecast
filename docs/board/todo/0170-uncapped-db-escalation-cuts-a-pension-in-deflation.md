@@ -50,3 +50,29 @@ The first take's red test (dbIncomeByYear(Cpi, -2.0) vs CpiCappedAt5, assertLess
 Next: do this card in an attended session with web, or mark it not_for_the_loop. Source s.51 Pensions Act 1995 and the Pensions Increase (Review) Orders, write the rule into ASSUMPTIONS §18, then add the test and the max(0.0, ...) floor on Cpi and Rpi in PensionEscalationBasis::increase(). Expect an ENGINE_VERSION bump and a GoldenMasterTest re-pin.
 
 **2026-10-22** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 1 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-23 manager (m20261023002228-49fc)
+
+**outcome: reopen**
+
+Both takes stopped only because they had no web to find the rule; the rule is now found and written above, so the builder needs no web.
+
+**what the session said**
+
+The criterion is still open, and the law it was waiting for is now sourced. The builder can finish it.
+
+**The rule:** a UK CPI- or RPI-linked pension in payment is frozen when prices fall. It is never cut.
+
+- In the 12 months to September 2015, CPI was −0.1%. Public service pensions in payment were frozen from April 2016. No Pensions Increase (Review) Order was issued that year ([NHS circular, Feb 2016](https://pensions.gov.scot/sites/default/files/2019-04/NHS%20-%20Circular%20Indexation%20CARE%20Feb%202016.pdf); [LGPS circular, Mar 2016](https://bsol.pensions.gov.scot/sites/default/files/2019-06/LGPS%20Circular%20-%20%20Public%20Service%20Pension%20Indexation%20and%20CARE%20Scheme%20revaluation%20Mar%202016.pdf)).
+- [Pensions Act 1995 s.51(2)](https://www.legislation.gov.uk/ukpga/1995/26/section/51) only says a pension "must be increased annually by at least" a percentage. Nothing in it allows a cut.
+
+**What the builder does:**
+1. Write this rule into `docs/spec/ASSUMPTIONS.md` §18, with these URLs and verified_on 2026-10-23.
+2. Put the red test back into `DbEscalationTest`, as the first take wrote it.
+3. In `PensionEscalationBasis::increase()`, wrap the `Cpi` and `Rpi` cases in `max(0.0, ...)`.
+4. Bump `ENGINE_VERSION`, re-pin `GoldenMasterTest`, and write a DECISIONS entry.
+
+WHY: Both takes stopped only because they had no web to find the rule; the rule is now found and written above, so the builder needs no web.
+
+OUTCOME: reopen
+
