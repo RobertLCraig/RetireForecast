@@ -57,6 +57,25 @@ class ScenarioResultsTest extends TestCase
             ->assertSee('%');
     }
 
+    public function test_the_verdict_sentence_comes_before_the_run_controls(): void
+    {
+        // Board card 0216: the answer is the first thing on the page, and the run controls are
+        // folded away once there is one.
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->set('previewPaths', 30)
+            ->call('preview')
+            ->assertSeeHtmlInOrder(['data-verdict-hero', 'out of 10', 'data-run-controls', 'Run a quick preview']);
+    }
+
+    public function test_the_verdict_card_shows_one_headline_odds_figure(): void
+    {
+        // The four overlapping success measures sit behind "More detail"; the card leads with one.
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->set('previewPaths', 30)
+            ->call('preview')
+            ->assertSeeHtmlInOrder(['Essentials covered', 'data-verdict-detail', 'Essentials always met', 'Full spending met every year', 'Chance of running out']);
+    }
+
     public function test_the_contingent_income_panel_and_claim_prompt_render_on_the_results_page(): void
     {
         // Board card 0046, the WIRING half: a Blade directive can fail to compile silently, so the
@@ -497,8 +516,9 @@ class ScenarioResultsTest extends TestCase
         Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
             ->set('previewPaths', 30)
             ->call('preview')
-            ->assertSee('Usable wealth left (excl. home, after pension tax)')
-            ->assertSee('Total wealth left (incl. home equity)');
+            // Plain-words labels since board card 0216; the pension-tax clause stays (card 0142).
+            ->assertSee('Money left to spend at the end (not the home, after pension tax)')
+            ->assertSee('Everything left at the end (with the home)');
     }
 
     public function test_the_usable_wealth_label_says_the_pension_tax_is_off(): void
@@ -513,8 +533,8 @@ class ScenarioResultsTest extends TestCase
         Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
             ->set('previewPaths', 30)
             ->call('preview')
-            ->assertSee('Usable wealth left (excl. home, after pension tax)')
-            ->assertDontSee('Usable wealth left (excl. home)');
+            ->assertSee('Money left to spend at the end (not the home, after pension tax)')
+            ->assertDontSee('Money left to spend at the end (not the home)');
 
         /** @var ScenarioResults $instance */
         $instance = Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])->instance();

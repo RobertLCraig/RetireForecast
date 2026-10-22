@@ -88,7 +88,6 @@
         </div>
         <div class="flex shrink-0 flex-wrap items-center justify-end gap-x-4 gap-y-2">
             <a href="{{ route('scenarios.edit', $scenario) }}" class="text-sm text-blue-700 underline">Edit inputs</a>
-            <a href="{{ route('scenarios.child', $scenario->baseScenario()) }}" class="text-sm text-blue-700 underline">Create a what-if</a>
             <a href="{{ route('scenarios.compare', $scenario->baseScenario()) }}" class="text-sm text-blue-700 underline">Compare what-ifs</a>
             <a href="{{ route('scenarios.afford', $scenario->baseScenario()) }}" class="text-sm font-semibold text-green-700 underline">What can I afford?</a>
             <a href="{{ route('scenarios.results.pdf', $scenario) }}" class="text-sm text-blue-700 underline">Download PDF summary</a>
@@ -99,12 +98,6 @@
     @if (session('status'))
         <div role="status" class="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('status') }}</div>
     @endif
-
-    {{-- One-click what-ifs off the base: a quick way to ask "what if we retire later / live
-         longer?" without rebuilding the plan. Each opens the new what-if's results. --}}
-    @unless ($whatIf)
-        <x-quick-what-ifs :scenario="$scenario" />
-    @endunless
 
     {{-- What this what-if changes vs its base: every overridden input as base → new, so the
          difference is explicit rather than buried in identical-looking inputs. --}}
@@ -132,6 +125,41 @@
             @endif
         </section>
     @endif
+
+    {{-- The answer first (board card 0216): the verdict and ONE odds figure, above every control,
+         on every tab. The other success measures sit in "More detail" on the verdict card. --}}
+    @if ($presented)
+        @php
+            $hero = $presented['variants'][$presented['primary']];
+            $heroStyle = [
+                'none' => 'border-green-200 bg-green-50 text-green-900',
+                'low' => 'border-green-200 bg-green-50 text-green-900',
+                'medium' => 'border-amber-200 bg-amber-50 text-amber-900',
+                'high' => 'border-red-200 bg-red-50 text-red-900',
+            ][$hero['verdict']['level']];
+        @endphp
+        <section data-verdict-hero aria-labelledby="verdict-hero-heading" class="rounded-lg border p-5 {{ $heroStyle }}">
+            <h2 id="verdict-hero-heading" class="sr-only">The answer</h2>
+            <p class="text-xl font-semibold" @if ($hero['verdict']['level'] === 'high') role="alert" @endif>{{ $hero['verdict']['text'] }}</p>
+            <p class="mt-2 text-lg">Your essential spending is covered in <strong class="tabular-nums">{{ $hero['lastsOutOfTen'] }} out of 10</strong> possible futures.</p>
+            @if ($hero['medianDepletionYear'])
+                <p class="mt-1 text-sm">Where it runs short, that is typically by {{ $hero['medianDepletionYear'] }}@if ($hero['depletionAges']), when you would be aged {{ $hero['depletionAges'] }}@endif.</p>
+            @endif
+        </section>
+    @endif
+
+    {{-- Run controls and the quick what-ifs, folded away once there is an answer to read. Open
+         when there is nothing to read yet, or a run is going, failed or was cancelled. --}}
+    <details data-run-controls class="rounded-lg border border-gray-200 bg-white"
+        @if (! $presented || ($run && ($run->status !== \App\Enums\SimulationStatus::Done))) open @endif>
+        <summary class="cursor-pointer px-5 py-3 text-sm font-medium text-gray-800">Run the forecast again, or try a quick what-if</summary>
+        <div class="space-y-4 px-5 pb-5">
+    {{-- One-click what-ifs off the base: a quick way to ask "what if we retire later / live
+         longer?" without rebuilding the plan. Each opens the new what-if's results. --}}
+    @unless ($whatIf)
+        <x-quick-what-ifs :scenario="$scenario" />
+    @endunless
+            <a href="{{ route('scenarios.child', $scenario->baseScenario()) }}" class="text-sm text-blue-700 underline">Create a what-if of your own</a>
 
     {{-- Run controls --------------------------------------------------------------- --}}
     <div class="{{ $card }}">
@@ -174,6 +202,9 @@
         @endif
     </div>
 
+        </div>
+    </details>
+
     {{-- The tab set. Four groups so the first screen is the answer, not eighteen stacked
          sections. Plain links the server resolves (?tab=…), not a JavaScript widget, and
          marked with aria-current rather than the ARIA tab-widget roles, whose keyboard
@@ -204,46 +235,41 @@
         {{-- Per-result disclaimer travels with the figures (plan: every Result render). --}}
         <x-disclaimer.result />
 
-        {{-- Every output is labelled with the mode that produced it (DECISIONS 2026-06-25). --}}
-        <p class="text-xs text-gray-500">
-            Output mode:
-            <span class="font-medium text-gray-700">{{ $interpretation ? 'Interpretation (advice-style, enabled for your account)' : 'Neutral guidance' }}</span>
-        </p>
-
         {{-- Headline numbers as text (never only in a chart) ----------------------- --}}
         <section id="sec-headline" {{ $panel('sec-headline') }} aria-labelledby="headline-heading" class="scroll-mt-6 space-y-3">
             <h2 id="headline-heading" class="text-xl font-semibold text-gray-900">Will the money last?</h2>
-            <p class="text-sm text-gray-600">
-                Under this run's assumptions, across {{ $resultsRun->n_paths }} simulated futures
-                ({{ $resultsRun->mode->value }} run, seed {{ $resultsRun->seed }}).
-            </p>
-            @php
-                $v = $variants[$primary];
-                $verdictStyle = [
-                    'none' => 'bg-green-50 text-green-800',
-                    'low' => 'bg-green-50 text-green-800',
-                    'medium' => 'bg-amber-50 text-amber-800',
-                    'high' => 'bg-red-50 text-red-800',
-                ][$v['verdict']['level']];
-            @endphp
+            <p class="text-sm text-gray-600">Based on {{ number_format($resultsRun->n_paths) }} possible futures.</p>
+            @php $v = $variants[$primary]; @endphp
             {{-- One scenario, one strategy: this report shows the chosen strategy only. Other
                  strategies (buy / rent / let-out) live as separate what-ifs, compared on Compare. --}}
             <div class="{{ $card }}">
                 <h3 class="font-semibold text-gray-900">{{ $v['label'] }}</h3>
-                <p class="mt-2 rounded-md px-3 py-2 text-sm font-medium {{ $verdictStyle }}" @if ($v['verdict']['level'] === 'high') role="alert" @endif>{{ $v['verdict']['text'] }}</p>
+                {{-- ONE odds figure up front (board card 0216); the overlapping measures are in More detail. --}}
                 <dl class="mt-3 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
-                    <div class="flex justify-between"><dt class="text-gray-600">Essentials always met</dt><dd class="font-medium">{{ $v['successEssentials'] }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-600">Full spending met every year</dt><dd class="font-medium">{{ $v['successFullSpend'] }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-600">Full spending met in {{ $v['fullSpendMostYearsThreshold'] }}%+ of years</dt><dd class="font-medium">{{ $v['successFullSpendMostYears'] ?? '—' }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-600">Chance of running out</dt><dd class="font-medium">{{ $v['depletionRate'] }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-600">If so, typically by</dt><dd class="font-medium">{{ $v['medianDepletionYear'] ?? '—' }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-600">Essentials covered</dt><dd class="font-medium">{{ $v['lastsOutOfTen'] }} out of 10 futures</dd></div>
                     @if ($v['usableP50'])
-                        <div class="flex justify-between"><dt class="text-gray-600">Usable wealth left (excl. home, after pension tax)</dt><dd class="font-medium">{{ $v['usableP50'] }}</dd></div>
+                        <div class="flex justify-between"><dt class="text-gray-600">Money left to spend at the end (not the home, after pension tax)</dt><dd class="font-medium">{{ $v['usableP50'] }}</dd></div>
                     @endif
-                    <div class="flex justify-between"><dt class="text-gray-600">Total wealth left (incl. home equity)</dt><dd class="font-medium">{{ $v['terminalP50'] }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-600">Everything left at the end (with the home)</dt><dd class="font-medium">{{ $v['terminalP50'] }}</dd></div>
                 </dl>
-            </div>
+                <details data-verdict-detail class="mt-3">
+                    <summary class="cursor-pointer text-sm text-blue-700 underline">More detail</summary>
+                    <dl class="mt-3 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
+                        <div class="flex justify-between"><dt class="text-gray-600">Essentials always met</dt><dd class="font-medium">{{ $v['successEssentials'] }}</dd></div>
+                        <div class="flex justify-between"><dt class="text-gray-600">Full spending met every year</dt><dd class="font-medium">{{ $v['successFullSpend'] }}</dd></div>
+                        <div class="flex justify-between"><dt class="text-gray-600">Full spending met in {{ $v['fullSpendMostYearsThreshold'] }}%+ of years</dt><dd class="font-medium">{{ $v['successFullSpendMostYears'] ?? '—' }}</dd></div>
+                        <div class="flex justify-between"><dt class="text-gray-600">Chance of running out</dt><dd class="font-medium">{{ $v['depletionRate'] }}</dd></div>
+                        <div class="flex justify-between"><dt class="text-gray-600">If so, typically by</dt><dd class="font-medium">{{ $v['medianDepletionYear'] ?? '—' }}</dd></div>
+                    </dl>
+                    <p class="mt-3 text-xs text-gray-500">
+                        A {{ $resultsRun->mode->value }} run of {{ number_format($resultsRun->n_paths) }} futures, seed {{ $resultsRun->seed }}.
+                        {{-- Every output is labelled with the mode that produced it (DECISIONS 2026-06-25). --}}
+                        Output mode:
+                        <span class="font-medium text-gray-700">{{ $interpretation ? 'Interpretation (advice-style, enabled for your account)' : 'Neutral guidance' }}</span>
+                    </p>
             <p class="mt-3 text-xs text-gray-500">"Full spending met every year" is all-or-nothing: one year short out of fifty takes it to 0%, so read it beside the {{ $v['fullSpendMostYearsThreshold'] }}%-of-years figure, which says how much of the plan held. A one-off cost with nothing to fund it is judged separately and named in the notes on your inputs, not counted against your year-to-year spending. "Chance of running out" counts the simulated futures with at least one year your essential spending isn't fully covered by income and savings — a shortfall a future may later recover from as guaranteed income catches up. "Wealth left" is the median amount at the very end. So an option can leave money at the end yet still have run short along the way — and "total wealth left" includes the equity in any home you would still own (its value net of any mortgage still owed), which stays high even when the usable cash for day-to-day spending has run out.</p>
+                </details>
+            </div>
         </section>
 
         {{-- Longevity: how long the money may need to last, read off the joint-life mortality

@@ -155,6 +155,12 @@ final class ResultPresenter
             $result = $resultsByVariant->get($key);
             if ($result instanceof Result) {
                 $variants[$key] = self::headline($key, $result->simulationResult());
+                // The ages each member would be in the run-out year, so "2049" reads as a point in
+                // their lives (board card 0216). Null with no household or no run-out year.
+                $year = $variants[$key]['medianDepletionYear'];
+                $variants[$key]['depletionAges'] = $household !== null && $year !== null
+                    ? self::agesByYear($household, [(int) $year])[(int) $year]
+                    : null;
             }
         }
 
@@ -516,6 +522,10 @@ final class ResultPresenter
                 : self::formatPercent($r->successProbabilityFullSpendMostYears),
             'fullSpendMostYearsThreshold' => (int) round(SimulationResult::FULL_SPEND_MOST_YEARS_THRESHOLD * 100),
             'depletionRate' => self::formatPercent($r->depletionRate),
+            // The ONE headline odds figure (board card 0216): the futures in which essentials are
+            // never short, out of ten. The complement of the run-out rate, read from it, and rounded
+            // DOWN so "10 out of 10" is said only when no future runs short (the cautious side).
+            'lastsOutOfTen' => (int) floor((1.0 - $r->depletionRate) * 10 + 1e-9),
             'medianDepletionYear' => $r->medianDepletionYear ?? null,
             // A plain-English verdict that drives the risk home. Factual (anchored to the
             // simulated futures), never a recommendation, so it stays on the guidance side.
