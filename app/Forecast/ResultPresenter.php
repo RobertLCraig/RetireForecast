@@ -4066,10 +4066,13 @@ final class ResultPresenter
      * own figure and labels the set "(customised)", so a tuned assumption is visible rather
      * than passing as the named preset.
      *
+     * $proceeds is the sale the strategy on display makes, or null when it does not sell; it is
+     * read only to tell whether the CGT return fee was charged.
+     *
      * @param  array<string, mixed>  $overrides  the sparse `assumptionOverrides` map (keys only matter)
      * @return array{setName: string, sourceNote: string, customised: bool, mix: string, assetSourcing: list<array{name: string, return: string, volatility: string}>, economic: list<array{key: string, label: string, value: string, note: string, edited: bool}>, housing: list<array{label: string, value: string}>}
      */
-    public static function assumptionsPanel(AssumptionSet $set, HousingAction $action, PortfolioAllocation $allocation, array $overrides = []): array
+    public static function assumptionsPanel(AssumptionSet $set, HousingAction $action, PortfolioAllocation $allocation, array $overrides = [], ?HousingProceeds $proceeds = null): array
     {
         $blended = $allocation->blendedRealReturn($set);
         $changed = AssumptionOverrides::changedKeys($overrides);
@@ -4215,6 +4218,15 @@ final class ResultPresenter
                     .', a cautious catch-all from the 2026-08-19 property review, charged only when nothing is itemised. '
                     .'Your lines win over it. The lines a new forecast starts with are each inside a published range, and most are flat fees, so their share falls as the price rises'];
             }
+        }
+        // Card 0168. A sale that owes CGT is charged the 60-day return fee on top of the lines
+        // above, so the panel needs its own row or it sits under the sale waterfall. A reader's
+        // own quote under that label is already one of the lines above and replaces the fee.
+        $quoted = array_filter($action->sellingCosts ?? [], fn (SellingCostComponent $c): bool => strcasecmp(trim($c->label), HousingProceeds::CGT_RETURN_LABEL) === 0);
+        if ($proceeds !== null && $proceeds->capitalGainsTax->isPositive() && $quoted === []) {
+            $housing[] = ['label' => 'Selling cost — '.HousingProceeds::CGT_RETURN_LABEL, 'value' => Money::fromPence(HousingProceeds::CGT_RETURN_FEE_PENCE)->format()
+                .' (flat fee, assumed: an accountant preparing the return HMRC wants within 60 days of a sale that owes CGT; '
+                .'add a selling-cost line under this name with your own quote to replace it)'];
         }
         if ($action->movingCosts !== null) {
             $housing[] = ['label' => 'Moving costs', 'value' => $action->movingCosts->format()];

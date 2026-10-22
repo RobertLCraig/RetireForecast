@@ -232,6 +232,8 @@ class ScenarioReport
                 $action,
                 $allocation,
                 $scenario->effectiveBuilderState()['assumptionOverrides'] ?? [],
+                // The sale the waterfall shows, so the panel can list the CGT return fee (card 0168).
+                $ladderContext->homeSold() ? $housing->saleProceeds($household, $action) : null,
             ),
             // Where the money COMES FROM: the entered income sources and capital pots, plus how
             // each source switches on and off across the projection.

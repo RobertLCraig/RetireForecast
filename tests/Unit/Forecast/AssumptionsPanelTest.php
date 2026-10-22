@@ -8,6 +8,7 @@ use App\Forecast\AssumptionOverrides;
 use App\Forecast\ResultPresenter;
 use PHPUnit\Framework\TestCase;
 use RetireForecast\FinanceEngine\Assumptions\AssumptionSetLibrary;
+use RetireForecast\FinanceEngine\Dto\CgtHistory;
 use RetireForecast\FinanceEngine\Dto\HousingAction;
 use RetireForecast\FinanceEngine\Forecast\AllocationProfile;
 use RetireForecast\FinanceEngine\Forecast\PortfolioAllocation;
@@ -15,6 +16,7 @@ use RetireForecast\FinanceEngine\Housing\HousingProceeds;
 use RetireForecast\FinanceEngine\Housing\SellingCostComponent;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Money\Percent;
+use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
 /**
  * The assumptions panel (show-your-working): it surfaces the very figures the forecast runs
@@ -171,6 +173,43 @@ final class AssumptionsPanelTest extends TestCase
         $this->assertStringContainsString('2.99% of the sale price', $total);
         $this->assertStringContainsString("{$pct}%", $total);
         $this->assertStringContainsString('only when nothing is itemised', $total);
+    }
+
+    public function test_the_assumptions_panel_shows_the_cgt_return_fee_when_cgt_is_due(): void
+    {
+        // Card 0168. On a sale that owes CGT the engine adds the 60-day return fee to the selling
+        // costs, and that fee is no component the reader entered. Without its own row the panel
+        // sits that much under the sale waterfall it says it traces to.
+        $action = new HousingAction(salePrice: Money::fromPounds(400_000), sellingCosts: [
+            new SellingCostComponent('Estate agent', Percent::fromPercent(1.5)),
+        ]);
+        $sale = fn (?CgtHistory $history): HousingProceeds => HousingProceeds::compute(
+            $action->salePrice, Money::zero(), $action->sellingCosts, $history, null, TaxYearRegistry::for('2026-27'),
+        );
+        $owesCgt = $sale(new CgtHistory(
+            purchasePrice: Money::fromPounds(150_000),
+            improvementCosts: Money::zero(),
+            ownershipMonths: 240,
+            mainResidenceMonths: 120,
+            higherRateOnSale: true,
+            owners: 1,
+        ));
+        $this->assertTrue($owesCgt->capitalGainsTax->isPositive(), 'the fixture must owe CGT');
+
+        $panel = ResultPresenter::assumptionsPanel(
+            AssumptionSetLibrary::default(), $action, PortfolioAllocation::cautious40_60(), [], $owesCgt,
+        );
+        // The pounds are READ from the constant the engine charges, never restated here.
+        $this->assertStringContainsString(
+            Money::fromPence(HousingProceeds::CGT_RETURN_FEE_PENCE)->format(),
+            $this->value($panel['housing'], HousingProceeds::CGT_RETURN_LABEL),
+        );
+
+        // A sale that owes nothing is charged no fee, so it gets no row.
+        $noCgt = ResultPresenter::assumptionsPanel(
+            AssumptionSetLibrary::default(), $action, PortfolioAllocation::cautious40_60(), [], $sale(null),
+        );
+        $this->assertSame('', $this->value($noCgt['housing'], HousingProceeds::CGT_RETURN_LABEL));
     }
 
     public function test_with_no_overrides_the_panel_is_not_customised_and_no_row_is_edited(): void

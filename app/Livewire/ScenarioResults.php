@@ -563,6 +563,8 @@ class ScenarioResults extends Component
                 $action,
                 $allocation,
                 $this->scenario->effectiveBuilderState()['assumptionOverrides'] ?? [],
+                // The sale the waterfall shows, so the panel can list the CGT return fee (card 0168).
+                $ladderContext->homeSold() ? $housing->saleProceeds($household, $action) : null,
             ),
             // Where the money COMES FROM: the entered income sources and capital pots (the
             // counterpart to the spending plan, which was echoed back from day one while the
